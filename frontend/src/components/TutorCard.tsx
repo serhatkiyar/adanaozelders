@@ -33,7 +33,7 @@ export function TutorCard({
       className="group flex flex-col transition duration-300 mx-auto w-full max-w-[310px]"
     >
       {/* ── Picture Area ── */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-800">
+      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 ">
         <img 
           src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=c7d2fe&color=3730a3&size=400"} 
           alt={tutor.full_name} 
@@ -65,27 +65,27 @@ export function TutorCard({
       {/* ── Bottom Part ── */}
       <div className="flex flex-col pt-3 pb-1 px-1">
         {/* Badges: Rating & Status */}
-        <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+        <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 ">
           <li className="flex items-center gap-1">
             <StarRating value={tutor.rating_average ?? 0} single={true} />
-            <span className="font-bold text-slate-900 dark:text-white text-xs">
+            <span className="font-bold text-slate-900 text-xs">
               {hasRatings ? (tutor.rating_average ?? 0).toFixed(1) : "Yeni"}
             </span>
             {hasRatings && (
-              <span className="text-slate-500 dark:text-slate-400">
+              <span className="text-slate-500 ">
                 ({tutor.rating_count} yorum)
               </span>
             )}
           </li>
         </ul>
         
-        <h3 className="mt-1 line-clamp-2 min-h-[40px] text-sm leading-snug text-slate-800 dark:text-slate-200">
+        <h3 className="mt-1 line-clamp-2 min-h-[40px] text-sm leading-snug text-slate-800 ">
           {tutor.headline || tutor.bio || `${mainSubject} alanında uzman eğitmen ile derslere hemen başlayın.`}
         </h3>
 
         {/* Pricing */}
         <div className="mt-1 flex items-center justify-between">
-          <div className="flex items-baseline text-slate-900 dark:text-white">
+          <div className="flex items-baseline text-slate-900 ">
             <span className="text-sm font-bold">
               {rate !== null ? formatTRY(rate) : "Ücret belirtilmemiş"}
             </span>
@@ -95,7 +95,7 @@ export function TutorCard({
           </div>
           {/* İlk ders ücretsiz etiketi — yalnız eğitmen sunuyorsa */}
           {tutor.first_lesson_free !== false && (
-            <div className="flex items-center text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+            <div className="flex items-center text-[11px] font-bold text-emerald-600 ">
               İlk ders ücretsiz
             </div>
           )}

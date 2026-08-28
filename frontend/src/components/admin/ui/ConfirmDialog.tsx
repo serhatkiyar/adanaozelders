@@ -244,7 +244,7 @@ function GerekceIcerik({
                 içindeydi ve alanın erişilebilir adına karışıyordu — ekran
                 okuyucu alanı "İptal gerekçesi 0/2000" diye okuyordu. */}
             <span
-              className={`mt-1 block text-right text-xs ${asildi ? "font-semibold text-rose-600 dark:text-rose-400" : "text-slate-400"}`}
+              className={`mt-1 block text-right text-xs ${asildi ? "font-semibold text-rose-600 " : "text-slate-400"}`}
             >
               {uzunluk}/{maxLength}
             </span>

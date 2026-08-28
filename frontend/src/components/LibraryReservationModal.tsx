@@ -33,15 +33,15 @@ export function LibraryReservationModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200"
+        className="w-full max-w-lg rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Başlık */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
           {showBack ? (
             <button
               onClick={handleBack}
-              className="-ml-2 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+              className="-ml-2 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
               aria-label="Geri"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -52,18 +52,18 @@ export function LibraryReservationModal({
             <div className="w-9" />
           )}
           <div className="text-center">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h2 className="text-lg font-bold text-slate-900 ">
               {choice === "study"
                 ? "Çalışma Alanı Rezervasyonu"
                 : choice === "exam"
                   ? "Deneme Sınavı Rezervasyonu"
                   : "Rezervasyon Yap"}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{library.name}</p>
+            <p className="text-xs text-slate-500 ">{library.name}</p>
           </div>
           <button
             onClick={onClose}
-            className="-mr-2 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            className="-mr-2 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
             aria-label="Kapat"
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -80,7 +80,7 @@ export function LibraryReservationModal({
         <div className="p-6">
           {choice === null ? (
             <div className="space-y-3 animate-in fade-in duration-200">
-              <p className="mb-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mb-1 text-sm text-slate-500 ">
                 Ne için rezervasyon yapmak istersin?
               </p>
               <ChoiceCard
@@ -136,19 +136,19 @@ function ChoiceCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-4 rounded-2xl border-2 border-slate-100 bg-white p-4 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/50 active:scale-[0.99] dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10"
+      className="group flex w-full items-center gap-4 rounded-2xl border-2 border-slate-100 bg-white p-4 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/50 active:scale-[0.99] "
     >
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-100 ">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-bold text-slate-900 dark:text-white">{title}</span>
-        <span className="mt-0.5 block text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+        <span className="block text-sm font-bold text-slate-900 ">{title}</span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-slate-500 ">
           {description}
         </span>
       </span>
       <svg
-        className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500 dark:text-slate-600"
+        className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500 "
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

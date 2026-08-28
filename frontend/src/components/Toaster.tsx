@@ -27,22 +27,22 @@ const ICONS: Record<ToastType, ReactNode> = {
 const TYPE_CLS: Record<ToastType, { border: string; icon: string; bar: string }> = {
   success: {
     border: "border-l-emerald-500",
-    icon:   "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
+    icon: "bg-emerald-50 text-emerald-600 ",
     bar:    "bg-emerald-400",
   },
   error: {
     border: "border-l-red-500",
-    icon:   "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400",
+    icon: "bg-red-50 text-red-600 ",
     bar:    "bg-red-400",
   },
   warning: {
     border: "border-l-amber-400",
-    icon:   "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400",
+    icon: "bg-amber-50 text-amber-600 ",
     bar:    "bg-amber-400",
   },
   info: {
     border: "border-l-indigo-500",
-    icon:   "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400",
+    icon: "bg-indigo-50 text-indigo-600 ",
     bar:    "bg-indigo-400",
   },
 };
@@ -57,7 +57,7 @@ function ToastItem({ t, dismiss }: { t: Toast; dismiss: (id: number) => void }) 
   return (
     <div
       role="alert"
-      className={`pointer-events-auto overflow-hidden rounded-2xl border-l-4 bg-white shadow-lg ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 ${cls.border}`}
+      className={`pointer-events-auto overflow-hidden rounded-2xl border-l-4 bg-white shadow-lg ring-1 ring-slate-100 ${cls.border}`}
       style={{ animation: "toast-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards" }}
     >
       {/* Content row */}
@@ -77,7 +77,7 @@ function ToastItem({ t, dismiss }: { t: Toast; dismiss: (id: number) => void }) 
         </span>
 
         {/* Message */}
-        <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-slate-800 dark:text-slate-100">
+        <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-slate-800 ">
           {t.message}
         </p>
 
@@ -85,7 +85,7 @@ function ToastItem({ t, dismiss }: { t: Toast; dismiss: (id: number) => void }) 
         <button
           aria-label="Kapat"
           onClick={() => dismiss(t.id)}
-          className="mt-0.5 shrink-0 rounded text-slate-300 transition hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
+          className="mt-0.5 shrink-0 rounded text-slate-300 transition hover:text-slate-500 "
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />

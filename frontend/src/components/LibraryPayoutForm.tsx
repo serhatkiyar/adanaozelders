@@ -14,10 +14,10 @@ import { toast } from "@/store/toastStore";
 import type { PayoutStatus } from "@/types";
 
 const STATUS_META: Record<PayoutStatus, { label: string; cls: string }> = {
-  NONE: { label: "Bilgi yok", cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
-  PENDING: { label: "Doğrulama bekleniyor", cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
-  ACTIVE: { label: "Doğrulandı ✓", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
-  REJECTED: { label: "Reddedildi", cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
+  NONE: { label: "Bilgi yok", cls: "bg-slate-100 text-slate-600 " },
+  PENDING: { label: "Doğrulama bekleniyor", cls: "bg-amber-50 text-amber-700 " },
+  ACTIVE: { label: "Doğrulandı ✓", cls: "bg-emerald-50 text-emerald-700 " },
+  REJECTED: { label: "Reddedildi", cls: "bg-rose-50 text-rose-700 " },
 };
 
 /**
@@ -134,7 +134,7 @@ export function LibraryPayoutForm({ libraryId }: { libraryId: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+        <p className="text-xs leading-relaxed text-slate-500 ">
           Deneme/çalışma ücretleri iyzico üzerinden doğrudan bu IBAN&apos;a yatar; sorumlu kişinin
           kimliğini iyzico doğrular.
         </p>
@@ -143,7 +143,7 @@ export function LibraryPayoutForm({ libraryId }: { libraryId: number }) {
         </span>
       </div>
       {payout?.iban_masked && (
-        <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
+        <p className="font-mono text-sm text-slate-700 ">
           {payout.iban_masked}
         </p>
       )}
@@ -151,7 +151,7 @@ export function LibraryPayoutForm({ libraryId }: { libraryId: number }) {
       {genelHata && (
         <p
           role="alert"
-          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
         >
           {genelHata}
         </p>

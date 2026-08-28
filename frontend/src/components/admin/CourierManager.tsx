@@ -80,13 +80,13 @@ function CourierAvatar({ c, size = "h-10 w-10" }: { c: Courier; size?: string })
       <img
         src={c.photo_url}
         alt={c.name}
-        className={`${size} shrink-0 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700`}
+        className={`${size} shrink-0 rounded-full object-cover ring-1 ring-slate-200 `}
       />
     );
   }
   return (
     <span
-      className={`${size} flex shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-300`}
+      className={`${size} flex shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500 `}
     >
       {c.name.charAt(0).toLocaleUpperCase("tr")}
     </span>
@@ -103,16 +103,16 @@ function CourierAccountPanel({ c }: { c: Courier }) {
   const [resetting, setResetting] = useState(false);
 
   if (isLoading) {
-    return <div className="mb-3 h-9 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50" />;
+    return <div className="mb-3 h-9 animate-pulse rounded-lg bg-slate-100 " />;
   }
 
   if (account?.is_active) {
     return (
       <>
-        <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-700/60">
+        <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 ">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
+            <p className="text-xs text-slate-500 ">
+              <span className="font-semibold text-slate-700 ">
                 Giriş hesabı:
               </span>{" "}
               {account.email}
@@ -167,8 +167,8 @@ function CourierAccountPanel({ c }: { c: Courier }) {
   }
 
   return (
-    <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-700/60">
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+    <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 ">
+      <p className="text-xs text-slate-500 ">
         Giriş hesabı yok — kurye saha ekranına kendi hesabıyla girsin diye oluşturun.
       </p>
       <HesapOlusturmaFormu
@@ -251,7 +251,7 @@ function HesapOlusturmaFormu({
   return (
     <div className="space-y-2">
       {genelHata && (
-        <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
+        <p role="alert" className="text-xs text-rose-600 ">
           {genelHata}
         </p>
       )}
@@ -261,7 +261,7 @@ function HesapOlusturmaFormu({
           name="first_name"
           render={({ field }) => (
             <Form.Item className="w-28">
-              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 ">
                 Ad
               </Form.Label>
               <Form.Control>
@@ -276,7 +276,7 @@ function HesapOlusturmaFormu({
           name="last_name"
           render={({ field }) => (
             <Form.Item className="w-28">
-              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 ">
                 Soyad
               </Form.Label>
               <Form.Control>
@@ -291,7 +291,7 @@ function HesapOlusturmaFormu({
           name="email"
           render={({ field }) => (
             <Form.Item className="w-52">
-              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 ">
                 E-posta
               </Form.Label>
               <Form.Control>
@@ -306,7 +306,7 @@ function HesapOlusturmaFormu({
           name="password"
           render={({ field }) => (
             <Form.Item className="w-44">
-              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 ">
                 Şifre
               </Form.Label>
               <Form.Control>
@@ -369,7 +369,7 @@ function SifreSifirlamaFormu({
   return (
     <div className="space-y-1">
       {genelHata && (
-        <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
+        <p role="alert" className="text-xs text-rose-600 ">
           {genelHata}
         </p>
       )}
@@ -379,7 +379,7 @@ function SifreSifirlamaFormu({
           name="password"
           render={({ field }) => (
             <Form.Item className="w-48">
-              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 ">
                 Yeni şifre
               </Form.Label>
               <Form.Control>
@@ -448,7 +448,7 @@ function KuryeSatirFormu({ c, onBitti }: { c: Courier; onBitti: () => void }) {
   return (
     <li className="py-3">
       {genelHata && (
-        <p role="alert" className="mb-1 text-xs text-rose-600 dark:text-rose-400">
+        <p role="alert" className="mb-1 text-xs text-rose-600 ">
           {genelHata}
         </p>
       )}
@@ -459,7 +459,7 @@ function KuryeSatirFormu({ c, onBitti }: { c: Courier; onBitti: () => void }) {
           name="name"
           render={({ field }) => (
             <Form.Item className="w-36">
-              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 ">
                 Kurye adı
               </Form.Label>
               <Form.Control>
@@ -476,7 +476,7 @@ function KuryeSatirFormu({ c, onBitti }: { c: Courier; onBitti: () => void }) {
             <Form.Item className="w-36">
               <Form.Label
                 optional
-                className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300"
+                className="mb-1 block text-xs font-semibold text-slate-600 "
               >
                 Telefon
               </Form.Label>
@@ -522,7 +522,7 @@ function CourierRow({ c }: { c: Courier }) {
             className="group/foto relative"
           >
             <CourierAvatar c={c} />
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-white opacity-0 transition group-hover/foto:opacity-100 dark:bg-white dark:text-slate-900">
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-white opacity-0 transition group-hover/foto:opacity-100 ">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-2.5 w-2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
@@ -552,15 +552,15 @@ function CourierRow({ c }: { c: Courier }) {
             }}
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+            <p className="truncate text-sm font-medium text-slate-900 ">
               {c.name}
               {!c.is_active && (
-                <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 ">
                   pasif
                 </span>
               )}
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{c.phone || "—"}</p>
+            <p className="text-xs text-slate-500 ">{c.phone || "—"}</p>
           </div>
           {/* Aksiyon şeridi ARTIK HOVER'A BAĞLI DEĞİL (İP-A7d2).
               Eskiden `opacity-0 … group-hover:opacity-100` idi: dokunmatik
@@ -620,11 +620,11 @@ export function CourierManager() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <section className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+    <section className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 ">
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Kuryeler</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Kuryeler</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Müşteri takip kimliği (isim, fotoğraf) + saha ekranı giriş hesabı.
           </p>
         </div>
@@ -639,30 +639,30 @@ export function CourierManager() {
         {isLoading ? (
           <div className="space-y-2 py-3">
             {[0, 1].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50" />
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100 " />
             ))}
           </div>
         ) : couriers.length === 0 && !adding ? (
-          <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+          <p className="py-6 text-center text-sm text-slate-400 ">
             Henüz kurye yok — takip sayfasında kimlik göstermek için ekleyin.
           </p>
         ) : !canManage ? (
           // Salt-okunur rol: kimlik listesi görünür, düzenleme/hesap yüzeyi açılmaz.
-          <ul className="divide-y divide-slate-100 dark:divide-slate-700/60">
+          <ul className="divide-y divide-slate-100 ">
             {couriers.map((c) => (
               <li key={c.id} className="flex items-center gap-3 py-3">
                 <CourierAvatar c={c} />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{c.name}</p>
+                  <p className="truncate text-sm font-medium text-slate-900 ">{c.name}</p>
                   {c.phone && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{c.phone}</p>
+                    <p className="text-xs text-slate-500 ">{c.phone}</p>
                   )}
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-700/60">
+          <ul className="divide-y divide-slate-100 ">
             {couriers.map((c) => (
               <CourierRow key={c.id} c={c} />
             ))}
@@ -705,9 +705,9 @@ function KuryeEklemeFormu({ onBitti }: { onBitti: () => void }) {
   const genelHata = form.formState.errors.root?.sunucu?.message;
 
   return (
-    <div className="border-b border-slate-100 py-3 dark:border-slate-700/60">
+    <div className="border-b border-slate-100 py-3 ">
       {genelHata && (
-        <p role="alert" className="mb-1 text-xs text-rose-600 dark:text-rose-400">
+        <p role="alert" className="mb-1 text-xs text-rose-600 ">
           {genelHata}
         </p>
       )}
@@ -717,7 +717,7 @@ function KuryeEklemeFormu({ onBitti }: { onBitti: () => void }) {
           name="name"
           render={({ field }) => (
             <Form.Item className="w-44">
-              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <Form.Label className="mb-1 block text-xs font-semibold text-slate-600 ">
                 Kurye adı
               </Form.Label>
               <Form.Control>

@@ -94,7 +94,7 @@ export function DeliveryRouteMap({
   if (located.length === 0) return null;
 
   return (
-    <div className="group relative overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-600">
+    <div className="group relative overflow-hidden rounded-xl ring-1 ring-slate-200 ">
       <MapContainer
         bounds={bounds}
         style={{ height: 320, width: "100%", zIndex: 0 }}

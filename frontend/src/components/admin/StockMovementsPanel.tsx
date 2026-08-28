@@ -53,7 +53,7 @@ export function StockMovementsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-xs text-slate-500 dark:text-slate-400">
+        <label className="text-xs text-slate-500 ">
           <span className="mb-1 block">Hareket türü</span>
           <select
             className="input w-48"
@@ -68,7 +68,7 @@ export function StockMovementsPanel() {
             ))}
           </select>
         </label>
-        <label className="text-xs text-slate-500 dark:text-slate-400">
+        <label className="text-xs text-slate-500 ">
           <span className="mb-1 block">SKU</span>
           <input
             className="input w-40"
@@ -77,7 +77,7 @@ export function StockMovementsPanel() {
             onChange={(e) => filtreDegisti(() => setSku(e.target.value))}
           />
         </label>
-        <label className="text-xs text-slate-500 dark:text-slate-400">
+        <label className="text-xs text-slate-500 ">
           <span className="mb-1 block">Kim</span>
           <select
             className="input w-36"
@@ -95,7 +95,7 @@ export function StockMovementsPanel() {
       </div>
 
       {denetimAcik && (
-        <div className="rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-700">
+        <div className="rounded-xl border border-slate-200 p-4 text-sm ">
           {denetim.isError ? (
             <ErrorState
               title="Denetim çalıştırılamadı"
@@ -103,7 +103,7 @@ export function StockMovementsPanel() {
               onRetry={() => denetim.refetch()}
             />
           ) : denetim.isLoading ? (
-            <p className="text-slate-500 dark:text-slate-400">Denetleniyor…</p>
+            <p className="text-slate-500 ">Denetleniyor…</p>
           ) : denetim.data ? (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -112,14 +112,14 @@ export function StockMovementsPanel() {
                     ? `${denetim.data.inconsistent} üründe sapma`
                     : "Bu sayfada sapma yok"}
                 </Badge>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="text-xs text-slate-500 ">
                   {denetim.data.checked} ürün denetlendi
                   {denetim.data.next_offset != null &&
                     " — defterin tamamı için sonraki sayfalar da denetlenmeli"}
                 </span>
               </div>
               {denetim.data.problems.length > 0 && (
-                <ul className="space-y-1 text-xs text-amber-900 dark:text-amber-200">
+                <ul className="space-y-1 text-xs text-amber-900 ">
                   {denetim.data.problems.slice(0, 20).map((p, i) => (
                     <li key={`${p.product_id}-${p.code}-${i}`}>
                       <span className="font-mono">{p.sku ?? p.product_id}</span> —{" "}
@@ -134,7 +134,7 @@ export function StockMovementsPanel() {
                   ))}
                 </ul>
               )}
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 ">
                 Bu ekran yalnız teşhis gösterir; hiçbir kayıt düzeltilmez.
               </p>
             </div>
@@ -153,7 +153,7 @@ export function StockMovementsPanel() {
       />
 
       {toplam > SAYFA && (
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between text-xs text-slate-500 ">
           <span>
             {offset + 1}–{Math.min(offset + SAYFA, toplam)} / {toplam}
           </span>

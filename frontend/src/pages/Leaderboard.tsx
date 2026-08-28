@@ -18,12 +18,12 @@ function Board({
   fmt: (v: number) => string;
 }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 ">
         <span>{icon}</span> {title}
       </h2>
       {entries.length === 0 ? (
-        <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mt-3 text-xs text-slate-400 ">
           Henüz veri yok.
         </p>
       ) : (
@@ -33,10 +33,10 @@ function Board({
               <span className="w-6 shrink-0 text-center text-sm font-bold text-slate-400">
                 {i < 3 ? MEDALS[i] : i + 1}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-700 ">
                 {e.name}
               </span>
-              <span className="shrink-0 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+              <span className="shrink-0 text-sm font-semibold text-indigo-600 ">
                 {fmt(e.value)}
               </span>
             </li>
@@ -60,7 +60,7 @@ export default function Leaderboard() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+                className="h-64 animate-pulse rounded-2xl bg-slate-100 "
               />
             ))}
           </div>

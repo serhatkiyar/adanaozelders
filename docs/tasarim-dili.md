@@ -47,12 +47,17 @@ bozulmaz.
 
 ### 1.1 Neden token
 
-Bugünkü panelde **120 farklı benzersiz renk sınıfı** ve **891 elle yazılmış
-`dark:` sınıfı** var. Yöntem çalışıyor ama her rengin iki kez yazılmasını
-gerektiriyor ve unutma riski üretiyor (`AdminStore.tsx:1958` zaten unutulmuş bir
-rozet taşıyordu). Medusa'nın çözümü **indirection**: semantik sınıf → CSS
-değişkeni → `.dark` altında aynı değişkenin yeniden tanımı. Bileşen tek sınıf
-yazar, iki temada doğru çalışır.
+> **KARAR (CMS turu, 28 Ağu 2026): SİTE TEK TEMADIR — dark mode SÖKÜLDÜ.**
+> Amazon/Trendyol sınıfı e-ticaret yüzeylerinde koyu tema yoktur; iki tema
+> paritesi her rengin iki kez yazılması ve unutulan ikizler demekti (İP-A3c'nin
+> ölçtüğü 891'lik borç). `themeStore` silindi, 5.557 `dark:` sınıfı söküldü,
+> `.dark` CSS blokları kalktı. **Yeni kodda `dark:` YAZILMAZ** — nöbetçisi
+> `src/__guards__/tekTema.test.ts`.
+
+Medusa'nın token çözümü **indirection**: semantik sınıf → CSS değişkeni.
+Bileşen tek sınıf yazar (`bg-panel-surface`); renk kararı tek noktada durur.
+(Tarihçe: değişkenlerin `.dark` altında koyu yeniden tanımı vardı; tek tema
+kararıyla kalktı, indirection'ın "renk tek yerde" faydası aynen sürüyor.)
 
 `index.css`te İP öncesinden kalan `--admin-surface` / `--admin-border` /
 `--admin-focus` değişkenleri **tanımlıydı ama hiçbir yere bağlı değildi** —
@@ -61,13 +66,13 @@ yarım kalmış bir girişim. İP-B1 onları silmedi, **tamamladı**: yerlerine 
 
 ### 1.2 Token kümesi
 
-`frontend/src/index.css` → `@layer base` içinde `:root` ve `.dark`.
+`frontend/src/index.css` → `@layer base` içinde `:root` (tek tema).
 Değerler **boşluklu RGB üçlüsü** olarak yazılır (`15 23 42`), çünkü Tailwind
 köprüsü `rgb(var(--x) / <alpha-value>)` biçimini kullanır ve bu biçim
 `bg-panel-surface/60` gibi saydamlık varyantlarını çalışır kılar. Hex yazılsaydı
 saydamlık varyantı sessizce kırılırdı.
 
-| Token | Rolü | Açık | Koyu |
+| Token | Rolü | Değer | Koyu (tarihçe — kalktı) |
 |---|---|---|---|
 | `--panel-bg` | Uygulama zemini (rail dışı en alt katman) | slate-50 | slate-950 |
 | `--panel-surface` | Kart / panel / çekmece yüzeyi | beyaz | slate-900 |
@@ -94,7 +99,7 @@ kaybolmaz. Ölçülen: `#8AB0DE` / slate-900 = **7,94**; slate-950 metin /
 
 Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullanım:
 `bg-panel-surface`, `text-panel-fg-muted`, `border-panel-border`,
-`ring-panel-focus`. **`dark:` ikizi yazılmaz** — token zaten temaya duyarlıdır.
+`ring-panel-focus`. **`dark:` yazılmaz** — site tek temadır (yukarıdaki karar).
 
 ### 1.3 Renk kuralları
 
@@ -300,7 +305,7 @@ Kural: **yarıçap öğenin büyüklüğüyle birlikte artar**, keyfî değildir
   **Neden yalnız orta kayar:** 20 öğeli bir menüde tümü kayarsa arama ve profil
   ekrandan çıkar; ikisi de her an erişilebilir olmalıdır.
 - **Alt:** **Ayarlar** + **profil**. Profil bir açılır menüdür: ad/e-posta,
-  tema anahtarı (Açık/Koyu/Sistem), profil bağlantısı, çıkış.
+  profil bağlantısı, çıkış. (Tema anahtarı vardı; tek tema kararıyla kalktı.)
 
 **Rail genişliği 264px.** Neden: en uzun öğe metni ("Deneme Katalogları") +
 ikon + rozet + dolgu 240px'e sığıyor; 264 bir satırlık kırılma payı bırakıyor.

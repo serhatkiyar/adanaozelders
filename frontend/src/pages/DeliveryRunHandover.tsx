@@ -45,12 +45,12 @@ function durumEtiketi(row: HandoverManifestRow): string {
 /** Rozet rengi: yalnız "araçta" yeşildir; geri kalanı dikkat ister. */
 function rozetSinifi(row: HandoverManifestRow): string {
   if (row.handed_over) {
-    return "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300";
+    return "bg-emerald-50 text-emerald-700 ";
   }
   if (row.package_status === "PACKED") {
-    return "bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300";
+    return "bg-amber-50 text-amber-800 ";
   }
-  return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+  return "bg-slate-100 text-slate-600 ";
 }
 
 export default function DeliveryRunHandover() {
@@ -155,29 +155,29 @@ export default function DeliveryRunHandover() {
 
   if (!gecerliTur) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-center text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-center text-sm text-slate-500 ">
         Geçersiz tur adresi.
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 pb-10 ">
       <header
         data-testid="zimmet-baslik"
-        className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-800/95"
+        className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur "
       >
         <div className="mx-auto flex max-w-md items-center justify-between gap-3">
           <Link
             to={ROUTES.deliveryRun(runId)}
-            className="shrink-0 text-sm font-semibold text-slate-500 dark:text-slate-400"
+            className="shrink-0 text-sm font-semibold text-slate-500 "
           >
             ← Tura dön
           </Link>
-          <h1 className="truncate text-sm font-bold text-slate-900 dark:text-white">
+          <h1 className="truncate text-sm font-bold text-slate-900 ">
             Zimmet · Tur #{runId}
           </h1>
-          <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <span className="shrink-0 text-xs font-medium text-slate-500 ">
             {manifest ? (RUN_STATUS_LABEL[manifest.run_status] ?? manifest.run_status) : "—"}
           </span>
         </div>
@@ -187,35 +187,35 @@ export default function DeliveryRunHandover() {
         {/* ── Sayaç: kaç paket araçta / turda kaç paket var ── */}
         <section
           data-testid="zimmet-ozet"
-          className="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+          className="rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-100 "
         >
           {manifestQuery.isLoading ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">Zimmet listesi yükleniyor…</p>
+            <p className="text-sm text-slate-500 ">Zimmet listesi yükleniyor…</p>
           ) : manifestQuery.isError ? (
             <div role="status" className="space-y-3">
-              <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+              <p className="text-sm font-semibold text-rose-600 ">
                 {manifestErrorMessage(manifestQuery.error)}
               </p>
               <button
                 onClick={() => manifestQuery.refetch()}
-                className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-900"
+                className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white "
               >
                 Yeniden Dene
               </button>
             </div>
           ) : (
             <>
-              <p className="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
+              <p className="text-3xl font-bold tabular-nums text-slate-900 ">
                 {alinan} / {toplam}
               </p>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              <p className="mt-1 text-sm text-slate-600 ">
                 paket araca alındı
               </p>
               <p
                 className={`mt-2 text-sm font-semibold ${
                   eksik > 0
-                    ? "text-amber-700 dark:text-amber-300"
-                    : "text-emerald-600 dark:text-emerald-400"
+                    ? "text-amber-700 "
+                    : "text-emerald-600 "
                 }`}
               >
                 {eksik > 0
@@ -229,7 +229,7 @@ export default function DeliveryRunHandover() {
         {/* ── Tarama alanı: manuel giriş HER ZAMAN açık ── */}
         <section
           data-testid="zimmet-tarama"
-          className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+          className="space-y-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 "
         >
           <form
             onSubmit={(e) => {
@@ -262,14 +262,14 @@ export default function DeliveryRunHandover() {
               {scan.isPending ? "Okunuyor…" : "Zimmetle"}
             </button>
           </form>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 ">
             Barkod okuyucuyla okutabilir ya da kodu elle yazıp Enter'a basabilirsin.
           </p>
           {kameraVar && (
             <button
               type="button"
               onClick={() => setKameraAcik((a) => !a)}
-              className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
+              className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 "
             >
               {kameraAcik ? "Kamerayı kapat" : "Kamerayla okut"}
             </button>
@@ -295,10 +295,10 @@ export default function DeliveryRunHandover() {
             data-testid="zimmet-sonuc"
             className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${
               sonuc.tur === "ok"
-                ? "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30"
+                ? "bg-emerald-50 text-emerald-800 ring-emerald-200 "
                 : sonuc.tur === "tekrar"
-                  ? "bg-slate-50 text-slate-700 ring-slate-200 dark:bg-slate-700/40 dark:text-slate-200 dark:ring-slate-600"
-                  : "bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30"
+                  ? "bg-slate-50 text-slate-700 ring-slate-200 "
+                  : "bg-rose-50 text-rose-800 ring-rose-200 "
             }`}
           >
             {sonuc.tur === "ok" ? "✓ " : sonuc.tur === "tekrar" ? "⟳ " : "✕ "}
@@ -308,15 +308,15 @@ export default function DeliveryRunHandover() {
 
         {/* ── Manifest ── */}
         <section data-testid="zimmet-manifest" className="space-y-2">
-          <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-slate-500 ">
             Bu turun paketleri
           </h2>
           {satirlar.length === 0 ? (
-            <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
+            <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 ">
               {manifestQuery.isLoading ? "Yükleniyor…" : "Bu turda bekleyen durak yok."}
             </p>
           ) : (
-            <ul className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 dark:divide-slate-700 dark:bg-slate-800 dark:ring-slate-700">
+            <ul className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 ">
               {satirlar.map((row) => (
                 <li
                   key={row.stop_id}
@@ -327,10 +327,10 @@ export default function DeliveryRunHandover() {
                     {row.sequence}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                    <span className="block truncate text-sm font-medium text-slate-800 ">
                       {row.package_code ?? "Etiket yok"}
                     </span>
-                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    <span className="block text-xs text-slate-500 ">
                       Sipariş #{row.order_id}
                     </span>
                   </span>
@@ -343,7 +343,7 @@ export default function DeliveryRunHandover() {
               ))}
             </ul>
           )}
-          <p className="px-1 text-xs text-slate-400 dark:text-slate-500">
+          <p className="px-1 text-xs text-slate-400 ">
             Alıcı adı ve adresi burada gösterilmez — depoda kutuyu etiketteki kodla
             eşlersin; müşteri bilgisi kapıda, saha ekranında görünür.
           </p>

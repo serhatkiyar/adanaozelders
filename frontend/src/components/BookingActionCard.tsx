@@ -16,31 +16,31 @@ const STATUS_CONFIG: Record<
   [BookingStatus.PENDING]: {
     label: "Onay Bekliyor",
     color:
-      "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30",
+      "bg-amber-50 text-amber-700 ring-amber-200 ",
     icon: "⏳",
   },
   [BookingStatus.ACCEPTED]: {
     label: "Onaylandı",
     color:
-      "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30",
+      "bg-emerald-50 text-emerald-700 ring-emerald-200 ",
     icon: "✅",
   },
   [BookingStatus.REJECTED]: {
     label: "Reddedildi",
     color:
-      "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-400 dark:ring-red-500/30",
+      "bg-red-50 text-red-700 ring-red-200 ",
     icon: "❌",
   },
   [BookingStatus.CANCELLED]: {
     label: "İptal Edildi",
     color:
-      "bg-slate-50 text-slate-600 ring-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:ring-slate-500/30",
+      "bg-slate-50 text-slate-600 ring-slate-200 ",
     icon: "🚫",
   },
   [BookingStatus.COMPLETED]: {
     label: "Tamamlandı",
     color:
-      "bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:ring-indigo-500/30",
+      "bg-indigo-50 text-indigo-700 ring-indigo-200 ",
     icon: "🎓",
   },
 };
@@ -96,7 +96,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-100 ">
       {/* Üst bant: gradient */}
       <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
 
@@ -104,15 +104,15 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
         {/* Başlık + Durum */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-base dark:bg-indigo-500/20">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-base ">
               📚
             </span>
             <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+              <p className="text-sm font-semibold text-slate-900 ">
                 Ders Talebi
               </p>
               {meta.client_name && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 ">
                   {meta.client_name}
                 </p>
               )}
@@ -127,8 +127,8 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
         </div>
 
         {/* Detaylar */}
-        <div className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-700/40">
-          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+        <div className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 ">
+          <div className="flex items-center gap-2 text-sm text-slate-600 ">
             <svg
               viewBox="0 0 20 20"
               fill="currentColor"
@@ -145,7 +145,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
           </div>
 
           {meta.price && (
-            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 text-sm text-slate-600 ">
               <svg
                 viewBox="0 0 20 20"
                 fill="currentColor"
@@ -158,14 +158,14 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
                   clipRule="evenodd"
                 />
               </svg>
-              <span className="font-semibold text-slate-900 dark:text-white">
+              <span className="font-semibold text-slate-900 ">
                 {formatTRY(meta.price)}
               </span>
             </div>
           )}
 
           {meta.mode && (
-            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2 text-sm text-slate-600 ">
               <svg
                 viewBox="0 0 20 20"
                 fill="currentColor"
@@ -181,7 +181,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
           )}
 
           {meta.notes && (
-            <div className="flex items-start gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <div className="flex items-start gap-2 text-sm text-slate-500 ">
               <svg
                 viewBox="0 0 20 20"
                 fill="currentColor"
@@ -206,7 +206,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
               type="button"
               onClick={handleReject}
               disabled={reject.isPending || accept.isPending}
-              className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-600 dark:hover:bg-slate-700 dark:hover:text-white"
+              className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-300 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 disabled:pointer-events-none disabled:opacity-50 "
             >
               Reddet
             </button>
@@ -228,7 +228,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
               type="button"
               onClick={handleCancel}
               disabled={cancel.isPending}
-              className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-red-200 transition hover:bg-red-50 active:scale-95 disabled:pointer-events-none disabled:opacity-50 dark:bg-slate-800 dark:text-red-400 dark:ring-red-900/30 dark:hover:bg-red-500/10"
+              className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-red-600 shadow-sm ring-1 ring-inset ring-red-200 transition hover:bg-red-50 active:scale-95 disabled:pointer-events-none disabled:opacity-50 "
             >
               Talebi İptal Et
             </button>
@@ -237,7 +237,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
 
         {/* Eylem yapıldı, bekliyor */}
         {isPending && acted && (
-          <div className="mt-4 flex justify-center rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
+          <div className="mt-4 flex justify-center rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500 ">
             {accept.isPending || reject.isPending || cancel.isPending
               ? "İşleniyor…"
               : accept.isSuccess
@@ -254,7 +254,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
         <button
           type="button"
           onClick={() => navigate(ROUTES.lesson(meta.booking_id))}
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
         >
           Detayları gör
           <svg

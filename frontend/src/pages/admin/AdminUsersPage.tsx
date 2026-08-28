@@ -76,8 +76,8 @@ export default function AdminUsersPage() {
           <div className="flex min-w-0 items-center gap-3">
             <Avatar name={row.original.full_name} size="sm" />
             <div className="min-w-0">
-              <p className="truncate font-semibold text-slate-950 dark:text-white">{row.original.full_name}</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">@{row.original.username}</p>
+              <p className="truncate font-semibold text-slate-950 ">{row.original.full_name}</p>
+              <p className="truncate text-xs text-slate-500 ">@{row.original.username}</p>
             </div>
           </div>
         ),
@@ -97,7 +97,7 @@ export default function AdminUsersPage() {
         header: "Durum",
         enableSorting: false,
         cell: ({ row }) => (
-          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${row.original.is_active ? "text-emerald-700 dark:text-emerald-400" : "text-slate-500"}`}>
+          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold ${row.original.is_active ? "text-emerald-700 " : "text-slate-500"}`}>
             <span className={`h-1.5 w-1.5 rounded-full ${row.original.is_active ? "bg-emerald-500" : "bg-slate-400"}`} />
             {row.original.is_active ? "Aktif" : "Pasif"}
           </span>
@@ -126,7 +126,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
-      <form onSubmit={submitSearch} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <form onSubmit={submitSearch} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
         <div className="grid gap-3 md:grid-cols-[minmax(15rem,1fr)_11rem_11rem_auto]">
           <label className="block">
             <span className="sr-only">Kullanıcı ara</span>
@@ -183,10 +183,10 @@ export default function AdminUsersPage() {
                 <Avatar name={user.full_name} size="sm" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate font-semibold text-slate-950 dark:text-white">{user.full_name}</p>
+                    <p className="truncate font-semibold text-slate-950 ">{user.full_name}</p>
                     <Badge tone={ROLE_TONE[user.role]}>{ROLE_LABEL[user.role]}</Badge>
                   </div>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+                  <p className="truncate text-xs text-slate-500 ">{user.email}</p>
                   <p className="mt-1 text-xs text-slate-400">{formatDateTime(user.created_at)}</p>
                 </div>
               </div>

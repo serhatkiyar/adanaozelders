@@ -48,12 +48,12 @@ export function AuthModal() {
       onClose={close}
       ariaLabel={modal === "login" ? "Giriş yap" : "Kayıt ol"}
       hideCloseButton
-      panelClassName="w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200 dark:bg-slate-800 dark:ring-slate-700"
+      panelClassName="w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200 "
     >
         <button
           type="button"
           onClick={close}
-          className="absolute right-4 top-4 z-10 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+          className="absolute right-4 top-4 z-10 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
         >
           <span className="sr-only">Kapat</span>
           <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -109,7 +109,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Giriş Yap</h2>
+      <h2 className="text-2xl font-bold text-slate-900 ">Giriş Yap</h2>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <Field label="E-posta" required>
@@ -120,7 +120,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 placeholder="ornek@eposta.com"
               />
           )}
@@ -134,19 +134,19 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 placeholder="••••••••"
               />
           )}
         </Field>
 
         <div className="flex items-center justify-between">
-          <label className="flex select-none items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <label className="flex select-none items-center gap-2 text-sm text-slate-600 ">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700"
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200 "
             />
             Beni hatırla
           </label>
@@ -156,14 +156,14 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
               // Not implementing forgot password modal for now, just navigate to it.
               navigate(ROUTES.forgotPassword);
             }}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
           >
             Şifremi unuttum?
           </button>
         </div>
 
         {mutation.isError && (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
             {getErrorMessage(mutation.error, "E-posta veya parola hatalı.")}
           </div>
         )}
@@ -177,14 +177,14 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-6 text-center text-sm text-slate-500 ">
         Hesabın yok mu?{" "}
         <button
           onClick={() => {
             searchParams.set("modal", "register");
             setSearchParams(searchParams, { replace: true });
           }}
-          className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          className="font-semibold text-indigo-600 hover:text-indigo-700 "
         >
           Kayıt ol
         </button>
@@ -233,7 +233,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
       className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
         role === value
           ? "bg-indigo-600 text-white"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+          : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
       }`}
     >
       {label}
@@ -244,8 +244,8 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Kayıt Ol</h2>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+      <h2 className="text-2xl font-bold text-slate-900 ">Kayıt Ol</h2>
+      <p className="mt-1 text-sm text-slate-500 ">
         Hesap türünü seçerek başla.
       </p>
 
@@ -266,7 +266,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
                   maxLength={75}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   placeholder="Adınız"
                 />
             )}
@@ -281,7 +281,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
                   maxLength={75}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   placeholder="Soyadınız"
                 />
             )}
@@ -300,7 +300,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
                 title="Yalnızca harf, rakam ve alt çizgi (_)"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 placeholder="kullanici_adi"
               />
           )}
@@ -314,7 +314,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 placeholder="ornek@eposta.com"
               />
           )}
@@ -330,7 +330,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
                 maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 placeholder="En az 8 karakter"
               />
           )}
@@ -346,7 +346,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
                   max={todayStr}
                   value={birthDate}
                   onChange={(e) => setBirthDate(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 />
             )}
           </Field>
@@ -356,7 +356,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
                     id={id}
                   value={gender}
                   onChange={(e) => setGender(e.target.value as Gender | "")}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 >
                   <option value="">Seçilmedi</option>
                   {GENDERS.map((g) => (
@@ -372,7 +372,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
         <ConsentCheckbox />
 
         {mutation.isError && (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
             {getErrorMessage(mutation.error, "Kayıt başarısız.")}
           </div>
         )}
@@ -386,14 +386,14 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-6 text-center text-sm text-slate-500 ">
         Zaten hesabın var mı?{" "}
         <button
           onClick={() => {
             searchParams.set("modal", "login");
             setSearchParams(searchParams, { replace: true });
           }}
-          className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          className="font-semibold text-indigo-600 hover:text-indigo-700 "
         >
           Giriş yap
         </button>

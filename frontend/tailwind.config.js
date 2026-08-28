@@ -3,6 +3,10 @@ import medusaPreset from "@medusajs/ui-preset";
 /** @type {import('tailwindcss').Config} */
 export default {
   presets: [medusaPreset],
+  // Dark mode SÖKÜLDÜ (CMS turu): `dark` sınıfını köke koyan hiçbir kod yok,
+  // bu satır bilinçli DURUYOR — kaldırılırsa Medusa preset'inin/varsayılanın
+  // `media` stratejisi devreye girer ve @medusajs/ui'nin kendi `dark:` stilleri
+  // OS tercihiyle kendiliğinden aktifleşirdi.
   darkMode: "class",
   content: [
     "./index.html",

@@ -169,17 +169,17 @@ export function DistrictMapModal({ open, value, onApply, onClose }: Props) {
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+      <div className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 ">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">Haritadan ilçe seç</h2>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <h2 className="text-lg font-bold text-slate-900 ">Haritadan ilçe seç</h2>
+            <p className="mt-0.5 text-xs text-slate-500 ">
               İlçelere tıklayarak seç (yeşil) — birden fazla seçebilirsin.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
             aria-label="Kapat"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -191,22 +191,22 @@ export function DistrictMapModal({ open, value, onApply, onClose }: Props) {
         <div className="relative h-[58vh] w-full">
           {/* Sabit bilgi kutusu (HUD): zoom ne olursa olsun hangi ilçede olduğunu gösterir */}
           <div className="pointer-events-none absolute right-3 top-3 z-[1000] max-w-[70%]">
-            <div className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 shadow-md ring-1 ring-slate-200 backdrop-blur-sm dark:bg-slate-900/95 dark:ring-slate-700">
+            <div className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 shadow-md ring-1 ring-slate-200 backdrop-blur-sm ">
               <svg className="h-4 w-4 shrink-0 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z" />
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
               {active ? (
-                <span className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-900 ">
                   {active}
                   {activeSelected && (
-                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                    <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 ">
                       Seçili
                     </span>
                   )}
                 </span>
               ) : (
-                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                <span className="text-sm font-medium text-slate-500 ">
                   Haritada gezin
                 </span>
               )}
@@ -259,11 +259,11 @@ export function DistrictMapModal({ open, value, onApply, onClose }: Props) {
           </MapContainer>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4 ">
           <button
             onClick={() => setDraft([])}
             disabled={draft.length === 0}
-            className="text-sm font-semibold text-slate-500 transition hover:text-slate-700 disabled:opacity-40 dark:text-slate-400 dark:hover:text-slate-200"
+            className="text-sm font-semibold text-slate-500 transition hover:text-slate-700 disabled:opacity-40 "
           >
             Temizle
           </button>

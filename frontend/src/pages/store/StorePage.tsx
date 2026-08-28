@@ -163,8 +163,8 @@ export default function StorePage() {
           <div className="flex flex-col gap-8 md:flex-row">
             {/* Yan filtre */}
             <aside className="w-full flex-shrink-0 md:w-64">
-              <div className="sticky top-24 rounded-2xl border border-slate-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+              <div className="sticky top-24 rounded-2xl border border-slate-100 bg-white p-5 ">
+                <h3 className="mb-4 text-base font-semibold text-slate-900 ">
                   Kategoriler
                 </h3>
                 <div className="flex flex-col gap-1">
@@ -192,10 +192,10 @@ export default function StorePage() {
                   ))}
                 </div>
 
-                <hr className="my-5 border-slate-100 dark:border-slate-800" />
+                <hr className="my-5 border-slate-100 " />
 
                 {/* Fiyat aralığı */}
-                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+                <h3 className="mb-3 text-base font-semibold text-slate-900 ">
                   Fiyat aralığı
                 </h3>
                 <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function StorePage() {
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     placeholder="En az"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 "
                   />
                   <span className="text-slate-400">–</span>
                   <input
@@ -214,13 +214,13 @@ export default function StorePage() {
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     placeholder="En çok"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 "
                   />
                 </div>
 
-                <hr className="my-5 border-slate-100 dark:border-slate-800" />
+                <hr className="my-5 border-slate-100 " />
 
-                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+                <h3 className="mb-3 text-base font-semibold text-slate-900 ">
                   Ürün türü
                 </h3>
                 <div className="flex flex-col gap-1">
@@ -234,9 +234,9 @@ export default function StorePage() {
                   ))}
                 </div>
 
-                <hr className="my-5 border-slate-100 dark:border-slate-800" />
+                <hr className="my-5 border-slate-100 " />
 
-                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+                <h3 className="mb-3 text-base font-semibold text-slate-900 ">
                   Değerlendirme
                 </h3>
                 <div className="flex flex-col gap-1">
@@ -255,14 +255,14 @@ export default function StorePage() {
                   ))}
                 </div>
 
-                <hr className="my-5 border-slate-100 dark:border-slate-800" />
+                <hr className="my-5 border-slate-100 " />
 
-                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+                <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-slate-700 ">
                   <input
                     type="checkbox"
                     checked={inStock}
                     onChange={(e) => setInStock(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800"
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 "
                   />
                   Sadece stoktakiler
                 </label>
@@ -310,7 +310,7 @@ export default function StorePage() {
             <div className="flex-1">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
+                  <h1 className="text-xl font-semibold text-slate-900 ">
                     {debouncedQ
                       ? `"${debouncedQ}" için sonuçlar`
                       : categoryId
@@ -326,7 +326,7 @@ export default function StorePage() {
                   )}
                 </div>
 
-                <label className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                <label className="flex items-center gap-3 text-sm text-slate-500 ">
                   <span className="font-medium">Sırala:</span>
                   <select
                     value={sort}
@@ -342,7 +342,7 @@ export default function StorePage() {
                       else searchParams.delete("sort");
                       setSearchParams(searchParams);
                     }}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 "
                   >
                     {(Object.keys(SORT_LABELS) as Sort[]).map((s) => (
                       <option key={s} value={s}>
@@ -358,11 +358,11 @@ export default function StorePage() {
                   {Array.from({ length: 12 }).map((_, i) => (
                     <div
                       key={i}
-                      className="animate-pulse rounded-xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                      className="animate-pulse rounded-xl border border-slate-100 bg-white p-4 "
                     >
-                      <div className="aspect-[4/5] rounded-lg bg-slate-100 dark:bg-slate-800" />
-                      <div className="mt-4 h-4 w-3/4 rounded bg-slate-100 dark:bg-slate-800" />
-                      <div className="mt-2 h-4 w-1/2 rounded bg-slate-100 dark:bg-slate-800" />
+                      <div className="aspect-[4/5] rounded-lg bg-slate-100 " />
+                      <div className="mt-4 h-4 w-3/4 rounded bg-slate-100 " />
+                      <div className="mt-2 h-4 w-1/2 rounded bg-slate-100 " />
                     </div>
                   ))}
                 </div>
@@ -378,7 +378,7 @@ export default function StorePage() {
                       <button
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
-                        className="rounded-full border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+                        className="rounded-full border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50 "
                       >
                         {isFetchingNextPage
                           ? "Yükleniyor…"
@@ -388,8 +388,8 @@ export default function StorePage() {
                   )}
                 </>
               ) : (
-                <div className="rounded-2xl border border-slate-100 bg-white py-24 text-center dark:border-slate-800 dark:bg-slate-900">
-                  <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800">
+                <div className="rounded-2xl border border-slate-100 bg-white py-24 text-center ">
+                  <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 ">
                     <svg
                       width="24"
                       height="24"
@@ -403,10 +403,10 @@ export default function StorePage() {
                       <path d="M21 21l-4.3-4.3" />
                     </svg>
                   </div>
-                  <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">
+                  <h3 className="mb-1 text-lg font-semibold text-slate-900 ">
                     Sonuç bulunamadı
                   </h3>
-                  <p className="text-slate-500 dark:text-slate-400">
+                  <p className="text-slate-500 ">
                     Aradığınız kriterlere uygun ürün yok. Filtreleri temizleyip
                     tekrar deneyin.
                   </p>
@@ -448,7 +448,7 @@ export default function StorePage() {
             <div className={`${CONTAINER} py-16`}>
               <div
                 role="alert"
-                className="mx-auto max-w-lg border-l-2 border-amber-400 bg-amber-50/60 py-4 pl-4 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
+                className="mx-auto max-w-lg border-l-2 border-amber-400 bg-amber-50/60 py-4 pl-4 text-sm text-amber-900 "
               >
                 <p className="font-semibold">Vitrin şu anda görüntülenemiyor.</p>
                 <p className="mt-1">
@@ -467,12 +467,12 @@ export default function StorePage() {
 function HomeFlowSkeleton() {
   return (
     <div aria-label="Mağaza bölümleri yükleniyor" className="space-y-5">
-      <div className="h-7 w-48 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+      <div className="h-7 w-48 animate-pulse rounded bg-slate-100 " />
       <div className="flex gap-4 overflow-hidden md:gap-6">
         {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={index}
-            className="h-[280px] w-[160px] shrink-0 animate-pulse rounded-xl bg-slate-100 md:w-[200px] dark:bg-slate-800"
+            className="h-[280px] w-[160px] shrink-0 animate-pulse rounded-xl bg-slate-100 md:w-[200px] "
           />
         ))}
       </div>
@@ -496,8 +496,8 @@ function FilterButton({
       onClick={onClick}
       className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
         active
-          ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          ? "bg-indigo-50 text-indigo-700 "
+          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 "
       }`}
     >
       <span>{label}</span>
@@ -536,21 +536,21 @@ function FacetGroup({
 
   return (
     <>
-      <hr className="my-5 border-slate-100 dark:border-slate-800" />
-      <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+      <hr className="my-5 border-slate-100 " />
+      <h3 className="mb-3 text-base font-semibold text-slate-900 ">
         {title}
       </h3>
       <div className="flex flex-col gap-1">
         {visible.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1 text-sm text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60"
+            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1 text-sm text-slate-600 transition hover:bg-slate-50 "
           >
             <input
               type="checkbox"
               checked={selected.includes(option.value)}
               onChange={() => toggle(option.value)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800"
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 "
             />
             <span className="min-w-0 flex-1 truncate">{option.value}</span>
             <span className="shrink-0 text-xs text-slate-400">
@@ -563,7 +563,7 @@ function FacetGroup({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
+          className="mt-2 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 "
         >
           {expanded ? "Daha az göster" : `Tümünü göster (${options.length})`}
         </button>

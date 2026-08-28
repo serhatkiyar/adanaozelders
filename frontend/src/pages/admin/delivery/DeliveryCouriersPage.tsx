@@ -9,9 +9,9 @@ import { useCapacityOverview, useDeliveryInfo } from "@/hooks/useDelivery";
 function ConfigRow({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 py-2.5">
-      <span className="w-44 shrink-0 text-sm text-slate-600 dark:text-slate-300">{label}</span>
-      <span className="text-sm font-medium tabular-nums text-slate-900 dark:text-white">{value}</span>
-      {hint && <span className="text-xs text-slate-400 dark:text-slate-500">{hint}</span>}
+      <span className="w-44 shrink-0 text-sm text-slate-600 ">{label}</span>
+      <span className="text-sm font-medium tabular-nums text-slate-900 ">{value}</span>
+      {hint && <span className="text-xs text-slate-400 ">{hint}</span>}
     </li>
   );
 }
@@ -25,14 +25,14 @@ function DeliveryConfig() {
 
   if (!info) return null;
   return (
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Operasyon Yapılandırması</h2>
-        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white ">
+      <div className="border-b border-slate-100 px-6 py-4 ">
+        <h2 className="text-base font-bold text-slate-900 ">Operasyon Yapılandırması</h2>
+        <p className="mt-0.5 text-xs text-slate-500 ">
           Salt okunur — bu kurallar sunucu yapılandırmasında (.env) tanımlıdır, değişiklik dağıtım gerektirir.
         </p>
       </div>
-      <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+      <ul className="divide-y divide-slate-100 px-6 ">
         <ConfigRow
           label="Aynı gün teslim eşiği"
           value={`${String(info.cutoff_hour).padStart(2, "0")}:00`}

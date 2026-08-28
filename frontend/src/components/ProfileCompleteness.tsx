@@ -27,25 +27,25 @@ export function ProfileCompleteness({
   const noSubjects = (tutor.subjects?.length ?? 0) === 0;
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-indigo-100 dark:bg-slate-800 dark:ring-indigo-500/20">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-indigo-100 ">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+        <h3 className="text-sm font-semibold text-slate-900 ">
           Profilini tamamla
         </h3>
-        <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+        <span className="text-sm font-bold text-indigo-600 ">
           %{pct}
         </span>
       </div>
-      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100 ">
         <div
           className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-3 text-xs text-slate-500 ">
         Eksik: {missing.join(", ")}.
         {noSubjects && (
-          <span className="font-medium text-amber-600 dark:text-amber-400">
+          <span className="font-medium text-amber-600 ">
             {" "}
             Branş seçmeden aramada görünmezsin.
           </span>

@@ -24,7 +24,7 @@ export function PublicShell({
   return (
     // flex kolon: içerik kısa olsa da SiteFooter'ın `mt-auto`'su onu sayfanın
     // altına iter (yasal sayfalar kısa olabiliyor).
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-900">
+    <div className="flex min-h-screen flex-col bg-slate-50 ">
       <PublicNavbar center={center} bottom={bottom} expanded />
       <main className="flex-1 p-4 sm:p-6">{children}</main>
       <SiteFooter />

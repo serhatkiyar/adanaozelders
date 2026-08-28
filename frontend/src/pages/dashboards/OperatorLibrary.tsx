@@ -34,13 +34,13 @@ import { toast } from "@/store/toastStore";
 import type { LibraryDetailOut, LibraryHours, LibraryWrite } from "@/types";
 
 const cardCls =
-  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700";
+  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ";
 
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  ACTIVE: { label: "Yayında", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
-  PENDING: { label: "İncelemede", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
-  REJECTED: { label: "Reddedildi", cls: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
-  HIDDEN: { label: "Gizli", cls: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
+  ACTIVE: { label: "Yayında", cls: "bg-emerald-100 text-emerald-700 " },
+  PENDING: { label: "İncelemede", cls: "bg-amber-100 text-amber-700 " },
+  REJECTED: { label: "Reddedildi", cls: "bg-rose-100 text-rose-700 " },
+  HIDDEN: { label: "Gizli", cls: "bg-slate-200 text-slate-600 " },
 };
 
 /** EditorState → API yükü. LibraryEditorModal.submit ile aynı kurallar:
@@ -77,9 +77,9 @@ export default function OperatorLibrary() {
       <div className="mx-auto max-w-3xl space-y-5">
         {isLoading || !lib ? (
           <div className="space-y-5">
-            <div className="h-44 animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-800" />
-            <div className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-            <div className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+            <div className="h-44 animate-pulse rounded-3xl bg-slate-100 " />
+            <div className="h-28 animate-pulse rounded-2xl bg-slate-100 " />
+            <div className="h-28 animate-pulse rounded-2xl bg-slate-100 " />
           </div>
         ) : (
           <>
@@ -104,8 +104,8 @@ function Hero({ lib }: { lib: LibraryDetailOut }) {
   const initial = (lib.name.trim()[0] ?? "K").toUpperCase();
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-      <div className="relative h-40 w-full bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-slate-700 dark:to-slate-800">
+    <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ">
+      <div className="relative h-40 w-full bg-gradient-to-br from-indigo-100 to-violet-100 ">
         {lib.cover_url && (
           <img src={lib.cover_url} alt="" className="h-full w-full object-cover" />
         )}
@@ -117,7 +117,7 @@ function Hero({ lib }: { lib: LibraryDetailOut }) {
       </div>
       <div className="px-5 pb-5">
         <div className="-mt-10 flex items-end gap-4">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-md ring-4 ring-white dark:ring-slate-800">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-md ring-4 ring-white ">
             {lib.logo_url ? (
               <img src={lib.logo_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -125,8 +125,8 @@ function Hero({ lib }: { lib: LibraryDetailOut }) {
             )}
           </div>
           <div className="min-w-0 flex-1 pb-1">
-            <h1 className="truncate text-xl font-bold text-slate-900 dark:text-white">{lib.name}</h1>
-            <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-slate-500 dark:text-slate-400">
+            <h1 className="truncate text-xl font-bold text-slate-900 ">{lib.name}</h1>
+            <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-slate-500 ">
               {region && (
                 <>
                   <PinIcon className="h-3.5 w-3.5 shrink-0" />
@@ -147,7 +147,7 @@ function Hero({ lib }: { lib: LibraryDetailOut }) {
           {lib.status === "ACTIVE" ? (
             <Link
               to={ROUTES.library(lib.slug)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 "
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
@@ -156,7 +156,7 @@ function Hero({ lib }: { lib: LibraryDetailOut }) {
               Öğrencinin gördüğü sayfayı aç
             </Link>
           ) : (
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-400 ">
               Kütüphanen onaylanınca öğrencilere görünür olur. Bu sırada profilini
               aşağıdan tamamlayabilirsin.
             </p>
@@ -185,17 +185,17 @@ function Section({
     <div className={cardCls}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 ">
             {title}
           </h2>
           {hint && !editing && (
-            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{hint}</p>
+            <p className="mt-0.5 text-xs text-slate-400 ">{hint}</p>
           )}
         </div>
         <Button
           size="sm"
           variant="ghost"
-          className="shrink-0 text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+          className="shrink-0 text-indigo-600 hover:bg-indigo-50 "
           aria-expanded={editing}
           aria-label={`${title} — ${editing ? "düzenlemeyi kapat" : "düzenle"}`}
           onClick={onToggle}
@@ -210,7 +210,7 @@ function Section({
 
 /** Boş alan için sakin "eklenmemiş" satırı. */
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-slate-400 dark:text-slate-500">{children}</p>;
+  return <p className="text-sm text-slate-400 ">{children}</p>;
 }
 
 /* Kaydetme yardımcı kancası: ortak mutate + toast + kapat. */
@@ -236,10 +236,10 @@ function useSectionSave(lib: LibraryDetailOut, onDone: () => void) {
 function MediaSection({ lib }: { lib: LibraryDetailOut }) {
   return (
     <div className={cardCls}>
-      <h2 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      <h2 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-400 ">
         Görseller
       </h2>
-      <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mb-3 text-xs text-slate-400 ">
         Logo, kapak ve galeri fotoğrafları.
       </p>
       <LibraryMediaManager libraryId={lib.id} />
@@ -275,17 +275,17 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
       {!editing ? (
         <div className="space-y-3">
           {lib.description ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
               {lib.description}
             </p>
           ) : (
             <Empty>Henüz açıklama eklenmemiş.</Empty>
           )}
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ">
               Kapasite: {lib.capacity != null ? `${lib.capacity} koltuk` : "—"}
             </span>
-            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ">
               Çalışma ücreti:{" "}
               {lib.study_hourly_price != null
                 ? `${formatTRY(lib.study_hourly_price)}/saat`
@@ -296,7 +296,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
       ) : (
         <div className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Açıklama</span>
+            <span className="mb-1 block text-sm font-semibold text-slate-700 ">Açıklama</span>
             <textarea
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
@@ -307,7 +307,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
           </label>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Kapasite (koltuk)</span>
+              <span className="mb-1 block text-sm font-semibold text-slate-700 ">Kapasite (koltuk)</span>
               <input
                 type="number"
                 min={0}
@@ -318,7 +318,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
               />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span className="mb-1 block text-sm font-semibold text-slate-700 ">
                 Çalışma ücreti (TL/saat — boş ise kapalı)
               </span>
               <input
@@ -369,20 +369,20 @@ function ContactSection({ lib }: { lib: LibraryDetailOut }) {
     >
       {!editing ? (
         has ? (
-          <ul className="space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+          <ul className="space-y-1.5 text-sm text-slate-600 ">
             {lib.phone && (
               <li>
-                <span className="text-slate-400 dark:text-slate-500">Telefon:</span> {lib.phone}
+                <span className="text-slate-400 ">Telefon:</span> {lib.phone}
               </li>
             )}
             {lib.email && (
               <li>
-                <span className="text-slate-400 dark:text-slate-500">E-posta:</span> {lib.email}
+                <span className="text-slate-400 ">E-posta:</span> {lib.email}
               </li>
             )}
             {lib.website && (
               <li className="truncate">
-                <span className="text-slate-400 dark:text-slate-500">Web:</span> {lib.website}
+                <span className="text-slate-400 ">Web:</span> {lib.website}
               </li>
             )}
           </ul>
@@ -393,16 +393,16 @@ function ContactSection({ lib }: { lib: LibraryDetailOut }) {
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Telefon</span>
+              <span className="mb-1 block text-sm font-semibold text-slate-700 ">Telefon</span>
               <input value={phone} onChange={(e) => setPhone(e.target.value)} className="input" placeholder="0322 000 00 00" />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">E-posta</span>
+              <span className="mb-1 block text-sm font-semibold text-slate-700 ">E-posta</span>
               <input value={email} onChange={(e) => setEmail(e.target.value)} className="input" placeholder="iletisim@..." />
             </label>
           </div>
           <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Web sitesi</span>
+            <span className="mb-1 block text-sm font-semibold text-slate-700 ">Web sitesi</span>
             <input value={website} onChange={(e) => setWebsite(e.target.value)} className="input" placeholder="https://..." />
           </label>
           <SaveRow busy={busy} onCancel={() => setEditing(false)} onSave={() => save({ phone, email, website })} />
@@ -450,7 +450,7 @@ function AddressSection({ lib }: { lib: LibraryDetailOut }) {
       {!editing ? (
         <div className="space-y-3">
           {lib.location_text ? (
-            <p className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <p className="flex items-start gap-2 text-sm text-slate-600 ">
               <PinIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               {lib.location_text}
             </p>
@@ -458,7 +458,7 @@ function AddressSection({ lib }: { lib: LibraryDetailOut }) {
             <Empty>Adres eklenmemiş.</Empty>
           )}
           {lib.location_lat != null && lib.location_lng != null && (
-            <div className="overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700">
+            <div className="overflow-hidden rounded-xl ring-1 ring-slate-200 ">
               <LibrariesMap libraries={[lib]} height="180px" enablePanel={false} />
             </div>
           )}
@@ -473,32 +473,32 @@ function AddressSection({ lib }: { lib: LibraryDetailOut }) {
               raporda). */}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">İl</span>
+              <span className="mb-1 block text-sm font-semibold text-slate-700 ">İl</span>
               <input value={f.city} onChange={(e) => set("city", e.target.value)} className="input" placeholder="ör. Adana" />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">İlçe</span>
+              <span className="mb-1 block text-sm font-semibold text-slate-700 ">İlçe</span>
               <input value={f.district} onChange={(e) => set("district", e.target.value)} className="input" placeholder="ör. Çukurova" />
             </label>
             <label className="block">
-              <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Mahalle</span>
+              <span className="mb-1 block text-sm font-semibold text-slate-700 ">Mahalle</span>
               <input value={f.neighborhood} onChange={(e) => set("neighborhood", e.target.value)} className="input" placeholder="ör. Toros" />
             </label>
             <div className="grid grid-cols-[1fr_90px] gap-2">
               <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">Sokak / Cadde</span>
+                <span className="mb-1 block text-sm font-semibold text-slate-700 ">Sokak / Cadde</span>
                 <input value={f.street} onChange={(e) => set("street", e.target.value)} className="input" />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">No</span>
+                <span className="mb-1 block text-sm font-semibold text-slate-700 ">No</span>
                 <input value={f.building_no} onChange={(e) => set("building_no", e.target.value)} className="input" />
               </label>
             </div>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 ">
             Aşağıdan kütüphanenin tam noktasını işaretle (yalnız konum; adresi değiştirmez).
           </p>
-          <div className="h-64 overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 [&_.map-picker-root]:h-full">
+          <div className="h-64 overflow-hidden rounded-xl ring-1 ring-slate-200 [&_.map-picker-root]:h-full">
             <MapPicker
               initialLat={f.location_lat}
               initialLng={f.location_lng}
@@ -509,7 +509,7 @@ function AddressSection({ lib }: { lib: LibraryDetailOut }) {
             />
           </div>
           {f.location_lat != null && f.location_lng != null && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+            <p className="text-xs text-emerald-600 ">
               ✓ Konum işaretlendi ({f.location_lat.toFixed(5)}, {f.location_lng.toFixed(5)})
             </p>
           )}
@@ -566,8 +566,8 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
                 key={h.weekday}
                 className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
                   isToday
-                    ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
-                    : "text-slate-600 dark:text-slate-300"
+                    ? "bg-indigo-50 font-semibold text-indigo-700 "
+                    : "text-slate-600 "
                 }`}
               >
                 <span>
@@ -584,10 +584,10 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
           <div className="space-y-1.5">
             {(hours ?? EMPTY_HOURS).map((h) => (
               <div key={h.weekday} className="flex flex-wrap items-center gap-2">
-                <span className="w-24 text-sm text-slate-600 dark:text-slate-300">
+                <span className="w-24 text-sm text-slate-600 ">
                   {WEEKDAY_LABELS[h.weekday]}
                 </span>
-                <label className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <label className="flex items-center gap-1 text-xs text-slate-500 ">
                   <input
                     type="checkbox"
                     checked={!h.is_closed}
@@ -608,7 +608,7 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
                         on dört kutusunu birbirinden ayıramıyordu. `aria-label`
                         deseni `LibraryEditorModal`den (A7d1) alındı.
 
-                        `dark:[color-scheme:dark]` de burada EKSİKTİ: A6c'nin
+                        `` de burada EKSİKTİ: A6c'nin
                         SK-6 düzeltmesi ortak `.input` sınıfına yazılmıştı, bu
                         iki kutu kendi sınıfını kullanıyor — koyu panelin
                         üstüne beyaz saat ikonu çiziliyordu. */}
@@ -617,7 +617,7 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
                       aria-label={`${WEEKDAY_LABELS[h.weekday]} açılış saati`}
                       value={minuteToHHMM(h.open_minute) || "09:00"}
                       onChange={(e) => setHour(h.weekday, { open_minute: hhmmToMinute(e.target.value) })}
-                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:[color-scheme:dark]"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm "
                     />
                     <span className="text-slate-400">–</span>
                     <input
@@ -625,7 +625,7 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
                       aria-label={`${WEEKDAY_LABELS[h.weekday]} kapanış saati`}
                       value={minuteToHHMM(h.close_minute) || "22:00"}
                       onChange={(e) => setHour(h.weekday, { close_minute: hhmmToMinute(e.target.value) })}
-                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:[color-scheme:dark]"
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm "
                     />
                   </>
                 ) : (
@@ -685,7 +685,7 @@ function AmenitiesSection({ lib }: { lib: LibraryDetailOut }) {
                   className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     active
                       ? "bg-indigo-600 text-white"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                      : "bg-slate-100 text-slate-600 "
                   }`}
                 >
                   {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}

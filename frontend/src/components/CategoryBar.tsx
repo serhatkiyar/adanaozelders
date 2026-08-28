@@ -59,8 +59,8 @@ export function CategoryBar({
           const isActive = active === c.key;
           const cls = `group flex shrink-0 flex-col items-center gap-1.5 border-b-2 pb-2 pt-0 transition-colors duration-200 ${
             isActive
-              ? "border-slate-900 dark:border-white"
-              : "border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+              ? "border-slate-900 "
+              : "border-transparent hover:border-slate-200 "
           }`;
           const inner = (
             <>
@@ -81,8 +81,8 @@ export function CategoryBar({
               <span
                 className={`whitespace-nowrap text-[13px] transition-colors duration-200 ${
                   isActive
-                    ? "font-semibold text-slate-900 dark:text-white"
-                    : "font-medium text-slate-500 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white"
+                    ? "font-semibold text-slate-900 "
+                    : "font-medium text-slate-500 group-hover:text-slate-900 "
                 }`}
               >
                 {c.label}

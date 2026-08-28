@@ -123,7 +123,7 @@ export function LibrariesMap({
       // isolate: Leaflet'in iç panel/kontrolleri (z-index 400–1000) kendi stacking
       // context'inde kalsın; aksi halde sayfa header'ı/menülerin üstüne taşar.
       // relative: yan panel haritanın üzerine konumlansın.
-      className="relative isolate overflow-hidden rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700"
+      className="relative isolate overflow-hidden rounded-2xl ring-1 ring-slate-200 "
       style={{ height }}
     >
       <MapContainer
@@ -209,7 +209,7 @@ export function LibrariesMap({
       <button
         type="button"
         onClick={() => setSatellite((s) => !s)}
-        className="absolute bottom-3 right-3 z-[1000] rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow ring-1 ring-black/10 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-700"
+        className="absolute bottom-3 right-3 z-[1000] rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow ring-1 ring-black/10 transition hover:bg-slate-50 "
       >
         {satellite ? "Harita" : "Uydu"}
       </button>

@@ -39,10 +39,10 @@ export function BookingPrivateNotesPanel({
     <div>
       {showHeading && (
         <div className="flex items-center gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
             Notlar
           </h2>
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 ">
             Sadece siz görebilirsiniz
           </span>
         </div>
@@ -54,9 +54,9 @@ export function BookingPrivateNotesPanel({
             {notes.map((note) => (
               <div
                 key={note.id}
-                className="relative rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-700/40"
+                className="relative rounded-xl bg-slate-50 px-4 py-3 "
               >
-                <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-100">
+                <p className="whitespace-pre-wrap text-sm text-slate-800 ">
                   {note.body}
                 </p>
                 <div className="mt-2 flex items-center justify-between">
@@ -81,21 +81,21 @@ export function BookingPrivateNotesPanel({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 ">
             Henüz bir not eklemediniz.
           </p>
         )}
 
         <form
           onSubmit={handleAddPrivateNote}
-          className="flex gap-2 border-t border-slate-100 pt-2 dark:border-slate-700"
+          className="flex gap-2 border-t border-slate-100 pt-2 "
         >
           <textarea
             rows={2}
             placeholder="Notunuz"
             value={privateNoteBody}
             onChange={(e) => setPrivateNoteBody(e.target.value)}
-            className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+            className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
           />
           <button
             type="submit"

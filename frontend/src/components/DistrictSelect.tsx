@@ -89,7 +89,7 @@ export function DistrictSelect({
           <div className="fixed inset-0 z-[80]" onClick={() => setOpen(false)} />
           <div
             style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: 224 }}
-            className="z-[90] flex max-h-[70vh] flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+            className="z-[90] flex max-h-[70vh] flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-100 "
           >
             <div className="min-h-0 overflow-y-auto p-1.5">
               {showRemoteOption && (
@@ -99,7 +99,7 @@ export function DistrictSelect({
                     checked={remote}
                     onClick={() => onRemoteChange?.(!remote)}
                   />
-                  <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
+                  <div className="my-1 h-px bg-slate-100 " />
                 </>
               )}
 
@@ -116,7 +116,7 @@ export function DistrictSelect({
                 <button
                   type="button"
                   onClick={() => setShowMore(true)}
-                  className="flex w-full items-center rounded-xl px-3 py-1.5 text-left text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+                  className="flex w-full items-center rounded-xl px-3 py-1.5 text-left text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
                 >
                   Diğer ilçeleri görüntüle
                 </button>
@@ -124,14 +124,14 @@ export function DistrictSelect({
 
               {SHOW_MAP_OPTION && (
                 <>
-                  <div className="my-1 h-px bg-slate-100 dark:bg-slate-700" />
+                  <div className="my-1 h-px bg-slate-100 " />
                   <button
                     type="button"
                     onClick={() => {
                       setOpen(false);
                       setMapOpen(true);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 "
                   >
                     <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -142,7 +142,7 @@ export function DistrictSelect({
               )}
             </div>
 
-            <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-100 p-1.5 dark:border-slate-700">
+            <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-100 p-1.5 ">
               {(value.length > 0 || remote) && (
                 <button
                   type="button"
@@ -150,7 +150,7 @@ export function DistrictSelect({
                     onChange([]);
                     onRemoteChange?.(false);
                   }}
-                  className="flex-1 rounded-xl px-3 py-2 text-left text-sm text-slate-500 transition hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700/50"
+                  className="flex-1 rounded-xl px-3 py-2 text-left text-sm text-slate-500 transition hover:bg-slate-50 "
                 >
                   Seçimi temizle
                 </button>
@@ -188,13 +188,13 @@ function CheckboxRow({ label, checked, onClick }: { label: string; checked: bool
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
+      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
     >
       <span
         className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border transition ${
           checked
             ? "border-indigo-600 bg-indigo-600 text-white"
-            : "border-slate-300 dark:border-slate-600"
+            : "border-slate-300 "
         }`}
       >
         {checked && (

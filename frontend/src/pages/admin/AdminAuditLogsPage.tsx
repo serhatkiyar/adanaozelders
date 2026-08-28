@@ -71,8 +71,8 @@ function actorLabel(log: AuditLogOut): string {
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2">
-      <dt className="shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</dt>
-      <dd className="min-w-0 text-right text-sm text-slate-700 dark:text-slate-300">{children}</dd>
+      <dt className="shrink-0 text-xs font-medium uppercase tracking-wide text-slate-400 ">{label}</dt>
+      <dd className="min-w-0 text-right text-sm text-slate-700 ">{children}</dd>
     </div>
   );
 }
@@ -80,8 +80,8 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 function JsonBlock({ label, value }: { label: string; value: Record<string, unknown> }) {
   return (
     <div className="mt-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</p>
-      <pre className="mt-1 max-h-48 overflow-auto rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 dark:bg-slate-950/60 dark:text-slate-300">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 ">{label}</p>
+      <pre className="mt-1 max-h-48 overflow-auto rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-700 ">
         {JSON.stringify(value, null, 2)}
       </pre>
     </div>
@@ -101,7 +101,7 @@ function AuditDetailPenceresi({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<AuditLog
     <DuzenlemePenceresi yuzey={yuzey} baslik="Denetim kaydı">
       {log && (
         <div>
-          <dl className="divide-y divide-slate-100 dark:divide-slate-800">
+          <dl className="divide-y divide-slate-100 ">
             <DetailRow label="Aksiyon"><Badge tone="info">{log.action}</Badge></DetailRow>
             <DetailRow label="Hedef">{log.target_type}{log.target_id ? ` #${log.target_id}` : ""}</DetailRow>
             <DetailRow label="Aktör">{actorLabel(log)}</DetailRow>
@@ -232,7 +232,7 @@ export default function AdminAuditLogsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
-      <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
         <div className="grid gap-3 md:grid-cols-[minmax(13rem,1fr)_10rem_8rem_11rem_auto]">
           <input aria-label="Denetim kaydı ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Aksiyon, hedef, gerekçe ara" className="input" />
           <input aria-label="Hedef türü" value={degerler.target} maxLength={30} onChange={(event) => ayarla({ target: event.target.value }, { replace: true })} placeholder="Hedef türü" className="input" />

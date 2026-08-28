@@ -92,20 +92,20 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
   return (
     <div className="space-y-5">
       {/* Fiyat + bilgilendirme */}
-      <div className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-4 py-3 dark:bg-indigo-500/10">
-        <p className="text-xs leading-relaxed text-indigo-700 dark:text-indigo-300">
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-4 py-3 ">
+        <p className="text-xs leading-relaxed text-indigo-700 ">
           Tarih ve saat aralığı seç, online öde; kütüphanede QR kodunu okutarak giriş yap.
           {library.capacity ? ` ${library.capacity} kişilik kapasite.` : ""}
         </p>
-        <span className="shrink-0 text-sm font-bold text-indigo-700 dark:text-indigo-300">
+        <span className="shrink-0 text-sm font-bold text-indigo-700 ">
           {formatTRY(library.study_hourly_price)}
-          <span className="font-medium text-indigo-500 dark:text-indigo-400">/saat</span>
+          <span className="font-medium text-indigo-500 ">/saat</span>
         </span>
       </div>
 
       {/* Tarih */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
           Tarih
         </p>
         <DateStrip value={date} onChange={setDate} days={NEXT_14_DAYS} />
@@ -113,7 +113,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
 
       {/* Başlangıç saati */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
           Başlangıç Saati
         </p>
         <TimeStepper value={start} onChange={setStart} />
@@ -121,7 +121,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
 
       {/* Süre */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
           Süre
         </p>
         <div className="flex flex-wrap gap-2">
@@ -133,7 +133,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
               className={`rounded-xl px-3.5 py-2 text-sm font-medium transition active:scale-95 ${
                 duration === d.value
                   ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
               }`}
             >
               {d.label}
@@ -141,21 +141,21 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           ))}
         </div>
         {startDate && endDate && (
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-xs text-slate-500 ">
             {hhmm(startDate)} – {hhmm(endDate)}
           </p>
         )}
       </div>
 
       {/* Fiyat / uygunluk özeti */}
-      <div className="flex flex-col gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm">
           {isError ? (
             <span className="text-rose-500">{getErrorMessage(error, "Fiyat alınamadı")}</span>
           ) : quote ? (
             quote.available ? (
               <>
-                <span className="font-semibold text-slate-900 dark:text-white">
+                <span className="font-semibold text-slate-900 ">
                   {quote.hours} saat · {formatTRY(quote.amount)}
                 </span>
                 <span className="ml-2 text-xs text-emerald-600">
@@ -181,7 +181,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           // Giriş yapıp dönünce devre dışı buton bulmasın.
           <span
             aria-describedby={NOTICE_ID}
-            className="rounded-xl bg-slate-100 px-4 py-2 text-center text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+            className="rounded-xl bg-slate-100 px-4 py-2 text-center text-sm font-semibold text-slate-500 "
           >
             Ödeme kapalı
           </span>

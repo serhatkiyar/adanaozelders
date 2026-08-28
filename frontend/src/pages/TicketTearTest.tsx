@@ -60,12 +60,12 @@ export default function TicketTearTest() {
   const [modal, setModal] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-12 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-100 px-4 py-12 ">
       <div className="mx-auto max-w-xl space-y-8">
         <header className="text-center">
           <p className="text-xs font-bold uppercase tracking-widest text-indigo-500">Test · Prototip</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">Yırtılan kupon bileti</h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 ">Yırtılan kupon bileti</h1>
+          <p className="mt-2 text-sm text-slate-500 ">
             QR'a tıkla → kod modalı. Girişi doğrulayınca kupon koparılır ve bilete{" "}
             <strong>KULLANILDI</strong> damgası vurulur.
           </p>
@@ -88,13 +88,13 @@ export default function TicketTearTest() {
           <button
             onClick={() => setStatus("PAID")}
             disabled={status === "PAID"}
-            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 "
           >
             ↺ Sıfırla
           </button>
         </div>
 
-        <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+        <p className="text-center text-xs text-slate-400 ">
           Durum: <code className="font-mono">{status}</code>
         </p>
       </div>
@@ -148,18 +148,18 @@ const VARIANTS: Record<
   }
 > = {
   cream: {
-    container: "bg-[#f4efe4] dark:bg-[#27241f]",
-    badge: "bg-indigo-600/10 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300",
-    statusPaid: "bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
-    statusUsed: "bg-emerald-600/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
-    title: "text-slate-900 dark:text-stone-100",
-    libName: "text-slate-600 dark:text-stone-300",
-    muted: "text-slate-500 dark:text-stone-400",
-    amount: "text-slate-900 dark:text-stone-100",
-    code: "text-slate-900 dark:text-stone-100",
+    container: "bg-[#f4efe4] ",
+    badge: "bg-indigo-600/10 text-indigo-700 ",
+    statusPaid: "bg-amber-500/15 text-amber-700 ",
+    statusUsed: "bg-emerald-600/10 text-emerald-700 ",
+    title: "text-slate-900 ",
+    libName: "text-slate-600 ",
+    muted: "text-slate-500 ",
+    amount: "text-slate-900 ",
+    code: "text-slate-900 ",
     hint: "text-slate-400 group-hover:text-indigo-500",
     perfColor: "rgba(40,30,20,0.28)",
-    stamp: "border-emerald-600/80 text-emerald-600/90 dark:border-emerald-400/70 dark:text-emerald-300/90",
+    stamp: "border-emerald-600/80 text-emerald-600/90 ",
     qrRing: "ring-black/5 group-hover:ring-indigo-400",
   },
   purple: {
@@ -325,20 +325,20 @@ function QrModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800"
+        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl "
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 "
           aria-label="Kapat"
         >
           ✕
         </button>
 
-        <h3 className="pr-8 text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
+        <h3 className="pr-8 text-lg font-bold text-slate-900 ">{title}</h3>
         {subtitle && (
-          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500 ">
             <LibraryIcon className="h-4 w-4 shrink-0" />
             {subtitle}
           </p>
@@ -348,11 +348,11 @@ function QrModal({
           <QRCodeSVG value={value} size={216} level="M" />
         </div>
 
-        <p className="mt-5 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+        <p className="mt-5 text-center text-xs font-medium text-slate-500 ">
           QR okutulamıyorsa görevliye bu kodu söyleyin:
         </p>
-        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900/50">
-          <code className="flex-1 select-all text-center font-mono text-3xl font-bold tracking-[0.2em] text-slate-900 dark:text-white">
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 ">
+          <code className="flex-1 select-all text-center font-mono text-3xl font-bold tracking-[0.2em] text-slate-900 ">
             {pretty}
           </code>
           <button

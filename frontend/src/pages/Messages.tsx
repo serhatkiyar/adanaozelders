@@ -307,8 +307,8 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
 
   if (role === null) {
     const notice = (
-      <div className="mx-auto max-w-md rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+      <div className="mx-auto max-w-md rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
+        <p className="text-sm text-slate-500 ">
           Mesajlaşma yalnızca öğrenci ve eğitmenler içindir.
         </p>
       </div>
@@ -319,15 +319,15 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
 
   // Gövde shell'den ayrı: Mesaj Merkezi (embedded) kendi yüksekliğini verir.
   const body = (
-      <div className="mx-auto flex h-full w-full max-w-screen-2xl overflow-hidden bg-white px-4 md:px-8 dark:bg-slate-900">
+      <div className="mx-auto flex h-full w-full max-w-screen-2xl overflow-hidden bg-white px-4 md:px-8 ">
         {/* ── Sohbet listesi ── */}
         <aside
           aria-label="Konuşma listesi"
           className={`${
             showChat ? "hidden md:flex" : "flex"
-          } w-full shrink-0 flex-col border-r border-slate-200 dark:border-slate-800 md:w-[380px] lg:w-[460px]`}
+          } w-full shrink-0 flex-col border-r border-slate-200 md:w-[380px] lg:w-[460px]`}
         >
-          <div className="space-y-3 border-b border-slate-100 px-5 pb-3 pt-5 dark:border-slate-800">
+          <div className="space-y-3 border-b border-slate-100 px-5 pb-3 pt-5 ">
             {/* Başlık ↔ arama (Airbnb gibi: ikona tıklayınca animasyonla açılır) */}
             {searchOpen ? (
               <div className="animate-searchbar flex items-center gap-2">
@@ -356,27 +356,27 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     }}
                     placeholder="Sohbetlerde ara"
                     aria-label="Sohbetlerde ara"
-                    className="w-full rounded-full border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 dark:focus:ring-slate-700"
+                    className="w-full rounded-full border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200 "
                   />
                 </div>
                 <button
                   type="button"
                   onClick={closeSearch}
-                  className="shrink-0 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                  className="shrink-0 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 "
                 >
                   İptal et
                 </button>
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-900 ">
                   Mesajlar
                 </h1>
                 <button
                   type="button"
                   onClick={() => setSearchOpen(true)}
                   aria-label="Ara"
-                  className="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 "
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
                     <path
@@ -402,8 +402,8 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     onClick={() => setFilter(f.key)}
                     className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-semibold transition ${
                       activeChip
-                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        ? "bg-slate-900 text-white "
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                     }`}
                   >
                     {f.label}
@@ -411,7 +411,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                       <span
                         className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
                           activeChip
-                            ? "bg-white/20 text-current dark:bg-slate-900/15"
+                            ? "bg-white/20 text-current "
                             : "bg-indigo-600 text-white"
                         }`}
                       >
@@ -431,15 +431,15 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 title={filter === "archived" ? "Arşivden çık" : "Arşiv"}
                 className={`relative ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${
                   filter === "archived"
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                    ? "bg-slate-900 text-white "
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                 }`}
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
                 </svg>
                 {archivedUnread > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+                  <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white ring-2 ring-white ">
                     {archivedUnread > 9 ? "9+" : archivedUnread}
                   </span>
                 )}
@@ -454,10 +454,10 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 (searchResults.chats.length === 0 &&
                   searchResults.messages.length === 0) ? (
                 <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <p className="text-sm font-medium text-slate-700 ">
                     Sonuç bulunamadı
                   </p>
-                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                  <p className="mt-1 text-xs text-slate-400 ">
                     "{term}" için isim veya mesaj eşleşmedi.
                   </p>
                 </div>
@@ -466,7 +466,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   {searchResults.chats.length > 0 && (
                     <>
                       <SectionHeader label="Sohbetler" />
-                      <ul className="divide-y divide-slate-50 dark:divide-slate-700/60">
+                      <ul className="divide-y divide-slate-50 ">
                         {searchResults.chats.map((c) => (
                           <li key={c.id}>
                             <ConversationRow
@@ -494,7 +494,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                         label="Mesajlar"
                         count={searchResults.messages.length}
                       />
-                      <ul className="divide-y divide-slate-50 dark:divide-slate-700/60">
+                      <ul className="divide-y divide-slate-50 ">
                         {searchResults.messages.map((hit) => (
                           <li key={hit.message_id}>
                             <MessageHitRow
@@ -532,15 +532,15 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               )
             ) : !filteredConversations || filteredConversations.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <p className="text-sm font-medium text-slate-700 ">
                   Okunmamış mesaj yok
                 </p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                <p className="mt-1 text-xs text-slate-400 ">
                   Tüm sohbetlerin okundu.
                 </p>
               </div>
             ) : (
-              <ul className="divide-y divide-slate-50 dark:divide-slate-700/60">
+              <ul className="divide-y divide-slate-50 ">
                 {filteredConversations.map((c) => (
                   <li key={c.id}>
                     <ConversationRow
@@ -571,27 +571,27 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
         >
           {!showChat ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
                 <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
                 </svg>
               </div>
-              <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <p className="mt-4 text-sm font-medium text-slate-700 ">
                 Bir sohbet seç
               </p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              <p className="mt-1 text-xs text-slate-400 ">
                 Soldaki listeden bir konuşma aç.
               </p>
             </div>
           ) : (
             <>
               {/* Başlık */}
-              <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+              <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
                 <button
                   type="button"
                   onClick={backToList}
                   aria-label="Listeye dön"
-                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 md:hidden"
+                  className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 md:hidden"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -600,7 +600,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 {counterpartyHref ? (
                   <Link
                     to={counterpartyHref}
-                    className="-mx-1.5 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1 transition hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                    className="-mx-1.5 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1 transition hover:bg-slate-100 "
                     title={
                       role === "CLIENT"
                         ? "Eğitmenin ilanını görüntüle"
@@ -608,14 +608,14 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     }
                   >
                     <Avatar name={activeName ?? "?"} avatar_url={activeAvatar} size="md" />
-                    <span className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 dark:text-white">
+                    <span className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 ">
                       {activeName ?? "Kullanıcı"}
                     </span>
                   </Link>
                 ) : (
                   <>
                     <Avatar name={activeName ?? "?"} avatar_url={activeAvatar} size="md" />
-                    <span className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 dark:text-white">
+                    <span className="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900 ">
                       {activeName ?? "Kullanıcı"}
                     </span>
                   </>
@@ -643,7 +643,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     disabled={archive.isPending}
                     title={activeArchived ? "Arşivden çıkar" : "Arşivle"}
                     aria-label={activeArchived ? "Arşivden çıkar" : "Arşivle"}
-                    className="shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-700"
+                    className="shrink-0 rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 "
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
@@ -653,14 +653,14 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               {/* Mesajlar */}
-              <div className="flex-1 overflow-y-auto bg-slate-50 px-4 py-5 dark:bg-slate-900/40 sm:px-6">
+              <div className="flex-1 overflow-y-auto bg-slate-50 px-4 py-5 sm:px-6">
                 <div className="mx-auto w-full max-w-4xl space-y-2.5">
                 {selectedId !== null && messagesLoading ? (
                   <div className="space-y-2">
                     {Array.from({ length: 4 }).map((_, i) => (
                       <div
                         key={i}
-                        className={`h-10 w-2/3 animate-pulse rounded-2xl bg-slate-200 dark:bg-slate-700 ${
+                        className={`h-10 w-2/3 animate-pulse rounded-2xl bg-slate-200 ${
                           i % 2 ? "ml-auto" : ""
                         }`}
                       />
@@ -668,10 +668,10 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   </div>
                 ) : !messages || messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-center">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <p className="text-sm text-slate-500 ">
                       Henüz mesaj yok.
                     </p>
-                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                    <p className="mt-1 text-xs text-slate-400 ">
                       İlk mesajı sen yaz.
                     </p>
                   </div>
@@ -698,9 +698,9 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   return (
                     <p className="px-1 pb-1 text-right text-[11px] font-medium">
                       {seen ? (
-                        <span className="text-indigo-500 dark:text-indigo-400">Görüldü</span>
+                        <span className="text-indigo-500 ">Görüldü</span>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-500">Gönderildi</span>
+                        <span className="text-slate-400 ">Gönderildi</span>
                       )}
                     </p>
                   );
@@ -710,16 +710,16 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               {/* Yazma alanı */}
-              <div className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <div className="border-t border-slate-200 bg-white ">
               {replyTarget && (
                 <div className="mx-auto flex w-full max-w-4xl items-start gap-2 px-3 pt-3 sm:px-6">
-                  <div className="min-w-0 flex-1 rounded-lg border-l-2 border-indigo-500 bg-slate-50 px-3 py-2 dark:bg-slate-800">
-                    <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-300">
+                  <div className="min-w-0 flex-1 rounded-lg border-l-2 border-indigo-500 bg-slate-50 px-3 py-2 ">
+                    <p className="text-[11px] font-semibold text-indigo-600 ">
                       {replyTarget.sender_role === role
                         ? "Kendine yanıt"
                         : `${activeName ?? "Kullanıcı"} kişisine yanıt`}
                     </p>
-                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    <p className="truncate text-xs text-slate-500 ">
                       {replyTarget.body}
                     </p>
                   </div>
@@ -727,7 +727,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     type="button"
                     onClick={() => setReplyTarget(null)}
                     aria-label="Yanıtı iptal et"
-                    className="mt-1 shrink-0 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
+                    className="mt-1 shrink-0 rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -750,7 +750,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     }
                   }}
                   placeholder="Mesaj yaz…"
-                  className="min-h-[48px] max-h-40 flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  className="min-h-[48px] max-h-40 flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                 />
                 <button
                   type="submit"
@@ -828,7 +828,7 @@ function MessageRow({
           className={`rounded-2xl px-4 py-2.5 ${
             mine
               ? "bg-indigo-600 text-white"
-              : "bg-white text-slate-700 ring-1 ring-slate-100 dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600"
+              : "bg-white text-slate-700 ring-1 ring-slate-100 "
           }`}
         >
           {m.reply_preview && (
@@ -836,7 +836,7 @@ function MessageRow({
               className={`mb-1.5 rounded-md border-l-2 px-2 py-1 text-xs ${
                 mine
                   ? "border-white/60 bg-white/15 text-indigo-50"
-                  : "border-indigo-400 bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                  : "border-indigo-400 bg-slate-50 text-slate-500 "
               }`}
             >
               <span className="line-clamp-2 whitespace-pre-line">
@@ -847,7 +847,7 @@ function MessageRow({
           <p className="whitespace-pre-line text-[15px] leading-relaxed">{m.body}</p>
           <p
             className={`mt-1 text-[10px] ${
-              mine ? "text-indigo-200" : "text-slate-400 dark:text-slate-500"
+              mine ? "text-indigo-200" : "text-slate-400 "
             }`}
           >
             {formatDateTime(m.created_at)}
@@ -863,8 +863,8 @@ function MessageRow({
                 onClick={() => onReact(r.emoji)}
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition ${
                   r.reacted
-                    ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-200"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
+                    ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 "
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                 }`}
               >
                 <span>{r.emoji}</span>
@@ -884,7 +884,7 @@ function MessageRow({
             onClick={onReply}
             title="Yanıtla"
             aria-label="Yanıtla"
-            className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 6 6v3" />
@@ -895,14 +895,14 @@ function MessageRow({
             onClick={() => setPickerOpen((o) => !o)}
             title="Tepki ver"
             aria-label="Tepki ver"
-            className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M9 9.75h.008v.008H9V9.75Zm6 0h.008v.008H15V9.75ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           </button>
           {pickerOpen && (
-            <div className="absolute bottom-full z-10 mb-1 flex gap-0.5 rounded-full bg-white p-1 shadow-lg ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            <div className="absolute bottom-full z-10 mb-1 flex gap-0.5 rounded-full bg-white p-1 shadow-lg ring-1 ring-slate-200 ">
               {REACTION_EMOJIS.map((e) => (
                 <button
                   key={e}
@@ -911,7 +911,7 @@ function MessageRow({
                     onReact(e);
                     setPickerOpen(false);
                   }}
-                  className="rounded-full px-1.5 py-0.5 text-base transition hover:bg-slate-100 dark:hover:bg-slate-700"
+                  className="rounded-full px-1.5 py-0.5 text-base transition hover:bg-slate-100 "
                 >
                   {e}
                 </button>
@@ -931,7 +931,7 @@ function ListSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="h-14 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700"
+          className="h-14 animate-pulse rounded-xl bg-slate-100 "
         />
       ))}
     </div>
@@ -942,11 +942,11 @@ function ListSkeleton() {
 function SectionHeader({ label, count }: { label: string; count?: number }) {
   return (
     <div className="flex items-center justify-between px-4 pb-1 pt-3">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
         {label}
       </span>
       {count !== undefined && (
-        <span className="text-xs text-slate-400 dark:text-slate-500">
+        <span className="text-xs text-slate-400 ">
           {count} sonuç
         </span>
       )}
@@ -970,8 +970,8 @@ function ConversationRow({
       onClick={onClick}
       className={`flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition ${
         active
-          ? "bg-indigo-50 dark:bg-slate-700/60"
-          : "hover:bg-slate-50 dark:hover:bg-slate-700/40"
+          ? "bg-indigo-50 "
+          : "hover:bg-slate-50 "
       }`}
     >
       <Avatar
@@ -981,7 +981,7 @@ function ConversationRow({
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-base font-semibold text-slate-900 dark:text-white">
+          <span className="truncate text-base font-semibold text-slate-900 ">
             {c.counterparty_name ?? "Kullanıcı"}
           </span>
           <span className="shrink-0 text-xs text-slate-400">
@@ -989,7 +989,7 @@ function ConversationRow({
           </span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-sm text-slate-500 dark:text-slate-400">
+          <p className="truncate text-sm text-slate-500 ">
             {c.last_message ?? "Yeni sohbet"}
           </p>
           {(c.unread ?? 0) > 0 && (
@@ -1022,8 +1022,8 @@ function MessageHitRow({
       onClick={onClick}
       className={`flex w-full items-start gap-3.5 px-4 py-3 text-left transition ${
         active
-          ? "bg-indigo-50 dark:bg-slate-700/60"
-          : "hover:bg-slate-50 dark:hover:bg-slate-700/40"
+          ? "bg-indigo-50 "
+          : "hover:bg-slate-50 "
       }`}
     >
       <Avatar
@@ -1033,19 +1033,19 @@ function MessageHitRow({
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+          <span className="truncate text-sm font-semibold text-slate-900 ">
             {hit.counterparty_name ?? "Kullanıcı"}
           </span>
           <span className="shrink-0 text-xs text-slate-400">
             {formatChatTime(hit.created_at)}
           </span>
         </div>
-        <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-0.5 truncate text-sm text-slate-500 ">
           {buildSnippet(hit.body, term).map((seg, i) =>
             seg.match ? (
               <mark
                 key={i}
-                className="rounded bg-indigo-100 px-0.5 font-medium text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200"
+                className="rounded bg-indigo-100 px-0.5 font-medium text-indigo-700 "
               >
                 {seg.text}
               </mark>
@@ -1063,15 +1063,15 @@ function MessageHitRow({
 function EmptyArchived() {
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
         <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
         </svg>
       </div>
-      <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+      <p className="mt-3 text-sm font-medium text-slate-700 ">
         Arşiv boş
       </p>
-      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mt-1 text-xs text-slate-400 ">
         Arşivlediğin sohbetler burada görünür.
       </p>
     </div>
@@ -1082,15 +1082,15 @@ function EmptyArchived() {
 function EmptyInbox() {
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
         <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
         </svg>
       </div>
-      <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+      <p className="mt-3 text-sm font-medium text-slate-700 ">
         Henüz mesajın yok
       </p>
-      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mt-1 text-xs text-slate-400 ">
         Bir profilden "Mesaj Gönder" ile başlat.
       </p>
     </div>

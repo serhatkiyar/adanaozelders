@@ -35,23 +35,23 @@ import { toast } from "@/store/toastStore";
 const TUTOR_STATUS_META: Record<TutorStatus, { label: string; cls: string }> = {
   [TutorStatus.DRAFT]: {
     label: "Taslak",
-    cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+    cls: "bg-slate-100 text-slate-600 ",
   },
   [TutorStatus.PENDING_APPROVAL]: {
     label: "Onay Bekliyor",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    cls: "bg-amber-50 text-amber-700 ",
   },
   [TutorStatus.APPROVED]: {
     label: "Yayında",
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    cls: "bg-emerald-50 text-emerald-700 ",
   },
   [TutorStatus.REJECTED]: {
     label: "Reddedildi",
-    cls: "bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300",
+    cls: "bg-red-50 text-red-700 ",
   },
   [TutorStatus.SUSPENDED]: {
     label: "Pasif",
-    cls: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400",
+    cls: "bg-slate-100 text-slate-500 ",
   },
 };
 
@@ -95,12 +95,12 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
 
   return (
     <>
-    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="sm" />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            <p className="truncate text-sm font-semibold text-slate-900 ">
               {tutor.full_name}
             </p>
             <span
@@ -110,11 +110,11 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
             </span>
           </div>
           {tutor.headline && (
-            <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 truncate text-xs text-slate-500 ">
               {tutor.headline}
             </p>
           )}
-          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-400 ">
             {formatRate(tutor.hourly_rate)} · @{tutor.username}
           </p>
         </div>
@@ -141,7 +141,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
             <Button
               size="sm"
               variant="secondary"
-              className="rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              className="rounded-xl text-red-600 hover:bg-red-50 "
               disabled={busy}
               onClick={() => redYuzeyi.yeniAc()}
             >
@@ -178,7 +178,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
         <Button
           size="sm"
           variant="secondary"
-          className="rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+          className="rounded-xl text-red-600 hover:bg-red-50 "
           disabled={busy}
           onClick={() => silmeYuzeyi.yeniAc()}
         >
@@ -252,7 +252,7 @@ function ListingManagement() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+            className="h-24 animate-pulse rounded-2xl bg-slate-100 "
           />
         ))}
       </div>
@@ -271,7 +271,7 @@ function ListingManagement() {
 
   if (tutors.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 ">
         Henüz ilan yok.
       </div>
     );
@@ -284,14 +284,14 @@ function ListingManagement() {
       {pending.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+            <h2 className="text-base font-semibold text-slate-900 ">
               Onay Bekleyen Eğitmenler
             </h2>
             <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
               {pending.length}
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 ">
             Bu başvurular incelemenizi bekliyor. Onay ilanı yayına alır; red
             gerekçesi denetim izine yazılır.
           </p>
@@ -306,7 +306,7 @@ function ListingManagement() {
           {/* Sayı ALTTAKİ listeye ait olmalı: toplam ilan sayısını yazmak,
               onay kuyruğu ayrıldıktan sonra "N ilan" deyip N'den az satır
               göstermek demekti. */}
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-slate-400 ">
             {digerleri.length} ilan · yayındakileri kaldırabilir, pasifleri geri
             açabilir veya silebilirsin.
           </p>
@@ -366,19 +366,19 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
     );
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-900 dark:text-white">
+          <p className="text-sm font-bold text-slate-900 ">
             {edu.tutor_name ?? `Eğitmen #${edu.tutor_id}`}
           </p>
-          <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">{edu.school_name}</p>
+          <p className="mt-0.5 text-sm text-slate-600 ">{edu.school_name}</p>
           <p className="mt-0.5 text-xs text-slate-400">
             {[edu.degree, edu.field_of_study].filter(Boolean).join(" · ")}
           </p>
         </div>
         {edu.document_type && (
-          <span className="shrink-0 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+          <span className="shrink-0 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 ">
             {DOC_TYPE_LABEL[edu.document_type]}
           </span>
         )}
@@ -390,7 +390,7 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
             href={edu.document_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200"
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 "
           >
             📄 Belgeyi aç
           </a>
@@ -399,30 +399,30 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
           href="https://www.turkiye.gov.tr/belge-dogrulama"
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 dark:bg-sky-500/15 dark:text-sky-300"
+          className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100 "
         >
           🔗 e-Devlet'te doğrula
         </a>
         {edu.verification_code ? (
-          <span className="select-all rounded-lg bg-slate-50 px-3 py-1.5 font-mono text-xs text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
+          <span className="select-all rounded-lg bg-slate-50 px-3 py-1.5 font-mono text-xs text-slate-600 ">
             Barkod: {edu.verification_code}
           </span>
         ) : (
-          <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+          <span className="text-xs font-medium text-amber-600 ">
             ⚠ Barkod girilmemiş
           </span>
         )}
         {edu.verification_tckn ? (
-          <span className="select-all rounded-lg bg-slate-50 px-3 py-1.5 font-mono text-xs text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
+          <span className="select-all rounded-lg bg-slate-50 px-3 py-1.5 font-mono text-xs text-slate-600 ">
             TCKN: {edu.verification_tckn}
           </span>
         ) : (
-          <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+          <span className="text-xs font-medium text-amber-600 ">
             ⚠ TCKN girilmemiş
           </span>
         )}
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-slate-400 dark:text-slate-500">
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-400 ">
         Belgedeki ad, eğitmenin hesap adıyla (<strong>{edu.tutor_name}</strong>) aynı olmalı (aitlik);
         barkodu e-Devlet'te teyit et (sahihlik).
       </p>
@@ -432,14 +432,14 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
           {/* İP-A7d3: alan ADSIZDI — `placeholder` etiket yerine kullanılıyordu.
               Bir eğitmene gösterilecek red gerekçesi yazılan yer burası. */}
           <label className="block">
-            <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+            <span className="mb-1 block text-sm font-semibold text-slate-700 ">
               Red nedeni (eğitmene gösterilir)
             </span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={500}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-rose-400 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-rose-400 "
             />
           </label>
           <div className="flex gap-2">
@@ -485,7 +485,7 @@ function DiplomaVerificationSection() {
   const list = data ?? [];
 
   if (isLoading) {
-    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 " />;
   }
 
   // P1-6: hata "teyit bekleyen belge yok 🎉" diye gösterilemez — yönetici
@@ -502,16 +502,16 @@ function DiplomaVerificationSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+        <h2 className="text-lg font-bold text-slate-900 ">
           Teyit Bekleyen Diplomalar
         </h2>
-        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 ">
           {list.length}
         </span>
       </div>
       {list.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+        <div className="rounded-2xl border border-dashed border-slate-300 py-12 text-center ">
+          <p className="text-sm font-medium text-slate-600 ">
             Teyit bekleyen belge yok 🎉
           </p>
         </div>
@@ -538,26 +538,26 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
       : `@${req.new_username ?? ""}`;
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 ">
               {req.kind === "NAME" ? "Ad-Soyad" : "Kullanıcı adı"} · rol{" "}
               {req.role_id} · #{req.user_id}
             </span>
-            <span className="text-sm font-semibold text-slate-900 dark:text-white">
+            <span className="text-sm font-semibold text-slate-900 ">
               → {target}
             </span>
           </div>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mt-2 text-sm text-slate-600 ">
             Gerekçe: {req.reason}
           </p>
-          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+          <p className="mt-2 text-xs text-slate-400 ">
             {formatDateTime(req.created_at)}
           </p>
         </div>
-        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+        <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 ">
           {req.status === "PENDING"
             ? "Bekliyor"
             : req.status === "APPROVED"
@@ -567,16 +567,16 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
       </div>
 
       {isPending ? (
-        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-700 sm:flex-row">
+        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row">
           {/* İP-A7d3: alan ADSIZDI (`placeholder` etiket yerine). */}
           <label className="flex-1">
-            <span className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+            <span className="mb-1 block text-xs font-semibold text-slate-500 ">
               Red notu (opsiyonel)
             </span>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 "
             />
           </label>
           <div className="flex gap-2">
@@ -614,7 +614,7 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
         </div>
       ) : (
         req.review_note && (
-          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500 ">
             Not: {req.review_note}
           </p>
         )
@@ -664,7 +664,7 @@ function NameChangesSection() {
             className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
               filter === (f.value ?? "TUMU")
                 ? "bg-indigo-600 text-white"
-                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
+                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 "
             }`}
           >
             {f.label}
@@ -673,7 +673,7 @@ function NameChangesSection() {
       </div>
 
       {isLoading ? (
-        <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+        <div className="h-24 animate-pulse rounded-2xl bg-slate-100 " />
       ) : isError ? (
         <ErrorState
           description={getErrorMessage(error, "Talepler yüklenemedi.")}
@@ -686,7 +686,7 @@ function NameChangesSection() {
           ))}
         </div>
       ) : (
-        <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
+        <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-100 ">
           Bu durumda talep yok.
         </p>
       )}

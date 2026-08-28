@@ -80,7 +80,7 @@ export function HScroll({
             onPointerDown={() => startScroll("right")}
             onPointerUp={stopScroll}
             onPointerLeave={stopScroll}
-            className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 dark:bg-slate-700 dark:ring-white/10 dark:text-white dark:hover:bg-slate-600"
+            className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 "
             aria-label="Sağa kaydır"
           >
             <svg className="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
@@ -97,7 +97,7 @@ export function HScroll({
             onPointerDown={() => startScroll("left")}
             onPointerUp={stopScroll}
             onPointerLeave={stopScroll}
-            className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 dark:bg-slate-700 dark:ring-white/10 dark:text-white dark:hover:bg-slate-600"
+            className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 "
             aria-label="Sola kaydır"
           >
             <svg className="h-5 w-5 mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>

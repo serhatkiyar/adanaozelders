@@ -33,7 +33,7 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
 
   if (isLoading || !lib) {
     return (
-      <div className="h-32 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+      <div className="h-32 animate-pulse rounded-xl bg-slate-100 " />
     );
   }
 
@@ -97,7 +97,7 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
       {/* Galeri */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <span className="text-sm font-semibold text-slate-700 ">
             Galeri ({images.length})
           </span>
           <GalleryAddButton
@@ -113,7 +113,7 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
         </div>
 
         {images.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-xs text-slate-400 dark:border-slate-700">
+          <p className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-xs text-slate-400 ">
             Henüz galeri fotoğrafı yok. Çalışma salonu, kafeterya, giriş…
             fotoğraflarını ekleyin.
           </p>
@@ -177,14 +177,14 @@ function SingleImageField({
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div>
-      <p className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
+      <p className="mb-1 text-sm font-semibold text-slate-700 ">
         {label}
       </p>
       <button
         type="button"
         onClick={() => ref.current?.click()}
         disabled={busy}
-        className={`group relative w-full overflow-hidden ${aspect} ${rounded} bg-slate-100 ring-1 ring-slate-200 transition hover:ring-indigo-400 disabled:opacity-60 dark:bg-slate-700 dark:ring-slate-600`}
+        className={`group relative w-full overflow-hidden ${aspect} ${rounded} bg-slate-100 ring-1 ring-slate-200 transition hover:ring-indigo-400 disabled:opacity-60 `}
       >
         {url ? (
           <img src={url} alt={label} className="h-full w-full object-cover" />
@@ -229,7 +229,7 @@ function GalleryAddButton({
         type="button"
         onClick={() => ref.current?.click()}
         disabled={busy}
-        className="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-60 dark:bg-indigo-500/15 dark:text-indigo-300"
+        className="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-60 "
       >
         {busy ? "Yükleniyor…" : "+ Fotoğraf"}
       </button>
@@ -267,7 +267,7 @@ function GalleryThumb({
   onDelete: () => void;
 }) {
   return (
-    <div className="group relative aspect-video overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-700 dark:ring-slate-600">
+    <div className="group relative aspect-video overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 ">
       <img src={image.url} alt="" className="h-full w-full object-cover" />
       <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-slate-900/50 opacity-0 transition group-hover:opacity-100">
         <ThumbBtn label="◀" disabled={isFirst} onClick={onMoveLeft} title="Sola al" />

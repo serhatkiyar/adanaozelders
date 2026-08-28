@@ -54,12 +54,12 @@ export default function PublicTutorProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
           >
             ← Geri dön
           </button>
-          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
+            <p className="text-sm text-slate-500 ">
               Eğitmen bulunamadı.
             </p>
           </div>
@@ -141,7 +141,7 @@ export default function PublicTutorProfile() {
       <div className="mx-auto max-w-[76rem] pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
         >
           ← Geri dön
         </button>
@@ -149,7 +149,7 @@ export default function PublicTutorProfile() {
         <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
-            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyon: favori + paylaş (kartın yukarısında) */}
               <div className="mb-4 flex items-center justify-end gap-2">
                 <ShareButton size="md" />
@@ -158,7 +158,7 @@ export default function PublicTutorProfile() {
               <div className="flex flex-col items-center text-center">
                 <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                  <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="text-xl font-bold text-slate-900 ">
                     {tutor.full_name}
                   </h1>
                 </div>
@@ -166,10 +166,10 @@ export default function PublicTutorProfile() {
                 <button
                   type="button"
                   onClick={() => setShowReviews(true)}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 ">
                     {hasRatings
                       ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
                       : "Değerlendirme yok"}
@@ -177,7 +177,7 @@ export default function PublicTutorProfile() {
                 </button>
 
                 {modeLabel && (
-                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ">
                     {modeLabel}
                   </span>
                 )}
@@ -187,15 +187,15 @@ export default function PublicTutorProfile() {
               <TutorTrustBar tutor={tutor} vertical />
 
               {/* Ücret + CTA */}
-              <div className="mt-5 border-t border-slate-100 pt-5 text-center dark:border-slate-700/60">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <div className="mt-5 border-t border-slate-100 pt-5 text-center ">
+                <p className="text-xs font-medium text-slate-500 ">
                   Saatlik ücret
                 </p>
-                <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                <p className="text-2xl font-bold tracking-tight text-slate-900 ">
                   {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
                 </p>
                 {tutor.first_lesson_free !== false && (
-                  <p className="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  <p className="mt-1 text-sm font-semibold text-emerald-600 ">
                     İlk ders ücretsiz
                   </p>
                 )}
@@ -218,7 +218,7 @@ export default function PublicTutorProfile() {
                   {tutor.subjects.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 "
                     >
                       {s}
                     </span>
@@ -229,18 +229,18 @@ export default function PublicTutorProfile() {
 
             {/* Headline / İlan Başlığı */}
             {tutor.headline && (
-              <h2 className="text-3xl font-extrabold leading-tight text-slate-900 dark:text-white">
+              <h2 className="text-3xl font-extrabold leading-tight text-slate-900 ">
                 {tutor.headline}
               </h2>
             )}
 
             {/* Bio */}
             {tutor.bio && (
-              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
-                <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
                 </h2>
-                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.bio}
                 </p>
               </section>
@@ -248,11 +248,11 @@ export default function PublicTutorProfile() {
 
             {/* Ders Hakkında — metodoloji */}
             {tutor.lesson_info && (
-              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
-                <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   Ders Hakkında
                 </h2>
-                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.lesson_info}
                 </p>
               </section>
@@ -260,26 +260,26 @@ export default function PublicTutorProfile() {
 
             {/* Müsait Saatler — Wyzant tarzı haftalık çizelge (7 günün tamamı) */}
             {tutor.availability && tutor.availability.length > 0 && (
-              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
-                <h2 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-3 text-xl font-bold text-slate-900 ">
                   Müsait Saatler
                 </h2>
-                <div className="max-w-md overflow-hidden rounded-xl ring-1 ring-slate-100 dark:ring-slate-700/60">
+                <div className="max-w-md overflow-hidden rounded-xl ring-1 ring-slate-100 ">
                   {weeklySchedule(tutor.availability).map(({ weekday, ranges }, i) => (
                     <div
                       key={weekday}
                       className={`flex items-baseline gap-4 px-4 py-2.5 text-sm ${
-                        i % 2 ? "bg-slate-50/60 dark:bg-slate-800/40" : ""
+                        i % 2 ? "bg-slate-50/60 " : ""
                       }`}
                     >
-                      <span className="w-10 shrink-0 font-semibold text-slate-700 dark:text-slate-200">
+                      <span className="w-10 shrink-0 font-semibold text-slate-700 ">
                         {WEEKDAYS_SHORT[weekday]}
                       </span>
                       <span
                         className={
                           ranges
-                            ? "text-slate-600 dark:text-slate-300"
-                            : "text-slate-400 dark:text-slate-500"
+                            ? "text-slate-600 "
+                            : "text-slate-400 "
                         }
                       >
                         {ranges ?? "Müsait değil"}
@@ -292,8 +292,8 @@ export default function PublicTutorProfile() {
 
             {/* Tanıtım videosu — değerlendirmelerin hemen üstünde, küçük */}
             {embedUrl && (
-              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
-                <h2 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-3 text-xl font-bold text-slate-900 ">
                   Tanıtım videosu
                 </h2>
                 <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
@@ -309,7 +309,7 @@ export default function PublicTutorProfile() {
             )}
 
             {/* Değerlendirmeler (Airbnb-tarzı: özet + dağılım + yorum ızgarası) */}
-            <hr className="my-8 border-slate-200 dark:border-slate-700/60" />
+            <hr className="my-8 border-slate-200 " />
             <section>
               <ReviewsSection
                 average={tutor.rating_average}

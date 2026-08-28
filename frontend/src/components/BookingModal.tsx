@@ -53,7 +53,7 @@ function Pill({
       className={`rounded-xl px-3.5 py-2 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
         active
           ? "bg-indigo-600 text-white shadow-sm"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+          : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
       }`}
     >
       {children}
@@ -301,13 +301,13 @@ export function BookingModal({
       onClose={onClose}
       ariaLabel="Ders talebi"
       hideCloseButton
-      panelClassName="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+      panelClassName="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
     >
         <div className="flex items-center justify-between mb-4">
           {step > 1 ? (
             <button
               onClick={handleBack}
-              className="rounded-full p-2 -ml-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition"
+              className="rounded-full p-2 -ml-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -316,12 +316,12 @@ export function BookingModal({
           ) : (
             <div className="w-9" />
           )}
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-bold text-slate-900 ">
             Ders Talebi
           </h2>
           <button
             onClick={onClose}
-            className="rounded-full p-2 -mr-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition"
+            className="rounded-full p-2 -mr-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -337,7 +337,7 @@ export function BookingModal({
               <div
                 key={s}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  step >= s ? "bg-indigo-600" : "bg-slate-100 dark:bg-slate-800"
+                  step >= s ? "bg-indigo-600" : "bg-slate-100 "
                 }`}
               />
             );
@@ -349,7 +349,7 @@ export function BookingModal({
           {step === 1 && (
             <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-5">
+                <h3 className="text-lg font-semibold text-slate-900 mb-5">
                   Ders Modu
                 </h3>
               </div>
@@ -361,8 +361,8 @@ export function BookingModal({
                     onClick={() => setMode(TeachingMode.ONLINE)}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.ONLINE
-                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-500/10 dark:text-indigo-300"
-                        : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700"
+                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 "
+                        : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 "
                     }`}
                   >
                     <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -375,8 +375,8 @@ export function BookingModal({
                     onClick={() => setMode(TeachingMode.IN_PERSON)}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.IN_PERSON
-                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-500/10 dark:text-indigo-300"
-                        : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-700"
+                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 "
+                        : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 "
                     }`}
                   >
                     <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -387,8 +387,8 @@ export function BookingModal({
                   </button>
                 </div>
               ) : (
-                <div className="rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-5 mt-4 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-                  <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300 text-center">
+                <div className="rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-5 mt-4 ">
+                  <p className="text-sm font-medium text-indigo-800 text-center">
                     Bu eğitmen sadece <strong>{mode === TeachingMode.ONLINE ? "Uzaktan" : "Yüzyüze"}</strong> ders vermektedir.
                   </p>
                 </div>
@@ -408,13 +408,13 @@ export function BookingModal({
           {step === 2 && (
             <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-5">
+                <h3 className="text-lg font-semibold text-slate-900 mb-5">
                   Tarih ve Saat
                 </h3>
               </div>
 
               {hasAvailability && (
-                <div className="rounded-xl bg-indigo-50 px-4 py-3 text-xs leading-relaxed text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                <div className="rounded-xl bg-indigo-50 px-4 py-3 text-xs leading-relaxed text-indigo-700 ">
                   <span className="font-semibold">Müsait saatler:</span>{" "}
                   {summarize(tutor.availability ?? [])
                     .map((s) => `${WEEKDAYS_SHORT[s.weekday]} ${s.ranges}`)
@@ -424,7 +424,7 @@ export function BookingModal({
 
               {/* Tarih */}
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                   Tarih
                 </p>
                 <DateStrip value={selectedDate} onChange={setSelectedDate} days={NEXT_14_DAYS} />
@@ -432,20 +432,20 @@ export function BookingModal({
 
               {/* Saat */}
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                   Saat
                 </p>
                 <TimeStepper value={selectedTime} onChange={setSelectedTime} />
                 
                 {dayWindows !== null && dayWindows.length === 0 && selectedDate ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20">
+                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs font-medium text-amber-700 border border-amber-100 ">
                     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     Eğitmen bu gün müsait değil — lütfen üstten başka bir tarih seçin.
                   </div>
                 ) : selectedTime && isTimeDisabled(selectedTime) ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-100 dark:border-red-500/20">
+                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 border border-red-100 ">
                     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -456,7 +456,7 @@ export function BookingModal({
 
               {/* Süre */}
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                   Süre
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -487,7 +487,7 @@ export function BookingModal({
           {step === 3 && mode === TeachingMode.IN_PERSON && (
             <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-5">
+                <h3 className="text-lg font-semibold text-slate-900 mb-5">
                   Buluşma Yeri
                 </h3>
               </div>
@@ -499,7 +499,7 @@ export function BookingModal({
                     <button
                       type="button"
                       onClick={() => setShowAddressForm(false)}
-                      className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 "
                     >
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -519,7 +519,7 @@ export function BookingModal({
               ) : savedAddresses.length > 0 ? (
                 /* ── Kayıtlı adres seçimi (ortak SavedAddressCard) ── */
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                     Kayıtlı Adreslerim
                   </p>
                   {savedAddresses.map((a) => (
@@ -536,7 +536,7 @@ export function BookingModal({
                   <button
                     type="button"
                     onClick={handleOpenNew}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-indigo-300 py-2.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:border-indigo-500/40 dark:text-indigo-300 dark:hover:bg-indigo-500/10"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-indigo-300 py-2.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 "
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -554,14 +554,14 @@ export function BookingModal({
                 </div>
               ) : (
                 /* ── Hiç kayıtlı adres yok: ekleme daveti ── */
-                <div className="flex flex-col items-center justify-center rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-8 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-                  <div className="mb-4 rounded-full bg-indigo-100 p-4 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                <div className="flex flex-col items-center justify-center rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-8 ">
+                  <div className="mb-4 rounded-full bg-indigo-100 p-4 text-indigo-600 ">
                     <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0Z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0Z" />
                     </svg>
                   </div>
-                  <p className="mb-4 text-center text-sm font-medium text-indigo-900 dark:text-indigo-200">
+                  <p className="mb-4 text-center text-sm font-medium text-indigo-900 ">
                     Dersin yapılacağı adresi ekleyin; sonraki rezervasyonlarda tek tıkla seçebilirsiniz.
                   </p>
                   <button
@@ -581,14 +581,14 @@ export function BookingModal({
           {step === totalSteps && (
             <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-5">
+                <h3 className="text-lg font-semibold text-slate-900 mb-5">
                   Son Detaylar
                 </h3>
               </div>
 
               {/* Ücretsiz ilk ders */}
               {canRequestFreeLesson && (
-                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 ">
                   <input
                     type="checkbox"
                     checked={freeLesson}
@@ -596,10 +596,10 @@ export function BookingModal({
                     className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                   />
                   <span className="text-sm">
-                    <span className="font-semibold text-emerald-800 dark:text-emerald-300">
+                    <span className="font-semibold text-emerald-800 ">
                       İlk dersim ücretsiz olsun
                     </span>
-                    <span className="mt-0.5 block text-xs text-emerald-700/80 dark:text-emerald-300/70">
+                    <span className="mt-0.5 block text-xs text-emerald-700/80 ">
                       Bu eğitmenle ilk dersin ücretsiz. İşaretlersen ödeme alınmaz.
                     </span>
                   </span>
@@ -607,7 +607,7 @@ export function BookingModal({
               )}
 
               {/* Ek Not */}
-              <Field label="Eğitmene Mesaj (Opsiyonel)" labelClassName="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <Field label="Eğitmene Mesaj (Opsiyonel)" labelClassName="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 {(id) => (
                     <textarea
                     id={id}
@@ -616,7 +616,7 @@ export function BookingModal({
                       placeholder="Kendinizi kısaca tanıtın, ders beklentilerinizi veya hedeflerinizi yazın..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                     />
                 )}
               </Field>

@@ -73,8 +73,8 @@ function toPayload(form: FormDurumu): BlogPostInput {
 }
 
 const ALAN =
-  "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:focus:border-slate-500";
-const ETIKET = "block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+  "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 disabled:opacity-60 ";
+const ETIKET = "block text-xs font-semibold uppercase tracking-wide text-slate-500 ";
 
 export default function AdminBlogEditorPage() {
   const { postId } = useParams<{ postId: string }>();
@@ -191,7 +191,7 @@ export default function AdminBlogEditorPage() {
         <div className="flex items-center gap-3">
           <GezinmeBaglantisi
             to={ROUTES.adminBlog}
-            className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            className="text-sm text-slate-500 transition hover:text-slate-900 "
           >
             ← Blog
           </GezinmeBaglantisi>
@@ -270,8 +270,8 @@ export default function AdminBlogEditorPage() {
         </div>
 
         <aside className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Kapak görseli</h3>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 ">
+            <h3 className="text-sm font-semibold text-slate-900 ">Kapak görseli</h3>
             {form.cover_image_url ? (
               <div className="mt-3 space-y-2">
                 <img
@@ -290,7 +290,7 @@ export default function AdminBlogEditorPage() {
                 )}
               </div>
             ) : canManage ? (
-              <label className="mt-3 flex aspect-[16/9] cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 text-sm text-slate-500 transition hover:border-slate-400 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-500">
+              <label className="mt-3 flex aspect-[16/9] cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 text-sm text-slate-500 transition hover:border-slate-400 hover:text-slate-700 ">
                 Görsel seç (en fazla 12 MB)
                 <input
                   type="file"
@@ -304,12 +304,12 @@ export default function AdminBlogEditorPage() {
                 />
               </label>
             ) : (
-              <p className="mt-3 text-sm text-slate-400 dark:text-slate-500">Görsel yok.</p>
+              <p className="mt-3 text-sm text-slate-400 ">Görsel yok.</p>
             )}
           </div>
 
-          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">SEO</h3>
+          <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 ">
+            <h3 className="text-sm font-semibold text-slate-900 ">SEO</h3>
             <div>
               <label htmlFor="blog-slug" className={ETIKET}>
                 Adres (slug)
@@ -324,7 +324,7 @@ export default function AdminBlogEditorPage() {
                 maxLength={140}
               />
               {post?.status === "PUBLISHED" && (
-                <p className="mt-1 text-[11px] leading-snug text-slate-400 dark:text-slate-500">
+                <p className="mt-1 text-[11px] leading-snug text-slate-400 ">
                   Yayındaki yazının adresi değişirse eski link yeni adrese yönlenir.
                 </p>
               )}
@@ -370,7 +370,7 @@ export default function AdminBlogEditorPage() {
                 placeholder="tyt, matematik, çalışma teknikleri"
                 disabled={!canManage}
               />
-              <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+              <p className="mt-1 text-[11px] text-slate-400 ">
                 Virgülle ayırın; en fazla 10 etiket.
               </p>
             </div>
@@ -381,7 +381,7 @@ export default function AdminBlogEditorPage() {
               href={ROUTES.blogPost(post.slug)}
               target="_blank"
               rel="noreferrer"
-              className="block rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700"
+              className="block rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 transition hover:border-slate-300 "
             >
               Yazıyı sitede görüntüle ↗
             </a>

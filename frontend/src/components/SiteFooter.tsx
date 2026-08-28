@@ -24,10 +24,10 @@ export function SiteFooter() {
   const { data: user } = useCurrentUser();
   const loggedIn = !!token && !!user;
 
-  const linkCls = "transition hover:text-slate-900 dark:hover:text-white";
+  const linkCls = "transition hover:text-slate-900 ";
 
   return (
-    <footer className="mt-auto w-full border-t border-slate-100 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
+    <footer className="mt-auto w-full border-t border-slate-100 bg-white py-10 ">
       <div className="mx-auto max-w-[1216px] px-6">
         <div className="flex flex-col items-center justify-between gap-6 sm:flex-row sm:items-start">
           <Link to="/" className="flex shrink-0 items-center gap-2 transition hover:opacity-90">
@@ -38,7 +38,7 @@ export function SiteFooter() {
             />
           </Link>
 
-          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-slate-500 sm:justify-end dark:text-slate-400">
+          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-slate-500 sm:justify-end ">
             <Link to={ROUTES.blog} className={linkCls}>
               Blog
             </Link>
@@ -70,7 +70,7 @@ export function SiteFooter() {
           </nav>
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-4 border-t border-slate-100 pt-6 text-sm text-slate-500 sm:flex-row sm:justify-between dark:border-slate-800 dark:text-slate-400">
+        <div className="mt-8 flex flex-col items-center gap-4 border-t border-slate-100 pt-6 text-sm text-slate-500 sm:flex-row sm:justify-between ">
           <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
 
           {/* Ödeme rozetleri — iyzico'nun resmî "logo band"i. Tek dosyada
@@ -83,13 +83,13 @@ export function SiteFooter() {
               src="/odeme/iyzico-logo-band.svg"
               alt="iyzico ile güvenli ödeme"
               loading="lazy"
-              className="h-7 w-auto max-w-full object-contain dark:hidden"
+              className="h-7 w-auto max-w-full object-contain "
             />
             <img
               src="/odeme/iyzico-logo-band-white.svg"
               alt="iyzico ile güvenli ödeme"
               loading="lazy"
-              className="hidden h-7 w-auto max-w-full object-contain dark:block"
+              className="hidden h-7 w-auto max-w-full object-contain "
             />
           </div>
         </div>

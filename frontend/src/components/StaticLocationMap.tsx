@@ -39,7 +39,7 @@ export function StaticLocationMap({
       target="_blank"
       rel="noopener noreferrer"
       title="Google Haritalar'da aç"
-      className="group relative isolate block overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700"
+      className="group relative isolate block overflow-hidden rounded-xl ring-1 ring-slate-200 "
       style={{ height }}
     >
       {/* pointer-events-none: harita kendi başına etkileşim almaz → tıklama <a>'ya düşer. */}
@@ -67,7 +67,7 @@ export function StaticLocationMap({
 
       {/* Hover'da niyeti belli et — harita bir bağlantı, oynatma alanı değil. */}
       <span className="pointer-events-none absolute inset-0 flex items-end justify-center bg-slate-900/0 pb-3 opacity-0 transition group-hover:bg-slate-900/10 group-hover:opacity-100">
-        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-md dark:bg-slate-800 dark:text-slate-200">
+        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-md ">
           Google Haritalar'da aç
         </span>
       </span>

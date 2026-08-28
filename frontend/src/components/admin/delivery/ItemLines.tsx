@@ -28,7 +28,7 @@ export function ItemLines({
       // Sessiz boşluk "toplanacak bir şey yok" diye okunur; eksik veri açıkça
       // söylenir (eski siparişlerde `order_items` satırı hiç olmayabilir).
       <p
-        className={`text-xs font-medium text-amber-700 dark:text-amber-400 ${className}`}
+        className={`text-xs font-medium text-amber-700 ${className}`}
       >
         {MISSING_ITEMS_TEXT}
       </p>
@@ -41,9 +41,9 @@ export function ItemLines({
         <li
           key={`${item.title}-${i}`}
           title={formatItemLine(item)}
-          className="line-clamp-2 text-xs text-slate-600 dark:text-slate-300"
+          className="line-clamp-2 text-xs text-slate-600 "
         >
-          <span className="text-slate-400 dark:text-slate-500">•</span>{" "}
+          <span className="text-slate-400 ">•</span>{" "}
           {formatItemLine(item)}
         </li>
       ))}

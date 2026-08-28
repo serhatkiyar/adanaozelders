@@ -16,16 +16,16 @@ const statusLabel: Record<QAStatus, string> = {
 };
 
 const statusStyle: Record<QAStatus, string> = {
-  [QAStatus.OPEN]: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  [QAStatus.OPEN]: "bg-amber-50 text-amber-700 ",
   [QAStatus.ANSWERED]:
-    "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  [QAStatus.CLOSED]: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+    "bg-emerald-50 text-emerald-700 ",
+  [QAStatus.CLOSED]: "bg-slate-100 text-slate-600 ",
 };
 
 function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
   const clientName = thread.client_name ?? `Öğrenci #${thread.client_id}`;
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex items-center justify-between gap-3">
         <Link
           to={ROUTES.studentProfile(thread.client_id)}
@@ -33,10 +33,10 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
         >
           <Avatar name={clientName} avatar_url={thread.client_avatar_url} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-800 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400">
+            <p className="truncate text-sm font-semibold text-slate-800 hover:text-indigo-600 ">
               {clientName}
             </p>
-            <p className="truncate text-xs text-slate-400 dark:text-slate-500">
+            <p className="truncate text-xs text-slate-400 ">
               {thread.subject || "Soru"} · {formatDate(thread.created_at)}
             </p>
           </div>
@@ -67,8 +67,8 @@ export default function TutorQuestions() {
     <DashboardShell title="Sorular" navItems={TUTOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-3">
         {openCount > 0 && (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-amber-600 dark:text-amber-400">
+          <p className="text-sm text-slate-500 ">
+            <span className="font-semibold text-amber-600 ">
               {openCount}
             </span>{" "}
             soru yanıtını bekliyor.
@@ -79,22 +79,22 @@ export default function TutorQuestions() {
           Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="h-32 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+              className="h-32 animate-pulse rounded-2xl bg-slate-100 "
             />
           ))
         ) : isError ? (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-800/30">
+          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100 ">
             {getErrorMessage(error, "Sorular yüklenemedi.")}
           </div>
         ) : !data || data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl dark:bg-slate-800">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">
               💬
             </div>
-            <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <p className="mt-4 text-sm font-medium text-slate-700 ">
               Henüz soru yok
             </p>
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            <p className="mt-1 text-xs text-slate-400 ">
               Tamamlanan derslerden sonra öğrenciler sana soru sorabilir.
             </p>
           </div>

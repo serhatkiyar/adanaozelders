@@ -81,7 +81,7 @@ function RunCourier({ run }: { run: DeliveryRun }) {
   const active = couriers.filter((c) => c.is_active || c.id === run.courier?.id);
   if (!canManage) {
     return run.courier ? (
-      <span className="text-xs text-slate-500 dark:text-slate-400">{run.courier.name}</span>
+      <span className="text-xs text-slate-500 ">{run.courier.name}</span>
     ) : null;
   }
   if (active.length === 0) {
@@ -142,7 +142,7 @@ function StopRow({
 
   // min-h/w-9: dokunmatik hedef boyutu (Button `sm` ölçeğiyle hizalı).
   const iconBtn =
-    "inline-flex min-h-9 min-w-9 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 dark:hover:bg-slate-800 dark:hover:text-slate-200";
+    "inline-flex min-h-9 min-w-9 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 ";
 
   return (
     <li
@@ -153,11 +153,11 @@ function StopRow({
     >
       <SeqBadge stop={stop} />
       <div className="min-w-0 flex-1 basis-48">
-        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+        <p className="truncate text-sm font-medium text-slate-900 ">
           {stop.recipient ?? "—"}
           <span className="ml-2 text-xs font-normal text-slate-400">#{stop.order_id}</span>
           {stop.lat == null && (
-            <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ">
               konumsuz
             </span>
           )}
@@ -170,7 +170,7 @@ function StopRow({
             </span>
           )}
         </p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 ">
           <span className="truncate">{stop.address ?? "Adres yok"}</span>
           <DeliveryPrefBadge pref={stop.delivery_pref} note={stop.delivery_pref_note} />
         </p>
@@ -179,14 +179,14 @@ function StopRow({
       </div>
       {stop.is_outlier && stop.status === "PENDING" && (
         <span
-          className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+          className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 "
           title="Bu durak rotaya ciddi ek yol katıyor — dış kuryeye devretmeyi düşünün"
         >
           rotayı bozuyor · +{stop.detour_km} km
         </span>
       )}
       {stop.eta && stop.status === "PENDING" && (
-        <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="shrink-0 text-xs tabular-nums text-slate-500 ">
           ~{formatEta(stop.eta)}
         </span>
       )}
@@ -232,7 +232,7 @@ function StopRow({
           <Button
             size="sm"
             variant="ghost"
-            className="min-h-9 min-w-9 px-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+            className="min-h-9 min-w-9 px-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600 "
             onClick={() =>
               removeStop.mutate(stop.id, {
                 onSuccess: () => toast.success("Durak turdan çıkarıldı."),
@@ -350,22 +350,22 @@ export default function DeliveryRunDetailPage() {
       <div className="mb-3">
         <Link
           to={ROUTES.adminDeliveryRuns}
-          className="text-xs font-semibold text-slate-500 hover:text-slate-700 hover:underline dark:text-slate-400 dark:hover:text-slate-200"
+          className="text-xs font-semibold text-slate-500 hover:text-slate-700 hover:underline "
         >
           ← Turlar
         </Link>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-2xl border border-slate-200 bg-white ">
         {/* Başlık + kalıcı aksiyonlar */}
         <div className="flex flex-wrap items-center gap-3 px-6 py-5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500 ">
             <TruckIcon className="h-6 w-6" />
           </div>
           <div className="mr-auto">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+            <p className="text-sm font-semibold text-slate-900 ">
               Tur #{run.id}
-              <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
+              <span className="ml-2 font-normal text-slate-500 ">
                 {run.vehicle} ·{" "}
                 {new Date(`${run.run_date}T00:00:00`).toLocaleDateString("tr-TR", {
                   day: "numeric",
@@ -373,7 +373,7 @@ export default function DeliveryRunDetailPage() {
                 })}
               </span>
             </p>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 ">
               <RunStatusChip status={run.status} />
               {total > 0 && (
                 <span>
@@ -412,7 +412,7 @@ export default function DeliveryRunDetailPage() {
             {run.status === "ACTIVE" && (
               <Link
                 to={ROUTES.deliveryRun(run.id)}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-panel-accent ring-1 ring-panel-accent/30 transition hover:bg-panel-accent-soft/40 dark:hover:bg-panel-accent/10"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-panel-accent ring-1 ring-panel-accent/30 transition hover:bg-panel-accent-soft/40 "
               >
                 Saha Ekranı →
               </Link>
@@ -456,7 +456,7 @@ export default function DeliveryRunDetailPage() {
 
         {total > 0 && (
           <div className="px-6 pb-4">
-            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 ">
               <div
                 className={`h-full rounded-full transition-all ${
                   run.status === "DONE" ? "bg-emerald-500" : "bg-panel-accent"
@@ -469,9 +469,9 @@ export default function DeliveryRunDetailPage() {
 
         {/* Rota özeti + harita */}
         {run.optimized_at && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 pb-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 pb-3 text-xs text-slate-500 ">
             {run.total_distance_km != null && (
-              <span className="font-medium text-slate-700 dark:text-slate-200">
+              <span className="font-medium text-slate-700 ">
                 {run.total_distance_km.toLocaleString("tr-TR")} km
               </span>
             )}
@@ -480,7 +480,7 @@ export default function DeliveryRunDetailPage() {
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                 run.optimize_provider === "vroom"
                   ? "bg-panel-accent-soft text-panel-accent"
-                  : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+                  : "bg-amber-50 text-amber-700 "
               }`}
               title={
                 run.optimize_provider === "vroom"
@@ -508,23 +508,23 @@ export default function DeliveryRunDetailPage() {
         )}
 
         {/* Duraklar */}
-        <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+        <div className="border-t border-slate-100 px-6 py-4 ">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               Rota — {run.stops.length} durak
             </h3>
             {planning && run.status === "ACTIVE" && pendingCount > 1 && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              <p className="text-[11px] text-amber-600 ">
                 Tur sahada — sıra değişikliği kuryeye anında yansır.
               </p>
             )}
           </div>
           {run.stops.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+            <p className="py-6 text-center text-sm text-slate-400 ">
               Henüz durak yok — aşağıdaki hazır siparişlerden ekleyin.
             </p>
           ) : (
-            <ul className="mt-1 divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="mt-1 divide-y divide-slate-100 ">
               {sorted.map((s, i) => (
                 <StopRow
                   key={s.id}
@@ -567,12 +567,12 @@ export default function DeliveryRunDetailPage() {
 
         {/* Eklenebilecek siparişler */}
         {planning && (
-          <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+          <div className="border-t border-slate-100 px-6 py-4 ">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Dağıtıma hazır siparişler
                 {eligible.length > 0 && (
-                  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ">
                     {eligible.length}
                   </span>
                 )}
@@ -602,7 +602,7 @@ export default function DeliveryRunDetailPage() {
                 <PageSkeleton rows={2} />
               </div>
             ) : eligible.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+              <p className="py-6 text-center text-sm text-slate-400 ">
                 Tura hazır sipariş yok —{" "}
                 <Link to={ROUTES.adminDeliveryOrders} className="font-semibold text-panel-accent hover:underline">
                   Siparişler
@@ -610,15 +610,15 @@ export default function DeliveryRunDetailPage() {
                 sekmesinden paket hazırlayın.
               </p>
             ) : (
-              <ul className="mt-1 divide-y divide-slate-100 dark:divide-slate-800">
+              <ul className="mt-1 divide-y divide-slate-100 ">
                 {eligible.map((o) => (
                   <li key={o.order_id} className="flex flex-wrap items-center gap-3 py-3">
                     <div className="min-w-0 flex-1 basis-48">
-                      <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                      <p className="truncate text-sm font-medium text-slate-900 ">
                         {o.recipient ?? "—"}
                         <span className="ml-2 text-xs font-normal text-slate-400">#{o.order_id}</span>
                         {o.lat == null && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                          <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ">
                             konumsuz
                           </span>
                         )}
@@ -626,11 +626,11 @@ export default function DeliveryRunDetailPage() {
                           <PromiseChip date={o.promised_delivery_date} />
                         </span>
                       </p>
-                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                      <p className="truncate text-xs text-slate-500 ">
                         {o.address ?? "Adres yok"}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                    <span className="shrink-0 text-xs tabular-nums text-slate-500 ">
                       {o.item_count} parça · ₺{o.total}
                     </span>
                     <Button

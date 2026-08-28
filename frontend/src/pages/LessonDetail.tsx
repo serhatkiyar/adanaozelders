@@ -91,12 +91,12 @@ export default function LessonDetail() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
           >
             ← Geri dön
           </button>
-          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
+            <p className="text-sm text-slate-500 ">
               Ders bulunamadı.
             </p>
           </div>
@@ -174,7 +174,7 @@ export default function LessonDetail() {
       <div className="mx-auto max-w-6xl pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="mb-5 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          className="mb-5 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700 "
         >
           ← Geri dön
         </button>
@@ -182,7 +182,7 @@ export default function LessonDetail() {
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3 lg:grid-flow-row-dense">
 
         {/* ── Header ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-2">
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <Link
               to={counterpartLink}
@@ -190,10 +190,10 @@ export default function LessonDetail() {
             >
               <Avatar name={counterpartName} avatar_url={isClient ? booking.tutor_avatar_url : booking.client_avatar_url} size="lg" />
               <div className="min-w-0">
-                <p className="truncate text-lg font-bold text-slate-900 dark:text-white">
+                <p className="truncate text-lg font-bold text-slate-900 ">
                   {counterpartName}
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
+                <p className="text-xs text-slate-400 ">
                   {isClient ? "Eğitmen" : "Öğrenci"} · profili gör →
                 </p>
               </div>
@@ -205,26 +205,26 @@ export default function LessonDetail() {
             </span>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1 dark:bg-slate-700">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600 ">
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1 ">
               {formatRange(booking.start_at, booking.end_at)}
             </span>
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1 dark:bg-slate-700">
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1 ">
               {durationLabel(booking.start_at, booking.end_at)}
             </span>
             {modeLabel && (
               <span
                 className={`rounded-lg px-2.5 py-1 font-medium ${
                   isRemote
-                    ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
-                    : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
+                    ? "bg-blue-50 text-blue-600 "
+                    : "bg-emerald-50 text-emerald-600 "
                 }`}
               >
                 {isRemote ? "" : ""} {modeLabel}
               </span>
             )}
             {price !== null && (
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold dark:bg-slate-700">
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold ">
                 {formatTRY(booking.price)}
               </span>
             )}
@@ -250,7 +250,7 @@ export default function LessonDetail() {
             ) : (
               <span
                 title="Canlı ders, başlangıçtan 15 dk önce açılır."
-                className="mt-4 inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                className="mt-4 inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-400 "
               >
                 🎥 Ders saatinde açılır
               </span>
@@ -258,9 +258,9 @@ export default function LessonDetail() {
           )}
           {/* Yüzyüze ders — buluşma yeri */}
           {booking.mode === "IN_PERSON" && (
-            <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 dark:bg-emerald-500/10">
+            <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 ">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                <p className="text-sm font-semibold text-emerald-700 ">
                   🏠︎ Buluşma Yeri
                 </p>
                 {!editingLoc && (
@@ -271,7 +271,7 @@ export default function LessonDetail() {
                       setLocLngDraft(booking.location_lng ?? null);
                       setEditingLoc(true);
                     }}
-                    className="text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+                    className="text-xs font-semibold text-emerald-700 hover:underline "
                   >
                     {booking.location ? "Düzenle" : "Ekle"}
                   </button>
@@ -293,7 +293,7 @@ export default function LessonDetail() {
                       onChange={(e) => setLocDraft(e.target.value)}
                       maxLength={300}
                       placeholder="Adres / bina numarası / tarif..."
-                      className="min-w-[12rem] flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-200 dark:border-emerald-500/30 dark:bg-slate-700 dark:text-white"
+                      className="min-w-[12rem] flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-200 "
                     />
                     <button
                       onClick={saveLoc}
@@ -304,7 +304,7 @@ export default function LessonDetail() {
                     </button>
                     <button
                       onClick={() => setEditingLoc(false)}
-                      className="rounded-lg px-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:bg-emerald-100 dark:hover:bg-slate-600"
+                      className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-emerald-100 "
                     >
                       Vazgeç
                     </button>
@@ -320,7 +320,7 @@ export default function LessonDetail() {
                     }`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-200 dark:hover:text-emerald-100"
+                    className="text-sm font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-900 "
                   >
                     {booking.location}
                   </a>
@@ -331,7 +331,7 @@ export default function LessonDetail() {
                   )}
                 </div>
               ) : (
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-xs text-slate-500 ">
                   Henüz buluşma yeri belirlenmedi.
                 </p>
               )}
@@ -339,18 +339,18 @@ export default function LessonDetail() {
           )}
 
           {booking.notes && (
-            <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm italic text-slate-500 dark:bg-slate-700/50 dark:text-slate-400">
+            <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm italic text-slate-500 ">
               "{booking.notes}"
             </p>
           )}
           {booking.status === BookingStatus.CANCELLED && booking.cancel_reason && (
-            <p className="mt-3 rounded-xl bg-rose-50 px-4 py-2.5 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+            <p className="mt-3 rounded-xl bg-rose-50 px-4 py-2.5 text-sm text-rose-700 ">
               İptal nedeni: {booking.cancel_reason}
             </p>
           )}
 
           {/* ── Actions ── */}
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-700">
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 ">
             {/* {canMessage && (
               <button
                 onClick={() =>
@@ -358,7 +358,7 @@ export default function LessonDetail() {
                     `/messages?to=${counterpartId}&name=${encodeURIComponent(counterpartName)}`
                   )
                 }
-                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 "
               >
                 Mesaj Gönder
               </button>
@@ -376,7 +376,7 @@ export default function LessonDetail() {
                 <button
                   disabled={busy}
                   onClick={() => run(reject, "Rezervasyon reddedildi.")}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 active:scale-95 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 active:scale-95 disabled:opacity-60 "
                 >
                   Reddet
                 </button>
@@ -395,7 +395,7 @@ export default function LessonDetail() {
             {isClient && canMessage && (
               <button
                 onClick={() => setShowReschedule(true)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 "
               >
                 Ertele
               </button>
@@ -403,7 +403,7 @@ export default function LessonDetail() {
             {canMessage && (
               <button
                 onClick={() => setShowCancel(true)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 active:scale-95 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-red-900/20"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 active:scale-95 "
               >
                 İptal Et
               </button>
@@ -421,24 +421,24 @@ export default function LessonDetail() {
 
         {/* ── Review ── */}
         {review && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-1">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               Değerlendirme
             </h2>
             <div className="mt-3">
               <StarRating value={review.rating} />
             </div>
             {review.comment_text && (
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 ">
                 {review.comment_text}
               </p>
             )}
             {review.tutor_reply && (
-              <div className="mt-3 rounded-xl border-l-2 border-indigo-300 bg-indigo-50/60 px-4 py-3 dark:border-indigo-500/40 dark:bg-indigo-500/10">
-                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+              <div className="mt-3 rounded-xl border-l-2 border-indigo-300 bg-indigo-50/60 px-4 py-3 ">
+                <p className="text-xs font-semibold text-indigo-700 ">
                   Eğitmen yanıtı
                 </p>
-                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
                   {review.tutor_reply}
                 </p>
               </div>
@@ -448,17 +448,17 @@ export default function LessonDetail() {
 
         {/* ── Q&A (öğrenci) ── */}
         {isClient && qaGroup && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-2">
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Bu Ders İçin Sorularım
               </h2>
               {qaGroup.expired ? (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 ">
                   Süre doldu
                 </span>
               ) : (
-                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 ">
                   {qaGroup.remaining}/{qaGroup.quota} hak · {qaGroup.days_left} gün
                 </span>
               )}
@@ -466,17 +466,17 @@ export default function LessonDetail() {
 
             <div className="mt-4 space-y-3">
               {qaGroup.threads.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 ">
                   Bu derste henüz soru sormadın.
                 </p>
               ) : (
                 qaGroup.threads.map((t) => (
                   <div
                     key={t.id}
-                    className="rounded-xl bg-slate-50 p-3.5 dark:bg-slate-700/40"
+                    className="rounded-xl bg-slate-50 p-3.5 "
                   >
                     {t.subject && (
-                      <p className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                      <p className="mb-2 text-sm font-semibold text-slate-800 ">
                         {t.subject}
                       </p>
                     )}
@@ -491,7 +491,7 @@ export default function LessonDetail() {
               {qaGroup.can_ask && (
                 <button
                   onClick={() => setShowAsk(true)}
-                  className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 active:scale-[0.98] dark:bg-slate-700 dark:hover:bg-slate-600"
+                  className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 active:scale-[0.98] "
                 >
                   Yeni Soru Başlığı Aç ({qaGroup.remaining} hak)
                 </button>
@@ -501,7 +501,7 @@ export default function LessonDetail() {
         )}
 
         {/* ── Ders Kaynakları ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-1">
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
           <BookingResourcesPanel
             bookingId={bookingId}
             resources={booking.resources}
@@ -512,8 +512,8 @@ export default function LessonDetail() {
         </section>
 
         {/* ── Ders Notları (Yorumlar) ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
             Ders Mesajları
           </h2>
           <div className="mt-4 space-y-4">
@@ -528,7 +528,7 @@ export default function LessonDetail() {
                     >
                       <div className="flex max-w-[85%] flex-col gap-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          <span className="text-xs font-semibold text-slate-700 ">
                             {isMine ? "Sen" : (comment.sender_role === "TUTOR" ? "Eğitmen" : "Öğrenci")}
                           </span>
                           <span className="text-[10px] text-slate-400">
@@ -539,7 +539,7 @@ export default function LessonDetail() {
                           className={`relative rounded-2xl px-4 py-2 text-sm ${
                             isMine
                               ? "bg-indigo-600 text-white"
-                              : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+                              : "bg-slate-100 text-slate-800 "
                           }`}
                         >
                           <p className="whitespace-pre-wrap">{comment.body}</p>
@@ -559,7 +559,7 @@ export default function LessonDetail() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 ">
                 Bu ders için henüz bir mesaj yok.
               </p>
             )}
@@ -572,7 +572,7 @@ export default function LessonDetail() {
                   placeholder="Mesajınız"
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
-                  className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                  className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
                 />
                 <button
                   type="submit"
@@ -587,7 +587,7 @@ export default function LessonDetail() {
         </section>
 
         {/* ── Kişisel Notlarım (Gizli) ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-1">
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
           <BookingPrivateNotesPanel
             bookingId={bookingId}
             notes={booking.private_notes}

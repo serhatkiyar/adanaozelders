@@ -37,7 +37,7 @@ export function BookmarkButton({
   const fillCls = onSolid
     ? bookmarked
       ? "fill-rose-500 stroke-rose-500"
-      : "fill-slate-300 stroke-slate-300 dark:fill-slate-600 dark:stroke-slate-600"
+      : "fill-slate-300 stroke-slate-300 "
     : bookmarked
       ? "fill-rose-500 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
       : "fill-black/50 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]";

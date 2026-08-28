@@ -61,11 +61,11 @@ import { usePackingAccess } from "./PackingLayout";
 
 const TON_SINIFI: Record<ScanTone, string> = {
   success:
-    "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-50",
+    "border-emerald-200 bg-emerald-50 text-emerald-900 ",
   warning:
-    "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-50",
+    "border-amber-200 bg-amber-50 text-amber-900 ",
   error:
-    "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-50",
+    "border-rose-200 bg-rose-50 text-rose-900 ",
 };
 
 /**
@@ -308,12 +308,12 @@ export default function PackingStationPage() {
   return (
     <div className="space-y-4">
       {/* ── Başlık: hangi kutu, hangi sipariş, hangi durum ── */}
-      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
+      <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 ">
         <div className="mr-auto min-w-0">
-          <p className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+          <p className="text-lg font-bold tracking-tight text-slate-900 ">
             {paket.code}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Sipariş{" "}
             <Link
               to={`${ROUTES.adminPackingPackages}?siparis=${paket.order_id}`}
@@ -327,7 +327,7 @@ export default function PackingStationPage() {
         <Badge tone={DURUM_TONU[paket.status] ?? "neutral"}>
           {PACKAGE_STATUS_LABEL[paket.status] ?? paket.status}
         </Badge>
-        <span className="text-sm font-semibold tabular-nums text-slate-600 dark:text-slate-300">
+        <span className="text-sm font-semibold tabular-nums text-slate-600 ">
           {ilerleme.scanned} / {ilerleme.expected} okutuldu
         </span>
         {/* Etiket yalnız kutu ELDE ve içeriği DOĞRULANMIŞken basılır
@@ -352,7 +352,7 @@ export default function PackingStationPage() {
         // fazladan ürün koyup kapatır.
         <div
           role="alert"
-          className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-50"
+          className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm text-rose-900 "
         >
           <p className="font-bold">Veri tutarsızlığı: beklenenden fazla okutulmuş satır var</p>
           <ul className="mt-1 list-disc pl-5">
@@ -371,7 +371,7 @@ export default function PackingStationPage() {
 
       {/* ── Okutma kutusu ── */}
       {acik && canPack && (
-        <section className="rounded-2xl border border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <section className="rounded-2xl border border-slate-200 bg-white px-6 py-4 ">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -380,7 +380,7 @@ export default function PackingStationPage() {
             className="flex flex-wrap items-end gap-3"
           >
             <label htmlFor="paketleme-kod" className="min-w-0 flex-1 basis-64">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              <span className="mb-1.5 block text-sm font-semibold text-slate-700 ">
                 Barkod veya SKU okut
               </span>
               <input
@@ -411,17 +411,17 @@ export default function PackingStationPage() {
       )}
 
       {/* ── Kalemler ── */}
-      <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="border-b border-slate-100 px-6 py-3 dark:border-slate-800">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+      <section className="rounded-2xl border border-slate-200 bg-white ">
+        <div className="border-b border-slate-100 px-6 py-3 ">
+          <h2 className="text-sm font-bold text-slate-900 ">
             Kutuya girecek kalemler
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Her satır ürünün kendi kodundan doğrulanır; kodu okunamayan satır
             gerekçeyle elle kapatılır ve gerekçe kayda geçer.
           </p>
         </div>
-        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100 px-6 ">
           {paket.items.map((satir) => {
             const kalan = satir.expected_qty - satir.scanned_qty;
             const tamam = kalan <= 0;
@@ -432,10 +432,10 @@ export default function PackingStationPage() {
                 className="flex flex-wrap items-center gap-3 py-3"
               >
                 <div className="min-w-0 flex-1 basis-64">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900 ">
                     {satir.title}
                   </p>
-                  <p className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-0.5 font-mono text-xs text-slate-500 ">
                     {satir.sku ?? "SKU yok"}
                     {satir.barcode ? ` · ${satir.barcode}` : ""}
                   </p>
@@ -445,14 +445,14 @@ export default function PackingStationPage() {
                   <span
                     className={
                       tamam
-                        ? "font-bold text-emerald-600 dark:text-emerald-400"
-                        : "font-bold text-slate-900 dark:text-white"
+                        ? "font-bold text-emerald-600 "
+                        : "font-bold text-slate-900 "
                     }
                   >
                     {satir.scanned_qty}
                   </span>
                   {" / "}
-                  <span className="text-slate-600 dark:text-slate-300">
+                  <span className="text-slate-600 ">
                     {satir.expected_qty}
                   </span>{" "}
                   <span className="text-xs text-slate-400">adet</span>
@@ -487,7 +487,7 @@ export default function PackingStationPage() {
 
       {/* ── Kapatma ── */}
       {acik && canPack && (
-        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
+        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 ">
           <div className="mr-auto min-w-0">
             {/* Disabled buton sessiz kalmaz: operatör NEDEN kapatamadığını
                 görmeli. Gerekçe tek cümledir — `completeBlockers` satır satır
@@ -497,15 +497,15 @@ export default function PackingStationPage() {
                 kural katmanı otoritedir (`engeller.length`), yalnız sunumu
                 sadeleşir. */}
             {engeller.length === 0 ? (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 ">
                 Bütün kalemler doğrulandı. Kutuyu kapatıp etiketini yapıştırın.
               </p>
             ) : paket.items.length === 0 ? (
-              <p className="text-xs leading-5 text-amber-700 dark:text-amber-400">
+              <p className="text-xs leading-5 text-amber-700 ">
                 {engeller[0]}
               </p>
             ) : (
-              <p className="text-xs leading-5 text-amber-700 dark:text-amber-400">
+              <p className="text-xs leading-5 text-amber-700 ">
                 Paketi kapatmak için {eksikAdet} adet daha okutulmalı. Eksik
                 satırlar listede “taranan / beklenen” sayısıyla görünür.
               </p>
@@ -535,7 +535,7 @@ export default function PackingStationPage() {
           {tamamlaHatasi && (
             <div
               role="alert"
-              className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-50"
+              className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 "
             >
               <p className="font-bold">Paket kapatılamadı</p>
               <p className="mt-0.5">{tamamlaHatasi}</p>
@@ -549,7 +549,7 @@ export default function PackingStationPage() {
       )}
 
       {!acik && (
-        <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+        <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 ">
           Bu paket “{PACKAGE_STATUS_LABEL[paket.status] ?? paket.status}” durumunda;
           okutma ve kapatma yalnız paketlenmekte olan pakette yapılır.
         </p>

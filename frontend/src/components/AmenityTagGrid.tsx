@@ -16,7 +16,7 @@ export const AmenityTagGrid: React.FC<AmenityTagGridProps> = ({ amenities }) => 
         return (
           <span
             key={a}
-            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 "
           >
             <Icon size={14} stroke={1.75} aria-hidden />
             {amenityLabel(a)}

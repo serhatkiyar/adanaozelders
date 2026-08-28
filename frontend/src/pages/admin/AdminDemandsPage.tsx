@@ -79,7 +79,7 @@ export default function AdminDemandsPage() {
       header: "Talep",
       cell: ({ row }) => (
         <div className="max-w-sm">
-          <p className="font-semibold text-slate-900 dark:text-white">{row.original.title}</p>
+          <p className="font-semibold text-slate-900 ">{row.original.title}</p>
           <p className="mt-0.5 line-clamp-1 text-xs text-slate-500" title={row.original.description ?? undefined}>
             {row.original.description || "Açıklama yok"}
           </p>
@@ -139,7 +139,7 @@ export default function AdminDemandsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
-      <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
         <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem_auto]">
           <input
             aria-label="Öğrenci talebi ara"
@@ -181,7 +181,7 @@ export default function AdminDemandsPage() {
             <div>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">{demand.title}</p>
+                  <p className="font-semibold text-slate-900 ">{demand.title}</p>
                   <p className="text-xs text-slate-500">{demand.subject}{demand.level ? ` · ${demand.level}` : ""}</p>
                 </div>
                 <Badge tone={STATUS_TONE[demand.status]}>{STATUS_LABEL[demand.status]}</Badge>

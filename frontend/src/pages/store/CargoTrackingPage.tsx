@@ -68,7 +68,7 @@ function Stepper({ status }: { status: OrderTrackingStatus }) {
                     ? "bg-amber-500"
                     : done || current
                       ? "bg-indigo-500"
-                      : "bg-slate-300 dark:bg-slate-700",
+                      : "bg-slate-300 ",
                 ].join(" ")}
               >
                 {current && !failed && (
@@ -79,8 +79,8 @@ function Stepper({ status }: { status: OrderTrackingStatus }) {
                 className={[
                   "text-[11px]",
                   done || current
-                    ? "font-medium text-slate-700 dark:text-slate-200"
-                    : "text-slate-400 dark:text-slate-500",
+                    ? "font-medium text-slate-700 "
+                    : "text-slate-400 ",
                 ].join(" ")}
               >
                 {label}
@@ -90,7 +90,7 @@ function Stepper({ status }: { status: OrderTrackingStatus }) {
               <span
                 className={[
                   "mx-2 mb-5 h-px flex-1",
-                  i < active ? "bg-indigo-400" : "bg-slate-200 dark:bg-slate-800",
+                  i < active ? "bg-indigo-400" : "bg-slate-200 ",
                 ].join(" ")}
               />
             )}
@@ -105,26 +105,26 @@ function Stepper({ status }: { status: OrderTrackingStatus }) {
 function CourierCard({ t }: { t: OrderTracking }) {
   if (!t.courier_name) return null;
   return (
-    <div className="mx-6 mb-5 flex items-center gap-3 border-t border-slate-100 pt-4 text-left dark:border-slate-800">
+    <div className="mx-6 mb-5 flex items-center gap-3 border-t border-slate-100 pt-4 text-left ">
       {t.courier_photo_url ? (
         <img
           src={t.courier_photo_url}
           alt={t.courier_name}
-          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-slate-200 "
         />
       ) : (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500 ">
           {t.courier_name.charAt(0).toLocaleUpperCase("tr")}
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+        <p className="truncate text-sm font-medium text-slate-900 ">
           {t.courier_name}
         </p>
-        <p className="text-xs text-slate-500 dark:text-slate-400">Cıncık Teslimat kuryen</p>
+        <p className="text-xs text-slate-500 ">Cıncık Teslimat kuryen</p>
       </div>
       {t.courier_plate && (
-        <span className="shrink-0 rounded-md border border-slate-300 px-2 py-1 font-mono text-xs font-semibold tracking-wider text-slate-700 dark:border-slate-600 dark:text-slate-200">
+        <span className="shrink-0 rounded-md border border-slate-300 px-2 py-1 font-mono text-xs font-semibold tracking-wider text-slate-700 ">
           {t.courier_plate}
         </span>
       )}
@@ -137,8 +137,8 @@ function Timeline({ t }: { t: OrderTracking }) {
   const events = (t.timeline ?? []).filter((e) => TIMELINE_LABELS[e.code]);
   if (events.length === 0) return null;
   return (
-    <div className="border-t border-slate-100 px-6 py-5 text-left dark:border-slate-800">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+    <div className="border-t border-slate-100 px-6 py-5 text-left ">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
         Sipariş geçmişi
       </h2>
       <ol className="mt-3">
@@ -147,14 +147,14 @@ function Timeline({ t }: { t: OrderTracking }) {
           return (
             <li key={`${e.code}-${e.at}`} className="relative flex gap-3 pb-4 last:pb-0">
               {!last && (
-                <span className="absolute left-[5px] top-4 h-full w-px bg-slate-200 dark:bg-slate-800" />
+                <span className="absolute left-[5px] top-4 h-full w-px bg-slate-200 " />
               )}
               <span
                 className={[
-                  "relative mt-1 h-[11px] w-[11px] shrink-0 rounded-full ring-2 ring-white dark:ring-slate-900",
+                  "relative mt-1 h-[11px] w-[11px] shrink-0 rounded-full ring-2 ring-white ",
                   last
                     ? "bg-indigo-500"
-                    : "bg-slate-300 dark:bg-slate-700",
+                    : "bg-slate-300 ",
                 ].join(" ")}
               />
               <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
@@ -162,13 +162,13 @@ function Timeline({ t }: { t: OrderTracking }) {
                   className={[
                     "text-sm",
                     last
-                      ? "font-medium text-slate-900 dark:text-white"
-                      : "text-slate-600 dark:text-slate-300",
+                      ? "font-medium text-slate-900 "
+                      : "text-slate-600 ",
                   ].join(" ")}
                 >
                   {TIMELINE_LABELS[e.code]}
                 </span>
-                <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                <span className="shrink-0 text-xs tabular-nums text-slate-400 ">
                   {formatEventTime(e.at)}
                 </span>
               </div>
@@ -225,13 +225,13 @@ function PrefControls({ t, token }: { t: OrderTracking; token: string }) {
   return (
     <>
       <DeliveryPrefControls t={t} mode={{ kind: "token", token }} loggedIn={loggedIn} />
-      <p className="px-6 pb-4 text-left text-xs text-slate-400 dark:text-slate-500">
+      <p className="px-6 pb-4 text-left text-xs text-slate-400 ">
         {loggedIn ? (
           <>
             Adres değişikliği{" "}
             <Link
               to={ROUTES.orders}
-              className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              className="font-medium text-indigo-600 hover:underline "
             >
               Siparişlerim
             </Link>
@@ -242,7 +242,7 @@ function PrefControls({ t, token }: { t: OrderTracking; token: string }) {
             Adres değiştirmek için{" "}
             <Link
               to={ROUTES.login}
-              className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              className="font-medium text-indigo-600 hover:underline "
             >
               giriş yap
             </Link>
@@ -283,31 +283,31 @@ export default function CargoTrackingPage() {
   }, [t]);
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-10 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 px-4 py-10 ">
       <Seo title="Kargo Takip — Adana Özel Ders" noindex />
       <div className="mx-auto max-w-xl">
         <div className="mb-6 flex items-center justify-center gap-2 text-center">
           <Link
             to={ROUTES.home}
-            className="text-sm font-semibold tracking-tight text-slate-900 hover:opacity-70 dark:text-white"
+            className="text-sm font-semibold tracking-tight text-slate-900 hover:opacity-70 "
           >
             Adana Özel Ders
           </Link>
-          <span className="text-slate-300 dark:text-slate-600">·</span>
-          <span className="text-sm text-slate-500 dark:text-slate-400">Kargo Takip</span>
+          <span className="text-slate-300 ">·</span>
+          <span className="text-sm text-slate-500 ">Kargo Takip</span>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white ">
           {isLoading ? (
             <div className="flex items-center justify-center py-24">
-              <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500 dark:border-slate-700 dark:border-t-indigo-400" />
+              <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-500 " />
             </div>
           ) : isError || !t ? (
             <div className="px-6 py-20 text-center">
-              <p className="text-base font-medium text-slate-800 dark:text-slate-100">
+              <p className="text-base font-medium text-slate-800 ">
                 Takip bilgisi bulunamadı
               </p>
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-2 text-sm text-slate-500 ">
                 Bağlantı geçersiz ya da süresi dolmuş olabilir. Lütfen sana gönderilen
                 SMS'teki bağlantıyı kontrol et.
               </p>
@@ -315,12 +315,12 @@ export default function CargoTrackingPage() {
           ) : (
             <>
               {(t.tracking_no || t.recipient_masked) && (
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-100 px-6 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-100 px-6 py-3 text-xs text-slate-500 ">
                   <span>
                     {t.tracking_no ? (
                       <>
                         Gönderi no{" "}
-                        <span className="font-mono font-medium text-slate-700 dark:text-slate-200">
+                        <span className="font-mono font-medium text-slate-700 ">
                           {t.tracking_no}
                         </span>
                       </>
@@ -337,16 +337,16 @@ export default function CargoTrackingPage() {
               </div>
 
               <div className="px-6 py-6 text-center">
-                <h1 className="text-lg font-semibold text-slate-900 dark:text-white">
+                <h1 className="text-lg font-semibold text-slate-900 ">
                   {COPY[t.status].title}
                 </h1>
-                <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                <p className="mx-auto mt-1.5 max-w-sm text-sm text-slate-500 ">
                   {COPY[t.status].sub}
                 </p>
 
                 {(t.status === "NOT_DISPATCHED" || t.status === "POSTPONED") &&
                   t.promised_delivery_date && (
-                  <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
+                  <p className="mt-3 text-sm text-emerald-700 ">
                     Söz verilen teslimat:{" "}
                     <span className="font-medium">
                       {promisedDateLabel(t.promised_delivery_date)}
@@ -356,25 +356,25 @@ export default function CargoTrackingPage() {
 
                 {t.status === "EN_ROUTE" && (
                   <>
-                  <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-slate-200 px-4 py-1.5 text-xs dark:border-slate-800">
-                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                  <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-slate-200 px-4 py-1.5 text-xs ">
+                    <span className="font-medium text-slate-700 ">
                       {t.stops_ahead != null && t.stops_ahead > 0
                         ? `Kuryenin gelmesine ${t.stops_ahead} durak var`
                         : "Sıradaki teslimat sensin"}
                       {t.total_stops != null && t.stops_ahead != null && t.stops_ahead > 0 && (
-                        <span className="font-normal text-slate-400 dark:text-slate-500">
+                        <span className="font-normal text-slate-400 ">
                           {" "}
                           · toplam {t.total_stops}
                         </span>
                       )}
                     </span>
                     {formatEtaWindow(t.eta_window_start, t.eta_window_end) && (
-                      <span className="text-slate-500 dark:text-slate-400">
+                      <span className="text-slate-500 ">
                         {formatEtaWindow(t.eta_window_start, t.eta_window_end)}
                       </span>
                     )}
                     {t.courier_age_seconds != null && (
-                      <span className="text-slate-400 dark:text-slate-500">
+                      <span className="text-slate-400 ">
                         son sinyal{" "}
                         {t.courier_age_seconds < 5
                           ? "az önce"
@@ -383,7 +383,7 @@ export default function CargoTrackingPage() {
                     )}
                   </div>
                   {reordered && (
-                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                    <p className="mt-2 text-xs text-amber-600 ">
                       Teslimat sırası güncellendi — kuryen az sonra sende.
                     </p>
                   )}
@@ -391,7 +391,7 @@ export default function CargoTrackingPage() {
                 )}
 
                 {t.status === "DELIVERED" && t.delivered_at && (
-                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                  <p className="mt-3 text-sm text-slate-500 ">
                     {formatEventTime(t.delivered_at)}
                     {proofLabel(t.proof) && (
                       <>
@@ -412,7 +412,7 @@ export default function CargoTrackingPage() {
                     <img
                       src={t.proof_photo_url}
                       alt="Teslim kanıtı fotoğrafı"
-                      className="mx-auto max-h-48 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                      className="mx-auto max-h-48 rounded-xl object-cover ring-1 ring-slate-200 "
                     />
                   </a>
                 )}
@@ -453,7 +453,7 @@ export default function CargoTrackingPage() {
           )}
         </div>
 
-        <p className="mt-5 text-center text-[11px] text-slate-400 dark:text-slate-600">
+        <p className="mt-5 text-center text-[11px] text-slate-400 ">
           Teslimat platformumuzun kendi aracıyla yapılır. Sorun yaşarsan bizimle
           iletişime geçebilirsin.
         </p>

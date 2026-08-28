@@ -37,7 +37,7 @@ export function StoreAccountMenu() {
     return (
       <Link
         to="?modal=login"
-        className="group flex items-center gap-2 text-slate-600 transition-colors hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+        className="group flex items-center gap-2 text-slate-600 transition-colors hover:text-indigo-600 "
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -50,7 +50,7 @@ export function StoreAccountMenu() {
 
   const isClient = user.role_id === ROLE_IDS.CLIENT;
   const itemClass =
-    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700";
+    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 ";
 
   return (
     <div className="relative" ref={ref}>
@@ -59,7 +59,7 @@ export function StoreAccountMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="group flex items-center gap-2 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
+        className="group flex items-center gap-2 transition-colors hover:text-indigo-600 "
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -71,9 +71,9 @@ export function StoreAccountMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+          className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 "
         >
-          <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+          <div className="my-1 border-t border-slate-100 " />
 
           {isClient && (
             <Link to={ROUTES.orders} onClick={() => setOpen(false)} className={itemClass}>
@@ -100,7 +100,7 @@ export function StoreAccountMenu() {
             Ayarlar
           </Link>
 
-          <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+          <div className="my-1 border-t border-slate-100 " />
           <button
             type="button"
             onClick={() => {

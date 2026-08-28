@@ -120,23 +120,23 @@ export default function AccountHub() {
 
   const content = (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hesabım</h1>
+      <h1 className="text-2xl font-bold text-slate-900 ">Hesabım</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map((c) => (
           <Link
             key={c.to + c.title}
             to={c.to}
-            className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/5"
+            className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 "
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ">
               {c.icon}
             </span>
             <span>
-              <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
+              <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 ">
                 {c.title}
               </span>
-              <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">{c.desc}</span>
+              <span className="mt-0.5 block text-sm text-slate-500 ">{c.desc}</span>
             </span>
           </Link>
         ))}

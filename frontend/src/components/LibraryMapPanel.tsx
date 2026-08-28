@@ -54,7 +54,7 @@ export function LibraryMapPanel({
   const todayHours = week?.find((h) => h.weekday === todayWeekday) ?? null;
 
   return (
-    <div className="animate-panel-left absolute inset-y-0 left-0 z-[1100] flex w-full max-w-[380px] flex-col overflow-hidden bg-white shadow-2xl dark:bg-slate-900">
+    <div className="animate-panel-left absolute inset-y-0 left-0 z-[1100] flex w-full max-w-[380px] flex-col overflow-hidden bg-white shadow-2xl ">
       {/* Üst aksiyonlar — kaydırmadan bağımsız, panele sabit (hep erişilir) */}
       <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
         <ShareButton
@@ -79,7 +79,7 @@ export function LibraryMapPanel({
       {/* ── İçerik — banner dahil hepsi birlikte kaydırılır ── */}
       <div className="flex-1 overflow-y-auto">
         {/* Banner */}
-        <div className="relative h-36 bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-slate-700 dark:to-slate-800">
+        <div className="relative h-36 bg-gradient-to-br from-indigo-100 to-violet-100 ">
           {banner ? (
             <img src={banner} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -102,14 +102,14 @@ export function LibraryMapPanel({
             <img
               src={library.logo_url}
               alt=""
-              className="-mt-12 mb-2 h-16 w-16 rounded-full bg-white object-cover shadow-lg ring-4 ring-white dark:ring-slate-900"
+              className="-mt-12 mb-2 h-16 w-16 rounded-full bg-white object-cover shadow-lg ring-4 ring-white "
             />
           )}
-          <h2 className="text-lg font-bold leading-tight text-slate-900 dark:text-white">
+          <h2 className="text-lg font-bold leading-tight text-slate-900 ">
             {library.name}
           </h2>
           {region && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 ">
               <PinIcon className="h-3.5 w-3.5 shrink-0" />
               {region}
             </p>
@@ -118,14 +118,14 @@ export function LibraryMapPanel({
           {/* Puan + mesafe */}
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <StarRating value={library.rating_average} />
-            <span className="font-semibold text-slate-700 dark:text-slate-200">
+            <span className="font-semibold text-slate-700 ">
               {library.rating_average != null ? library.rating_average.toFixed(1) : "Yeni"}
             </span>
             {library.rating_count > 0 && (
               <span className="text-slate-400">({library.rating_count} değerlendirme)</span>
             )}
             {library.distance_km != null && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 ">
                 {library.distance_km.toFixed(1)} km
               </span>
             )}
@@ -153,21 +153,21 @@ export function LibraryMapPanel({
               <button
                 onClick={() => setHoursOpen((o) => !o)}
                 disabled={!week}
-                className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm transition hover:bg-slate-100 disabled:cursor-default disabled:hover:bg-slate-50 dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:disabled:hover:bg-slate-800/60"
+                className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm transition hover:bg-slate-100 disabled:cursor-default disabled:hover:bg-slate-50 "
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="text-slate-400">🕑</span>
                   <span
                     className={
                       library.open_now
-                        ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                        ? "font-semibold text-emerald-600 "
                         : "font-semibold text-rose-500"
                     }
                   >
                     {library.open_now ? "Açık" : "Kapalı"}
                   </span>
                   {todayHours && (
-                    <span className="truncate text-slate-500 dark:text-slate-400">
+                    <span className="truncate text-slate-500 ">
                       · Bugün {formatHoursLine(todayHours)}
                     </span>
                   )}
@@ -191,8 +191,8 @@ export function LibraryMapPanel({
                       key={h.weekday}
                       className={`flex justify-between text-xs ${
                         h.weekday === todayWeekday
-                          ? "font-semibold text-slate-900 dark:text-white"
-                          : "text-slate-500 dark:text-slate-400"
+                          ? "font-semibold text-slate-900 "
+                          : "text-slate-500 "
                       }`}
                     >
                       <span>{WEEKDAY_LABELS[h.weekday]}</span>
@@ -208,7 +208,7 @@ export function LibraryMapPanel({
 
           {/* Tam adres */}
           {library.location_text && (
-            <div className="mt-4 flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <div className="mt-4 flex items-start gap-2 text-sm text-slate-600 ">
               <PinIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
               <span>{library.location_text}</span>
             </div>
@@ -218,12 +218,12 @@ export function LibraryMapPanel({
           {(library.study_hourly_price || library.capacity != null) && (
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               {library.study_hourly_price && (
-                <span className="rounded-lg bg-violet-50 px-2.5 py-1 font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                <span className="rounded-lg bg-violet-50 px-2.5 py-1 font-semibold text-violet-700 ">
                   Saatlik çalışma: {formatTRY(library.study_hourly_price)}
                 </span>
               )}
               {library.capacity != null && (
-                <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-600 ">
                   {library.capacity} kişilik
                 </span>
               )}
@@ -234,7 +234,7 @@ export function LibraryMapPanel({
 
           {/* Açıklama */}
           {library.description && (
-            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-600 line-clamp-4 dark:text-slate-300">
+            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-600 line-clamp-4 ">
               {library.description}
             </p>
           )}
@@ -267,12 +267,12 @@ function PanelAction({
         className={`flex h-11 w-11 items-center justify-center rounded-full text-lg transition ${
           primary
             ? "bg-indigo-600 text-white hover:bg-indigo-700"
-            : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            : "bg-slate-100 text-slate-700 hover:bg-slate-200 "
         }`}
       >
         {icon}
       </span>
-      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="text-[11px] font-medium text-slate-600 ">{label}</span>
     </>
   );
   if (to) {

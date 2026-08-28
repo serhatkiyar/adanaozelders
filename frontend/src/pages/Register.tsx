@@ -61,7 +61,7 @@ export default function Register() {
       className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
         role === value
           ? "bg-indigo-600 text-white"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+          : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
       }`}
     >
       {label}
@@ -69,10 +69,10 @@ export default function Register() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Kayıt Ol</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 ">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-100 ">
+        <h1 className="text-2xl font-bold text-slate-900 ">Kayıt Ol</h1>
+        <p className="mt-1 text-sm text-slate-500 ">
           Hesap türünü seçerek başla.
         </p>
 
@@ -93,7 +93,7 @@ export default function Register() {
                     maxLength={75}
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                     placeholder="Adınız"
                   />
               )}
@@ -108,7 +108,7 @@ export default function Register() {
                     maxLength={75}
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                     placeholder="Soyadınız"
                   />
               )}
@@ -127,7 +127,7 @@ export default function Register() {
                   title="Yalnızca harf, rakam ve alt çizgi (_)"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   placeholder="kullanici_adi"
                 />
             )}
@@ -141,7 +141,7 @@ export default function Register() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   placeholder="ornek@eposta.com"
                 />
             )}
@@ -157,7 +157,7 @@ export default function Register() {
                   maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   placeholder="En az 8 karakter"
                 />
             )}
@@ -173,7 +173,7 @@ export default function Register() {
                     max={todayStr}
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   />
               )}
             </Field>
@@ -183,7 +183,7 @@ export default function Register() {
                     id={id}
                     value={gender}
                     onChange={(e) => setGender(e.target.value as Gender | "")}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   >
                     <option value="">Seçilmedi</option>
                     {GENDERS.map((g) => (
@@ -199,7 +199,7 @@ export default function Register() {
           <ConsentCheckbox />
 
           {mutation.isError && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
               {getErrorMessage(mutation.error, "Kayıt başarısız.")}
             </div>
           )}
@@ -213,11 +213,11 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-6 text-center text-sm text-slate-500 ">
           Zaten hesabın var mı?{" "}
           <Link
             to={ROUTES.login}
-            className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="font-semibold text-indigo-600 hover:text-indigo-700 "
           >
             Giriş yap
           </Link>

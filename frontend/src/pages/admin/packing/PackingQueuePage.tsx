@@ -94,7 +94,7 @@ function SatirAksiyonu({
   if (row.next_action === "REPACK_RETURNED" && paketId != null) {
     if (!canManage) {
       return (
-        <p className="max-w-52 text-xs text-slate-500 dark:text-slate-400">
+        <p className="max-w-52 text-xs text-slate-500 ">
           Depoya dönen bu paketi yeniden dağıtıma vermek için paket yönetimi izni
           gerekir.
         </p>
@@ -154,13 +154,13 @@ export default function PackingQueuePage() {
     setParams(yeni <= 1 ? {} : { sayfa: String(yeni) }, { replace: true });
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          <h2 className="text-base font-bold text-slate-900 ">
             Paketleme kuyruğu
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Ödenmiş fiziksel siparişler, söz gününe göre sıralı. Sıradaki işi
             buradan başlatın; kalemler istasyonda tek tek okutulur.
           </p>
@@ -187,17 +187,17 @@ export default function PackingQueuePage() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100 px-6 ">
           {satirlar.map((row) => (
             <li key={row.order_id} className="flex flex-wrap items-start gap-3 py-4">
               <div className="min-w-0 flex-1 basis-64">
-                <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                <p className="truncate text-sm font-medium text-slate-900 ">
                   {row.recipient ?? "Alıcı bilgisi girilmemiş"}
                   <span className="ml-2 text-xs font-normal text-slate-400">
                     #{row.order_id}
                   </span>
                 </p>
-                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 ">
                   <span className="truncate">{row.address ?? "Adres yok"}</span>
                   <PromiseChip date={row.promised_delivery_date} />
                 </p>
@@ -206,7 +206,7 @@ export default function PackingQueuePage() {
                 <ItemLines items={row.items} className="mt-1.5" />
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                <span className="text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                <span className="text-xs tabular-nums text-slate-500 ">
                   {row.item_count} parça
                 </span>
                 {row.package && (
@@ -223,8 +223,8 @@ export default function PackingQueuePage() {
       )}
 
       {toplam > LIMIT && (
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3 ">
+          <span className="text-xs text-slate-500 ">
             Sayfa {sayfa} / {sonSayfa}
           </span>
           <div className="flex gap-2">

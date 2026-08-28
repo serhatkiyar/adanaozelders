@@ -32,9 +32,9 @@ function MeetingDrawer({ bookingId }: { bookingId: number }) {
   ];
 
   return (
-    <div className="flex h-full w-full flex-col bg-white text-slate-900 dark:bg-slate-900 dark:text-white">
+    <div className="flex h-full w-full flex-col bg-white text-slate-900 ">
       {/* Sekmeler */}
-      <div className="flex shrink-0 gap-1 border-b border-slate-100 p-2 dark:border-slate-800">
+      <div className="flex shrink-0 gap-1 border-b border-slate-100 p-2 ">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -42,7 +42,7 @@ function MeetingDrawer({ bookingId }: { bookingId: number }) {
             className={`flex-1 rounded-lg px-2 py-2 text-xs font-semibold transition ${
               tab === t.id
                 ? "bg-indigo-600 text-white"
-                : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                : "text-slate-500 hover:bg-slate-100 "
             }`}
           >
             {t.label}
@@ -53,7 +53,7 @@ function MeetingDrawer({ bookingId }: { bookingId: number }) {
       {/* İçerik */}
       <div className="flex-1 overflow-y-auto p-4">
         {isLoading || !booking ? (
-          <p className="text-sm text-slate-400 dark:text-slate-500">Yükleniyor…</p>
+          <p className="text-sm text-slate-400 ">Yükleniyor…</p>
         ) : tab === "resources" ? (
           <BookingResourcesPanel
             bookingId={bookingId}
@@ -106,7 +106,7 @@ export function GlobalMeeting() {
   // aynı DOM düğümünde kaldığından minimize/maximize/çekmece geçişlerinde
   // görüşme YENİDEN BAĞLANMAZ (kopmaz).
   const videoBox = isMinimized
-    ? "fixed bottom-4 right-4 h-64 w-96 rounded-2xl shadow-2xl ring-1 ring-slate-200 dark:ring-slate-700"
+    ? "fixed bottom-4 right-4 h-64 w-96 rounded-2xl shadow-2xl ring-1 ring-slate-200 "
     : `fixed left-0 top-14 bottom-0 ${drawerActive ? "right-[380px]" : "right-0"}`;
 
   return (
@@ -186,7 +186,7 @@ export function GlobalMeeting() {
 
               {/* Çekmece */}
               <div
-                className={`fixed bottom-0 right-0 top-14 z-[9998] w-[380px] border-l border-slate-200 shadow-xl transition-transform duration-300 dark:border-slate-800 ${
+                className={`fixed bottom-0 right-0 top-14 z-[9998] w-[380px] border-l border-slate-200 shadow-xl transition-transform duration-300 ${
                   isDrawerOpen ? "translate-x-0" : "translate-x-full"
                 }`}
               >
@@ -194,7 +194,7 @@ export function GlobalMeeting() {
                 <button
                   onClick={toggleDrawer}
                   title="Paneli kapat"
-                  className="absolute -left-7 top-1/2 flex -translate-y-1/2 items-center rounded-l-lg bg-slate-100 py-3 pl-1.5 pr-1 text-slate-500 shadow transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  className="absolute -left-7 top-1/2 flex -translate-y-1/2 items-center rounded-l-lg bg-slate-100 py-3 pl-1.5 pr-1 text-slate-500 shadow transition hover:bg-slate-200 "
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </button>

@@ -128,7 +128,7 @@ export function CategoriesPanel() {
           {genelHata && (
             <p
               role="alert"
-              className="mt-1 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+              className="mt-1 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 "
             >
               {genelHata}
             </p>
@@ -139,8 +139,8 @@ export function CategoriesPanel() {
       )}
       <div className="mt-4 space-y-2">
         {(categories ?? []).map((c) => (
-          <div key={c.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
-            <span className={`text-sm text-slate-700 dark:text-slate-300 ${!c.is_active ? "opacity-50" : ""}`} style={{ paddingLeft: `${categoryDepth(c, categories ?? []) * 18}px` }}>
+          <div key={c.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-slate-100 px-3 py-2 ">
+            <span className={`text-sm text-slate-700 ${!c.is_active ? "opacity-50" : ""}`} style={{ paddingLeft: `${categoryDepth(c, categories ?? []) * 18}px` }}>
               {c.parent_id ? "↳ " : ""}{c.name} <span className="text-slate-400">({c.product_count ?? 0})</span>
             </span>
             <span className="flex items-center gap-3">
@@ -228,7 +228,7 @@ function KategoriKdvRozeti({
 
   if (!editing) {
     return (
-      <span className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+      <span className="flex items-center gap-2 text-xs text-slate-400 ">
         {etiket}
         {canManage && (
           <Button

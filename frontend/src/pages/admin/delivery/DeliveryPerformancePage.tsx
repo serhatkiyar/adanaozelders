@@ -34,23 +34,23 @@ function ParetoList({
   if (entries.length === 0) return null;
   const max = entries[0][1];
   return (
-    <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-800">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+    <div className="border-t border-slate-100 px-6 py-4 ">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
         {title}
       </p>
       <ul className="space-y-1.5">
         {entries.map(([code, count]) => (
           <li key={code} className="flex items-center gap-3 text-sm">
-            <span className="w-44 shrink-0 truncate text-slate-600 dark:text-slate-300">
+            <span className="w-44 shrink-0 truncate text-slate-600 ">
               {labels[code] ?? code}
             </span>
-            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 ">
               <span
-                className="block h-full rounded-full bg-slate-400 dark:bg-slate-500"
+                className="block h-full rounded-full bg-slate-400 "
                 style={{ width: `${max ? (count / max) * 100 : 0}%` }}
               />
             </span>
-            <span className="w-6 shrink-0 text-right tabular-nums text-slate-500 dark:text-slate-400">
+            <span className="w-6 shrink-0 text-right tabular-nums text-slate-500 ">
               {count}
             </span>
           </li>
@@ -133,14 +133,14 @@ function OpsMetricsSection() {
   return (
     <section
       data-testid="ops-metrikler"
-      className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+      className="rounded-2xl border border-slate-200 bg-white "
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          <h2 className="text-base font-bold text-slate-900 ">
             Operasyon Metrikleri
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             {fmtGun(fromDate)} – {fmtGun(toDate)} · turlardan ölçülür
           </p>
         </div>
@@ -152,8 +152,8 @@ function OpsMetricsSection() {
               onClick={() => setDays(w)}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold tabular-nums transition ${
                 days === w
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-400 dark:ring-slate-700 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white "
+                  : "text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 "
               }`}
             >
               {w} gün
@@ -175,22 +175,22 @@ function OpsMetricsSection() {
         </div>
       ) : (
         <>
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-100 ">
             {rows.map((r) => (
               <li
                 key={r.key}
                 data-testid={`ops-metrik-${r.key}`}
                 className="flex items-baseline justify-between gap-4 px-6 py-3"
               >
-                <span className="text-sm text-slate-600 dark:text-slate-300">
+                <span className="text-sm text-slate-600 ">
                   {r.label}
                 </span>
                 <span className="text-right">
-                  <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+                  <span className="text-sm font-semibold tabular-nums text-slate-900 ">
                     {r.value}
                   </span>
                   {r.bos && (
-                    <span className="block text-xs text-slate-400 dark:text-slate-500">
+                    <span className="block text-xs text-slate-400 ">
                       henüz veri yok
                     </span>
                   )}
@@ -233,13 +233,13 @@ export default function DeliveryPerformancePage() {
     <div className="space-y-6">
       <OpsMetricsSection />
 
-      <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+      <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          <h2 className="text-base font-bold text-slate-900 ">
             Teslimat Göstergeleri
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Baseline ölçümü — hedef konmadı, sayılar yön verir.
           </p>
         </div>
@@ -251,8 +251,8 @@ export default function DeliveryPerformancePage() {
               onClick={() => setDays(w)}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold tabular-nums transition ${
                 days === w
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-400 dark:ring-slate-700 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white "
+                  : "text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 "
               }`}
             >
               {w} gün
@@ -281,38 +281,38 @@ export default function DeliveryPerformancePage() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-px bg-slate-100 dark:bg-slate-800 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-px bg-slate-100 sm:grid-cols-4">
             {[
               { label: "Söz tutma", value: pct(k.on_time_rate), sub: `${k.on_time_delivered}/${k.promised_delivered} teslim` },
               { label: "İlk denemede teslim", value: pct(k.first_attempt_rate), sub: `${k.first_attempt_delivered}/${k.delivered_count} sipariş` },
               { label: "Teslim edildi", value: String(k.delivered), sub: `son ${days} gün` },
               { label: "Teslim edilemedi", value: String(k.failed), sub: `${k.failed_not_courier_fault} kurye dışı` },
             ].map((t) => (
-              <div key={t.label} className="bg-white px-6 py-4 dark:bg-slate-900">
-                <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">
+              <div key={t.label} className="bg-white px-6 py-4 ">
+                <p className="text-2xl font-semibold tabular-nums text-slate-900 ">
                   {t.value}
                 </p>
-                <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">{t.label}</p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">{t.sub}</p>
+                <p className="mt-1 text-xs font-medium text-slate-600 ">{t.label}</p>
+                <p className="text-xs text-slate-400 ">{t.sub}</p>
               </div>
             ))}
           </div>
 
-          <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-800">
+          <div className="border-t border-slate-100 px-6 py-4 ">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                   Teslimat memnuniyeti
                 </p>
                 {k.satisfaction_rate == null ? (
-                  <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">henüz veri yok</p>
+                  <p className="mt-1 text-sm text-slate-400 ">henüz veri yok</p>
                 ) : (
-                  <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">
+                  <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 ">
                     👍 {pct(k.satisfaction_rate)}
                   </p>
                 )}
               </div>
-              <p className="text-sm tabular-nums text-slate-500 dark:text-slate-400">
+              <p className="text-sm tabular-nums text-slate-500 ">
                 👍 {k.feedback_up} · 👎 {k.feedback_down}
               </p>
             </div>
@@ -332,22 +332,22 @@ export default function DeliveryPerformancePage() {
       )}
 
       {/* Son değerlendirmeler — 👎 önce; siparişe link (aksiyon zinciri kopmasın) */}
-      <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-800">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+      <div className="border-t border-slate-100 px-6 py-4 ">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
           Son değerlendirmeler
         </p>
         {feedbackQuery.isError ? (
-          <p className="mt-2 text-sm text-rose-600 dark:text-rose-400">
+          <p className="mt-2 text-sm text-rose-600 ">
             Değerlendirmeler yüklenemedi.
           </p>
         ) : recentFeedback.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">Henüz değerlendirme yok.</p>
+          <p className="mt-2 text-sm text-slate-400 ">Henüz değerlendirme yok.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="mt-2 divide-y divide-slate-100 ">
             {recentFeedback.map((item) => (
               <li key={item.id} className="py-3 first:pt-1 last:pb-0">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                  <p className="text-sm font-medium text-slate-800 ">
                     {item.thumbs_up ? "👍" : "👎"}{" "}
                     <Link
                       to={`${ROUTES.adminStoreOrders}?q=${item.order_id}`}
@@ -359,7 +359,7 @@ export default function DeliveryPerformancePage() {
                   </p>
                   <time
                     dateTime={item.created_at}
-                    className="text-xs tabular-nums text-slate-400 dark:text-slate-500"
+                    className="text-xs tabular-nums text-slate-400 "
                   >
                     {new Date(item.created_at).toLocaleString("tr-TR", {
                       dateStyle: "medium",
@@ -367,13 +367,13 @@ export default function DeliveryPerformancePage() {
                     })}
                   </time>
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-xs text-slate-500 ">
                   {item.problem_codes.length > 0
                     ? item.problem_codes.map((c) => FEEDBACK_PROBLEM_LABEL[c] ?? c).join(" · ")
                     : "Sorun bildirilmedi"}
                 </p>
                 {item.comment && (
-                  <p className="mt-1 text-sm leading-5 text-slate-700 dark:text-slate-300">
+                  <p className="mt-1 text-sm leading-5 text-slate-700 ">
                     {item.comment}
                   </p>
                 )}

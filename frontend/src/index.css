@@ -109,12 +109,11 @@
    * `docs/medusa-arayuz-karsilastirma.md` §2.2 onu isimle işaretlemişti.
    *
    * İP-B1 onu SİLMEDİ, TAMAMLADI: aşağıdaki küme Medusa'nın indirection
-   * desenini uygular (semantik ad → CSS değişkeni → `.dark` altında aynı adın
-   * yeniden tanımı) ve `tailwind.config.js` → `theme.extend.colors.panel`
-   * üzerinden sınıf hâline gelir. Bileşen `bg-panel-surface` yazar; `dark:`
-   * ikizini YAZMAZ. Bugün panelde 891 elle yazılmış `dark:` sınıfı var ve
-   * her biri unutulabilecek ikinci bir yazımdır (`AdminStore.tsx:1958` zaten
-   * unutulmuştu).
+   * desenini uygular (semantik ad → CSS değişkeni) ve `tailwind.config.js` →
+   * `theme.extend.colors.panel` üzerinden sınıf hâline gelir. Bileşen
+   * `bg-panel-surface` yazar. (Tarihçe: değişkenlerin `.dark` altında koyu
+   * yeniden tanımı vardı; dark mode CMS turunda ürün kararıyla SÖKÜLDÜ —
+   * site tek temadır, `dark:` sınıfı yazılmaz ve nöbetçisi vardır.)
    *
    * Değerler BOŞLUKLU RGB üçlüsüdür, hex değil: köprü
    * `rgb(var(--x) / <alpha-value>)` biçimini kullanır ve ancak bu biçimde
@@ -173,49 +172,6 @@
     --panel-attention-soft: 253 241 225;/* rozet zemini */
     --panel-attention-fg: 124 45 18;    /* rozet metni */
   }
-  .dark {
-    --panel-bg: 2 6 23;                 /* slate-950 */
-    --panel-surface: 15 23 42;          /* slate-900 */
-    --panel-surface-subtle: 2 6 23;     /* slate-950 */
-    --panel-surface-hover: 30 41 59;    /* slate-800 */
-    --panel-border: 30 41 59;           /* slate-800 */
-    --panel-border-strong: 51 65 85;    /* slate-700 */
-    /* ── KOYU TEMA DEĞERLERİ GERÇEK CHROME'DA ÖLÇÜLDÜ (İP-B1 · Görev 5) ──
-     *
-     * İlk yazımda `fg-muted: slate-400` / `fg-subtle: slate-500` /
-     * `accent-soft: indigo-900` vardı ve tur iki eşik ihlali ölçtü:
-     *   • etkin gezinme öğesi (indigo-400 ÜZERİNE indigo-900): **3,83** — AA
-     *     eşiği 4,5 ve metin 14 px (büyük metin muafiyeti YOK).
-     *   • `fg-subtle` (slate-500 ÜZERİNE slate-900): **3,75** — arama
-     *     öğesinin "Ara" metni ve tuş rozeti bu seviyede yazılıyor.
-     *
-     * Seçilen değerler yeniden ölçüldü: accent-soft indigo-950 → **5,36**;
-     * fg-subtle slate-400 → **6,96**; fg-muted slate-300 → **12,02**.
-     * Üç seviye birbirinden hâlâ ayırt edilebilir (12 / 7 / kontrastsız
-     * yüzey), yani hiyerarşi korunuyor.
-     */
-    --panel-fg: 248 250 252;            /* slate-50  */
-    --panel-fg-muted: 203 213 225;      /* slate-300 · 12,02 */
-    --panel-fg-subtle: 148 163 184;     /* slate-400 · 6,96  */
-    /* Koyu temada #1A365D KULLANILAMAZ: slate-900 yüzeyin üstünde kontrastı
-     * 1,3'tür — düğme zeminden ayırt edilemez. Aksan aynı renk AİLESİNİN
-     * açık ucuna taşınır (lacivertin ton eğrisi korunur, kimlik kaybolmaz).
-     *
-     * Ölçülen (gerçek Chrome):
-     *   #8AB0DE / slate-900          = 7,94   (etkin gezinme metni)
-     *   slate-950 metin / #8AB0DE    = 8,98   (birincil düğme)
-     *   #8AB0DE / #152944            = 6,52   (etkin satır zemini)
-     *   #F6AD55 metin / #422006      = 7,65   (dikkat rozeti)
-     */
-    --panel-accent: 138 176 222;        /* #8AB0DE · 7,94 */
-    --panel-accent-fg: 2 6 23;          /* slate-950 · 8,98 */
-    --panel-accent-soft: 21 41 68;      /* #152944 · 6,52 */
-    --panel-focus: 138 176 222;
-
-    --panel-attention: 246 173 85;      /* #F6AD55 — iki temada da AYNI */
-    --panel-attention-soft: 66 32 6;    /* #422006 */
-    --panel-attention-fg: 246 173 85;   /* koyu zeminde turuncu METİN · 7,65 */
-  }
   html {
     scroll-behavior: smooth;
     /* ── YEREL WIDGET ŞEMASI: TEK NOKTA (İP-A8 · Görev 6 · B-9 / SK-6) ──
@@ -239,9 +195,6 @@
      */
     color-scheme: light;
   }
-  html.dark {
-    color-scheme: dark;
-  }
   /* ── PANEL BAŞLIK TİPOGRAFİSİ: TEK KURAL (İP-B2 · Ç-3 · §1.4) ──
    *
    * `panel-kok` sınıfı yalnız `AdminLayout`un kök `<div>`ünde durur; yani
@@ -262,7 +215,7 @@
     font-family: theme("fontFamily.display");
   }
   body {
-    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100;
+    @apply bg-slate-50 text-slate-900 antialiased;
     font-feature-settings: "cv11", "ss01";
     text-rendering: optimizeLegibility;
   }
@@ -276,7 +229,7 @@
      temada kenarlık 4,0 ile geçiyordu, açık temada geçmiyordu.
      `indigo-500` gerçek Chrome'da **4,47:1**. */
   .input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100;
   }
 }
 
@@ -434,15 +387,9 @@ path.district-poly {
   transition: background-color 0.2s ease;
 }
 
-.dark .btn-neon-hover::after {
-  background-color: theme("colors.slate.800");
-}
 
 .btn-neon-hover:hover::after {
   background-color: theme("colors.slate.50");
-}
-.dark .btn-neon-hover:hover::after {
-  background-color: theme("colors.slate.900");
 }
 
 /* ── Çift-uçlu fiyat aralığı slider'ı (Airbnb tarzı) ──
@@ -498,14 +445,6 @@ path.district-poly {
 }
 .price-range__input::-moz-range-track {
   background: transparent;
-}
-.dark .price-range__input::-webkit-slider-thumb {
-  background: theme("colors.slate.100");
-  border-color: theme("colors.slate.500");
-}
-.dark .price-range__input::-moz-range-thumb {
-  background: theme("colors.slate.100");
-  border-color: theme("colors.slate.500");
 }
 
 /* Fatura yazdırma: yalnız #order-invoice basılır; tema fark etmeksizin beyaz

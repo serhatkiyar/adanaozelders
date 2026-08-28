@@ -63,14 +63,14 @@ export default function ContactPage() {
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
         <header>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             İletişim
           </h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-slate-500 ">
             Sorunun cevabı{" "}
             <Link
               to={ROUTES.faq}
-              className="font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+              className="font-medium text-indigo-600 underline-offset-2 hover:underline "
             >
               sıkça sorulan sorularda
             </Link>{" "}
@@ -80,11 +80,11 @@ export default function ContactPage() {
 
         <div className="mt-8 grid gap-8 sm:grid-cols-[1fr_auto]">
           {sent ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950/40">
-              <h2 className="text-base font-semibold text-emerald-800 dark:text-emerald-300">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 ">
+              <h2 className="text-base font-semibold text-emerald-800 ">
                 Mesajın bize ulaştı
               </h2>
-              <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">
+              <p className="mt-1 text-sm text-emerald-700 ">
                 En kısa sürede <strong>{email}</strong> adresine dönüş yapacağız.
               </p>
               <button
@@ -94,7 +94,7 @@ export default function ContactPage() {
                   setSubject("");
                   setMessage("");
                 }}
-                className="mt-4 text-sm font-medium text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-300"
+                className="mt-4 text-sm font-medium text-emerald-800 underline-offset-2 hover:underline "
               >
                 Yeni mesaj yaz
               </button>
@@ -103,7 +103,7 @@ export default function ContactPage() {
             <form onSubmit={submit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <span className="text-sm font-medium text-slate-700 ">
                     Adın <span className="text-red-500">*</span>
                   </span>
                   <input
@@ -112,11 +112,11 @@ export default function ContactPage() {
                     maxLength={100}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                   />
                 </label>
                 <label className="block">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <span className="text-sm font-medium text-slate-700 ">
                     E-postan <span className="text-red-500">*</span>
                   </span>
                   <input
@@ -124,13 +124,13 @@ export default function ContactPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                   />
                 </label>
               </div>
 
               <label className="block">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                <span className="text-sm font-medium text-slate-700 ">
                   Konu <span className="text-red-500">*</span>
                 </span>
                 <input
@@ -140,12 +140,12 @@ export default function ContactPage() {
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="Örn. 1024 numaralı siparişim hakkında"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                 />
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                <span className="text-sm font-medium text-slate-700 ">
                   Mesajın <span className="text-red-500">*</span>
                 </span>
                 <textarea
@@ -155,9 +155,9 @@ export default function ContactPage() {
                   rows={6}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                 />
-                <span className="mt-1 block text-xs text-slate-400 dark:text-slate-500">
+                <span className="mt-1 block text-xs text-slate-400 ">
                   {message.length}/4000
                 </span>
               </label>
@@ -173,24 +173,24 @@ export default function ContactPage() {
           )}
 
           <aside className="sm:w-56">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               Bilgilerimiz
             </h2>
             <dl className="mt-3 space-y-3 text-sm">
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">İşletme</dt>
-                <dd className="text-slate-800 dark:text-slate-200">{OPERATOR.entity}</dd>
+                <dt className="text-slate-500 ">İşletme</dt>
+                <dd className="text-slate-800 ">{OPERATOR.entity}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Adres</dt>
-                <dd className="text-slate-800 dark:text-slate-200">{OPERATOR.address}</dd>
+                <dt className="text-slate-500 ">Adres</dt>
+                <dd className="text-slate-800 ">{OPERATOR.address}</dd>
               </div>
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">E-posta</dt>
+                <dt className="text-slate-500 ">E-posta</dt>
                 <dd>
                   <a
                     href={`mailto:${OPERATOR.email}`}
-                    className="text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                    className="text-indigo-600 underline-offset-2 hover:underline "
                   >
                     {OPERATOR.email}
                   </a>
@@ -198,11 +198,11 @@ export default function ContactPage() {
               </div>
               {/* Mesafeli satışta erişilebilir telefon zorunludur. */}
               <div>
-                <dt className="text-slate-500 dark:text-slate-400">Telefon</dt>
+                <dt className="text-slate-500 ">Telefon</dt>
                 <dd>
                   <a
                     href={`tel:${OPERATOR.phoneHref}`}
-                    className="text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                    className="text-indigo-600 underline-offset-2 hover:underline "
                   >
                     {OPERATOR.phone}
                   </a>

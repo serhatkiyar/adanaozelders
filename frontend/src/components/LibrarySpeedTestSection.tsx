@@ -14,7 +14,7 @@ import { toast } from "@/store/toastStore";
 import type { SpeedTestResult } from "@/types";
 
 const cardCls =
-  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700";
+  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ";
 
 const PHASE_LABEL: Record<SpeedTestPhase, string> = {
   ping: "Gecikme ölçülüyor…",
@@ -63,11 +63,11 @@ export function LibrarySpeedTestSection({
   return (
     <div className={cardCls}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 ">
           İnternet Hızı
         </h2>
         {hasStats && (
-          <span className="text-xs text-slate-400 dark:text-slate-500">
+          <span className="text-xs text-slate-400 ">
             {stats!.count} ölçüm
           </span>
         )}
@@ -81,12 +81,12 @@ export function LibrarySpeedTestSection({
           <Metric label="Gecikme" value={formatPing(stats!.avg_ping_ms)} />
         </div>
       ) : (
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <p className="text-sm text-slate-500 ">
           Henüz hız testi yapılmamış. İlk ölçümü sen yap!
         </p>
       )}
 
-      <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+      <p className="mt-1.5 text-[11px] text-slate-400 ">
         Cloudflare ile ölçülür — genel internet hızı (kullanıcı ölçümlerinin ortalaması).
       </p>
 
@@ -101,8 +101,8 @@ export function LibrarySpeedTestSection({
 
       {/* Senin ölçümün */}
       {!running && result && (
-        <div className="mt-4 rounded-xl bg-indigo-50 px-4 py-3 dark:bg-indigo-500/10">
-          <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+        <div className="mt-4 rounded-xl bg-indigo-50 px-4 py-3 ">
+          <p className="text-xs font-semibold text-indigo-700 ">
             Senin ölçümün
           </p>
           <div className="mt-2 grid grid-cols-3 gap-2">
@@ -117,7 +117,7 @@ export function LibrarySpeedTestSection({
         type="button"
         onClick={run}
         disabled={running}
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 "
       >
         {running ? (
           <>
@@ -137,7 +137,7 @@ export function LibrarySpeedTestSection({
         )}
       </button>
       {!canRecord && (
-        <p className="mt-2 text-center text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="mt-2 text-center text-[11px] text-slate-400 ">
           Testi herkes çalıştırabilir; sonucu kaydetmek için öğrenci girişi gerekir.
         </p>
       )}
@@ -159,13 +159,13 @@ function Metric({
       <p
         className={`text-sm font-bold ${
           accent
-            ? "text-indigo-700 dark:text-indigo-200"
-            : "text-slate-900 dark:text-white"
+            ? "text-indigo-700 "
+            : "text-slate-900 "
         }`}
       >
         {value}
       </p>
-      <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="mt-0.5 text-[11px] text-slate-400 ">{label}</p>
     </div>
   );
 }

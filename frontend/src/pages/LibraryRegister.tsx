@@ -88,10 +88,10 @@ export default function LibraryRegister() {
       />
       <div className="mx-auto max-w-2xl px-4 py-10">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-slate-900 ">
             Kütüphaneni listele
           </h1>
-          <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500 dark:text-slate-400">
+          <p className="mx-auto mt-2 max-w-lg text-sm text-slate-500 ">
             Çalışma mekânını platforma ekle; bölgendeki öğrencilere görün, deneme
             oturumları ve çalışma alanı rezervasyonu sun. Başvurun{" "}
             <strong>admin onayından</strong> sonra yayına girer.
@@ -100,7 +100,7 @@ export default function LibraryRegister() {
 
         <form
           onSubmit={handleSubmit}
-          className="mt-8 space-y-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700 sm:p-8"
+          className="mt-8 space-y-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8"
         >
           {/* Mekân bilgisi */}
           <fieldset className="space-y-4">
@@ -129,7 +129,7 @@ export default function LibraryRegister() {
               label="Konum"
               hint="Haritada arayıp tam noktanı işaretle — haritada bulunman ve yol tarifi için önemli."
             >
-              <div className="h-64 overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 [&_.map-picker-root]:h-full">
+              <div className="h-64 overflow-hidden rounded-xl ring-1 ring-slate-200 [&_.map-picker-root]:h-full">
                 <MapPicker
                   initialLat={loc.lat}
                   initialLng={loc.lng}
@@ -139,7 +139,7 @@ export default function LibraryRegister() {
                 />
               </div>
               {loc.lat != null && loc.lng != null && (
-                <p className="mt-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <p className="mt-1.5 text-xs font-medium text-emerald-600 ">
                   ✓ Konum işaretlendi{loc.text ? ` · ${loc.text}` : ""}
                 </p>
               )}
@@ -147,7 +147,7 @@ export default function LibraryRegister() {
           </fieldset>
 
           {/* Operatör hesabı */}
-          <fieldset className="space-y-4 border-t border-slate-100 pt-6 dark:border-slate-700">
+          <fieldset className="space-y-4 border-t border-slate-100 pt-6 ">
             <legend className="text-sm font-bold uppercase tracking-wide text-slate-400">
               Yönetici Hesabın
             </legend>
@@ -168,7 +168,7 @@ export default function LibraryRegister() {
           </fieldset>
 
           {mutation.isError && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ">
               {getErrorMessage(mutation.error, "Kayıt başarısız.")}
             </p>
           )}
@@ -181,9 +181,9 @@ export default function LibraryRegister() {
             {mutation.isPending ? "Gönderiliyor…" : "Başvuruyu gönder"}
           </button>
 
-          <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-center text-xs text-slate-400 ">
             Zaten hesabın var mı?{" "}
-            <Link to={ROUTES.login} className="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+            <Link to={ROUTES.login} className="font-semibold text-indigo-600 hover:underline ">
               Giriş yap
             </Link>
           </p>
@@ -206,12 +206,12 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+      <span className="mb-1 block text-sm font-semibold text-slate-700 ">
         {label}
         {required && <span className="ml-0.5 text-rose-500">*</span>}
       </span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-slate-400 dark:text-slate-500">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-slate-400 ">{hint}</span>}
     </label>
   );
 }

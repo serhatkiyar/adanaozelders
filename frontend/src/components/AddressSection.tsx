@@ -59,13 +59,13 @@ export function AddressSection() {
     );
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+          <h3 className="text-sm font-semibold text-slate-900 ">
             Kayıtlı Adreslerim
           </h3>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-sm text-slate-500 ">
             Yüzyüze rezervasyonda her seferinde adres yazma; buradan yönet.
           </p>
         </div>
@@ -76,7 +76,7 @@ export function AddressSection() {
               setEditingId(null);
               setAdding(true);
             }}
-            className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+            className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
           >
             + Ekle
           </button>
@@ -85,7 +85,7 @@ export function AddressSection() {
 
       <div className="mt-5 space-y-3">
         {isLoading ? (
-          <div className="h-12 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />
+          <div className="h-12 animate-pulse rounded-xl bg-slate-100 " />
         ) : (
           <>
             {list.map((addr) =>
@@ -125,7 +125,7 @@ export function AddressSection() {
             )}
 
             {!adding && list.length === 0 && (
-              <p className="text-sm italic text-slate-400 dark:text-slate-500">
+              <p className="text-sm italic text-slate-400 ">
                 Henüz kayıtlı adresin yok. Eklediğin adresler yüzyüze rezervasyonda
                 tek tıkla seçilebilir.
               </p>

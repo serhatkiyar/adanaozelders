@@ -66,8 +66,8 @@ export function BulkImportPanel({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-700">
-      <p className="text-slate-600 dark:text-slate-300">
+    <div className="mt-4 rounded-xl border border-slate-200 p-4 text-sm ">
+      <p className="text-slate-600 ">
         CSV ile toplu ürün ekle. İlk satır başlık olmalı; <b>title</b>, <b>price</b> ve{" "}
         <b>tax_rate</b> zorunlu. KDV oranını <b>oran</b> olarak yazın (0.20 = %20);
         oransız satırlar oluşturulmaz ve aşağıda tek tek raporlanır. Aynı ISBN varsa
@@ -93,7 +93,7 @@ export function BulkImportPanel({ onDone }: { onDone: () => void }) {
                 setResult(null);
                 setDosyaUyarisi(false);
               }}
-              className="text-sm text-slate-600 dark:text-slate-300"
+              className="text-sm text-slate-600 "
             />
           </Form.Control>
         </Form.Item>
@@ -102,18 +102,18 @@ export function BulkImportPanel({ onDone }: { onDone: () => void }) {
         </Button>
       </div>
       {dosyaUyarisi && (
-        <p role="alert" className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+        <p role="alert" className="mt-1 text-xs text-rose-600 ">
           Önce içe aktarılacak CSV dosyasını seçin.
         </p>
       )}
 
       {result && (
-        <div className="mt-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900/50">
-          <p className="font-medium text-slate-800 dark:text-slate-200">
+        <div className="mt-3 rounded-lg bg-slate-50 p-3 ">
+          <p className="font-medium text-slate-800 ">
             {result.created} eklendi · {result.skipped} atlandı · {result.errors.length} hata
           </p>
           {result.errors.length > 0 && (
-            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs text-rose-600 dark:text-rose-400">
+            <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs text-rose-600 ">
               {result.errors.map((er) => (
                 <li key={er.row}>
                   Satır {er.row}: {er.message}

@@ -52,7 +52,7 @@ export function NotificationsBell() {
         aria-label="Bildirimler"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 "
       >
         <svg
           viewBox="0 0 24 24"
@@ -69,23 +69,23 @@ export function NotificationsBell() {
           />
         </svg>
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white ">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-80 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+        <div className="absolute right-0 top-full z-40 mt-2 w-80 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 ">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 ">
+            <p className="text-sm font-semibold text-slate-900 ">
               Bildirimler
             </p>
             {unread > 0 && (
               <button
                 type="button"
                 onClick={() => markAll.mutate()}
-                className="text-xs font-medium text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
+                className="text-xs font-medium text-indigo-600 transition hover:text-indigo-700 "
               >
                 Tümünü okundu işaretle
               </button>
@@ -98,28 +98,28 @@ export function NotificationsBell() {
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50"
+                    className="h-12 animate-pulse rounded-lg bg-slate-100 "
                   />
                 ))}
               </div>
             ) : !items || items.length === 0 ? (
               <div className="px-4 py-10 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl dark:bg-slate-700">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl ">
                   🔔
                 </div>
-                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-3 text-sm text-slate-500 ">
                   Henüz bildirim yok
                 </p>
               </div>
             ) : (
-              <ul className="divide-y divide-slate-50 dark:divide-slate-700/60">
+              <ul className="divide-y divide-slate-50 ">
                 {items.map((n) => (
                   <li key={n.id}>
                     <button
                       type="button"
                       onClick={() => handleItem(n)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-slate-700/40 ${
-                        n.is_read ? "" : "bg-indigo-50/50 dark:bg-indigo-500/5"
+                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${
+                        n.is_read ? "" : "bg-indigo-50/50 "
                       }`}
                     >
                       <span
@@ -128,10 +128,10 @@ export function NotificationsBell() {
                         }`}
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm leading-snug text-slate-700 dark:text-slate-200">
+                        <span className="block text-sm leading-snug text-slate-700 ">
                           {n.message}
                         </span>
-                        <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">
+                        <span className="mt-0.5 block text-xs text-slate-400 ">
                           {formatDateTime(n.created_at)}
                         </span>
                       </span>
@@ -143,11 +143,11 @@ export function NotificationsBell() {
           </div>
 
           {/* ── Tüm bildirimleri gör — özel sayfaya yönlendir ── */}
-          <div className="border-t border-slate-100 dark:border-slate-700">
+          <div className="border-t border-slate-100 ">
             <Link
               to={ROUTES.notifications}
               onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-indigo-600 transition hover:bg-slate-50 dark:text-indigo-400 dark:hover:bg-slate-700/40"
+              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-indigo-600 transition hover:bg-slate-50 "
             >
               Tüm bildirimleri gör
               <svg

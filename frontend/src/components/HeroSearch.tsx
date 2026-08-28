@@ -63,9 +63,9 @@ export function BigSearch({
         onSubmit={onSubmit}
         // focus-within halkası: `outline-none` verilen girdide klavye
         // kullanıcısına "buradasın" işareti kalmıyordu; halka forma taşındı.
-        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-indigo-400 focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-indigo-500/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] dark:border-slate-700 dark:bg-slate-800 dark:shadow-none dark:focus-within:border-indigo-500"
+        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-indigo-400 focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-indigo-500/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
       >
-        <div className="flex shrink-0 items-center gap-2 rounded-full py-2.5 pl-4 pr-3 transition hover:bg-slate-50 dark:hover:bg-slate-700/40">
+        <div className="flex shrink-0 items-center gap-2 rounded-full py-2.5 pl-4 pr-3 transition hover:bg-slate-50 ">
           <PinIconSvg />
           <DistrictSelect
             value={district}
@@ -73,11 +73,11 @@ export function BigSearch({
             remote={remote}
             onRemoteChange={setRemote}
             showRemoteOption={showRemoteOption}
-            triggerClassName="flex cursor-pointer items-center gap-1 bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+            triggerClassName="flex cursor-pointer items-center gap-1 bg-transparent text-sm font-medium text-slate-700 outline-none "
           />
         </div>
 
-        <div className="h-7 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
+        <div className="h-7 w-px shrink-0 bg-slate-200 " />
 
         <input
           type="text"
@@ -89,7 +89,7 @@ export function BigSearch({
           // Görsel etiket yok (placeholder tasarımın parçası); ekran okuyucu
           // için erişilebilir ad aria-label ile verilir.
           aria-label={placeholder}
-          className="min-w-0 flex-1 bg-transparent px-5 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
+          className="min-w-0 flex-1 bg-transparent px-5 text-sm text-slate-900 outline-none placeholder:text-slate-400 "
         />
 
         <button
@@ -103,8 +103,8 @@ export function BigSearch({
 
       {/* Trend aramalar popover */}
       {trending && focused && !q.trim() && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-          <p className="flex items-center gap-1.5 px-4 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 ">
+          <p className="flex items-center gap-1.5 px-4 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ">
             <TrendIconSvg />
             Trend aramalar
           </p>
@@ -117,7 +117,7 @@ export function BigSearch({
                 setQ(t);
                 setFocused(false);
               }}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
             >
               <span className="shrink-0 text-slate-400">
                 <SearchIconSvg className="h-4 w-4" />
@@ -163,21 +163,21 @@ export function CompactSearch({
       type="button"
       onClick={onOpen}
       aria-label="Aramayı aç"
-      className="flex w-[460px] max-w-[82vw] items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-2.5 pr-1.5 shadow-[0_1px_8px_rgba(15,23,42,0.10)] transition hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+      className="flex w-[460px] max-w-[82vw] items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-2.5 pr-1.5 shadow-[0_1px_8px_rgba(15,23,42,0.10)] transition hover:shadow-md "
     >
       {/* Seçili kategori ikonu */}
       <img src={meta.icon} alt={meta.label} className="h-7 w-7 shrink-0 object-contain" />
 
       {/* İlçe etiketi */}
-      <span className={`shrink-0 text-sm ${district.length > 0 || remote ? "font-semibold text-slate-800 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"}`}>
+      <span className={`shrink-0 text-sm ${district.length > 0 || remote ? "font-semibold text-slate-800 " : "text-slate-500 "}`}>
         {districtLabel}
       </span>
 
       {/* Ayraç */}
-      <div className="h-5 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
+      <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
       {/* Arama yazısı */}
-      <span className={`flex-1 truncate text-left text-sm ${q ? "text-slate-800 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}>
+      <span className={`flex-1 truncate text-left text-sm ${q ? "text-slate-800 " : "text-slate-400 "}`}>
         {q || placeholder}
       </span>
 

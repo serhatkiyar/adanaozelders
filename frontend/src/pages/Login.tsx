@@ -47,12 +47,12 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Giriş Yap</h1>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 ">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-100 ">
+        <h1 className="text-2xl font-bold text-slate-900 ">Giriş Yap</h1>
 
         {justRegistered && (
-          <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+          <div className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 ">
             Kayıt başarılı. Şimdi giriş yapabilirsin.
           </div>
         )}
@@ -67,7 +67,7 @@ export default function Login() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 placeholder="ornek@eposta.com"
               />
             )}
@@ -82,32 +82,32 @@ export default function Login() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                 placeholder="••••••••"
               />
             )}
           </Field>
 
           <div className="flex items-center justify-between">
-            <label className="flex select-none items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <label className="flex select-none items-center gap-2 text-sm text-slate-600 ">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700"
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-200 "
               />
               Beni hatırla
             </label>
             <Link
               to={ROUTES.forgotPassword}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
             >
               Şifremi unuttum?
             </Link>
           </div>
 
           {mutation.isError && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
               {getErrorMessage(
                 mutation.error,
                 "E-posta veya parola hatalı."
@@ -124,11 +124,11 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-6 text-center text-sm text-slate-500 ">
           Hesabın yok mu?{" "}
           <Link
             to={ROUTES.register}
-            className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="font-semibold text-indigo-600 hover:text-indigo-700 "
           >
             Kayıt ol
           </Link>

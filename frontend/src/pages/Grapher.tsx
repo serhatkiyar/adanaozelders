@@ -3,7 +3,6 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROLE_IDS } from "@/types";
-import { useThemeStore } from "@/store/themeStore";
 import { compile, type CompiledFn } from "@/lib/mathParse";
 import {
   type Viewport,
@@ -56,12 +55,10 @@ interface Theme {
   cross: string;
 }
 const LIGHT: Theme = { bg: "#ffffff", grid: "#eef2f7", axis: "#94a3b8", tick: "#64748b", cross: "#94a3b8" };
-const DARK: Theme = { bg: "#0f172a", grid: "#1e293b", axis: "#475569", tick: "#94a3b8", cross: "#64748b" };
 
 export default function Grapher() {
   const { data: user } = useCurrentUser();
   const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
-  const theme = useThemeStore((s) => s.theme);
 
   const initial = useRef(loadPersisted());
   const [functions, setFunctions] = useState<FnRow[]>(initial.current.functions);
@@ -100,7 +97,7 @@ export default function Grapher() {
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const palette = theme === "dark" ? DARK : LIGHT;
+    const palette = LIGHT;
     const dpr = window.devicePixelRatio || 1;
     const cssW = canvas.clientWidth;
     const cssH = canvas.clientHeight;
@@ -244,7 +241,7 @@ export default function Grapher() {
       let by = cursor.py + 8;
       if (bx + w > cssW) bx = cursor.px - w - 8;
       if (by + 22 > cssH) by = cursor.py - 26;
-      ctx.fillStyle = theme === "dark" ? "rgba(15,23,42,0.9)" : "rgba(255,255,255,0.9)";
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.fillRect(bx, by, w, 20);
       ctx.strokeStyle = palette.axis;
       ctx.strokeRect(bx, by, w, 20);
@@ -253,7 +250,7 @@ export default function Grapher() {
       ctx.textBaseline = "middle";
       ctx.fillText(label, bx + 6, by + 10);
     }
-  }, [view, functions, compiled, showRoots, cursor, theme]);
+  }, [view, functions, compiled, showRoots, cursor]);
 
   // Çiz + boyut değişiminde yeniden çiz
   useEffect(() => {
@@ -340,19 +337,19 @@ export default function Grapher() {
   return (
     <DashboardShell title="Grafik Çizici" navItems={navItems}>
       <div className="mx-auto max-w-6xl">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Grafik Çizici</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <h1 className="text-2xl font-bold text-slate-900 ">Grafik Çizici</h1>
+        <p className="mt-1 text-sm text-slate-500 ">
           Fonksiyon yaz, grafiğini gör. Sürükleyerek kaydır, tekerlekle yakınlaştır,
-          görseli indir. Örn: <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">x^2-3</code>,{" "}
-          <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">sin(x)</code>,{" "}
-          <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">2x+1</code>
+          görseli indir. Örn: <code className="rounded bg-slate-100 px-1 ">x^2-3</code>,{" "}
+          <code className="rounded bg-slate-100 px-1 ">sin(x)</code>,{" "}
+          <code className="rounded bg-slate-100 px-1 ">2x+1</code>
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[320px_1fr]">
           {/* Sol panel: fonksiyonlar + kontroller */}
           <div className="flex flex-col gap-4">
-            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 ">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Fonksiyonlar
               </h2>
               <div className="mt-3 space-y-3">
@@ -362,7 +359,7 @@ export default function Grapher() {
                       <button
                         onClick={() => toggleVisible(f.id)}
                         title={f.visible ? "Gizle" : "Göster"}
-                        className="h-4 w-4 shrink-0 rounded-full ring-2 ring-offset-1 ring-offset-white transition dark:ring-offset-slate-800"
+                        className="h-4 w-4 shrink-0 rounded-full ring-2 ring-offset-1 ring-offset-white transition "
                         style={{
                           backgroundColor: f.visible ? f.color : "transparent",
                           // @ts-expect-error CSS değişkeni
@@ -375,7 +372,7 @@ export default function Grapher() {
                         onChange={(e) => updateExpr(f.id, e.target.value)}
                         spellCheck={false}
                         placeholder="örn. x^2"
-                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
                       />
                       <button
                         onClick={() => removeFn(f.id)}
@@ -396,7 +393,7 @@ export default function Grapher() {
               </div>
               <button
                 onClick={addFn}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-semibold text-slate-500 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-slate-600 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:text-indigo-400"
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-semibold text-slate-500 transition hover:border-indigo-400 hover:text-indigo-600 "
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
@@ -405,9 +402,9 @@ export default function Grapher() {
               </button>
             </div>
 
-            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 ">
               <label className="flex cursor-pointer items-center justify-between">
-                <span className="text-sm text-slate-600 dark:text-slate-300">Kökleri göster</span>
+                <span className="text-sm text-slate-600 ">Kökleri göster</span>
                 <input
                   type="checkbox"
                   checked={showRoots}
@@ -418,7 +415,7 @@ export default function Grapher() {
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => setView(DEFAULT_VIEW)}
-                  className="flex-1 rounded-xl bg-slate-100 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                  className="flex-1 rounded-xl bg-slate-100 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 "
                 >
                   Görünümü sıfırla
                 </button>
@@ -436,7 +433,7 @@ export default function Grapher() {
           </div>
 
           {/* Canvas */}
-          <div className="overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+          <div className="overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-100 ">
             <canvas
               ref={canvasRef}
               className="h-[520px] w-full touch-none cursor-crosshair select-none"

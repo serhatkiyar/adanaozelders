@@ -45,10 +45,10 @@ function StatBox({
 }) {
   const cls = TONE[tone];
   return (
-    <div className={`rounded-2xl bg-white p-5 shadow-sm ring-1 dark:bg-slate-800 dark:ring-slate-700 ${cls.ring}`}>
+    <div className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ${cls.ring}`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
             {label}
           </p>
           <p className={`mt-2 text-3xl font-bold ${cls.num}`}>{value}</p>
@@ -82,12 +82,12 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
 
   return (
     <div
-      className={`flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 sm:flex-row sm:items-center sm:justify-between dark:bg-slate-800 ${
+      className={`flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 sm:flex-row sm:items-center sm:justify-between ${
         isPending
-          ? "ring-amber-200 dark:ring-amber-700/40"
+          ? "ring-amber-200 "
           : isAccepted
-          ? "ring-indigo-100 dark:ring-indigo-700/30"
-          : "ring-slate-100 dark:ring-slate-700"
+          ? "ring-indigo-100 "
+          : "ring-slate-100 "
       }`}
     >
       <Link
@@ -96,15 +96,15 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       >
         <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400">
+          <p className="truncate text-sm font-semibold text-slate-900 hover:text-indigo-600 ">
             {clientName}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             {formatRange(booking.start_at, booking.end_at)}
             {price !== null && ` · ${formatTRY(booking.price)}`}
           </p>
           {booking.notes && (
-            <p className="mt-1.5 line-clamp-2 text-xs italic text-slate-400 dark:text-slate-500">
+            <p className="mt-1.5 line-clamp-2 text-xs italic text-slate-400 ">
               "{booking.notes}"
             </p>
           )}
@@ -114,7 +114,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       <div className="flex shrink-0 items-center gap-2">
         <Link
           to={ROUTES.lesson(booking.id)}
-          className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
+          className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 "
         >
           Detay →
         </Link>
@@ -130,7 +130,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
             <button
               disabled={busy}
               onClick={() => run(reject, "Ders talebi reddedildi.")}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 "
             >
               {reject.isPending ? "…" : "Reddet"}
             </button>
@@ -148,7 +148,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
               ) : (
                 <span
                   title="Canlı ders, başlangıçtan 15 dk önce açılır."
-                  className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                  className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 "
                 >
                   🎥 Ders saatinde açılır
                 </span>
@@ -164,7 +164,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
             <button
               disabled={busy}
               onClick={() => setShowCancel(true)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 "
             >
               İptal
             </button>
@@ -210,25 +210,25 @@ function BookingSection({
   return (
     <section>
       <div className="flex items-center gap-3">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+        <h2 className="text-base font-semibold text-slate-900 ">
           {title}
         </h2>
         <span
           className={`flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-1.5 text-xs font-bold text-white ${
-            alert ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600"
+            alert ? "bg-amber-500" : "bg-slate-300 "
           }`}
         >
           {bookings.length}
         </span>
         {alert && (
-          <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600 ">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
             Aksiyon bekleniyor
           </span>
         )}
       </div>
       {hint && (
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</p>
+        <p className="mt-1 text-xs text-slate-500 ">{hint}</p>
       )}
       <div className="mt-3 space-y-3">
         {bookings.map((b) => (
@@ -273,27 +273,27 @@ export default function TutorDashboard() {
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100 " />
               ))}
             </div>
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100 " />
             ))}
           </div>
         ) : isError ? (
-          <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-800/30">
+          <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 ">
             <span>⚠</span>
             {getErrorMessage(error, "Ders talepleri yüklenemedi.")}
           </div>
         ) : (data ?? []).length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl dark:bg-slate-800">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">
               📭
             </div>
-            <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <p className="mt-4 text-sm font-medium text-slate-700 ">
               Henüz rezervasyon talebin yok
             </p>
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            <p className="mt-1 text-xs text-slate-400 ">
               İlanın yayında olduğunda öğrenciler seni bulacak.
             </p>
           </div>
@@ -310,26 +310,26 @@ export default function TutorDashboard() {
             {earnings && (
               <Link
                 to={ROUTES.balance}
-                className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-emerald-50 to-white px-5 py-4 ring-1 ring-emerald-100 transition hover:ring-emerald-300 dark:from-emerald-900/10 dark:to-slate-800 dark:ring-emerald-800/30 dark:hover:ring-emerald-700"
+                className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-emerald-50 to-white px-5 py-4 ring-1 ring-emerald-100 transition hover:ring-emerald-300 "
               >
                 <div>
-                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                  <p className="text-xs font-medium text-emerald-700 ">
                     Toplam kazancın (net)
                   </p>
-                  <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                  <p className="text-2xl font-bold text-emerald-700 ">
                     {formatTRY(earnings.released)}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-emerald-600/80 dark:text-emerald-400/80">
+                  <p className="mt-0.5 text-[11px] text-emerald-600/80 ">
                     Bakiyem & işlem dökümü →
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 ">
                     {/* "Emanet" ifadesi ancak kol açıkken (yani alt üye işyeri
                         modeli çalışırken) doğrudur; kapalıyken nötr etiket. */}
                     {escrowWording ? "Emanette bekleyen" : "Bekleyen"}
                   </p>
-                  <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">
+                  <p className="text-lg font-semibold text-slate-700 ">
                     {formatTRY(earnings.pending)}
                   </p>
                 </div>
@@ -338,21 +338,21 @@ export default function TutorDashboard() {
 
             {/* Payout durumu: kurulmamışsa kurmaya yönlendir, kuruluysa IBAN'ı göster */}
             {payout && payout.payout_status === "ACTIVE" ? (
-              <p className="px-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="px-1 text-xs text-slate-500 ">
                 Ödemeler şu hesaba yatar:{" "}
-                <span className="font-mono text-slate-700 dark:text-slate-200">
+                <span className="font-mono text-slate-700 ">
                   {payout.iban_masked}
                 </span>
               </p>
             ) : payout ? (
               <Link
                 to={ROUTES.profile}
-                className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-5 py-3.5 ring-1 ring-indigo-100 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:ring-indigo-800/30"
+                className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-5 py-3.5 ring-1 ring-indigo-100 transition hover:bg-indigo-100 "
               >
-                <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
+                <p className="text-sm font-medium text-indigo-800 ">
                   💳 Ödemeleri alabilmek için <strong>ödeme bilgilerini</strong> ekle (IBAN + kimlik).
                 </p>
-                <span className="shrink-0 text-sm font-bold text-indigo-600 dark:text-indigo-300">
+                <span className="shrink-0 text-sm font-bold text-indigo-600 ">
                   Ekle →
                 </span>
               </Link>
@@ -360,9 +360,9 @@ export default function TutorDashboard() {
 
             {/* Alert banner for pending */}
             {groups.pending.length > 0 && (
-              <div className="flex items-center gap-3 rounded-2xl bg-amber-50 px-5 py-3.5 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:ring-amber-700/30">
+              <div className="flex items-center gap-3 rounded-2xl bg-amber-50 px-5 py-3.5 ring-1 ring-amber-200 ">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-                <p className="text-sm text-amber-800 dark:text-amber-300">
+                <p className="text-sm text-amber-800 ">
                   <span className="font-semibold">{groups.pending.length} yeni talep</span> yanıtını bekliyor.
                 </p>
               </div>

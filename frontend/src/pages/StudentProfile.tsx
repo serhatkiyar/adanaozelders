@@ -33,11 +33,11 @@ export default function StudentProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
           >
             ← Geri dön
           </button>
-          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
+          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
             <p className="text-sm text-slate-500">Öğrenci bulunamadı.</p>
           </div>
         </div>
@@ -60,53 +60,53 @@ export default function StudentProfile() {
       <div className="mx-auto max-w-2xl space-y-5 pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
         >
           ← Geri dön
         </button>
 
         {/* ── Header ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <Avatar name={student.full_name} avatar_url={student.avatar_url} size="lg" />
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+              <h1 className="text-xl font-bold text-slate-900 ">
                 {student.full_name}
               </h1>
-              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-sm text-slate-500 ">
                 @{student.username}
               </p>
               {(age !== null || genderLabel) && (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {age !== null && (
-                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 ">
                       {age} yaş
                     </span>
                   )}
                   {genderLabel && (
-                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 ">
                       {genderLabel}
                     </span>
                   )}
                 </div>
               )}
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 ">
                 <span
                   className={`inline-block h-1.5 w-1.5 rounded-full ${
-                    isOnline ? "bg-emerald-400" : "bg-slate-300 dark:bg-slate-600"
+                    isOnline ? "bg-emerald-400" : "bg-slate-300 "
                   }`}
                 />
                 {isOnline ? "Çevrimiçi" : formatLastSeen(student.last_seen_at)}
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-2">
-              <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-700/50">
+              <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 ">
                 <span className="text-2xl">🎓</span>
                 <div>
-                  <p className="text-lg font-bold leading-none text-slate-900 dark:text-white">
+                  <p className="text-lg font-bold leading-none text-slate-900 ">
                     {student.completed_lessons}
                   </p>
-                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-0.5 text-xs text-slate-500 ">
                     tamamlanan ders
                   </p>
                 </div>
@@ -131,11 +131,11 @@ export default function StudentProfile() {
 
         {/* ── Hakkında ── */}
         {student.about && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               Hakkında
             </h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
               {student.about}
             </p>
           </section>

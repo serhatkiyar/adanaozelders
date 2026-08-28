@@ -18,10 +18,10 @@ export function TruckIcon({ className = "h-5 w-5" }: { className?: string }) {
 }
 
 const RUN_CHIP: Record<string, { dot: string; text: string; bg: string }> = {
-  PLANNED: { dot: "bg-slate-400", text: "text-slate-600 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-800" },
+  PLANNED: { dot: "bg-slate-400", text: "text-slate-600 ", bg: "bg-slate-100 " },
   ACTIVE: { dot: "bg-panel-accent animate-pulse", text: "text-panel-accent", bg: "bg-panel-accent-soft" },
-  DONE: { dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-  CANCELLED: { dot: "bg-rose-500", text: "text-rose-700 dark:text-rose-300", bg: "bg-rose-50 dark:bg-rose-500/10" },
+  DONE: { dot: "bg-emerald-500", text: "text-emerald-700 ", bg: "bg-emerald-50 " },
+  CANCELLED: { dot: "bg-rose-500", text: "text-rose-700 ", bg: "bg-rose-50 " },
 };
 
 export function RunStatusChip({ status }: { status: string }) {
@@ -41,10 +41,10 @@ export function PromiseChip({ date }: { date?: string | null }) {
   const overdue =
     !!date && new Date(`${date}T23:59:59`).getTime() < Date.now() && label !== "bugün";
   const tone = overdue
-    ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+    ? "bg-amber-50 text-amber-700 "
     : label === "bugün"
-      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
-      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300";
+      ? "bg-emerald-50 text-emerald-700 "
+      : "bg-slate-100 text-slate-500 ";
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}>
       Söz: {overdue ? `${label} (gecikti)` : label}
@@ -58,14 +58,14 @@ export function PromiseChip({ date }: { date?: string | null }) {
 export function SeqBadge({ stop }: { stop: DeliveryStop }) {
   const tone =
     stop.status === "DELIVERED"
-      ? "bg-emerald-50 text-emerald-600 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:ring-emerald-500/30"
+      ? "bg-emerald-50 text-emerald-600 ring-emerald-200 "
       : stop.status === "FAILED"
-        ? "bg-rose-50 text-rose-600 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:ring-rose-500/30"
+        ? "bg-rose-50 text-rose-600 ring-rose-200 "
         : stop.status === "RESCHEDULED"
-          ? "bg-amber-50 text-amber-600 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:ring-amber-500/30"
+          ? "bg-amber-50 text-amber-600 ring-amber-200 "
           : stop.status === "CANCELLED"
-            ? "bg-slate-50 text-slate-400 ring-slate-100 dark:bg-slate-800/60 dark:text-slate-500 dark:ring-slate-700"
-            : "bg-white text-slate-500 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-600";
+            ? "bg-slate-50 text-slate-400 ring-slate-100 "
+            : "bg-white text-slate-500 ring-slate-200 ";
   return (
     <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums ring-1 ${tone}`}>
       {stop.status === "DELIVERED" ? (
@@ -83,12 +83,12 @@ export function SeqBadge({ stop }: { stop: DeliveryStop }) {
 export function stopStatusText(stop: DeliveryStop): { label: string; cls: string } {
   const cls =
     stop.status === "DELIVERED"
-      ? "text-emerald-600 dark:text-emerald-400"
+      ? "text-emerald-600 "
       : stop.status === "FAILED"
-        ? "text-rose-600 dark:text-rose-400"
+        ? "text-rose-600 "
         : stop.status === "RESCHEDULED"
-          ? "text-amber-600 dark:text-amber-400"
-          : "text-slate-400 dark:text-slate-500";
+          ? "text-amber-600 "
+          : "text-slate-400 ";
   return {
     label: `${STOP_STATUS_LABEL[stop.status] ?? stop.status}${stop.proof === "ADMIN" ? " · notlu" : ""}`,
     cls,
@@ -115,7 +115,7 @@ export function DeliveryPrefBadge({
   return (
     <span
       title={note ?? undefined}
-      className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+      className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 "
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3 w-3">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />

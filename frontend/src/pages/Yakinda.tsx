@@ -23,7 +23,7 @@ export default function Yakinda() {
         noindex
       />
       <div className="mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
-        <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+        <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
           <svg
             aria-hidden="true"
             viewBox="0 0 24 24"
@@ -37,23 +37,23 @@ export default function Yakinda() {
           </svg>
         </span>
 
-        <h1 className="mt-6 text-2xl font-semibold text-slate-900 dark:text-white">
+        <h1 className="mt-6 text-2xl font-semibold text-slate-900 ">
           Yakında
         </h1>
-        <p className="mt-3 text-slate-500 dark:text-slate-400">
+        <p className="mt-3 text-slate-500 ">
           Bu bölüm üzerinde çalışıyoruz. Hazır olduğunda burada olacak.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             to={ROUTES.tutors}
-            className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 "
           >
             Eğitmenlere göz at
           </Link>
           <Link
             to={ROUTES.home}
-            className="rounded-full px-5 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+            className="rounded-full px-5 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 "
           >
             Ana sayfa
           </Link>

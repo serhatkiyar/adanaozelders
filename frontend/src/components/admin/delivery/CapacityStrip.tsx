@@ -18,7 +18,7 @@ export function CapacityStrip({
 
   return (
     <div
-      className="flex items-stretch gap-1.5 overflow-x-auto border-b border-slate-100 px-6 py-3 dark:border-slate-800"
+      className="flex items-stretch gap-1.5 overflow-x-auto border-b border-slate-100 px-6 py-3 "
       aria-label="Önümüzdeki günlerin teslimat kapasitesi"
     >
       {days.map((d) => {
@@ -34,22 +34,22 @@ export function CapacityStrip({
             : `${d.booked} söz (kapasite kontrolü kapalı)`;
         const inner = (
           <>
-            <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <p className="text-[10px] uppercase tracking-wide text-slate-400 ">
               {WEEKDAY_FMT.format(date)} {date.getDate()}
             </p>
             <p
               className={`mt-0.5 text-xs font-semibold tabular-nums ${
                 full
-                  ? "text-rose-600 dark:text-rose-400"
+                  ? "text-rose-600 "
                   : tight
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-slate-700 dark:text-slate-200"
+                    ? "text-amber-600 "
+                    : "text-slate-700 "
               }`}
             >
               {!d.is_working_day ? "—" : d.capacity > 0 ? `${d.booked}/${d.capacity}` : d.booked}
             </p>
             {d.retry_debt > 0 && (
-              <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+              <p className="text-[10px] font-medium text-amber-600 ">
                 ↻ {d.retry_debt}
               </p>
             )}
@@ -58,7 +58,7 @@ export function CapacityStrip({
         const cls = `min-w-[3.6rem] shrink-0 rounded-lg px-2 py-1.5 text-center ring-1 transition ${
           isSelected
             ? "ring-2 ring-panel-accent"
-            : "ring-slate-100 dark:ring-slate-800"
+            : "ring-slate-100 "
         } ${!d.is_working_day ? "opacity-40" : ""}`;
         return onSelectDate ? (
           <button
@@ -66,7 +66,7 @@ export function CapacityStrip({
             type="button"
             title={`${label}${d.retry_debt > 0 ? ` · ${d.retry_debt} öncelikli yeniden deneme` : ""} — bu güne git`}
             onClick={() => onSelectDate(d.day)}
-            className={`${cls} cursor-pointer hover:ring-slate-300 dark:hover:ring-slate-600`}
+            className={`${cls} cursor-pointer hover:ring-slate-300 `}
           >
             {inner}
           </button>

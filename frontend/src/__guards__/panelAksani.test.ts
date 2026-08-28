@@ -108,8 +108,8 @@ describe("İP-B2 · Ç-3 · panelde indigo kalmadı", () => {
 describe("İP-B2 · Ç-3 · token değerleri kararın TA KENDİSİ", () => {
   const css = readFileSync(join(KOK, "src", "index.css"), "utf8");
 
-  /** `:root` ya da `.dark` bloğundan tek bir token değerini okur. */
-  function token(blok: ":root" | ".dark", ad: string): string {
+  /** `:root` bloğundan tek bir token değerini okur. (`.dark` bloğu dark mode sökümüyle kalktı.) */
+  function token(blok: ":root", ad: string): string {
     const desen = new RegExp(`${blok.replace(".", "\\.")}\\s*\\{([\\s\\S]*?)\\n  \\}`, "m");
     const govde = css.match(desen)?.[1] ?? "";
     const deger = govde.match(new RegExp(`--${ad}:\\s*([^;]+);`))?.[1];
@@ -127,22 +127,14 @@ describe("İP-B2 · Ç-3 · token değerleri kararın TA KENDİSİ", () => {
     expect(token(":root", "panel-accent-fg")).toBe("255 255 255");
   });
 
-  it("koyu temada aksan AYNI AİLENİN açık ucu, `#1A365D` DEĞİL", () => {
-    // `#1A365D` koyu yüzeyin üstünde 1,3 kontrast verir — düğme zeminden
-    // ayırt edilemez. Bu iddia "koyu temayı unutma" kuralının kendisidir.
-    expect(token(".dark", "panel-accent")).not.toBe("26 54 93");
-    expect(token(".dark", "panel-accent")).toBe("138 176 222");
-    // Üstündeki metin KOYU (slate-950) — beyaz olsaydı 1,35 kontrast olurdu.
-    expect(token(".dark", "panel-accent-fg")).toBe("2 6 23");
-  });
+  // (Tarihçe: "koyu temada aksan açık uç" testi vardı; dark mode CMS turunda
+  // söküldü — `.dark` token bloğu yok, tek tema nöbetçisi `tekTema.test.ts`.)
 
   it("dikkat rengi (#F6AD55) TANIMLI ve aksandan AYRI", () => {
     expect(token(":root", "panel-attention")).toBe("246 173 85");
-    expect(token(".dark", "panel-attention")).toBe("246 173 85");
     // Aksan ile dikkat rengi AYNI olamaz: aynı olsalardı birincil düğme ile
     // "bekleyen iş" rozeti aynı rengi taşırdı ve renk anlamını kaybederdi.
     expect(token(":root", "panel-attention")).not.toBe(token(":root", "panel-accent"));
-    expect(token(".dark", "panel-attention")).not.toBe(token(".dark", "panel-accent"));
   });
 
   it("Tailwind köprüsü üç dikkat token'ını da sınıfa çeviriyor", () => {

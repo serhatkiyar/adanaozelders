@@ -107,10 +107,10 @@ export function NotificationsPanel() {
         {/* ── Başlık alanı ── */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 ">
               Bildirimler
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 ">
               {unread > 0
                 ? `${unread} okunmamış bildiriminiz var`
                 : "Tüm bildirimleriniz güncel"}
@@ -146,19 +146,19 @@ export function NotificationsPanel() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+                className="h-20 animate-pulse rounded-2xl bg-slate-100 "
               />
             ))}
           </div>
         ) : notifications.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-3xl dark:bg-slate-800">
+          <div className="rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-3xl ">
               🔔
             </div>
-            <p className="mt-4 text-base font-medium text-slate-700 dark:text-slate-300">
+            <p className="mt-4 text-base font-medium text-slate-700 ">
               Henüz bildirim yok
             </p>
-            <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">
+            <p className="mt-1 text-sm text-slate-400 ">
               Yeni bildirimler burada görünecek.
             </p>
           </div>
@@ -171,16 +171,16 @@ export function NotificationsPanel() {
                 onClick={() => handleClick(n)}
                 className={`group flex w-full items-start gap-4 rounded-2xl p-4 text-left transition-all hover:shadow-md ${
                   n.is_read
-                    ? "bg-white ring-1 ring-slate-100 hover:bg-slate-50 dark:bg-slate-800 dark:ring-slate-700 dark:hover:bg-slate-700/60"
-                    : "bg-indigo-50 ring-1 ring-indigo-100 hover:bg-indigo-100/70 dark:bg-indigo-500/10 dark:ring-indigo-500/20 dark:hover:bg-indigo-500/15"
+                    ? "bg-white ring-1 ring-slate-100 hover:bg-slate-50 "
+                    : "bg-indigo-50 ring-1 ring-indigo-100 hover:bg-indigo-100/70 "
                 }`}
               >
                 {/* İkon */}
                 <span
                   className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
                     n.is_read
-                      ? "bg-slate-100 dark:bg-slate-700"
-                      : "bg-indigo-100 dark:bg-indigo-500/20"
+                      ? "bg-slate-100 "
+                      : "bg-indigo-100 "
                   }`}
                 >
                   {resolveIcon(n.message)}
@@ -191,13 +191,13 @@ export function NotificationsPanel() {
                   <span
                     className={`block text-sm leading-relaxed ${
                       n.is_read
-                        ? "text-slate-600 dark:text-slate-300"
-                        : "font-medium text-slate-900 dark:text-white"
+                        ? "text-slate-600 "
+                        : "font-medium text-slate-900 "
                     }`}
                   >
                     {n.message}
                   </span>
-                  <span className="mt-1 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                  <span className="mt-1 flex items-center gap-2 text-xs text-slate-400 ">
                     <svg
                       viewBox="0 0 20 20"
                       fill="currentColor"
@@ -216,7 +216,7 @@ export function NotificationsPanel() {
 
                 {/* Okunmamış göstergesi */}
                 {!n.is_read && (
-                  <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500 ring-2 ring-indigo-200 dark:ring-indigo-500/30" />
+                  <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500 ring-2 ring-indigo-200 " />
                 )}
 
                 {/* Ok ikonu (link varsa) */}
@@ -224,7 +224,7 @@ export function NotificationsPanel() {
                   <svg
                     viewBox="0 0 20 20"
                     fill="currentColor"
-                    className="mt-2 h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400"
+                    className="mt-2 h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 "
                     aria-hidden
                   >
                     <path
@@ -243,14 +243,14 @@ export function NotificationsPanel() {
             {isFetchingNextPage && (
               <div className="flex items-center justify-center py-6">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-                <span className="ml-3 text-sm text-slate-500 dark:text-slate-400">
+                <span className="ml-3 text-sm text-slate-500 ">
                   Yükleniyor…
                 </span>
               </div>
             )}
 
             {!hasNextPage && notifications.length > 0 && (
-              <p className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+              <p className="py-6 text-center text-xs text-slate-400 ">
                 Tüm bildirimler yüklendi
               </p>
             )}

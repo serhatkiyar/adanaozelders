@@ -19,17 +19,17 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:p-6">
       <div
         ref={panelRef}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 "
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-700">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 ">
+          <h2 className="text-lg font-bold text-slate-900 ">
             {tutorName} - Değerlendirmeler
           </h2>
           <button
             onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 "
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -41,12 +41,12 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />
+                <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100 " />
               ))}
             </div>
           ) : !reviews || reviews.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 ">
                 Henüz değerlendirme bulunmuyor.
               </p>
             </div>
@@ -57,13 +57,13 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
                 return (
                   <div
                     key={review.id}
-                    className="rounded-xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                    className="rounded-xl border border-slate-100 bg-white p-4 "
                   >
                     <div className="flex items-start gap-3">
                       <Avatar name={name} avatar_url={review.client_avatar_url} size="sm" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          <span className="text-sm font-semibold text-slate-800 ">
                             {name}
                           </span>
                           <span className="shrink-0 text-xs text-slate-400">
@@ -74,16 +74,16 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
                           <StarRating value={review.rating} />
                         </div>
                         {review.comment_text && (
-                          <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                          <p className="mt-2 text-sm leading-relaxed text-slate-600 ">
                             {review.comment_text}
                           </p>
                         )}
                         {review.tutor_reply && (
-                          <div className="mt-3 rounded-xl border-l-2 border-indigo-300 bg-indigo-50/60 px-4 py-3 dark:border-indigo-500/40 dark:bg-indigo-500/10">
-                            <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                          <div className="mt-3 rounded-xl border-l-2 border-indigo-300 bg-indigo-50/60 px-4 py-3 ">
+                            <p className="text-xs font-semibold text-indigo-700 ">
                               Eğitmen yanıtı
                             </p>
-                            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
                               {review.tutor_reply}
                             </p>
                           </div>

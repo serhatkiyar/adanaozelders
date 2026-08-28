@@ -55,11 +55,11 @@ function templateRows(key: string): Row[] {
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-      <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 ">
+      <p className="text-xs font-medium text-slate-400 ">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+      <p className="mt-1 text-2xl font-bold text-slate-900 ">
         {value}
       </p>
     </div>
@@ -74,7 +74,7 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
   const hasSubjects = exam.subjects.length > 0;
 
   return (
-    <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 ">
       <button
         type="button"
         onClick={() => hasSubjects && setOpen((o) => !o)}
@@ -84,29 +84,29 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            <span className="truncate text-sm font-semibold text-slate-900 ">
               {exam.title}
             </span>
             {exam.exam_type && (
-              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 ">
                 {exam.exam_type}
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+          <p className="mt-1 text-xs text-slate-400 ">
             {exam.exam_date ? formatDate(exam.exam_date) : formatDate(exam.created_at)}
             {" · "}
-            <span className="text-emerald-600 dark:text-emerald-400">
+            <span className="text-emerald-600 ">
               {exam.correct_count} D
             </span>{" "}
-            <span className="text-rose-600 dark:text-rose-400">
+            <span className="text-rose-600 ">
               {exam.wrong_count} Y
             </span>{" "}
             <span className="text-slate-400">{exam.blank_count} B</span>
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-xl font-bold text-slate-900 dark:text-white">
+          <p className="text-xl font-bold text-slate-900 ">
             {fmtNet(net)}
           </p>
           <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
@@ -129,10 +129,10 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
       </button>
 
       {open && hasSubjects && (
-        <div className="border-t border-slate-100 px-5 py-3 dark:border-slate-700">
+        <div className="border-t border-slate-100 px-5 py-3 ">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-slate-400 dark:text-slate-500">
+              <tr className="text-left text-xs text-slate-400 ">
                 <th className="pb-2 font-medium">Ders</th>
                 <th className="pb-2 text-center font-medium">D</th>
                 <th className="pb-2 text-center font-medium">Y</th>
@@ -140,14 +140,14 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
                 <th className="pb-2 text-right font-medium">Net</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-700/60">
+            <tbody className="divide-y divide-slate-50 ">
               {exam.subjects.map((s) => (
-                <tr key={s.id} className="text-slate-700 dark:text-slate-200">
+                <tr key={s.id} className="text-slate-700 ">
                   <td className="py-1.5 font-medium">{s.subject}</td>
-                  <td className="py-1.5 text-center text-emerald-600 dark:text-emerald-400">
+                  <td className="py-1.5 text-center text-emerald-600 ">
                     {s.correct_count}
                   </td>
-                  <td className="py-1.5 text-center text-rose-600 dark:text-rose-400">
+                  <td className="py-1.5 text-center text-rose-600 ">
                     {s.wrong_count}
                   </td>
                   <td className="py-1.5 text-center text-slate-400">
@@ -272,7 +272,7 @@ export default function Exams() {
   const examCountdown = upcomingExams();
 
   const inputCls =
-    "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
+    "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
 
   return (
     <DashboardShell title="Denemelerim" navItems={STUDENT_NAV}>
@@ -283,15 +283,15 @@ export default function Exams() {
             {examCountdown.slice(0, 6).map((e) => (
               <div
                 key={e.name}
-                className="flex shrink-0 flex-col items-center rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+                className="flex shrink-0 flex-col items-center rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-slate-100 "
               >
-                <span className="text-2xl font-bold leading-none text-indigo-600 dark:text-indigo-400">
+                <span className="text-2xl font-bold leading-none text-indigo-600 ">
                   {e.days}
                 </span>
                 <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
                   gün
                 </span>
-                <span className="mt-1 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                <span className="mt-1 text-xs font-semibold text-slate-700 ">
                   {e.name}
                 </span>
               </div>
@@ -310,8 +310,8 @@ export default function Exams() {
         )}
 
         {trend.length >= 2 && (
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               Net gelişimi (son {trend.length})
             </p>
             <div className="flex h-28 items-end gap-1.5">
@@ -330,20 +330,20 @@ export default function Exams() {
         {/* ── Yeni deneme formu ── */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+          className="space-y-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 "
         >
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+          <h2 className="text-base font-semibold text-slate-900 ">
             Yeni Deneme Ekle
           </h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label="Sınav türü" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <Field label="Sınav türü" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               {(id) => (
                   <select
                     id={id}
                     value={templateKey}
                     onChange={(e) => setTemplateKey(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                   >
                     {EXAM_TEMPLATES.map((t) => (
                       <option key={t.key} value={t.key}>
@@ -353,18 +353,18 @@ export default function Exams() {
                   </select>
               )}
             </Field>
-            <Field label="Başlık" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <Field label="Başlık" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               {(id) => (
                   <input
                     id={id}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="ör. TYT Denemesi 3"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                   />
               )}
             </Field>
-            <Field label="Tarih" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <Field label="Tarih" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               {(id) => (
                   <input
                     id={id}
@@ -372,7 +372,7 @@ export default function Exams() {
                     value={examDate}
                     max={toDateStr(new Date())}
                     onChange={(e) => setExamDate(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                   />
               )}
             </Field>
@@ -382,7 +382,7 @@ export default function Exams() {
           <div className="overflow-x-auto">
             <table className="w-full border-separate border-spacing-y-1.5">
               <thead>
-                <tr className="text-xs text-slate-400 dark:text-slate-500">
+                <tr className="text-xs text-slate-400 ">
                   <th className="px-1 text-left font-medium">Ders</th>
                   <th className="px-1 font-medium">Doğru</th>
                   <th className="px-1 font-medium">Yanlış</th>
@@ -403,7 +403,7 @@ export default function Exams() {
                           value={r.subject}
                           onChange={(e) => setRow(i, { subject: e.target.value })}
                           placeholder="Ders"
-                          className="w-full min-w-[7rem] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                          className="w-full min-w-[7rem] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                         />
                         {r.max > 0 && (
                           <span
@@ -445,7 +445,7 @@ export default function Exams() {
                           className={`${inputCls} w-16`}
                         />
                       </td>
-                      <td className="px-1 text-right text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      <td className="px-1 text-right text-sm font-semibold text-slate-700 ">
                         {fmtNet(rowNet)}
                       </td>
                       <td className="text-center">
@@ -453,7 +453,7 @@ export default function Exams() {
                           type="button"
                           onClick={() => removeRow(i)}
                           aria-label="Satırı sil"
-                          className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-500/10"
+                          className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 "
                         >
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -471,21 +471,21 @@ export default function Exams() {
             <button
               type="button"
               onClick={addRow}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 "
             >
               + Ders ekle
             </button>
-            <div className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="text-sm text-slate-500 ">
               Toplam:{" "}
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="font-semibold text-emerald-600 ">
                 {totals.correct} D
               </span>{" "}
-              <span className="font-semibold text-rose-600 dark:text-rose-400">
+              <span className="font-semibold text-rose-600 ">
                 {totals.wrong} Y
               </span>{" "}
               <span className="text-slate-400">{totals.blank} B</span>
               {" — "}
-              <span className="font-bold text-slate-900 dark:text-white">
+              <span className="font-bold text-slate-900 ">
                 {fmtNet(totals.net)} net
               </span>
             </div>
@@ -502,7 +502,7 @@ export default function Exams() {
 
         {/* ── Geçmiş ── */}
         <div>
-          <h2 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+          <h2 className="mb-3 text-base font-semibold text-slate-900 ">
             Geçmiş Denemeler
           </h2>
           {isLoading ? (
@@ -510,19 +510,19 @@ export default function Exams() {
               {Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+                  className="h-20 animate-pulse rounded-2xl bg-slate-100 "
                 />
               ))}
             </div>
           ) : !exams || exams.length === 0 ? (
-            <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl dark:bg-slate-800">
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">
                 📊
               </div>
-              <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <p className="mt-4 text-sm font-medium text-slate-700 ">
                 Henüz deneme eklemedin
               </p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              <p className="mt-1 text-xs text-slate-400 ">
                 Yukarıdan ilk denemeni ekle, netlerini takip etmeye başla.
               </p>
             </div>

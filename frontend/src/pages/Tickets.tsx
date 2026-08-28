@@ -90,7 +90,7 @@ export function TicketsContent() {
         {Array.from({ length: 2 }).map((_, i) => (
           <div
             key={i}
-            className="mx-auto h-48 w-[28rem] max-w-full animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+            className="mx-auto h-48 w-[28rem] max-w-full animate-pulse rounded-2xl bg-slate-100 "
           />
         ))}
       </div>
@@ -141,10 +141,10 @@ export function TicketsContent() {
 function TicketSectionHeader({ title, count }: { title: string; count: number }) {
   return (
     <div className="mx-auto flex w-[28rem] max-w-full items-baseline gap-2">
-      <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+      <h2 className="text-base font-semibold text-slate-900 ">
         {title}
       </h2>
-      <span className="text-sm font-normal text-slate-400 dark:text-slate-500">
+      <span className="text-sm font-normal text-slate-400 ">
         {count}
       </span>
     </div>
@@ -154,8 +154,8 @@ function TicketSectionHeader({ title, count }: { title: string; count: number })
 /* Boş durum — sakin (ikon + nötr CTA). */
 function EmptyTickets() {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-20 text-center dark:border-slate-700">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-20 text-center ">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-6 w-6" aria-hidden>
           <path
             strokeLinecap="round"
@@ -164,15 +164,15 @@ function EmptyTickets() {
           />
         </svg>
       </div>
-      <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+      <p className="mt-4 text-sm font-medium text-slate-700 ">
         Henüz bilet veya rezervasyon yok
       </p>
-      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mt-1 text-xs text-slate-400 ">
         Kütüphanelerde deneme oturumlarına katıl ya da çalışma alanı ayırt.
       </p>
       <Link
         to={ROUTES.libraries}
-        className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+        className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 "
       >
         Kütüphaneleri keşfet
       </Link>
@@ -193,7 +193,7 @@ function MoreToggle({
   return (
     <button
       onClick={onToggle}
-      className="mx-auto flex items-center gap-1 pt-1 text-sm font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+      className="mx-auto flex items-center gap-1 pt-1 text-sm font-semibold text-slate-600 transition hover:text-slate-900 "
     >
       {expanded ? "Daha az göster" : `${hidden} bilet daha göster`}
       <svg
@@ -801,37 +801,37 @@ function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClose: () =
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800"
+        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl "
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 "
           aria-label="Kapat"
         >
           ✕
         </button>
 
-        <h3 className="pr-8 text-lg font-bold text-slate-900 dark:text-white">Sınav Sonucun</h3>
+        <h3 className="pr-8 text-lg font-bold text-slate-900 ">Sınav Sonucun</h3>
         {reg.session?.title && (
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{reg.session.title}</p>
+          <p className="mt-0.5 text-sm text-slate-500 ">{reg.session.title}</p>
         )}
 
         {hasSummary && (
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-indigo-50 p-4 text-center dark:bg-indigo-500/10">
-              <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
+            <div className="rounded-2xl bg-indigo-50 p-4 text-center ">
+              <div className="text-2xl font-extrabold text-indigo-600 ">
                 {reg.result_net ?? "—"}
               </div>
-              <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ">
                 Net
               </div>
             </div>
-            <div className="rounded-2xl bg-indigo-50 p-4 text-center dark:bg-indigo-500/10">
-              <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-300">
+            <div className="rounded-2xl bg-indigo-50 p-4 text-center ">
+              <div className="text-2xl font-extrabold text-indigo-600 ">
                 {reg.result_rank ?? "—"}
               </div>
-              <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ">
                 Sıra
               </div>
             </div>
@@ -849,7 +849,7 @@ function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClose: () =
               📄 Karneyi aç
             </a>
           ) : (
-            <div className="rounded-xl bg-slate-50 px-4 py-3 text-center text-sm font-medium text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
+            <div className="rounded-xl bg-slate-50 px-4 py-3 text-center text-sm font-medium text-slate-500 ">
               Karne henüz yüklenmedi
             </div>
           )}
@@ -858,7 +858,7 @@ function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClose: () =
               href={answerKey}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 "
             >
               🔑 Cevap anahtarı
             </a>
@@ -904,20 +904,20 @@ function QrModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800"
+        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl "
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 "
           aria-label="Kapat"
         >
           ✕
         </button>
 
-        <h3 className="pr-8 text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
+        <h3 className="pr-8 text-lg font-bold text-slate-900 ">{title}</h3>
         {subtitle && (
-          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-slate-500 ">
             <LibraryIcon className="h-4 w-4 shrink-0" />
             {subtitle}
           </p>
@@ -929,11 +929,11 @@ function QrModal({
         </div>
 
         {/* Elle giriş kodu (QR okutulamazsa) */}
-        <p className="mt-5 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+        <p className="mt-5 text-center text-xs font-medium text-slate-500 ">
           QR okutulamıyorsa görevliye bu kodu söyleyin:
         </p>
-        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900/50">
-          <code className="flex-1 select-all text-center font-mono text-3xl font-bold tracking-[0.2em] text-slate-900 dark:text-white">
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 ">
+          <code className="flex-1 select-all text-center font-mono text-3xl font-bold tracking-[0.2em] text-slate-900 ">
             {pretty}
           </code>
           <button

@@ -76,9 +76,9 @@ const STATUS_LABEL: Record<string, string> = {
   HIDDEN: "Gizli",
 };
 const STATUS_BADGE: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
-  REJECTED: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
-  HIDDEN: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+  PENDING: "bg-amber-100 text-amber-700 ",
+  REJECTED: "bg-rose-100 text-rose-700 ",
+  HIDDEN: "bg-slate-200 text-slate-600 ",
 };
 
 type Karar = { kind: "approve" | "reject" | "delete"; library: LibrarySearchOut };
@@ -141,7 +141,7 @@ export default function AdminLibraries() {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400 dark:text-slate-500">
+        <p className="text-xs text-slate-400 ">
           {data?.length ?? 0} kütüphane · sahada gezip kaydettiğin mekânları buradan yönet.
         </p>
         {canManage && <Button onClick={openCreate}>+ Kütüphane Ekle</Button>}
@@ -150,21 +150,21 @@ export default function AdminLibraries() {
 
       {/* ── Onay bekleyen self-servis başvurular ── */}
       {pending.length > 0 && (
-        <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/30 dark:bg-amber-500/5">
-          <p className="flex items-center gap-2 text-sm font-bold text-amber-800 dark:text-amber-200">
+        <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 ">
+          <p className="flex items-center gap-2 text-sm font-bold text-amber-800 ">
             🔍 Onay bekleyen başvurular
-            <span className="rounded-full bg-amber-200 px-2 text-xs font-bold text-amber-900 dark:bg-amber-500/30 dark:text-amber-100">
+            <span className="rounded-full bg-amber-200 px-2 text-xs font-bold text-amber-900 ">
               {pending.length}
             </span>
           </p>
           {pending.map((lib) => (
             <div
               key={lib.id}
-              className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-amber-100 dark:bg-slate-800 dark:ring-amber-500/20 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-amber-100 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{lib.name}</p>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                <p className="truncate text-sm font-semibold text-slate-900 ">{lib.name}</p>
+                <p className="truncate text-xs text-slate-500 ">
                   {[lib.city, lib.district].filter(Boolean).join(" · ") || lib.location_text || "Konum belirtilmemiş"}
                 </p>
               </div>
@@ -199,15 +199,15 @@ export default function AdminLibraries() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+            <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-100 " />
           ))}
         </div>
       ) : isError ? (
-        <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+        <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ">
           {getErrorMessage(error, "Kütüphaneler yüklenemedi.")}
         </div>
       ) : !data || data.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 ">
           Henüz kütüphane eklenmedi.
         </div>
       ) : (
@@ -215,10 +215,10 @@ export default function AdminLibraries() {
           {data.map((lib) => (
             <div
               key={lib.id}
-              className="flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-xl dark:bg-slate-700">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-xl ">
                   {lib.cover_url ? (
                     <img src={lib.cover_url} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -226,7 +226,7 @@ export default function AdminLibraries() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="flex items-center gap-2 truncate text-sm font-semibold text-slate-900 dark:text-white">
+                  <p className="flex items-center gap-2 truncate text-sm font-semibold text-slate-900 ">
                     <span className="truncate">{lib.name}</span>
                     {lib.status && lib.status !== "ACTIVE" && (
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_BADGE[lib.status] ?? "bg-slate-100 text-slate-500"}`}>
@@ -234,7 +234,7 @@ export default function AdminLibraries() {
                       </span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  <p className="truncate text-xs text-slate-500 ">
                     {lib.location_text || "Konum yok"} · ★{" "}
                     {lib.rating_average != null ? lib.rating_average.toFixed(1) : "—"}
                   </p>
@@ -275,7 +275,7 @@ export default function AdminLibraries() {
         {yonetim.kayit && (
           <div className="space-y-6">
             <OperatorsManager libraryId={yonetim.kayit.id} />
-            <div className="border-t border-slate-100 pt-5 dark:border-slate-700">
+            <div className="border-t border-slate-100 pt-5 ">
               <ExamSessionsManager libraryId={yonetim.kayit.id} />
             </div>
           </div>
@@ -346,18 +346,18 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Operatörler</h3>
+        <h3 className="text-sm font-bold text-slate-900 ">Operatörler</h3>
         <Button size="sm" variant="secondary" onClick={() => ekleYuzeyi.yeniAc()}>
           + Operatör
         </Button>
       </div>
 
       {operators && operators.length > 0 ? (
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 dark:divide-slate-700 dark:border-slate-700">
+        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 ">
           {operators.map((op) => (
             <li key={op.id} className="flex items-center justify-between px-3 py-2">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{op.full_name}</p>
+                <p className="truncate text-sm font-medium text-slate-800 ">{op.full_name}</p>
                 <p className="truncate text-xs text-slate-400">{op.email}</p>
               </div>
               <Button
@@ -475,7 +475,7 @@ function OperatorEkleIcerik({ libraryId, kapat }: { libraryId: number; kapat: ()
       {genelHata && (
         <p
           role="alert"
-          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
         >
           {genelHata}
         </p>

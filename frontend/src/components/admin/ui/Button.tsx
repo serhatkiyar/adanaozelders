@@ -25,7 +25,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   //      için kusur gizliydi; token'a geçince görünür oldu ve `accent-fg`
   //      ile kapandı (koyu temada `slate-950`, ölçülen **8,98**).
   primary: "bg-panel-accent text-panel-accent-fg shadow-sm hover:bg-panel-accent/90",
-  secondary: "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+  secondary: "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 ",
   // Tamamlama/olumlu sonuç aksiyonları (ör. "Turu Tamamla") — !important
   // kaçışlarıyla primary'yi ezmek yerine sistem varyantı.
   //
@@ -38,7 +38,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
   // (bağımsız denetim #3 · B-8). `emerald-700` gerçek Chrome'da **5,48:1**.
   success: "bg-emerald-700 text-white shadow-sm hover:bg-emerald-800",
   danger: "bg-rose-600 text-white shadow-sm hover:bg-rose-700",
-  ghost: "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+  ghost: "text-slate-600 hover:bg-slate-100 ",
 };
 
 const SIZES: Record<ButtonSize, string> = {
@@ -56,7 +56,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || isPending}
       aria-busy={isPending || undefined}
-      className={`inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...props}
     >
       {isPending && <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />}

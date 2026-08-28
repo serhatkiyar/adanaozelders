@@ -126,7 +126,7 @@ export default function Landing() {
   );
 
   return (
-    <div className="min-h-screen bg-white antialiased dark:bg-slate-900">
+    <div className="min-h-screen bg-white antialiased ">
       <Seo
         canonicalPath="/"
         description="Adana'da TYT, AYT, LGS, KPSS ve daha fazlası için alanında uzman, onaylı eğitmenlerle online veya yüz yüze özel ders. Kütüphaneler ve denemeler tek yerde."
@@ -285,12 +285,12 @@ function CategoryContent({ active }: { active: CategoryKey }) {
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   return (
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+      <h2 className="text-xl font-bold tracking-tight text-slate-900 ">
         {heading}
       </h2>
       <Link
         to={href}
-        className="shrink-0 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-300"
+        className="shrink-0 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 "
       >
         Tümü →
       </Link>
@@ -304,7 +304,7 @@ function RowSkeleton() {
       {Array.from({ length: 7 }).map((_, i) => (
         <div
           key={i}
-          className="h-60 w-[175px] shrink-0 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+          className="h-60 w-[175px] shrink-0 animate-pulse rounded-2xl bg-slate-100 "
         />
       ))}
     </div>

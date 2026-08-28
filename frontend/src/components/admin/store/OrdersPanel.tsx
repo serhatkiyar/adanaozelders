@@ -123,7 +123,7 @@ export function OrdersPanel() {
       accessorFn: (o) => o.id,
       header: "No",
       cell: ({ row }) => (
-        <span className="font-semibold text-slate-800 dark:text-slate-200">
+        <span className="font-semibold text-slate-800 ">
           #{row.original.id}
         </span>
       ),
@@ -228,7 +228,7 @@ export function OrdersPanel() {
 
       <div className="flex flex-wrap items-end gap-3">
         <Form.Item>
-          <Form.Label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Form.Label className="mb-1 block text-xs font-medium text-slate-500 ">
             Durum
           </Form.Label>
           <Form.Control>
@@ -241,7 +241,7 @@ export function OrdersPanel() {
                 })
               )
             }
-            className="block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-panel-accent dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            className="block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-panel-accent "
           >
             <option value="">Tümü</option>
             {ORDER_STATUS_FILTERS.map((s) => (
@@ -265,7 +265,7 @@ export function OrdersPanel() {
         renderMobileRow={(o) => (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-3">
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
+              <span className="font-semibold text-slate-800 ">
                 #{o.id}
               </span>
               <span className="font-medium">{formatTL(o.total)}</span>
@@ -321,7 +321,7 @@ export function OrdersPanel() {
         }
         truncationNotice={
           kesilmisOlabilir ? (
-            <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 ">
               Toplam {toplam} siparişin ilk {siparisler.length} tanesi
               gösteriliyor; listenin tamamı bu değil. Daraltmak için durum
               filtresini kullanın.
@@ -365,14 +365,14 @@ function ShipButton({ onShip }: { onShip: (tracking: string) => void }) {
   return (
     <div className="flex items-end gap-2">
       <Form.Item>
-        <Form.Label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+        <Form.Label className="mb-1 block text-[11px] font-medium text-slate-500 ">
           Takip no
         </Form.Label>
         <Form.Control>
           <input
             value={tracking}
             onChange={(e) => setTracking(e.target.value)}
-            className="rounded-lg border border-slate-200 px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            className="rounded-lg border border-slate-200 px-2 py-1 text-xs "
           />
         </Form.Control>
       </Form.Item>

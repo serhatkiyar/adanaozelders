@@ -32,9 +32,9 @@ interface AskTarget {
 /* ─── ortak buton sınıfları (sakin / nötr palet) ────────── */
 
 const PRIMARY_BTN =
-  "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200";
+  "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ";
 const GHOST_BTN =
-  "rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700";
+  "rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 ";
 
 /* ─── ikonlar ────────────────────────────────────────── */
 
@@ -148,13 +148,13 @@ function BookingRow({
         >
           <Avatar name={tutorName} avatar_url={booking.tutor_avatar_url} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 transition group-hover:text-slate-600 dark:text-white dark:group-hover:text-slate-300">
+            <p className="truncate text-sm font-semibold text-slate-900 transition group-hover:text-slate-600 ">
               {tutorName}
             </p>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500 ">
               {formatRange(booking.start_at, booking.end_at)}
               {booking.is_free_lesson ? (
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="font-semibold text-emerald-600 ">
                   {" · Ücretsiz ilk ders"}
                 </span>
               ) : (
@@ -173,7 +173,7 @@ function BookingRow({
           {booking.payment && <PaymentBadge payment={booking.payment} />}
           <Link
             to={ROUTES.lesson(booking.id)}
-            className="ml-0.5 inline-flex items-center gap-0.5 text-xs font-semibold text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            className="ml-0.5 inline-flex items-center gap-0.5 text-xs font-semibold text-slate-500 transition hover:text-slate-900 "
           >
             Detay
             <ChevronRight />
@@ -183,12 +183,12 @@ function BookingRow({
 
       {/* Notlar / iptal nedeni */}
       {booking.notes && (
-        <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-xs italic text-slate-500 dark:bg-slate-700/40 dark:text-slate-400">
+        <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-xs italic text-slate-500 ">
           “{booking.notes}”
         </p>
       )}
       {booking.status === BookingStatus.CANCELLED && booking.cancel_reason && (
-        <p className="mt-3 rounded-xl bg-rose-50 px-4 py-2.5 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+        <p className="mt-3 rounded-xl bg-rose-50 px-4 py-2.5 text-xs text-rose-700 ">
           İptal nedeni: {booking.cancel_reason}
         </p>
       )}
@@ -209,7 +209,7 @@ function BookingRow({
               // "istisna" olmaktan çıkarıyor ve diğer aksiyonları alt satıra itiyordu.
               <span
                 aria-describedby={PAY_CLOSED_NOTICE_ID}
-                className="text-sm font-medium text-slate-500 dark:text-slate-400"
+                className="text-sm font-medium text-slate-500 "
               >
                 Ödeme yolu şu an kapalı
               </span>
@@ -227,7 +227,7 @@ function BookingRow({
             ) : (
               <span
                 title="Canlı ders, başlangıçtan 15 dk önce açılır."
-                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 "
               >
                 <VideoIcon />
                 Ders saatinde açılır
@@ -241,7 +241,7 @@ function BookingRow({
           )}
 
           {reviewedDone && (
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 ">
               <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden>
                 <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.16 4.87L6.67 9.36 4.42 7.1 3.29 8.23l3.38 3.38L12.29 6z" />
               </svg>
@@ -257,7 +257,7 @@ function BookingRow({
           {canCancel && (
             <button
               onClick={() => setShowCancel(true)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-rose-50 hover:text-rose-600 active:scale-95 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-rose-900/20 dark:hover:text-rose-300"
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-rose-50 hover:text-rose-600 active:scale-95 "
             >
               İptal et
             </button>
@@ -267,12 +267,12 @@ function BookingRow({
 
       {/* Soru sorma penceresi */}
       {qa && qa.ended && (
-        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 dark:border-slate-700/60 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p
             className={`text-xs font-medium ${
               qa.expired
-                ? "text-slate-400 dark:text-slate-500"
-                : "text-slate-600 dark:text-slate-300"
+                ? "text-slate-400 "
+                : "text-slate-600 "
             }`}
           >
             {qa.expired
@@ -379,8 +379,8 @@ export function StudentBookingsContent() {
               onClick={() => setFilter(f.value)}
               className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
                 active
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  ? "bg-slate-900 text-white "
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
               }`}
             >
               {f.label}
@@ -388,8 +388,8 @@ export function StudentBookingsContent() {
                 <span
                   className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
                     active
-                      ? "bg-white/20 text-current dark:bg-slate-900/15"
-                      : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                      ? "bg-white/20 text-current "
+                      : "bg-slate-200 text-slate-600 "
                   }`}
                 >
                   {count}
@@ -404,24 +404,24 @@ export function StudentBookingsContent() {
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100 " />
           ))}
         </div>
       ) : isError ? (
-        <div className="rounded-2xl bg-rose-50 px-5 py-4 text-sm text-rose-700 ring-1 ring-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/20">
+        <div className="rounded-2xl bg-rose-50 px-5 py-4 text-sm text-rose-700 ring-1 ring-rose-100 ">
           {getErrorMessage(error, "Ders talepleri yüklenemedi.")}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-20 text-center dark:border-slate-700">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-20 text-center ">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
             <CalendarIcon />
           </div>
-          <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+          <p className="mt-4 text-sm font-medium text-slate-700 ">
             {(data ?? []).length === 0
               ? "Henüz rezervasyonun yok"
               : "Bu filtreye uyan rezervasyon yok"}
           </p>
-          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+          <p className="mt-1 text-xs text-slate-400 ">
             {(data ?? []).length === 0
               ? "Bir eğitmen seç ve ders planla."
               : "Farklı bir filtre dene."}
@@ -429,7 +429,7 @@ export function StudentBookingsContent() {
           {(data ?? []).length === 0 ? (
             <Link
               to={ROUTES.tutors}
-              className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 "
             >
               Eğitmenleri keşfet
             </Link>
@@ -437,7 +437,7 @@ export function StudentBookingsContent() {
             filter !== "ALL" && (
               <button
                 onClick={() => setFilter("ALL")}
-                className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 "
               >
                 Tümünü göster
               </button>
@@ -446,7 +446,7 @@ export function StudentBookingsContent() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-slate-400 ">
             {filtered.length} rezervasyon listeleniyor
           </p>
           {/* Sebep bir kez, liste başında: satırlarda yalnız nötr bir durum
@@ -457,7 +457,7 @@ export function StudentBookingsContent() {
               id={PAY_CLOSED_NOTICE_ID}
             />
           )}
-          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:divide-slate-700/60 dark:bg-slate-800 dark:ring-slate-700">
+          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 ">
             {filtered.map((b) => (
               <BookingRow
                 key={b.id}

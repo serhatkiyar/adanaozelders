@@ -32,18 +32,18 @@ export default function TestLiveLesson() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 px-4 py-12 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-100 px-4 py-12 ">
       <div className="mx-auto max-w-lg space-y-6">
         <header className="text-center">
           <p className="text-xs font-bold uppercase tracking-widest text-indigo-500">Test · Prototip</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">Canlı ders önizleme</h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 ">Canlı ders önizleme</h1>
+          <p className="mt-2 text-sm text-slate-500 ">
             Zaman kapısını atlayıp gömülü Jitsi penceresini elle başlatır. Kamera/mikrofon izni
             istenir. Tam ekran kabuğu, küçült (PiP) ve ders çekmecesini buradan deneyebilirsin.
           </p>
         </header>
 
-        <div className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <div className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 ">
           <Field label="Oda adı" hint="İki cihazdan aynı odaya katılmak için aynı adı kullan.">
             <input className="input" value={room} onChange={(e) => setRoom(e.target.value)} />
           </Field>
@@ -79,13 +79,13 @@ export default function TestLiveLesson() {
               <>
                 <button
                   onClick={toggleMinimize}
-                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 "
                 >
                   Küçült / Büyüt
                 </button>
                 <button
                   onClick={leaveMeeting}
-                  className="rounded-xl bg-red-600/10 px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-600/20 dark:text-red-400"
+                  className="rounded-xl bg-red-600/10 px-5 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-600/20 "
                 >
                   Görüşmeyi kapat
                 </button>
@@ -94,7 +94,7 @@ export default function TestLiveLesson() {
           </div>
 
           {active && (
-            <p className="rounded-xl bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+            <p className="rounded-xl bg-emerald-50 px-4 py-3 text-xs font-medium text-emerald-700 ">
               Görüşme açık · oda <code className="font-mono">{roomName}</code>
               {bookingId ? ` · booking #${bookingId}` : " · booking yok (çekmece kısıtlı)"}.
               Pencere ekranı kaplar; "Geri" ile küçültüp siteyi gezebilirsin.
@@ -102,7 +102,7 @@ export default function TestLiveLesson() {
           )}
         </div>
 
-        <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+        <p className="text-center text-xs text-slate-400 ">
           Oda bağlantısı:{" "}
           <a
             href={jitsiUrl(room.trim() || "adana-test-oda")}
@@ -129,9 +129,9 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</span>
+      <span className="text-sm font-semibold text-slate-700 ">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-slate-400 dark:text-slate-500">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-slate-400 ">{hint}</span>}
     </label>
   );
 }

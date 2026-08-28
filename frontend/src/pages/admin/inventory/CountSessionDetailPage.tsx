@@ -105,17 +105,17 @@ function Ozet({ oturum }: { oturum: CountSessionDetailOut }) {
     ],
   ];
   return (
-    <div className="flex flex-wrap items-start gap-x-8 gap-y-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <div className="flex flex-wrap items-start gap-x-8 gap-y-3 border-b border-slate-100 px-6 py-4 ">
       <div className="mr-auto">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">{oturum.code}</h2>
+          <h2 className="text-base font-bold text-slate-900 ">{oturum.code}</h2>
           <Badge tone={rozet.tone}>{rozet.label}</Badge>
         </div>
         {oturum.note && (
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{oturum.note}</p>
+          <p className="mt-1 text-xs text-slate-500 ">{oturum.note}</p>
         )}
         {oturum.cancel_reason && (
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-xs text-slate-500 ">
             İptal gerekçesi: {oturum.cancel_reason}
           </p>
         )}
@@ -123,8 +123,8 @@ function Ozet({ oturum }: { oturum: CountSessionDetailOut }) {
       <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
         {satirlar.map(([k, v]) => (
           <div key={k}>
-            <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
-            <dd className="mt-0.5 font-medium tabular-nums text-slate-800 dark:text-slate-200">
+            <dt className="text-slate-500 ">{k}</dt>
+            <dd className="mt-0.5 font-medium tabular-nums text-slate-800 ">
               {v}
             </dd>
           </div>
@@ -186,34 +186,34 @@ function SatirGorunumu({
   return (
     <tr
       data-testid={`count-line-${satir.id}`}
-      className={rozet.needsAction && satir.status !== "PENDING" ? "bg-rose-50/40 dark:bg-rose-500/5" : undefined}
+      className={rozet.needsAction && satir.status !== "PENDING" ? "bg-rose-50/40 " : undefined}
     >
       <td className="max-w-64 px-3 py-2.5 text-sm">
         <span
           data-testid="product-name"
-          className="block break-words font-medium text-slate-900 dark:text-white"
+          className="block break-words font-medium text-slate-900 "
         >
           {productDisplayName(satir)}
         </span>
         {/* SKU seçilebilir olmalı: operatör raftaki etiketle karşılaştırır. */}
         <span
           data-testid="product-sku"
-          className="mt-0.5 block select-all break-all font-mono text-xs text-slate-500 dark:text-slate-400"
+          className="mt-0.5 block select-all break-all font-mono text-xs text-slate-500 "
         >
           {productDisplaySku(satir)}
         </span>
       </td>
-      <td className="px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300">{kova}</td>
-      <td data-testid="system" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700 dark:text-slate-300">
+      <td className="px-3 py-2.5 text-sm text-slate-700 ">{kova}</td>
+      <td data-testid="system" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700 ">
         {satir.system_qty_snapshot}
       </td>
-      <td data-testid="reserved" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-500 dark:text-slate-400">
+      <td data-testid="reserved" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-500 ">
         {reservedDisplay(satir)}
       </td>
-      <td data-testid="expected" className="px-3 py-2.5 text-right text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+      <td data-testid="expected" className="px-3 py-2.5 text-right text-sm font-semibold tabular-nums text-slate-900 ">
         {expectedPhysical(satir)}
       </td>
-      <td data-testid="counted" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700 dark:text-slate-300">
+      <td data-testid="counted" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700 ">
         {sayilabilir ? (
           <div className="flex items-start justify-end gap-1.5">
             <Form.Field
@@ -231,7 +231,7 @@ function SatirGorunumu({
                       {...field}
                     />
                   </Form.Control>
-                  <Form.ErrorMessage className="mt-1 max-w-40 text-left text-xs text-rose-700 dark:text-rose-400" />
+                  <Form.ErrorMessage className="mt-1 max-w-40 text-left text-xs text-rose-700 " />
                 </Form.Item>
               )}
             />
@@ -248,8 +248,8 @@ function SatirGorunumu({
         data-testid="difference"
         className={`px-3 py-2.5 text-right text-sm font-semibold tabular-nums ${
           (lineDifference(satir) ?? 0) === 0
-            ? "text-slate-500 dark:text-slate-400"
-            : "text-rose-600 dark:text-rose-400"
+            ? "text-slate-500 "
+            : "text-rose-600 "
         }`}
       >
         {formatDifference(satir)}
@@ -257,17 +257,17 @@ function SatirGorunumu({
       <td className="px-3 py-2.5 text-sm">
         <Badge tone={rozet.tone}>{rozet.label}</Badge>
         {satir.stale_reason && (
-          <p className="mt-1 max-w-52 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 max-w-52 text-xs text-slate-500 ">
             {staleReasonLabel(satir.stale_reason)}
           </p>
         )}
         {satir.resolution_note && (
-          <p className="mt-1 max-w-52 text-xs italic text-slate-500 dark:text-slate-400">
+          <p className="mt-1 max-w-52 text-xs italic text-slate-500 ">
             #{satir.resolved_by_admin_id}: {satir.resolution_note}
           </p>
         )}
       </td>
-      <td className="px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400">
+      <td className="px-3 py-2.5 text-xs text-slate-500 ">
         {satir.counted_by_admin_id ? `#${satir.counted_by_admin_id}` : "—"}
         <span className="block tabular-nums">{zaman(satir.counted_at)}</span>
       </td>
@@ -317,16 +317,16 @@ function UygulaPenceresi({
     >
       <div className="space-y-4">
         {etkiler.length === 0 ? (
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-sm text-slate-600 ">
             Fark yok — hiçbir stok hareketi yazılmayacak, oturum yalnız kapanacak.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
+          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 ">
             {etkiler.map(({ satir, fark }) => (
-              <li key={satir.id} className="px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200">
+              <li key={satir.id} className="px-4 py-2.5 text-sm text-slate-800 ">
                 {productDisplayName(satir)} · {bucketLabel(satir.bucket)}{" "}
                 <span className="font-semibold tabular-nums">{formatDifference(satir)}</span>
-                <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="ml-2 text-xs text-slate-500 ">
                   ({expectedPhysical(satir)} → {satir.counted_qty})
                 </span>
                 <span className="sr-only">{fark}</span>
@@ -335,7 +335,7 @@ function UygulaPenceresi({
           </ul>
         )}
         {hata && (
-          <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
+          <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 ">
             {hata}
           </p>
         )}
@@ -422,11 +422,11 @@ export default function CountSessionDetailPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-2xl border border-slate-200 bg-white ">
         <Ozet oturum={oturum} />
 
         {/* Eylem barı — FSM ve izne göre yalnız anlamlı olanlar */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3 ">
           {canCount && eylemler.includes("products") && (
             <UrunEklemeFormu ekle={urunEkle} />
           )}
@@ -498,7 +498,7 @@ export default function CountSessionDetailPage() {
         {engeller.length > 0 && canApply && eylemler.includes("apply") && (
           <ul
             data-testid="apply-blockers"
-            className="space-y-1 border-b border-amber-200 bg-amber-50 px-6 py-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+            className="space-y-1 border-b border-amber-200 bg-amber-50 px-6 py-3 text-xs text-amber-900 "
           >
             {engeller.map((e) => (
               <li key={e}>• {e}</li>
@@ -510,7 +510,7 @@ export default function CountSessionDetailPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[64rem] text-left">
             <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 ">
                 <th scope="col" className="px-3 py-2 font-semibold">Ürün</th>
                 <th scope="col" className="px-3 py-2 font-semibold">Kova</th>
                 <th scope="col" className="px-3 py-2 text-right font-semibold">Sistem</th>
@@ -523,7 +523,7 @@ export default function CountSessionDetailPage() {
                 <th scope="col" className="px-3 py-2 text-right font-semibold">Eylem</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100 ">
               {oturum.lines.map((s) => (
                 <SatirGorunumu
                   key={s.id}
@@ -547,7 +547,7 @@ export default function CountSessionDetailPage() {
           </table>
         </div>
         {oturum.lines.length === 0 && (
-          <p className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+          <p className="px-6 py-8 text-center text-sm text-slate-500 ">
             Oturumda henüz ürün yok. Yukarıdan ürün numarası ekleyin.
           </p>
         )}
@@ -681,7 +681,7 @@ function UrunEklemeFormu({
             <Form.Control>
               <input className="input w-40" placeholder="12, 34" inputMode="numeric" {...field} />
             </Form.Control>
-            <Form.ErrorMessage className="mt-1 max-w-56 text-xs text-rose-700 dark:text-rose-400" />
+            <Form.ErrorMessage className="mt-1 max-w-56 text-xs text-rose-700 " />
           </Form.Item>
         )}
       />

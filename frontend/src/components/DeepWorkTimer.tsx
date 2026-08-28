@@ -6,9 +6,9 @@ import { formatClock, MODE_LABEL, type TimerMode } from "@/lib/deepwork";
 import { playChime, notify } from "@/lib/timerSound";
 
 const ACCENT: Record<TimerMode, { dot: string; text: string }> = {
-  focus: { dot: "bg-indigo-500", text: "text-indigo-600 dark:text-indigo-400" },
-  short: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
-  long: { dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
+  focus: { dot: "bg-indigo-500", text: "text-indigo-600 " },
+  short: { dot: "bg-emerald-500", text: "text-emerald-600 " },
+  long: { dot: "bg-amber-500", text: "text-amber-600 " },
 };
 
 function completionMessage(completedMode: TimerMode): { title: string; body: string } {
@@ -65,7 +65,7 @@ export function DeepWorkTimer() {
   const running = status === "running";
 
   return (
-    <div className="fixed bottom-4 left-4 z-[9998] w-64 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
+    <div className="fixed bottom-4 left-4 z-[9998] w-64 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-2xl backdrop-blur ">
       <div className="flex items-center gap-2">
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${accent.dot} ${running ? "animate-pulse" : ""}`} />
         <span className={`text-xs font-semibold uppercase tracking-wide ${accent.text}`}>
@@ -73,7 +73,7 @@ export function DeepWorkTimer() {
         </span>
         <Link
           to={ROUTES.deepwork}
-          className="ml-auto text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+          className="ml-auto text-slate-400 transition hover:text-slate-600 "
           title="Zamanlayıcıyı aç"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -83,7 +83,7 @@ export function DeepWorkTimer() {
       </div>
 
       <div className="mt-1 flex items-end justify-between">
-        <span className="font-mono text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
+        <span className="font-mono text-3xl font-bold tabular-nums text-slate-900 ">
           {formatClock(remaining)}
         </span>
         <button
@@ -107,7 +107,7 @@ export function DeepWorkTimer() {
       </div>
 
       {taskLabel.trim() && (
-        <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={taskLabel}>
+        <p className="mt-1 truncate text-xs text-slate-500 " title={taskLabel}>
           {taskLabel}
         </p>
       )}

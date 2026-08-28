@@ -40,16 +40,16 @@ function Sayac({
   return (
     <Link
       to={to}
-      className="block rounded-2xl border border-slate-200 bg-white px-5 py-4 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
+      className="block rounded-2xl border border-slate-200 bg-white px-5 py-4 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
     >
-      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{baslik}</p>
+      <p className="text-xs font-medium text-slate-500 ">{baslik}</p>
       <p
-        className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-white"
+        className="mt-1 text-2xl font-bold tabular-nums text-slate-900 "
         aria-busy={yukleniyor || undefined}
       >
         {yukleniyor ? "…" : (sayi ?? "—")}
       </p>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{aciklama}</p>
+      <p className="mt-1 text-xs text-slate-500 ">{aciklama}</p>
     </Link>
   );
 }
@@ -79,19 +79,19 @@ export default function InventoryOverviewPage() {
         />
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+      <section className="rounded-2xl border border-slate-200 bg-white ">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
           <div className="mr-auto">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            <h2 className="text-base font-bold text-slate-900 ">
               Son hasar olayları
             </h2>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500 ">
               Hasara ayırma, kurtarma, imha ve tedarikçi iadesi kayıtları.
             </p>
           </div>
           <Link
             to={ROUTES.adminInventoryDamage}
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-panel-accent transition hover:bg-panel-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:hover:bg-panel-accent/10"
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-panel-accent transition hover:bg-panel-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
           >
             Tümü
           </Link>
@@ -104,23 +104,23 @@ export default function InventoryOverviewPage() {
             />
           </div>
         ) : hasar.data && hasar.data.items.length === 0 ? (
-          <p className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+          <p className="px-6 py-8 text-center text-sm text-slate-500 ">
             Henüz hasar olayı kaydedilmedi.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-100 ">
             {(hasar.data?.items ?? []).map((olay) => (
               <li key={olay.id} className="flex flex-wrap items-center gap-3 px-6 py-3 text-sm">
-                <span className="font-medium text-slate-900 dark:text-white">
+                <span className="font-medium text-slate-900 ">
                   {damageKindPastLabel(olay.kind)}
                 </span>
-                <span className="text-slate-500 dark:text-slate-400">
+                <span className="text-slate-500 ">
                   Ürün #{olay.product_id} · {olay.qty} adet
                 </span>
-                <span className="text-xs text-slate-400 dark:text-slate-500">
+                <span className="text-xs text-slate-400 ">
                   {damageReasonLabel(olay.reason_code)}
                 </span>
-                <span className="ml-auto text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                <span className="ml-auto text-xs tabular-nums text-slate-400 ">
                   {TARIH.format(new Date(olay.created_at))}
                 </span>
               </li>
@@ -129,21 +129,21 @@ export default function InventoryOverviewPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5 dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">İlgili ekranlar</h2>
-        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+      <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5 ">
+        <h2 className="text-base font-bold text-slate-900 ">İlgili ekranlar</h2>
+        <p className="mt-0.5 text-xs text-slate-500 ">
           Sayım ve hasar işlemleri hareket kaydı üretir; kayıtların kendisi salt okunurdur.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
             to={ROUTES.adminStoreStock}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
           >
             Stok hareketleri
           </Link>
           <Link
             to={ROUTES.adminAuditLogs}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
           >
             Denetim kayıtları
           </Link>

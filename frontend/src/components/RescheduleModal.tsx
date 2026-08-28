@@ -23,7 +23,7 @@ interface RescheduleModalProps {
 }
 
 const fieldCls =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 ";
 
 export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
   const [date, setDate] = useState("");
@@ -72,12 +72,12 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
       onClose={onClose}
       ariaLabel="Ders talebini ertele"
       hideCloseButton
-      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 "
     >
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+        <h3 className="text-lg font-bold text-slate-900 ">
           Ders Talebini Ertele
         </h3>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-slate-500 ">
           Yeni saat eğitmenin onayına sunulur.
         </p>
 
@@ -119,7 +119,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 "
             >
               Vazgeç
             </button>

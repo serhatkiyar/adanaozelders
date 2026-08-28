@@ -67,7 +67,7 @@ export function SubjectCarousel() {
   return (
     <div className="relative w-full">
       {/* The Pill Container - Apple Glassmorphism Effect */}
-      <div className="relative rounded-full bg-white/60 px-4 py-0.5 shadow-[0_0_20px_rgba(15,23,42,0.08)] ring-1 ring-white border border-slate-100/50 backdrop-blur-xl dark:bg-slate-900/50 dark:shadow-[0_0_20px_rgba(0,0,0,0.3)] dark:ring-white/10 dark:border-transparent">
+      <div className="relative rounded-full bg-white/60 px-4 py-0.5 shadow-[0_0_20px_rgba(15,23,42,0.08)] ring-1 ring-white border border-slate-100/50 backdrop-blur-xl ">
         
         <div
           ref={scrollRef}
@@ -85,13 +85,13 @@ export function SubjectCarousel() {
                 <img 
                   src={`/icons/subjects/${s.icon}`} 
                   alt={s.name} 
-                  className="relative z-10 h-6 w-6 object-contain opacity-80 transition-all duration-300 group-hover:scale-110 group-hover:opacity-100 dark:invert"
+                  className="relative z-10 h-6 w-6 object-contain opacity-80 transition-all duration-300 group-hover:scale-110 group-hover:opacity-100 "
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "/icons/subjects/default.svg";
                   }}
                 />
               </div>
-              <span className="whitespace-nowrap text-[13.5px] font-medium text-slate-700 transition-colors duration-300 group-hover:font-bold group-hover:text-indigo-600 dark:text-slate-300 dark:group-hover:text-indigo-400">
+              <span className="whitespace-nowrap text-[13.5px] font-medium text-slate-700 transition-colors duration-300 group-hover:font-bold group-hover:text-indigo-600 ">
                 {s.name}
               </span>
             </Link>
@@ -106,7 +106,7 @@ export function SubjectCarousel() {
               onPointerDown={() => startScroll("right")}
               onPointerUp={stopScroll}
               onPointerLeave={stopScroll}
-              className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 dark:bg-slate-700 dark:ring-white/10 dark:text-white dark:hover:bg-slate-600"
+              className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 "
               aria-label="Sağa kaydır"
             >
               <svg className="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
@@ -124,7 +124,7 @@ export function SubjectCarousel() {
               onPointerDown={() => startScroll("left")}
               onPointerUp={stopScroll}
               onPointerLeave={stopScroll}
-              className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 dark:bg-slate-700 dark:ring-white/10 dark:text-white dark:hover:bg-slate-600"
+              className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 "
               aria-label="Sola kaydır"
             >
               <svg className="h-5 w-5 mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>

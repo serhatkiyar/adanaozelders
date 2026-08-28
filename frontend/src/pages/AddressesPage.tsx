@@ -25,16 +25,16 @@ export default function AddressesPage() {
   return (
     <DashboardShell title="Adreslerim" navItems={STUDENT_NAV}>
       <div className="mx-auto max-w-4xl">
-        <nav className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
-          <Link to={ROUTES.profile} className="hover:text-indigo-600 dark:hover:text-indigo-400">
+        <nav className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 ">
+          <Link to={ROUTES.profile} className="hover:text-indigo-600 ">
             Hesabım
           </Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-slate-700 dark:text-slate-300">Adreslerim</span>
+          <span className="text-slate-300 ">/</span>
+          <span className="text-slate-700 ">Adreslerim</span>
         </nav>
 
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Adreslerim</h1>
+          <h1 className="text-2xl font-bold text-slate-900 ">Adreslerim</h1>
           <button
             type="button"
             onClick={() => setAdding(true)}
@@ -52,41 +52,41 @@ export default function AddressesPage() {
             <FullScreenSpinner />
           </div>
         ) : !addresses || addresses.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-white py-20 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-slate-500 dark:text-slate-400">Henüz kayıtlı adresin yok.</p>
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white py-20 text-center ">
+            <p className="text-slate-500 ">Henüz kayıtlı adresin yok.</p>
           </div>
         ) : (
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {addresses.map((a) => (
-              <div key={a.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <div key={a.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 ">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="font-semibold text-slate-900 dark:text-white">{a.title}</h2>
+                  <h2 className="font-semibold text-slate-900 ">{a.title}</h2>
                   {a.is_default && (
-                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 ">
                       Varsayılan
                     </span>
                   )}
                 </div>
                 {(a.recipient_name || a.phone) && (
-                  <p className="mt-1.5 text-sm text-slate-700 dark:text-slate-200">
+                  <p className="mt-1.5 text-sm text-slate-700 ">
                     {[a.recipient_name, a.phone].filter(Boolean).join(" · ")}
                   </p>
                 )}
-                <p className="mt-2 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
+                <p className="mt-2 whitespace-pre-line text-sm text-slate-600 ">
                   {a.address_line}
                   {(a.door_no || a.apt_no) && (
                     <> · {[a.door_no && `Kapı ${a.door_no}`, a.apt_no && `Daire ${a.apt_no}`].filter(Boolean).join(" ")}</>
                   )}
                 </p>
                 {a.directions && (
-                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{a.directions}</p>
+                  <p className="mt-1 text-xs text-slate-400 ">{a.directions}</p>
                 )}
 
                 <div className="mt-auto flex flex-wrap gap-2 pt-4 text-xs font-semibold">
                   <button
                     type="button"
                     onClick={() => setEditing(a)}
-                    className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+                    className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
                   >
                     Düzenle
                   </button>
@@ -99,7 +99,7 @@ export default function AddressesPage() {
                           { onSuccess: () => toast.success("Varsayılan adres güncellendi") }
                         )
                       }
-                      className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+                      className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
                     >
                       Varsayılan yap
                     </button>
@@ -111,7 +111,7 @@ export default function AddressesPage() {
                         remove.mutate(a.id, { onSuccess: () => toast.success("Adres silindi") });
                       }
                     }}
-                    className="rounded-full border border-slate-200 px-3 py-1 text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-50 dark:border-slate-700 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                    className="rounded-full border border-slate-200 px-3 py-1 text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-50 "
                   >
                     Sil
                   </button>

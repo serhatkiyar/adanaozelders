@@ -52,7 +52,7 @@ export default function OperatorHome() {
             <div className="text-right">
               <Link
                 to={ROUTES.balance}
-                className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                className="text-xs font-semibold text-indigo-600 hover:underline "
               >
                 Bakiye & işlem dökümü →
               </Link>
@@ -73,10 +73,10 @@ export default function OperatorHome() {
 /* Kütüphane kimliği: kapak + logo + ad + durum + "sayfanı görüntüle" (öğrencilerin
    gördüğü public profile). Operatör kendi kütüphanesini güzelce görür. */
 const STATUS_PILL: Record<string, { label: string; cls: string }> = {
-  ACTIVE: { label: "Yayında", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
-  PENDING: { label: "İncelemede", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
-  REJECTED: { label: "Reddedildi", cls: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
-  HIDDEN: { label: "Gizli", cls: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
+  ACTIVE: { label: "Yayında", cls: "bg-emerald-100 text-emerald-700 " },
+  PENDING: { label: "İncelemede", cls: "bg-amber-100 text-amber-700 " },
+  REJECTED: { label: "Reddedildi", cls: "bg-rose-100 text-rose-700 " },
+  HIDDEN: { label: "Gizli", cls: "bg-slate-200 text-slate-600 " },
 };
 
 function OperatorHero({
@@ -95,7 +95,7 @@ function OperatorHero({
   const place = [lib?.district, lib?.city].filter(Boolean).join(", ");
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ">
       {/* Kapak */}
       <div className="relative h-36 w-full bg-gradient-to-br from-indigo-500 to-violet-600">
         {lib?.cover_url && (
@@ -113,7 +113,7 @@ function OperatorHero({
 
       <div className="px-5 pb-5">
         <div className="-mt-10 flex items-end gap-4">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-md ring-4 ring-white dark:ring-slate-800">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-md ring-4 ring-white ">
             {lib?.logo_url ? (
               <img src={lib.logo_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -121,10 +121,10 @@ function OperatorHero({
             )}
           </div>
           <div className="min-w-0 flex-1 pb-1">
-            <h1 className="truncate text-xl font-bold text-slate-900 dark:text-white">
+            <h1 className="truncate text-xl font-bold text-slate-900 ">
               {isLoading ? "Yükleniyor…" : name}
             </h1>
-            <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 truncate text-xs text-slate-500 ">
               {place || "Kütüphane paneli"}
               {lib && lib.rating_count > 0 && (
                 <>
@@ -150,7 +150,7 @@ function OperatorHero({
           {lib && status === "ACTIVE" && (
             <Link
               to={ROUTES.library(lib.slug)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 "
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
@@ -180,14 +180,14 @@ function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
 
   if (lib.status === "PENDING") {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
-        <p className="flex items-center gap-2 text-sm font-bold text-amber-800 dark:text-amber-200">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 ">
+        <p className="flex items-center gap-2 text-sm font-bold text-amber-800 ">
           <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
           Başvurun inceleniyor
         </p>
-        <p className="mt-1 text-sm text-amber-700/90 dark:text-amber-200/80">
+        <p className="mt-1 text-sm text-amber-700/90 ">
           Admin onayından sonra kütüphanen yayına girer ve öğrencilere görünür olur.
           Bu sırada <Link to={ROUTES.operatorLibrary} className="font-semibold underline">profilini tamamlayabilirsin</Link>{" "}
           (saatler, görseller, olanaklar, konum) — onaylanır onaylanmaz hazır olsun.
@@ -198,19 +198,19 @@ function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
 
   if (lib.status === "REJECTED") {
     return (
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/30 dark:bg-rose-500/10">
-        <p className="flex items-center gap-2 text-sm font-bold text-rose-800 dark:text-rose-200">
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 ">
+        <p className="flex items-center gap-2 text-sm font-bold text-rose-800 ">
           <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
           Başvurun reddedildi
         </p>
         {lib.rejection_reason && (
-          <p className="mt-1 text-sm text-rose-700/90 dark:text-rose-200/80">
+          <p className="mt-1 text-sm text-rose-700/90 ">
             <span className="font-semibold">Gerekçe:</span> {lib.rejection_reason}
           </p>
         )}
-        <p className="mt-1 text-sm text-rose-700/90 dark:text-rose-200/80">
+        <p className="mt-1 text-sm text-rose-700/90 ">
           <Link to={ROUTES.operatorLibrary} className="font-semibold underline">Profilini düzelt</Link>{" "}
           ve başvurunu tekrar gönder.
         </p>
@@ -245,7 +245,7 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
   const simdi = new Date();
 
   if (rez.isLoading || oturum.isLoading) {
-    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 " />;
   }
   if (rez.isError || oturum.isError) {
     return (
@@ -303,39 +303,39 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
   return (
     <div
       data-testid="operator-bugun"
-      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 "
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Bugün</h2>
+        <h2 className="text-base font-bold text-slate-900 ">Bugün</h2>
         <Link
           to={ROUTES.operatorSessions}
-          className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+          className="text-xs font-semibold text-indigo-600 hover:underline "
         >
           Oturumlar & QR →
         </Link>
       </div>
 
       {bosGun ? (
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-sm text-slate-500 ">
           Bugün için kayıt yok. Yeni rezervasyon veya oturum kaydı geldiğinde burada görünür.
         </p>
       ) : (
         <>
-          <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm text-slate-600 ">
             <span>
-              <b data-testid="bugun-rezervasyon-sayisi" className="text-slate-900 dark:text-white">
+              <b data-testid="bugun-rezervasyon-sayisi" className="text-slate-900 ">
                 {rezOzet.toplam}
               </b>{" "}
               çalışma rezervasyonu
             </span>
             <span>
-              <b data-testid="bugun-oturum-sayisi" className="text-slate-900 dark:text-white">
+              <b data-testid="bugun-oturum-sayisi" className="text-slate-900 ">
                 {oturumOzet.toplam}
               </b>{" "}
               deneme oturumu
               {oturumKisi > 0 && ` · ${oturumKisi} kayıtlı`}
             </span>
-            <span className="text-slate-500 dark:text-slate-400">
+            <span className="text-slate-500 ">
               {rezOzet.giren}/{rezOzet.toplam} giriş yapıldı
             </span>
           </div>
@@ -343,13 +343,13 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
           {siradaki ? (
             <p
               data-testid="bugun-siradaki"
-              className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200"
+              className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-700 "
             >
-              <span className="text-slate-400 dark:text-slate-500">Sıradaki:</span>{" "}
+              <span className="text-slate-400 ">Sıradaki:</span>{" "}
               <b>{formatIstanbulTime(siradaki.startsAt)}</b> · {siradaki.ad}
             </p>
           ) : (
-            <p className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            <p className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-500 ">
               Bugün için bekleyen randevu kalmadı.
             </p>
           )}
@@ -364,11 +364,11 @@ function OperationsTeaser({ libraryId: _libraryId }: { libraryId: number }) {
   return (
     <Link
       to={ROUTES.operatorSessions}
-      className="flex items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-indigo-300 dark:bg-slate-800 dark:ring-slate-700 dark:hover:ring-indigo-500/50"
+      className="flex items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-indigo-300 "
     >
       <div className="min-w-0">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Oturumlar & QR</h2>
-        <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+        <h2 className="text-base font-bold text-slate-900 ">Oturumlar & QR</h2>
+        <p className="mt-0.5 text-sm text-slate-500 ">
           Deneme oturumlarını yönet, çalışma rezervasyonlarını gör ve QR ile katılım doğrula.
         </p>
       </div>
@@ -456,9 +456,9 @@ function PasswordPanel() {
   const genelHata = form.formState.errors.root?.sunucu?.message;
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Hesap Güvenliği</h2>
+        <h2 className="text-base font-bold text-slate-900 ">Hesap Güvenliği</h2>
         <Button
           size="sm"
           variant="secondary"
@@ -473,7 +473,7 @@ function PasswordPanel() {
           {genelHata && (
             <p
               role="alert"
-              className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+              className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
             >
               {genelHata}
             </p>
@@ -542,7 +542,7 @@ function EarningsCard({ libraryId }: { libraryId: number }) {
   const escrowWording = canPromiseEscrow(paymentAvailability, "library_marketplace");
   const { data, isLoading } = useLibraryEarnings(libraryId);
   if (isLoading) {
-    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 " />;
   }
   if (!data) return null;
 
@@ -550,10 +550,10 @@ function EarningsCard({ libraryId }: { libraryId: number }) {
 
   // Tek sakin kart; sütunlar saç-teli çizgiyle ayrılır, renk yalnız rakamın üstünde.
   return (
-    <div className="grid grid-cols-1 divide-y divide-slate-100 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 dark:divide-slate-700 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="grid grid-cols-1 divide-y divide-slate-100 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 ">
       <div className="pb-4 sm:pb-0 sm:pr-5">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Serbest kazanç</p>
-        <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+        <p className="text-xs font-medium text-slate-500 ">Serbest kazanç</p>
+        <p className="mt-1 text-2xl font-bold text-emerald-600 ">
           {formatTRY(data.released_earning)}
         </p>
         <p className="mt-0.5 text-[11px] text-slate-400">
@@ -561,10 +561,10 @@ function EarningsCard({ libraryId }: { libraryId: number }) {
         </p>
       </div>
       <div className="py-4 sm:px-5 sm:py-0">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+        <p className="text-xs font-medium text-slate-500 ">
           {escrowWording ? "Emanette bekleyen" : "Bekleyen"}
         </p>
-        <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+        <p className="mt-1 text-2xl font-bold text-amber-600 ">
           {formatTRY(data.held_earning)}
         </p>
         <p className="mt-0.5 text-[11px] text-slate-400">
@@ -572,8 +572,8 @@ function EarningsCard({ libraryId }: { libraryId: number }) {
         </p>
       </div>
       <div className="pt-4 sm:pl-5 sm:pt-0">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Toplam</p>
-        <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{formatTRY(total)}</p>
+        <p className="text-xs font-medium text-slate-500 ">Toplam</p>
+        <p className="mt-1 text-2xl font-bold text-slate-900 ">{formatTRY(total)}</p>
         <p className="mt-0.5 text-[11px] text-slate-400">Katılım doğrulandıkça serbest kalır</p>
       </div>
     </div>

@@ -12,19 +12,19 @@ import { toast } from "@/store/toastStore";
 import type { DocumentType, Education, EducationCreate } from "@/types";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/30";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
 
 const fieldLabelCls =
-  "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
+  "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 const saveBtn =
   "rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
 
 const cancelBtn =
-  "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700";
+  "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ";
 
 const labelCls =
-  "text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500";
+  "text-xs font-semibold uppercase tracking-wide text-slate-400 ";
 
 function subtitle(edu: Education): string | null {
   const parts = [edu.degree, edu.field_of_study].filter(Boolean) as string[];
@@ -129,7 +129,7 @@ function EducationForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-700/40"
+      className="space-y-3 rounded-xl bg-slate-50 p-4 "
     >
       <Field label="Okul" required labelClassName={fieldLabelCls}>
         {(id) => (
@@ -206,8 +206,8 @@ function EducationForm({
       </div>
 
       {showVerification && (
-        <div className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-          <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+        <div className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 ">
+          <p className="text-xs font-semibold text-indigo-700 ">
             Diploma doğrulama (e-Devlet)
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -257,7 +257,7 @@ function EducationForm({
                 />
             )}
           </Field>
-          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="text-[11px] leading-relaxed text-slate-500 ">
             e-Devlet → "Mezun Belgesi / Öğrenci Belgesi" alıp <strong>barkodlu</strong> PDF'i yükle,
             doğrulama kodunu ve TCKN'ni gir. e-Devlet doğrulaması barkodun yanında TCKN ister;
             bu bilgi <strong>yalnız yöneticiye</strong> gösterilir, herkese açık profilde görünmez.
@@ -313,7 +313,7 @@ function DocumentArea({
         href={edu.document_url!}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
+        className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 "
       >
         <DiplomaIcon className="h-3.5 w-3.5" />
         Diploma / Belge
@@ -341,7 +341,7 @@ function DocumentArea({
             href={edu.document_url!}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 "
           >
             <DiplomaIcon className="h-3.5 w-3.5" />
             <span className="max-w-[160px] truncate">{edu.document_name || "Diploma"}</span>
@@ -350,7 +350,7 @@ function DocumentArea({
             type="button"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+            className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 "
           >
             {uploading ? "Yükleniyor…" : "Değiştir"}
           </button>
@@ -360,7 +360,7 @@ function DocumentArea({
           type="button"
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50 "
         >
           <DiplomaIcon className="h-3.5 w-3.5" />
           {uploading ? "Yükleniyor…" : "Diploma / Belge Yükle"}
@@ -378,7 +378,7 @@ function VerificationStatusPill({ edu, owner }: { edu: Education; owner: boolean
 
   if (st === "VERIFIED") {
     return (
-      <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+      <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-3 w-3" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
         </svg>
@@ -390,7 +390,7 @@ function VerificationStatusPill({ edu, owner }: { edu: Education; owner: boolean
 
   if (st === "PENDING") {
     return (
-      <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+      <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ">
         ⏳ Doğrulama bekleniyor
       </span>
     );
@@ -398,11 +398,11 @@ function VerificationStatusPill({ edu, owner }: { edu: Education; owner: boolean
   // REJECTED
   return (
     <div className="mt-1.5">
-      <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+      <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 ">
         ✕ Reddedildi
       </span>
       {edu.verification_note && (
-        <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-300">
+        <p className="mt-1 text-[11px] text-rose-600 ">
           {edu.verification_note}
         </p>
       )}
@@ -435,20 +435,20 @@ function EducationItem({
 
   return (
     <div className="flex gap-3.5">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ">
         {CapIcon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900 dark:text-white">
+        <p className="text-sm font-semibold text-slate-900 ">
           {edu.school_name}
         </p>
         {sub && (
-          <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mt-0.5 text-sm text-slate-600 ">
             {sub}
           </p>
         )}
         {years && (
-          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-400 ">
             {years}
           </p>
         )}
@@ -470,14 +470,14 @@ function EducationItem({
                 type="button"
                 disabled={deleting}
                 onClick={onDelete}
-                className="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50 "
               >
                 {deleting ? "Siliniyor…" : "Sil"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
-                className="rounded-lg px-2 py-1 text-xs font-medium text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="rounded-lg px-2 py-1 text-xs font-medium text-slate-400 transition hover:bg-slate-100 "
               >
                 Vazgeç
               </button>
@@ -487,14 +487,14 @@ function EducationItem({
               <button
                 type="button"
                 onClick={onEdit}
-                className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+                className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
               >
                 Düzenle
               </button>
               <button
                 type="button"
                 onClick={() => setConfirming(true)}
-                className="rounded-lg px-2 py-1 text-xs font-medium text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="rounded-lg px-2 py-1 text-xs font-medium text-slate-400 transition hover:bg-slate-100 "
               >
                 Sil
               </button>
@@ -579,7 +579,7 @@ export function EducationSection({
       className={
         bare
           ? ""
-          : "rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+          : "rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 "
       }
     >
       <div className="flex items-center justify-between">
@@ -591,7 +591,7 @@ export function EducationSection({
               setEditingId(null);
               setAdding(true);
             }}
-            className="rounded-lg px-2.5 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+            className="rounded-lg px-2.5 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
           >
             + Ekle
           </button>
@@ -600,7 +600,7 @@ export function EducationSection({
 
       <div className="mt-4 space-y-4">
         {isLoading ? (
-          <div className="h-12 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />
+          <div className="h-12 animate-pulse rounded-xl bg-slate-100 " />
         ) : (
           <>
             {list.map((edu) =>
@@ -647,7 +647,7 @@ export function EducationSection({
             )}
 
             {editable && !adding && list.length === 0 && (
-              <p className="text-sm italic text-slate-400 dark:text-slate-500">
+              <p className="text-sm italic text-slate-400 ">
                 {withDocument
                   ? "Henüz eğitim bilgisi eklemedin. Eğitmen olarak en az bir eğitim ekleyip diploma/belge yüklemen ya da e-Devlet doğrulama barkodunu girmen gerekir; aksi halde ilanını onaya gönderemezsin."
                   : "Henüz eğitim bilgisi eklemedin. İstersen okul, derece ve yıl bilgilerini ekleyebilirsin (zorunlu değil)."}

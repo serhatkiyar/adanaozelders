@@ -107,28 +107,28 @@ export default function AdminAccessPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-12">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-950 dark:text-white">Yönetici rolleri</h2>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Her yönetici tek bir görev rolüne atanır. Kesin izin kontrolü API tarafında uygulanır.</p>
+            <h2 className="text-lg font-bold text-slate-950 ">Yönetici rolleri</h2>
+            <p className="mt-1 text-sm text-slate-500 ">Her yönetici tek bir görev rolüne atanır. Kesin izin kontrolü API tarafında uygulanır.</p>
           </div>
           {canManage && <Button onClick={() => yuzey.ac({ rol: null })}>Yeni rol</Button>}
         </div>
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {(rolesQuery.data ?? []).map((role) => (
-            <article key={role.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <article key={role.id} className="rounded-xl border border-slate-200 p-4 ">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-slate-900 dark:text-white">{role.name}</h3>
+                    <h3 className="font-bold text-slate-900 ">{role.name}</h3>
                     {role.is_system && <Badge tone="info">Sistem</Badge>}
                   </div>
                   <p className="mt-1 font-mono text-xs text-slate-500">{role.code}</p>
                 </div>
                 {canManage && role.code !== "SUPER_ADMIN" && <Button size="sm" variant="secondary" onClick={() => yuzey.ac({ rol: role })}>Düzenle</Button>}
               </div>
-              {role.description && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{role.description}</p>}
+              {role.description && <p className="mt-3 text-sm text-slate-600 ">{role.description}</p>}
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
                 <Badge tone="neutral">{role.permission_codes.length} izin</Badge>
                 <Badge tone="neutral">{role.assignment_count} yönetici</Badge>
@@ -138,14 +138,14 @@ export default function AdminAccessPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-lg font-bold text-slate-950 dark:text-white">Yönetici atamaları</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Son Super Admin başka bir role indirilemez.</p>
-        <div className="mt-5 divide-y divide-slate-100 dark:divide-slate-800">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ">
+        <h2 className="text-lg font-bold text-slate-950 ">Yönetici atamaları</h2>
+        <p className="mt-1 text-sm text-slate-500 ">Son Super Admin başka bir role indirilemez.</p>
+        <div className="mt-5 divide-y divide-slate-100 ">
           {(assignmentsQuery.data ?? []).map((assignment) => (
             <div key={assignment.admin_id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-semibold text-slate-900 dark:text-white">{assignment.admin_name}</p>
+                <p className="font-semibold text-slate-900 ">{assignment.admin_name}</p>
                 <p className="text-xs text-slate-500">{assignment.admin_email}</p>
               </div>
               <label className="sm:w-72">
@@ -265,7 +265,7 @@ function RolIcerik({
       {genelHata && (
         <p
           role="alert"
-          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
         >
           {genelHata}
         </p>
@@ -327,12 +327,12 @@ function RolIcerik({
       <div className="space-y-4">
         {gruplar.map(([grup, izinler]) => (
           <fieldset key={grup}>
-            <legend className="text-sm font-bold text-slate-800 dark:text-slate-100">{grup}</legend>
+            <legend className="text-sm font-bold text-slate-800 ">{grup}</legend>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {izinler.map((izin) => (
                 <label
                   key={izin.code}
-                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
+                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm "
                 >
                   <input
                     type="checkbox"

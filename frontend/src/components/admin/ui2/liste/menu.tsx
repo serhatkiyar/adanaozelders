@@ -225,7 +225,7 @@ export function MenuOgesi({ children, onSec, yikici, bekliyor, ipucu }: MenuOges
       isPending={bekliyor}
       onClick={onSec}
       className={`w-full !justify-start rounded-none px-3 text-left ${
-        yikici ? "text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10" : ""
+        yikici ? "text-rose-600 hover:bg-rose-50 " : ""
       }`}
     >
       <span className="flex min-w-0 flex-col items-start">

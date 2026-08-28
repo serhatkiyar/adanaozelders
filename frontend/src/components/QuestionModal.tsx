@@ -24,7 +24,7 @@ export function QuestionModal({
   const ask = useAskQuestion();
 
   const inputCls =
-    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500";
+    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -61,15 +61,15 @@ export function QuestionModal({
       onClose={onClose}
       ariaLabel="Soru sor"
       hideCloseButton
-      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 "
     >
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+        <h3 className="text-lg font-bold text-slate-900 ">
           Soru Sor
         </h3>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-slate-500 ">
           {tutorName} eğitmenine bu dersle ilgili soru yöneltebilirsin.
           {typeof remaining === "number" && (
-            <span className="font-medium text-indigo-600 dark:text-indigo-400">
+            <span className="font-medium text-indigo-600 ">
               {" "}
               Kalan hakkın: {remaining}
             </span>
@@ -77,7 +77,7 @@ export function QuestionModal({
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <Field label="Konu (opsiyonel)" labelClassName="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <Field label="Konu (opsiyonel)" labelClassName="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
             {(id) => (
                 <input
                     id={id}
@@ -90,7 +90,7 @@ export function QuestionModal({
                 />
             )}
           </Field>
-          <Field label="Sorun" labelClassName="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <Field label="Sorun" labelClassName="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
             {(id) => (
                 <textarea
                     id={id}
@@ -107,7 +107,7 @@ export function QuestionModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 "
             >
               Vazgeç
             </button>

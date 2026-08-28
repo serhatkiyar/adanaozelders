@@ -6,27 +6,27 @@ import { toast } from "@/store/toastStore";
 import type { PayoutStatus } from "@/types";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500";
-const labelCls = "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+const labelCls = "mb-1.5 block text-xs font-medium text-slate-500 ";
 const sectionLabelCls =
-  "text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500";
+  "text-xs font-semibold uppercase tracking-wide text-slate-400 ";
 
 const STATUS_META: Record<PayoutStatus, { label: string; cls: string }> = {
   NONE: {
     label: "Bilgi yok",
-    cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+    cls: "bg-slate-100 text-slate-600 ",
   },
   PENDING: {
     label: "Doğrulama bekleniyor",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    cls: "bg-amber-50 text-amber-700 ",
   },
   ACTIVE: {
     label: "Doğrulandı ✓",
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    cls: "bg-emerald-50 text-emerald-700 ",
   },
   REJECTED: {
     label: "Reddedildi",
-    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+    cls: "bg-rose-50 text-rose-700 ",
   },
 };
 
@@ -78,7 +78,7 @@ export function PayoutSection() {
   const meta = STATUS_META[status];
 
   return (
-    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex items-center justify-between">
         <span className={sectionLabelCls}>Ödeme Bilgileri</span>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.cls}`}>
@@ -86,37 +86,37 @@ export function PayoutSection() {
         </span>
       </div>
 
-      <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-xs leading-relaxed text-slate-500 ">
         Ders ücretlerin <strong>iyzico üzerinden doğrudan IBAN'ına</strong> yatar; platformda
         para tutulmaz. Kimlik doğrulamasını iyzico yapar.
       </p>
 
       {isLoading ? (
-        <div className="mt-4 h-12 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700" />
+        <div className="mt-4 h-12 animate-pulse rounded-xl bg-slate-100 " />
       ) : (
         <div className="mt-4">
           {/* Özet (ACTIVE / PENDING) */}
           {!showForm && (
             <div className="space-y-2">
               {payout?.iban_masked && (
-                <p className="font-mono text-sm text-slate-700 dark:text-slate-200">
+                <p className="font-mono text-sm text-slate-700 ">
                   {payout.iban_masked}
                 </p>
               )}
               {isActive && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                <p className="text-xs text-emerald-600 ">
                   Kimliğin doğrulandı; ödemeler bu IBAN'a yatacak.
                 </p>
               )}
               {status === "PENDING" && (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
+                <p className="text-xs text-amber-600 ">
                   Bilgilerin doğrulama sürecinde. Sonuç gelince burada görünecek.
                 </p>
               )}
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="mt-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+                className="mt-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 "
               >
                 {isActive ? "IBAN'ı değiştir" : "Bilgileri güncelle"}
               </button>
@@ -168,7 +168,7 @@ export function PayoutSection() {
                 </Field>
               </div>
 
-              <label className="flex items-start gap-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              <label className="flex items-start gap-2 text-xs leading-relaxed text-slate-500 ">
                 <input
                   type="checkbox"
                   checked={consent}
@@ -187,7 +187,7 @@ export function PayoutSection() {
                   <button
                     type="button"
                     onClick={() => setEditing(false)}
-                    className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+                    className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 "
                   >
                     İptal
                   </button>

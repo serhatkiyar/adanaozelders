@@ -28,20 +28,20 @@ export default function SellerStorePage() {
     <StoreLayout title={sellerName} showCategoryBar={false}>
       <Seo title={`${sellerName} — Mağaza`} noindex />
       <div className="mx-auto max-w-[1464px] px-4 py-8 md:px-8">
-        <nav className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
-          <Link to={ROUTES.store} className="hover:text-indigo-600 dark:hover:text-indigo-400">
+        <nav className="flex items-center gap-1.5 text-sm text-slate-500 ">
+          <Link to={ROUTES.store} className="hover:text-indigo-600 ">
             Mağaza
           </Link>
-          <span className="text-slate-300 dark:text-slate-600">/</span>
-          <span className="text-slate-700 dark:text-slate-300">{sellerName}</span>
+          <span className="text-slate-300 ">/</span>
+          <span className="text-slate-700 ">{sellerName}</span>
         </nav>
 
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-lg font-semibold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-lg font-semibold text-indigo-700 ">
             {sellerName.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">{sellerName}</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 ">{sellerName}</h1>
             <p className="text-sm text-slate-400">{products?.length ?? 0} ürün</p>
           </div>
         </div>

@@ -307,7 +307,7 @@ function Item({
 function Label({
   children,
   optional = false,
-  className = "mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200",
+  className = "mb-1.5 block text-sm font-semibold text-slate-700 ",
 }: {
   children: ReactNode;
   optional?: boolean;
@@ -331,7 +331,7 @@ function Label({
       {optional && (
         <>
           {" "}
-          <span className="font-normal text-slate-400 dark:text-slate-500">
+          <span className="font-normal text-slate-400 ">
             (opsiyonel)
           </span>
         </>
@@ -437,48 +437,11 @@ function Control({ children }: { children: ReactElement }) {
     );
   });
 
-  // ── Koyu temada sayı girdisinin yerel okları (İP-A6c · Görev 6b) ──
-  //
-  // `<input type="number">`ın artır/azalt okları tarayıcının YEREL widget'ıdır
-  // ve varsayılan olarak açık temaya göre çizilir: koyu panelin üstünde beyaz
-  // bir blok gibi durur. jsdom bunu çizmediği için hiçbir birim testi
-  // göremezdi; denetim gerçek tarayıcıda buldu.
-  //
-  // Çözüm `color-scheme`: tarayıcıya "bu kontrol koyu zeminde" denir ve yerel
-  // widget'ı kendisi koyu çizer. Okları `appearance: none` ile SİLMEK de bir
-  // seçenekti; seçilmedi, çünkü ok kullanıcının gerçekten kullandığı bir
-  // aracı ve kaybı erişilebilirlik kaybıdır (klavye yerine fare kullanan,
-  // ince motor kontrolü sınırlı kullanıcı).
-  //
-  // Karar burada TEK yerde veriliyor: A7'de sayısal alanı olan her ekran bunu
-  // yeniden yazmasın (ve yazmayı unutmasın).
-  //
-  // ── İP-A7d2 · SK-6: KAPSAM `number` İLE SINIRLIYDI ──
-  //
-  // A6c bu düzeltmeyi yalnız `type="number"` için kurmuştu ve o pakette
-  // ölçülen tek yerel widget artır/azalt oklarıydı. Ama tarih ve saat
-  // girdileri de yerel widget çizer (takvim/saat ikonu, açılır seçici) ve
-  // onlar da varsayılan olarak AÇIK temaya göre çizilir.
-  //
-  // Dalga 2'nin gerçek tarayıcı turu ölçtü: koyu temada `Tarih & saat`
-  // (`datetime-local`) ve `Vardiya başlangıç/bitiş` (`time`) alanlarının
-  // `color-scheme` değeri `normal` kalıyordu — yani koyu panelin üstünde
-  // beyaz bir takvim ikonu. A7d1'in üç ekranında tarih alanı YOKTU; bu yüzden
-  // eksik görünmemişti.
-  const YEREL_WIDGET_TIPLERI = new Set([
-    "number",
-    "date",
-    "datetime-local",
-    "time",
-    "month",
-    "week",
-    "color",
-  ]);
-  const yerelWidget =
-    cocuk.type === "input" && YEREL_WIDGET_TIPLERI.has(String(cocukProps.type));
-  const sinif = [cocukProps.className, yerelWidget ? "dark:[color-scheme:dark]" : null]
-    .filter(Boolean)
-    .join(" ");
+  // Tarihçe (İP-A6c 6b / A7d2 SK-6): yerel widget'lı girdilere burada
+  // `color-scheme` sınıfı ekleniyordu — koyu panelde beyaz takvim/ok kusuru.
+  // Dark mode sökülünce (CMS turu) şema kök `html { color-scheme: light }`
+  // bildiriminden gelir; alan bazlı ekleme kalktı.
+  const sinif = cocukProps.className;
 
   return cloneElement(cocuk, {
     id: kimlik?.id,
@@ -492,7 +455,7 @@ function Control({ children }: { children: ReactElement }) {
 /** Yardım metni — hata yokken slotta durur. */
 function Hint({
   children,
-  className = "text-slate-500 dark:text-slate-400",
+  className = "text-slate-500 ",
 }: {
   children: ReactNode;
   className?: string;
@@ -515,7 +478,7 @@ function ErrorMessage({
   // Açık temada `rose-600` beyaz üstünde 4,70 ölçüyordu — AA eşiğinin yalnız
   // 0,20 üstünde ve 12 px metin için (büyük-metin muafiyeti geçerli değil).
   // Bir ton koyulaştırıldı; koyu temanın 6,63'ü zaten rahat, dokunulmadı.
-  className = "text-rose-700 dark:text-rose-400",
+  className = "text-rose-700 ",
 }: {
   className?: string;
 } = {}) {

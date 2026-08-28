@@ -2,17 +2,17 @@ import { PaymentStatus, type Payment } from "@/types";
 
 const STYLE: Record<PaymentStatus, string> = {
   [PaymentStatus.PENDING]:
-    "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+    "bg-amber-50 text-amber-700 ",
   [PaymentStatus.HELD]:
-    "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300",
+    "bg-sky-50 text-sky-700 ",
   [PaymentStatus.RELEASED]:
-    "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+    "bg-emerald-50 text-emerald-700 ",
   [PaymentStatus.REFUNDING]:
-    "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+    "bg-amber-50 text-amber-700 ",
   [PaymentStatus.REFUNDED]:
-    "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+    "bg-slate-100 text-slate-600 ",
   [PaymentStatus.FAILED]:
-    "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
+    "bg-rose-50 text-rose-700 ",
 };
 
 const LABEL: Record<PaymentStatus, string> = {
@@ -25,7 +25,7 @@ const LABEL: Record<PaymentStatus, string> = {
 };
 
 // CANCELLED gibi normalize edilmiş ek durumlar için yedek (PaymentStatus dışı).
-const FALLBACK = "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+const FALLBACK = "bg-slate-100 text-slate-600 ";
 
 export function PaymentBadge({ payment }: { payment: Payment }) {
   return <PaymentStatusBadge status={payment.status} />;

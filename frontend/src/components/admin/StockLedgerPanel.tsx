@@ -35,8 +35,8 @@ export function StockLedgerPanel({
   // olurdu — defter TUTULMUYOR, boş değil.
   if (dijital) {
     return (
-      <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
-        <p className="font-medium text-slate-800 dark:text-slate-100">
+      <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-600 ">
+        <p className="font-medium text-slate-800 ">
           Bu ürün için stok defteri tutulmuyor
         </p>
         <p className="mt-1">
@@ -55,10 +55,10 @@ export function StockLedgerPanel({
     <section className="space-y-3">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <h3 className="text-sm font-semibold text-slate-800 ">
             Stok hareketleri
           </h3>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-slate-500 ">
             {toplam} kayıt
           </span>
         </div>
@@ -68,7 +68,7 @@ export function StockLedgerPanel({
       </header>
 
       {dogrulama.data && !dogrulama.data.consistent && (
-        <ul className="space-y-1 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+        <ul className="space-y-1 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900 ">
           {dogrulama.data.problems.map((p, i) => (
             <li key={`${p.code}-${i}`}>
               <span className="font-medium">{p.message}</span>
@@ -81,7 +81,7 @@ export function StockLedgerPanel({
               {p.movement_id != null && <> (hareket #{p.movement_id})</>}
             </li>
           ))}
-          <li className="pt-1 text-amber-800/80 dark:text-amber-300/80">
+          <li className="pt-1 text-amber-800/80 ">
             Bu ekran yalnız teşhis gösterir; düzeltme sayım paketiyle gelecek.
           </li>
         </ul>
@@ -95,7 +95,7 @@ export function StockLedgerPanel({
       />
 
       {toplam > SAYFA && (
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between text-xs text-slate-500 ">
           <span>
             {offset + 1}–{Math.min(offset + SAYFA, toplam)} / {toplam}
           </span>

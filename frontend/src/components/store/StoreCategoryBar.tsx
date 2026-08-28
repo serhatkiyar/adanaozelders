@@ -44,7 +44,7 @@ export function StoreCategoryBar() {
   return (
     <nav
       aria-label="Mağaza gezinmesi"
-      className="relative z-20 w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+      className="relative z-20 w-full border-b border-slate-200 bg-white "
       onMouseLeave={() => setOpenId(null)}
     >
       <div className="mx-auto max-w-[1464px] px-4 md:px-8">
@@ -58,8 +58,8 @@ export function StoreCategoryBar() {
             onMouseEnter={() => setOpenId(null)}
             className={`${linkBase} flex items-center gap-1.5 ${
               !activeCategory
-                ? "border-indigo-600 text-slate-900 dark:border-indigo-400 dark:text-white"
-                : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                ? "border-indigo-600 text-slate-900 "
+                : "border-transparent text-slate-500 hover:text-slate-900 "
             }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -70,12 +70,12 @@ export function StoreCategoryBar() {
             Kategoriler
           </Link>
 
-          <span aria-hidden="true" className="my-3 h-5 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
+          <span aria-hidden="true" className="my-3 h-5 w-px shrink-0 bg-slate-200 " />
 
           <Link
             to={ROUTES.tutors}
             onMouseEnter={() => setOpenId(null)}
-            className={`${linkBase} border-transparent text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400`}
+            className={`${linkBase} border-transparent text-slate-600 hover:text-indigo-600 `}
           >
             Özel Ders Al
           </Link>
@@ -89,8 +89,8 @@ export function StoreCategoryBar() {
                 onMouseEnter={() => setOpenId(c.id)}
                 className={`${linkBase} ${
                   isActive
-                    ? "border-indigo-600 text-slate-900 dark:border-indigo-400 dark:text-white"
-                    : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                    ? "border-indigo-600 text-slate-900 "
+                    : "border-transparent text-slate-500 hover:text-slate-900 "
                 }`}
               >
                 {c.name}
@@ -103,7 +103,7 @@ export function StoreCategoryBar() {
 
       {/* Mega menu — kaydırıcının dışında, nav'a göre konumlanır (full-bleed) */}
       {openKids.length > 0 && (
-        <div className="absolute inset-x-0 top-full z-40 border-b border-slate-100 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.06)] dark:border-slate-800 dark:bg-slate-900">
+        <div className="absolute inset-x-0 top-full z-40 border-b border-slate-100 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.06)] ">
           <div className="mx-auto max-w-[1464px] px-4 py-6 md:px-8">
             <div className="grid grid-cols-2 gap-x-8 gap-y-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {openKids.map((kid) => (
@@ -111,7 +111,7 @@ export function StoreCategoryBar() {
                   key={kid.id}
                   to={`${ROUTES.store}?category=${kid.id}`}
                   onClick={() => setOpenId(null)}
-                  className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
+                  className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-indigo-600 "
                 >
                   {kid.name}
                 </Link>

@@ -116,7 +116,7 @@ export function PriceRangeHistogram({
   return (
     <div>
       {loading ? (
-        <div className="h-[88px] w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-700/50" />
+        <div className="h-[88px] w-full animate-pulse rounded-xl bg-slate-100 " />
       ) : (
         <>
           {/* Histogram + slider — tutamaklar taban çizgisi (y=0 ekseni) üstünde durur;
@@ -124,10 +124,10 @@ export function PriceRangeHistogram({
               slider'ın rayıdır (seçili aralıkta indigo, dışında gri). */}
           <div className="relative mb-4 flex h-[88px] items-end gap-[2px] px-0.5">
             {/* sürekli düz taban çizgisi (nötr) */}
-            <div className="pointer-events-none absolute inset-x-0.5 bottom-0 h-[2px] rounded-full bg-slate-200 dark:bg-slate-600" />
+            <div className="pointer-events-none absolute inset-x-0.5 bottom-0 h-[2px] rounded-full bg-slate-200 " />
             {/* seçili aralıktaki taban çizgisi (vurgulu) */}
             <div
-              className="pointer-events-none absolute bottom-0 h-[2px] rounded-full bg-indigo-500 dark:bg-indigo-400"
+              className="pointer-events-none absolute bottom-0 h-[2px] rounded-full bg-indigo-500 "
               style={{ left: `${pctMin}%`, right: `${100 - pctMax}%` }}
             />
             {bins.map((count, i) => {
@@ -144,8 +144,8 @@ export function PriceRangeHistogram({
                   key={i}
                   className={`relative z-10 flex-1 rounded-t-[3px] ${
                     active
-                      ? "bg-indigo-500 dark:bg-indigo-400"
-                      : "bg-slate-200 dark:bg-slate-600"
+                      ? "bg-indigo-500 "
+                      : "bg-slate-200 "
                   }`}
                   style={{ height: `${6 + (count / maxCount) * 58}%` }}
                 />
@@ -182,10 +182,10 @@ export function PriceRangeHistogram({
           {/* Minimum / Maksimum kutuları — biri solda biri sağda, arası boşluk */}
           <div className="mt-4 flex items-end justify-between gap-4">
             <label className="w-[44%]">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="mb-1 block text-xs font-medium text-slate-500 ">
                 Minimum
               </span>
-              <div className="flex items-center gap-1 rounded-full border border-slate-300 px-4 py-2.5 focus-within:border-slate-900 dark:border-slate-600 dark:focus-within:border-slate-300">
+              <div className="flex items-center gap-1 rounded-full border border-slate-300 px-4 py-2.5 focus-within:border-slate-900 ">
                 <span className="text-sm text-slate-400">TL</span>
                 <input
                   type="text"
@@ -195,15 +195,15 @@ export function PriceRangeHistogram({
                   onChange={(e) => handleMinText(e.target.value)}
                   onBlur={() => setMinFocused(false)}
                   onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                  className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none dark:text-white"
+                  className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none "
                 />
               </div>
             </label>
             <label className="w-[44%]">
-              <span className="mb-1 block text-right text-xs font-medium text-slate-500 dark:text-slate-400">
+              <span className="mb-1 block text-right text-xs font-medium text-slate-500 ">
                 Maksimum
               </span>
-              <div className="flex items-center gap-1 rounded-full border border-slate-300 px-4 py-2.5 focus-within:border-slate-900 dark:border-slate-600 dark:focus-within:border-slate-300">
+              <div className="flex items-center gap-1 rounded-full border border-slate-300 px-4 py-2.5 focus-within:border-slate-900 ">
                 <span className="text-sm text-slate-400">TL</span>
                 <input
                   type="text"
@@ -214,14 +214,14 @@ export function PriceRangeHistogram({
                   onChange={(e) => handleMaxText(e.target.value)}
                   onBlur={() => setMaxFocused(false)}
                   onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                  className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
+                  className="w-full bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 "
                 />
               </div>
             </label>
           </div>
 
           {!rates.length && (
-            <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+            <p className="mt-2 text-xs text-slate-400 ">
               Bu kriterlerde ücret dağılımı bulunamadı.
             </p>
           )}

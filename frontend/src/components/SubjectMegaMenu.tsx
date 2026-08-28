@@ -57,12 +57,12 @@ export function SubjectMegaMenu({ value, onSelect }: SubjectMegaMenuProps) {
       </ScrollableRow>
 
       {open !== null && (
-        <div className="absolute left-0 right-0 top-full z-30 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <div className="absolute left-0 right-0 top-full z-30 rounded-2xl bg-white p-4 shadow-xl ring-1 ring-slate-200 ">
           <div className="flex flex-wrap gap-x-8 gap-y-4">
             {EXAMS[open].columns.map((col, ci) => (
               <div key={col.title ?? ci} className="min-w-[140px]">
                 {col.title && (
-                  <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                     {col.title}
                   </p>
                 )}
@@ -76,8 +76,8 @@ export function SubjectMegaMenu({ value, onSelect }: SubjectMegaMenuProps) {
                         onClick={() => pick(it.q)}
                         className={`rounded-lg px-3 py-1.5 text-left text-sm transition ${
                           isActive
-                            ? "bg-indigo-50 font-medium text-indigo-700 dark:bg-slate-700 dark:text-white"
-                            : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
+                            ? "bg-indigo-50 font-medium text-indigo-700 "
+                            : "text-slate-600 hover:bg-slate-50 "
                         }`}
                       >
                         {it.label}

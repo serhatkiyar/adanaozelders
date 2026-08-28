@@ -9,7 +9,7 @@
  *   - katlama düğmesinin ADI var mı, katlama gerçekten oluyor mu, durum
  *     kalıcı mı (yeniden mount)
  *   - katlı hâlde erişilebilir AD kayboluyor mu (ikon-only tuzağı)
- *   - tema anahtarı üç seçenek mi, seçim gerçekten store'a yazılıyor mu
+ *   - tema seçicisi YOK (dark mode söküldü)
  *   - `Ctrl+K` gerçekten komut penceresini açıyor mu, pencere etiketli mi
  *   - `G` + harf gerçekten gezindiriyor mu — ve GİRDİ ODAKTAYKEN gezinmiyor mu
  *   - üst başlıkta TEK `<h1>` var mı ve doğru sayfayı mı adlandırıyor
@@ -27,7 +27,6 @@ import AdminLayout from "./AdminLayout";
 import { KABUK_DEPO_ANAHTARI, usePanelKabugu } from "./panelKabuguDurumu";
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
-import { useThemeStore } from "@/store/themeStore";
 import { TAM_ADMIN_IZINLERI } from "@/test-utils/adminIzinleri";
 import type { AxiosRequestConfig } from "axios";
 
@@ -67,7 +66,6 @@ beforeEach(() => {
       admin_permissions: [...TAM_ADMIN_IZINLERI],
     } as never,
   });
-  useThemeStore.setState({ preference: "light", theme: "light" });
   // ── Kalıcı store BELLEKTE de sıfırlanır (kök CLAUDE.md §G) ──
   //
   // `localStorage`ı silmek YETMEZ: `persist` yalnız modül ilk yüklendiğinde
@@ -174,18 +172,12 @@ describe("İP-B1 · kabuk · katlama", () => {
 });
 
 describe("İP-B1 · kabuk · tema", () => {
-  it("profil menüsü üç temalı seçenek sunar ve seçim store'a yazılır", () => {
+  it("profil menüsünde tema seçici YOKTUR (dark mode söküldü — tek tema)", () => {
+    // Ürün kararı (CMS turu): site tek temadır. Seçici geri dönerse bu test
+    // bilinçli olarak kırılır — dark mode kazara geri gelmesin.
     render(kabuk());
     fireEvent.click(screen.getByRole("button", { name: /hesap menüsü/i }));
-    const grup = screen.getByRole("group", { name: /tema/i });
-    const secenekler = within(grup)
-      .getAllByRole("radio")
-      .map((r) => r.getAttribute("value"));
-    expect(secenekler).toEqual(["light", "dark", "system"]);
-
-    fireEvent.click(within(grup).getByRole("radio", { name: /koyu/i }));
-    expect(useThemeStore.getState().preference).toBe("dark");
-    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(screen.queryByRole("group", { name: /tema/i })).toBeNull();
   });
 });
 

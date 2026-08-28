@@ -75,7 +75,7 @@ export function Modal({
         className={`relative ${
           panelClassName ||
           `max-h-[92vh] w-full ${maxWidth} overflow-y-auto rounded-t-3xl ` +
-            "bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"
+            "bg-white p-6 shadow-2xl sm:rounded-3xl"
         }`}
       >
         {(title || !hideCloseButton) && (
@@ -84,7 +84,7 @@ export function Modal({
               {title && (
                 <h2
                   id={titleId}
-                  className="text-lg font-semibold text-slate-900 dark:text-white"
+                  className="text-lg font-semibold text-slate-900 "
                 >
                   {title}
                 </h2>
@@ -92,7 +92,7 @@ export function Modal({
               {description && (
                 <p
                   id={descriptionId}
-                  className="mt-1 text-sm text-slate-500 dark:text-slate-400"
+                  className="mt-1 text-sm text-slate-500 "
                 >
                   {description}
                 </p>
@@ -102,7 +102,7 @@ export function Modal({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
               >
                 <span className="sr-only">Kapat</span>
                 <span aria-hidden="true" className="text-xl leading-none">

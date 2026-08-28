@@ -4,29 +4,18 @@ import { Button } from "@/components/admin/ui";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { useLogout } from "@/hooks/useLogout";
-import { useThemeStore, type ThemePreference } from "@/store/themeStore";
 
 /**
  * ── Profil menüsü: kabuğun ALT bölgesi (İP-B1 · docs/tasarim-dili.md §4.1) ──
  *
- * Medusa'nın çubuğunda profil ve tema anahtarı en alttadır; bizde bugüne dek
- * ikisi de panelin ÜSTÜNDEKİ genel site navbar'ındaydı (`DashboardHeader`).
- * Kabuk kendi çerçevesini kurunca o navbar panelden kalktı ve buradaki menü
- * onun panele ait parçalarını devraldı: hesap, tema, çıkış, siteye dönüş.
+ * Medusa'nın çubuğunda profil menüsü en alttadır; bizde bugüne dek panelin
+ * ÜSTÜNDEKİ genel site navbar'ındaydı (`DashboardHeader`). Kabuk kendi
+ * çerçevesini kurunca o navbar panelden kalktı ve buradaki menü onun panele
+ * ait parçalarını devraldı: hesap, çıkış, siteye dönüş.
  *
- * **Tema üç seçenektir** (Açık / Koyu / Sistem) ve bir düğme değil bir
- * `radiogroup`tur. Gerekçe: iki durumlu bir anahtar "sistem"i ifade edemez ve
- * `themeStore` zaten üç değerli bir tercih tutuyor (`ThemePreference`) —
- * arayüz onu iki duruma indirirse kullanıcı "sistemi izle"ye geri dönemez.
- * Bugün panelde bunu yapan bir yüzey yoktu; tercih yalnız `toggle()` ile
- * değişiyordu ve `system` bir kez terk edilince seçilemiyordu.
+ * Tema seçici KALDIRILDI (CMS turu): ürün kararı gereği site tek temadır
+ * (açık) — dark mode tamamen söküldü, seçilecek bir şey kalmadı.
  */
-
-const TEMA_SECENEKLERI: { deger: ThemePreference; etiket: string }[] = [
-  { deger: "light", etiket: "Açık" },
-  { deger: "dark", etiket: "Koyu" },
-  { deger: "system", etiket: "Sistem" },
-];
 
 export interface AdminProfilMenusuProps {
   katli?: boolean;
@@ -38,8 +27,6 @@ export function AdminProfilMenusu({ katli = false, onNavigate }: AdminProfilMenu
   const kutuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
-  const preference = useThemeStore((s) => s.preference);
-  const setPreference = useThemeStore((s) => s.setPreference);
 
   useEffect(() => {
     if (!acik) return;
@@ -94,34 +81,6 @@ export function AdminProfilMenusu({ katli = false, onNavigate }: AdminProfilMenu
             <p className="truncate text-sm font-semibold text-panel-fg">{ad}</p>
             {user?.email && <p className="truncate text-xs text-panel-fg-muted">{user.email}</p>}
           </div>
-
-          <fieldset className="mt-1 rounded-xl bg-panel-surface-subtle p-2">
-            <legend className="px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-panel-fg-subtle">
-              Tema
-            </legend>
-            <div className="mt-1 grid grid-cols-3 gap-1">
-              {TEMA_SECENEKLERI.map((s) => (
-                <label
-                  key={s.deger}
-                  className={`flex cursor-pointer items-center justify-center rounded-lg px-2 py-1.5 text-xs font-medium transition ${
-                    preference === s.deger
-                      ? "bg-panel-accent text-panel-accent-fg"
-                      : "text-panel-fg-muted hover:bg-panel-surface-hover"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="panel-tema"
-                    value={s.deger}
-                    checked={preference === s.deger}
-                    onChange={() => setPreference(s.deger)}
-                    className="sr-only"
-                  />
-                  {s.etiket}
-                </label>
-              ))}
-            </div>
-          </fieldset>
 
           <div className="mt-1 space-y-0.5">
             <Link

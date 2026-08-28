@@ -30,7 +30,7 @@ import { ROUTES } from "@/lib/routes";
 // `dark:bg-slate-700` ile ekrandaki diğer girdilerin `dark:bg-slate-800`
 // zeminini bölüyordu. Artık ortak `.input` (index.css) kullanılır.
 const labelCls =
-  "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
+  "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 const NOTE_TYPE_LABELS: Record<SrsNoteType, string> = {
   BASIC: "Temel (ön → arka)",
@@ -130,7 +130,7 @@ function NoteForm({
         </Field>
       )}
       {NOTE_TYPE_HELP[noteType] && (
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-slate-500 ">
           {NOTE_TYPE_HELP[noteType]}
         </p>
       )}
@@ -190,7 +190,7 @@ function NoteForm({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 "
           >
             İptal
           </button>
@@ -289,12 +289,12 @@ function AssignmentSection({ deckId }: { deckId: number }) {
 
   return (
     <section className="mt-10">
-      <div className="border-b border-slate-200 pb-2 dark:border-slate-800">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <div className="border-b border-slate-200 pb-2 ">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 ">
           Öğrenci Atamaları
         </h2>
       </div>
-      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-xs text-slate-500 ">
         Desteyi, aranızda rezervasyon bulunan öğrencilere atayabilirsin.
         Öğrencilerin çalışma ilerlemesi sana gösterilmez.
       </p>
@@ -326,7 +326,7 @@ function AssignmentSection({ deckId }: { deckId: number }) {
               id={listId}
               role="listbox"
               aria-label="Öğrenci sonuçları"
-              className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+              className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg "
             >
               {matches.map((s) => (
                 <button
@@ -340,7 +340,7 @@ function AssignmentSection({ deckId }: { deckId: number }) {
                     setQuery(s.name);
                     setOpen(false);
                   }}
-                  className="block w-full truncate px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                  className="block w-full truncate px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 "
                 >
                   {s.name}
                 </button>
@@ -357,12 +357,12 @@ function AssignmentSection({ deckId }: { deckId: number }) {
         </button>
       </form>
       {bookings.isError ? (
-        <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+        <p className="mt-2 text-xs text-rose-600 ">
           Öğrenci listesi yüklenemedi:{" "}
           {getErrorMessage(bookings.error, "Bilinmeyen hata.")}
         </p>
       ) : !bookings.isLoading && students.length === 0 ? (
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-xs text-slate-500 ">
           {(bookings.data ?? []).length === 0
             ? "Atama yapabilmen için önce bu öğrenciyle bir ders rezervasyonun olmalı."
             : "Ders ilişkin olan tüm öğrencilere bu desteyi zaten atadın."}
@@ -383,14 +383,14 @@ function AssignmentSection({ deckId }: { deckId: number }) {
           />
         </div>
       ) : (assignments.data ?? []).length === 0 ? (
-        <p className="mt-4 text-sm text-slate-400 dark:text-slate-500">
+        <p className="mt-4 text-sm text-slate-400 ">
           Henüz atama yok.
         </p>
       ) : (
-        <div className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="mt-2 divide-y divide-slate-100 ">
           {(assignments.data ?? []).map((a) => (
             <div key={a.client_id} className="flex items-center gap-3 py-2.5">
-              <span className="flex-1 text-sm text-slate-700 dark:text-slate-300">
+              <span className="flex-1 text-sm text-slate-700 ">
                 {a.client_name || `Öğrenci #${a.client_id}`}
               </span>
               <button
@@ -405,7 +405,7 @@ function AssignmentSection({ deckId }: { deckId: number }) {
                   )
                 }
                 disabled={unassign.isPending}
-                className="rounded-xl px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                className="rounded-xl px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 "
               >
                 Kaldır
               </button>
@@ -556,15 +556,15 @@ export default function SrsDeckDetail() {
           <div className="min-w-0">
             <Link
               to={ROUTES.srs}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
             >
               ← Aralıklı Tekrar
             </Link>
-            <h1 className="mt-1 truncate text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="mt-1 truncate text-2xl font-bold text-slate-900 ">
               {deck.name}
             </h1>
             {deck.description && (
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-slate-500 ">
                 {deck.description}
               </p>
             )}
@@ -580,8 +580,8 @@ export default function SrsDeckDetail() {
         {/* Limitler (yalnız sahibi) */}
         {isOwn && (
           <section className="mt-8">
-            <div className="border-b border-slate-200 pb-2 dark:border-slate-800">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <div className="border-b border-slate-200 pb-2 ">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 ">
                 Günlük Limitler
               </h2>
             </div>
@@ -613,7 +613,7 @@ export default function SrsDeckDetail() {
               <button
                 onClick={saveLimits}
                 disabled={updateDeck.isPending}
-                className="mb-5 rounded-xl px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+                className="mb-5 rounded-xl px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 "
               >
                 Kaydet
               </button>
@@ -626,19 +626,19 @@ export default function SrsDeckDetail() {
 
         {/* Notlar */}
         <section className="mt-10">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-800">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2 ">
             {/* Sayı SUNUCUDAN gelen `total`dır. Kart listesi sabit
                 `page_size: 200` ile çekiliyor; başlıkta yüklenen kart sayısı
                 yazıldığı için 300 notluk destede "(200)" görünüyor ve
                 gerisinin var olduğu hiç belli olmuyordu. */}
-            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 ">
               Notlar
               {cardsQuery.data ? ` (${cardsQuery.data.total})` : ""}
             </h2>
             {isOwn && !adding && (
               <button
                 onClick={() => setAdding(true)}
-                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 "
               >
                 + Not Ekle
               </button>
@@ -646,12 +646,12 @@ export default function SrsDeckDetail() {
           </div>
 
           {truncated && (
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-3 text-xs text-slate-500 ">
               Bu destenin {cardsQuery.data?.total} kartından ilk{" "}
               {cardsQuery.data?.items.length} tanesi listeleniyor.{" "}
               <Link
                 to={`${ROUTES.srsBrowser}?deste=${deckId}`}
-                className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                className="font-semibold text-indigo-600 hover:text-indigo-700 "
               >
                 Tümünü tarayıcıda aç
               </Link>
@@ -659,7 +659,7 @@ export default function SrsDeckDetail() {
           )}
 
           {isOwn && adding && (
-            <div className="mt-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
+            <div className="mt-4 rounded-2xl border border-slate-200 p-4 ">
               <NoteForm
                 pending={createNote.isPending}
                 onCancel={() => setAdding(false)}
@@ -706,7 +706,7 @@ export default function SrsDeckDetail() {
               />
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="divide-y divide-slate-100 ">
               {notes.map((note) =>
                 editingNoteId === note.note_id ? (
                   <div key={note.note_id} className="py-4">
@@ -734,10 +734,10 @@ export default function SrsDeckDetail() {
                 ) : (
                   <div key={note.note_id} className="flex items-start gap-3 py-3">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <p className="truncate text-sm font-medium text-slate-800 ">
                         {note.front}
                       </p>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500 ">
                         <span>{NOTE_TYPE_LABELS[note.note_type]}</span>
                         <span aria-hidden>·</span>
                         <span>
@@ -761,7 +761,7 @@ export default function SrsDeckDetail() {
                       <div className="flex shrink-0 items-center gap-1">
                         <button
                           onClick={() => setEditingNoteId(note.note_id)}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 "
                         >
                           Düzenle
                         </button>
@@ -773,7 +773,7 @@ export default function SrsDeckDetail() {
                             })
                           }
                           disabled={deleteNote.isPending}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-50 "
                         >
                           Sil
                         </button>
@@ -790,10 +790,10 @@ export default function SrsDeckDetail() {
             ekranda soru metni + iki düğme aynı satıra sıkışıyordu. Ortak
             ConfirmDialog portallı, odak tuzaklı ve mobilde tam genişlikte. */}
         {isOwn && (
-          <section className="mt-12 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <section className="mt-12 border-t border-slate-200 pt-4 ">
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-sm font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400"
+              className="text-sm font-medium text-rose-600 hover:text-rose-700 "
             >
               Desteyi sil
             </button>

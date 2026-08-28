@@ -146,8 +146,8 @@ export function CouponsPanel() {
       {!canManage && <ReadOnlyNotice />}
       {/* Oluştur */}
       {canManage && (
-        <div className="rounded-2xl border border-slate-100 p-4 dark:border-slate-800">
-          <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Yeni kupon</h3>
+        <div className="rounded-2xl border border-slate-100 p-4 ">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Yeni kupon</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Form.Field
               control={form.control}
@@ -240,7 +240,7 @@ export function CouponsPanel() {
           {genelHata && (
             <p
               role="alert"
-              className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+              className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 "
             >
               {genelHata}
             </p>
@@ -263,10 +263,10 @@ export function CouponsPanel() {
           {coupons.map((c) => (
             <div
               key={c.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 "
             >
               <div className="text-sm">
-                <span className="font-semibold text-slate-900 dark:text-white">{c.code}</span>
+                <span className="font-semibold text-slate-900 ">{c.code}</span>
                 <span className="ml-2 text-slate-500">
                   {c.discount_type === "PERCENT" ? `%${c.discount_value}` : formatTL(c.discount_value)} indirim
                 </span>

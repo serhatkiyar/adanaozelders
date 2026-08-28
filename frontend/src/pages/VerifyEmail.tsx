@@ -59,15 +59,15 @@ export default function VerifyEmail() {
   }, [token, authToken, setUser, queryClient]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 ">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-100 ">
         {status === "verifying" && (
           <>
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
-            <h1 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">
+            <h1 className="mt-4 text-xl font-bold text-slate-900 ">
               E-postan doğrulanıyor…
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 ">
               Lütfen bekle.
             </p>
           </>
@@ -75,13 +75,13 @@ export default function VerifyEmail() {
 
         {status === "success" && (
           <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/15">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 ">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2}
-                className="h-6 w-6 text-emerald-600 dark:text-emerald-400"
+                className="h-6 w-6 text-emerald-600 "
               >
                 <path
                   strokeLinecap="round"
@@ -90,10 +90,10 @@ export default function VerifyEmail() {
                 />
               </svg>
             </div>
-            <h1 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">
+            <h1 className="mt-4 text-xl font-bold text-slate-900 ">
               E-postan doğrulandı 🎉
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 ">
               {message}
             </p>
             <Link
@@ -107,13 +107,13 @@ export default function VerifyEmail() {
 
         {status === "error" && (
           <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-500/15">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 ">
               <svg
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth={2}
-                className="h-6 w-6 text-red-600 dark:text-red-400"
+                className="h-6 w-6 text-red-600 "
               >
                 <path
                   strokeLinecap="round"
@@ -122,13 +122,13 @@ export default function VerifyEmail() {
                 />
               </svg>
             </div>
-            <h1 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">
+            <h1 className="mt-4 text-xl font-bold text-slate-900 ">
               Doğrulanamadı
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 ">
               {message}
             </p>
-            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-4 text-sm text-slate-500 ">
               Panelindeki banner'dan yeni bir doğrulama bağlantısı
               isteyebilirsin.
             </p>

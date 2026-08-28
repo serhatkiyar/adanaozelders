@@ -204,7 +204,7 @@ export function ProductSetsManager() {
               {set.warnings.map((warning) => (
                 <p
                   key={warning}
-                  className="mt-3 text-xs text-amber-700 dark:text-amber-300"
+                  className="mt-3 text-xs text-amber-700 "
                 >
                   {warning}
                 </p>

@@ -257,7 +257,7 @@ export function AdminSidebar({
                                 <span
                                   className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold ${
                                     katli ? "absolute" : ""
-                                  } bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300`}
+                                  } bg-rose-100 text-rose-700 `}
                                 >
                                   {openReports > 99 ? "99+" : openReports}
                                 </span>

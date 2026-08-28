@@ -44,7 +44,7 @@ export function KebabMenu({
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:text-indigo-400"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-indigo-600 "
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="12" cy="5" r="1.6" />
@@ -56,7 +56,7 @@ export function KebabMenu({
       {open && (
         <div
           role="menu"
-          className={`absolute top-full z-30 mt-1.5 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700 ${
+          className={`absolute top-full z-30 mt-1.5 w-48 overflow-hidden rounded-xl bg-white py-1 shadow-xl ring-1 ring-slate-200 ${
             align === "right" ? "right-0" : "left-0"
           }`}
         >
@@ -72,8 +72,8 @@ export function KebabMenu({
               }}
               className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors ${
                 a.danger
-                  ? "text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                  : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                  ? "text-rose-600 hover:bg-rose-50 "
+                  : "text-slate-700 hover:bg-slate-50 "
               }`}
             >
               {a.icon}

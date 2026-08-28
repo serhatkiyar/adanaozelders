@@ -244,7 +244,7 @@ export default function PackagesPage() {
               >
                 {row.original.code}
               </Link>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-xs text-slate-500 ">
                 Sipariş #{row.original.order_id}
                 {(row.original.items?.length ?? 0) > 0 &&
                   ` · ${row.original.items.length} kalem`}
@@ -289,11 +289,11 @@ export default function PackagesPage() {
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Paketler</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Paketler</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Açılmış bütün kutular. Durum süzgeci depodaki işi ayırır: kuryeden
             dönmesi beklenen kutular ve bozulup rafa geri konacaklar.
           </p>
@@ -304,7 +304,7 @@ export default function PackagesPage() {
       <div
         role="group"
         aria-label="Durum süzgeci"
-        className="flex flex-wrap gap-1.5 border-b border-slate-100 px-6 py-3 dark:border-slate-800"
+        className="flex flex-wrap gap-1.5 border-b border-slate-100 px-6 py-3 "
       >
         {SUZGECLER.map((s) => {
           const secili = (durum ?? null) === s.value;
@@ -316,8 +316,8 @@ export default function PackagesPage() {
               onClick={() => suzgecUygula(s.value)}
               className={`min-h-9 rounded-lg px-3 text-xs font-semibold transition ${
                 secili
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white "
+                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 "
               }`}
             >
               {s.label}
@@ -347,8 +347,8 @@ export default function PackagesPage() {
           {basilabilirler.length > 0 && (
             // Vardiyada tek tek yazdırmak gerçekçi değil: kapanan kutuların
             // etiketleri tek sayfada basılır (A4, sayfa başına 8).
-            <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-3 ">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 ">
                 <input
                   type="checkbox"
                   className="h-4 w-4"
@@ -406,10 +406,10 @@ export default function PackagesPage() {
                   <div>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                        <p className="truncate text-sm font-semibold text-slate-900 ">
                           {paket.code}
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        <p className="mt-0.5 text-xs text-slate-500 ">
                           Sipariş #{paket.order_id}
                           {damga && ` · ${damga}`}
                         </p>

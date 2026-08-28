@@ -76,7 +76,7 @@ export function StarRating({ value, single, size = 16 }: StarRatingProps) {
   const fill = (safe / 5) * total;
   return (
     <div className="relative inline-flex shrink-0" style={{ width: total, height: size }} aria-label={`${safe} / 5`}>
-      <StarRow size={size} colorClass="text-slate-300 dark:text-slate-600" />
+      <StarRow size={size} colorClass="text-slate-300 " />
       <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: fill }}>
         <StarRow size={size} colorClass="text-amber-400" />
       </div>

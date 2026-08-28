@@ -82,11 +82,11 @@ export function ClosedDays() {
   );
 
   return (
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Teslimat Takvimi</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Teslimat Takvimi</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Kapalı günler — söz motoru bu tarihlere teslimat sözü vermez. Hafta 7 gün açık.
           </p>
         </div>
@@ -98,7 +98,7 @@ export function ClosedDays() {
       </div>
 
       {canManage && (
-        <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-6 py-4 ">
           <Form.Field
             control={form.control}
             name="day"
@@ -163,13 +163,13 @@ export function ClosedDays() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100 px-6 ">
           {days.map((d) => (
             <li key={d.id} className="flex items-center gap-3 py-3">
-              <span className="w-52 shrink-0 text-sm font-medium text-slate-900 dark:text-white">
+              <span className="w-52 shrink-0 text-sm font-medium text-slate-900 ">
                 {CLOSED_DAY_FMT.format(new Date(`${d.day}T00:00:00`))}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm text-slate-500 dark:text-slate-400">
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-500 ">
                 {d.label ?? (d.source === "holiday" ? "Resmî tatil" : "Kapalı")}
               </span>
               {canManage && (
@@ -184,7 +184,7 @@ export function ClosedDays() {
                   disabled={remove.isPending}
                   title="Bu günü yeniden aç"
                   aria-label={CLOSED_DAY_FMT.format(new Date(d.day + "T00:00:00")) + " gününü yeniden aç"}
-                  className="min-h-9 min-w-9 shrink-0 px-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                  className="min-h-9 min-w-9 shrink-0 px-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600 "
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />

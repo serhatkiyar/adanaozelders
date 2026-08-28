@@ -70,7 +70,7 @@ export function ProductPicker({
   return (
     <div className="space-y-2">
       <label className="block">
-        <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+        <span className="mb-1.5 block text-sm font-semibold text-slate-700 ">
           {label}
         </span>
         <input
@@ -83,7 +83,7 @@ export function ProductPicker({
       </label>
 
       {gecikmeli && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="rounded-xl border border-slate-200 ">
           {sorgu.isLoading ? (
             <p className="px-3 py-2 text-xs text-slate-500">Aranıyor…</p>
           ) : adaylar.length === 0 ? (
@@ -91,15 +91,15 @@ export function ProductPicker({
               Eşleşen ürün bulunamadı.
             </p>
           ) : (
-            <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+            <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto ">
               {adaylar.map((p) => (
                 <li key={p.id}>
                   <button
                     type="button"
                     onClick={() => ekle(p)}
-                    className="block w-full px-3 py-2 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-panel-focus dark:hover:bg-slate-800/60"
+                    className="block w-full px-3 py-2 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-panel-focus "
                   >
-                    <span className="block text-sm text-slate-800 dark:text-slate-200">
+                    <span className="block text-sm text-slate-800 ">
                       {p.title}
                     </span>
                     {/* SKU ve künye teyit içindir: aynı adlı iki baskı
@@ -120,14 +120,14 @@ export function ProductPicker({
       {selected.length > 0 && (
         <ul
           aria-label="Seçilen ürünler"
-          className="space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"
+          className="space-y-1 rounded-xl border border-slate-200 p-2 "
         >
           {selected.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"
+              className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 "
             >
-              <span className="min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200">
+              <span className="min-w-0 flex-1 truncate text-xs text-slate-700 ">
                 {p.title}
                 {p.sku && <span className="text-slate-400"> · {p.sku}</span>}
               </span>

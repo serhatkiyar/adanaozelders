@@ -54,7 +54,7 @@ function shiftText(v: Vehicle): string | null {
  * ölçüm kanıt olmaktan çıkar. Alanlar bu yüzden açık `Form.Field` blokları
  * olarak yazıldı — panelin geri kalanıyla da aynı yazım.
  */
-const ALAN_ETIKET = "mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400";
+const ALAN_ETIKET = "mb-1 block text-[11px] font-medium text-slate-500 ";
 
 /**
  * Satır içi formların ortak "ilk hatalı alana odaklan" yardımcısı.
@@ -94,7 +94,7 @@ function sunucuHatasiniDagit<T extends FieldValues>(
 function GenelHata({ mesaj }: { mesaj?: string }) {
   if (!mesaj) return null;
   return (
-    <p role="alert" className="mb-1.5 text-xs text-rose-600 dark:text-rose-400">
+    <p role="alert" className="mb-1.5 text-xs text-rose-600 ">
       {mesaj}
     </p>
   );
@@ -386,18 +386,18 @@ function VehicleRow({ v }: { v: Vehicle }) {
     <>
       <li className="flex flex-wrap items-center gap-3 py-3">
         <div className="min-w-0 flex-1 basis-48">
-          <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+          <p className="truncate text-sm font-medium text-slate-900 ">
             {v.label}
-            <span className="ml-2 font-mono text-xs font-normal text-slate-400 dark:text-slate-500">
+            <span className="ml-2 font-mono text-xs font-normal text-slate-400 ">
               {v.code}
             </span>
             {!v.is_active && (
-              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+              <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 ">
                 pasif
               </span>
             )}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 ">
             {meta.length > 0 ? meta.join(" · ") : "—"}
           </p>
         </div>
@@ -485,7 +485,7 @@ function AracEklemeFormu({ onBitti }: { onBitti: () => void }) {
   }, ilkHatayaOdaklan(form, ARAC_SIRA));
 
   return (
-    <div className="border-b border-slate-100 py-3.5 dark:border-slate-800">
+    <div className="border-b border-slate-100 py-3.5 ">
       <GenelHata mesaj={form.formState.errors.root?.sunucu?.message} />
       <VehicleFields form={form} withCode />
       <div className="mt-2.5 flex items-center gap-2">
@@ -506,11 +506,11 @@ function VehicleSection() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Araçlar</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Araçlar</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Tur kurma ve Günü Optimize Et bu filoyu kullanır — durak tavanı ve
             vardiya rota planına girer.
           </p>
@@ -526,27 +526,27 @@ function VehicleSection() {
         {isLoading ? (
           <div className="space-y-2 py-3">
             {[0, 1].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100 " />
             ))}
           </div>
         ) : vehicles.length === 0 && !adding ? (
-          <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+          <p className="py-6 text-center text-sm text-slate-400 ">
             Filoda araç yok — tur kurabilmek için en az bir araç ekleyin.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-100 ">
             {vehicles.map((v) =>
               canManage ? (
                 <VehicleRow key={v.id} v={v} />
               ) : (
                 <li key={v.id} className="py-3">
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  <p className="text-sm font-medium text-slate-900 ">
                     {v.label}
-                    <span className="ml-2 font-mono text-xs font-normal text-slate-400 dark:text-slate-500">
+                    <span className="ml-2 font-mono text-xs font-normal text-slate-400 ">
                       {v.code}
                     </span>
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 ">
                     {[v.plate, v.max_stops != null ? `${v.max_stops} durak` : null, shiftText(v)]
                       .filter(Boolean)
                       .join(" · ") || "—"}
@@ -758,7 +758,7 @@ function BasePointRow({ p, isDefault }: { p: PickupPoint; isDefault: boolean }) 
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
       <div className="min-w-0 flex-1 basis-48">
-        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+        <p className="truncate text-sm font-medium text-slate-900 ">
           {p.name}
           {isDefault && (
             <span className="ml-2 rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-semibold text-panel-accent">
@@ -766,11 +766,11 @@ function BasePointRow({ p, isDefault }: { p: PickupPoint; isDefault: boolean }) 
             </span>
           )}
         </p>
-        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+        <p className="truncate text-xs text-slate-500 ">
           {p.address || `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`}
         </p>
       </div>
-      <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+      <span className="shrink-0 text-xs tabular-nums text-slate-400 ">
         sıra {p.sort_order}
       </span>
       {canManage && (
@@ -809,7 +809,7 @@ function NoktaEklemeFormu({ onBitti }: { onBitti: () => void }) {
   }, ilkHatayaOdaklan(form, NOKTA_SIRA));
 
   return (
-    <div className="border-b border-slate-100 py-3.5 dark:border-slate-800">
+    <div className="border-b border-slate-100 py-3.5 ">
       <GenelHata mesaj={form.formState.errors.root?.sunucu?.message} />
       <NoktaAlanlari form={form} />
       <div className="mt-2.5 flex items-center gap-2">
@@ -834,11 +834,11 @@ function BasePointSection() {
   const defaultId = basePoints[0]?.id;
 
   return (
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
         <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Başlangıç Noktası</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Başlangıç Noktası</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Turlar buradan yola çıkar; rota ve ETA&apos;lar bu noktaya göre hesaplanır.
             Sırası en küçük aktif nokta varsayılandır.
           </p>
@@ -852,13 +852,13 @@ function BasePointSection() {
       <div className="px-6">
         {adding && <NoktaEklemeFormu onBitti={() => setAdding(false)} />}
         {isLoading ? (
-          <div className="my-3 h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/60" />
+          <div className="my-3 h-10 animate-pulse rounded-lg bg-slate-100 " />
         ) : basePoints.length === 0 && !adding ? (
-          <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+          <p className="py-6 text-center text-sm text-slate-400 ">
             Tanımlı başlangıç noktası yok — rota optimizasyonu için bir nokta ekleyin.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-100 ">
             {basePoints.map((p) => (
               <BasePointRow key={p.id} p={p} isDefault={p.id === defaultId} />
             ))}

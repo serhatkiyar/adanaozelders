@@ -25,9 +25,9 @@ function Change({ current, previous }: { current: number; previous: number }) {
 
 function MetricCard({ label, value, previous, description }: { label: string; value: number; previous: number; description: string }) {
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{value}</p>
+      <p className="mt-2 text-3xl font-bold text-slate-950 ">{value}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <Change current={value} previous={previous} />
         <span className="text-xs text-slate-400">{description}</span>
@@ -46,9 +46,9 @@ interface QueueCardProps {
 
 function QueueCard({ label, value, to, tone = "neutral", description }: QueueCardProps) {
   return (
-    <Link to={to} className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-panel-accent/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-800 dark:bg-slate-900 dark:hover:border-panel-accent">
+    <Link to={to} className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-panel-accent/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus ">
       <div className="flex items-start justify-between gap-3">
-        <div><p className="font-semibold text-slate-900 dark:text-white">{label}</p><p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</p></div>
+        <div><p className="font-semibold text-slate-900 ">{label}</p><p className="mt-1 text-xs leading-5 text-slate-500 ">{description}</p></div>
         <Badge tone={tone}>{value}</Badge>
       </div>
       <p className="mt-3 text-xs font-semibold text-panel-accent group-hover:opacity-80">Kuyruğu aç →</p>
@@ -78,10 +78,10 @@ export default function AdminDashboardPage() {
     <div className="mx-auto max-w-7xl space-y-7 pb-12">
       <section aria-labelledby="period-title">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div><h2 id="period-title" className="text-lg font-bold text-slate-950 dark:text-white">Dönem hareketi</h2><p className="text-sm text-slate-500">Yeni hesap ve sipariş oluşumu; {selected.period}.</p></div>
-          <div className="flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
+          <div><h2 id="period-title" className="text-lg font-bold text-slate-950 ">Dönem hareketi</h2><p className="text-sm text-slate-500">Yeni hesap ve sipariş oluşumu; {selected.period}.</p></div>
+          <div className="flex rounded-xl border border-slate-200 bg-white p-1 ">
             {RANGES.map((item) => (
-              <button key={item.value} type="button" onClick={() => setParams(item.value === "week" ? {} : { range: item.value })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus ${range === item.value ? "bg-panel-accent text-panel-accent-fg" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>{item.label}</button>
+              <button key={item.value} type="button" onClick={() => setParams(item.value === "week" ? {} : { range: item.value })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus ${range === item.value ? "bg-panel-accent text-panel-accent-fg" : "text-slate-500 hover:bg-slate-100 "}`}>{item.label}</button>
             ))}
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function AdminDashboardPage() {
       {revenue.data && <MoneySection data={revenue.data} periodLabel={selected.period} />}
 
       <section aria-labelledby="queue-title">
-        <div className="mb-4"><h2 id="queue-title" className="text-lg font-bold text-slate-950 dark:text-white">Operasyon kuyrukları</h2><p className="text-sm text-slate-500">Karar veya takip bekleyen gerçek zamanlı iş yükü.</p></div>
+        <div className="mb-4"><h2 id="queue-title" className="text-lg font-bold text-slate-950 ">Operasyon kuyrukları</h2><p className="text-sm text-slate-500">Karar veya takip bekleyen gerçek zamanlı iş yükü.</p></div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <QueueCard label="Eğitmen başvuruları" value={data.pending_tutors} to={ROUTES.adminTutors} tone="warning" description="Onay veya ret kararı bekliyor." />
           <QueueCard label="Diploma doğrulamaları" value={data.pending_diplomas} to={ROUTES.adminDiplomas} tone="warning" description="Belge teyidi bekleyen eğitim kayıtları." />
@@ -149,13 +149,13 @@ function MoneyCard({
 
   const valueTone =
     tone === "positive"
-      ? "text-emerald-600 dark:text-emerald-400"
+      ? "text-emerald-600 "
       : tone === "muted"
-        ? "text-slate-500 dark:text-slate-400"
-        : "text-slate-950 dark:text-white";
+        ? "text-slate-500 "
+        : "text-slate-950 ";
 
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
       <p className={`mt-2 text-2xl font-bold ${valueTone}`}>{formatTRY(value)}</p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -195,7 +195,7 @@ function MoneySection({
   return (
     <section aria-labelledby="money-title">
       <div className="mb-4">
-        <h2 id="money-title" className="text-lg font-bold text-slate-950 dark:text-white">
+        <h2 id="money-title" className="text-lg font-bold text-slate-950 ">
           Para
         </h2>
         <p className="text-sm text-slate-500">
@@ -258,9 +258,9 @@ function BreakdownRow({
   suffix?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 ">
       <p className="text-xs text-slate-400">{label}</p>
-      <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+      <p className="mt-1 font-semibold text-slate-900 ">
         {formatTRY(value)}
       </p>
       {suffix && <p className="mt-0.5 text-xs text-slate-400">{suffix}</p>}

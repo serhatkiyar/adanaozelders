@@ -67,7 +67,7 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
               className={`max-w-[80%] rounded-2xl px-3.5 py-2 ${
                 mine
                   ? "bg-indigo-600 text-white"
-                  : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                  : "bg-slate-100 text-slate-700 "
               }`}
             >
               <p className="whitespace-pre-line text-sm leading-relaxed">
@@ -77,7 +77,7 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
                 className={`mt-1 text-[10px] ${
                   mine
                     ? "text-indigo-200"
-                    : "text-slate-400 dark:text-slate-500"
+                    : "text-slate-400 "
                 }`}
               >
                 {formatDateTime(m.created_at)}
@@ -94,7 +94,7 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Mesaj yaz…"
-            className="min-h-[42px] flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+            className="min-h-[42px] flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
           />
           <button
             type="submit"

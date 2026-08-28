@@ -78,10 +78,10 @@ export default function DeepWork() {
   return (
     <DashboardShell title="Zamanlayıcı" navItems={navItems}>
       <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        <h1 className="text-2xl font-bold text-slate-900 ">
           Derin Çalışma
         </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-slate-500 ">
           Pomodoro tekniğiyle odaklan: çalış, kısa molalar ver, her birkaç turda
           uzun mola yap.
         </p>
@@ -95,7 +95,7 @@ export default function DeepWork() {
               className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                 mode === m
                   ? TAB_ACTIVE[m]
-                  : "bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200 "
               }`}
             >
               {MODE_LABEL[m]}
@@ -111,7 +111,7 @@ export default function DeepWork() {
                 cx="150"
                 cy="150"
                 r={RADIUS}
-                className="fill-none stroke-slate-100 dark:stroke-slate-800"
+                className="fill-none stroke-slate-100 "
                 strokeWidth="14"
               />
               <circle
@@ -126,10 +126,10 @@ export default function DeepWork() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="font-mono text-6xl font-bold tabular-nums text-slate-900 dark:text-white">
+              <span className="font-mono text-6xl font-bold tabular-nums text-slate-900 ">
                 {formatClock(remaining)}
               </span>
-              <span className="mt-1 text-sm font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <span className="mt-1 text-sm font-semibold uppercase tracking-wide text-slate-400 ">
                 {MODE_LABEL[mode]}
               </span>
               {/* Döngü noktaları */}
@@ -140,7 +140,7 @@ export default function DeepWork() {
                     className={`h-2 w-2 rounded-full ${
                       i < cyclePos
                         ? "bg-indigo-500"
-                        : "bg-slate-200 dark:bg-slate-700"
+                        : "bg-slate-200 "
                     }`}
                   />
                 ))}
@@ -152,7 +152,7 @@ export default function DeepWork() {
           <div className="mt-6 flex items-center gap-3">
             <button
               onClick={reset}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 active:scale-95 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 active:scale-95 "
               title="Sıfırla"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -181,7 +181,7 @@ export default function DeepWork() {
             </button>
             <button
               onClick={skip}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 active:scale-95 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 active:scale-95 "
               title="Atla"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -192,7 +192,7 @@ export default function DeepWork() {
         </div>
 
         {/* Görev etiketi */}
-        <Field label="Ne üzerine çalışıyorsun?" labelClassName="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" className="mt-8">
+        <Field label="Ne üzerine çalışıyorsun?" labelClassName="text-xs font-semibold uppercase tracking-wide text-slate-400 " className="mt-8">
           {(id) => (
               <input
                     id={id}
@@ -201,39 +201,39 @@ export default function DeepWork() {
                 onChange={(e) => setTask(e.target.value)}
                 maxLength={120}
                 placeholder="Örn. Matematik — türev soruları"
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
               />
           )}
         </Field>
 
         {/* Bugün + Ayarlar */}
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               Bugün
             </h2>
             <div className="mt-3 flex items-center justify-around">
               <div className="text-center">
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <p className="text-2xl font-bold text-slate-900 ">
                   {formatDuration(today.focusSeconds)}
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">Odak süresi</p>
+                <p className="text-xs text-slate-400 ">Odak süresi</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <p className="text-2xl font-bold text-slate-900 ">
                   {today.sessions}
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">Tamamlanan seans</p>
+                <p className="text-xs text-slate-400 ">Tamamlanan seans</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
             <button
               onClick={() => setShowSettings((v) => !v)}
               className="flex w-full items-center justify-between"
             >
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Ayarlar
               </span>
               <svg
@@ -296,7 +296,7 @@ function SettingNumber({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-sm text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="text-sm text-slate-600 ">{label}</span>
       <input
         type="number"
         min={0}
@@ -306,7 +306,7 @@ function SettingNumber({
           const n = parseFloat(e.target.value);
           if (!Number.isNaN(n) && n >= 0) onChange(n);
         }}
-        className="w-20 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-right text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+        className="w-20 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-right text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
       />
     </div>
   );
@@ -326,10 +326,10 @@ function Toggle({
       onClick={() => onChange(!checked)}
       className="flex w-full items-center justify-between"
     >
-      <span className="text-sm text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="text-sm text-slate-600 ">{label}</span>
       <span
         className={`relative h-6 w-11 rounded-full transition ${
-          checked ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+          checked ? "bg-indigo-600" : "bg-slate-300 "
         }`}
       >
         <span

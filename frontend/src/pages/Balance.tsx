@@ -24,19 +24,19 @@ import type { ReactNode } from "react";
 const PAYOUT_STATUS_META: Record<PayoutStatus, { label: string; cls: string }> = {
   NONE: {
     label: "Eklenmedi",
-    cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+    cls: "bg-slate-100 text-slate-600 ",
   },
   PENDING: {
     label: "Doğrulama bekleniyor",
-    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+    cls: "bg-amber-50 text-amber-700 ",
   },
   ACTIVE: {
     label: "Doğrulandı ✓",
-    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+    cls: "bg-emerald-50 text-emerald-700 ",
   },
   REJECTED: {
     label: "Reddedildi",
-    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+    cls: "bg-rose-50 text-rose-700 ",
   },
 };
 
@@ -50,13 +50,13 @@ function PayoutSummaryCard({
 }) {
   const meta = PAYOUT_STATUS_META[status];
   return (
-    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
             Ödeme hesabı
           </p>
-          <p className="mt-1 font-mono text-sm text-slate-700 dark:text-slate-200">
+          <p className="mt-1 font-mono text-sm text-slate-700 ">
             {ibanMasked || "Henüz IBAN eklenmedi"}
           </p>
         </div>
@@ -66,7 +66,7 @@ function PayoutSummaryCard({
           </span>
           <Link
             to={ROUTES.settings}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 "
           >
             {status === "NONE" ? "Ekle" : "Ayarlar'da düzenle"}
           </Link>
@@ -159,8 +159,8 @@ function OperatorBalance() {
       onRetryTransactions={() => void txnRefetch()}
       payout={
         libraryId ? (
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
+            <h2 className="mb-3 text-base font-bold text-slate-900 ">
               Ödeme Hesabı
             </h2>
             <LibraryPayoutForm libraryId={libraryId} />
@@ -210,7 +210,7 @@ function BalanceView({
     <DashboardShell title="Bakiyem" navItems={navItems}>
       <div className="mx-auto max-w-5xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-2xl font-bold text-slate-900 ">
             Bakiyem
           </h1>
           {/* Eski metin "tutarlar iyzico üzerinden doğrudan IBAN'ına geçer"
@@ -222,7 +222,7 @@ function BalanceView({
               değildir — yanlış vaat, ödeme gecikince güveni bozar. */}
           <p
             data-testid="bakiye-odeme-aciklamasi"
-            className="mt-1 text-sm text-slate-500 dark:text-slate-400"
+            className="mt-1 text-sm text-slate-500 "
           >
             Kazançların, emanetteki ödemeler ve tüm işlem dökümün. Hakedişin,
             kayıtlı IBAN'ına <b className="font-semibold">banka havalesiyle</b>{" "}
@@ -236,7 +236,7 @@ function BalanceView({
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+                className="h-28 animate-pulse rounded-2xl bg-slate-100 "
               />
             ))}
           </div>
@@ -249,20 +249,20 @@ function BalanceView({
                 Tamamlanan işlemlerden net
               </p>
             </div>
-            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
+              <p className="text-xs font-medium text-slate-500 ">
                 {escrowLabel}
               </p>
-              <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+              <p className="mt-1 text-2xl font-bold text-amber-600 ">
                 {formatTRY(escrow)}
               </p>
               <p className="mt-0.5 text-[11px] text-slate-400">{escrowHint}</p>
             </div>
-            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
+              <p className="text-xs font-medium text-slate-500 ">
                 Bu ay kazanılan
               </p>
-              <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+              <p className="mt-1 text-2xl font-bold text-slate-900 ">
                 {formatTRY(thisMonth ?? "0")}
               </p>
               {refundedNum > 0 && (
@@ -278,9 +278,9 @@ function BalanceView({
         {payout}
 
         {/* İşlem dökümü */}
-        <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-          <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-700">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+        <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 ">
+          <div className="border-b border-slate-100 px-6 py-4 ">
+            <h2 className="text-sm font-bold text-slate-900 ">
               İşlem Dökümü
             </h2>
           </div>
@@ -290,7 +290,7 @@ function BalanceView({
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50"
+                  className="h-10 animate-pulse rounded-lg bg-slate-100 "
                 />
               ))}
             </div>
@@ -306,7 +306,7 @@ function BalanceView({
           ) : !transactions || transactions.length === 0 ? (
             <p
               data-testid="islem-bos"
-              className="px-6 py-10 text-center text-sm text-slate-400 dark:text-slate-500"
+              className="px-6 py-10 text-center text-sm text-slate-400 "
             >
               Henüz bir işlem yok. İlk ödeme alındığında burada görünecek.
             </p>
@@ -314,7 +314,7 @@ function BalanceView({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <tr className="text-left text-xs uppercase tracking-wide text-slate-400 ">
                     <th className="px-6 py-3 font-medium">Tarih</th>
                     <th className="px-6 py-3 font-medium">İşlem</th>
                     <th className="px-6 py-3 text-right font-medium">Tutar</th>
@@ -323,20 +323,20 @@ function BalanceView({
                     <th className="px-6 py-3 font-medium">Durum</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                <tbody className="divide-y divide-slate-100 ">
                   {transactions.map((t) => (
                     <tr
                       key={`${t.source}-${t.id}`}
-                      className="text-slate-700 dark:text-slate-200"
+                      className="text-slate-700 "
                     >
-                      <td className="whitespace-nowrap px-6 py-3 text-xs text-slate-500 dark:text-slate-400">
+                      <td className="whitespace-nowrap px-6 py-3 text-xs text-slate-500 ">
                         {formatDateTime(t.occurred_at ?? t.created_at)}
                       </td>
                       <td className="px-6 py-3">
-                        <p className="font-medium text-slate-800 dark:text-slate-100">
+                        <p className="font-medium text-slate-800 ">
                           {t.title}
                         </p>
-                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                        <p className="text-xs text-slate-400 ">
                           {SOURCE_LABEL[t.source]}
                           {t.counterparty ? ` · ${t.counterparty}` : ""}
                         </p>
@@ -347,7 +347,7 @@ function BalanceView({
                       <td className="whitespace-nowrap px-6 py-3 text-right tabular-nums text-slate-400">
                         −{formatTRY(t.commission)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-3 text-right font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                      <td className="whitespace-nowrap px-6 py-3 text-right font-semibold tabular-nums text-emerald-600 ">
                         {formatTRY(t.net)}
                       </td>
                       <td className="px-6 py-3">
@@ -368,7 +368,7 @@ function BalanceView({
           {transactions && kesildiMi(transactions) && (
             <p
               data-testid="islem-tavan-uyarisi"
-              className="border-t border-slate-100 px-6 py-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400"
+              className="border-t border-slate-100 px-6 py-3 text-xs text-slate-500 "
             >
               Son {ISLEM_TAVANI} işlem gösteriliyor. Daha eski kayıtlar için
               destekle iletişime geç.

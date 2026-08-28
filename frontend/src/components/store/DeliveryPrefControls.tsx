@@ -91,8 +91,8 @@ export function DeliveryPrefControls({
   };
 
   return (
-    <div className="border-t border-slate-100 px-6 py-5 text-left dark:border-slate-800">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+    <div className="border-t border-slate-100 px-6 py-5 text-left ">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
         Teslimat tercihin
       </h2>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -112,10 +112,10 @@ export function DeliveryPrefControls({
               className={[
                 "rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-50",
                 selected
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                  ? "bg-slate-900 text-white "
                   : locked
-                    ? "text-slate-400 ring-1 ring-slate-200 dark:text-slate-500 dark:ring-slate-700"
-                    : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800/60",
+                    ? "text-slate-400 ring-1 ring-slate-200 "
+                    : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 ",
               ].join(" ")}
             >
               {opt.emoji} {opt.label}
@@ -127,7 +127,7 @@ export function DeliveryPrefControls({
       {/* Seçili tercihin ne anlama geldiği — müşteri sonucunu bilerek seçsin
           (ör. "Kapıya bırak" fotoğrafla kanıtlanır). */}
       {currentOption && (
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-xs text-slate-500 ">
           {currentOption.description}
           {current === "KOMSUYA_BIRAK" && t.delivery_pref_note && (
             <> — Komşu: {t.delivery_pref_note}</>
@@ -135,9 +135,9 @@ export function DeliveryPrefControls({
         </p>
       )}
       {mode.kind === "token" && !loggedIn && (
-        <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="mt-1.5 text-[11px] text-slate-400 ">
           🔒 Kapıya/komşuya bırakma güvenlik gereği{" "}
-          <Link to={ROUTES.login} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+          <Link to={ROUTES.login} className="font-medium text-indigo-600 hover:underline ">
             giriş yaparak
           </Link>{" "}
           seçilir.
@@ -149,7 +149,7 @@ export function DeliveryPrefControls({
           <button
             onClick={() => setPostponeOpen(true)}
             disabled={postponePending}
-            className="font-semibold text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400"
+            className="font-semibold text-indigo-600 hover:underline disabled:opacity-50 "
           >
             Yarına ertele
           </button>
@@ -175,11 +175,11 @@ export function DeliveryPrefControls({
           }}
           className="space-y-3"
         >
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-sm text-slate-600 ">
             Paket belirttiğin komşuya teslim edilir ve fotoğrafla kanıtlanır.
           </p>
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="mb-1 block text-xs font-medium text-slate-500 ">
               Komşu adı / daire
             </span>
             <input
@@ -195,14 +195,14 @@ export function DeliveryPrefControls({
             <button
               type="button"
               onClick={() => setNeighborFor(null)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
             >
               Vazgeç
             </button>
             <button
               type="submit"
               disabled={setPending || neighborNote.trim().length < 3}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 "
             >
               Kaydet
             </button>
@@ -218,7 +218,7 @@ export function DeliveryPrefControls({
         maxWidth="max-w-sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-sm text-slate-600 ">
             Siparişin bir sonraki çalışma gününün dağıtımına alınacak. Erteleme
             hakkın sınırlıdır (en fazla 2 kez).
           </p>
@@ -226,7 +226,7 @@ export function DeliveryPrefControls({
             <button
               type="button"
               onClick={() => setPostponeOpen(false)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
             >
               Vazgeç
             </button>
@@ -234,7 +234,7 @@ export function DeliveryPrefControls({
               type="button"
               onClick={doPostpone}
               disabled={postponePending}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 "
             >
               {postponePending ? "Erteleniyor…" : "Yarına ertele"}
             </button>

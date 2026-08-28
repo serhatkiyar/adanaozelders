@@ -5,16 +5,16 @@ import { AddressMapModal } from "@/components/address/AddressMapModal";
 import type { SavedAddress, SavedAddressCreate } from "@/types";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/30";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
 
 const fieldLabelCls =
-  "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
+  "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 const saveBtn =
   "rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
 
 const cancelBtn =
-  "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700";
+  "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ";
 
 // Yapısal il/ilçe: Cıncık Teslimat bölge kontrolünün OTORİTESİ (İP-19 / K-10 —
 // harita pin'i artık otorite DEĞİL; yarıçap kalktı, yerini ilçe listesi aldı).
@@ -122,7 +122,7 @@ export function AddressForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-700/40">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-xl bg-slate-50 p-4 ">
       <div>
         <label htmlFor={`${uid}-adres-basligi`} className={fieldLabelCls}>Adres Başlığı *</label>
         <input id={`${uid}-adres-basligi`}
@@ -164,9 +164,9 @@ export function AddressForm({
       </div>
 
       {/* Konum seçimi + önizleme */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-800">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 ">
         <div className="flex items-center justify-between">
-          <span className={`flex items-center gap-1.5 text-xs font-medium ${lat != null ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"}`}>
+          <span className={`flex items-center gap-1.5 text-xs font-medium ${lat != null ? "text-emerald-600 " : "text-slate-400 "}`}>
             {lat != null ? (
               <>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -183,7 +183,7 @@ export function AddressForm({
           <button
             type="button"
             onClick={() => setShowMap(true)}
-            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 "
           >
             {lat != null ? "Değiştir" : "Haritadan Seç"}
           </button>
@@ -276,12 +276,12 @@ export function AddressForm({
       </div>
 
       {!hideDefaultToggle && (
-        <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300">
+        <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700 ">
           <input
             type="checkbox"
             checked={isDefault}
             onChange={(e) => setIsDefault(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400 dark:border-slate-600 dark:bg-slate-800"
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400 "
           />
           Varsayılan adresim yap
         </label>

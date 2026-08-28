@@ -32,8 +32,8 @@ export default function InventoryLayout() {
             className={({ isActive }) =>
               `rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
                 isActive
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white "
+                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 "
               }`
             }
           >
@@ -42,7 +42,7 @@ export default function InventoryLayout() {
         ))}
       </nav>
       {!canCount && !canApply && (
-        <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+        <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 ">
           Salt okunur görünüm — rolünüzde sayım ve hasar işlemi izni tanımlı değil.
         </p>
       )}

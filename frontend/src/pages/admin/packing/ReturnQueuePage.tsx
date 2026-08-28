@@ -57,13 +57,13 @@ export default function ReturnQueuePage() {
     setParams(yeni <= 1 ? {} : { sayfa: String(yeni) }, { replace: true });
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          <h2 className="text-base font-bold text-slate-900 ">
             Kuryeden dönmesi beklenen kutular
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Kutu depoya geldiğinde burada kabul edin; ancak ondan sonra yeniden
             dağıtıma verilebilir. En uzun süredir bekleyen en üstte.
           </p>
@@ -90,17 +90,17 @@ export default function ReturnQueuePage() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100 px-6 ">
           {satirlar.map((satir) => (
             <li key={satir.package_id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="min-w-0 flex-1 basis-56">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                <p className="text-sm font-semibold text-slate-900 ">
                   {satir.package_code}
                   <span className="ml-2 text-xs font-normal text-slate-400">
                     sipariş #{satir.order_id}
                   </span>
                 </p>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-0.5 text-xs text-slate-500 ">
                   {satir.courier_name ?? "Kurye kaydı bulunmuyor"}
                 </p>
               </div>
@@ -119,8 +119,8 @@ export default function ReturnQueuePage() {
       )}
 
       {toplam > LIMIT && (
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3 ">
+          <span className="text-xs text-slate-500 ">
             Sayfa {sayfa} / {sonSayfa}
           </span>
           <div className="flex gap-2">

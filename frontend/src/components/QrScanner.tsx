@@ -102,12 +102,12 @@ export function QrScanner({
         autoCapitalize="off"
         spellCheck={false}
         aria-label="QR kodunu elle gir"
-        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:focus:ring-indigo-500/20"
+        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 "
       />
       <button
         type="submit"
         disabled={!manual.trim()}
-        className="shrink-0 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-slate-900"
+        className="shrink-0 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 "
       >
         Doğrula
       </button>
@@ -119,7 +119,7 @@ export function QrScanner({
       ? qrScanDiagnosis(env)
       : { title: "Kamera kullanılamıyor.", hint: manualHint };
     return (
-      <div className="space-y-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+      <div className="space-y-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-700 ">
         <p>
           <span className="font-semibold">{diagnosis.title}</span>{" "}
           {mode === "insecure-context" ? diagnosis.hint : `${diagnosis.hint} ${manualHint}`}
@@ -127,7 +127,7 @@ export function QrScanner({
         {ManualEntry}
         <button
           onClick={onClose}
-          className="block rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+          className="block rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 "
         >
           Kapat
         </button>

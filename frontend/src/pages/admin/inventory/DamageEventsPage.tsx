@@ -117,7 +117,7 @@ export default function DamageEventsPage() {
         header: "İşlem",
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="font-medium text-slate-900 dark:text-white">
+          <span className="font-medium text-slate-900 ">
             {damageKindPastLabel(row.original.kind)}
           </span>
         ),
@@ -133,7 +133,7 @@ export default function DamageEventsPage() {
         header: "Miktar",
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="block text-right tabular-nums text-slate-900 dark:text-white">
+          <span className="block text-right tabular-nums text-slate-900 ">
             {row.original.qty}
           </span>
         ),
@@ -156,7 +156,7 @@ export default function DamageEventsPage() {
           <>
             {damageReasonLabel(row.original.reason_code)}
             {row.original.note && (
-              <span className="block text-xs text-slate-500 dark:text-slate-400">
+              <span className="block text-xs text-slate-500 ">
                 {row.original.note}
               </span>
             )}
@@ -168,7 +168,7 @@ export default function DamageEventsPage() {
         header: "Yapan",
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="text-slate-500 dark:text-slate-400">
+          <span className="text-slate-500 ">
             #{row.original.actor_admin_id}
           </span>
         ),
@@ -178,7 +178,7 @@ export default function DamageEventsPage() {
         header: "Zaman",
         enableSorting: false,
         cell: ({ row }) => (
-          <span className="tabular-nums text-slate-500 dark:text-slate-400">
+          <span className="tabular-nums text-slate-500 ">
             {ZAMAN.format(new Date(row.original.created_at))}
           </span>
         ),
@@ -189,9 +189,9 @@ export default function DamageEventsPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5 dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Hasar işlemleri</h2>
-        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+      <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5 ">
+        <h2 className="text-base font-bold text-slate-900 ">Hasar işlemleri</h2>
+        <p className="mt-0.5 text-xs text-slate-500 ">
           Her işlem stok defterine yazılır ve geri alınamaz bir kayıt bırakır.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -212,7 +212,7 @@ export default function DamageEventsPage() {
             ) : (
               <span
                 key={k.value}
-                className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-400 dark:border-slate-700 dark:text-slate-500"
+                className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-400 "
               >
                 {k.label}
               </span>
@@ -220,14 +220,14 @@ export default function DamageEventsPage() {
           )}
         </div>
         {!canApply && (
-          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-xs text-slate-500 ">
             İşlem başlatmak için rolünüzde <code>inventory.apply</code> izni bulunmalı.
           </p>
         )}
         {sonuc && (
           <p
             role="status"
-            className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100"
+            className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-900 "
           >
             {sonuc}
           </p>
@@ -237,13 +237,13 @@ export default function DamageEventsPage() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-end gap-3">
           <div className="mr-auto">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Geçmiş</h2>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <h2 className="text-base font-bold text-slate-900 ">Geçmiş</h2>
+            <p className="mt-0.5 text-xs text-slate-500 ">
               Kayıtlar değiştirilemez; yanlış işlem ters yönde yeni bir kayıtla düzeltilir.
             </p>
           </div>
           <label className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-medium text-slate-500 ">
               Ürün numarasına göre
             </span>
             <input
@@ -299,21 +299,21 @@ export default function DamageEventsPage() {
             renderMobileRow={(olay) => (
               <div>
                 <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <span className="text-sm font-semibold text-slate-900 ">
                     {damageKindPastLabel(olay.kind)}
                   </span>
-                  <span className="shrink-0 text-sm tabular-nums text-slate-900 dark:text-white">
+                  <span className="shrink-0 text-sm tabular-nums text-slate-900 ">
                     {olay.qty} adet
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-xs text-slate-500 ">
                   Ürün #{olay.product_id} · {bucketLabel(olay.source_bucket)} ·{" "}
                   {damageReasonLabel(olay.reason_code)}
                 </p>
                 {olay.note && (
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{olay.note}</p>
+                  <p className="mt-1 text-xs text-slate-500 ">{olay.note}</p>
                 )}
-                <p className="mt-1 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                <p className="mt-1 text-xs tabular-nums text-slate-400 ">
                   {ZAMAN.format(new Date(olay.created_at))} · #{olay.actor_admin_id}
                 </p>
               </div>

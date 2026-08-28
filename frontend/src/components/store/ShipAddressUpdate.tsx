@@ -25,7 +25,7 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
   if (!canChangeAddress(order)) {
     if (order.status === "SHIPPED") {
       return (
-        <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
+        <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-400 ">
           Kurye yola çıktı — adres değişikliği kapandı
         </p>
       );
@@ -56,11 +56,11 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
   };
 
   return (
-    <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+    <div className="mt-3 border-t border-slate-100 pt-3 ">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline "
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="15" height="15">
           <path
@@ -75,7 +75,7 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
       {open && (
         <div className="mt-2 space-y-1">
           {addresses.length === 0 ? (
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-400 ">
               Kayıtlı başka adresin yok — önce Hesabım → Adreslerim'den ekle.
             </p>
           ) : (
@@ -84,12 +84,12 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
                 key={a.id}
                 onClick={() => doChangeAddress(a.id)}
                 disabled={changeAddress.isPending}
-                className="flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800/60"
+                className="flex w-full items-baseline gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-slate-50 disabled:opacity-50 "
               >
-                <span className="shrink-0 font-semibold text-slate-800 dark:text-slate-200">
+                <span className="shrink-0 font-semibold text-slate-800 ">
                   {a.title}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-slate-500 dark:text-slate-400">
+                <span className="min-w-0 flex-1 truncate text-slate-500 ">
                   {a.address_line}
                 </span>
               </button>

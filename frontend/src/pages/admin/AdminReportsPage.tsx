@@ -121,7 +121,7 @@ export default function AdminReportsPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
-      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-2">
+      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
         <label>
           <span className="mb-1 block text-xs font-semibold text-slate-500">Durum</span>
           <select value={state.status} onChange={(event) => update({ status: event.target.value, page: 1 })} className="input">
@@ -155,7 +155,7 @@ export default function AdminReportsPage() {
                 <div><p className="font-semibold">{report.target_type} #{report.target_id}</p><p className="text-xs text-rose-600">{REASON_LABEL[report.reason]}</p></div>
                 <Badge tone={STATUS_TONE[report.status]}>{STATUS_LABEL[report.status]}</Badge>
               </div>
-              {report.description && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{report.description}</p>}
+              {report.description && <p className="mt-3 text-sm text-slate-600 ">{report.description}</p>}
               <div className="mt-3">{actionButtons(report)}</div>
             </div>
           )}
@@ -266,7 +266,7 @@ function KararIcerik({
       {genelHata && (
         <p
           role="alert"
-          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
         >
           {genelHata}
         </p>
@@ -306,11 +306,11 @@ function KararIcerik({
                   onBlur={field.onBlur}
                   ref={field.ref}
                   name={field.name}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-600"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 "
                 />
                 <span>
                   <span className="font-semibold">Yorumu yayından kaldır</span>
-                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                  <span className="mt-0.5 block text-xs text-slate-500 ">
                     Yorum silinmez; gizlenir ve puan ortalamasından düşülür. Karar geri alınabilir.
                   </span>
                 </span>

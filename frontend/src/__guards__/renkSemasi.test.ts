@@ -12,9 +12,10 @@
  * taşımıyordu (B-15) — kusurun kökü o yanlış inançtı.
  *
  * Dokuzunu tek tek yamamak onuncusunu davet ederdi. Düzeltme KÖK ÖĞEYE
- * taşındı: `html { color-scheme: light }` + `html.dark { color-scheme: dark }`.
- * Tarayıcının kendi çizdiği her parça bunu miras alır — bugün var olan ve
- * yarın doğacak bütün widget'lar dahil.
+ * taşındı: `html { color-scheme: light }`. Tarayıcının kendi çizdiği her
+ * parça bunu miras alır — bugün var olan ve yarın doğacak bütün widget'lar
+ * dahil. (Tarihçe: `html.dark { color-scheme: dark }` ikizi vardı; dark mode
+ * CMS turunda ürün kararıyla söküldü — site tek temadır.)
  *
  * ## Bu nöbetçinin GÜCÜ ve SINIRI (kök CLAUDE.md §C)
  *
@@ -64,14 +65,18 @@ const CSS = readFileSync(cssYolu(), "utf8");
 const KURALLAR = CSS.replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("İP-A8 · yerel widget şeması tek noktadan geliyor", () => {
-  it("`color-scheme` KÖK öğede bildiriliyor (açık ve koyu)", () => {
+  it("`color-scheme: light` KÖK öğede bildiriliyor", () => {
     // Yorumlar elenmiş metinde aranır: gerekçe yorumunda geçen bir
     // `color-scheme` sözcüğü kuralın kendisi sayılmamalı — bu projede bir
     // yorumun "koruma var" sanılması (B-15) tam olarak bu kusurun köküydü.
     const acik = /html\s*\{[^}]*color-scheme:\s*light/m.test(KURALLAR);
-    const koyu = /html\.dark\s*\{[^}]*color-scheme:\s*dark/m.test(KURALLAR);
     expect(acik, "`html { color-scheme: light }` kuralı yok").toBe(true);
-    expect(koyu, "`html.dark { color-scheme: dark }` kuralı yok").toBe(true);
+  });
+
+  it("koyu tema kuralı GERİ DÖNMEDİ (dark mode söküldü)", () => {
+    // Ürün kararı: site tek temadır. `.dark` seçicili herhangi bir kural
+    // sökümün geri alındığının işaretidir ve bilinçli bir karar ister.
+    expect(/\.dark[\s.{[]/m.test(KURALLAR), "index.css'te `.dark` kuralı geri gelmiş").toBe(false);
   });
 
   it("dedektörün kendisi YORUMU kural sanmıyor (ters prova)", () => {

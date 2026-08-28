@@ -23,9 +23,9 @@ export const ERISIM_REDDEDILDI_BASLIK = "Bu alan için yetkiniz yok";
 /** Yetkisiz deep-link (view izni yok) — tam ekran 403 durumu. */
 export function AccessDenied({ area }: { area: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900">
-      <h2 className="text-sm font-bold text-slate-900 dark:text-white">{ERISIM_REDDEDILDI_BASLIK}</h2>
-      <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center ">
+      <h2 className="text-sm font-bold text-slate-900 ">{ERISIM_REDDEDILDI_BASLIK}</h2>
+      <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 ">
         {area} bölümünü görüntülemek için yönetici rolünüzde ilgili izin tanımlı değil.
         Erişim gerekiyorsa yetki yönetiminden sorumlu yöneticinizle görüşün.
       </p>
@@ -36,7 +36,7 @@ export function AccessDenied({ area }: { area: string }) {
 /** Salt-okunur bilgilendirme şeridi (view var, manage yok). */
 export function ReadOnlyNotice() {
   return (
-    <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+    <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 ">
       Salt okunur görünüm — rolünüz bu bölümde değişiklik yapma izni içermiyor.
     </p>
   );

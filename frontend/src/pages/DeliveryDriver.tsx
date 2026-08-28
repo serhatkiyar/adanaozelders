@@ -207,22 +207,22 @@ function CurrentStopCard({
   return (
     <div
       data-testid="aktif-durak"
-      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 "
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 ">
         {isJumped ? "Seçilen durak" : "Sıradaki durak"} · #{stop.sequence}
       </p>
-      <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+      <h2 className="mt-1 text-xl font-bold text-slate-900 ">
         {stop.recipient ?? "Alıcı bilinmiyor"}
       </h2>
-      <p className="mt-1 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
+      <p className="mt-1 whitespace-pre-line text-sm text-slate-600 ">
         {stop.address ?? "Adres yok"}
       </p>
-      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-xs text-slate-500 ">
         Sipariş #{stop.order_id} ·{" "}
         {stop.items.map((it) => `${it.title} ×${it.quantity}`).join(", ") || "—"}
         {stop.eta && (
-          <span className="ml-2 font-semibold text-indigo-600 dark:text-indigo-400">
+          <span className="ml-2 font-semibold text-indigo-600 ">
             tahmini ~{formatEta(stop.eta)}
           </span>
         )}
@@ -230,7 +230,7 @@ function CurrentStopCard({
 
       {/* Müşteri talimatı — belirgin bant (15 sn poll ile canlı güncellenir) */}
       {banner && (
-        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 ">
           {banner}
         </p>
       )}
@@ -250,7 +250,7 @@ function CurrentStopCard({
         {stop.phone && (
           <a
             href={`tel:${stop.phone}`}
-            className="rounded-xl py-2.5 text-center text-sm font-semibold text-slate-700 ring-1 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
+            className="rounded-xl py-2.5 text-center text-sm font-semibold text-slate-700 ring-1 ring-slate-200 "
           >
             Müşteriyi Ara
           </a>
@@ -276,7 +276,7 @@ function CurrentStopCard({
               })
             }
             disabled={sendOtp.isPending}
-            className="rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600"
+            className="rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 "
           >
             {sendOtp.isPending ? "Gönderiliyor…" : "Müşteriye Kod Gönder"}
           </button>
@@ -288,14 +288,14 @@ function CurrentStopCard({
           eylemlerinin hiçbiri DOM'a girmez: "pasif buton" göstermek, kuryeye
           "bir şekilde basılabilir" izlenimi verirdi. */}
       {!kapi.acik && (
-        <div className="mt-4 space-y-2 rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200 dark:bg-slate-700/40 dark:ring-slate-600">
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+        <div className="mt-4 space-y-2 rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200 ">
+          <p className="text-sm font-semibold text-slate-700 ">
             {kapi.not}
           </p>
           {kapi.zimmetLinki && (
             <Link
               to={ROUTES.deliveryRunHandover(stop.run_id)}
-              className="inline-block text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+              className="inline-block text-sm font-semibold text-indigo-600 hover:underline "
             >
               Zimmet ekranını aç →
             </Link>
@@ -303,7 +303,7 @@ function CurrentStopCard({
         </div>
       )}
       {kapi.acik && kapi.uyari && (
-        <p className="mt-4 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+        <p className="mt-4 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 ring-1 ring-amber-200 ">
           {kapi.uyari}
         </p>
       )}
@@ -337,13 +337,13 @@ function CurrentStopCard({
           <img
             src={stop.photo_url}
             alt="Teslim kanıtı"
-            className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-600"
+            className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200 "
           />
         )}
         <button
           onClick={() => photoRef.current?.click()}
           disabled={uploadPhoto.isPending}
-          className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600"
+          className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 "
         >
           {uploadPhoto.isPending
             ? "Yükleniyor…"
@@ -356,7 +356,7 @@ function CurrentStopCard({
       {/* Teslim / sorun akışları */}
       {mode === "deliver" && dropMode && (
         <div className="mt-4 space-y-2">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 ">
             Müşteri talimatı: bırakma teslimi — OTP alınmaz, kanıt fotoğrafı zorunlu.
           </p>
           <button
@@ -374,7 +374,7 @@ function CurrentStopCard({
           <div className="flex justify-end pt-1 text-xs">
             <button
               onClick={() => setMode("fail")}
-              className="font-medium text-rose-600 hover:underline dark:text-rose-400"
+              className="font-medium text-rose-600 hover:underline "
             >
               Teslim edilemedi
             </button>
@@ -385,7 +385,7 @@ function CurrentStopCard({
       {mode === "deliver" && !dropMode && (
         <div className="mt-4 space-y-2">
           {maskedPhone && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 ">
               Kod {maskedPhone} numarasına gitti — müşteri kodu söylesin.
             </p>
           )}
@@ -410,19 +410,19 @@ function CurrentStopCard({
             {isAdmin ? (
               <button
                 onClick={() => setMode("override")}
-                className="font-medium text-slate-500 hover:underline dark:text-slate-400"
+                className="font-medium text-slate-500 hover:underline "
               >
                 Kod ulaşmıyor mu?
               </button>
             ) : (
               // Notlu teslim (OTP bypass) yalnız yönetici yetkisi — kurye arar.
-              <span className="text-slate-400 dark:text-slate-500">
+              <span className="text-slate-400 ">
                 Kod ulaşmıyorsa yöneticini ara
               </span>
             )}
             <button
               onClick={() => setMode("fail")}
-              className="font-medium text-rose-600 hover:underline dark:text-rose-400"
+              className="font-medium text-rose-600 hover:underline "
             >
               Teslim edilemedi
             </button>
@@ -433,7 +433,7 @@ function CurrentStopCard({
       {mode === "fail" && (
         <div className="mt-4 space-y-3">
           <div>
-            <p className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">
+            <p className="mb-1.5 text-sm font-semibold text-slate-700 ">
               Neden teslim edilemedi?
             </p>
             <div className="grid grid-cols-1 gap-1.5">
@@ -444,8 +444,8 @@ function CurrentStopCard({
                   onClick={() => setFailCode(r.code)}
                   className={`rounded-xl px-4 py-3 text-left text-sm font-medium ring-1 transition ${
                     failCode === r.code
-                      ? "bg-rose-50 text-rose-700 ring-rose-300 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/50"
-                      : "text-slate-700 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
+                      ? "bg-rose-50 text-rose-700 ring-rose-300 "
+                      : "text-slate-700 ring-slate-200 "
                   }`}
                 >
                   {r.label}
@@ -488,7 +488,7 @@ function CurrentStopCard({
             </button>
             <button
               onClick={() => setMode("deliver")}
-              className="rounded-xl px-4 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 dark:text-slate-300 dark:ring-slate-600"
+              className="rounded-xl px-4 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 "
             >
               Vazgeç
             </button>
@@ -498,7 +498,7 @@ function CurrentStopCard({
 
       {mode === "override" && (
         <div className="mt-4 space-y-2">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 ">
             SMS ulaşmadıysa: teslimi notla kayda geçir (kanıt "yönetici onayı" olur).
           </p>
           <textarea
@@ -524,13 +524,13 @@ function CurrentStopCard({
                 )
               }
               disabled={busy || note.trim().length < 3}
-              className="flex-1 rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
+              className="flex-1 rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white disabled:opacity-50 "
             >
               Notlu Teslim
             </button>
             <button
               onClick={() => setMode("deliver")}
-              className="rounded-xl px-4 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 dark:text-slate-300 dark:ring-slate-600"
+              className="rounded-xl px-4 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 "
             >
               Vazgeç
             </button>
@@ -581,7 +581,7 @@ export default function DeliveryDriver() {
 
   if (isLoading || !run) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-6 text-center text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-6 text-center text-sm text-slate-500 ">
         {isLoading ? (
           "Tur yükleniyor…"
         ) : runQuery.isError ? (
@@ -590,7 +590,7 @@ export default function DeliveryDriver() {
             <p>Bağlantı kurulamadı — tur bilgisi alınamıyor.</p>
             <button
               onClick={() => runQuery.refetch()}
-              className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-900"
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white "
             >
               Yeniden Dene
             </button>
@@ -660,14 +660,14 @@ export default function DeliveryDriver() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-10 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 pb-10 ">
       {/* Üst çubuk */}
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur ">
         <div className="mx-auto flex max-w-md items-center justify-between">
           {isAdmin ? (
             <Link
               to={ROUTES.home}
-              className="text-sm font-semibold text-slate-500 dark:text-slate-400"
+              className="text-sm font-semibold text-slate-500 "
             >
               ← Panel
             </Link>
@@ -675,15 +675,15 @@ export default function DeliveryDriver() {
             // Kurye panel görmez; tek çıkışı oturumu kapatmak.
             <button
               onClick={() => logout()}
-              className="text-sm font-semibold text-slate-500 dark:text-slate-400"
+              className="text-sm font-semibold text-slate-500 "
             >
               Çıkış
             </button>
           )}
-          <p className="text-sm font-bold text-slate-900 dark:text-white">
+          <p className="text-sm font-bold text-slate-900 ">
             Tur #{run.id} · {done}/{total}
           </p>
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          <span className="text-xs font-medium text-slate-500 ">
             {RUN_STATUS_LABEL[run.status]}
           </span>
         </div>
@@ -692,12 +692,12 @@ export default function DeliveryDriver() {
       <main className="mx-auto max-w-md space-y-4 px-4 pt-4">
         {/* Günün özeti — kurye kendi ilerleyişini görsün */}
         {run.status === "ACTIVE" && total > 0 && (
-          <div className="flex items-center justify-center gap-4 text-xs tabular-nums text-slate-500 dark:text-slate-400">
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+          <div className="flex items-center justify-center gap-4 text-xs tabular-nums text-slate-500 ">
+            <span className="font-semibold text-emerald-600 ">
               ✓ {delivered} teslim
             </span>
             {failed > 0 && (
-              <span className="font-semibold text-rose-600 dark:text-rose-400">
+              <span className="font-semibold text-rose-600 ">
                 ✕ {failed} başarısız
               </span>
             )}
@@ -712,13 +712,13 @@ export default function DeliveryDriver() {
         {(run.status === "PLANNED" || run.status === "ACTIVE") && (
           <Link
             to={ROUTES.deliveryRunHandover(run.id)}
-            className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:text-indigo-400 dark:ring-slate-700"
+            className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-100 "
           >
             Paketleri araca al (zimmet) →
           </Link>
         )}
         {run.status !== "ACTIVE" ? (
-          <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
+          <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 ">
             {run.status === "PLANNED"
               ? isAdmin
                 ? "Tur henüz başlatılmadı — admin panelinden başlatın."
@@ -733,7 +733,7 @@ export default function DeliveryDriver() {
               const siblings = coLocatedPendingStops(run, current);
               if (siblings.length === 0) return null;
               return (
-                <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 ">
                   Bu adrese bu turda {siblings.length} paket daha var (durak{" "}
                   {siblings.map((s) => `#${s.sequence}`).join(", ")}) — hepsini
                   birlikte götür, her paketi ayrı okut.
@@ -749,7 +749,7 @@ export default function DeliveryDriver() {
             {selectedStop != null && nextStop && selectedStop.id !== nextStop.id && (
               <button
                 onClick={() => setSelectedStopId(null)}
-                className="w-full rounded-xl py-2 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 dark:text-indigo-400 dark:ring-indigo-500/40"
+                className="w-full rounded-xl py-2 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 "
               >
                 Sıradaki durağa dön (#{nextStop.sequence})
               </button>
@@ -760,7 +760,7 @@ export default function DeliveryDriver() {
                 ama etiketi okuyamayan (buruşuk/ıslak QR) kurye sıkışıyordu. */}
             <section
               data-testid="saha-tarama"
-              className="space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+              className="space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 "
             >
               <form
                 onSubmit={(e) => {
@@ -784,7 +784,7 @@ export default function DeliveryDriver() {
                 <button
                   type="submit"
                   disabled={!kod.trim() || scanLabel.isPending}
-                  className="shrink-0 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
+                  className="shrink-0 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 "
                 >
                   {scanLabel.isPending ? "Okunuyor…" : "Okut"}
                 </button>
@@ -792,7 +792,7 @@ export default function DeliveryDriver() {
               {kameraVar && (
                 <button
                   onClick={() => setShowScanner(true)}
-                  className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
+                  className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 "
                 >
                   Kamerayla okut
                 </button>
@@ -812,8 +812,8 @@ export default function DeliveryDriver() {
                 data-testid="saha-sonuc"
                 className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${
                   tarama.hata
-                    ? "bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30"
-                    : "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30"
+                    ? "bg-rose-50 text-rose-800 ring-rose-200 "
+                    : "bg-emerald-50 text-emerald-800 ring-emerald-200 "
                 }`}
               >
                 {/* Renk tek ayırt edici değil: hata ✕, olumlu ✓ ile de söylenir. */}
@@ -823,8 +823,8 @@ export default function DeliveryDriver() {
             )}
           </>
         ) : (
-          <div className="space-y-3 rounded-2xl bg-white p-6 text-center ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          <div className="space-y-3 rounded-2xl bg-white p-6 text-center ring-1 ring-slate-100 ">
+            <p className="text-sm font-semibold text-slate-900 ">
               Tüm duraklar sonuçlandı 🎉
             </p>
             <button
@@ -849,7 +849,7 @@ export default function DeliveryDriver() {
         {/* Durak listesi */}
         <ul
           data-testid="durak-listesi"
-          className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 dark:divide-slate-700 dark:bg-slate-800 dark:ring-slate-700"
+          className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 "
         >
           {[...run.stops]
             .sort((a, b) => a.sequence - b.sequence)
@@ -867,31 +867,31 @@ export default function DeliveryDriver() {
                     s.status === "PENDING" && run.status === "ACTIVE"
                       ? "cursor-pointer"
                       : "cursor-default"
-                  } ${current?.id === s.id ? "bg-indigo-50/50 -mx-4 px-4 dark:bg-indigo-500/5" : ""}`}
+                  } ${current?.id === s.id ? "bg-indigo-50/50 -mx-4 px-4 " : ""}`}
                 >
                 <span
                   className={`w-6 text-right text-sm font-semibold tabular-nums ${
                     current?.id === s.id
-                      ? "text-indigo-600 dark:text-indigo-400"
+                      ? "text-indigo-600 "
                       : "text-slate-400"
                   }`}
                 >
                   {s.sequence}
                 </span>
-                <p className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">
+                <p className="min-w-0 flex-1 truncate text-sm text-slate-700 ">
                   {s.recipient ?? `Sipariş #${s.order_id}`}
                 </p>
                 {s.eta && s.status === "PENDING" && (
-                  <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                  <span className="shrink-0 text-xs tabular-nums text-slate-400 ">
                     ~{formatEta(s.eta)}
                   </span>
                 )}
                 <span
                   className={`text-xs font-medium ${
                     s.status === "DELIVERED"
-                      ? "text-emerald-600 dark:text-emerald-400"
+                      ? "text-emerald-600 "
                       : s.status === "FAILED"
-                        ? "text-rose-600 dark:text-rose-400"
+                        ? "text-rose-600 "
                         : "text-slate-400"
                   }`}
                 >

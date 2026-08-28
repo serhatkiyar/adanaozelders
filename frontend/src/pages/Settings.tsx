@@ -29,10 +29,10 @@ import { Gender, ROLE_IDS } from "@/types";
 type CategoryKey = "personal" | "security" | "payments" | "appearance" | "addresses";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
 
 const fieldLabelCls =
-  "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
+  "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 const GENDERS = [
   { value: Gender.MALE, label: "Erkek" },
@@ -123,14 +123,14 @@ export default function Settings() {
   return (
     <DashboardShell title="Hesap Ayarları" navItems={roleNav}>
       <div className="mx-auto max-w-5xl px-1 pb-16 pt-2 sm:px-2">
-        <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+        <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Hesap ayarları
         </h1>
 
         {isLoading || !user ? (
           <div className="grid gap-8 md:grid-cols-[16rem_1fr]">
-            <div className="h-72 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-            <div className="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+            <div className="h-72 animate-pulse rounded-2xl bg-slate-100 " />
+            <div className="h-96 animate-pulse rounded-2xl bg-slate-100 " />
           </div>
         ) : (
           <div className="grid gap-8 md:grid-cols-[16rem_1fr]">
@@ -149,8 +149,8 @@ export default function Settings() {
                     onClick={() => setActive(c.key)}
                     className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition md:w-full ${
                       isActive
-                        ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white"
-                        : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60"
+                        ? "bg-slate-100 text-slate-900 "
+                        : "text-slate-600 hover:bg-slate-50 "
                     }`}
                   >
                     <c.icon className="h-6 w-6 shrink-0" />
@@ -167,23 +167,23 @@ export default function Settings() {
               {active === "payments" && showPayments && <PaymentsSection />}
               {active === "appearance" && (
                 <section>
-                  <h2 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">
+                  <h2 className="mb-1 text-xl font-bold text-slate-900 ">
                     Görünüm ve tercihler
                   </h2>
-                  <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
+                  <p className="mb-5 text-sm text-slate-500 ">
                     Tema, üst bar widget'ı, kısayol düzeni ve keşif tercihlerini buradan ayarla.
                   </p>
-                  <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:p-6">
+                  <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:p-6">
                     <PersonalizePanel navItems={roleNav} roleId={user.role_id} />
                   </div>
                 </section>
               )}
               {active === "addresses" && user.role_id === ROLE_IDS.CLIENT && (
                 <section>
-                  <h2 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">
+                  <h2 className="mb-1 text-xl font-bold text-slate-900 ">
                     Adreslerim
                   </h2>
-                  <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
+                  <p className="mb-5 text-sm text-slate-500 ">
                     Yüz yüze derslerde kullanılmak üzere kayıtlı konumların.
                   </p>
                   <AddressSection />
@@ -219,18 +219,18 @@ function SettingRow({
 }) {
   const label = actionLabel ?? (isOpen ? "İptal" : empty ? "Ekle" : "Düzenle");
   return (
-    <div className="border-b border-slate-100 py-5 last:border-b-0 dark:border-slate-800">
+    <div className="border-b border-slate-100 py-5 last:border-b-0 ">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="text-base font-medium text-slate-900 dark:text-white">
+          <h3 className="text-base font-medium text-slate-900 ">
             {title}
           </h3>
           {!isOpen && (
             <div
               className={`mt-1 text-sm ${
                 empty
-                  ? "text-slate-400 dark:text-slate-500"
-                  : "text-slate-600 dark:text-slate-300"
+                  ? "text-slate-400 "
+                  : "text-slate-600 "
               }`}
             >
               {value}
@@ -241,7 +241,7 @@ function SettingRow({
           <button
             type="button"
             onClick={onToggle}
-            className="shrink-0 rounded-lg text-sm font-semibold text-slate-900 underline decoration-1 underline-offset-2 transition hover:text-slate-600 dark:text-white dark:hover:text-slate-300"
+            className="shrink-0 rounded-lg text-sm font-semibold text-slate-900 underline decoration-1 underline-offset-2 transition hover:text-slate-600 "
           >
             {label}
           </button>
@@ -266,14 +266,14 @@ function EditActions({
       <button
         type="submit"
         disabled={saving || disabled}
-        className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+        className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 "
       >
         {saving ? "Kaydediliyor…" : "Kaydet"}
       </button>
       <button
         type="button"
         onClick={onCancel}
-        className="rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        className="rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 "
       >
         İptal
       </button>
@@ -336,14 +336,14 @@ function PhoneEditor({
           <button
             type="submit"
             disabled={requestOtp.isPending}
-            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 "
           >
             {requestOtp.isPending ? "Gönderiliyor…" : "Kod gönder"}
           </button>
           <button
             type="button"
             onClick={onDone}
-            className="rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 "
           >
             İptal
           </button>
@@ -369,8 +369,8 @@ function PhoneEditor({
         });
       }}
     >
-      <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-        <span className="font-medium text-slate-700 dark:text-slate-200">{masked}</span>{" "}
+      <p className="mb-3 text-sm text-slate-500 ">
+        <span className="font-medium text-slate-700 ">{masked}</span>{" "}
         numarasına gönderilen 6 haneli kodu gir.
       </p>
       <label htmlFor={`${uid}-sms-kodu`} className={fieldLabelCls}>SMS kodu</label>
@@ -388,7 +388,7 @@ function PhoneEditor({
         <button
           type="submit"
           disabled={verify.isPending}
-          className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+          className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 "
         >
           {verify.isPending ? "Doğrulanıyor…" : "Doğrula"}
         </button>
@@ -396,14 +396,14 @@ function PhoneEditor({
           type="button"
           onClick={sendCode}
           disabled={requestOtp.isPending}
-          className="text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 disabled:opacity-60 dark:text-slate-400 dark:hover:text-slate-200"
+          className="text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 disabled:opacity-60 "
         >
           Kodu tekrar gönder
         </button>
         <button
           type="button"
           onClick={() => setStep("phone")}
-          className="text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+          className="text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 "
         >
           Numarayı değiştir
         </button>
@@ -415,7 +415,7 @@ function PhoneEditor({
 // İkinci+ değişiklik kilidi / onay-bekliyor bilgilendirme kutuları.
 function LockedChangeNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+    <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 ">
       {children}
     </div>
   );
@@ -423,7 +423,7 @@ function LockedChangeNote({ children }: { children: React.ReactNode }) {
 
 function PendingChangeNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3 rounded-xl bg-indigo-50 px-3 py-2 text-xs leading-relaxed text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+    <div className="mb-3 rounded-xl bg-indigo-50 px-3 py-2 text-xs leading-relaxed text-indigo-700 ">
       {children}
     </div>
   );
@@ -505,15 +505,15 @@ function PersonalSection() {
 
   return (
     <section>
-      <h2 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">
+      <h2 className="mb-1 text-xl font-bold text-slate-900 ">
         Kişisel bilgiler
       </h2>
-      <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+      <p className="mb-3 text-sm text-slate-500 ">
         Hesabına ait temel bilgiler. Profil fotoğrafı, hakkımda ve eğitim
         bilgilerini Profil sayfandan düzenleyebilirsin.
       </p>
 
-      <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:px-6">
+      <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 sm:px-6">
         {/* Ad Soyad */}
         <SettingRow
           title="Yasal ad"
@@ -671,7 +671,7 @@ function PersonalSection() {
             <span className="flex flex-wrap items-center gap-2">
               {user.email}
               {user.email_verified ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ">
                   Doğrulandı
                 </span>
               ) : (
@@ -679,7 +679,7 @@ function PersonalSection() {
                   type="button"
                   onClick={() => resend.mutate()}
                   disabled={resend.isPending}
-                  className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 dark:bg-amber-500/15 dark:text-amber-300"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60 "
                 >
                   {resend.isPending ? "Gönderiliyor…" : "Doğrulanmadı · yeniden gönder"}
                 </button>
@@ -708,11 +708,11 @@ function PersonalSection() {
               <span className="flex flex-wrap items-center gap-2">
                 {user.phone}
                 {user.phone_verified ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ">
                     Doğrulandı
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ">
                     Doğrulanmadı
                   </span>
                 )}
@@ -797,10 +797,10 @@ function PaymentsSection() {
   if (!user) return null;
   return (
     <section>
-      <h2 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">
+      <h2 className="mb-1 text-xl font-bold text-slate-900 ">
         Ödeme bilgileri
       </h2>
-      <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">
+      <p className="mb-5 text-sm text-slate-500 ">
         Kazançların iyzico üzerinden doğrudan IBAN'ına yatar; platformda para
         tutulmaz. Tutarlar ve işlem dökümü <strong>Bakiyem</strong> sayfasında.
       </p>
@@ -812,18 +812,18 @@ function PaymentsSection() {
 function OperatorPayout() {
   const { data: op, isLoading } = useOperatorMe();
   if (isLoading) {
-    return <div className="h-40 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+    return <div className="h-40 animate-pulse rounded-2xl bg-slate-100 " />;
   }
   if (!op?.library_id) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      <div className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 ">
         Hesabına bağlı bir kütüphane bulunamadı.
       </div>
     );
   }
   return (
-    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 ">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
         Kütüphane ödeme hesabı
       </p>
       <LibraryPayoutForm libraryId={op.library_id} />
@@ -886,14 +886,14 @@ function SecuritySection() {
 
   return (
     <section>
-      <h2 className="mb-1 text-xl font-bold text-slate-900 dark:text-white">
+      <h2 className="mb-1 text-xl font-bold text-slate-900 ">
         Oturum açma ve güvenlik
       </h2>
-      <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+      <p className="mb-3 text-sm text-slate-500 ">
         Şifreni güncelle ve hesabının güvenlik durumunu gör.
       </p>
 
-      <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:px-6">
+      <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 sm:px-6">
         {/* Şifre */}
         <SettingRow
           title="Şifre"
@@ -968,7 +968,7 @@ function SecuritySection() {
           onToggle={() => resend.mutate()}
           value={
             user.email_verified ? (
-              <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+              <span className="inline-flex items-center gap-1.5 text-emerald-600 ">
                 <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden>
                   <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.16 4.87L6.67 9.36 4.42 7.1 3.29 8.23l3.38 3.38L12.29 6z" />
                 </svg>
@@ -1029,14 +1029,14 @@ function DataAndAccountSection() {
 
   return (
     <>
-      <h2 className="mb-1 mt-10 text-xl font-bold text-slate-900 dark:text-white">
+      <h2 className="mb-1 mt-10 text-xl font-bold text-slate-900 ">
         Verilerim ve hesabım
       </h2>
-      <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+      <p className="mb-3 text-sm text-slate-500 ">
         Kişisel verilerini indirebilir veya hesabını kapatabilirsin.
       </p>
 
-      <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:px-6">
+      <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 sm:px-6">
         <SettingRow
           title="Verilerimi indir"
           value="Hesabında tuttuğumuz kişisel verilerin makine-okunur (JSON) kopyası."
@@ -1052,7 +1052,7 @@ function DataAndAccountSection() {
           title="Hesabımı sil"
           value={
             eligibility?.can_delete === false ? (
-              <span className="text-amber-600 dark:text-amber-400">
+              <span className="text-amber-600 ">
                 {eligibility.reason}
               </span>
             ) : (
@@ -1069,10 +1069,10 @@ function DataAndAccountSection() {
           }}
         >
           <form onSubmit={submit} className="max-w-md">
-            <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+            <p className="mb-3 text-sm text-slate-600 ">
               Bu işlem <strong>geri alınamaz</strong>. Adın, e-postan, telefonun
               ve adreslerin silinir; hesabın kapanır.{" "}
-              <span className="text-slate-500 dark:text-slate-400">
+              <span className="text-slate-500 ">
                 Faturalı sipariş ve ödeme kayıtların, vergi mevzuatı gereği
                 saklanmak zorunda olduğundan kimliğinden arındırılmış olarak
                 kalır.
@@ -1107,7 +1107,7 @@ function DataAndAccountSection() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 "
               >
                 Vazgeç
               </button>

@@ -146,7 +146,7 @@ export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+        <h3 className="text-sm font-bold text-slate-900 ">
           Deneme Oturumları
         </h3>
         <Button size="sm" onClick={() => editor.ac(emptyForm())}>
@@ -155,7 +155,7 @@ export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
       </div>
 
       {isLoading ? (
-        <div className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+        <div className="h-20 animate-pulse rounded-xl bg-slate-100 " />
       ) : isError ? (
         // Hata ≠ boş. Eskiden sunucu 500 dönerken ekran "Henüz oturum
         // eklenmedi" diyordu; operatör bunu "oturumlarım silinmiş" diye okur.
@@ -168,7 +168,7 @@ export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
       ) : !sessions || sessions.length === 0 ? (
         <p
           data-testid="oturum-bos"
-          className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-400 dark:border-slate-700"
+          className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-400 "
         >
           Henüz oturum eklenmedi.
         </p>
@@ -228,38 +228,38 @@ function SessionRow({
   };
 
   return (
-    <div className="rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+    <div className="rounded-xl border border-slate-100 p-3 ">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 ">
               {session.exam_type}
             </span>
-            <span className="text-sm font-semibold text-slate-900 dark:text-white">
+            <span className="text-sm font-semibold text-slate-900 ">
               {session.title}
             </span>
             {session.catalog_name && (
-              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 ">
                 📘 {session.catalog_name}
               </span>
             )}
             {session.is_nationwide && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ">
                 Türkiye Geneli
               </span>
             )}
             {session.results_published ? (
-              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ">
                 Sonuçlar yayında
               </span>
             ) : null}
             {cancelled && (
-              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:bg-rose-500/15 dark:text-rose-300">
+              <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600 ">
                 İptal
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             {formatDateTime(session.starts_at)} · {session.duration_minutes} dk ·{" "}
             {formatTRY(session.price)} · {session.registered_count}/{session.capacity} kayıt
             {(session.results_entered_count ?? 0) > 0 &&
@@ -320,7 +320,7 @@ function RosterPanel({ sessionId }: { sessionId: number }) {
   const attend = useAttendRegistration();
 
   if (isLoading) {
-    return <div className="mt-2 h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
+    return <div className="mt-2 h-12 animate-pulse rounded-lg bg-slate-100 " />;
   }
   if (isError) {
     return (
@@ -356,7 +356,7 @@ function RosterPanel({ sessionId }: { sessionId: number }) {
     <>
       <p
         data-testid="roster-sayaci"
-        className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400"
+        className="mt-2 text-xs font-semibold text-slate-500 "
       >
         {sayac.giren}/{sayac.toplam} giriş yapıldı
         {sayac.toplam > sayac.giren && (
@@ -366,10 +366,10 @@ function RosterPanel({ sessionId }: { sessionId: number }) {
           </span>
         )}
       </p>
-      <ul className="mt-2 divide-y divide-slate-100 rounded-lg bg-slate-50 dark:divide-slate-700 dark:bg-slate-900/40">
+      <ul className="mt-2 divide-y divide-slate-100 rounded-lg bg-slate-50 ">
       {data.map((r) => (
         <li key={r.registration_id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-          <span className="min-w-0 truncate text-slate-700 dark:text-slate-200">{r.client_name}</span>
+          <span className="min-w-0 truncate text-slate-700 ">{r.client_name}</span>
           {r.status === "ATTENDED" ? (
             <span className="shrink-0 text-xs font-semibold text-emerald-600">Katıldı ✓</span>
           ) : (
@@ -450,8 +450,8 @@ function ResultsPanel({
   };
 
   return (
-    <div className="mt-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900/40">
-      <p className="mb-2 text-[11px] text-slate-500 dark:text-slate-400">
+    <div className="mt-3 rounded-lg bg-slate-50 p-3 ">
+      <p className="mb-2 text-[11px] text-slate-500 ">
         Sonuç = her öğrencinin <b>karnesi</b> (PDF/görsel). Sıralama, ders ve konu kırılımı
         karnenin içindedir. İstersen satırda toplam net + sıralamayı özet olarak girebilirsin.
       </p>
@@ -529,18 +529,18 @@ function ResultsPanel({
       />
 
       {session.catalog_id && (
-        <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="mb-2 text-[11px] text-slate-400 ">
           Cevap anahtarı katalogdan ({session.catalog_name}) gelir; admin tarafından yönetilir.
         </p>
       )}
       {!isPast && (
-        <p className="mb-2 text-[11px] text-amber-600 dark:text-amber-400">
+        <p className="mb-2 text-[11px] text-amber-600 ">
           Bu oturumun tarihi henüz gelmedi — karneleri sınav sonrası yükleyin.
         </p>
       )}
 
       {isLoading ? (
-        <div className="h-16 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+        <div className="h-16 animate-pulse rounded-lg bg-slate-100 " />
       ) : isError ? (
         // Sonuç tablosu da roster'dan beslenir: hata "katılımcı yok" diye
         // görünürse operatör karneleri boşuna yüklemeye çalışır.
@@ -564,7 +564,7 @@ function ResultsPanel({
                 <th className="px-1 py-1.5"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+            <tbody className="divide-y divide-slate-100 ">
               {data.map((r) => (
                 <ResultRow key={r.registration_id} sessionId={session.id} row={r} />
               ))}
@@ -613,12 +613,12 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
   };
 
   const numCls =
-    "w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-800 dark:text-white";
+    "w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:border-indigo-400 ";
 
   return (
     <tr>
       <td className="py-1.5 pr-2">
-        <span className="text-slate-700 dark:text-slate-200">{row.client_name}</span>
+        <span className="text-slate-700 ">{row.client_name}</span>
         {row.status !== "ATTENDED" && (
           <span className="ml-1.5 text-[10px] text-amber-500" title="Henüz katılım doğrulanmadı">
             (giriş yok)
@@ -630,7 +630,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           size="sm"
           variant="secondary"
           isPending={upload.isPending}
-          className={row.result_document_url ? "text-emerald-600 dark:text-emerald-400" : ""}
+          className={row.result_document_url ? "text-emerald-600 " : ""}
           onClick={() => docInput.current?.click()}
         >
           {row.result_document_url
@@ -819,7 +819,7 @@ function SessionEditorIcerik({
       {genelHata && (
         <p
           role="alert"
-          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
         >
           {genelHata}
         </p>

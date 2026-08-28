@@ -30,14 +30,14 @@ const RATING_META: {
   label: string;
   accent: string;
 }[] = [
-  { rating: 1, label: "Tekrar", accent: "border-l-rose-600 dark:border-l-rose-500" },
-  { rating: 2, label: "Zor", accent: "border-l-amber-600 dark:border-l-amber-500" },
-  { rating: 3, label: "İyi", accent: "border-l-sky-600 dark:border-l-sky-500" },
-  { rating: 4, label: "Kolay", accent: "border-l-emerald-600 dark:border-l-emerald-500" },
+  { rating: 1, label: "Tekrar", accent: "border-l-rose-600 " },
+  { rating: 2, label: "Zor", accent: "border-l-amber-600 " },
+  { rating: 3, label: "İyi", accent: "border-l-sky-600 " },
+  { rating: 4, label: "Kolay", accent: "border-l-emerald-600 " },
 ];
 
 const RATING_BTN_CLS =
-  "rounded-xl border border-l-4 border-slate-200 bg-white px-1 py-3 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-2 sm:text-sm";
+  "rounded-xl border border-l-4 border-slate-200 bg-white px-1 py-3 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 sm:px-2 sm:text-sm";
 
 function ClozeText({
   front,
@@ -50,16 +50,16 @@ function ClozeText({
 }) {
   const segments = renderCloze(front, activeN, revealed);
   return (
-    <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 dark:text-white">
+    <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 ">
       {segments.map((s, i) =>
         s.kind === "plain" ? (
           <span key={i}>{s.text}</span>
         ) : s.kind === "blank" ? (
-          <span key={i} className="font-semibold text-indigo-600 dark:text-indigo-400">
+          <span key={i} className="font-semibold text-indigo-600 ">
             {s.text}
           </span>
         ) : (
-          <span key={i} className="rounded bg-indigo-100 px-1 font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+          <span key={i} className="rounded bg-indigo-100 px-1 font-semibold text-indigo-700 ">
             {s.text}
           </span>
         )
@@ -76,21 +76,21 @@ function TypedDiff({ expected, typed }: { expected: string; typed: string }) {
       <p className="whitespace-pre-wrap text-lg leading-relaxed">
         {result.segments.map((s, i) =>
           s.kind === "good" ? (
-            <span key={i} className="text-emerald-600 dark:text-emerald-400">
+            <span key={i} className="text-emerald-600 ">
               {s.text}
             </span>
           ) : s.kind === "bad" ? (
-            <span key={i} className="text-rose-600 line-through dark:text-rose-400">
+            <span key={i} className="text-rose-600 line-through ">
               {s.text}
             </span>
           ) : (
-            <span key={i} className="text-amber-600 underline decoration-dotted dark:text-amber-400">
+            <span key={i} className="text-amber-600 underline decoration-dotted ">
               {s.text}
             </span>
           )
         )}
       </p>
-      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mt-1 text-xs text-slate-400 ">
         {result.correct
           ? "Cevabın eşleşti."
           : "Yeşil doğru, kırmızı fazla/yanlış, sarı eksik."}
@@ -124,7 +124,7 @@ function CardFace({
   // metinleri backend'de karta göre hazırlanır — burada olduğu gibi basılır.
 
   return (
-    <div className="min-h-56 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900 sm:p-10">
+    <div className="min-h-56 rounded-2xl border border-slate-200 bg-white p-6 sm:p-10">
       {isCloze ? (
         <ClozeText
           front={card.front}
@@ -132,7 +132,7 @@ function CardFace({
           revealed={flipped}
         />
       ) : (
-        <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 dark:text-white">
+        <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 ">
           {card.front}
         </p>
       )}
@@ -158,22 +158,22 @@ function CardFace({
 
       {flipped && (
         <>
-          <hr className="my-5 border-slate-200 dark:border-slate-800" />
+          <hr className="my-5 border-slate-200 " />
           {isTypeIn ? (
             <>
-              <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 dark:text-white">
+              <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 ">
                 {card.back}
               </p>
               <TypedDiff expected={card.back} typed={typed} />
             </>
           ) : isCloze ? (
             card.back && (
-              <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-600 dark:text-slate-300">
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-slate-600 ">
                 {card.back}
               </p>
             )
           ) : (
-            <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 dark:text-white">
+            <p className="whitespace-pre-wrap text-xl leading-relaxed text-slate-900 ">
               {card.back}
             </p>
           )}
@@ -276,7 +276,7 @@ export default function SrsStudy() {
         <div className="flex items-center justify-between">
           <Link
             to={ROUTES.srs}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
           >
             ← Desteler
           </Link>
@@ -290,13 +290,13 @@ export default function SrsStudy() {
                 title={`${counts.new} yeni · ${counts.learning} öğrenme · ${counts.review} tekrar`}
                 className="flex items-center gap-2 text-xs tabular-nums"
               >
-                <span aria-hidden className="font-semibold text-sky-600 dark:text-sky-400">
+                <span aria-hidden className="font-semibold text-sky-600 ">
                   {counts.new}
                 </span>
-                <span aria-hidden className="font-semibold text-amber-600 dark:text-amber-400">
+                <span aria-hidden className="font-semibold text-amber-600 ">
                   {counts.learning}
                 </span>
-                <span aria-hidden className="font-semibold text-emerald-600 dark:text-emerald-400">
+                <span aria-hidden className="font-semibold text-emerald-600 ">
                   {counts.review}
                 </span>
               </span>
@@ -305,7 +305,7 @@ export default function SrsStudy() {
               onClick={undoLast}
               disabled={undo.isPending}
               title="Son cevabı geri al (u)"
-              className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 disabled:opacity-50 "
             >
               Geri al
             </button>
@@ -346,7 +346,7 @@ export default function SrsStudy() {
               {/* Cevap barı: mobilde alta sabit, dokunmatik boyutlu */}
               {/* iOS'ta ana ekran çubuğu (home indicator) barın altını yiyordu:
                   taban dolgusu güvenli alan kadar büyütülür. */}
-              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:static sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0 sm:pb-0 sm:backdrop-blur-none dark:sm:bg-transparent">
+              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0 sm:pb-0 sm:backdrop-blur-none ">
                 <div className="mx-auto max-w-2xl">
                   {!flipped ? (
                     <button
@@ -368,14 +368,14 @@ export default function SrsStudy() {
                           className={`${RATING_BTN_CLS} ${accent}`}
                         >
                           <span className="block">{label}</span>
-                          <span className="mt-0.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+                          <span className="mt-0.5 block text-xs font-medium text-slate-500 ">
                             {formatIntervalMinutes(card.previews[String(rating) as "1" | "2" | "3" | "4"])}
                           </span>
                         </button>
                       ))}
                     </div>
                   )}
-                  <p className="mt-2 hidden text-center text-[11px] text-slate-400 dark:text-slate-500 sm:block">
+                  <p className="mt-2 hidden text-center text-[11px] text-slate-400 sm:block">
                     boşluk = çevir · 1-4 = cevapla · u = geri al
                   </p>
                 </div>

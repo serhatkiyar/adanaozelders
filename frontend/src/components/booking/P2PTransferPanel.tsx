@@ -31,7 +31,7 @@ export function P2PTransferPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-indigo-50 px-4 py-3 text-xs leading-relaxed text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+      <div className="rounded-xl bg-indigo-50 px-4 py-3 text-xs leading-relaxed text-indigo-700 ">
         <span className="font-semibold">Uçtan uca aktarım.</span> Dosya doğrudan
         karşı tarafa gönderilir, sunucuda saklanmaz ve boyut sınırı yoktur. Her iki
         taraf da derste açık olmalıdır.
@@ -42,7 +42,7 @@ export function P2PTransferPanel() {
         <div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-4 text-sm font-semibold text-slate-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-slate-600 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-4 text-sm font-semibold text-slate-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 "
           >
             <span aria-hidden className="text-lg">⇪</span>
             Dosya seç ve gönder
@@ -58,16 +58,16 @@ export function P2PTransferPanel() {
 
       {/* Aktif aktarım kartı */}
       {active && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 ">
           <div className="flex items-center gap-2.5">
             <span aria-hidden className="text-lg">
               {active.direction === "send" ? "⬆" : "⬇"}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+              <p className="truncate text-sm font-semibold text-slate-800 ">
                 {active.fileName}
               </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
+              <p className="text-xs text-slate-400 ">
                 {formatSize(active.fileSize)} ·{" "}
                 {active.direction === "send" ? "Gönderiliyor" : "Alınıyor"}
               </p>
@@ -85,7 +85,7 @@ export function P2PTransferPanel() {
               </button>
               <button
                 onClick={() => rtcManager.rejectIncoming()}
-                className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                className="flex-1 rounded-xl border border-slate-200 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 "
               >
                 Reddet
               </button>
@@ -96,13 +96,13 @@ export function P2PTransferPanel() {
           {(active.status === "connecting" ||
             active.status === "transferring") && (
             <div className="mt-3">
-              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 ">
                 <div
                   className="h-full rounded-full bg-indigo-600 transition-all"
                   style={{ width: `${active.status === "connecting" ? 4 : pct}%` }}
                 />
               </div>
-              <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+              <div className="mt-1.5 flex items-center justify-between text-xs text-slate-400 ">
                 <span>
                   {active.status === "connecting"
                     ? "Bağlanılıyor…"
@@ -112,7 +112,7 @@ export function P2PTransferPanel() {
               </div>
               <button
                 onClick={() => rtcManager.cancel()}
-                className="mt-3 w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-red-900/20"
+                className="mt-3 w-full rounded-xl border border-slate-200 py-2 text-xs font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600 "
               >
                 İptal
               </button>
@@ -131,13 +131,13 @@ export function P2PTransferPanel() {
                   İndir
                 </a>
               ) : (
-                <p className="rounded-xl bg-emerald-50 py-2 text-center text-sm font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <p className="rounded-xl bg-emerald-50 py-2 text-center text-sm font-semibold text-emerald-700 ">
                   ✓ Gönderildi
                 </p>
               )}
               <button
                 onClick={() => rtcManager.reset()}
-                className="w-full rounded-xl py-2 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+                className="w-full rounded-xl py-2 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 "
               >
                 Temizle
               </button>
@@ -149,7 +149,7 @@ export function P2PTransferPanel() {
             active.status === "cancelled" ||
             active.status === "error") && (
             <div className="mt-3 space-y-2">
-              <p className="rounded-xl bg-rose-50 px-3 py-2 text-center text-sm font-medium text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+              <p className="rounded-xl bg-rose-50 px-3 py-2 text-center text-sm font-medium text-rose-700 ">
                 {active.status === "rejected"
                   ? "Karşı taraf aktarımı reddetti."
                   : active.status === "cancelled"
@@ -158,7 +158,7 @@ export function P2PTransferPanel() {
               </p>
               <button
                 onClick={() => rtcManager.reset()}
-                className="w-full rounded-xl py-2 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+                className="w-full rounded-xl py-2 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 "
               >
                 Kapat
               </button>

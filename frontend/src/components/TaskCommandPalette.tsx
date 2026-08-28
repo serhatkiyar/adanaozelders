@@ -45,7 +45,7 @@ const PRIO_DOT: Record<TaskPriority, string> = {
   1: "border-red-500",
   2: "border-orange-500",
   3: "border-blue-500",
-  4: "border-slate-400 dark:border-slate-500",
+  4: "border-slate-400 ",
 };
 
 // ── İkonlar ──
@@ -64,7 +64,7 @@ const TaskDot = ({ p }: { p: TaskPriority }) => (
   </span>
 );
 const navIcon = (d: string) => (
-  <svg className="h-5 w-5 text-slate-500 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
+  <svg className="h-5 w-5 text-slate-500 " viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
 );
 const I_INBOX = "M2 13h4l2 4h8l2-4h4M5 5h14l3 8v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6L5 5Z";
 const I_TODAY = "M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z";
@@ -200,21 +200,21 @@ export default function TaskCommandPalette(props: Props) {
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 p-4 pt-[12vh] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 animate-in zoom-in-95 duration-150"
+        className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onKeyDown}
       >
         {/* Arama girişi */}
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 ">
           <svg className="h-5 w-5 flex-none text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" /></svg>
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setActive(0); }}
             placeholder="Görev ara veya komut yaz…"
-            className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
+            className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 "
           />
-          <kbd className="flex-none rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">Esc</kbd>
+          <kbd className="flex-none rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 ">Esc</kbd>
         </div>
 
         {/* Sonuçlar */}
@@ -235,10 +235,10 @@ export default function TaskCommandPalette(props: Props) {
                       ref={isActive ? activeRef : undefined}
                       onMouseMove={() => setActive(myIdx)}
                       onClick={() => run(item)}
-                      className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition ${isActive ? "bg-indigo-50 dark:bg-indigo-500/15" : ""}`}
+                      className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition ${isActive ? "bg-indigo-50 " : ""}`}
                     >
                       <span className="flex-none">{item.icon}</span>
-                      <span className="min-w-0 flex-1 truncate font-medium text-slate-800 dark:text-slate-100">{item.label}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-800 ">{item.label}</span>
                       {item.sub && <span className="flex-none text-xs text-slate-400">{item.sub}</span>}
                     </button>
                   );

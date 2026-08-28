@@ -456,11 +456,11 @@ function MaliyetHucresi({ product }: { product: ProductSearchOut }) {
   const marjSayi = marj == null ? null : Number(marj);
   return (
     <div className="whitespace-nowrap">
-      <span className="tabular-nums text-slate-700 dark:text-slate-300">
+      <span className="tabular-nums text-slate-700 ">
         {formatTL(tedarikci.cost_gross)}
       </span>
       {marjSayi != null && Number.isFinite(marjSayi) && (
-        <span className="ml-2 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="ml-2 text-xs tabular-nums text-slate-500 ">
           %{new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(marjSayi)}
         </span>
       )}

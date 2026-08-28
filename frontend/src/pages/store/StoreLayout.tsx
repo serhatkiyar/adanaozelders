@@ -47,13 +47,13 @@ export function StoreLayout({
 
   if (minimalHeader) {
     return (
-      <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-slate-950">
-        <header className="w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex min-h-screen flex-col bg-slate-50 font-sans ">
+        <header className="w-full border-b border-slate-200 bg-white ">
           <div className={`${HEADER_CONTAINER} flex h-[76px] items-center justify-between`}>
             <Link to="/" aria-label="Adana Özel Ders ana sayfa" className="flex items-center transition hover:opacity-90">
               <img src="/logo.svg" alt="Adana Özel Ders" className="h-8 w-auto object-contain md:h-9" />
             </Link>
-            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 ">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="11" width="18" height="11" rx="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -68,9 +68,9 @@ export function StoreLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-slate-950">
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans ">
       {/* Header: logo + (ortalı) arama + aksiyonlar */}
-      <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white ">
         <div className={`${HEADER_CONTAINER} flex flex-col gap-3 py-4 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-8`}>
           {/* Logo: mağaza logosu → mağaza ana sayfası */}
           <div className="flex shrink-0 items-center">
@@ -85,7 +85,7 @@ export function StoreLayout({
           </div>
 
           {/* Aksiyonlar — yatay [ikon · isim] */}
-          <nav className="flex shrink-0 items-center gap-5 text-slate-600 md:gap-6 dark:text-slate-300">
+          <nav className="flex shrink-0 items-center gap-5 text-slate-600 md:gap-6 ">
             <StoreAccountMenu />
 
             <ActionItem to={ROUTES.storeFavorites} label="Listelerim">
@@ -128,7 +128,7 @@ function ActionItem({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-2 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
+      className="group flex items-center gap-2 transition-colors hover:text-indigo-600 "
     >
       <span className="relative">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

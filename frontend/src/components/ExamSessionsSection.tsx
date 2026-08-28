@@ -26,30 +26,30 @@ export function ExamSessionsSection({ libraryId }: { libraryId: number }) {
   (myRegs ?? []).forEach((r) => bySession.set(r.session_id, r));
 
   if (isLoading) {
-    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 " />;
   }
 
   const empty = !sessions || sessions.length === 0;
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-      <h2 className="mb-1 text-base font-bold text-slate-900 dark:text-white">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
+      <h2 className="mb-1 text-base font-bold text-slate-900 ">
         Yaklaşan Deneme Sınavları
       </h2>
       {empty ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-10 text-center dark:border-slate-700">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-10 text-center ">
           <div className="text-2xl">🗓️</div>
-          <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+          <p className="mt-2 text-sm font-medium text-slate-600 ">
             Yaklaşan deneme sınavı yok
           </p>
-          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+          <p className="mt-0.5 text-xs text-slate-400 ">
             Yeni oturumlar açıldığında burada görünecek.
           </p>
         </div>
       ) : (
         <>
           {payOpen ? (
-            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mb-4 text-xs text-slate-500 ">
               Kaydol, online öde; oturum günü kütüphanede QR kodunu okutarak katıl.
             </p>
           ) : (
@@ -140,13 +140,13 @@ function ExamSessionRow({
     dm % 60 === 0 ? `${dm / 60} saat` : dm < 60 ? `${dm} dk` : `${(dm / 60).toFixed(1)} saat`;
 
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-100 p-4 dark:border-slate-700">
+    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-100 p-4 ">
       {/* Tarih kutusu */}
-      <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/15">
-        <span className="text-xl font-extrabold leading-none text-indigo-700 dark:text-indigo-300">
+      <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo-50 ">
+        <span className="text-xl font-extrabold leading-none text-indigo-700 ">
           {day}
         </span>
-        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-500 dark:text-indigo-400">
+        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-500 ">
           {month}
         </span>
       </div>
@@ -154,14 +154,14 @@ function ExamSessionRow({
       {/* Orta: tip + başlık + saat/süre/kontenjan */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 ">
             {session.exam_type}
           </span>
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">
+          <span className="text-sm font-semibold text-slate-900 ">
             {session.title}
           </span>
         </div>
-        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 ">
           🕐 {time} · {durLabel} ·{" "}
           {full ? (
             <span className="font-semibold text-rose-500">kontenjan doldu</span>
@@ -173,13 +173,13 @@ function ExamSessionRow({
 
       {/* Sağ: fiyat + aksiyon */}
       <div className="flex shrink-0 items-center gap-3">
-        <span className="text-lg font-bold text-slate-900 dark:text-white">
+        <span className="text-lg font-bold text-slate-900 ">
           {formatTRY(session.price)}
         </span>
         {status === "PAID" || status === "ATTENDED" ? (
           <Link
             to={ROUTES.bookings}
-            className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-700/40"
+            className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 "
           >
             {status === "ATTENDED" ? "✓ Katıldın" : "✓ Biletin hazır"}
           </Link>
@@ -192,7 +192,7 @@ function ExamSessionRow({
             {!payOpen ? "Ödeme kapalı" : busy ? "…" : "Ödemeyi tamamla"}
           </button>
         ) : status === "REFUNDING" || status === "REFUNDED" ? (
-          <span className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          <span className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500 ">
             {status === "REFUNDING" ? "İade ediliyor" : "İade edildi"}
           </span>
         ) : !isLoggedIn ? (
@@ -205,7 +205,7 @@ function ExamSessionRow({
             </Link>
           ) : (
             // Giriş yapıp dönünce devre dışı buton bulmasın.
-            <span className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <span className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500 ">
               Ödeme kapalı
             </span>
           )
@@ -220,7 +220,7 @@ function ExamSessionRow({
         ) : (
           <button
             onClick={() => navigate(ROUTES.tutors)}
-            className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 dark:bg-slate-700"
+            className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 "
             disabled
             title="Yalnız öğrenciler kaydolabilir"
           >

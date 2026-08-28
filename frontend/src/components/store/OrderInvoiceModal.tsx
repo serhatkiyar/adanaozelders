@@ -64,47 +64,47 @@ export function OrderInvoiceModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="my-6 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900 print:my-0 print:max-w-none print:rounded-none print:border-0 print:shadow-none"
+        className="my-6 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl print:my-0 print:max-w-none print:rounded-none print:border-0 print:shadow-none"
       >
-        <div id="order-invoice" className="p-8 text-slate-800 dark:text-slate-100">
+        <div id="order-invoice" className="p-8 text-slate-800 ">
           {/* Başlık */}
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5 dark:border-slate-700">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5 ">
             <div>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">
+              <p className="text-lg font-bold text-slate-900 ">
                 {belge?.seller.name ?? OPERATOR.name}
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-xs text-slate-500 ">
                 {belge ? belge.seller.name : OPERATOR.entity}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 ">
                 {belge?.seller.address ?? OPERATOR.address}
               </p>
               {belge && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 ">
                   Vergi No: {belge.seller.tax_number} ({belge.seller.tax_office})
                 </p>
               )}
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 ">
                 {belge?.seller.email ?? OPERATOR.email}
               </p>
               {belge?.seller.phone && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 ">
                   {belge.seller.phone}
                 </p>
               )}
             </div>
             <div className="text-right">
-              <p className="text-sm font-semibold uppercase tracking-wide text-slate-900 dark:text-white">
+              <p className="text-sm font-semibold uppercase tracking-wide text-slate-900 ">
                 {belge ? "Fatura Bilgileri" : "Sipariş Özeti"}
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Sipariş No: <span className="font-medium text-slate-700 dark:text-slate-200">#{order.id}</span>
+              <p className="mt-1 text-xs text-slate-500 ">
+                Sipariş No: <span className="font-medium text-slate-700 ">#{order.id}</span>
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Tarih: <span className="font-medium text-slate-700 dark:text-slate-200">{formatDate(order.created_at)}</span>
+              <p className="text-xs text-slate-500 ">
+                Tarih: <span className="font-medium text-slate-700 ">{formatDate(order.created_at)}</span>
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Durum: <span className="font-medium text-slate-700 dark:text-slate-200">{statusLabel}</span>
+              <p className="text-xs text-slate-500 ">
+                Durum: <span className="font-medium text-slate-700 ">{statusLabel}</span>
               </p>
             </div>
           </div>
@@ -112,35 +112,35 @@ export function OrderInvoiceModal({
           {/* Alıcı + ödeme */}
           <div className="grid grid-cols-1 gap-4 py-5 sm:grid-cols-2">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Alıcı
               </p>
-              <p className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{buyerName}</p>
+              <p className="mt-1 text-sm font-medium text-slate-900 ">{buyerName}</p>
               {telefon && (
-                <p className="text-sm text-slate-600 dark:text-slate-300">{telefon}</p>
+                <p className="text-sm text-slate-600 ">{telefon}</p>
               )}
               {adres && (
-                <p className="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
+                <p className="whitespace-pre-line text-sm text-slate-600 ">
                   {adres}
                 </p>
               )}
-              {cityLine && <p className="text-sm text-slate-600 dark:text-slate-300">{cityLine}</p>}
+              {cityLine && <p className="text-sm text-slate-600 ">{cityLine}</p>}
             </div>
             <div className="sm:text-right">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Ödeme
               </p>
               {/* Sağlayıcı adı SUNUCUDAN gelir; bilinmiyorsa yazılmaz. */}
               {belge?.payment.provider && (
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                <p className="mt-1 text-sm text-slate-600 ">
                   {belge.payment.provider}
                 </p>
               )}
-              <p className="text-sm text-slate-600 dark:text-slate-300">
+              <p className="text-sm text-slate-600 ">
                 {orderPaymentLabel(order.payment_status)}
               </p>
               {belge?.payment.paid_at && (
-                <p className="text-sm text-slate-600 dark:text-slate-300">
+                <p className="text-sm text-slate-600 ">
                   {formatDate(belge.payment.paid_at)}
                 </p>
               )}
@@ -151,7 +151,7 @@ export function OrderInvoiceModal({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-y border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                <tr className="border-y border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 ">
                   <th className="py-2 font-semibold">Ürün</th>
                   <th className="py-2 text-center font-semibold">Adet</th>
                   {belge && <th className="py-2 text-center font-semibold">KDV</th>}
@@ -165,20 +165,20 @@ export function OrderInvoiceModal({
                     (s) => s.order_item_id === it.id
                   );
                   return (
-                    <tr key={it.id} className="border-b border-slate-100 dark:border-slate-800">
-                      <td className="py-2 pr-2 align-top text-slate-800 dark:text-slate-200">{it.title}</td>
-                      <td className="py-2 text-center align-top text-slate-600 dark:text-slate-300">
+                    <tr key={it.id} className="border-b border-slate-100 ">
+                      <td className="py-2 pr-2 align-top text-slate-800 ">{it.title}</td>
+                      <td className="py-2 text-center align-top text-slate-600 ">
                         {it.quantity}
                       </td>
                       {belge && (
-                        <td className="py-2 text-center align-top text-slate-600 dark:text-slate-300">
+                        <td className="py-2 text-center align-top text-slate-600 ">
                           {faturaSatiri ? oranEtiketi(faturaSatiri.tax_rate) : "—"}
                         </td>
                       )}
-                      <td className="py-2 text-right align-top text-slate-600 dark:text-slate-300">
+                      <td className="py-2 text-right align-top text-slate-600 ">
                         {formatTL(it.unit_price)}
                       </td>
-                      <td className="py-2 text-right align-top text-slate-800 dark:text-slate-200">
+                      <td className="py-2 text-right align-top text-slate-800 ">
                         {formatTL(Number(it.unit_price) * it.quantity)}
                       </td>
                     </tr>
@@ -206,12 +206,12 @@ export function OrderInvoiceModal({
             {/* Vergi kırılımı YALNIZ fatura kipinde: bilinmeyen bir kırılımı
                 uydurmak yerine hiç göstermiyoruz. */}
             {belge && <TaxLines belge={belge} />}
-            <div className="flex justify-between border-t border-slate-200 pt-1.5 font-semibold dark:border-slate-700">
-              <span className="text-slate-700 dark:text-slate-200">Genel Toplam</span>
-              <span className="text-slate-900 dark:text-white">{formatTL(order.total)}</span>
+            <div className="flex justify-between border-t border-slate-200 pt-1.5 font-semibold ">
+              <span className="text-slate-700 ">Genel Toplam</span>
+              <span className="text-slate-900 ">{formatTL(order.total)}</span>
             </div>
             {belge && Number(belge.refund.refunded_amount) > 0 && (
-              <div className="flex justify-between border-t border-slate-100 pt-1.5 text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <div className="flex justify-between border-t border-slate-100 pt-1.5 text-slate-500 ">
                 <span>
                   İade edilen (KDV {formatTL(belge.refund.tax_total)} dahil)
                 </span>
@@ -220,7 +220,7 @@ export function OrderInvoiceModal({
             )}
           </div>
 
-          <p className="mt-6 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400 dark:border-slate-800 dark:text-slate-500">
+          <p className="mt-6 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400 ">
             {belge
               ? belge.notice
               : "Bu belge sipariş bilgilerinizi özetler; resmî fatura değildir. Vergi kırılımı bu sipariş için kayıtlı olmadığından gösterilmemiştir."}
@@ -228,11 +228,11 @@ export function OrderInvoiceModal({
         </div>
 
         {/* Aksiyonlar (yazdırmada gizli) */}
-        <div className="flex justify-end gap-3 border-t border-slate-200 p-4 dark:border-slate-700 print:hidden">
+        <div className="flex justify-end gap-3 border-t border-slate-200 p-4 print:hidden">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:hover:text-white"
+            className="rounded-full px-4 py-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 "
           >
             Kapat
           </button>
@@ -253,9 +253,9 @@ export function OrderInvoiceModal({
 function TaxLines({ belge }: { belge: OrderInvoiceOut }) {
   return (
     <>
-      <div className="flex justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
-        <span className="text-slate-500 dark:text-slate-400">Matrah</span>
-        <span className="text-slate-800 dark:text-slate-200">
+      <div className="flex justify-between border-t border-slate-100 pt-1.5 ">
+        <span className="text-slate-500 ">Matrah</span>
+        <span className="text-slate-800 ">
           {formatTL(belge.totals.net_total)}
         </span>
       </div>
@@ -273,8 +273,8 @@ function TaxLines({ belge }: { belge: OrderInvoiceOut }) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between">
-      <span className="text-slate-500 dark:text-slate-400">{label}</span>
-      <span className="text-slate-800 dark:text-slate-200">{value}</span>
+      <span className="text-slate-500 ">{label}</span>
+      <span className="text-slate-800 ">{value}</span>
     </div>
   );
 }

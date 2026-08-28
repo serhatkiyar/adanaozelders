@@ -34,19 +34,19 @@ function TutorRow({
     <button
       type="button"
       onClick={() => onPick(id)}
-      className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50/50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/10"
+      className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50/50 active:scale-[0.99] "
     >
       <Avatar name={name} avatar_url={avatar} size="sm" />
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 ">
         {name}
       </span>
       {badge && (
-        <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+        <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 ">
           {badge}
         </span>
       )}
       <svg
-        className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600"
+        className="h-4 w-4 shrink-0 text-slate-300 "
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -110,22 +110,22 @@ export function NewLessonRequestModal({
       onClose={onClose}
       ariaLabel="Yeni ders talebi"
       hideCloseButton
-      panelClassName="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200"
+      panelClassName="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200"
     >
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h2 className="text-lg font-bold text-slate-900 ">
               Ders Talebi Oluştur
             </h2>
             {dateLabel && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 ">
                 {dateLabel} için eğitmen seç
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
           >
             <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path
@@ -140,7 +140,7 @@ export function NewLessonRequestModal({
         <div className="flex-1 space-y-5 overflow-y-auto p-6">
           {pastTutors.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Ders aldığın eğitmenler
               </p>
               {pastTutors.map((t) => (
@@ -157,7 +157,7 @@ export function NewLessonRequestModal({
 
           {recentTutors.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Son görüntülediğin
               </p>
               {recentTutors.map((t) => (
@@ -173,15 +173,15 @@ export function NewLessonRequestModal({
           )}
 
           {empty && (
-            <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center dark:border-slate-700">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center ">
+              <p className="text-sm text-slate-500 ">
                 Henüz ders aldığın ya da görüntülediğin bir eğitmen yok.
               </p>
             </div>
           )}
         </div>
 
-        <div className="border-t border-slate-100 p-4 dark:border-slate-800">
+        <div className="border-t border-slate-100 p-4 ">
           <button
             type="button"
             onClick={goSearch}

@@ -91,18 +91,18 @@ export function ImageCropModal({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        className="relative z-10 mx-4 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800"
+        className="relative z-10 mx-4 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl "
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
-          <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 ">
+          <h3 className="text-base font-semibold text-slate-900 ">
             {title}
           </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={isUploading}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-40 "
             aria-label="Kapat"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -133,7 +133,7 @@ export function ImageCropModal({
         </div>
 
         {/* Controls */}
-        <div className="space-y-3 border-t border-slate-200 px-5 py-4 dark:border-slate-700">
+        <div className="space-y-3 border-t border-slate-200 px-5 py-4 ">
           {/* Zoom slider */}
           <div className="flex items-center gap-3">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -145,7 +145,7 @@ export function ImageCropModal({
               max={200}
               value={zoom}
               onChange={handleZoom}
-              className="crop-slider h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-indigo-600 dark:bg-slate-600"
+              className="crop-slider h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-indigo-600 "
             />
           </div>
 
@@ -154,7 +154,7 @@ export function ImageCropModal({
             <button
               type="button"
               onClick={() => handleRotate(-90)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 "
               title="Sola döndür"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -165,7 +165,7 @@ export function ImageCropModal({
             <button
               type="button"
               onClick={() => handleRotate(90)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 "
               title="Sağa döndür"
             >
               Sağa
@@ -176,7 +176,7 @@ export function ImageCropModal({
             <button
               type="button"
               onClick={handleFlipH}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 "
               title="Yatay çevir"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -188,12 +188,12 @@ export function ImageCropModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-5 py-4 dark:border-slate-700">
+        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-5 py-4 ">
           <button
             type="button"
             onClick={onClose}
             disabled={isUploading}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-40 "
           >
             İptal
           </button>

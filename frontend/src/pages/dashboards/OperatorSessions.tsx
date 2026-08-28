@@ -20,7 +20,7 @@ import { toast } from "@/store/toastStore";
 import type { AttendanceResult } from "@/types";
 
 const cardCls =
-  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700";
+  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ";
 
 export default function OperatorSessions() {
   const { data: op, isLoading } = useOperatorMe();
@@ -31,9 +31,9 @@ export default function OperatorSessions() {
     <DashboardShell title="Oturumlar & QR" navItems={OPERATOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-5">
         {isLoading ? (
-          <div className="h-40 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+          <div className="h-40 animate-pulse rounded-2xl bg-slate-100 " />
         ) : !isActive ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 ">
             Deneme oturumları, QR doğrulama ve çalışma rezervasyonları kütüphanen{" "}
             <strong>onaylandıktan</strong> sonra açılır. Bu sırada{" "}
             <Link to={ROUTES.operatorLibrary} className="font-semibold underline">
@@ -83,7 +83,7 @@ function QrVerifyCard() {
 
   return (
     <div className={cardCls}>
-      <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Katılım Doğrula (QR)</h2>
+      <h2 className="mb-3 text-base font-bold text-slate-900 ">Katılım Doğrula (QR)</h2>
 
       {scanning ? (
         <QrScanner
@@ -109,7 +109,7 @@ function QrVerifyCard() {
       )}
 
       <div className="mt-3">
-        <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <p className="mb-1 text-xs font-semibold text-slate-500 ">
           veya kodu elle gir / USB okuyucu ile okut
         </p>
         {/* İP-A7d3: kutu `placeholder`ı etiket yerine kullanıyordu. Elle kod
@@ -144,8 +144,8 @@ function QrVerifyCard() {
         <div
           className={`mt-4 flex items-center gap-3 rounded-xl px-4 py-3 ${
             result.already
-              ? "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-              : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+              ? "bg-amber-50 text-amber-700 "
+              : "bg-emerald-50 text-emerald-700 "
           }`}
         >
           <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -177,12 +177,12 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
   const attend = useAttendStudyReservation();
 
   if (isLoading) {
-    return <div className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+    return <div className="h-20 animate-pulse rounded-2xl bg-slate-100 " />;
   }
   if (isError) {
     return (
       <div className={cardCls}>
-        <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+        <h2 className="mb-3 text-base font-bold text-slate-900 ">
           Çalışma Alanı Rezervasyonları
         </h2>
         <div data-testid="rez-hata">
@@ -210,12 +210,12 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
 
   return (
     <div className={cardCls}>
-      <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+      <h2 className="mb-3 text-base font-bold text-slate-900 ">
         Çalışma Alanı Rezervasyonları (yaklaşan)
       </h2>
 
       {gruplar.length === 0 ? (
-        <p data-testid="rez-bos" className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+        <p data-testid="rez-bos" className="py-6 text-center text-sm text-slate-400 ">
           Yaklaşan çalışma rezervasyonu yok.
         </p>
       ) : (
@@ -224,25 +224,25 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
             const sayac = yoklamaSayaci(grup.items);
             return (
               <section key={grup.kova} data-testid={`rez-grup-${grup.kova}`}>
-                <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 pb-1.5 dark:border-slate-700">
-                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 pb-1.5 ">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 ">
                     {grup.label}
                   </h3>
-                  <span className="text-xs text-slate-400 dark:text-slate-500">
-                    <b data-testid="grup-sayaci" className="font-semibold text-slate-600 dark:text-slate-300">
+                  <span className="text-xs text-slate-400 ">
+                    <b data-testid="grup-sayaci" className="font-semibold text-slate-600 ">
                       {grup.items.length}
                     </b>{" "}
                     kayıt · {sayac.giren} giriş
                   </span>
                 </div>
-                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+                <ul className="divide-y divide-slate-100 ">
                   {grup.items.map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-800 dark:text-slate-100">
+                        <p className="truncate font-medium text-slate-800 ">
                           {r.client_name ?? "Öğrenci"}
                         </p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                        <p className="truncate text-xs text-slate-500 ">
                           {formatDateTime(r.starts_at)} – {formatDateTime(r.ends_at)}
                         </p>
                       </div>

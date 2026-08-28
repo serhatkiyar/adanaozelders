@@ -23,9 +23,9 @@ import { formatTL } from "@/lib/money";
 import { toast } from "@/store/toastStore";
 
 const RETURN_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: "Bekliyor", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" },
-  APPROVED: { label: "Onaylandı", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400" },
-  REJECTED: { label: "Reddedildi", cls: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400" },
+  PENDING: { label: "Bekliyor", cls: "bg-amber-100 text-amber-700 " },
+  APPROVED: { label: "Onaylandı", cls: "bg-emerald-100 text-emerald-700 " },
+  REJECTED: { label: "Reddedildi", cls: "bg-rose-100 text-rose-700 " },
 };
 
 export function ReturnsPanel() {
@@ -79,7 +79,7 @@ export function ReturnsPanel() {
   return (
     <div className="space-y-3">
       {!canManage && <ReadOnlyNotice />}
-      <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+      <label className="flex items-center gap-2 text-sm text-slate-600 ">
         <input
           type="checkbox"
           checked={onlyPending}
@@ -93,9 +93,9 @@ export function ReturnsPanel() {
         returns.map((r) => {
           const badge = RETURN_STATUS_LABELS[r.status] ?? { label: r.status, cls: "bg-slate-100 text-slate-500" };
           return (
-            <div key={r.id} className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
+            <div key={r.id} className="rounded-xl border border-slate-100 p-3 ">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                <span className="text-sm font-semibold text-slate-800 ">
                   Sipariş #{r.order_id}
                   {r.order && <> · {formatTL(r.order.total)}</>}
                 </span>
@@ -104,7 +104,7 @@ export function ReturnsPanel() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-slate-400">{formatDateTime(r.created_at)}</p>
-              <p className="mt-2 whitespace-pre-line text-sm text-slate-700 dark:text-slate-300">
+              <p className="mt-2 whitespace-pre-line text-sm text-slate-700 ">
                 {r.reason}
               </p>
               {r.order?.ship_recipient && (

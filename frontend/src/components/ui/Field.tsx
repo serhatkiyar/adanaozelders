@@ -31,7 +31,7 @@ export interface FieldProps {
 }
 
 const DEFAULT_LABEL_CLASS =
-  "block text-sm font-medium text-slate-700 dark:text-slate-300";
+  "block text-sm font-medium text-slate-700 ";
 
 export function Field({
   label,
@@ -60,13 +60,13 @@ export function Field({
         )}
       </label>
       {hint && (
-        <p id={hintId} className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+        <p id={hintId} className="mt-0.5 text-xs text-slate-500 ">
           {hint}
         </p>
       )}
       {children(id, describedBy)}
       {error && (
-        <p id={errorId} role="alert" className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+        <p id={errorId} role="alert" className="mt-1 text-xs text-rose-600 ">
           {error}
         </p>
       )}

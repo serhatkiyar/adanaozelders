@@ -224,20 +224,20 @@ export default function Libraries() {
         onClick={() => setShowFilters(true)}
         className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
           amenities.length > 0
-            ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            ? "border-slate-900 bg-slate-900 text-white "
+            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
       >
         <FilterIconSvg />
         Filtreler
         {amenities.length > 0 && (
-          <span className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[9px] font-bold text-white dark:bg-indigo-500">
+          <span className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[9px] font-bold text-white ">
             {amenities.length}
           </span>
         )}
       </button>
 
-      <div className="h-5 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
+      <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
       {/* Sıralama chip'leri */}
       {SORT_OPTIONS.map((opt) => (
@@ -246,8 +246,8 @@ export default function Libraries() {
           onClick={() => handleSortChange(opt.value)}
           className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
             sort === opt.value
-              ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
+              ? "border-slate-900 bg-slate-900 text-white "
+              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
           {opt.label}
@@ -259,7 +259,7 @@ export default function Libraries() {
         <button
           key={d}
           onClick={() => setDistrict((prev) => prev.filter((x) => x !== d))}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300"
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 "
         >
           {d}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
@@ -271,7 +271,7 @@ export default function Libraries() {
         <button
           key={a}
           onClick={() => toggleAmenity(a)}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300"
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 "
         >
           {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
           {amenityLabel(a)}
@@ -302,15 +302,15 @@ export default function Libraries() {
         {/* ── Liste/Harita geçişi ── */}
         <div className="flex flex-wrap items-end justify-end gap-3">
           {/* Liste / Harita geçişi */}
-          <div className="flex rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+          <div className="flex rounded-full bg-slate-100 p-1 ">
             {(["list", "map"] as ViewMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setView(m)}
                 className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                   view === m
-                    ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-700 dark:text-indigo-300"
-                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+                    ? "bg-white text-indigo-600 shadow-sm "
+                    : "text-slate-500 hover:text-slate-700 "
                 }`}
               >
                 {m === "list" ? "☰ Liste" : "🗺️ Harita"}
@@ -325,12 +325,12 @@ export default function Libraries() {
 
         {/* ── Sonuçlar ── */}
         {isError ? (
-          <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ">
             {getErrorMessage(error, "Kütüphaneler yüklenemedi.")}
           </div>
         ) : view === "map" ? (
           mapLoading && !mapData ? (
-            <div className="h-[70vh] animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+            <div className="h-[70vh] animate-pulse rounded-2xl bg-slate-100 " />
           ) : (
             <LibrariesMap libraries={mapData ?? []} />
           )
@@ -339,14 +339,14 @@ export default function Libraries() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="h-60 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+                className="h-60 animate-pulse rounded-2xl bg-slate-100 "
               />
             ))}
           </div>
         ) : !data || data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
             <div className="text-4xl">📚</div>
-            <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <p className="mt-4 text-sm font-medium text-slate-700 ">
               Kriterlere uyan kütüphane bulunamadı
             </p>
           </div>
@@ -367,7 +367,7 @@ export default function Libraries() {
                     sekmede açabilsin. Tıklama SPA içinde kalır. */}
                 <Link
                   to={nextPageSearch(searchParams, page)}
-                  className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 disabled:opacity-60 dark:bg-slate-800 dark:text-indigo-300 dark:ring-slate-700"
+                  className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 disabled:opacity-60 "
                 >
                   {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                 </Link>
@@ -380,12 +380,12 @@ export default function Libraries() {
         {showFilters && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm sm:items-center sm:p-6">
             <div className="absolute inset-0" onClick={() => setShowFilters(false)} />
-            <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700">
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Olanaklar</h2>
+            <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 ">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
+                <h2 className="text-lg font-bold text-slate-900 ">Olanaklar</h2>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
                   aria-label="Kapat"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -395,7 +395,7 @@ export default function Libraries() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-6">
-                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mb-3 text-sm text-slate-500 ">
                   Aradığın özelliklere sahip mekânları süz.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -408,7 +408,7 @@ export default function Libraries() {
                         className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition ${
                           active
                             ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
-                            : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                            : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
                         }`}
                       >
                         {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
@@ -419,10 +419,10 @@ export default function Libraries() {
                 </div>
               </div>
 
-              <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50 sm:px-6 sm:py-5">
+              <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
                 <button
                   onClick={() => setAmenities([])}
-                  className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700"
+                  className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
                 >
                   Temizle
                 </button>

@@ -51,14 +51,14 @@ export default function FaqPage() {
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
         <header>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Sıkça sorulan sorular
           </h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-slate-500 ">
             Aradığını bulamazsan{" "}
             <Link
               to={ROUTES.contact}
-              className="font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+              className="font-medium text-indigo-600 underline-offset-2 hover:underline "
             >
               bize yazabilirsin
             </Link>
@@ -73,16 +73,16 @@ export default function FaqPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`${total} soru içinde ara…`}
-            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
           />
         </label>
 
         {categories.length === 0 && (
-          <p className="mt-10 text-center text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-10 text-center text-sm text-slate-500 ">
             “{query}” için sonuç bulunamadı.{" "}
             <Link
               to={ROUTES.contact}
-              className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              className="font-medium text-indigo-600 hover:underline "
             >
               Sorunu bize yaz
             </Link>
@@ -92,10 +92,10 @@ export default function FaqPage() {
 
         {categories.map((cat) => (
           <section key={cat.id} className="mt-10">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               {cat.title}
             </h2>
-            <div className="mt-3 divide-y divide-slate-100 border-y border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+            <div className="mt-3 divide-y divide-slate-100 border-y border-slate-100 ">
               {cat.items.map((item) => {
                 const isOpen = open === item.id;
                 return (
@@ -108,7 +108,7 @@ export default function FaqPage() {
                         aria-controls={`faq-panel-${item.id}`}
                         className="flex w-full items-center justify-between gap-4 py-4 text-left"
                       >
-                        <span className="text-[15px] font-medium text-slate-800 dark:text-slate-100">
+                        <span className="text-[15px] font-medium text-slate-800 ">
                           {item.question}
                         </span>
                         <span
@@ -126,7 +126,7 @@ export default function FaqPage() {
                         {item.answer.map((p, i) => (
                           <p
                             key={i}
-                            className="mt-2 text-sm leading-relaxed text-slate-600 first:mt-0 dark:text-slate-300"
+                            className="mt-2 text-sm leading-relaxed text-slate-600 first:mt-0 "
                           >
                             {p}
                           </p>

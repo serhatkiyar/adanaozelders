@@ -15,7 +15,7 @@ export function SrsCardFlags({ suspended, isLeech }: SrsCardFlagsProps) {
   return (
     <>
       {suspended && (
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ">
           askıda
         </span>
       )}
@@ -24,7 +24,7 @@ export function SrsCardFlags({ suspended, isLeech }: SrsCardFlagsProps) {
           düştüğünü göremiyordu. */}
       {isLeech && (
         <span
-          className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+          className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700 "
           title="Bu kartı 8 kez unuttun; otomatik askıya alındı. Kartı bölmek ya da ipucu eklemek işe yarar."
         >
           takıldın
@@ -54,7 +54,7 @@ export function SrsSuspendedSummary({
 }: SrsSuspendedSummaryProps) {
   if (suspendedTotal <= 0) return null;
   return (
-    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+    <p className="mt-2 text-sm text-slate-600 ">
       Askıda {suspendedTotal} kart
       {leechTotal > 0 && (
         <>
@@ -62,7 +62,7 @@ export function SrsSuspendedSummary({
           <button
             type="button"
             onClick={onShowSuspended}
-            className="font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800 dark:text-amber-300"
+            className="font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-800 "
           >
             {leechTotal} tanesinde takıldın
           </button>

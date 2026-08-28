@@ -11,27 +11,27 @@ const STATUS_CONFIG: Record<
 > = {
   [BookingStatus.PENDING]: {
     label: "Onay Bekliyor",
-    color: "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300",
+    color: "bg-amber-100 text-amber-800 ",
     icon: "⏳",
   },
   [BookingStatus.ACCEPTED]: {
     label: "Onaylandı",
-    color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300",
+    color: "bg-emerald-100 text-emerald-800 ",
     icon: "✅",
   },
   [BookingStatus.REJECTED]: {
     label: "Reddedildi",
-    color: "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300",
+    color: "bg-red-100 text-red-800 ",
     icon: "❌",
   },
   [BookingStatus.CANCELLED]: {
     label: "İptal Edildi",
-    color: "bg-slate-100 text-slate-800 dark:bg-slate-500/20 dark:text-slate-300",
+    color: "bg-slate-100 text-slate-800 ",
     icon: "🚫",
   },
   [BookingStatus.COMPLETED]: {
     label: "Tamamlandı",
-    color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-500/20 dark:text-indigo-300",
+    color: "bg-indigo-100 text-indigo-800 ",
     icon: "🎓",
   },
 };
@@ -43,13 +43,13 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
 
   if (isLoading) {
     return (
-      <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-slate-50 px-5 py-6 dark:border-slate-800 dark:bg-slate-900/50 xl:flex">
+      <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-slate-50 px-5 py-6 xl:flex">
         <div className="flex animate-pulse space-x-4">
           <div className="flex-1 space-y-6 py-1">
-            <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-700"></div>
+            <div className="h-4 w-3/4 rounded bg-slate-200 "></div>
             <div className="space-y-3">
-              <div className="h-4 rounded bg-slate-200 dark:bg-slate-700"></div>
-              <div className="h-4 w-5/6 rounded bg-slate-200 dark:bg-slate-700"></div>
+              <div className="h-4 rounded bg-slate-200 "></div>
+              <div className="h-4 w-5/6 rounded bg-slate-200 "></div>
             </div>
           </div>
         </div>
@@ -64,8 +64,8 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
   const counterpartyAvatar = isTutor ? booking.client_avatar_url : booking.tutor_avatar_url;
 
   return (
-    <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-slate-50 px-5 py-6 dark:border-slate-800 dark:bg-slate-900/50 xl:flex">
-      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+    <aside className="hidden w-[320px] shrink-0 flex-col overflow-y-auto border-l border-slate-200 bg-slate-50 px-5 py-6 xl:flex">
+      <h3 className="text-lg font-semibold text-slate-900 ">
         Ders Detayları
       </h3>
 
@@ -73,21 +73,21 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
       <div className="mt-5 flex items-center gap-3">
         <Avatar name={counterpartyName ?? "?"} avatar_url={counterpartyAvatar} size="lg" />
         <div>
-          <p className="text-sm font-medium text-slate-900 dark:text-white">
+          <p className="text-sm font-medium text-slate-900 ">
             {counterpartyName}
           </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-slate-500 ">
             {isTutor ? "Öğrenci" : "Eğitmen"}
           </p>
         </div>
       </div>
 
-      <div className="my-6 border-b border-slate-200 dark:border-slate-800" />
+      <div className="my-6 border-b border-slate-200 " />
 
       {/* Durum & Zaman */}
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 ">
             Durum
           </p>
           <div className="mt-1.5 flex items-center gap-1.5">
@@ -101,47 +101,47 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 ">
             Zaman
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+          <p className="mt-1 text-sm font-medium text-slate-900 ">
             {formatRange(booking.start_at, booking.end_at)}
           </p>
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 ">
             Biçim
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+          <p className="mt-1 text-sm font-medium text-slate-900 ">
             {booking.mode === "ONLINE" ? "💻 Online Ders" : "📍 Yüz Yüze Ders"}
           </p>
           {booking.location && (
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500 ">
               {booking.location}
             </p>
           )}
         </div>
       </div>
 
-      <div className="my-6 border-b border-slate-200 dark:border-slate-800" />
+      <div className="my-6 border-b border-slate-200 " />
 
       {/* Ücret Özeti */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 ">
           Ödeme Detayı
         </p>
-        <div className="mt-3 space-y-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <div className="mt-3 space-y-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200 ">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-600 dark:text-slate-300">Ders Ücreti</span>
-            <span className="font-medium text-slate-900 dark:text-white">
+            <span className="text-slate-600 ">Ders Ücreti</span>
+            <span className="font-medium text-slate-900 ">
               {booking.price ? formatTRY(booking.price) : "Belirtilmedi"}
             </span>
           </div>
           {booking.price && (
-            <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-sm font-semibold dark:border-slate-700">
-              <span className="text-slate-900 dark:text-white">Toplam</span>
-              <span className="text-indigo-600 dark:text-indigo-400">
+            <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-sm font-semibold ">
+              <span className="text-slate-900 ">Toplam</span>
+              <span className="text-indigo-600 ">
                 {formatTRY(booking.price)}
               </span>
             </div>
@@ -151,10 +151,10 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
 
       {booking.notes && (
         <div className="mt-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 ">
             Öğrenci Notu
           </p>
-          <div className="mt-2 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-900 dark:bg-indigo-500/10 dark:text-indigo-200">
+          <div className="mt-2 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-900 ">
             <p className="italic">&ldquo;{booking.notes}&rdquo;</p>
           </div>
         </div>

@@ -50,14 +50,14 @@ export function DeliveryPromiseBadge({
 
   if (variant === "inline") {
     return (
-      <span className="text-emerald-700 dark:text-emerald-400">
+      <span className="text-emerald-700 ">
         Cıncık Teslimat · {day} kapında
         {remaining != null && (
           <span
             className={
               closing
-                ? "font-medium text-amber-600 dark:text-amber-400"
-                : "text-slate-400 dark:text-slate-500"
+                ? "font-medium text-amber-600 "
+                : "text-slate-400 "
             }
           >
             {" "}
@@ -69,9 +69,9 @@ export function DeliveryPromiseBadge({
   }
 
   return (
-    <div className="flex items-start gap-2.5 text-slate-600 dark:text-slate-300">
+    <div className="flex items-start gap-2.5 text-slate-600 ">
       <svg
-        className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+        className="mt-0.5 shrink-0 text-emerald-600 "
         width="18"
         height="18"
         viewBox="0 0 24 24"
@@ -87,12 +87,12 @@ export function DeliveryPromiseBadge({
         <circle cx="18.5" cy="18.5" r="2.5" />
       </svg>
       <span>
-        <span className="font-medium text-slate-900 dark:text-white">{title}</span>
+        <span className="font-medium text-slate-900 ">{title}</span>
         <span
           className={`block ${
             closing
-              ? "font-medium text-amber-600 dark:text-amber-400"
-              : "text-slate-500 dark:text-slate-400"
+              ? "font-medium text-amber-600 "
+              : "text-slate-500 "
           }`}
         >
           {sub}

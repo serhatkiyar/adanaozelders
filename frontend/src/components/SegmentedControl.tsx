@@ -22,7 +22,7 @@ export function SegmentedControl<T extends string>({
   onChange,
 }: Props<T>) {
   return (
-    <div className="flex items-stretch rounded-2xl border border-slate-200 p-1 dark:border-slate-700">
+    <div className="flex items-stretch rounded-2xl border border-slate-200 p-1 ">
       {options.map((opt, i) => {
         const active = value === opt.value;
         const prevActive = i > 0 && value === options[i - 1].value;
@@ -34,7 +34,7 @@ export function SegmentedControl<T extends string>({
                 className={`my-2 w-px self-stretch transition-colors ${
                   active || prevActive
                     ? "bg-transparent"
-                    : "bg-slate-200 dark:bg-slate-700"
+                    : "bg-slate-200 "
                 }`}
               />
             )}
@@ -44,8 +44,8 @@ export function SegmentedControl<T extends string>({
               aria-pressed={active}
               className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
                 active
-                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-900 dark:bg-slate-700 dark:text-white dark:ring-white/80"
-                  : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-900 "
+                  : "text-slate-600 hover:text-slate-900 "
               }`}
             >
               {opt.label}

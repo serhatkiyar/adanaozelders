@@ -16,8 +16,8 @@ function Block({ block }: { block: LegalBlock }) {
     return (
       <ul className="mt-3 space-y-2">
         {block.items.map((item, i) => (
-          <li key={i} className="flex gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400 dark:bg-indigo-500" />
+          <li key={i} className="flex gap-3 text-sm leading-relaxed text-slate-600 ">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400 " />
             <span>{item}</span>
           </li>
         ))}
@@ -25,7 +25,7 @@ function Block({ block }: { block: LegalBlock }) {
     );
   }
   return (
-    <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+    <p className="mt-3 text-sm leading-relaxed text-slate-600 ">
       {block.text}
     </p>
   );
@@ -56,7 +56,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
         <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
           {/* ── Sol: belgeler arası gezinme ── */}
           <aside className="lg:w-64 lg:shrink-0">
-            <p className="px-1 text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+            <p className="px-1 text-xs font-semibold uppercase tracking-widest text-slate-400 ">
               Yasal
             </p>
             <nav className="mt-3 flex flex-row flex-wrap gap-1.5 lg:sticky lg:top-6 lg:flex-col">
@@ -67,7 +67,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
                   className={`rounded-xl px-3.5 py-2 text-sm font-medium transition ${
                     d.id === doc.id
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      : "text-slate-600 hover:bg-slate-100 "
                   }`}
                 >
                   {d.title}
@@ -78,18 +78,18 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
 
           {/* ── Sağ: belge içeriği ── */}
           <article className="min-w-0 flex-1">
-            <header className="border-b border-slate-200 pb-6 dark:border-slate-700">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            <header className="border-b border-slate-200 pb-6 ">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                 {doc.title}
               </h1>
-              <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+              <p className="mt-2 text-xs text-slate-400 ">
                 Son güncelleme: {DATE_FMT.format(new Date(`${doc.updatedAt}T00:00:00`))}
               </p>
             </header>
 
             {/* Bölüm içindekiler (anchor) */}
-            <nav className="mt-6 rounded-2xl bg-slate-100/70 p-4 dark:bg-slate-800/60">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+            <nav className="mt-6 rounded-2xl bg-slate-100/70 p-4 ">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 ">
                 İçindekiler
               </p>
               <ol className="mt-2 grid gap-1.5 sm:grid-cols-2">
@@ -97,7 +97,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
                   <li key={s.id}>
                     <a
                       href={`#${s.id}`}
-                      className="text-sm text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                      className="text-sm text-indigo-600 transition hover:text-indigo-700 "
                     >
                       {s.heading}
                     </a>
@@ -106,10 +106,10 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
               </ol>
             </nav>
 
-            <div className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="mt-2 divide-y divide-slate-100 ">
               {doc.sections.map((s) => (
                 <section key={s.id} id={s.id} className="scroll-mt-24 py-6">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h2 className="text-base font-bold text-slate-900 ">
                     {s.heading}
                   </h2>
                   {s.blocks.map((b, i) => (
@@ -119,11 +119,11 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
               ))}
             </div>
 
-            <footer className="mt-4 rounded-2xl bg-indigo-50/60 p-5 text-sm text-slate-600 ring-1 ring-indigo-100 dark:bg-indigo-500/5 dark:text-slate-300 dark:ring-indigo-500/20">
+            <footer className="mt-4 rounded-2xl bg-indigo-50/60 p-5 text-sm text-slate-600 ring-1 ring-indigo-100 ">
               Sorularınız için bize{" "}
               <a
                 href={`mailto:${OPERATOR.email}`}
-                className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                className="font-semibold text-indigo-600 hover:text-indigo-700 "
               >
                 {OPERATOR.email}
               </a>{" "}

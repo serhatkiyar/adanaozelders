@@ -194,7 +194,7 @@ function YeniSayimIcerik({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<never, void> 
       {genelHata && (
         <p
           role="alert"
-          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
         >
           {genelHata}
         </p>
@@ -226,7 +226,7 @@ function YeniSayimIcerik({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<never, void> 
             <Form.Item>
               <ProductPicker selected={field.value} onChange={field.onChange} />
               {field.value.length > 0 && (
-                <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                <span className="mt-1 block text-xs text-slate-500 ">
                   {field.value.length} ürün seçildi.
                 </span>
               )}
@@ -320,11 +320,11 @@ export default function CountSessionsPage() {
                 yutmaz — ikisi çakışmaz. */}
             <Link
               to={ROUTES.adminInventoryCount(row.original.id)}
-              className="font-semibold text-slate-900 hover:underline dark:text-white"
+              className="font-semibold text-slate-900 hover:underline "
             >
               {row.original.code}
             </Link>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-xs text-slate-500 ">
               <span data-testid="scope">
                 {KAPSAM[row.original.scope] ?? row.original.scope}
               </span>
@@ -375,16 +375,16 @@ export default function CountSessionsPage() {
   );
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Sayım oturumları</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Sayım oturumları</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Detay için satıra tıklayın. Fark yalnız inceleme sonrası uygulanır.
           </p>
         </div>
         <label className="flex items-center gap-2">
-          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          <span className="text-xs font-medium text-slate-500 ">
             Duruma göre
           </span>
           <select
@@ -446,11 +446,11 @@ export default function CountSessionsPage() {
                     <div className="min-w-0">
                       <Link
                         to={ROUTES.adminInventoryCount(o.id)}
-                        className="font-semibold text-slate-900 hover:underline dark:text-white"
+                        className="font-semibold text-slate-900 hover:underline "
                       >
                         {o.code}
                       </Link>
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      <p className="mt-0.5 text-xs text-slate-500 ">
                         <span data-testid="scope">{KAPSAM[o.scope] ?? o.scope}</span>
                         {" · "}
                         <span data-testid="created-by">Açan: #{o.created_by_admin_id}</span>
@@ -458,7 +458,7 @@ export default function CountSessionsPage() {
                     </div>
                     <Badge tone={rozet.tone}>{rozet.label}</Badge>
                   </div>
-                  <p className="mt-2 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                  <p className="mt-2 text-xs tabular-nums text-slate-500 ">
                     <span data-testid="line-count">{lineCountLabel(o)}</span>
                     {" · "}
                     <span data-testid="created-at">{TARIH.format(new Date(o.created_at))}</span>
@@ -490,7 +490,7 @@ function StaleRozeti() {
   return (
     <span
       data-testid="stale-flag"
-      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 "
     >
       <svg
         aria-hidden="true"

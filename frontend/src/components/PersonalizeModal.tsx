@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Field } from "@/components/ui/Field";
-import {
-  useThemeStore,
-  type ThemePreference,
-} from "@/store/themeStore";
 import { useNavbarWidgetStore } from "@/store/navbarWidgetStore";
 import { useUiPrefsStore } from "@/store/uiPrefsStore";
 import { useNavPrefsStore } from "@/store/navPrefsStore";
@@ -29,10 +25,10 @@ interface PersonalizeModalProps {
 function SectionHeading({ title, desc }: { title: string; desc: string }) {
   return (
     <div className="mb-4">
-      <h4 className="text-base font-bold text-slate-900 dark:text-white">
+      <h4 className="text-base font-bold text-slate-900 ">
         {title}
       </h4>
-      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{desc}</p>
+      <p className="mt-0.5 text-xs text-slate-500 ">{desc}</p>
     </div>
   );
 }
@@ -52,7 +48,7 @@ function Switch({
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-        checked ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+        checked ? "bg-indigo-600" : "bg-slate-300 "
       }`}
     >
       <span
@@ -65,177 +61,7 @@ function Switch({
 }
 
 const subInputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
-
-/* ── Tema bölümü ─────────────────────────────────────────────────────── */
-
-// Tema seçeneği kartının üstündeki küçük arayüz önizlemesi.
-function ThemePreview({ variant }: { variant: "light" | "dark" | "system" }) {
-  const panel = (tone: "light" | "dark") => (
-    <div
-      className={`flex h-full w-full flex-col gap-1.5 p-2 ${
-        tone === "dark" ? "bg-slate-900" : "bg-white"
-      }`}
-    >
-      <div
-        className={`h-1.5 w-8 rounded-full ${
-          tone === "dark" ? "bg-slate-600" : "bg-slate-300"
-        }`}
-      />
-      <div className="flex gap-1.5">
-        <div
-          className={`h-6 w-6 rounded-md ${
-            tone === "dark" ? "bg-indigo-500/80" : "bg-indigo-500"
-          }`}
-        />
-        <div className="flex flex-1 flex-col justify-center gap-1">
-          <div
-            className={`h-1.5 w-full rounded-full ${
-              tone === "dark" ? "bg-slate-700" : "bg-slate-200"
-            }`}
-          />
-          <div
-            className={`h-1.5 w-2/3 rounded-full ${
-              tone === "dark" ? "bg-slate-700" : "bg-slate-200"
-            }`}
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  if (variant === "system") {
-    return (
-      <div className="relative h-16 w-full overflow-hidden rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
-        <div className="absolute inset-0">{panel("light")}</div>
-        <div
-          className="absolute inset-0"
-          style={{ clipPath: "polygon(100% 0, 100% 100%, 50% 100%, 50% 0)" }}
-        >
-          {panel("dark")}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-16 w-full overflow-hidden rounded-lg ring-1 ring-slate-200 dark:ring-slate-700">
-      {panel(variant)}
-    </div>
-  );
-}
-
-const THEME_ICONS: Record<ThemePreference, ReactNode> = {
-  light: (
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
-    />
-  ),
-  dark: (
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"
-    />
-  ),
-  system: (
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25"
-    />
-  ),
-};
-
-const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] = [
-  { value: "light", label: "Açık", hint: "Aydınlık arayüz" },
-  { value: "dark", label: "Koyu", hint: "Göz yormayan karanlık" },
-  { value: "system", label: "Sistem", hint: "Cihaz ayarını izle" },
-];
-
-function ThemeSection() {
-  const preference = useThemeStore((s) => s.preference);
-  const setPreference = useThemeStore((s) => s.setPreference);
-
-  return (
-    <div>
-      <SectionHeading
-        title="Tema"
-        desc="Arayüzün açık mı koyu mu görüneceğini seç."
-      />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {THEME_OPTIONS.map((opt) => {
-          const active = preference === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setPreference(opt.value)}
-              aria-pressed={active}
-              className={`group relative flex flex-col gap-2.5 rounded-xl border p-3 text-left transition ${
-                active
-                  ? "border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-200 dark:border-indigo-400 dark:bg-indigo-500/10 dark:ring-indigo-500/30"
-                  : "border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:border-slate-600 dark:hover:bg-slate-700/40"
-              }`}
-            >
-              <ThemePreview variant={opt.value} />
-              <div className="flex items-center gap-2">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.7}
-                  className={`h-4 w-4 shrink-0 ${
-                    active
-                      ? "text-indigo-600 dark:text-indigo-400"
-                      : "text-slate-500 dark:text-slate-400"
-                  }`}
-                  aria-hidden
-                >
-                  {THEME_ICONS[opt.value]}
-                </svg>
-                <div className="min-w-0">
-                  <p
-                    className={`text-sm font-semibold ${
-                      active
-                        ? "text-indigo-700 dark:text-indigo-300"
-                        : "text-slate-800 dark:text-slate-100"
-                    }`}
-                  >
-                    {opt.label}
-                  </p>
-                  <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
-                    {opt.hint}
-                  </p>
-                </div>
-              </div>
-              {active && (
-                <span className="absolute right-2.5 top-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={3}
-                    className="h-3 w-3"
-                    aria-hidden
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M4.5 12.75l6 6 9-13.5"
-                    />
-                  </svg>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 ";
 
 /* ── Üst bar (widget) bölümü ─────────────────────────────────────────── */
 
@@ -274,32 +100,32 @@ function NavbarWidgetSection() {
               aria-pressed={active}
               className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
                 active
-                  ? "border-indigo-500 bg-indigo-50/60 dark:border-indigo-400 dark:bg-indigo-500/10"
-                  : "border-slate-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:border-slate-600 dark:hover:bg-slate-700/40"
+                  ? "border-indigo-500 bg-indigo-50/60 "
+                  : "border-slate-200 hover:border-slate-300 hover:bg-slate-50 "
               }`}
             >
               <span
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
                   active
-                    ? "border-indigo-600 dark:border-indigo-400"
-                    : "border-slate-300 dark:border-slate-600"
+                    ? "border-indigo-600 "
+                    : "border-slate-300 "
                 }`}
               >
                 {active && (
-                  <span className="h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                  <span className="h-2 w-2 rounded-full bg-indigo-600 " />
                 )}
               </span>
               <span className="min-w-0 flex-1">
                 <span
                   className={`block text-sm font-semibold ${
                     active
-                      ? "text-indigo-700 dark:text-indigo-300"
-                      : "text-slate-800 dark:text-slate-100"
+                      ? "text-indigo-700 "
+                      : "text-slate-800 "
                   }`}
                 >
                   {opt.label}
                 </span>
-                <span className="block text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="block text-[11px] text-slate-500 ">
                   {opt.hint}
                 </span>
               </span>
@@ -310,7 +136,7 @@ function NavbarWidgetSection() {
 
       {(widget === "yks" || widget === "lgs") && (
         <div className="mt-3">
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
+          <label className="block text-xs font-medium text-slate-600 ">
             {widget === "yks" ? "YKS tarihi" : "LGS tarihi"}
           </label>
           <input
@@ -327,7 +153,7 @@ function NavbarWidgetSection() {
       )}
 
       {widget === "weather" && (
-        <Field label="Şehir" labelClassName="block text-xs font-medium text-slate-600 dark:text-slate-300" className="mt-3">
+        <Field label="Şehir" labelClassName="block text-xs font-medium text-slate-600 " className="mt-3">
           {(id) => (
               <select
                     id={id}
@@ -425,12 +251,12 @@ function SurfaceEditor({
             }}
             className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
               over
-                ? "border-indigo-400 bg-indigo-50/60 dark:border-indigo-400 dark:bg-indigo-500/10"
-                : "border-slate-200 dark:border-slate-700"
+                ? "border-indigo-400 bg-indigo-50/60 "
+                : "border-slate-200 "
             } ${dragging ? "opacity-50" : ""}`}
           >
             <span
-              className="cursor-grab text-slate-300 transition hover:text-slate-500 active:cursor-grabbing dark:text-slate-600 dark:hover:text-slate-400"
+              className="cursor-grab text-slate-300 transition hover:text-slate-500 active:cursor-grabbing "
               title="Sürükleyerek sırala"
             >
               <GripIcon />
@@ -440,16 +266,16 @@ function SurfaceEditor({
                 name={item.icon}
                 className={`h-5 w-5 shrink-0 transition ${
                   item.visible
-                    ? "text-slate-500 dark:text-slate-400"
-                    : "text-slate-300 dark:text-slate-600"
+                    ? "text-slate-500 "
+                    : "text-slate-300 "
                 }`}
               />
             )}
             <span
               className={`min-w-0 flex-1 truncate text-sm font-semibold transition ${
                 item.visible
-                  ? "text-slate-800 dark:text-slate-100"
-                  : "text-slate-400 line-through dark:text-slate-500"
+                  ? "text-slate-800 "
+                  : "text-slate-400 line-through "
               }`}
             >
               {item.label}
@@ -477,10 +303,10 @@ function SubBlock({
   return (
     <div>
       <div className="mb-2.5">
-        <h5 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+        <h5 className="text-sm font-bold text-slate-800 ">
           {title}
         </h5>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">{desc}</p>
+        <p className="text-[11px] text-slate-500 ">{desc}</p>
       </div>
       {children}
     </div>
@@ -522,7 +348,7 @@ function NavigationSection({
       <button
         type="button"
         onClick={() => reset(roleId)}
-        className="mt-5 text-xs font-medium text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        className="mt-5 text-xs font-medium text-slate-500 transition hover:text-slate-700 "
       >
         Varsayılana sıfırla
       </button>
@@ -545,12 +371,12 @@ function DiscoverySection() {
         title="Keşif"
         desc="Ana sayfadaki kişisel önerileri yönet."
       />
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-700">
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-3 ">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <p className="text-sm font-semibold text-slate-800 ">
             Son görüntülenen ilanlar
           </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          <p className="text-[11px] text-slate-500 ">
             Ana sayfada baktığın eğitmenleri göster
           </p>
         </div>
@@ -564,7 +390,7 @@ function DiscoverySection() {
             clearRecentlyViewed();
             setHasHistory(false);
           }}
-          className="mt-2 text-xs font-medium text-rose-600 transition hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+          className="mt-2 text-xs font-medium text-rose-600 transition hover:text-rose-700 "
         >
           Görüntüleme geçmişini temizle
         </button>
@@ -586,16 +412,14 @@ export function PersonalizePanel({
 }) {
   return (
     <div className="space-y-8">
-      <ThemeSection />
-      <div className="border-t border-slate-100 dark:border-slate-800" />
       <NavbarWidgetSection />
       {navItems && navItems.length > 0 && roleId != null && (
         <>
-          <div className="border-t border-slate-100 dark:border-slate-800" />
+          <div className="border-t border-slate-100 " />
           <NavigationSection roleId={roleId} navItems={navItems} />
         </>
       )}
-      <div className="border-t border-slate-100 dark:border-slate-800" />
+      <div className="border-t border-slate-100 " />
       <DiscoverySection />
     </div>
   );
@@ -619,18 +443,6 @@ export function PersonalizeModal({
 }: PersonalizeModalProps) {
   const sections = useMemo<SectionDef[]>(() => {
     const list: SectionDef[] = [
-      {
-        id: "theme",
-        label: "Tema",
-        icon: (
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 9 9c0 1.66-1.34 3-3 3h-1.5a1.5 1.5 0 0 0-1.06 2.56A1.5 1.5 0 0 1 13.5 21H12Z M7.5 11.25h.008v.008H7.5v-.008Zm3-3h.008v.008H10.5V8.25Zm3 0h.008v.008H13.5V8.25Z"
-          />
-        ),
-        render: <ThemeSection />,
-      },
       {
         id: "navbar",
         label: "Üst bar",
@@ -703,8 +515,8 @@ export function PersonalizeModal({
         aria-current={isActive}
         className={`${base} ${
           isActive
-            ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
-            : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700/60"
+            ? "bg-indigo-50 text-indigo-700 "
+            : "text-slate-600 hover:bg-slate-100 "
         }`}
       >
         <svg
@@ -728,19 +540,19 @@ export function PersonalizeModal({
       onMouseDown={onClose}
     >
       <div
-        className="flex h-[85vh] max-h-[680px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+        className="flex h-[85vh] max-h-[680px] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 "
         onMouseDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Kişiselleştir"
       >
         {/* Başlık */}
-        <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-700">
+        <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4 ">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-bold text-slate-900 ">
               Kişiselleştir
             </h3>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-0.5 text-sm text-slate-500 ">
               Sitenin görünümünü ve kısayollarını kendine göre ayarla.
             </p>
           </div>
@@ -748,7 +560,7 @@ export function PersonalizeModal({
             type="button"
             onClick={onClose}
             aria-label="Kapat"
-            className="-mr-1 -mt-1 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="-mr-1 -mt-1 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
           >
             <svg
               viewBox="0 0 24 24"
@@ -770,12 +582,12 @@ export function PersonalizeModal({
         {/* Gövde: sol panel + içerik */}
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
           {/* Mobil sekmeler */}
-          <div className="flex gap-1 overflow-x-auto border-b border-slate-100 p-2 dark:border-slate-700 sm:hidden">
+          <div className="flex gap-1 overflow-x-auto border-b border-slate-100 p-2 sm:hidden">
             {sections.map((s) => railButton(s, "chip"))}
           </div>
 
           {/* Masaüstü sol panel */}
-          <nav className="hidden w-52 shrink-0 space-y-1 overflow-y-auto border-r border-slate-100 p-3 dark:border-slate-700 sm:block">
+          <nav className="hidden w-52 shrink-0 space-y-1 overflow-y-auto border-r border-slate-100 p-3 sm:block">
             {sections.map((s) => railButton(s, "rail"))}
           </nav>
 

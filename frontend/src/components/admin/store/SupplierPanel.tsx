@@ -172,7 +172,7 @@ export function SupplierPanel() {
   return (
     <div className="space-y-8">
       {tedarikciler.length > 1 && (
-        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">
+        <label className="block text-xs font-medium text-slate-500 ">
           Tedarikçi
           <select
             value={tedarikci.id}
@@ -209,7 +209,7 @@ export function SupplierPanel() {
         <div
           role="group"
           aria-label="Ürün görünümü"
-          className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 dark:border-slate-800"
+          className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 "
         >
           {(
             [
@@ -234,7 +234,7 @@ export function SupplierPanel() {
               onClick={() => gorunumeGec(deger)}
               className={
                 gorunum === deger
-                  ? "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                  ? "bg-slate-900 text-white hover:bg-slate-800 "
                   : ""
               }
             >
@@ -283,7 +283,7 @@ function DurumSeridi({
     <section data-testid="tedarikci-durum">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+          <h2 className="text-base font-semibold text-slate-900 ">
             {tedarikci.name}
           </h2>
           <Badge tone={tedarikci.is_enabled ? "success" : "neutral"}>
@@ -321,39 +321,39 @@ function DurumSeridi({
         )}
       </div>
 
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-1 text-xs text-slate-500 ">
         {tedarikci.base_url}
       </p>
 
       {/* Kutu değil, satır ritmi: saç-teli çizgi + boşluk (kart enflasyonu yok). */}
-      <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-slate-200 py-4 text-sm sm:grid-cols-4 dark:border-slate-800">
+      <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-slate-200 py-4 text-sm sm:grid-cols-4 ">
         <div data-testid="son-stok-senkronu">
-          <dt className="text-xs text-slate-500 dark:text-slate-400">Son stok senkronu</dt>
+          <dt className="text-xs text-slate-500 ">Son stok senkronu</dt>
           <dd
             title={tamZaman(tedarikci.last_stock_sync_ok_at)}
-            className="mt-0.5 font-medium text-slate-800 dark:text-slate-200"
+            className="mt-0.5 font-medium text-slate-800 "
           >
             {goreliZaman(tedarikci.last_stock_sync_ok_at)}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500 dark:text-slate-400">Son fiyat senkronu</dt>
+          <dt className="text-xs text-slate-500 ">Son fiyat senkronu</dt>
           <dd
             title={tamZaman(tedarikci.last_price_sync_ok_at)}
-            className="mt-0.5 font-medium text-slate-800 dark:text-slate-200"
+            className="mt-0.5 font-medium text-slate-800 "
           >
             {goreliZaman(tedarikci.last_price_sync_ok_at)}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500 dark:text-slate-400">Bağlı ürün</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+          <dt className="text-xs text-slate-500 ">Bağlı ürün</dt>
+          <dd className="mt-0.5 font-medium text-slate-800 ">
             {tedarikci.linked_count}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500 dark:text-slate-400">Eşleşmemiş</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+          <dt className="text-xs text-slate-500 ">Eşleşmemiş</dt>
+          <dd className="mt-0.5 font-medium text-slate-800 ">
             {tedarikci.unmatched_count}
           </dd>
         </div>
@@ -367,11 +367,11 @@ function DurumSeridi({
         {tedarikci.last_error && (
           <p
             role="alert"
-            className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+            className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 "
           >
             <span className="font-semibold">Son hata:</span> {tedarikci.last_error}
             {tedarikci.last_error_at && (
-              <span className="text-rose-700 dark:text-rose-300">
+              <span className="text-rose-700 ">
                 {" "}
                 · {goreliZaman(tedarikci.last_error_at)}
               </span>
@@ -382,7 +382,7 @@ function DurumSeridi({
         {bekleyenDakika !== null && (
           <p
             data-testid="devre-kesici"
-            className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+            className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 "
           >
             <span className="font-semibold">Devre kesici açık</span> — {bekleyenDakika} dk
             beklemede ({tedarikci.consecutive_failures} ardışık hata). Bu süre
@@ -429,8 +429,8 @@ function TokenDurumu({ tedarikci }: { tedarikci: SupplierOut }) {
       data-testid="token-durumu"
       className={
         uyari
-          ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
-          : "px-1 text-xs text-slate-500 dark:text-slate-400"
+          ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 "
+          : "px-1 text-xs text-slate-500 "
       }
     >
       {metin}
@@ -580,8 +580,8 @@ function AyarlarFormu({ tedarikci }: { tedarikci: SupplierOut }) {
 
   return (
     <section>
-      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Ayarlar</h3>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+      <h3 className="text-sm font-semibold text-slate-900 ">Ayarlar</h3>
+      <p className="mt-1 text-xs text-slate-500 ">
         Sıklıklar veritabanında yaşar; değişiklik yeniden başlatma istemez ve
         gerekçesiyle birlikte denetim kaydına yazılır.
       </p>
@@ -589,7 +589,7 @@ function AyarlarFormu({ tedarikci }: { tedarikci: SupplierOut }) {
       {genelHata && (
         <p
           role="alert"
-          className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+          className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 "
         >
           {genelHata}
         </p>
@@ -608,10 +608,10 @@ function AyarlarFormu({ tedarikci }: { tedarikci: SupplierOut }) {
                     checked={field.value}
                     onBlur={field.onBlur}
                     onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus dark:border-slate-600 dark:bg-slate-900"
+                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus "
                   />
                 </Form.Control>
-                <Form.Label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                <Form.Label className="text-sm font-semibold text-slate-700 ">
                   Senkron açık
                 </Form.Label>
               </div>
@@ -786,7 +786,7 @@ function TedarikciUrunleri({
 
   return (
     <div className="mt-4">
-      <label className="block max-w-sm text-xs font-medium text-slate-500 dark:text-slate-400">
+      <label className="block max-w-sm text-xs font-medium text-slate-500 ">
         Tedarikçi kataloğunda ara
         <input
           type="search"
@@ -903,7 +903,7 @@ function TedarikciUrunleri({
 /** Karantina bayrakları — bilinmeyen kod HAM basılır (sessizce gizlenmez). */
 function Bayraklar({ kodlar }: { kodlar?: string[] | null }) {
   if (!kodlar || kodlar.length === 0) {
-    return <span className="text-slate-400 dark:text-slate-500">—</span>;
+    return <span className="text-slate-400 ">—</span>;
   }
   return (
     <div className="flex flex-wrap gap-1">
@@ -925,7 +925,7 @@ function eslesmemisKolonlari(
       id: "kod",
       header: "Kod",
       cell: ({ row }) => (
-        <span className="whitespace-nowrap font-mono text-xs text-slate-500 dark:text-slate-400">
+        <span className="whitespace-nowrap font-mono text-xs text-slate-500 ">
           {row.original.external_code}
         </span>
       ),
@@ -934,7 +934,7 @@ function eslesmemisKolonlari(
       id: "ad",
       header: "Ad",
       cell: ({ row }) => (
-        <span className="font-medium text-slate-800 dark:text-slate-200">
+        <span className="font-medium text-slate-800 ">
           {row.original.name}
         </span>
       ),
@@ -942,7 +942,7 @@ function eslesmemisKolonlari(
     {
       id: "marka",
       header: "Marka",
-      cell: ({ row }) => row.original.brand || <span className="text-slate-400 dark:text-slate-500">—</span>,
+      cell: ({ row }) => row.original.brand || <span className="text-slate-400 ">—</span>,
     },
     {
       id: "barkod",
@@ -961,7 +961,7 @@ function eslesmemisKolonlari(
     {
       id: "birim",
       header: "Birim",
-      cell: ({ row }) => row.original.unit_name || <span className="text-slate-400 dark:text-slate-500">—</span>,
+      cell: ({ row }) => row.original.unit_name || <span className="text-slate-400 ">—</span>,
     },
     {
       id: "stok",
@@ -981,7 +981,7 @@ function eslesmemisKolonlari(
             {formatTL(row.original.cost_gross)}
           </span>
         ) : (
-          <span className="text-slate-400 dark:text-slate-500">—</span>
+          <span className="text-slate-400 ">—</span>
         ),
     },
     {
@@ -1018,10 +1018,10 @@ function bagliKolonlari(
       header: "Ürün",
       cell: ({ row }) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-slate-800 dark:text-slate-200">
+          <p className="truncate font-medium text-slate-800 ">
             {row.original.product?.title ?? row.original.name}
           </p>
-          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+          <p className="truncate text-xs text-slate-500 ">
             {[row.original.product?.sku, row.original.external_code]
               .filter(Boolean)
               .join(" · ")}
@@ -1037,7 +1037,7 @@ function bagliKolonlari(
           // Nötr rozet: "AUTO" bir uyarı değil, bir köken bilgisi.
           <Badge>{row.original.link_source === "AUTO" ? "Otomatik" : "Elle"}</Badge>
         ) : (
-          <span className="text-slate-400 dark:text-slate-500">—</span>
+          <span className="text-slate-400 ">—</span>
         ),
     },
     {
@@ -1047,7 +1047,7 @@ function bagliKolonlari(
         <span className="whitespace-nowrap tabular-nums">
           {stokBicimle(row.original.stock_qty)}
           {row.original.unit_name && (
-            <span className="ml-1 text-xs text-slate-500 dark:text-slate-400">
+            <span className="ml-1 text-xs text-slate-500 ">
               {row.original.unit_name}
             </span>
           )}
@@ -1063,7 +1063,7 @@ function bagliKolonlari(
             {formatTL(row.original.cost_gross)}
           </span>
         ) : (
-          <span className="text-slate-400 dark:text-slate-500">—</span>
+          <span className="text-slate-400 ">—</span>
         ),
     },
     {

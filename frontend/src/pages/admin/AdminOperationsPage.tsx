@@ -59,10 +59,10 @@ function StuckEscrowSection() {
   return (
     <section className="space-y-4">
       <header className="space-y-1">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+        <h2 className="text-base font-semibold text-slate-900 ">
           Sıkışmış para
         </h2>
-        <p className="max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+        <p className="max-w-2xl text-sm text-slate-500 ">
           Otomatik mutabakatın artık çözemeyeceği kayıtlar. Sağlayıcı
           referansıyla panelde eşleştirip sonucu elle yazın; buradan para
           hareketi başlatılmaz.
@@ -82,7 +82,7 @@ function StuckEscrowSection() {
           description="Otomatik mutabakat şu an her kaydı sonuca sürebiliyor."
         />
       ) : (
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-200 ">
           {data.map((k) => (
             <StuckRow key={`${k.entity}-${k.entity_id}`} kayit={k} />
           ))}
@@ -98,7 +98,7 @@ function StuckRow({ kayit }: { kayit: StuckEscrowRecord }) {
     <li className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">
+          <span className="text-sm font-semibold text-slate-900 ">
             {/* Backend yeni bir escrow yüzeyi eklerse etiket eksik kalabilir;
                 satır BOŞ görünmesin — ham `entity` değeri en azından teşhis
                 edilebilir bir metindir. */}
@@ -111,18 +111,18 @@ function StuckRow({ kayit }: { kayit: StuckEscrowRecord }) {
             <span className="text-xs text-slate-400">Sipariş #{kayit.order_id}</span>
           )}
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-slate-500 ">
           {kayit.amount ? formatTL(kayit.amount) : "—"} · durum{" "}
           {kayit.money_status} · {kayit.refund_attempts} deneme
           {kayit.refund_requested_at
             ? ` · ilk niyet ${formatDateTime(kayit.refund_requested_at)}`
             : ""}
         </p>
-        <p className="break-all font-mono text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="break-all font-mono text-[11px] text-slate-400 ">
           Sağlayıcı referansı: {kayit.provider_ref ?? "—"}
         </p>
       </div>
-      <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
+      <span className="shrink-0 text-xs text-slate-400 ">
         {kayit.updated_at ? formatDateTime(kayit.updated_at) : ""}
       </span>
     </li>
@@ -141,10 +141,10 @@ function FailedOutboxSection({ canManage }: { canManage: boolean }) {
   return (
     <section className="space-y-4">
       <header className="space-y-1">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+        <h2 className="text-base font-semibold text-slate-900 ">
           Ölü işler
         </h2>
-        <p className="max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+        <p className="max-w-2xl text-sm text-slate-500 ">
           Deneme tavanını aşmış bildirim işleri. Yeniden denemek işi kuyruğa
           geri koyar; gönderilmiş bir bildirim ikinci kez gönderilmez.
         </p>
@@ -163,7 +163,7 @@ function FailedOutboxSection({ canManage }: { canManage: boolean }) {
           description="Bildirim kuyruğunda tavana çarpmış bir iş bulunmuyor."
         />
       ) : (
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-200 ">
           {data.map((is) => (
             <li
               key={is.id}
@@ -171,7 +171,7 @@ function FailedOutboxSection({ canManage }: { canManage: boolean }) {
             >
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-semibold text-slate-900 dark:text-white">
+                  <span className="font-mono text-sm font-semibold text-slate-900 ">
                     {is.kind}
                   </span>
                   <span className="text-xs text-slate-400">#{is.id}</span>
@@ -181,10 +181,10 @@ function FailedOutboxSection({ canManage }: { canManage: boolean }) {
                     </span>
                   )}
                 </div>
-                <p className="break-words text-xs text-rose-600 dark:text-rose-400">
+                <p className="break-words text-xs text-rose-600 ">
                   {is.last_error ?? "Hata metni yok"}
                 </p>
-                <p className="text-xs text-slate-400 dark:text-slate-500">
+                <p className="text-xs text-slate-400 ">
                   {is.attempts} deneme
                   {is.updated_at ? ` · son ${formatDateTime(is.updated_at)}` : ""}
                 </p>
@@ -238,7 +238,7 @@ function YuklemeSeridi() {
       {Array.from({ length: 3 }, (_, i) => (
         <div
           key={i}
-          className="h-16 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-slate-800"
+          className="h-16 animate-pulse rounded-2xl bg-slate-200/70 "
         />
       ))}
     </div>

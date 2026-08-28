@@ -44,7 +44,7 @@ export default function AdminPayoutsPage() {
     // label + description alanlarından). Sayfa kendi <h1>'ini basmaz — aksi
     // halde ekranda iki <h1> olur ve belge başlık hiyerarşisi bozulur.
     <div className="space-y-6">
-      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
+      <div className="flex gap-1 border-b border-slate-200 ">
         {/* Sekme şeridi ORTAK `Button`a çevrilmedi ve bu bilinçlidir:
             bunlar bir aksiyon değil, bir SEÇİM DURUMU (`aria-pressed`) ve alt
             çizgi göstergesi ortak düğmenin dolgu/gölge varyantlarıyla
@@ -64,7 +64,7 @@ export default function AdminPayoutsPage() {
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === key
                 ? "border-panel-accent text-panel-accent"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                : "border-transparent text-slate-500 hover:text-slate-800 "
             }`}
           >
             {label}
@@ -97,8 +97,8 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
   }
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 p-8 text-center dark:border-slate-700">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+      <div className="rounded-xl border border-slate-200 p-8 text-center ">
+        <p className="text-sm text-slate-500 ">
           Ödenmemiş hakediş yok.
         </p>
       </div>
@@ -109,13 +109,13 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
 
   return (
     <div>
-      <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+      <p className="mb-3 text-sm text-slate-600 ">
         Toplam ödenecek: <strong>{formatTL(toplam)}</strong> · {data.length} alıcı
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500">
+            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 ">
               <th className="py-2 pr-4 font-medium">Alıcı</th>
               <th className="py-2 pr-4 font-medium">IBAN</th>
               <th className="py-2 pr-4 text-right font-medium">Hak edilen</th>
@@ -125,34 +125,34 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
               <th className="py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          <tbody className="divide-y divide-slate-100 ">
             {data.map((b) => (
               <tr key={`${b.payee_type}-${b.payee_id}`}>
                 <td className="py-3 pr-4">
-                  <span className="font-medium text-slate-800 dark:text-slate-100">
+                  <span className="font-medium text-slate-800 ">
                     {b.name}
                   </span>
-                  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 ">
                     {b.payee_type === "TUTOR" ? "Eğitmen" : "Kütüphane"}
                   </span>
                 </td>
-                <td className="py-3 pr-4 font-mono text-xs text-slate-500 dark:text-slate-400">
+                <td className="py-3 pr-4 font-mono text-xs text-slate-500 ">
                   {b.iban ?? (
-                    <span className="text-amber-600 dark:text-amber-400">
+                    <span className="text-amber-600 ">
                       IBAN yok
                     </span>
                   )}
                 </td>
-                <td className="py-3 pr-4 text-right text-slate-600 dark:text-slate-300">
+                <td className="py-3 pr-4 text-right text-slate-600 ">
                   {formatTL(b.earned)}
                 </td>
-                <td className="py-3 pr-4 text-right text-slate-500 dark:text-slate-400">
+                <td className="py-3 pr-4 text-right text-slate-500 ">
                   {formatTL(b.paid)}
                 </td>
-                <td className="py-3 pr-4 text-right font-semibold text-slate-900 dark:text-white">
+                <td className="py-3 pr-4 text-right font-semibold text-slate-900 ">
                   {formatTL(b.balance)}
                 </td>
-                <td className="py-3 pr-4 text-right text-slate-400 dark:text-slate-500">
+                <td className="py-3 pr-4 text-right text-slate-400 ">
                   {formatTL(b.pending)}
                 </td>
                 <td className="py-3 text-right">
@@ -165,7 +165,7 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mt-3 text-xs text-slate-400 ">
         “Emanette” sütunu henüz hak edilmemiş tutardır (ders yapılmadı / katılım
         doğrulanmadı) — borç değildir, iade edilebilir.
       </p>
@@ -190,8 +190,8 @@ function HistoryList() {
   }
   if (!data || data.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 p-8 text-center dark:border-slate-700">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+      <div className="rounded-xl border border-slate-200 p-8 text-center ">
+        <p className="text-sm text-slate-500 ">
           Henüz ödeme kaydı yok.
         </p>
       </div>
@@ -202,7 +202,7 @@ function HistoryList() {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500">
+          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 ">
             <th className="py-2 pr-4 font-medium">Tarih</th>
             <th className="py-2 pr-4 font-medium">Alıcı</th>
             <th className="py-2 pr-4 text-right font-medium">Tutar</th>
@@ -210,22 +210,22 @@ function HistoryList() {
             <th className="py-2 font-medium">IBAN (o anki)</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        <tbody className="divide-y divide-slate-100 ">
           {data.map((r) => (
             <tr key={r.id}>
-              <td className="py-3 pr-4 text-slate-600 dark:text-slate-300">
+              <td className="py-3 pr-4 text-slate-600 ">
                 {formatDate(r.paid_at)}
               </td>
-              <td className="py-3 pr-4 text-slate-600 dark:text-slate-300">
+              <td className="py-3 pr-4 text-slate-600 ">
                 {r.payee_type === "TUTOR" ? "Eğitmen" : "Kütüphane"} #{r.payee_id}
               </td>
-              <td className="py-3 pr-4 text-right font-medium text-slate-900 dark:text-white">
+              <td className="py-3 pr-4 text-right font-medium text-slate-900 ">
                 {formatTL(r.amount)}
               </td>
-              <td className="py-3 pr-4 text-slate-500 dark:text-slate-400">
+              <td className="py-3 pr-4 text-slate-500 ">
                 {r.reference ?? "—"}
               </td>
-              <td className="py-3 font-mono text-xs text-slate-400 dark:text-slate-500">
+              <td className="py-3 font-mono text-xs text-slate-400 ">
                 {r.iban_snapshot ?? "—"}
               </td>
             </tr>
@@ -333,15 +333,15 @@ function PayIcerik({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-500 dark:text-slate-400">
+      <p className="text-sm text-slate-500 ">
         Ödenmemiş bakiye: <strong>{formatTL(balance.balance)}</strong>
       </p>
       {balance.iban ? (
-        <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600 ">
           {balance.iban}
         </p>
       ) : (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 ">
           Bu alıcının IBAN&apos;ı kayıtlı değil; ödemeden önce kendisinden isteyin.
         </p>
       )}
@@ -349,7 +349,7 @@ function PayIcerik({
       {genelHata && (
         <p
           role="alert"
-          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 "
         >
           {genelHata}
         </p>

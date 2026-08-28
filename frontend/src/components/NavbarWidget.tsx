@@ -102,7 +102,7 @@ function WeatherGlyph({
 // Widget'ların ortak "pill" kabuğu — navbar'da logoyla aynı yüksekliği korur.
 function Pill({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100/80 px-3 py-1.5 text-slate-700 ring-1 ring-slate-200/70 transition group-hover:bg-slate-100 dark:bg-slate-800/80 dark:text-slate-100 dark:ring-slate-700">
+    <span className="inline-flex items-center gap-2 rounded-xl bg-slate-100/80 px-3 py-1.5 text-slate-700 ring-1 ring-slate-200/70 transition group-hover:bg-slate-100 ">
       {children}
     </span>
   );
@@ -112,7 +112,7 @@ function Stacked({ top, bottom }: { top: ReactNode; bottom: ReactNode }) {
   return (
     <span className="flex flex-col leading-none">
       <span className="text-sm font-bold">{top}</span>
-      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <span className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 ">
         {bottom}
       </span>
     </span>
@@ -152,8 +152,8 @@ function WeatherWidget() {
   if (isLoading) {
     return (
       <Pill>
-        <span className="h-5 w-5 animate-pulse rounded-full bg-slate-300 dark:bg-slate-600" />
-        <span className="h-7 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+        <span className="h-5 w-5 animate-pulse rounded-full bg-slate-300 " />
+        <span className="h-7 w-16 animate-pulse rounded bg-slate-200 " />
       </Pill>
     );
   }

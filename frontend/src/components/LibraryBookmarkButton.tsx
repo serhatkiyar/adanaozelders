@@ -67,8 +67,8 @@ export function LibraryBookmarkButton({
         aria-pressed={bookmarked}
         className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold shadow-sm transition active:scale-95 disabled:opacity-50 ${
           bookmarked
-            ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200 hover:bg-rose-100 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/30"
-            : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-600"
+            ? "bg-rose-50 text-rose-600 ring-1 ring-rose-200 hover:bg-rose-100 "
+            : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 "
         }`}
       >
         {icon}

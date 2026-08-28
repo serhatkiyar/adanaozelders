@@ -57,13 +57,13 @@ export function ReviewsSection({
     <section>
       {/* Özet başlık */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 ">
           <svg viewBox="0 0 20 20" className="h-6 w-6 text-amber-400" fill="currentColor" aria-hidden>
             <path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9 4.7 17.6l1-5.8L1.5 7.7l5.9-.9L10 1.5z" />
           </svg>
           {count > 0 && average != null ? average.toFixed(1) : "—"}
         </h2>
-        <span className="text-base text-slate-500 dark:text-slate-400">
+        <span className="text-base text-slate-500 ">
           {count > 0
             ? `· ${count} değerlendirme`
             : "· Henüz değerlendirme yok"}
@@ -75,18 +75,18 @@ export function ReviewsSection({
         <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,18rem)_1fr] md:gap-12">
           {count > 0 && (
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <p className="mb-2 text-sm font-semibold text-slate-700 ">
                 Genel puan
               </p>
               <ul className="space-y-1.5">
                 {rows.map((row) => (
                   <li key={row.star} className="flex items-center gap-3">
-                    <span className="w-3 shrink-0 text-right text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                    <span className="w-3 shrink-0 text-right text-xs tabular-nums text-slate-500 ">
                       {row.star}
                     </span>
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 ">
                       <div
-                        className="h-full rounded-full bg-slate-800 dark:bg-slate-200"
+                        className="h-full rounded-full bg-slate-800 "
                         style={{ width: `${row.pct}%` }}
                       />
                     </div>
@@ -113,7 +113,7 @@ export function ReviewsSection({
         <button
           type="button"
           onClick={onShowAll}
-          className="mt-10 rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 dark:border-slate-600 dark:text-white dark:hover:bg-slate-800"
+          className="mt-10 rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 "
         >
           {count} değerlendirmenin tümünü göster
         </button>
@@ -143,10 +143,10 @@ function ReviewCard({
       <div className="flex items-center gap-3">
         <Avatar name={review.name} avatar_url={review.avatarUrl} size="md" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+          <p className="truncate text-sm font-semibold text-slate-900 ">
             {review.name}
           </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-slate-400 ">
             {formatDate(review.createdAt)}
           </p>
         </div>
@@ -155,7 +155,7 @@ function ReviewCard({
       <div className="mt-2 flex items-center gap-2">
         <StarRating value={review.rating} />
         {review.verified && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 ">
             <svg viewBox="0 0 20 20" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
               <path
                 fillRule="evenodd"
@@ -171,7 +171,7 @@ function ReviewCard({
       {text && (
         <>
           <p
-            className={`mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300 ${
+            className={`mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600 ${
               expanded ? "" : "line-clamp-4"
             }`}
           >
@@ -181,7 +181,7 @@ function ReviewCard({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="mt-1 text-sm font-semibold text-slate-900 underline underline-offset-2 dark:text-white"
+              className="mt-1 text-sm font-semibold text-slate-900 underline underline-offset-2 "
             >
               {expanded ? "Daha az göster" : "Daha fazlasını göster"}
             </button>
@@ -190,11 +190,11 @@ function ReviewCard({
       )}
 
       {review.reply && (
-        <div className="mt-3 rounded-xl border-l-2 border-slate-300 bg-slate-50 px-4 py-3 dark:border-slate-600 dark:bg-slate-800/60">
-          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+        <div className="mt-3 rounded-xl border-l-2 border-slate-300 bg-slate-50 px-4 py-3 ">
+          <p className="text-xs font-semibold text-slate-700 ">
             Eğitmen yanıtı
           </p>
-          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
             {review.reply}
           </p>
         </div>

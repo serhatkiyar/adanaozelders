@@ -72,7 +72,7 @@ export function StockMovementTable({
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="h-10 animate-pulse rounded bg-slate-100 dark:bg-slate-800"
+            className="h-10 animate-pulse rounded bg-slate-100 "
           />
         ))}
       </div>
@@ -86,7 +86,7 @@ export function StockMovementTable({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[52rem] text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 ">
             <th className="py-2 pr-4 font-medium">Tarih</th>
             {showProduct && <th className="py-2 pr-4 font-medium">Ürün</th>}
             <th className="py-2 pr-4 font-medium">Hareket</th>
@@ -101,50 +101,50 @@ export function StockMovementTable({
           {rows.map((m) => (
             <tr
               key={m.id}
-              className="border-b border-slate-100 align-top last:border-0 dark:border-slate-800"
+              className="border-b border-slate-100 align-top last:border-0 "
             >
-              <td className="whitespace-nowrap py-2 pr-4 text-slate-600 dark:text-slate-300">
+              <td className="whitespace-nowrap py-2 pr-4 text-slate-600 ">
                 {new Date(m.created_at).toLocaleString("tr-TR")}
               </td>
               {showProduct && (
                 <td className="py-2 pr-4">
-                  <div className="font-medium text-slate-800 dark:text-slate-100">
+                  <div className="font-medium text-slate-800 ">
                     {m.product_title}
                   </div>
-                  <div className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                  <div className="font-mono text-xs text-slate-500 ">
                     {m.sku}
                   </div>
                 </td>
               )}
-              <td className="py-2 pr-4 text-slate-700 dark:text-slate-200">
+              <td className="py-2 pr-4 text-slate-700 ">
                 {movementTypeLabel(m.movement_type as StockMovementType)}
               </td>
               <td
                 className={`whitespace-nowrap py-2 pr-4 text-right tabular-nums font-medium ${
                   m.qty_delta > 0
-                    ? "text-emerald-700 dark:text-emerald-400"
+                    ? "text-emerald-700 "
                     : m.qty_delta < 0
-                      ? "text-rose-700 dark:text-rose-400"
-                      : "text-slate-500 dark:text-slate-400"
+                      ? "text-rose-700 "
+                      : "text-slate-500 "
                 }`}
               >
                 {formatDelta(m.qty_delta)}
               </td>
-              <td className="py-2 pr-4 text-right tabular-nums text-slate-700 dark:text-slate-200">
+              <td className="py-2 pr-4 text-right tabular-nums text-slate-700 ">
                 {m.qty_after}
               </td>
-              <td className="py-2 pr-4 text-slate-600 dark:text-slate-300">
+              <td className="py-2 pr-4 text-slate-600 ">
                 {reasonLabel(m.reason_code)}
                 {m.note && (
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-xs text-slate-500 ">
                     {m.note}
                   </div>
                 )}
               </td>
-              <td className="whitespace-nowrap py-2 pr-4 text-slate-600 dark:text-slate-300">
+              <td className="whitespace-nowrap py-2 pr-4 text-slate-600 ">
                 {referans(m)}
               </td>
-              <td className="whitespace-nowrap py-2 text-slate-600 dark:text-slate-300">
+              <td className="whitespace-nowrap py-2 text-slate-600 ">
                 <Badge tone={m.actor_type === "ADMIN" ? "info" : "neutral"}>
                   {aktor(m)}
                 </Badge>

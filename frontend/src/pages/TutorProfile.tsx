@@ -69,7 +69,7 @@ function OwnerReplyAction({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="mt-3 text-sm font-medium text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
+        className="mt-3 text-sm font-medium text-indigo-600 transition hover:text-indigo-700 "
       >
         Yanıtla
       </button>
@@ -85,7 +85,7 @@ function OwnerReplyAction({
         onChange={(e) => setText(e.target.value)}
         autoFocus
         placeholder="Değerlendirmeye yanıtını yaz…"
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
       />
       <div className="flex justify-end gap-2">
         <button
@@ -94,7 +94,7 @@ function OwnerReplyAction({
             setEditing(false);
             setText("");
           }}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+          className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 "
         >
           Vazgeç
         </button>
@@ -164,7 +164,7 @@ export default function TutorProfile() {
           >
             ← Geri dön
           </button>
-          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
+          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
             <p className="text-sm text-slate-500">Eğitmen bulunamadı.</p>
           </div>
         </div>
@@ -208,7 +208,7 @@ export default function TutorProfile() {
       <div className="mx-auto max-w-[76rem] pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
         >
           ← Geri dön
         </button>
@@ -216,7 +216,7 @@ export default function TutorProfile() {
         <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
-            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
               <div className="mb-4 flex items-center justify-end gap-2">
                 {!isOwnerTutor && hasActiveBooking && (
@@ -227,7 +227,7 @@ export default function TutorProfile() {
                     onClick={() =>
                       navigate(ROUTES.messageWith(tutor.id, tutor.full_name))
                     }
-                    className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
+                    className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 "
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
@@ -248,7 +248,7 @@ export default function TutorProfile() {
                   shape="square"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                  <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="text-xl font-bold text-slate-900 ">
                     {tutor.full_name}
                   </h1>
                 </div>
@@ -256,10 +256,10 @@ export default function TutorProfile() {
                 <button
                   type="button"
                   onClick={() => setShowReviews(true)}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 ">
                     {tutor.rating_count > 0
                       ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
                       : "Değerlendirme yok"}
@@ -267,7 +267,7 @@ export default function TutorProfile() {
                 </button>
 
                 {modeLabel && (
-                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ">
                     {modeLabel}
                   </span>
                 )}
@@ -277,15 +277,15 @@ export default function TutorProfile() {
               <TutorTrustBar tutor={tutor} vertical />
 
               {/* Ücret + CTA */}
-              <div className="mt-5 border-t border-slate-100 pt-5 text-center dark:border-slate-700/60">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              <div className="mt-5 border-t border-slate-100 pt-5 text-center ">
+                <p className="text-xs font-medium text-slate-500 ">
                   Saatlik ücret
                 </p>
-                <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                <p className="text-2xl font-bold tracking-tight text-slate-900 ">
                   {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
                 </p>
                 {tutor.first_lesson_free !== false && (
-                  <p className="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  <p className="mt-1 text-sm font-semibold text-emerald-600 ">
                     {canRequestFreeLesson ? "İlk dersin ücretsiz" : "İlk ders ücretsiz"}
                   </p>
                 )}
@@ -306,7 +306,7 @@ export default function TutorProfile() {
                 <button
                   type="button"
                   onClick={() => setShowReport(true)}
-                  className="text-xs font-medium text-slate-400 transition hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400"
+                  className="text-xs font-medium text-slate-400 transition hover:text-rose-600 "
                 >
                   ⚐ Şikayet et
                 </button>
@@ -331,7 +331,7 @@ export default function TutorProfile() {
                   {tutor.subjects.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 "
                     >
                       {s}
                     </span>
@@ -342,18 +342,18 @@ export default function TutorProfile() {
 
             {/* Headline / İlan Başlığı */}
             {(tutor.headline || isOwnerTutor) && (
-              <h2 className="text-3xl font-extrabold leading-tight text-slate-900 dark:text-white">
+              <h2 className="text-3xl font-extrabold leading-tight text-slate-900 ">
                 {tutor.headline || "Eğitmen"}
               </h2>
             )}
 
             {/* Bio */}
             {tutor.bio && (
-              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
-                <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
                 </h2>
-                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.bio}
                 </p>
               </section>
@@ -361,11 +361,11 @@ export default function TutorProfile() {
 
             {/* Ders Hakkında — metodoloji */}
             {tutor.lesson_info && (
-              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
-                <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   Ders Hakkında
                 </h2>
-                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.lesson_info}
                 </p>
               </section>
@@ -373,8 +373,8 @@ export default function TutorProfile() {
 
             {/* Tanıtım videosu — değerlendirmelerin hemen üstünde, küçük */}
             {embedUrl && (
-              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
-                <h2 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-3 text-xl font-bold text-slate-900 ">
                   Tanıtım videosu
                 </h2>
                 <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
@@ -390,7 +390,7 @@ export default function TutorProfile() {
             )}
 
             {/* Değerlendirmeler (Airbnb-tarzı: özet + dağılım + yorum ızgarası) */}
-            <hr className="my-8 border-slate-200 dark:border-slate-700/60" />
+            <hr className="my-8 border-slate-200 " />
             <section>
               <ReviewsSection
                 average={tutor.rating_average}

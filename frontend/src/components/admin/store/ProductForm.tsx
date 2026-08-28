@@ -627,10 +627,10 @@ export function ProductForm({
                     checked={field.value}
                     onBlur={field.onBlur}
                     onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus dark:border-slate-600 dark:bg-slate-900"
+                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus "
                   />
                 </Form.Control>
-                <Form.Label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                <Form.Label className="text-sm font-semibold text-slate-700 ">
                   Tedarikçiden temin et
                 </Form.Label>
               </div>
@@ -647,8 +647,8 @@ export function ProductForm({
       )}
 
       {stokDegisti && (
-        <div className="sm:col-span-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-          <p className="text-xs text-amber-900 dark:text-amber-200">
+        <div className="sm:col-span-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 ">
+          <p className="text-xs text-amber-900 ">
             Stok {initial?.stock ?? 0} → {Number(stokDegeri || 0)} olarak
             değişecek. Bu hareket deftere gerekçesiyle yazılır.
           </p>
@@ -723,7 +723,7 @@ export function ProductForm({
         </KatlanirBaslik>
         {showSpecs && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <p className="text-[11px] text-slate-400 sm:col-span-2 dark:text-slate-500">
+            <p className="text-[11px] text-slate-400 sm:col-span-2 ">
               Ebat dışındaki alanlar yalnız kitapta anlamlıdır; kırtasiye
               ürününde ebadı yazıp diğerlerini boş bırakabilirsiniz.
             </p>
@@ -766,11 +766,11 @@ export function ProductForm({
       </div>
 
       {/* Varyant üyeliği — kitap kategorisinde kapalı (backend 409'unun aynası) */}
-      <div className="sm:col-span-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+      <div className="sm:col-span-2 border-t border-slate-200 pt-4 ">
         {kitapKategorisi ? (
           varyantGrubuId != null ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <p className="text-xs text-amber-700 dark:text-amber-300">
+              <p className="text-xs text-amber-700 ">
                 Bu ürün bir varyant grubunda ama seçilen kategori kitap
                 kategorisi — kitapta varyant açılamaz. Kaydetmeden önce grubu
                 kaldırın ya da kategoriyi değiştirin.
@@ -790,7 +790,7 @@ export function ProductForm({
               </Button>
             </div>
           ) : (
-            <p className="text-xs text-slate-400 dark:text-slate-500">
+            <p className="text-xs text-slate-400 ">
               Kitap kategorisinde varyant açılamaz — farklı baskı/cilt ayrı
               ISBN'li ayrı bir üründür.
             </p>
@@ -824,7 +824,7 @@ export function ProductForm({
       {(genelHata || formGenelHatasi) && (
         <p
           role="alert"
-          className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+          className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 "
         >
           {formGenelHatasi ?? genelHata}
         </p>
@@ -975,7 +975,7 @@ function KatlanirBaslik({
       type="button"
       aria-expanded={acik}
       onClick={onDegis}
-      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent dark:text-slate-300"
+      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent "
     >
       <svg
         width="14"
@@ -1228,16 +1228,16 @@ function VariantMembershipFields({
 
       {groupDetail && groupDetail.members.length > 0 && (
         <div>
-          <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <p className="mb-1 text-xs font-medium text-slate-500 ">
             Gruptaki varyantlar
           </p>
-          <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-700/60">
+          <ul className="divide-y divide-slate-100 text-sm ">
             {groupDetail.members.map((m) => (
               <li
                 key={m.id}
                 className="flex items-center justify-between gap-3 py-1.5"
               >
-                <span className="min-w-0 truncate text-slate-700 dark:text-slate-300">
+                <span className="min-w-0 truncate text-slate-700 ">
                   {[m.option1_value, m.option2_value]
                     .filter(Boolean)
                     .join(" / ")}
@@ -1290,7 +1290,7 @@ function DeriveVariantForm({
   }
   return (
     <div className="space-y-2">
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-slate-500 ">
         Künye, fiyat ve görseller bu üründen kopyalanır; yeni varyant{" "}
         <b>taslak</b> olarak oluşur. Başlık önerisi:{" "}
         {value1

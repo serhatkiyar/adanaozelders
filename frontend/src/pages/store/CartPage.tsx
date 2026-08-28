@@ -63,16 +63,16 @@ export default function CartPage() {
     <StoreLayout title="Sepet" showCategoryBar={false}>
       <Seo title="Sepet — Mağaza" noindex />
       <div className="mx-auto max-w-[1464px] px-4 py-6 md:px-8">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+        <h1 className="text-2xl font-semibold text-slate-900 ">
           Sepetim{" "}
-          <span className="font-normal text-slate-400 dark:text-slate-500">
+          <span className="font-normal text-slate-400 ">
             ({items.length} Ürün)
           </span>
         </h1>
 
         {items.length === 0 ? (
-          <div className="mt-10 rounded-2xl border border-slate-200 py-16 text-center dark:border-slate-800">
-            <p className="text-slate-500 dark:text-slate-400">Sepetin boş.</p>
+          <div className="mt-10 rounded-2xl border border-slate-200 py-16 text-center ">
+            <p className="text-slate-500 ">Sepetin boş.</p>
             <Link
               to={ROUTES.store}
               className="mt-4 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
@@ -96,35 +96,35 @@ export default function CartPage() {
             </div>
 
             {/* Sağ: sepet özeti (sticky) */}
-            <aside className="h-fit rounded-2xl border border-slate-200 p-5 dark:border-slate-800 lg:sticky lg:top-24">
-              <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+            <aside className="h-fit rounded-2xl border border-slate-200 p-5 lg:sticky lg:top-24">
+              <h2 className="text-base font-semibold text-slate-900 ">
                 Sepet Özeti
               </h2>
 
               <div className="mt-4 space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-400">Ara toplam</span>
-                  <span className="font-medium text-slate-900 dark:text-white">
+                  <span className="text-slate-500 ">Ara toplam</span>
+                  <span className="font-medium text-slate-900 ">
                     {formatTL(subtotal)}
                   </span>
                 </div>
                 {hasPhysicalSelected && (
                   <div className="flex justify-between">
-                    <span className="text-slate-500 dark:text-slate-400">Kargo ücreti</span>
+                    <span className="text-slate-500 ">Kargo ücreti</span>
                     <span
                       className={
                         shipping === 0
-                          ? "font-medium text-emerald-600 dark:text-emerald-400"
-                          : "font-medium text-slate-900 dark:text-white"
+                          ? "font-medium text-emerald-600 "
+                          : "font-medium text-slate-900 "
                       }
                     >
                       {shipping === 0 ? "Ücretsiz" : formatTL(shipping)}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between border-t border-slate-200 pt-3 dark:border-slate-700">
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">Toplam</span>
-                  <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                <div className="flex justify-between border-t border-slate-200 pt-3 ">
+                  <span className="font-semibold text-slate-700 ">Toplam</span>
+                  <span className="text-lg font-semibold text-slate-900 ">
                     {formatTL(total)}
                   </span>
                 </div>
@@ -134,7 +134,7 @@ export default function CartPage() {
                 type="button"
                 onClick={goCheckout}
                 disabled={selectedCount === 0}
-                className="mt-5 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-700 dark:disabled:text-slate-500"
+                className="mt-5 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 "
               >
                 Sepeti Onayla
               </button>
@@ -143,17 +143,17 @@ export default function CartPage() {
               <button
                 type="button"
                 onClick={() => setPickupOpen(true)}
-                className="mt-3 flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-indigo-300 dark:border-slate-700 dark:hover:border-indigo-500/60"
+                className="mt-3 flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-indigo-300 "
               >
-                <svg className="shrink-0 text-indigo-600 dark:text-indigo-400" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="shrink-0 text-indigo-600 " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
                 <span className="flex-1">
-                  <span className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+                  <span className="block text-sm font-medium text-slate-800 ">
                     Gel Al Noktası Nedir?
                   </span>
-                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                  <span className="block text-xs text-slate-500 ">
                     Kütüphaneden ücretsiz teslim al
                   </span>
                 </span>
@@ -171,7 +171,7 @@ export default function CartPage() {
 
         {viewed.length > 0 && (
           <div className="mt-12">
-            <h2 className="mb-5 text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 className="mb-5 text-lg font-semibold text-slate-900 ">
               Son görüntülediklerin
             </h2>
             <div className="hide-scrollbar flex snap-x gap-4 overflow-x-auto pb-4">
@@ -207,7 +207,7 @@ function CartLine({
 
   return (
     <div
-      className={`relative flex gap-4 rounded-2xl border border-slate-200 p-4 transition-opacity dark:border-slate-800 ${
+      className={`relative flex gap-4 rounded-2xl border border-slate-200 p-4 transition-opacity ${
         sel ? "" : "opacity-60"
       }`}
     >
@@ -217,7 +217,7 @@ function CartLine({
           <Checkbox checked={sel} onChange={onToggle} />
           <Link
             to={ROUTES.storeProduct(item.slug)}
-            className="h-28 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800"
+            className="h-28 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100 "
           >
             {item.cover_url && (
               <img src={item.cover_url} alt="" className="h-full w-full object-cover" />
@@ -227,23 +227,23 @@ function CartLine({
         {/* Adet — görselin altında (checkbox+gap kadar sağa kaydırılmış) */}
         <div className="pl-8">
           {isPhysical ? (
-            <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="inline-flex items-center rounded-lg border border-slate-200 ">
               <button
                 type="button"
                 aria-label="Azalt"
                 onClick={() => onQuantity(item.quantity - 1)}
-                className="px-2.5 py-1 text-slate-500 transition-colors hover:text-slate-900 dark:hover:text-white"
+                className="px-2.5 py-1 text-slate-500 transition-colors hover:text-slate-900 "
               >
                 −
               </button>
-              <span className="min-w-7 text-center text-sm text-slate-900 dark:text-white">
+              <span className="min-w-7 text-center text-sm text-slate-900 ">
                 {item.quantity}
               </span>
               <button
                 type="button"
                 aria-label="Artır"
                 onClick={() => onQuantity(item.quantity + 1)}
-                className="px-2.5 py-1 text-slate-500 transition-colors hover:text-slate-900 dark:hover:text-white"
+                className="px-2.5 py-1 text-slate-500 transition-colors hover:text-slate-900 "
               >
                 +
               </button>
@@ -258,11 +258,11 @@ function CartLine({
       <div className="flex flex-1 flex-col pr-16">
         <Link
           to={ROUTES.storeProduct(item.slug)}
-          className="text-sm font-medium leading-snug text-slate-800 transition-colors hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
+          className="text-sm font-medium leading-snug text-slate-800 transition-colors hover:text-indigo-600 "
         >
           {item.title}
         </Link>
-        <span className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <span className="mt-1.5 text-xs text-slate-500 ">
           {item.kind === "PHYSICAL" ? (
             <DeliveryPromiseBadge variant="inline" />
           ) : (
@@ -285,7 +285,7 @@ function CartLine({
       </button>
 
       {/* Sağ alt: satır fiyatı */}
-      <div className="absolute bottom-4 right-4 text-base font-semibold text-slate-900 dark:text-white">
+      <div className="absolute bottom-4 right-4 text-base font-semibold text-slate-900 ">
         {formatTL(Number(item.price) * item.quantity)}
       </div>
     </div>
@@ -303,8 +303,8 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
       onClick={onChange}
       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
         checked
-          ? "border-indigo-600 bg-indigo-600 text-white dark:border-indigo-500 dark:bg-indigo-500"
-          : "border-slate-300 bg-white hover:border-indigo-400 dark:border-slate-600 dark:bg-slate-800"
+          ? "border-indigo-600 bg-indigo-600 text-white "
+          : "border-slate-300 bg-white hover:border-indigo-400 "
       }`}
     >
       {checked && (
@@ -330,18 +330,18 @@ function PickupModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900"
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl "
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+          <h3 className="text-lg font-semibold text-slate-900 ">
             Gel Al Noktası
           </h3>
           <button
             type="button"
             aria-label="Kapat"
             onClick={onClose}
-            className="text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+            className="text-slate-400 transition-colors hover:text-slate-700 "
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -349,18 +349,18 @@ function PickupModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+        <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 ">
           <p>
             Gel al noktası, siparişini kargoyla beklemek yerine sana yakın bir
-            <span className="font-medium text-slate-900 dark:text-white"> kütüphane / etüt merkezinden</span>{" "}
+            <span className="font-medium text-slate-900 "> kütüphane / etüt merkezinden</span>{" "}
             teslim alabildiğin noktadır.
           </p>
           <p>
             Anlaşmalı noktadan teslim almak{" "}
-            <span className="font-medium text-emerald-600 dark:text-emerald-400">kargo ücreti ödemeden</span>{" "}
+            <span className="font-medium text-emerald-600 ">kargo ücreti ödemeden</span>{" "}
             ürününe ulaşmanı sağlar; siparişin hazır olduğunda haber verilir.
           </p>
-          <p className="rounded-lg bg-slate-50 px-3 py-2 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400">
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-slate-500 ">
             Gel al noktası seçimi <span className="font-medium">ödeme adımında</span> yapılır.
             İstersen klasik kargo teslimatıyla da devam edebilirsin.
           </p>
@@ -369,7 +369,7 @@ function PickupModal({ onClose }: { onClose: () => void }) {
         <div className="mt-5 flex items-center justify-between">
           <Link
             to={ROUTES.libraries}
-            className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            className="text-sm font-medium text-indigo-600 hover:underline "
           >
             Noktaları gör →
           </Link>

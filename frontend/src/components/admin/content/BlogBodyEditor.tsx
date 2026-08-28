@@ -15,8 +15,8 @@ import { Button } from "@/components/admin/ui";
  */
 
 const BUTON =
-  "inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-[13px] font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white";
-const BUTON_AKTIF = "bg-slate-900 text-white hover:bg-slate-900 hover:text-white dark:bg-white dark:text-slate-950 dark:hover:bg-white dark:hover:text-slate-950";
+  "inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-[13px] font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 ";
+const BUTON_AKTIF = "bg-slate-900 text-white hover:bg-slate-900 hover:text-white ";
 
 function ToolbarButton({
   editor,
@@ -73,7 +73,7 @@ function LinkAlani({ editor, onKapat }: { editor: Editor; onKapat: () => void })
         onChange={(e) => setUrl(e.target.value)}
         placeholder="https://…"
         aria-label="Bağlantı adresi"
-        className="h-8 w-56 rounded-lg border border-slate-300 bg-white px-2 text-[13px] text-slate-900 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+        className="h-8 w-56 rounded-lg border border-slate-300 bg-white px-2 text-[13px] text-slate-900 outline-none focus:border-slate-500 "
       />
       <Button type="submit" size="sm" variant="secondary">
         Uygula
@@ -115,14 +115,14 @@ export function BlogBodyEditor({
     editorProps: {
       attributes: {
         class:
-          "min-h-72 px-4 py-3 text-[15px] leading-relaxed text-slate-800 outline-none dark:text-slate-200 " +
+          "min-h-72 px-4 py-3 text-[15px] leading-relaxed text-slate-800 outline-none " +
           "[&_p]:mt-3 [&_p:first-child]:mt-0 " +
           "[&_h2]:mt-6 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mt-5 [&_h3]:font-semibold [&_h4]:mt-4 [&_h4]:font-semibold " +
           "[&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-6 " +
-          "[&_blockquote]:mt-4 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic dark:[&_blockquote]:border-slate-600 " +
+          "[&_blockquote]:mt-4 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:italic " +
           "[&_pre]:mt-4 [&_pre]:rounded-lg [&_pre]:bg-slate-900 [&_pre]:p-3 [&_pre]:text-slate-100 " +
-          "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 dark:[&_code]:bg-slate-800 [&_pre_code]:bg-transparent " +
-          "[&_a]:text-blue-700 [&_a]:underline dark:[&_a]:text-blue-400 [&_hr]:my-6",
+          "[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_pre_code]:bg-transparent " +
+          "[&_a]:text-blue-700 [&_a]:underline [&_hr]:my-6",
       },
     },
   });
@@ -140,31 +140,31 @@ export function BlogBodyEditor({
 
   const linkToggle = useCallback(() => setLinkAcik((v) => !v), []);
 
-  if (!editor) return <div className="h-80 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />;
+  if (!editor) return <div className="h-80 animate-pulse rounded-xl bg-slate-100 " />;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white ">
       <div
         role="toolbar"
         aria-label="Metin biçimlendirme"
-        className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-2 py-1.5 dark:border-slate-700"
+        className="flex flex-wrap items-center gap-1 border-b border-slate-200 px-2 py-1.5 "
       >
         <ToolbarButton editor={editor} title="Geri al" label="↺" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()} />
         <ToolbarButton editor={editor} title="Yinele" label="↻" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()} />
-        <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" aria-hidden />
+        <span className="mx-1 h-5 w-px bg-slate-200 " aria-hidden />
         <ToolbarButton editor={editor} title="Başlık 2" label="H2" aktif={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} />
         <ToolbarButton editor={editor} title="Başlık 3" label="H3" aktif={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} />
-        <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" aria-hidden />
+        <span className="mx-1 h-5 w-px bg-slate-200 " aria-hidden />
         <ToolbarButton editor={editor} title="Kalın" label={<strong>K</strong>} aktif={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} />
         <ToolbarButton editor={editor} title="İtalik" label={<em>İ</em>} aktif={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} />
         <ToolbarButton editor={editor} title="Üstü çizili" label={<s>S</s>} aktif={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} />
-        <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" aria-hidden />
+        <span className="mx-1 h-5 w-px bg-slate-200 " aria-hidden />
         <ToolbarButton editor={editor} title="Madde listesi" label="•—" aktif={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} />
         <ToolbarButton editor={editor} title="Numaralı liste" label="1—" aktif={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
         <ToolbarButton editor={editor} title="Alıntı" label="❝" aktif={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()} />
         <ToolbarButton editor={editor} title="Kod bloğu" label="</>" aktif={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()} />
         <ToolbarButton editor={editor} title="Yatay çizgi" label="—" onClick={() => editor.chain().focus().setHorizontalRule().run()} />
-        <span className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" aria-hidden />
+        <span className="mx-1 h-5 w-px bg-slate-200 " aria-hidden />
         {linkAcik ? (
           <LinkAlani editor={editor} onKapat={() => setLinkAcik(false)} />
         ) : (

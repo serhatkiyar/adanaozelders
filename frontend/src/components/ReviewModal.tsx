@@ -59,9 +59,9 @@ export function ReviewModal({
       onClose={onClose}
       ariaLabel="Değerlendir"
       hideCloseButton
-      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 "
     >
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Değerlendir</h3>
+        <h3 className="text-lg font-bold text-slate-900 ">Değerlendir</h3>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div className="flex items-center gap-1">
@@ -79,7 +79,7 @@ export function ReviewModal({
                 >
                   <svg
                     viewBox="0 0 20 20"
-                    className={`h-8 w-8 transition ${active ? "text-amber-400" : "text-slate-300 dark:text-slate-600"}`}
+                    className={`h-8 w-8 transition ${active ? "text-amber-400" : "text-slate-300 "}`}
                     fill="currentColor"
                   >
                     <path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9 4.7 17.6l1-5.8L1.5 7.7l5.9-.9L10 1.5z" />
@@ -96,7 +96,7 @@ export function ReviewModal({
                   rows={4}
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
                   placeholder="Deneyimini paylaş..."
                 />
             )}
@@ -106,7 +106,7 @@ export function ReviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 "
             >
               Vazgeç
             </button>

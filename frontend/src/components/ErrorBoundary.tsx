@@ -42,12 +42,12 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.props.fallback) return this.props.fallback;
 
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center dark:bg-slate-900">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center ">
         <div className="text-5xl">😕</div>
-        <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+        <h1 className="text-xl font-semibold text-slate-800 ">
           Bir şeyler ters gitti
         </h1>
-        <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
+        <p className="max-w-md text-sm text-slate-500 ">
           Beklenmeyen bir hata oluştu. Sayfayı yenilemeyi deneyebilir veya ana
           sayfaya dönebilirsin.
         </p>
@@ -76,10 +76,10 @@ function RouteErrorFallback() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6 text-center">
       <div className="text-4xl">😕</div>
-      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+      <h2 className="text-lg font-semibold text-slate-800 ">
         Bu sayfa yüklenemedi
       </h2>
-      <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
+      <p className="max-w-md text-sm text-slate-500 ">
         Beklenmeyen bir hata oluştu. Başka bir sayfaya geçebilir ya da tekrar
         deneyebilirsin.
       </p>

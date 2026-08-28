@@ -19,7 +19,7 @@ export default function SharedCollectionPage() {
       <StoreLayout title="Liste" showCategoryBar={false}>
         <Seo title="Liste — Mağaza" noindex />
         <div className="mx-auto max-w-md py-24 text-center">
-          <p className="text-slate-600 dark:text-slate-300">Liste bulunamadı.</p>
+          <p className="text-slate-600 ">Liste bulunamadı.</p>
           <Link to={ROUTES.store} className="mt-4 inline-block text-sm font-medium underline">
             Mağazaya dön
           </Link>
@@ -32,10 +32,10 @@ export default function SharedCollectionPage() {
     <StoreLayout title={data.name} showCategoryBar={false}>
       <Seo title={`${data.name} — Liste`} noindex />
       <div className="mx-auto max-w-[76rem] px-4 py-8 md:px-8">
-        <p className="text-sm text-slate-400 dark:text-slate-500">Paylaşılan liste</p>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900 dark:text-white">
+        <p className="text-sm text-slate-400 ">Paylaşılan liste</p>
+        <h1 className="mt-1 text-2xl font-semibold text-slate-900 ">
           {data.name}
-          <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">
+          <span className="ml-2 text-base font-normal text-slate-400 ">
             ({data.items.length})
           </span>
         </h1>
@@ -47,8 +47,8 @@ export default function SharedCollectionPage() {
             ))}
           </div>
         ) : (
-          <div className="mt-8 rounded-2xl border border-slate-200 py-20 text-center dark:border-slate-800">
-            <p className="text-slate-500 dark:text-slate-400">Bu listede henüz ürün yok.</p>
+          <div className="mt-8 rounded-2xl border border-slate-200 py-20 text-center ">
+            <p className="text-slate-500 ">Bu listede henüz ürün yok.</p>
           </div>
         )}
       </div>

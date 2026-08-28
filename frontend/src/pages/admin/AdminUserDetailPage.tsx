@@ -38,37 +38,37 @@ export default function AdminUserDetailPage() {
         <span aria-hidden="true">←</span> Kullanıcılara dön
       </Link>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <Avatar name={user.full_name} size="lg" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="truncate text-xl font-bold text-slate-950 dark:text-white">{user.full_name}</h2>
+                <h2 className="truncate text-xl font-bold text-slate-950 ">{user.full_name}</h2>
                 <Badge tone={user.is_active ? "success" : "neutral"}>{user.is_active ? "Aktif" : "Pasif"}</Badge>
               </div>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">@{user.username}</p>
-              <p className="mt-1 break-all text-sm text-slate-600 dark:text-slate-300">{user.email}</p>
+              <p className="mt-1 text-sm text-slate-500 ">@{user.username}</p>
+              <p className="mt-1 break-all text-sm text-slate-600 ">{user.email}</p>
             </div>
           </div>
           <Badge tone="info">{user.role === "ADMIN" ? "Yönetici" : user.role === "TUTOR" ? "Eğitmen" : "Öğrenci"}</Badge>
         </div>
 
-        <dl className="mt-6 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800">
-          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">E-posta</dt><dd className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-200">{user.email_verified ? "Doğrulandı" : "Doğrulanmadı"}</dd></div>
-          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kayıt</dt><dd className="mt-1 text-sm text-slate-700 dark:text-slate-300">{formatDateTime(user.created_at)}</dd></div>
-          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Son güncelleme</dt><dd className="mt-1 text-sm text-slate-700 dark:text-slate-300">{formatDateTime(user.updated_at)}</dd></div>
-          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Son görülme</dt><dd className="mt-1 text-sm text-slate-700 dark:text-slate-300">{user.last_seen_at ? formatDateTime(user.last_seen_at) : "Henüz yok"}</dd></div>
-          {user.tutor_status && <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">İlan durumu</dt><dd className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-200">{user.tutor_status}</dd></div>}
+        <dl className="mt-6 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4 ">
+          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">E-posta</dt><dd className="mt-1 text-sm font-semibold text-slate-800 ">{user.email_verified ? "Doğrulandı" : "Doğrulanmadı"}</dd></div>
+          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kayıt</dt><dd className="mt-1 text-sm text-slate-700 ">{formatDateTime(user.created_at)}</dd></div>
+          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Son güncelleme</dt><dd className="mt-1 text-sm text-slate-700 ">{formatDateTime(user.updated_at)}</dd></div>
+          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Son görülme</dt><dd className="mt-1 text-sm text-slate-700 ">{user.last_seen_at ? formatDateTime(user.last_seen_at) : "Henüz yok"}</dd></div>
+          {user.tutor_status && <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">İlan durumu</dt><dd className="mt-1 text-sm font-semibold text-slate-800 ">{user.tutor_status}</dd></div>}
         </dl>
       </section>
 
       {summary.length > 0 && (
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {summary.map(([label, value]) => (
-            <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-              <p className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">{value}</p>
+              <p className="mt-2 text-3xl font-bold text-slate-950 ">{value}</p>
             </div>
           ))}
         </section>

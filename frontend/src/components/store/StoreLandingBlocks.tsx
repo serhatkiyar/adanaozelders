@@ -92,7 +92,7 @@ export function StoreLandingBlocks({
     <LandingEventTrackingContext.Provider value={trackEvents}>
       <div className={embedded ? "" : "pb-14"}>
       {page.state === "ENDED" && (
-        <div className="border-y border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+        <div className="border-y border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-950 ">
           Bu kampanya sona erdi. Sayfadaki güncel ürünleri ve kategorileri
           incelemeye devam edebilirsiniz.
         </div>
@@ -241,7 +241,7 @@ function Hero({
         ))}
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-slate-50 dark:to-slate-950 ${isHome ? "h-[48%] via-slate-50/45 dark:via-slate-950/50" : "h-2/5"}`}
+          className={`pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-b from-transparent to-slate-50 ${isHome ? "h-[48%] via-slate-50/45 " : "h-2/5"}`}
         />
         {slides.length > 1 && (
           <>
@@ -257,7 +257,7 @@ function Hero({
               side="right"
               onClick={next}
             />
-            <div className={`absolute left-1/2 z-20 flex -translate-x-1/2 gap-2 rounded-full bg-white/80 px-3 py-2 backdrop-blur dark:bg-slate-950/75 ${isHome ? "top-4" : "bottom-8"}`}>
+            <div className={`absolute left-1/2 z-20 flex -translate-x-1/2 gap-2 rounded-full bg-white/80 px-3 py-2 backdrop-blur ${isHome ? "top-4" : "bottom-8"}`}>
               {slides.map((_, index) => (
                 <PlainButton
                   key={index}
@@ -265,7 +265,7 @@ function Hero({
                   aria-label={`${index + 1}. görsel`}
                   aria-current={index === active}
                   onClick={() => setActive(index)}
-                  className={`h-2 rounded-full transition-all ${index === active ? "w-7 bg-slate-950 dark:bg-white" : "w-2 bg-slate-400"}`}
+                  className={`h-2 rounded-full transition-all ${index === active ? "w-7 bg-slate-950 " : "w-2 bg-slate-400"}`}
                 />
               ))}
             </div>
@@ -290,7 +290,7 @@ function CarouselButton({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className={`absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:bg-slate-950/85 ${side === "left" ? "left-4" : "right-4"}`}
+      className={`absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-2xl shadow-lg transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${side === "left" ? "left-4" : "right-4"}`}
     >
       {side === "left" ? "‹" : "›"}
     </PlainButton>
@@ -308,11 +308,11 @@ function Heading({
   return (
     <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end sm:gap-5">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-slate-950 md:text-2xl dark:text-white">
+        <h2 className="text-xl font-semibold tracking-tight text-slate-950 md:text-2xl ">
           {block.title}
         </h2>
         {block.description && (
-          <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 max-w-2xl text-sm text-slate-500 ">
             {block.description}
           </p>
         )}
@@ -322,7 +322,7 @@ function Heading({
           to={block.link_url}
           revisionId={revisionId}
           block={block}
-          className="shrink-0 text-sm font-semibold text-indigo-600 dark:text-indigo-400"
+          className="shrink-0 text-sm font-semibold text-indigo-600 "
         >
           {block.link_label || "Keşfet"} →
         </TrackedLink>
@@ -388,9 +388,9 @@ function ImageGrid({
             to={card.link_url}
             revisionId={revisionId}
             block={block}
-            className="group min-w-0 border-t border-slate-200 pt-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800"
+            className="group min-w-0 border-t border-slate-200 pt-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
           >
-            <div className="aspect-square overflow-hidden bg-slate-50 dark:bg-slate-900/40">
+            <div className="aspect-square overflow-hidden bg-slate-50 ">
               <img
                 src={card.image_url}
                 alt={card.decorative ? "" : (card.alt_text ?? "")}
@@ -402,7 +402,7 @@ function ImageGrid({
               />
             </div>
             {card.label && (
-              <p className="mt-2 text-sm font-medium text-slate-800 group-hover:text-indigo-600 dark:text-slate-200 dark:group-hover:text-indigo-400">
+              <p className="mt-2 text-sm font-medium text-slate-800 group-hover:text-indigo-600 ">
                 {card.label}
               </p>
             )}
@@ -456,7 +456,7 @@ function CompactImageRow({
             to={ilkHedef}
             revisionId={revisionId}
             block={ilk}
-            className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+            className="text-sm font-semibold text-indigo-600 hover:underline "
           >
             {ortakEtiket} <span aria-hidden="true">→</span>
           </TrackedLink>
@@ -477,7 +477,7 @@ function CompactImageRow({
                  kendisi zaten bir sınır çiziyor. */
               className="group flex w-[82vw] max-w-[340px] shrink-0 snap-start flex-col rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 md:w-auto md:max-w-none"
             >
-              <div className="aspect-square overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900">
+              <div className="aspect-square overflow-hidden rounded-xl bg-slate-100 ">
                 <img
                   src={card.image_url}
                   alt={card.decorative ? "" : (card.alt_text ?? "")}
@@ -491,16 +491,16 @@ function CompactImageRow({
               </div>
               {/* Başlık görselin ALTINDA: ürün ızgaralarındaki ritmin aynısı,
                   okuma sırası görsel → ad. */}
-              <h2 className="mt-3 text-base font-semibold text-slate-900 group-hover:text-indigo-700 md:text-[17px] dark:text-white dark:group-hover:text-indigo-300">
+              <h2 className="mt-3 text-base font-semibold text-slate-900 group-hover:text-indigo-700 md:text-[17px] ">
                 {block.title || card.label || "Keşfet"}
               </h2>
               {block.description && (
-                <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 line-clamp-2 text-sm text-slate-500 ">
                   {block.description}
                 </p>
               )}
               {!ortakEtiket && block.link_label && (
-                <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 ">
                   {block.link_label} <span aria-hidden="true">→</span>
                 </span>
               )}
@@ -530,10 +530,10 @@ function CategoryGrid({
             to={`${ROUTES.store}?category=${category.id}`}
             revisionId={revisionId}
             block={block}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-indigo-300 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-indigo-700 dark:hover:text-indigo-400"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-indigo-300 hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
           >
             {category.name}
-            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+            <span className="text-xs font-normal text-slate-500 ">
               {category.product_count ?? 0} ürün
             </span>
           </TrackedLink>
@@ -583,7 +583,7 @@ function RichText({
   return (
     <section className={`${CONTAINER} max-w-4xl`}>
       <Heading block={block} revisionId={revisionId} />
-      <div className="whitespace-pre-wrap text-base leading-7 text-slate-700 dark:text-slate-300">
+      <div className="whitespace-pre-wrap text-base leading-7 text-slate-700 ">
         {content}
       </div>
     </section>

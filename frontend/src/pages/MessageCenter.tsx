@@ -31,8 +31,8 @@ export default function MessageCenter() {
   const rowClass = (active: boolean) =>
     `flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
       active
-        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800 dark:text-white"
-        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
+        ? "bg-slate-100 font-semibold text-slate-900 "
+        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 "
     }`;
 
   const badge = (n: number) =>
@@ -45,11 +45,11 @@ export default function MessageCenter() {
   return (
     <DashboardShell title="Mesaj Merkezi" navItems={navItems}>
       <div className="mx-auto max-w-screen-2xl">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Mesaj Merkezi</h1>
+        <h1 className="text-2xl font-bold text-slate-900 ">Mesaj Merkezi</h1>
 
         <div className="mt-6 grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]">
           {/* Sol: bölüm seçici */}
-          <aside className="md:border-r md:border-slate-100 md:pr-6 dark:md:border-slate-800">
+          <aside className="md:border-r md:border-slate-100 md:pr-6 ">
             <nav className="flex flex-col gap-0.5">
               <button
                 type="button"
@@ -73,7 +73,7 @@ export default function MessageCenter() {
           {/* Sağ: seçili bölümün içeriği */}
           <section className="min-w-0">
             {pane === "messages" ? (
-              <div className="h-[calc(100vh-16rem)] min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div className="h-[calc(100vh-16rem)] min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 ">
                 <Messages embedded />
               </div>
             ) : (

@@ -72,10 +72,10 @@ const SMART_VIEWS: { view: SmartView; label: string; icon: string }[] = [
 
 // P1 (acil) … P4 (varsayılan) — Todoist renk paleti.
 const PRIO: Record<TaskPriority, { label: string; flag: string; chip: string }> = {
-  1: { label: "P1", flag: "text-red-500", chip: "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300" },
-  2: { label: "P2", flag: "text-orange-500", chip: "bg-orange-50 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300" },
-  3: { label: "P3", flag: "text-blue-500", chip: "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300" },
-  4: { label: "P4", flag: "text-slate-300 dark:text-slate-600", chip: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300" },
+  1: { label: "P1", flag: "text-red-500", chip: "bg-red-50 text-red-600 " },
+  2: { label: "P2", flag: "text-orange-500", chip: "bg-orange-50 text-orange-600 " },
+  3: { label: "P3", flag: "text-blue-500", chip: "bg-blue-50 text-blue-600 " },
+  4: { label: "P4", flag: "text-slate-300 ", chip: "bg-slate-100 text-slate-500 " },
 };
 
 const REC_LABELS: Record<string, string> = {
@@ -106,14 +106,14 @@ const SORT_OPTS: { value: TaskSort; label: string }[] = [
 ];
 
 const DUE_CLS: Record<DueGroup, string> = {
-  overdue: "bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-300",
-  today: "bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300",
-  upcoming: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300",
+  overdue: "bg-red-50 text-red-600 ",
+  today: "bg-amber-50 text-amber-600 ",
+  upcoming: "bg-indigo-50 text-indigo-600 ",
   none: "",
 };
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
 
 const hhmm = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const shortDate = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" });
@@ -160,7 +160,7 @@ function DueChip({ iso, recurrence }: { iso?: string | null; recurrence?: string
   if (!iso) {
     if (recurrence) {
       return (
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 ">
           🔁 {REC_LABELS[recurrence] ?? "Tekrar"}
         </span>
       );
@@ -210,8 +210,8 @@ function ListModal({ list, onClose, onCreated }: { list?: TaskList | null; onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">{isEdit ? "Projeyi Düzenle" : "Yeni Proje"}</h2>
+      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-lg font-bold text-slate-900 ">{isEdit ? "Projeyi Düzenle" : "Yeni Proje"}</h2>
         <form onSubmit={submit} className="mt-4 space-y-4">
           <input autoFocus maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Matematik" className={inputCls} />
           <div className="flex flex-wrap gap-2">
@@ -221,13 +221,13 @@ function ListModal({ list, onClose, onCreated }: { list?: TaskList | null; onClo
                 type="button"
                 onClick={() => setColor(c)}
                 aria-label={`Renk ${c}`}
-                className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900" : ""}`}
+                className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-offset-2 ring-slate-400 " : ""}`}
                 style={{ backgroundColor: c }}
               />
             ))}
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700">İptal</button>
+            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ">İptal</button>
             <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60">
               {pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Oluştur"}
             </button>
@@ -270,17 +270,17 @@ function LabelModal({ label, onClose }: { label?: TaskLabel | null; onClose: () 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">{isEdit ? "Etiketi Düzenle" : "Yeni Etiket"}</h2>
+      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 " onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-lg font-bold text-slate-900 ">{isEdit ? "Etiketi Düzenle" : "Yeni Etiket"}</h2>
         <form onSubmit={submit} className="mt-4 space-y-4">
           <input autoFocus maxLength={60} value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. acil" className={inputCls} />
           <div className="flex flex-wrap gap-2">
             {COLORS.map((c) => (
-              <button key={c} type="button" onClick={() => setColor(c)} className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900" : ""}`} style={{ backgroundColor: c }} />
+              <button key={c} type="button" onClick={() => setColor(c)} className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-offset-2 ring-slate-400 " : ""}`} style={{ backgroundColor: c }} />
             ))}
           </div>
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700">İptal</button>
+            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 ">İptal</button>
             <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Oluştur"}</button>
           </div>
         </form>
@@ -364,22 +364,22 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Görev Detayı</h2>
-          <button onClick={onClose} aria-label="Kapat" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
+          <h2 className="text-lg font-bold text-slate-900 ">Görev Detayı</h2>
+          <button onClick={onClose} aria-label="Kapat" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 ">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
         <div className="mt-4 space-y-4">
-          <Field label="Başlık" required labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Field label="Başlık" required labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
             {(id) => (
                 <input
                     id={id} maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
             )}
           </Field>
-          <Field label="Açıklama" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Field label="Açıklama" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
             {(id) => (
                 <textarea
                     id={id} rows={3} maxLength={4000} value={description} onChange={(e) => setDescription(e.target.value)} className={inputCls} />
@@ -388,7 +388,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Öncelik</span>
+              <span className="mb-1.5 block text-xs font-medium text-slate-500 ">Öncelik</span>
               <div role="group" aria-label="Öncelik" className="flex gap-1.5">
                 {([1, 2, 3, 4] as TaskPriority[]).map((p) => (
                   <button
@@ -396,7 +396,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
                     type="button"
                     onClick={() => setPriority(p)}
                     className={`flex flex-1 items-center justify-center gap-1 rounded-lg border py-2 text-xs font-semibold transition ${
-                      priority === p ? "border-indigo-400 bg-indigo-50 dark:border-indigo-500 dark:bg-indigo-500/15" : "border-slate-200 dark:border-slate-600"
+                      priority === p ? "border-indigo-400 bg-indigo-50 " : "border-slate-200 "
                     }`}
                   >
                     <PriorityFlag p={p} className="h-3.5 w-3.5" />
@@ -405,7 +405,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
                 ))}
               </div>
             </div>
-            <Field label="Son tarih" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Field label="Son tarih" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
               {(id) => (
                   <input
                     id={id} type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className={inputCls} />
@@ -414,7 +414,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Tekrar" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Field label="Tekrar" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
               {(id) => (
                   <select
                     id={id} value={recurrence} onChange={(e) => setRecurrence(e.target.value)} className={inputCls}>
@@ -427,7 +427,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
                   </select>
               )}
             </Field>
-            <Field label="Proje" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <Field label="Proje" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
               {(id) => (
                   <select
                     id={id} value={listId} onChange={(e) => setListId(Number(e.target.value))} className={inputCls}>
@@ -441,13 +441,13 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
           <div>
             {/* Alt bileşen kendi kontrollerini çizer; <label> hiçbir kontrole
                 bağlanamaz — grup adı olarak duyurulur. */}
-            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Hatırlatıcılar</span>
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 ">Hatırlatıcılar</span>
             <div role="group" aria-label="Hatırlatıcılar">
               <ReminderEditor reminders={reminders} due={due ? localInputToIso(due) : null} onChange={setReminders} />
             </div>
           </div>
 
-          <Field label="Ders (opsiyonel)" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Field label="Ders (opsiyonel)" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
             {(id) => (
                 <select
                     id={id} value={bookingId} onChange={(e) => setBookingId(e.target.value === "" ? "" : Number(e.target.value))} className={inputCls}>
@@ -461,7 +461,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
 
           {/* Etiketler */}
           <div>
-            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Etiketler</span>
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 ">Etiketler</span>
             <div role="group" aria-label="Etiketler" className="flex flex-wrap gap-1.5">
               {allLabels.map((l) => {
                 const on = labelIds.includes(l.id);
@@ -470,7 +470,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
                     key={l.id}
                     type="button"
                     onClick={() => toggleLabel(l.id)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "ring-2 ring-offset-1 dark:ring-offset-slate-900" : "opacity-60"}`}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "ring-2 ring-offset-1 " : "opacity-60"}`}
                     style={{ backgroundColor: (l.color || "#64748b") + "22", color: l.color || "#64748b" }}
                   >
                     @{l.name}
@@ -481,20 +481,20 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
             <div className="mt-2 flex gap-2">
               <input value={newLabel} maxLength={60} onChange={(e) => setNewLabel(e.target.value)} placeholder="Yeni etiket…" className={inputCls}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewLabel(); } }} />
-              <button type="button" onClick={addNewLabel} className="rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">Ekle</button>
+              <button type="button" onClick={addNewLabel} className="rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-200 ">Ekle</button>
             </div>
           </div>
 
           {/* Alt görevler */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <label className="mb-1.5 block text-xs font-medium text-slate-500 ">
               Alt görevler ({subtasks.filter((s) => s.is_done).length}/{subtasks.length})
             </label>
             <div className="space-y-1.5">
               {subtasks.map((s) => (
-                <div key={s.id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-slate-800">
+                <div key={s.id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 ">
                   <input type="checkbox" checked={s.is_done} onChange={() => updateSub.mutate({ id: s.id, payload: { is_done: !s.is_done } })} className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                  <span className={`flex-1 text-sm ${s.is_done ? "text-slate-400 line-through" : "text-slate-700 dark:text-slate-200"}`}>{s.title}</span>
+                  <span className={`flex-1 text-sm ${s.is_done ? "text-slate-400 line-through" : "text-slate-700 "}`}>{s.title}</span>
                   <button onClick={() => deleteSub.mutate(s.id)} aria-label="Sil" className="rounded p-1 text-slate-400 hover:text-red-500">
                     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                   </button>
@@ -503,15 +503,15 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
             </div>
             <form className="mt-2 flex gap-2" onSubmit={(e) => { e.preventDefault(); const t = newSub.trim(); if (!t) return; createSub.mutate({ taskId: task.id, title: t }, { onError: (err) => toast.error(getErrorMessage(err, "Eklenemedi.")) }); setNewSub(""); }}>
               <input value={newSub} maxLength={200} onChange={(e) => setNewSub(e.target.value)} placeholder="Alt görev ekle…" className={inputCls} />
-              <button type="submit" className="rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">Ekle</button>
+              <button type="submit" className="rounded-xl bg-slate-100 px-3 text-sm font-semibold text-slate-600 hover:bg-slate-200 ">Ekle</button>
             </form>
           </div>
         </div>
 
         <div className="mt-6 flex items-center justify-between">
-          <button onClick={() => del.mutate(task.id, { onSuccess: () => { toast.success("Görev silindi."); onClose(); }, onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")) })} disabled={del.isPending} className="rounded-xl px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-900/20">Sil</button>
+          <button onClick={() => del.mutate(task.id, { onSuccess: () => { toast.success("Görev silindi."); onClose(); }, onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")) })} disabled={del.isPending} className="rounded-xl px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 ">Sil</button>
           <div className="flex gap-2">
-            <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700">Kapat</button>
+            <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 ">Kapat</button>
             <button onClick={save} disabled={update.isPending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{update.isPending ? "Kaydediliyor…" : "Kaydet"}</button>
           </div>
         </div>
@@ -552,17 +552,17 @@ function TaskRow({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       style={{ marginLeft: depth * 26 }}
-      className={`group relative flex items-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 transition-colors dark:bg-slate-800 ${
+      className={`group relative flex items-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 transition-colors ${
         dropMode === "child"
           ? "border-transparent ring-2 ring-inset ring-indigo-400"
-          : "border-slate-100 hover:bg-slate-50 dark:border-slate-700/60 dark:hover:bg-slate-700/40"
+          : "border-slate-100 hover:bg-slate-50 "
       }`}
     >
       {/* Kardeş bırakma çizgisi (layout shift yok) */}
       {dropMode === "sibling" && <span className="pointer-events-none absolute -top-1 left-0 right-0 h-0.5 rounded bg-indigo-400" />}
 
       {/* Tutma tutamacı — rezerve gutter, hover'da görünür */}
-      <span className={`flex w-4 flex-none justify-center text-slate-300 dark:text-slate-600 ${draggable ? "cursor-grab opacity-0 group-hover:opacity-100" : "opacity-0"}`} aria-hidden>
+      <span className={`flex w-4 flex-none justify-center text-slate-300 ${draggable ? "cursor-grab opacity-0 group-hover:opacity-100" : "opacity-0"}`} aria-hidden>
         {draggable && (
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5" /><circle cx="15" cy="6" r="1.5" /><circle cx="9" cy="12" r="1.5" /><circle cx="15" cy="12" r="1.5" /><circle cx="9" cy="18" r="1.5" /><circle cx="15" cy="18" r="1.5" /></svg>
         )}
@@ -572,7 +572,7 @@ function TaskRow({
       <button
         onClick={(e) => { e.stopPropagation(); onToggleCollapse?.(); }}
         aria-label={collapsed ? "Genişlet" : "Daralt"}
-        className={`flex h-4 w-4 flex-none items-center justify-center rounded text-slate-400 transition hover:bg-slate-200 dark:hover:bg-slate-600 ${childCount > 0 ? "" : "invisible"}`}
+        className={`flex h-4 w-4 flex-none items-center justify-center rounded text-slate-400 transition hover:bg-slate-200 ${childCount > 0 ? "" : "invisible"}`}
       >
         <svg className={`h-3.5 w-3.5 transition ${collapsed ? "" : "rotate-90"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
       </button>
@@ -583,7 +583,7 @@ function TaskRow({
           onError: (err) => toast.error(getErrorMessage(err, "Güncellenemedi.")),
         })}
         aria-label={done ? "Geri al" : "Tamamla"}
-        className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition ${done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-emerald-400 dark:border-slate-600"}`}
+        className={`flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition ${done ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-emerald-400 "}`}
       >
         <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
       </button>
@@ -591,28 +591,28 @@ function TaskRow({
       {task.priority !== 4 && !done && <PriorityFlag p={task.priority} className="h-4 w-4 flex-none" />}
 
       <button onClick={onOpen} className="flex min-w-0 flex-1 flex-col items-start text-left">
-        <span className={`truncate text-sm font-medium ${done ? "text-slate-400 line-through" : "text-slate-800 dark:text-slate-100"}`}>{task.title}</span>
+        <span className={`truncate text-sm font-medium ${done ? "text-slate-400 line-through" : "text-slate-800 "}`}>{task.title}</span>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {!done && <DueChip iso={task.due_at} recurrence={task.recurrence} />}
           {task.labels.map((l) => (<LabelChip key={l.id} label={l} />))}
           {childCount > 0 && (
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">⊟ {childCount} alt görev</span>
+            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600 ">⊟ {childCount} alt görev</span>
           )}
           {task.subtasks.length > 0 && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">☑ {subDone}/{task.subtasks.length}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 ">☑ {subDone}/{task.subtasks.length}</span>
           )}
           {task.booking_id && (
-            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-600 dark:bg-sky-500/15 dark:text-sky-300">Derse bağlı</span>
+            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-600 ">Derse bağlı</span>
           )}
         </div>
       </button>
 
       {/* Düzenleme ikonları — hover'da, layout shift yok */}
       <div className="flex flex-none items-center gap-0.5 text-slate-400 opacity-0 transition group-hover:opacity-100">
-        <button onClick={onOpen} aria-label="Düzenle" className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-700">
+        <button onClick={onOpen} aria-label="Düzenle" className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-indigo-600 ">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
         </button>
-        <button onClick={() => { if (!window.confirm(`"${task.title}" görevi${childCount > 0 ? " ve alt görevleri" : ""} silinsin mi?`)) return; del.mutate(task.id, { onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")) }); }} aria-label="Sil" className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-red-500 dark:hover:bg-slate-700">
+        <button onClick={() => { if (!window.confirm(`"${task.title}" görevi${childCount > 0 ? " ve alt görevleri" : ""} silinsin mi?`)) return; del.mutate(task.id, { onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")) }); }} aria-label="Sil" className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-red-500 ">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
         </button>
       </div>
@@ -787,22 +787,22 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[8vh] backdrop-blur-sm" onClick={onClose}>
-      <div className="max-h-[84vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[84vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">{isEdit ? "Filtreyi Düzenle" : "Filtre Ekle"}</h2>
-          <button onClick={onClose} aria-label="Kapat" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
+          <h2 className="text-lg font-bold text-slate-900 ">{isEdit ? "Filtreyi Düzenle" : "Filtre Ekle"}</h2>
+          <button onClick={onClose} aria-label="Kapat" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 ">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
         <form onSubmit={submit} className="mt-4 space-y-4">
           {/* Filtre Yardımcısı (doğal dil → kriter) */}
-          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3 ">
             <div className="flex items-center gap-2">
               <span className="text-base">✨</span>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">Filtre Yardımcısı</span>
+              <span className="text-sm font-semibold text-slate-800 ">Filtre Yardımcısı</span>
             </div>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">İstediğin filtreyi yaz; kriterleri senin için çıkaralım. Örn: “bugün !1 @acil”.</p>
+            <p className="mt-1 text-xs text-slate-500 ">İstediğin filtreyi yaz; kriterleri senin için çıkaralım. Örn: “bugün !1 @acil”.</p>
             <div className="mt-2 flex gap-2">
               <input value={assist} onChange={(e) => setAssist(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runAssist(); } }}
@@ -812,7 +812,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
           </div>
 
           {/* Ad */}
-          <Field label="Ad" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Field label="Ad" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
             {(id) => (
                 <input
                     id={id} autoFocus maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Acil & bugün" className={inputCls} />
@@ -822,25 +822,25 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
           {/* Renk + favori */}
           <div className="flex items-end justify-between gap-4">
             <div>
-              <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Renk</span>
+              <span className="mb-1.5 block text-xs font-medium text-slate-500 ">Renk</span>
               <div role="group" aria-label="Renk" className="flex flex-wrap gap-2">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setColor(c)} aria-label={`Renk ${c}`}
-                    className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900" : ""}`} style={{ backgroundColor: c }} />
+                    className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-offset-2 ring-slate-400 " : ""}`} style={{ backgroundColor: c }} />
                 ))}
               </div>
             </div>
             <button type="button" onClick={() => setIsFavorite((v) => !v)} className="flex items-center gap-2 pb-1">
-              <span className={`relative h-5 w-9 flex-none rounded-full transition ${isFavorite ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"}`}>
+              <span className={`relative h-5 w-9 flex-none rounded-full transition ${isFavorite ? "bg-indigo-600" : "bg-slate-300 "}`}>
                 <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${isFavorite ? "left-[18px]" : "left-0.5"}`} />
               </span>
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Favorilere ekle</span>
+              <span className="text-sm font-medium text-slate-600 ">Favorilere ekle</span>
             </button>
           </div>
 
           {/* Kriterler */}
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-            <Field label="Metin içerir" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 ">
+            <Field label="Metin içerir" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
               {(id) => (
                   <input
                     id={id} value={criteria.q} onChange={(e) => setCriteria((c) => ({ ...c, q: e.target.value }))} placeholder="Görev başlığı/açıklamasında ara…" className={inputCls} />
@@ -852,7 +852,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
                 const on = criteria.priorities.includes(p);
                 return (
                   <button key={p} type="button" onClick={() => togglePriority(p)}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-300" : "border-slate-200 text-slate-500 dark:border-slate-600 dark:text-slate-400"}`}>
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 "}`}>
                     <PriorityFlag p={p} className="h-3.5 w-3.5" />{PRIO[p].label}
                   </button>
                 );
@@ -864,7 +864,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
                 const on = criteria.due.includes(d.key);
                 return (
                   <button key={d.key} type="button" onClick={() => toggleDue(d.key)}
-                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-300" : "border-slate-200 text-slate-500 dark:border-slate-600 dark:text-slate-400"}`}>{d.label}</button>
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 "}`}>{d.label}</button>
                 );
               })}
             </div>
@@ -875,16 +875,16 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
                   const on = criteria.labelIds.includes(l.id);
                   return (
                     <button key={l.id} type="button" onClick={() => toggleLabel(l.id)}
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "ring-2 ring-offset-1 dark:ring-offset-slate-900" : "opacity-60 hover:opacity-100"}`}
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "ring-2 ring-offset-1 " : "opacity-60 hover:opacity-100"}`}
                       style={{ backgroundColor: (l.color || "#64748b") + "22", color: l.color || "#64748b" }}>@{l.name}</button>
                   );
                 })}
               </div>
             )}
-            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 ">
               <span className="w-16 flex-none text-xs font-semibold text-slate-400">Sırala</span>
               <select value={criteria.sort} onChange={(e) => setCriteria((c) => ({ ...c, sort: e.target.value as TaskSort }))}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-indigo-400 ">
                 {SORT_OPTS.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
               </select>
             </div>
@@ -893,15 +893,15 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
           {/* Önizleme */}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Önizleme</span>
-              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">{preview.length} görev</span>
+              <span className="text-xs font-medium text-slate-500 ">Önizleme</span>
+              <span className="text-xs font-semibold text-indigo-600 ">{preview.length} görev</span>
             </div>
-            <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
+            <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-2 ">
               {preview.length === 0 ? (
                 <p className="px-1 py-2 text-xs text-slate-400">Eşleşen görev yok.</p>
               ) : (
                 preview.slice(0, 5).map((t) => (
-                  <div key={t.id} className="flex items-center gap-2 px-1 py-1 text-sm text-slate-600 dark:text-slate-300">
+                  <div key={t.id} className="flex items-center gap-2 px-1 py-1 text-sm text-slate-600 ">
                     {t.priority !== 4 && <PriorityFlag p={t.priority} className="h-3.5 w-3.5 flex-none" />}
                     <span className="truncate">{t.title}</span>
                   </div>
@@ -912,7 +912,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700">İptal</button>
+            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ">İptal</button>
             <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60">{pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Ekle"}</button>
           </div>
         </form>
@@ -943,7 +943,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
   const facets = activeFacetCount(criteria);
 
   return (
-    <div className="mt-3 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
+    <div className="mt-3 space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 ">
       {/* Öncelik */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="w-16 flex-none text-xs font-semibold text-slate-400">Öncelik</span>
@@ -951,7 +951,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
           const on = criteria.priorities.includes(p);
           return (
             <button key={p} type="button" onClick={() => togglePriority(p)}
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-300" : "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-600 dark:text-slate-400"}`}>
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 hover:border-slate-300 "}`}>
               <PriorityFlag p={p} className="h-3.5 w-3.5" />
               {PRIO[p].label}
             </button>
@@ -966,7 +966,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
           const on = criteria.due.includes(d.key);
           return (
             <button key={d.key} type="button" onClick={() => toggleDue(d.key)}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-300" : "border-slate-200 text-slate-500 hover:border-slate-300 dark:border-slate-600 dark:text-slate-400"}`}>
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 hover:border-slate-300 "}`}>
               {d.label}
             </button>
           );
@@ -981,7 +981,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
             const on = criteria.labelIds.includes(l.id);
             return (
               <button key={l.id} type="button" onClick={() => toggleLabel(l.id)}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "ring-2 ring-offset-1 dark:ring-offset-slate-900" : "opacity-60 hover:opacity-100"}`}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "ring-2 ring-offset-1 " : "opacity-60 hover:opacity-100"}`}
                 style={{ backgroundColor: (l.color || "#64748b") + "22", color: l.color || "#64748b" }}>
                 @{l.name}
               </button>
@@ -991,16 +991,16 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
       )}
 
       {/* Sıralama + aksiyonlar */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 ">
         <span className="w-16 flex-none text-xs font-semibold text-slate-400">Sırala</span>
         <select value={criteria.sort} onChange={(e) => setCriteria({ ...criteria, sort: e.target.value as TaskSort })}
-          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200">
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-indigo-400 ">
           {SORT_OPTS.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
         </select>
 
         <div className="ml-auto flex items-center gap-2">
           {facets > 0 && (
-            <button type="button" onClick={onClear} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700">
+            <button type="button" onClick={onClear} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-200 ">
               Temizle
             </button>
           )}
@@ -1047,7 +1047,7 @@ function FiltersAndLabelsPanel({
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
   );
   const AddBtn = ({ onClick, label }: { onClick: () => void; label: string }) => (
-    <button onClick={onClick} aria-label={label} className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800">
+    <button onClick={onClick} aria-label={label} className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 ">
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
     </button>
   );
@@ -1056,9 +1056,9 @@ function FiltersAndLabelsPanel({
     <div className="space-y-8">
       {/* Filtrelerim */}
       <section>
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Filtrelerim</h2>
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{filters.length} filtre</span>
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 ">
+          <h2 className="text-base font-bold text-slate-800 ">Filtrelerim</h2>
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ">{filters.length} filtre</span>
           <span className="ml-auto" />
           <AddBtn onClick={onAddFilter} label="Filtre ekle" />
         </div>
@@ -1067,10 +1067,10 @@ function FiltersAndLabelsPanel({
         ) : (
           <div className="mt-1">
             {filters.map((f) => (
-              <div key={f.id} className="group flex items-center gap-3 border-b border-slate-50 px-1 py-2.5 transition hover:bg-slate-50 dark:border-slate-800/60 dark:hover:bg-slate-800/40">
+              <div key={f.id} className="group flex items-center gap-3 border-b border-slate-50 px-1 py-2.5 transition hover:bg-slate-50 ">
                 <button onClick={() => onApplyFilter(f)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                   <svg className="h-5 w-5 flex-none" viewBox="0 0 24 24" fill="none" stroke={f.color || "#64748b"} strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h18l-7 8v6l-4 2v-8l-7-8Z" /></svg>
-                  <span className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{f.name}</span>
+                  <span className="truncate text-sm font-medium text-slate-700 ">{f.name}</span>
                 </button>
                 <div className="flex flex-none items-center gap-0.5 text-slate-400 opacity-0 transition group-hover:opacity-100">
                   <FavStar on={f.is_favorite} onClick={() => onToggleFilterFav(f)} />
@@ -1085,9 +1085,9 @@ function FiltersAndLabelsPanel({
 
       {/* Etiketler */}
       <section>
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 dark:border-slate-800">
-          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Etiketler</h2>
-          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{labels.length} etiket</span>
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 ">
+          <h2 className="text-base font-bold text-slate-800 ">Etiketler</h2>
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ">{labels.length} etiket</span>
           <span className="ml-auto" />
           <AddBtn onClick={onAddLabel} label="Etiket ekle" />
         </div>
@@ -1098,10 +1098,10 @@ function FiltersAndLabelsPanel({
             {labels.map((l) => {
               const count = labelCounts.get(l.id) ?? 0;
               return (
-                <div key={l.id} className="group flex items-center gap-3 border-b border-slate-50 px-1 py-2.5 transition hover:bg-slate-50 dark:border-slate-800/60 dark:hover:bg-slate-800/40">
+                <div key={l.id} className="group flex items-center gap-3 border-b border-slate-50 px-1 py-2.5 transition hover:bg-slate-50 ">
                   <button onClick={() => onSelectLabel(l)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                     <svg className="h-5 w-5 flex-none" viewBox="0 0 24 24" fill="none" stroke={l.color || "#94a3b8"} strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
-                    <span className="truncate text-sm font-medium text-slate-700 dark:text-slate-200">{l.name}</span>
+                    <span className="truncate text-sm font-medium text-slate-700 ">{l.name}</span>
                   </button>
                   {count > 0 && <span className="flex-none text-xs font-semibold text-slate-400 group-hover:hidden">{count}</span>}
                   <div className="flex flex-none items-center gap-0.5 text-slate-400 opacity-0 transition group-hover:opacity-100">
@@ -1359,7 +1359,7 @@ export default function Tasks() {
         {/* Kenar çubuğu */}
         <aside className="lg:w-64 lg:flex-none">
           {/* Görev Ekle (Todoist tarzı: renkli artı + metin, dolu arka plan yok) */}
-          <button onClick={() => setComposerOpen(true)} className="group mb-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-slate-100 dark:text-indigo-400 dark:hover:bg-slate-800">
+          <button onClick={() => setComposerOpen(true)} className="group mb-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-slate-100 ">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white transition group-hover:bg-indigo-700">
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
             </span>
@@ -1370,20 +1370,20 @@ export default function Tasks() {
           <nav className="space-y-1">
             {/* Ara (Todoist 'Search') — komut paletini açar (Ctrl/⌘+K) */}
             <button onClick={() => setPaletteOpen(true)}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 ">
               <svg className="h-4 w-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" /></svg>
               <span className="flex-1 text-left">Ara</span>
-              <kbd className="flex-none rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:bg-slate-800">Ctrl K</kbd>
+              <kbd className="flex-none rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 ">Ctrl K</kbd>
             </button>
             {inbox && (() => {
               const active = !filterMode && selection.kind === "list" && selection.id === inbox.id;
               return (
                 <button onClick={() => selectNav({ kind: "list", id: inbox.id })}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
                   <svg className="h-4 w-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2 13h4l2 4h8l2-4h4M5 5h14l3 8v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6L5 5Z" /></svg>
                   <span className="flex-1 text-left">Gelen Kutusu</span>
                   {inbox.active_count > 0 && (
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>{inbox.active_count}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600 "}`}>{inbox.active_count}</span>
                   )}
                 </button>
               );
@@ -1393,18 +1393,18 @@ export default function Tasks() {
               const badge = v.view === "today" ? todayCount : v.view === "upcoming" ? upcomingCount : 0;
               return (
                 <button key={v.view} onClick={() => selectNav({ kind: "view", view: v.view })}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
                   <svg className="h-4 w-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d={v.icon} /></svg>
                   <span className="flex-1 text-left">{v.label}</span>
                   {badge > 0 && (
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"}`}>{badge}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${active ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600 "}`}>{badge}</span>
                   )}
                 </button>
               );
             })}
             {/* Filtreler ve Etiketler — yönetim sayfasını açar */}
             <button onClick={() => selectNav({ kind: "manage" })}
-              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${!filterMode && selection.kind === "manage" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>
+              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${!filterMode && selection.kind === "manage" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
               <svg className="h-4 w-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 6a1 1 0 0 0-1 1v1.5a1 1 0 0 0 .3.7l5.4 5.3a1 1 0 0 1 .3.7V20l4-2.5v-3.6a1 1 0 0 1 .3-.7l5.4-5.3a1 1 0 0 0 .3-.7V7a1 1 0 0 0-1-1" /></svg>
               <span className="flex-1 text-left">Filtreler ve Etiketler</span>
             </button>
@@ -1422,10 +1422,10 @@ export default function Tasks() {
                   {favProjects.map((l) => {
                     const active = !filterMode && selection.kind === "list" && selection.id === l.id;
                     return (
-                      <div key={`fp${l.id}`} className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/60"}`}>
+                      <div key={`fp${l.id}`} className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 " : "hover:bg-slate-50 "}`}>
                         <button onClick={() => selectNav({ kind: "list", id: l.id })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                           <HashIcon color={l.color} />
-                          <span className={`truncate font-medium ${active ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}>{l.name}</span>
+                          <span className={`truncate font-medium ${active ? "text-slate-900 " : "text-slate-600 "}`}>{l.name}</span>
                           {l.active_count > 0 && <span className="ml-auto flex-none text-[11px] font-semibold text-slate-400">{l.active_count}</span>}
                         </button>
                         <span className="flex-none opacity-0 transition group-hover:opacity-100"><FavStar on onClick={() => toggleListFav(l)} /></span>
@@ -1435,10 +1435,10 @@ export default function Tasks() {
                   {favFilters.map((f) => {
                     const active = activeFilterId === f.id;
                     return (
-                      <div key={`ff${f.id}`} className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/60"}`}>
+                      <div key={`ff${f.id}`} className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 " : "hover:bg-slate-50 "}`}>
                         <button onClick={() => applySavedFilter(f)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                           <svg className="h-3.5 w-3.5 flex-none" viewBox="0 0 24 24" fill="none" stroke={f.color || "#64748b"} strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h18l-7 8v6l-4 2v-8l-7-8Z" /></svg>
-                          <span className={`truncate font-medium ${active ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}>{f.name}</span>
+                          <span className={`truncate font-medium ${active ? "text-slate-900 " : "text-slate-600 "}`}>{f.name}</span>
                         </button>
                         <span className="flex-none opacity-0 transition group-hover:opacity-100"><FavStar on onClick={() => toggleFilterFav(f)} /></span>
                       </div>
@@ -1447,10 +1447,10 @@ export default function Tasks() {
                   {favLabels.map((l) => {
                     const active = !filterMode && selection.kind === "label" && selection.id === l.id;
                     return (
-                      <div key={`fl${l.id}`} className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/60"}`}>
+                      <div key={`fl${l.id}`} className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 " : "hover:bg-slate-50 "}`}>
                         <button onClick={() => selectNav({ kind: "label", id: l.id })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                           <span className="flex-none text-sm font-bold leading-none" style={{ color: l.color || "#64748b" }}>@</span>
-                          <span className={`truncate font-medium ${active ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}>{l.name}</span>
+                          <span className={`truncate font-medium ${active ? "text-slate-900 " : "text-slate-600 "}`}>{l.name}</span>
                         </button>
                         <span className="flex-none opacity-0 transition group-hover:opacity-100"><FavStar on onClick={() => toggleLabelFav(l)} /></span>
                       </div>
@@ -1468,12 +1468,12 @@ export default function Tasks() {
                 <svg className={`h-3 w-3 transition ${projOpen ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                 Projelerim
               </button>
-              <button onClick={() => setCreatingList(true)} aria-label="Yeni proje" className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800">
+              <button onClick={() => setCreatingList(true)} aria-label="Yeni proje" className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 ">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               </button>
             </div>
             {projOpen && (listsLoading ? (
-              <div className="space-y-1.5 px-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />))}</div>
+              <div className="space-y-1.5 px-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="h-8 animate-pulse rounded-lg bg-slate-100 " />))}</div>
             ) : (
               <nav className="space-y-1">
                 {projectsOnly.map((l) => {
@@ -1484,12 +1484,12 @@ export default function Tasks() {
                       onDragStart={() => { dragListId.current = l.id; }}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => handleListDrop(l.id)}
-                      className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 dark:bg-slate-800" : "hover:bg-slate-50 dark:hover:bg-slate-800/60"}`}>
+                      className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? "bg-slate-100 " : "hover:bg-slate-50 "}`}>
                       <button onClick={() => selectNav({ kind: "list", id: l.id })} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                         <HashIcon color={l.color} />
-                        <span className={`truncate font-medium ${active ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}`}>{l.name}</span>
+                        <span className={`truncate font-medium ${active ? "text-slate-900 " : "text-slate-600 "}`}>{l.name}</span>
                         {l.overdue_count > 0 ? (
-                          <span className="ml-auto flex-none rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600 dark:bg-red-500/15 dark:text-red-300">{l.overdue_count}</span>
+                          <span className="ml-auto flex-none rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600 ">{l.overdue_count}</span>
                         ) : l.active_count > 0 ? (
                           <span className="ml-auto flex-none text-[11px] font-semibold text-slate-400">{l.active_count}</span>
                         ) : null}
@@ -1515,14 +1515,14 @@ export default function Tasks() {
         {/* Ana sütun */}
         <main className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{headerTitle}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 ">{headerTitle}</h1>
             {filterMode && (
-              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 ">
                 {filteredTasks.length} sonuç
               </span>
             )}
             {filterMode && (
-              <button onClick={clearFilter} className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800">
+              <button onClick={clearFilter} className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 ">
                 Filtreyi kapat
               </button>
             )}
@@ -1561,12 +1561,12 @@ export default function Tasks() {
               />
             ) : filterMode ? (
               allActive.isLoading ? (
-                <div className="space-y-2.5">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />))}</div>
+                <div className="space-y-2.5">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100 " />))}</div>
               ) : filteredTasks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl dark:bg-slate-800">🔍</div>
-                  <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">Eşleşen görev yok.</p>
-                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Arama veya filtre ölçütlerini gevşetmeyi dene.</p>
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">🔍</div>
+                  <p className="mt-4 text-sm font-medium text-slate-700 ">Eşleşen görev yok.</p>
+                  <p className="mt-1 text-xs text-slate-400 ">Arama veya filtre ölçütlerini gevşetmeyi dene.</p>
                 </div>
               ) : (
                 <div className="space-y-2.5">
@@ -1576,14 +1576,14 @@ export default function Tasks() {
                 </div>
               )
             ) : loading ? (
-              <div className="space-y-2.5">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />))}</div>
+              <div className="space-y-2.5">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100 " />))}</div>
             ) : visibleTasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-2xl dark:bg-indigo-500/15">✓</div>
-                <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-2xl ">✓</div>
+                <p className="mt-4 text-sm font-medium text-slate-700 ">
                   {selection.kind === "view" && selection.view === "completed" ? "Henüz tamamlanan görev yok." : "Görev yok — harika!"}
                 </p>
-                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Aşağıdaki “Görev ekle” ile başla.</p>
+                <p className="mt-1 text-xs text-slate-400 ">Aşağıdaki “Görev ekle” ile başla.</p>
               </div>
             ) : selection.kind === "view" && selection.view === "upcoming" ? (
               <UpcomingGroups tasks={visibleTasks} onOpen={(id) => setOpenTaskId(id)} />
@@ -1713,7 +1713,7 @@ function UpcomingGroups({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: number)
     <div className="space-y-6">
       {groups.map((g) => (
         <div key={g.ts}>
-          <h3 className="mb-2 text-sm font-bold capitalize text-slate-700 dark:text-slate-200">{g.label}</h3>
+          <h3 className="mb-2 text-sm font-bold capitalize text-slate-700 ">{g.label}</h3>
           <div className="space-y-2.5">
             {g.items.map((t) => (
               <TaskRow key={t.id} task={t} onOpen={() => onOpen(t.id)} draggable={false} />

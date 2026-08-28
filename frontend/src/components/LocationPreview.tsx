@@ -24,7 +24,7 @@ export function LocationPreview({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 ${className}`}
+      className={`relative overflow-hidden rounded-xl ring-1 ring-slate-200 ${className}`}
     >
       <iframe
         title="Seçilen konum"
@@ -37,7 +37,7 @@ export function LocationPreview({
         href={fullSrc}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 backdrop-blur transition hover:bg-white dark:bg-slate-800/90 dark:text-slate-200 dark:ring-slate-600"
+        className="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 backdrop-blur transition hover:bg-white "
       >
         <svg
           className="h-3.5 w-3.5"

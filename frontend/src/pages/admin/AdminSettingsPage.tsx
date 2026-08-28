@@ -33,7 +33,7 @@ const DATE_FMT = new Intl.DateTimeFormat("tr-TR", {
 });
 
 const LIST =
-  "divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900";
+  "divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white ";
 const ROW = "px-6 py-4";
 
 export default function AdminSettingsPage() {
@@ -70,12 +70,12 @@ export default function AdminSettingsPage() {
       {/* ── Ödeme kolları ─────────────────────────────────────────────── */}
       <section>
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Ödeme kolları</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-semibold text-slate-900 ">Ödeme kolları</h2>
+          <p className="text-xs text-slate-500 ">
             Her kol bağımsızdır — birinin eksiği diğerini kapatmaz.
           </p>
         </div>
-        <p className="mb-4 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+        <p className="mb-4 max-w-3xl text-sm text-slate-600 ">
           Bir kolun açık olması için hem bayrağının açık olması hem de ödeme sağlayıcısının
           gerekli yeteneği sunması şarttır. Platformun kendi kitap satışı alt üye işyeri
           gerektirmez; eğitmen ve kütüphane adına yapılan tahsilatlar gerektirir.
@@ -98,7 +98,7 @@ export default function AdminSettingsPage() {
             {branches.map((branch) => (
               <div key={branch.branch} className={ROW}>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-slate-900 dark:text-white">
+                  <span className="font-medium text-slate-900 ">
                     {branch.label ?? branch.branch}
                   </span>
                   {branch.open ? (
@@ -107,13 +107,13 @@ export default function AdminSettingsPage() {
                     <Badge tone="warning">Kapalı</Badge>
                   )}
                 </div>
-                <code className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                <code className="mt-0.5 block text-xs text-slate-500 ">
                   {branch.branch}
                 </code>
                 {!branch.open && (
                   <ul className="mt-2 space-y-1">
                     {(branch.blockers ?? []).map((code) => (
-                      <li key={code} className="text-sm text-slate-600 dark:text-slate-300">
+                      <li key={code} className="text-sm text-slate-600 ">
                         {BLOCKER_TEXT[code] ?? code}
                       </li>
                     ))}
@@ -128,16 +128,16 @@ export default function AdminSettingsPage() {
       {/* ── Özellik bayrakları ────────────────────────────────────────── */}
       <section>
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+          <h2 className="text-base font-semibold text-slate-900 ">
             Özellik bayrakları
           </h2>
           {!canManage && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 ">
               Değiştirmek için <code>settings.manage</code> izni gerekir.
             </p>
           )}
         </div>
-        <p className="mb-4 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+        <p className="mb-4 max-w-3xl text-sm text-slate-600 ">
           Her değişiklik gerekçesiyle birlikte denetim kayıtlarına yazılır. Değişiklik tüm
           sunucu süreçlerinde en fazla 10 saniye içinde etkili olur.
         </p>
@@ -160,7 +160,7 @@ export default function AdminSettingsPage() {
               <div key={flag.key} className={`flex flex-wrap items-start gap-4 sm:flex-nowrap ${ROW}`}>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-slate-900 dark:text-white">{flag.label}</span>
+                    <span className="font-medium text-slate-900 ">{flag.label}</span>
                     {flag.enabled ? (
                       <Badge tone="success">Açık</Badge>
                     ) : (
@@ -169,26 +169,26 @@ export default function AdminSettingsPage() {
                     {flag.locked_reason && <Badge tone="danger">Üretimde kilitli</Badge>}
                     {!flag.enforced && <Badge tone="warning">Bağlanmadı</Badge>}
                   </div>
-                  <code className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                  <code className="mt-0.5 block text-xs text-slate-500 ">
                     {flag.key}
                   </code>
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  <p className="mt-2 text-sm text-slate-600 ">
                     {flag.description}
                   </p>
                   {!flag.enforced && (
                     // "Bağlanmadı" rozetinin tam cümlesi: operatör bunu "değişikliğim
                     // henüz yayılmadı" diye okumamalı.
-                    <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
+                    <p className="mt-2 text-sm text-amber-700 ">
                       Bu bayrak henüz hiçbir kontrolde okunmuyor — açmak veya kapatmak
                       davranışı değiştirmez.
                     </p>
                   )}
                   {flag.locked_reason && (
-                    <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">
+                    <p className="mt-2 text-sm text-rose-700 ">
                       {flag.locked_reason}
                     </p>
                   )}
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-2 text-xs text-slate-500 ">
                     Varsayılan: {flag.default ? "açık" : "kapalı"}
                     {flag.updated_at
                       ? ` · Son değişiklik ${DATE_FMT.format(new Date(flag.updated_at))}`

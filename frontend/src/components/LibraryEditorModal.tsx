@@ -613,13 +613,13 @@ function EditorIcerik({
 
         {/* ── Görseller — yalnız kayıtlı kütüphanede (koşullu dal) ── */}
         <section>
-          <p className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <p className="mb-1.5 block text-sm font-semibold text-slate-700 ">
             Görseller (logo · kapak · galeri)
           </p>
           {isEdit ? (
             <LibraryMediaManager libraryId={kayit.id!} />
           ) : (
-            <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-xs text-slate-500 ">
               Logo, kapak ve galeri fotoğraflarını yüklemek için önce kütüphaneyi
               kaydedin, sonra “Düzenle” ile geri dönün.
             </p>
@@ -629,7 +629,7 @@ function EditorIcerik({
         {/* ── Durum — yalnız admin (koşullu dal) ── */}
         {canEditIdentity && (
           <section>
-            <p className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+            <p className="mb-1.5 block text-sm font-semibold text-slate-700 ">
               Durum
             </p>
             <div className="flex gap-2">
@@ -653,7 +653,7 @@ function EditorIcerik({
 
         {/* ── Adres ── */}
         <section>
-          <p className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <p className="mb-1.5 block text-sm font-semibold text-slate-700 ">
             Adres
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -678,14 +678,14 @@ function EditorIcerik({
 
         {/* ── Konum — yalnız harita işareti (adres OTOMATİK dolmaz) ── */}
         <section>
-          <p className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <p className="mb-1.5 block text-sm font-semibold text-slate-700 ">
             Harita Konumu (yol tarifi için)
           </p>
-          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mb-2 text-xs text-slate-500 ">
             Adresi yukarıdan yaz; aşağıdan da kütüphanenin tam noktasını işaretle.
             Harita yalnız konumu (koordinat) belirler, adresi değiştirmez.
           </p>
-          <div className="h-72 overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 [&_.map-picker-root]:h-full">
+          <div className="h-72 overflow-hidden rounded-xl ring-1 ring-slate-200 [&_.map-picker-root]:h-full">
             <MapPicker
               initialLat={degerler.location_lat}
               initialLng={degerler.location_lng}
@@ -696,7 +696,7 @@ function EditorIcerik({
             />
           </div>
           {degerler.location_lat != null && degerler.location_lng != null && (
-            <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+            <p className="mt-2 text-xs text-emerald-600 ">
               ✓ Konum işaretlendi ({degerler.location_lat.toFixed(5)},{" "}
               {degerler.location_lng.toFixed(5)})
             </p>
@@ -705,7 +705,7 @@ function EditorIcerik({
 
         {/* ── Olanaklar ── */}
         <section>
-          <p className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <p className="mb-1.5 block text-sm font-semibold text-slate-700 ">
             Olanaklar
           </p>
           <div className="flex flex-wrap gap-2">
@@ -721,7 +721,7 @@ function EditorIcerik({
                   className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     secili
                       ? "bg-indigo-600 text-white"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                      : "bg-slate-100 text-slate-600 "
                   }`}
                 >
                   <I size={14} stroke={1.75} aria-hidden />
@@ -734,13 +734,13 @@ function EditorIcerik({
 
         {/* ── Çalışma saatleri (koşullu dal: açık gün ↔ kapalı gün) ── */}
         <section>
-          <p className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <p className="mb-1.5 block text-sm font-semibold text-slate-700 ">
             Çalışma Saatleri
           </p>
           <div className="space-y-1.5">
             {hafta.map((g, i) => (
               <div key={g.weekday} className="flex items-start gap-2">
-                <span className="mt-2 w-24 text-sm text-slate-600 dark:text-slate-300">
+                <span className="mt-2 w-24 text-sm text-slate-600 ">
                   {WEEKDAY_LABELS[g.weekday]}
                 </span>
                 <label className="mt-2 flex items-center gap-1 text-xs text-slate-500">
@@ -766,7 +766,7 @@ function EditorIcerik({
                             <input
                               type="time"
                               aria-label={`${WEEKDAY_LABELS[g.weekday]} açılış saati`}
-                              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:[color-scheme:dark]"
+                              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm "
                               {...field}
                             />
                           </Form.Control>
@@ -784,7 +784,7 @@ function EditorIcerik({
                             <input
                               type="time"
                               aria-label={`${WEEKDAY_LABELS[g.weekday]} kapanış saati`}
-                              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:[color-scheme:dark]"
+                              className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm "
                               {...field}
                             />
                           </Form.Control>
@@ -794,7 +794,7 @@ function EditorIcerik({
                     />
                   </>
                 ) : (
-                  <span className="mt-2 text-xs text-slate-500 dark:text-slate-400">Kapalı</span>
+                  <span className="mt-2 text-xs text-slate-500 ">Kapalı</span>
                 )}
               </div>
             ))}
@@ -805,7 +805,7 @@ function EditorIcerik({
         {genelHata && (
           <p
             role="alert"
-            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 "
           >
             {genelHata}
           </p>

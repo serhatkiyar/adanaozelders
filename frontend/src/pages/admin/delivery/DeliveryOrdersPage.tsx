@@ -50,16 +50,16 @@ function OrderRow({
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
       <div className="min-w-0 flex-1 basis-52">
-        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+        <p className="truncate text-sm font-medium text-slate-900 ">
           {order.recipient ?? "—"}
           <span className="ml-2 text-xs font-normal text-slate-400">#{order.order_id}</span>
           {order.lat == null && (
-            <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ">
               konumsuz
             </span>
           )}
         </p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 ">
           <span className="truncate">{order.address ?? "Adres yok"}</span>
           <PromiseChip date={order.promised_delivery_date} />
         </p>
@@ -67,7 +67,7 @@ function OrderRow({
             "N parça" özeti sağda kalır ama bunun yerine geçmez. */}
         <ItemLines items={order.items} className="mt-1.5" />
       </div>
-      <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+      <span className="shrink-0 text-xs tabular-nums text-slate-500 ">
         {order.item_count} parça · ₺{order.total}
       </span>
       {children}
@@ -128,8 +128,8 @@ function PrepQueue() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-3 ">
+            <p className="text-xs text-slate-500 ">
               Hazırlama paketleme istasyonunda yapılır: paketi aç, her kalemi okut,
               tamamla. Sipariş ancak bütün kalemler doğrulanınca tura hazır olur.
             </p>
@@ -140,7 +140,7 @@ function PrepQueue() {
               Paketleme istasyonunu aç →
             </Link>
           </div>
-          <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-100 px-6 ">
             {queue.map((o) => (
               <OrderRow key={o.order_id} order={o} />
             ))}
@@ -195,10 +195,10 @@ function ReadyQueue() {
       ) : (
         <>
           {canManage && (
-            <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 px-6 py-3 ">
               {openRuns.length > 0 ? (
                 <>
-                  <label className="text-xs text-slate-500 dark:text-slate-400" htmlFor="target-run">
+                  <label className="text-xs text-slate-500 " htmlFor="target-run">
                     Hedef tur
                   </label>
                   <select
@@ -225,7 +225,7 @@ function ReadyQueue() {
                   )}
                 </>
               ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 ">
                   Bugün açık tur yok —{" "}
                   <Link to={ROUTES.adminDelivery} className="font-semibold text-panel-accent hover:underline">
                     Bugün sekmesinden
@@ -235,7 +235,7 @@ function ReadyQueue() {
               )}
             </div>
           )}
-          <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+          <ul className="divide-y divide-slate-100 px-6 ">
             {eligible.map((o) => (
               <OrderRow key={o.order_id} order={o}>
                 {canManage && (
@@ -290,7 +290,7 @@ function OutsourcedQueue() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100 px-6 ">
           {orders.map((o) => (
             <OrderRow key={o.order_id} order={o}>
               {(o.district || o.city) && (
@@ -394,7 +394,7 @@ function KargolaSatiri({
       <p
         id={hataId}
         role={hata ? "alert" : undefined}
-        className="mt-1 min-h-[1rem] text-xs text-rose-700 dark:text-rose-400"
+        className="mt-1 min-h-[1rem] text-xs text-rose-700 "
       >
         {hata}
       </p>
@@ -420,11 +420,11 @@ export default function DeliveryOrdersPage() {
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Sipariş Havuzu</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Sipariş Havuzu</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Ödenmiş sipariş → paket hazırla → tura ekle; bölge dışı → dış kargo.
           </p>
         </div>
@@ -436,8 +436,8 @@ export default function DeliveryOrdersPage() {
               onClick={() => setQueue(t.value)}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 queue === t.value
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white "
+                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 "
               }`}
             >
               {t.label}
@@ -445,8 +445,8 @@ export default function DeliveryOrdersPage() {
                 <span
                   className={`rounded-full px-1.5 text-[11px] tabular-nums ${
                     queue === t.value
-                      ? "bg-white/20 dark:bg-slate-900/10"
-                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                      ? "bg-white/20 "
+                      : "bg-slate-100 text-slate-500 "
                   }`}
                 >
                   {counts[t.value]}

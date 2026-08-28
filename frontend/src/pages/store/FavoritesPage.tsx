@@ -54,8 +54,8 @@ export default function FavoritesPage() {
   const rowClass = (active: boolean) =>
     `flex w-full items-baseline justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
       active
-        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800 dark:text-white"
-        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
+        ? "bg-slate-100 font-semibold text-slate-900 "
+        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 "
     }`;
 
   return (
@@ -65,13 +65,13 @@ export default function FavoritesPage() {
       <div className={`${CONTAINER} py-8`}>
         <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
           {/* Sol: Favori Listem + koleksiyonlar alt alta */}
-          <aside className="md:border-r md:border-slate-100 md:pr-6 dark:md:border-slate-800">
+          <aside className="md:border-r md:border-slate-100 md:pr-6 ">
             <button
               type="button"
               onClick={() =>
                 isClient ? setNameModal({ mode: "create" }) : navigate("?modal=login")
               }
-              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-700 "
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
@@ -86,7 +86,7 @@ export default function FavoritesPage() {
                 className={rowClass(showFavorites)}
               >
                 <span className="truncate">Favori Listem</span>
-                <span className="shrink-0 text-xs font-normal text-slate-400 dark:text-slate-500">
+                <span className="shrink-0 text-xs font-normal text-slate-400 ">
                   {favCount}
                 </span>
               </button>
@@ -98,7 +98,7 @@ export default function FavoritesPage() {
                   className={rowClass(selectedCol?.id === c.id)}
                 >
                   <span className="truncate">{c.name}</span>
-                  <span className="shrink-0 text-xs font-normal text-slate-400 dark:text-slate-500">
+                  <span className="shrink-0 text-xs font-normal text-slate-400 ">
                     {c.product_ids.length}
                   </span>
                 </button>
@@ -106,9 +106,9 @@ export default function FavoritesPage() {
             </nav>
 
             {!isClient && (
-              <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 dark:border-slate-800 dark:text-slate-500">
+              <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 ">
                 Kendi listelerini oluşturmak için{" "}
-                <Link to="?modal=login" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
+                <Link to="?modal=login" className="font-semibold text-indigo-600 hover:underline ">
                   giriş yap
                 </Link>
                 .
@@ -190,7 +190,7 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
       />
     </div>
   );
@@ -198,9 +198,9 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
 
 function EmptyBox({ title, desc, cta }: { title: string; desc: string; cta?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white py-20 text-center dark:border-slate-800 dark:bg-slate-900">
-      <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
-      <p className="text-slate-500 dark:text-slate-400">{desc}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white py-20 text-center ">
+      <h3 className="mb-1 text-lg font-semibold text-slate-900 ">{title}</h3>
+      <p className="text-slate-500 ">{desc}</p>
       {cta}
     </div>
   );
@@ -221,10 +221,10 @@ function FavoritesPane({ isClient }: { isClient: boolean }) {
 
   return (
     <>
-      <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+      <h2 className="text-xl font-semibold text-slate-900 ">
         Favori Listem
         {items.length > 0 && (
-          <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">({items.length})</span>
+          <span className="ml-2 text-base font-normal text-slate-400 ">({items.length})</span>
         )}
       </h2>
 
@@ -246,7 +246,7 @@ function FavoritesPane({ isClient }: { isClient: boolean }) {
             }
           />
         ) : filtered.length === 0 ? (
-          <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">"{q}" için sonuç yok.</p>
+          <p className="py-12 text-center text-sm text-slate-500 ">"{q}" için sonuç yok.</p>
         ) : (
           <div className={GRID}>
             {filtered.map((p) => (
@@ -310,17 +310,17 @@ function CollectionPane({
   return (
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="min-w-0 truncate text-xl font-semibold text-slate-900 dark:text-white">
+        <h2 className="min-w-0 truncate text-xl font-semibold text-slate-900 ">
           {collection.name}
           {items.length > 0 && (
-            <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">({items.length})</span>
+            <span className="ml-2 text-base font-normal text-slate-400 ">({items.length})</span>
           )}
         </h2>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={onAddProducts}
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
           >
             Ürün ekle
           </button>
@@ -328,7 +328,7 @@ function CollectionPane({
             type="button"
             aria-label="Paylaş"
             onClick={share}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-300 dark:hover:text-indigo-400"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3" />
@@ -359,7 +359,7 @@ function CollectionPane({
         ) : items.length === 0 ? (
           <EmptyBox title="Bu liste boş" desc="“Ürün ekle” ile favorilerinden bu listeye ürün ekleyebilirsin." />
         ) : filtered.length === 0 ? (
-          <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">"{q}" için sonuç yok.</p>
+          <p className="py-12 text-center text-sm text-slate-500 ">"{q}" için sonuç yok.</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {filtered.map((p) => (
@@ -418,7 +418,7 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
 
   return (
     <ModalShell title="Listelerime ekle" onClose={onClose}>
-      <p className="mb-3 line-clamp-1 text-sm text-slate-500 dark:text-slate-400">{product.title}</p>
+      <p className="mb-3 line-clamp-1 text-sm text-slate-500 ">{product.title}</p>
 
       <div className="max-h-64 space-y-1 overflow-y-auto">
         {collections && collections.length > 0 ? (
@@ -429,12 +429,12 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
                 key={c.id}
                 type="button"
                 onClick={() => toggle(c)}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-50 "
               >
-                <span className="text-slate-800 dark:text-slate-200">{c.name}</span>
+                <span className="text-slate-800 ">{c.name}</span>
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded border ${
-                    inList ? "border-indigo-600 bg-indigo-600 text-white dark:border-indigo-500 dark:bg-indigo-500" : "border-slate-300 dark:border-slate-600"
+                    inList ? "border-indigo-600 bg-indigo-600 text-white " : "border-slate-300 "
                   }`}
                 >
                   {inList && (
@@ -451,13 +451,13 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
         )}
       </div>
 
-      <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4 dark:border-slate-700">
+      <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4 ">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && createAndAdd()}
           placeholder="Yeni liste oluştur"
-          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 "
         />
         <button
           type="button"
@@ -493,10 +493,10 @@ function CollectionNameModal({
         onKeyDown={(e) => e.key === "Enter" && name.trim() && onSubmit(name.trim())}
         maxLength={120}
         placeholder="Liste adı (ör. Sınava Hazırlık)"
-        className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+        className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
       />
       <div className="mt-4 flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+        <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 ">
           Vazgeç
         </button>
         <button
@@ -532,7 +532,7 @@ function AddProductsToCollectionModal({ collection, onClose }: { collection: Col
   return (
     <ModalShell title={`"${collection.name}" listesine ekle`} onClose={onClose}>
       {favorites.length === 0 ? (
-        <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p className="py-6 text-center text-sm text-slate-500 ">
           Önce ürünleri favorine ekle; buradan listene aktarabilirsin.
         </p>
       ) : (
@@ -544,15 +544,15 @@ function AddProductsToCollectionModal({ collection, onClose }: { collection: Col
                 key={p.id}
                 type="button"
                 onClick={() => toggle(p)}
-                className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-slate-50 "
               >
-                <div className="h-12 w-10 shrink-0 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
+                <div className="h-12 w-10 shrink-0 overflow-hidden rounded bg-slate-100 ">
                   {p.cover_url && <img src={p.cover_url} alt="" className="h-full w-full object-cover" />}
                 </div>
-                <span className="line-clamp-2 flex-1 text-sm text-slate-800 dark:text-slate-200">{p.title}</span>
+                <span className="line-clamp-2 flex-1 text-sm text-slate-800 ">{p.title}</span>
                 <span
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                    inList ? "border-indigo-600 bg-indigo-600 text-white dark:border-indigo-500 dark:bg-indigo-500" : "border-slate-300 dark:border-slate-600"
+                    inList ? "border-indigo-600 bg-indigo-600 text-white " : "border-slate-300 "
                   }`}
                 >
                   {inList && (

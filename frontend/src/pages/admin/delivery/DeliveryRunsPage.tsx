@@ -26,32 +26,32 @@ function RunArchiveRow({ run }: { run: DeliveryRun }) {
     <li>
       <Link
         to={ROUTES.adminDeliveryRun(run.id)}
-        className="flex flex-wrap items-center gap-3 px-6 py-3.5 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+        className="flex flex-wrap items-center gap-3 px-6 py-3.5 transition hover:bg-slate-50 "
       >
-        <span className="w-24 shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="w-24 shrink-0 text-xs tabular-nums text-slate-500 ">
           {DATE_FMT.format(new Date(`${run.run_date}T00:00:00`))}
         </span>
         <div className="min-w-0 flex-1 basis-36">
-          <p className="text-sm font-medium text-slate-900 dark:text-white">
+          <p className="text-sm font-medium text-slate-900 ">
             Tur #{run.id}
-            <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
+            <span className="ml-2 text-xs font-normal text-slate-500 ">
               {run.vehicle}
             </span>
           </p>
-          <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 truncate text-xs text-slate-500 ">
             {run.courier?.name ?? "Kurye atanmadı"}
           </p>
         </div>
         {total > 0 && (
-          <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+          <span className="shrink-0 text-xs tabular-nums text-slate-500 ">
             {done}/{total} durak
             {failed > 0 && (
-              <span className="ml-1.5 text-rose-600 dark:text-rose-400">· {failed} başarısız</span>
+              <span className="ml-1.5 text-rose-600 ">· {failed} başarısız</span>
             )}
           </span>
         )}
         {run.total_distance_km != null && (
-          <span className="hidden shrink-0 text-xs tabular-nums text-slate-400 sm:inline dark:text-slate-500">
+          <span className="hidden shrink-0 text-xs tabular-nums text-slate-400 sm:inline ">
             {run.total_distance_km.toLocaleString("tr-TR")} km
           </span>
         )}
@@ -74,11 +74,11 @@ export default function DeliveryRunsPage() {
   const isLastPage = !dateFilter && runs.length < PAGE_SIZE;
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+    <section className="rounded-2xl border border-slate-200 bg-white ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Turlar</h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base font-bold text-slate-900 ">Turlar</h2>
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Geçmiş ve planlı dağıtım turları — detay için satıra tıkla.
           </p>
         </div>
@@ -122,7 +122,7 @@ export default function DeliveryRunsPage() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100 ">
           {runs.map((r) => (
             <RunArchiveRow key={r.id} run={r} />
           ))}
@@ -130,7 +130,7 @@ export default function DeliveryRunsPage() {
       )}
 
       {!dateFilter && (page > 0 || !isLastPage) && (
-        <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 dark:border-slate-800">
+        <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 ">
           <Button
             size="sm"
             variant="ghost"
@@ -139,7 +139,7 @@ export default function DeliveryRunsPage() {
           >
             ← Daha yeni
           </Button>
-          <span className="text-xs tabular-nums text-slate-400 dark:text-slate-500">
+          <span className="text-xs tabular-nums text-slate-400 ">
             Sayfa {page + 1}
           </span>
           <Button
@@ -152,7 +152,7 @@ export default function DeliveryRunsPage() {
           </Button>
         </div>
       )}
-      <p className="flex items-center gap-1.5 border-t border-slate-100 px-6 py-2 text-[11px] text-slate-400 dark:border-slate-800 dark:text-slate-500">
+      <p className="flex items-center gap-1.5 border-t border-slate-100 px-6 py-2 text-[11px] text-slate-400 ">
         <TruckIcon className="h-3.5 w-3.5" />
         Turlar en yeni tarihten eskiye sıralanır.
       </p>

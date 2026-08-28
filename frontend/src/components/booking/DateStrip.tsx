@@ -67,27 +67,27 @@ export function DateStrip({
               onClick={() => onChange(d.value)}
               className={`flex-shrink-0 snap-start flex flex-col items-center justify-center w-[72px] h-[84px] rounded-2xl border-2 transition-all ${
                 active
-                  ? "border-indigo-600 bg-indigo-600 shadow-md dark:border-indigo-500 dark:bg-indigo-500"
-                  : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
+                  ? "border-indigo-600 bg-indigo-600 shadow-md "
+                  : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-indigo-50 "
               }`}
             >
               <span
                 className={`text-[10px] font-bold uppercase tracking-wider ${
-                  active ? "text-indigo-200 dark:text-indigo-100" : "text-slate-400 dark:text-slate-500"
+                  active ? "text-indigo-200 " : "text-slate-400 "
                 }`}
               >
                 {d.month}
               </span>
               <span
                 className={`text-xl font-black mt-0.5 mb-1 ${
-                  active ? "text-white" : "text-slate-700 dark:text-slate-200"
+                  active ? "text-white" : "text-slate-700 "
                 }`}
               >
                 {d.dayNum}
               </span>
               <span
                 className={`text-[11px] font-medium ${
-                  active ? "text-white" : "text-slate-500 dark:text-slate-400"
+                  active ? "text-white" : "text-slate-500 "
                 }`}
               >
                 {d.label}

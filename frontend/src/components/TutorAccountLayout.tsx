@@ -53,8 +53,8 @@ export function TutorAccountLayout({
   return (
     <DashboardShell title={title} navItems={TUTOR_NAV}>
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-3 pb-16 pt-2 md:flex-row md:gap-0 md:px-6 md:pt-6">
-        <aside className="md:w-72 md:shrink-0 md:border-r md:border-slate-200 md:pr-8 dark:md:border-slate-700/60">
-          <h2 className="mb-7 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+        <aside className="md:w-72 md:shrink-0 md:border-r md:border-slate-200 md:pr-8 ">
+          <h2 className="mb-7 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Hesabım
           </h2>
           <nav className="flex gap-2 md:flex-col">
@@ -67,15 +67,15 @@ export function TutorAccountLayout({
                   aria-current={isActive ? "page" : undefined}
                   className={
                     isActive
-                      ? "flex flex-1 items-center gap-4 rounded-2xl bg-slate-100 px-4 py-3.5 text-base font-semibold text-slate-900 shadow-sm dark:bg-slate-700/60 dark:text-white md:flex-none"
-                      : "flex flex-1 items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700/40 dark:hover:text-white md:flex-none"
+                      ? "flex flex-1 items-center gap-4 rounded-2xl bg-slate-100 px-4 py-3.5 text-base font-semibold text-slate-900 shadow-sm md:flex-none"
+                      : "flex flex-1 items-center gap-4 rounded-2xl px-4 py-3.5 text-base font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 md:flex-none"
                   }
                 >
                   <span
                     className={
                       isActive
-                        ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-white dark:ring-slate-600"
-                        : "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-700/60 dark:text-slate-300"
+                        ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-slate-800 shadow-sm ring-1 ring-slate-200 "
+                        : "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 "
                     }
                   >
                     {item.icon}

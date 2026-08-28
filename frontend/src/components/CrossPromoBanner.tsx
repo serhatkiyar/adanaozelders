@@ -56,7 +56,7 @@ export function CrossPromoBanner({
     <Link
       to={to}
       aria-label={ariaLabel}
-      className="group relative block h-20 w-full overflow-hidden rounded-2xl sm:h-24 md:h-28 lg:h-auto lg:aspect-[2280/220] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900"
+      className="group relative block h-20 w-full overflow-hidden rounded-2xl sm:h-24 md:h-28 lg:h-auto lg:aspect-[2280/220] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white "
     >
       <img
         src={imageSrc}

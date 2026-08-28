@@ -64,7 +64,7 @@ export function HoverZoomImage({
   return (
     <div
       ref={boxRef}
-      className="relative aspect-square rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-100"
+      className="relative aspect-square rounded-2xl border border-slate-200 bg-white "
     >
       <button
         type="button"
@@ -100,7 +100,7 @@ export function HoverZoomImage({
       {zoom && (
         <div
           aria-hidden
-          className="pointer-events-none absolute left-full top-0 z-30 ml-10 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:block dark:border-slate-700"
+          className="pointer-events-none absolute left-full top-0 z-30 ml-10 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:block "
           style={{
             width: `${PANEL_SCALE * 100}%`,
             height: `${PANEL_SCALE * 100}%`,

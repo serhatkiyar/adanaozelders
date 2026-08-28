@@ -31,11 +31,11 @@ const EMOJIS = ["📚", "✍️", "🧠", "🏃", "💧", "🛏️", "🧘", "�
 const HEATMAP_WEEKS = 17;
 
 const LEVEL_BG = [
-  "bg-slate-100 dark:bg-slate-800",
-  "bg-emerald-200 dark:bg-emerald-900",
-  "bg-emerald-300 dark:bg-emerald-700",
-  "bg-emerald-400 dark:bg-emerald-600",
-  "bg-emerald-500 dark:bg-emerald-500",
+  "bg-slate-100 ",
+  "bg-emerald-200 ",
+  "bg-emerald-300 ",
+  "bg-emerald-400 ",
+  "bg-emerald-500 ",
 ] as const;
 
 function HabitModal({
@@ -86,14 +86,14 @@ function HabitModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200"
+        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+        <h2 className="text-lg font-bold text-slate-900 ">
           {editing ? "Alışkanlığı Düzenle" : "Yeni Alışkanlık"}
         </h2>
         <form onSubmit={submit} className="mt-4 space-y-4">
-          <Field label="Ad *" required labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          <Field label="Ad *" required labelClassName="mb-1.5 block text-xs font-medium text-slate-500 ">
             {(id) => (
                 <input
                     id={id}
@@ -102,13 +102,13 @@ function HabitModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Örn. Her gün 30 soru çöz"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
                 />
             )}
           </Field>
 
           <div>
-            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 ">
               Simge
             </span>
             <div role="group" aria-label="Simge" className="flex flex-wrap gap-1.5">
@@ -119,8 +119,8 @@ function HabitModal({
                   onClick={() => setIcon(e)}
                   className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${
                     icon === e
-                      ? "bg-indigo-100 ring-2 ring-indigo-400 dark:bg-indigo-500/20"
-                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600"
+                      ? "bg-indigo-100 ring-2 ring-indigo-400 "
+                      : "bg-slate-100 hover:bg-slate-200 "
                   }`}
                 >
                   {e}
@@ -130,7 +130,7 @@ function HabitModal({
           </div>
 
           <div>
-            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 ">
               Renk
             </span>
             <div role="group" aria-label="Renk" className="flex flex-wrap gap-2">
@@ -142,7 +142,7 @@ function HabitModal({
                   style={{ backgroundColor: c }}
                   aria-label={c}
                   className={`h-7 w-7 rounded-full transition ${
-                    color === c ? "ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900" : ""
+                    color === c ? "ring-2 ring-offset-2 ring-slate-400 " : ""
                   }`}
                 />
               ))}
@@ -150,7 +150,7 @@ function HabitModal({
           </div>
 
           <div>
-            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 ">
               Sıklık
             </span>
             <div role="group" aria-label="Sıklık" className="grid grid-cols-2 gap-2">
@@ -162,7 +162,7 @@ function HabitModal({
                   className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
                     period === p
                       ? "bg-indigo-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                   }`}
                 >
                   {p === "daily" ? "Her gün" : "Haftalık"}
@@ -172,24 +172,24 @@ function HabitModal({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <label className="mb-1.5 block text-xs font-medium text-slate-500 ">
               {period === "weekly" ? "Haftada kaç gün hedefi" : "Günde kaç kez hedefi"}
             </label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setTarget((t) => Math.max(1, t - 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-lg font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-lg font-bold text-slate-600 hover:bg-slate-200 "
               >
                 −
               </button>
-              <span className="w-8 text-center text-lg font-bold text-slate-900 dark:text-white">
+              <span className="w-8 text-center text-lg font-bold text-slate-900 ">
                 {target}
               </span>
               <button
                 type="button"
                 onClick={() => setTarget((t) => Math.min(period === "weekly" ? 7 : 50, t + 1))}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-lg font-bold text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300"
+                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-lg font-bold text-slate-600 hover:bg-slate-200 "
               >
                 +
               </button>
@@ -200,7 +200,7 @@ function HabitModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+              className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 "
             >
               İptal
             </button>
@@ -265,7 +265,7 @@ function HabitCard({ habit }: { habit: Habit }) {
   const color = habit.color ?? "#6366f1";
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md ">
       <div className="flex items-start gap-3">
         <button
           onClick={toggle}
@@ -295,7 +295,7 @@ function HabitCard({ habit }: { habit: Habit }) {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="truncate text-base font-bold text-slate-900 dark:text-white">
+            <h3 className="truncate text-base font-bold text-slate-900 ">
               {habit.icon && <span className="mr-1">{habit.icon}</span>}
               {habit.name}
             </h3>
@@ -303,7 +303,7 @@ function HabitCard({ habit }: { habit: Habit }) {
               <button
                 onClick={() => setEditing(true)}
                 aria-label="Düzenle"
-                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"
+                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
@@ -319,13 +319,13 @@ function HabitCard({ habit }: { habit: Habit }) {
                       })
                     }
                     disabled={del.isPending}
-                    className="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 "
                   >
                     Sil
                   </button>
                   <button
                     onClick={() => setConfirming(false)}
-                    className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    className="rounded-lg px-2 py-1 text-xs text-slate-400 hover:bg-slate-100 "
                   >
                     Vazgeç
                   </button>
@@ -334,7 +334,7 @@ function HabitCard({ habit }: { habit: Habit }) {
                 <button
                   onClick={() => setConfirming(true)}
                   aria-label="Sil"
-                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-red-500 dark:hover:bg-slate-700"
+                  className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-red-500 "
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -346,16 +346,16 @@ function HabitCard({ habit }: { habit: Habit }) {
 
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
             {habit.current_streak > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-bold text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-bold text-amber-600 ">
                 🔥 {habit.current_streak} {habit.period === "weekly" ? "hafta" : "gün"}
               </span>
             )}
             {progressLabel && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 ">
                 {progressLabel}
               </span>
             )}
-            <span className="text-slate-400 dark:text-slate-500">
+            <span className="text-slate-400 ">
               En uzun {habit.longest_streak} · Toplam {habit.total_completions}
             </span>
           </div>
@@ -387,16 +387,16 @@ export default function Habits() {
           <div>
             <Link
               to={ROUTES.learn}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
             >
               ← Öğren
             </Link>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="mt-1 text-2xl font-bold text-slate-900 ">
               Alışkanlıklar
             </h1>
             {total > 0 && (
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Bugün <span className="font-semibold text-emerald-600 dark:text-emerald-400">{doneToday}</span>/{total} tamamlandı
+              <p className="mt-1 text-sm text-slate-500 ">
+                Bugün <span className="font-semibold text-emerald-600 ">{doneToday}</span>/{total} tamamlandı
               </p>
             )}
           </div>
@@ -414,16 +414,16 @@ export default function Habits() {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+              <div key={i} className="h-44 animate-pulse rounded-2xl bg-slate-100 " />
             ))}
           </div>
         ) : !habits || habits.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-2xl dark:bg-amber-500/15">🔥</div>
-            <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-2xl ">🔥</div>
+            <p className="mt-4 text-sm font-medium text-slate-700 ">
               Henüz alışkanlığın yok
             </p>
-            <p className="mt-1 max-w-xs text-xs text-slate-400 dark:text-slate-500">
+            <p className="mt-1 max-w-xs text-xs text-slate-400 ">
               Çalışma disiplinini kur: her gün soru çöz, kelime tekrarla, su iç… Küçük
               adımlarla seriyi büyüt.
             </p>

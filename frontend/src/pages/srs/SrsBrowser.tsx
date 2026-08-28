@@ -259,7 +259,7 @@ export default function SrsBrowser() {
         header: "Etiketler",
         cell: ({ row }) =>
           row.original.tags.length > 0 ? (
-            <span className="block max-w-40 truncate text-xs text-slate-500 dark:text-slate-400">
+            <span className="block max-w-40 truncate text-xs text-slate-500 ">
               {row.original.tags.join(", ")}
             </span>
           ) : (
@@ -275,11 +275,11 @@ export default function SrsBrowser() {
         <div>
           <Link
             to={ROUTES.srs}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
           >
             ← Aralıklı Tekrar
           </Link>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+          <h1 className="mt-1 text-2xl font-bold text-slate-900 ">
             Kart Tarayıcı
           </h1>
           <SrsSuspendedSummary
@@ -371,12 +371,12 @@ export default function SrsBrowser() {
             top-0 z-40) hemen altına yapışır. Kaydırılan içerik altından
             geçmesin diye sayfa zeminini taşıyan bir kılıfın içinde durur. */}
         {selected.size > 0 && (
-          <div className="sticky top-16 z-30 -mx-1 mt-4 bg-slate-50 px-1 py-1 dark:bg-slate-900">
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm dark:border-indigo-500/30 dark:bg-indigo-500/10">
-            <span className="font-semibold text-indigo-700 dark:text-indigo-300">
+          <div className="sticky top-16 z-30 -mx-1 mt-4 bg-slate-50 px-1 py-1 ">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm ">
+            <span className="font-semibold text-indigo-700 ">
               {selected.size} kart seçili
             </span>
-            <span className="mx-1 hidden h-4 w-px bg-indigo-200 dark:bg-indigo-500/30 sm:block" />
+            <span className="mx-1 hidden h-4 w-px bg-indigo-200 sm:block" />
             {(
               [
                 ["suspend", "Askıya al"],
@@ -389,7 +389,7 @@ export default function SrsBrowser() {
                 key={action}
                 onClick={() => (action === "suspend" ? askSuspend() : runBulk(action))}
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
               >
                 {label}
               </button>
@@ -411,7 +411,7 @@ export default function SrsBrowser() {
               <button
                 onClick={askMove}
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
               >
                 Taşı
               </button>
@@ -431,7 +431,7 @@ export default function SrsBrowser() {
                     : toast.error("Etiket yaz.")
                 }
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
               >
                 Etiket ekle
               </button>
@@ -442,14 +442,14 @@ export default function SrsBrowser() {
                     : toast.error("Etiket yaz.")
                 }
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
               >
                 Etiket çıkar
               </button>
             </span>
             <button
               onClick={() => setSelected(new Set())}
-              className="ml-auto rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="ml-auto rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 "
             >
               Seçimi temizle
             </button>
@@ -464,7 +464,7 @@ export default function SrsBrowser() {
             <button
               type="button"
               onClick={toggleAll}
-              className="rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 "
             >
               {allOnPageSelected
                 ? `Sayfa seçimini kaldır (${items.length})`
@@ -506,10 +506,10 @@ export default function SrsBrowser() {
                     className="mt-1 h-4 w-4 accent-indigo-600"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <p className="truncate text-sm font-medium text-slate-800 ">
                       {row.front}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    <p className="mt-0.5 text-xs text-slate-500 ">
                       {deckNames.get(row.deck_id) ?? `#${row.deck_id}`} ·{" "}
                       {STATE_LABELS[row.state]}
                       {row.suspended ? " · askıda" : ""}

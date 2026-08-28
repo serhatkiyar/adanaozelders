@@ -31,10 +31,10 @@ export function TimeStepper({
   };
 
   const arrowBtn =
-    "rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:text-indigo-600 hover:ring-indigo-200 dark:bg-slate-800 dark:text-slate-500 dark:ring-slate-700 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300 dark:hover:ring-indigo-500/30";
+    "rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:text-indigo-600 hover:ring-indigo-200 ";
 
   return (
-    <div className="flex items-center justify-center gap-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-4 dark:border-slate-700/50 dark:bg-slate-800/20">
+    <div className="flex items-center justify-center gap-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-4 ">
       {/* Saat */}
       <div className="flex flex-col items-center gap-2">
         <button type="button" onClick={() => update(h + 1, m)} className={arrowBtn}>
@@ -42,7 +42,7 @@ export function TimeStepper({
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           </svg>
         </button>
-        <div className="w-14 text-center text-3xl font-black text-slate-800 dark:text-white">
+        <div className="w-14 text-center text-3xl font-black text-slate-800 ">
           {String(h).padStart(2, "0")}
         </div>
         <button type="button" onClick={() => update(h - 1, m)} className={arrowBtn}>
@@ -52,7 +52,7 @@ export function TimeStepper({
         </button>
       </div>
 
-      <div className="text-3xl font-black text-slate-300 dark:text-slate-600 pb-1">:</div>
+      <div className="text-3xl font-black text-slate-300 pb-1">:</div>
 
       {/* Dakika */}
       <div className="flex flex-col items-center gap-2">
@@ -61,7 +61,7 @@ export function TimeStepper({
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           </svg>
         </button>
-        <div className="w-14 text-center text-3xl font-black text-slate-800 dark:text-white">
+        <div className="w-14 text-center text-3xl font-black text-slate-800 ">
           {String(m).padStart(2, "0")}
         </div>
         <button type="button" onClick={() => update(h, m - 15)} className={arrowBtn}>

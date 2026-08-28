@@ -37,7 +37,7 @@ const PRIO: Record<TaskPriority, { label: string; flag: string }> = {
   1: { label: "P1", flag: "text-red-500" },
   2: { label: "P2", flag: "text-orange-500" },
   3: { label: "P3", flag: "text-blue-500" },
-  4: { label: "P4", flag: "text-slate-400 dark:text-slate-500" },
+  4: { label: "P4", flag: "text-slate-400 " },
 };
 
 const REC_OPTS: { value: string; label: string }[] = [
@@ -75,15 +75,15 @@ function Pop({ open, onClose, children }: { open: boolean; onClose: () => void; 
   return (
     <>
       <div className="fixed inset-0 z-10" onClick={onClose} />
-      <div className="absolute left-0 top-full z-20 mt-1.5 min-w-[200px] rounded-xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute left-0 top-full z-20 mt-1.5 min-w-[200px] rounded-xl border border-slate-200 bg-white p-2 shadow-xl " onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </>
   );
 }
 
-const chipCls = "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700/50";
-const chipActiveCls = "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-500/60 dark:bg-indigo-500/15 dark:text-indigo-300";
+const chipCls = "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 ";
+const chipActiveCls = "border-indigo-300 bg-indigo-50 text-indigo-700 ";
 
 function Flag({ p }: { p: TaskPriority }) {
   return (
@@ -183,7 +183,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
   };
 
   return (
-    <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-black/5 dark:border-slate-700 dark:bg-slate-800">
+    <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl ring-1 ring-black/5 ">
       <input
         ref={titleRef}
         value={title}
@@ -191,14 +191,14 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Escape") onCancel(); }}
         placeholder="Görev adı"
-        className="w-full bg-transparent text-base font-semibold text-slate-900 outline-none placeholder:font-medium placeholder:text-slate-400 dark:text-white"
+        className="w-full bg-transparent text-base font-semibold text-slate-900 outline-none placeholder:font-medium placeholder:text-slate-400 "
       />
       <input
         value={description}
         maxLength={4000}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Açıklama"
-        className="mt-1 w-full bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400 dark:text-slate-300"
+        className="mt-1 w-full bg-transparent text-sm text-slate-600 outline-none placeholder:text-slate-400 "
       />
 
       {/* Chip satırı */}
@@ -212,12 +212,12 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
           </button>
           <Pop open={menu === "date"} onClose={() => setMenu(null)}>
             <div className="flex flex-col gap-1">
-              <button type="button" onClick={() => { setDueIso(offsetIso(0)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700">Bugün</button>
-              <button type="button" onClick={() => { setDueIso(offsetIso(1)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700">Yarın</button>
-              <button type="button" onClick={() => { setDueIso(offsetIso(7)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700">Gelecek hafta</button>
+              <button type="button" onClick={() => { setDueIso(offsetIso(0)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 ">Bugün</button>
+              <button type="button" onClick={() => { setDueIso(offsetIso(1)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 ">Yarın</button>
+              <button type="button" onClick={() => { setDueIso(offsetIso(7)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 ">Gelecek hafta</button>
               <input type="datetime-local" value={isoToLocalInput(dueIso)} onChange={(e) => setDueIso(e.target.value ? localInputToIso(e.target.value) : null)}
-                className="mt-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200" />
-              {dueIso && <button type="button" onClick={() => { setDueIso(null); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Tarihi kaldır</button>}
+                className="mt-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 " />
+              {dueIso && <button type="button" onClick={() => { setDueIso(null); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-red-500 hover:bg-red-50 ">Tarihi kaldır</button>}
             </div>
           </Pop>
         </div>
@@ -231,7 +231,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
           <Pop open={menu === "priority"} onClose={() => setMenu(null)}>
             <div className="flex flex-col gap-1">
               {([1, 2, 3, 4] as TaskPriority[]).map((p) => (
-                <button key={p} type="button" onClick={() => { setPriority(p); setMenu(null); }} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 ${priority === p ? "bg-slate-100 dark:bg-slate-700" : ""}`}>
+                <button key={p} type="button" onClick={() => { setPriority(p); setMenu(null); }} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 ${priority === p ? "bg-slate-100 " : ""}`}>
                   <Flag p={p} /> {PRIO[p].label}
                 </button>
               ))}
@@ -251,8 +251,8 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
               {labels.map((l) => {
                 const on = labelIds.includes(l.id);
                 return (
-                  <button key={l.id} type="button" onClick={() => toggleLabel(l.id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700">
-                    <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${on ? "border-indigo-500 bg-indigo-500 text-white" : "border-slate-300 dark:border-slate-500"}`}>
+                  <button key={l.id} type="button" onClick={() => toggleLabel(l.id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 ">
+                    <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${on ? "border-indigo-500 bg-indigo-500 text-white" : "border-slate-300 "}`}>
                       {on && <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                     </span>
                     <span style={{ color: l.color || LABEL_COLOR }}>@{l.name}</span>
@@ -260,11 +260,11 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
                 );
               })}
             </div>
-            <div className="mt-1 flex gap-1 border-t border-slate-100 pt-1.5 dark:border-slate-700">
+            <div className="mt-1 flex gap-1 border-t border-slate-100 pt-1.5 ">
               <input value={newLabel} maxLength={60} onChange={(e) => setNewLabel(e.target.value)} placeholder="Yeni etiket…"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewLabel(); } }}
-                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-indigo-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200" />
-              <button type="button" onClick={addNewLabel} className="rounded-lg bg-slate-100 px-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200">Ekle</button>
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-indigo-400 " />
+              <button type="button" onClick={addNewLabel} className="rounded-lg bg-slate-100 px-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 ">Ekle</button>
             </div>
           </Pop>
         </div>
@@ -278,7 +278,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
           <Pop open={menu === "recur"} onClose={() => setMenu(null)}>
             <div className="flex flex-col gap-1">
               {REC_OPTS.map((o) => (
-                <button key={o.value} type="button" onClick={() => { setRecurrence(o.value); setMenu(null); }} className={`rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 ${recurrence === o.value ? "bg-slate-100 dark:bg-slate-700" : ""}`}>{o.label}</button>
+                <button key={o.value} type="button" onClick={() => { setRecurrence(o.value); setMenu(null); }} className={`rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 ${recurrence === o.value ? "bg-slate-100 " : ""}`}>{o.label}</button>
               ))}
             </div>
           </Pop>
@@ -293,15 +293,15 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
 
       {/* Hatırlatıcılar bölümü */}
       {(showReminders || reminders.length > 0) && (
-        <div className="mt-3 rounded-xl border border-slate-200 p-2.5 dark:border-slate-700">
+        <div className="mt-3 rounded-xl border border-slate-200 p-2.5 ">
           <ReminderEditor reminders={reminders} due={dueIso} onChange={setReminders} />
         </div>
       )}
 
       {/* Alt bar: proje seçici + aksiyonlar */}
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 ">
         <div className="relative">
-          <button type="button" onClick={() => setMenu(menu === "project" ? null : "project")} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700">
+          <button type="button" onClick={() => setMenu(menu === "project" ? null : "project")} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 ">
             <span className="text-base font-bold leading-none" style={{ color: project?.color || "#94a3b8" }}>{project?.is_inbox ? "📥" : "#"}</span>
             {project?.name ?? "Proje seç"}
             <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
@@ -309,9 +309,9 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
           <Pop open={menu === "project"} onClose={() => setMenu(null)}>
             <div className="max-h-56 overflow-y-auto">
               {lists.map((l) => (
-                <button key={l.id} type="button" onClick={() => { setListId(l.id); setMenu(null); }} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-700 ${listId === l.id ? "bg-slate-100 dark:bg-slate-700" : ""}`}>
+                <button key={l.id} type="button" onClick={() => { setListId(l.id); setMenu(null); }} className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 ${listId === l.id ? "bg-slate-100 " : ""}`}>
                   <span className="text-sm font-bold leading-none" style={{ color: l.color || "#94a3b8" }}>{l.is_inbox ? "📥" : "#"}</span>
-                  <span className="text-slate-700 dark:text-slate-200">{l.name}</span>
+                  <span className="text-slate-700 ">{l.name}</span>
                 </button>
               ))}
             </div>
@@ -319,7 +319,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
         </div>
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={onCancel} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">İptal</button>
+          <button type="button" onClick={onCancel} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 ">İptal</button>
           <button type="submit" disabled={pending || !title.trim()} className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">Görev ekle</button>
         </div>
       </div>

@@ -63,8 +63,8 @@ export default function PackingLayout() {
             className={({ isActive }) =>
               `rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
                 isActive
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white "
+                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 "
               }`
             }
           >

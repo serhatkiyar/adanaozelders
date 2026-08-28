@@ -587,17 +587,16 @@ describe("Görev 6 · görsel kusurlar", () => {
     render(<HataliAlan />);
     const hata = screen.getByRole("alert");
     expect(hata.className).toContain("text-rose-700");
-    expect(hata.className, "koyu tema tonu değişmemeliydi").toContain(
-      "dark:text-rose-400"
-    );
+    // (Tarihçe: koyu tema tonu iddiası vardı; dark mode söküldü.)
   });
 
-  it("6b — sayı girdisi koyu temada yerel şemayı alır", () => {
-    // jsdom yerel widget çizmez; ölçülebilen şey kararın alana İNDİĞİDİR.
-    // Görsel doğrulama gerçek Chrome'da yapıldı (docs/ip-a6c/a6c-koyu.png).
+  it("6b — yerel widget şeması artık ALANDA değil KÖKTE (dark mode söküldü)", () => {
+    // Tarihçe: alan `dark:[color-scheme:dark]` taşırdı. Dark mode sökülünce
+    // şema kök `html { color-scheme: light }` bildiriminden gelir
+    // (`renkSemasi.test.ts`); alan bazlı ekleme geri DÖNMEMELİ.
     render(<AlanEkrani tur="number" />);
     const alan = screen.getByLabelText("Miktar");
-    expect(alan.className).toContain("dark:[color-scheme:dark]");
+    expect(alan.className).not.toContain("color-scheme");
     expect(alan.className, "alanın kendi sınıfı silindi").toContain("input");
   });
 
@@ -607,19 +606,10 @@ describe("Görev 6 · görsel kusurlar", () => {
   });
 
   it.each(["date", "datetime-local", "time", "month", "week", "color"])(
-    "6b⁺ — '%s' girdisi de koyu temada yerel şemayı alır (İP-A7d2 · SK-6)",
+    "6b⁺ — '%s' girdisinde de alan bazlı şema sınıfı YOK (kökten gelir)",
     (tur) => {
-      // A6c bu düzeltmeyi YALNIZ `number` için kurmuştu; o pakette ölçülen
-      // tek yerel widget artır/azalt oklarıydı. Tarih ve saat girdileri de
-      // yerel widget çizer (takvim/saat ikonu) ve koyu panelde beyaz kalıyordu.
-      //
-      // A7d2'nin gerçek tarayıcı turu bunu ÖLÇTÜ: oturum editöründe
-      // `Tarih & saat` ve araç formunda `Vardiya başlangıç/bitiş` alanlarının
-      // `color-scheme` değeri koyu temada `normal` idi.
       render(<AlanEkrani tur={tur} />);
-      expect(screen.getByLabelText("Miktar").className).toContain(
-        "dark:[color-scheme:dark]"
-      );
+      expect(screen.getByLabelText("Miktar").className).not.toContain("color-scheme");
     }
   );
 });

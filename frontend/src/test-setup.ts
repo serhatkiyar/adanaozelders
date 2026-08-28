@@ -60,7 +60,8 @@ for (const ad of ["localStorage", "sessionStorage"] as const) {
 // ## `window.matchMedia` — jsdom'da HİÇ YOK
 //
 // jsdom bu API'yi HİÇ sağlamaz (tanımlı değil, boş da değil); `matchMedia(...)`
-// bir TypeError verir. `themeStore` modül yüklenirken
+// bir TypeError verir. (İlk tetikleyici olan themeStore dark mode sökümüyle
+// silindi; shim matchMedia kullanan diğer kod için duruyor.) Eskiden store
 // `matchMedia(...).addEventListener` çağırdığı için ("system" tercihi OS
 // temasını canlı izler), onu içeren her zincir — `DashboardShell →
 // DashboardHeader → PersonalizeModal` — testte **render edilmeden** patlıyordu:

@@ -47,7 +47,7 @@ export function EditProductModal({
       ) : (
         <>
           <ProductForm mode="edit" initial={data} onDone={onSaved} />
-          <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-700">
+          <div className="mt-6 border-t border-slate-200 pt-5 ">
             <StockLedgerPanel productId={data.id} kind={data.kind} />
           </div>
         </>

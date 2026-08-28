@@ -18,7 +18,7 @@ import { ROLE_IDS } from "@/types";
 import type { SrsDeck } from "@/types/srs";
 import { ROUTES } from "@/lib/routes";
 
-const LABEL_CLS = "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
+const LABEL_CLS = "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 function CountChips({ deck }: { deck: SrsDeck }) {
   const c = deck.counts;
@@ -26,7 +26,7 @@ function CountChips({ deck }: { deck: SrsDeck }) {
   const total = c.new + c.learning + c.review;
   if (total === 0) {
     return (
-      <span className="text-xs text-slate-400 dark:text-slate-500">
+      <span className="text-xs text-slate-400 ">
         Bugünlük bitti
       </span>
     );
@@ -43,13 +43,13 @@ function CountChips({ deck }: { deck: SrsDeck }) {
       title={label}
       className="flex items-center gap-2 text-xs tabular-nums"
     >
-      <span aria-hidden className="font-semibold text-sky-600 dark:text-sky-400">
+      <span aria-hidden className="font-semibold text-sky-600 ">
         {c.new}
       </span>
-      <span aria-hidden className="font-semibold text-amber-600 dark:text-amber-400">
+      <span aria-hidden className="font-semibold text-amber-600 ">
         {c.learning}
       </span>
-      <span aria-hidden className="font-semibold text-emerald-600 dark:text-emerald-400">
+      <span aria-hidden className="font-semibold text-emerald-600 ">
         {c.review}
       </span>
     </span>
@@ -74,7 +74,7 @@ function DeckRow({
     >
       <Link
         to={ROUTES.srsDeck(deck.id)}
-        className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 transition hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400"
+        className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 transition hover:text-indigo-600 "
       >
         {deck.name}
       </Link>
@@ -85,7 +85,7 @@ function DeckRow({
           className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
             due > 0
               ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              : "text-slate-500 hover:bg-slate-100 "
           }`}
         >
           Çalış
@@ -120,7 +120,7 @@ function DeckTree({ decks }: { decks: SrsDeck[] }) {
   walk(null, 0);
 
   return (
-    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="divide-y divide-slate-100 ">
       {rows.map(({ deck, depth }) => (
         <DeckRow key={deck.id} deck={deck} depth={depth} studyable />
       ))}
@@ -214,7 +214,7 @@ function CreateDeckModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 "
           >
             İptal
           </button>
@@ -233,7 +233,7 @@ function CreateDeckModal({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 ">
       {children}
     </h2>
   );
@@ -267,27 +267,27 @@ export default function SrsDecks() {
           <div>
             <Link
               to={ROUTES.learn}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
             >
               ← Öğren
             </Link>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+            <h1 className="mt-1 text-2xl font-bold text-slate-900 ">
               Aralıklı Tekrar
             </h1>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm text-slate-500 ">
               FSRS algoritması sıradaki tekrarını tam zamanında önüne getirir.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Link
               to={ROUTES.srsBrowser}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 "
             >
               Kart Tarayıcı
             </Link>
             <Link
               to={ROUTES.srsStats}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 "
             >
               İstatistik
             </Link>
@@ -318,10 +318,10 @@ export default function SrsDecks() {
           <>
             {/* Destelerim */}
             <section className="mt-8">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-800">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 ">
                 <SectionTitle>Destelerim</SectionTitle>
                 {own.length > 0 && (
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                  <span className="text-[11px] text-slate-400 ">
                     yeni · öğrenme · tekrar
                   </span>
                 )}
@@ -349,20 +349,20 @@ export default function SrsDecks() {
             {/* Bana atananlar (öğrenci) */}
             {assigned.length > 0 && (
               <section className="mt-10">
-                <div className="border-b border-slate-200 pb-2 dark:border-slate-800">
+                <div className="border-b border-slate-200 pb-2 ">
                   <SectionTitle>Bana Atananlar</SectionTitle>
                 </div>
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="divide-y divide-slate-100 ">
                   {assigned.map((deck) => (
                     <div key={deck.id} className="flex items-center gap-3 py-3">
-                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 ">
                         {deck.name}
                       </span>
                       <CountChips deck={deck} />
                       <button
                         onClick={() => copy(deck)}
                         disabled={copyDeck.isPending}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 "
                       >
                         Kopyala
                       </button>
@@ -380,7 +380,7 @@ export default function SrsDecks() {
 
             {/* Platform galerisi */}
             <section className="mt-10">
-              <div className="border-b border-slate-200 pb-2 dark:border-slate-800">
+              <div className="border-b border-slate-200 pb-2 ">
                 <SectionTitle>Platform Desteleri</SectionTitle>
               </div>
               {platformQuery.isLoading ? (
@@ -405,15 +405,15 @@ export default function SrsDecks() {
                   />
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                <div className="divide-y divide-slate-100 ">
                   {(platformQuery.data ?? []).map((deck) => (
                     <div key={deck.id} className="flex items-center gap-3 py-3">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
+                        <p className="truncate text-sm font-medium text-slate-800 ">
                           {deck.name}
                         </p>
                         {deck.description && (
-                          <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                          <p className="mt-0.5 truncate text-xs text-slate-500 ">
                             {deck.description}
                           </p>
                         )}
@@ -421,13 +421,13 @@ export default function SrsDecks() {
                       <button
                         onClick={() => copy(deck)}
                         disabled={copyDeck.isPending}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:opacity-50 "
                       >
                         Kopyala
                       </button>
                       <Link
                         to={ROUTES.srsStudy(deck.id)}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 "
                       >
                         Çalış
                       </Link>

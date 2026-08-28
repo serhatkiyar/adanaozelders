@@ -160,7 +160,7 @@ function BaglaIcerik({
       {genelHata && (
         <p
           role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
+          className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 "
         >
           {genelHata}
         </p>
@@ -169,33 +169,33 @@ function BaglaIcerik({
       {/* Tedarikçi satırının künyesi: yönetici neyi bağladığını görmeden
           karar veremez (barkod ve birim, yanlış eşleşmenin en sık iki
           kaynağı). */}
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-slate-200 py-3 text-xs dark:border-slate-800">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-slate-200 py-3 text-xs ">
         <div>
-          <dt className="text-slate-500 dark:text-slate-400">Tedarikçi kodu</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+          <dt className="text-slate-500 ">Tedarikçi kodu</dt>
+          <dd className="mt-0.5 font-medium text-slate-800 ">
             {satir.external_code}
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500 dark:text-slate-400">Barkod</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+          <dt className="text-slate-500 ">Barkod</dt>
+          <dd className="mt-0.5 font-medium text-slate-800 ">
             {satir.barcode || "—"}
             {satir.barcode && !satir.barcode_valid && (
-              <span className="ml-1 font-normal text-amber-700 dark:text-amber-400">
+              <span className="ml-1 font-normal text-amber-700 ">
                 (geçersiz)
               </span>
             )}
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500 dark:text-slate-400">Birim</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+          <dt className="text-slate-500 ">Birim</dt>
+          <dd className="mt-0.5 font-medium text-slate-800 ">
             {satir.unit_name || "—"}
           </dd>
         </div>
         <div>
-          <dt className="text-slate-500 dark:text-slate-400">Marka</dt>
-          <dd className="mt-0.5 font-medium text-slate-800 dark:text-slate-200">
+          <dt className="text-slate-500 ">Marka</dt>
+          <dd className="mt-0.5 font-medium text-slate-800 ">
             {satir.brand || "—"}
           </dd>
         </div>
@@ -211,7 +211,7 @@ function BaglaIcerik({
         {/* Hata `ProductPicker`ın DIŞINDA: seçici ortak bir bileşendir ve
             form bağlamını bilmez. */}
         {urunHatasi && (
-          <p role="alert" className="mt-1 text-xs text-rose-700 dark:text-rose-400">
+          <p role="alert" className="mt-1 text-xs text-rose-700 ">
             {urunHatasi}
           </p>
         )}

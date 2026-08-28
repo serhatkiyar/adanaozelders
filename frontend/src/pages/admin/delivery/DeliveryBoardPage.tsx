@@ -61,13 +61,13 @@ function PoolCard({
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className="flex cursor-grab items-center gap-3 px-5 py-3 transition hover:bg-slate-50 active:cursor-grabbing dark:hover:bg-slate-800/60"
+      className="flex cursor-grab items-center gap-3 px-5 py-3 transition hover:bg-slate-50 active:cursor-grabbing "
     >
       <svg
         viewBox="0 0 24 24"
         fill="currentColor"
         aria-hidden
-        className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600"
+        className="h-4 w-4 shrink-0 text-slate-300 "
       >
         <circle cx="9" cy="6" r="1.5" />
         <circle cx="15" cy="6" r="1.5" />
@@ -77,18 +77,18 @@ function PoolCard({
         <circle cx="15" cy="18" r="1.5" />
       </svg>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+        <p className="truncate text-sm font-medium text-slate-900 ">
           {order.recipient ?? "Sipariş"}
           <span className="ml-2 text-xs font-normal tabular-nums text-slate-400">
             #{order.order_id}
           </span>
         </p>
-        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+        <p className="truncate text-xs text-slate-500 ">
           {order.address ?? "Adres yok"}
         </p>
       </div>
       {order.total != null && (
-        <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="shrink-0 text-xs tabular-nums text-slate-500 ">
           ₺{order.total}
         </span>
       )}
@@ -127,30 +127,30 @@ function RunLane({
       }}
       className={`px-5 py-4 transition ${
         dragging
-          ? "rounded-xl outline-dashed outline-1 -outline-offset-4 outline-slate-300 dark:outline-slate-600"
+          ? "rounded-xl outline-dashed outline-1 -outline-offset-4 outline-slate-300 "
           : ""
       }`}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 ">
           <TruckIcon className="h-4.5 w-4.5" />
         </div>
         <div className="mr-auto min-w-0">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">
+          <p className="text-sm font-semibold text-slate-900 ">
             Tur #{run.id}
-            <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
+            <span className="ml-2 font-normal text-slate-500 ">
               {label}
             </span>
           </p>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             {run.courier ? run.courier.name : "Kurye atanmadı"}
           </p>
         </div>
         <span
           className={`shrink-0 text-xs tabular-nums ${
             over
-              ? "font-semibold text-amber-600 dark:text-amber-400"
-              : "text-slate-500 dark:text-slate-400"
+              ? "font-semibold text-amber-600 "
+              : "text-slate-500 "
           }`}
         >
           {count}
@@ -163,7 +163,7 @@ function RunLane({
         <p
           data-testid={`kapasite-uyarisi-${run.id}`}
           role="status"
-          className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"
+          className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800 "
         >
           <svg
             viewBox="0 0 24 24"
@@ -187,20 +187,20 @@ function RunLane({
       )}
 
       {stops.length === 0 ? (
-        <p className="mt-3 pl-12 text-xs text-slate-400 dark:text-slate-500">
+        <p className="mt-3 pl-12 text-xs text-slate-400 ">
           Durak yok — havuzdan bir sipariş sürükleyip bırakın.
         </p>
       ) : (
         <ol className="mt-3 space-y-1.5 pl-12">
           {stops.map((s) => (
             <li key={s.id} className="flex items-center gap-2.5 text-xs">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-600">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200 ">
                 {s.sequence}
               </span>
-              <span className="truncate text-slate-600 dark:text-slate-300">
+              <span className="truncate text-slate-600 ">
                 {s.address ?? `Sipariş #${s.order_id}`}
               </span>
-              <span className="shrink-0 tabular-nums text-slate-400 dark:text-slate-500">
+              <span className="shrink-0 tabular-nums text-slate-400 ">
                 #{s.order_id}
               </span>
             </li>
@@ -264,10 +264,10 @@ export default function DeliveryBoardPage() {
     <div>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="mr-auto">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          <h2 className="text-base font-bold text-slate-900 ">
             Gün Tahtası
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs text-slate-500 ">
             Havuzdaki siparişi bir turun üzerine sürükleyip bırakın — ya da günü
             tek tuşla araçlara bölüştürün.
           </p>
@@ -307,19 +307,19 @@ export default function DeliveryBoardPage() {
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,340px)_1fr]">
           {/* ── Havuz: atanmamış siparişler ── */}
-          <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 dark:border-slate-800">
-              <h3 className="mr-auto text-sm font-bold text-slate-900 dark:text-white">
+          <section className="rounded-2xl border border-slate-200 bg-white ">
+            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 ">
+              <h3 className="mr-auto text-sm font-bold text-slate-900 ">
                 Havuz
               </h3>
               <Badge>{pool.length}</Badge>
             </div>
             {pool.length === 0 ? (
-              <p className="px-5 py-6 text-xs text-slate-400 dark:text-slate-500">
+              <p className="px-5 py-6 text-xs text-slate-400 ">
                 Havuz boş — dağıtım bekleyen atanmamış sipariş yok.
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              <ul className="divide-y divide-slate-100 ">
                 {pool.map((o) => (
                   <PoolCard
                     key={o.order_id}
@@ -333,9 +333,9 @@ export default function DeliveryBoardPage() {
           </section>
 
           {/* ── Turlar: araç bazlı drop hedefleri ── */}
-          <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 dark:border-slate-800">
-              <h3 className="mr-auto text-sm font-bold text-slate-900 dark:text-white">
+          <section className="rounded-2xl border border-slate-200 bg-white ">
+            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 ">
+              <h3 className="mr-auto text-sm font-bold text-slate-900 ">
                 Turlar
               </h3>
               <Badge>{runs.length}</Badge>
@@ -348,7 +348,7 @@ export default function DeliveryBoardPage() {
                 />
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="divide-y divide-slate-100 ">
                 {runs.map((r) => (
                   <RunLane
                     key={r.id}

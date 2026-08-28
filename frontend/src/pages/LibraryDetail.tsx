@@ -76,14 +76,14 @@ const PhoneIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
 /** Bölüm başlığı — küçük, harf-aralıklı, büyük harf. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+    <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400 ">
       {children}
     </h2>
   );
 }
 
 const cardCls =
-  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700";
+  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ";
 
 export default function LibraryDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -110,10 +110,10 @@ export default function LibraryDetail() {
     if (isLoading) {
       return (
         <div className="mx-auto max-w-[76rem] space-y-5">
-          <div className="h-64 animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-800" />
+          <div className="h-64 animate-pulse rounded-3xl bg-slate-100 " />
           <div className="grid gap-5 lg:grid-cols-3">
-            <div className="h-72 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-            <div className="h-72 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800 lg:col-span-2" />
+            <div className="h-72 animate-pulse rounded-2xl bg-slate-100 " />
+            <div className="h-72 animate-pulse rounded-2xl bg-slate-100 lg:col-span-2" />
           </div>
         </div>
       );
@@ -121,7 +121,7 @@ export default function LibraryDetail() {
     if (isError || !lib) {
       return (
         <div className="mx-auto max-w-[76rem]">
-          <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
+          <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ">
             {getErrorMessage(error, "Kütüphane bulunamadı.")}
           </div>
           <Link
@@ -152,14 +152,14 @@ export default function LibraryDetail() {
 
           <Link
             to={ROUTES.libraries}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline "
           >
             ← Tüm kütüphaneler
           </Link>
 
           {/* ── Hero (orijinal tasarım — dokunulmadı) ── */}
-          <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-            <div className="relative h-48 w-full bg-gradient-to-br from-indigo-100 to-violet-100 sm:h-60 dark:from-slate-700 dark:to-slate-800">
+          <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ">
+            <div className="relative h-48 w-full bg-gradient-to-br from-indigo-100 to-violet-100 sm:h-60 ">
               {lib.cover_url ? (
                 <img src={lib.cover_url} alt={lib.name} className="h-full w-full object-cover" />
               ) : (
@@ -184,12 +184,12 @@ export default function LibraryDetail() {
                 <img
                   src={lib.logo_url}
                   alt={`${lib.name} logosu`}
-                  className="relative z-10 -mt-16 mb-3 h-20 w-20 rounded-full bg-white object-cover shadow-lg ring-4 ring-white dark:bg-slate-800 dark:ring-slate-800"
+                  className="relative z-10 -mt-16 mb-3 h-20 w-20 rounded-full bg-white object-cover shadow-lg ring-4 ring-white "
                 />
               )}
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{lib.name}</h1>
+              <h1 className="text-2xl font-bold text-slate-900 ">{lib.name}</h1>
               {region && (
-                <p className="mt-1 flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 flex items-center gap-1 text-sm text-slate-500 ">
                   <PinIcon className="h-4 w-4 shrink-0" />
                   {region}
                 </p>
@@ -201,16 +201,16 @@ export default function LibraryDetail() {
                 className="group mt-2 inline-flex items-center gap-1.5 rounded-lg py-1 text-left"
               >
                 <StarRating value={lib.rating_average} />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                <span className="text-sm font-semibold text-slate-700 ">
                   {avgLabel}
                 </span>
-                <span className="text-xs text-slate-400 underline-offset-2 group-hover:text-indigo-600 group-hover:underline dark:group-hover:text-indigo-300">
+                <span className="text-xs text-slate-400 underline-offset-2 group-hover:text-indigo-600 group-hover:underline ">
                   ({lib.rating_count} değerlendirme)
                 </span>
               </button>
 
               {lib.description && (
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
                   {lib.description}
                 </p>
               )}
@@ -226,7 +226,7 @@ export default function LibraryDetail() {
                 {canMessage && (
                   <Link
                     to={ROUTES.messageWith(lib.id, lib.name, "LIBRARY")}
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 "
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
@@ -259,7 +259,7 @@ export default function LibraryDetail() {
                 <div className="space-y-4">
                   {(lib.open_now != null || today) && (
                     <div className="flex items-start gap-3">
-                      <span className="mt-0.5 text-slate-400 dark:text-slate-500">
+                      <span className="mt-0.5 text-slate-400 ">
                         <ClockIcon />
                       </span>
                       <div className="min-w-0">
@@ -267,8 +267,8 @@ export default function LibraryDetail() {
                           <p
                             className={`flex items-center gap-1.5 text-sm font-semibold ${
                               lib.open_now
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-rose-500 dark:text-rose-400"
+                                ? "text-emerald-600 "
+                                : "text-rose-500 "
                             }`}
                           >
                             <span className={`h-2 w-2 rounded-full ${lib.open_now ? "bg-emerald-500" : "bg-rose-500"}`} />
@@ -276,7 +276,7 @@ export default function LibraryDetail() {
                           </p>
                         )}
                         {today && (
-                          <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">
+                          <p className="mt-0.5 text-sm text-slate-600 ">
                             Bugün {formatHoursLine(today)}
                           </p>
                         )}
@@ -287,9 +287,9 @@ export default function LibraryDetail() {
                   {lib.phone && (
                     <a
                       href={`tel:${lib.phone}`}
-                      className="flex items-center gap-3 text-sm text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-300"
+                      className="flex items-center gap-3 text-sm text-indigo-600 transition hover:text-indigo-700 "
                     >
-                      <span className="text-slate-400 dark:text-slate-500">
+                      <span className="text-slate-400 ">
                         <PhoneIcon />
                       </span>
                       <span className="font-medium">{lib.phone}</span>
@@ -298,10 +298,10 @@ export default function LibraryDetail() {
 
                   {lib.location_text && (
                     <div className="flex items-start gap-3">
-                      <span className="mt-0.5 text-slate-400 dark:text-slate-500">
+                      <span className="mt-0.5 text-slate-400 ">
                         <PinIcon className="h-5 w-5" />
                       </span>
-                      <p className="text-sm text-slate-600 dark:text-slate-300">{lib.location_text}</p>
+                      <p className="text-sm text-slate-600 ">{lib.location_text}</p>
                     </div>
                   )}
                 </div>
@@ -333,8 +333,8 @@ export default function LibraryDetail() {
                         key={h.weekday}
                         className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
                           isToday
-                            ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
-                            : "text-slate-600 dark:text-slate-300"
+                            ? "bg-indigo-50 font-semibold text-indigo-700 "
+                            : "text-slate-600 "
                         }`}
                       >
                         <span>
@@ -443,7 +443,7 @@ function GalleryTile({
     <button
       type="button"
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-700 dark:ring-slate-600 ${className}`}
+      className={`group relative overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 ${className}`}
     >
       <img
         src={im.url}
@@ -584,15 +584,15 @@ function ReviewsModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 "
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Değerlendirmeler</h3>
+          <h3 className="text-lg font-bold text-slate-900 ">Değerlendirmeler</h3>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 "
             aria-label="Kapat"
           >
             ✕
@@ -600,9 +600,9 @@ function ReviewsModal({
         </div>
 
         {/* Özet */}
-        <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-900/40">
+        <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 ">
           <StarRating value={lib.rating_average} />
-          <span className="text-xl font-bold text-slate-900 dark:text-white">
+          <span className="text-xl font-bold text-slate-900 ">
             {lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni"}
           </span>
           <span className="text-sm text-slate-400">· {lib.rating_count} değerlendirme</span>
@@ -615,19 +615,19 @@ function ReviewsModal({
             {reviews.map((r) => (
               <div
                 key={r.id}
-                className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-100 dark:bg-slate-900/40 dark:ring-slate-700"
+                className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-100 "
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 ">
                       {(r.client_name ?? "?").charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="text-sm font-semibold text-slate-800 ">
                         {r.client_name ?? "Öğrenci"}
                       </span>
                       {r.verified && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 ">
                           ✓ Doğrulanmış ziyaretçi
                         </span>
                       )}
@@ -636,18 +636,18 @@ function ReviewsModal({
                   <StarRating value={r.rating} />
                 </div>
                 {r.comment_text && (
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{r.comment_text}</p>
+                  <p className="mt-2 text-sm text-slate-600 ">{r.comment_text}</p>
                 )}
               </div>
             ))}
           </div>
         ) : (
-          <div className="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-12 text-center dark:border-slate-700">
+          <div className="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-12 text-center ">
             <div className="text-3xl">⭐</div>
-            <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+            <p className="mt-3 text-sm font-medium text-slate-700 ">
               Henüz değerlendirme yok
             </p>
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            <p className="mt-1 text-xs text-slate-400 ">
               {isClient ? "İlk değerlendirmeyi sen yap!" : "Henüz kimse değerlendirme yapmamış."}
             </p>
           </div>
@@ -683,11 +683,11 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
   };
 
   return (
-    <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-900/50">
-      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+    <div className="rounded-xl bg-slate-50 p-4 ">
+      <p className="text-sm font-semibold text-slate-700 ">
         Bu kütüphaneyi değerlendir
       </p>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-1 text-xs text-slate-500 ">
         Yorumun herkese görünür; ancak yıldız puanı ortalamaya yalnız burada{" "}
         <span className="font-medium">doğrulanmış ziyaretin</span> (deneme/çalışma kaydı)
         varsa katılır.
@@ -699,7 +699,7 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
             type="button"
             onClick={() => setRating(i)}
             className={`text-2xl transition ${
-              i <= rating ? "text-amber-400" : "text-slate-300 dark:text-slate-600"
+              i <= rating ? "text-amber-400" : "text-slate-300 "
             }`}
             aria-label={`${i} yıldız`}
           >
@@ -713,12 +713,12 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
         rows={2}
         maxLength={2000}
         placeholder="Deneyimini paylaş (opsiyonel)…"
-        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-400 "
       />
       <button
         onClick={submit}
         disabled={create.isPending}
-        className="mt-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-60 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+        className="mt-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-60 "
       >
         {create.isPending ? "Gönderiliyor…" : "Değerlendir"}
       </button>

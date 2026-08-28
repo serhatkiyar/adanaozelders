@@ -18,7 +18,7 @@ export function PublicNavbar({
   expanded?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
+    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md ">
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
         <div className="flex w-full items-start justify-between gap-4 pt-5 pb-2">
           <div className="flex-1 flex justify-start">
@@ -57,25 +57,25 @@ export function PublicNavbar({
           <div className="flex-1 flex shrink-0 items-center justify-end gap-2">
             <Link
               to={ROUTES.tutors}
-              className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 lg:block dark:text-slate-200 dark:hover:text-indigo-300"
+              className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 lg:block "
             >
               Eğitmenler
             </Link>
             <Link
               to={ROUTES.store}
-              className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 lg:block dark:text-slate-200 dark:hover:text-indigo-300"
+              className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 lg:block "
             >
               Mağaza
             </Link>
             <Link
               to="?modal=register&role=tutor"
-              className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 dark:text-slate-200 dark:hover:text-indigo-300"
+              className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
             >
               Eğitmen Ol
             </Link>
             <Link
               to="?modal=login"
-              className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 dark:text-slate-200 dark:hover:text-indigo-300"
+              className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
             >
               Giriş Yap
             </Link>
