@@ -38,9 +38,8 @@ export function StoreCategoryBar() {
 
   const openKids = openId != null ? childrenByParent.get(openId) ?? [] : [];
 
-  // Aktiflik yalnız metin rengiyle anlatılır (alt çizgi/indigo şerit YOK —
-  // kullanıcı kararı, 29 Ağu); şerit alçak tutulur (py-2).
-  const linkBase = "whitespace-nowrap py-2 text-sm font-medium transition-colors";
+  const linkBase =
+    "whitespace-nowrap border-b-2 py-3 text-sm font-medium transition-colors";
 
   return (
     <nav
@@ -48,12 +47,9 @@ export function StoreCategoryBar() {
       className="relative z-20 w-full border-b border-slate-200 bg-white "
       onMouseLeave={() => setOpenId(null)}
     >
-      {/* Vitrin hero'suyla AYNI sınır (1500px): geniş ekranda "Tümü" ikonunun sol
-          kenarı hero'nun sol kenarına yaslanır (padding sıfırlanır); dar ekranda
-          hero kenara dayandığı için küçük bir iç boşluk kalır. */}
-      <div className="mx-auto max-w-[1500px] px-4 min-[1500px]:px-0">
+      <div className="mx-auto max-w-[1464px] px-4 md:px-8">
         <div
-          className="flex items-stretch gap-4 overflow-x-auto sm:gap-5"
+          className="flex items-stretch gap-6 overflow-x-auto sm:gap-8"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {/* Kategoriler — catch-all (tüm ürünler) */}
@@ -62,8 +58,8 @@ export function StoreCategoryBar() {
             onMouseEnter={() => setOpenId(null)}
             className={`${linkBase} flex items-center gap-1.5 ${
               !activeCategory
-                ? "text-slate-900 "
-                : "text-slate-500 hover:text-slate-900 "
+                ? "border-indigo-600 text-slate-900 "
+                : "border-transparent text-slate-500 hover:text-slate-900 "
             }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -71,14 +67,15 @@ export function StoreCategoryBar() {
               <line x1="3" y1="6" x2="21" y2="6"></line>
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
-            Tümü
+            Kategoriler
           </Link>
+
+          <span aria-hidden="true" className="my-3 h-5 w-px shrink-0 bg-slate-200 " />
 
           <Link
             to={ROUTES.tutors}
             onMouseEnter={() => setOpenId(null)}
-            // Logo lacivertiyle (#1a365d) dolgulu buton — şeritteki tek renkli aksiyon.
-            className="shrink-0 self-center whitespace-nowrap rounded-full bg-[#1a365d] px-3.5 py-1 text-sm font-medium text-white transition-colors hover:bg-[#24477c]"
+            className={`${linkBase} border-transparent text-slate-600 hover:text-indigo-600 `}
           >
             Özel Ders Al
           </Link>
@@ -92,8 +89,8 @@ export function StoreCategoryBar() {
                 onMouseEnter={() => setOpenId(c.id)}
                 className={`${linkBase} ${
                   isActive
-                    ? "text-slate-900 "
-                    : "text-slate-500 hover:text-slate-900 "
+                    ? "border-indigo-600 text-slate-900 "
+                    : "border-transparent text-slate-500 hover:text-slate-900 "
                 }`}
               >
                 {c.name}
@@ -107,7 +104,7 @@ export function StoreCategoryBar() {
       {/* Mega menu — kaydırıcının dışında, nav'a göre konumlanır (full-bleed) */}
       {openKids.length > 0 && (
         <div className="absolute inset-x-0 top-full z-40 border-b border-slate-100 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.06)] ">
-          <div className="mx-auto max-w-[1500px] px-4 py-6 min-[1500px]:px-0">
+          <div className="mx-auto max-w-[1464px] px-4 py-6 md:px-8">
             <div className="grid grid-cols-2 gap-x-8 gap-y-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {openKids.map((kid) => (
                 <Link

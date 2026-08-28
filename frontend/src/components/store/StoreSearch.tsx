@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ROUTES } from "@/lib/routes";
 import { searchProducts } from "@/api/store";
-import { useCategories } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatTL } from "@/lib/money";
 import {
@@ -21,13 +20,6 @@ import {
 export function StoreSearch() {
   const [params] = useSearchParams();
   const [q, setQ] = useState(params.get("q") || "");
-  // Amazon deseni: soldaki seçici aramayı bir kategoriye daraltır ("" = tümü).
-  const [catId, setCatId] = useState(params.get("category") || "");
-  const { data: categories } = useCategories();
-  const anaKategoriler = useMemo(
-    () => (categories ?? []).filter((c) => !c.parent_id),
-    [categories]
-  );
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [history, setHistory] = useState<string[]>(() => getSearchHistory());
@@ -62,14 +54,12 @@ export function StoreSearch() {
   };
   const searchAll = () => {
     const t = q.trim();
-    const sp = new URLSearchParams();
     if (t) {
       setHistory(addSearchHistory(t));
-      sp.set("q", t);
+      go(`${ROUTES.store}?q=${encodeURIComponent(t)}`);
+    } else {
+      go(ROUTES.store);
     }
-    if (catId) sp.set("category", catId);
-    const qs = sp.toString();
-    go(qs ? `${ROUTES.store}?${qs}` : ROUTES.store);
   };
   // Geçmişten bir terime tıklama: kutuya yaz, başa taşı, aramayı çalıştır.
   const runHistory = (t: string) => {
@@ -98,28 +88,13 @@ export function StoreSearch() {
 
   return (
     <div ref={ref} className="relative mx-auto w-full max-w-2xl">
-      {/* Amazon anatomisi (kategori seçici + kutu + buton) ama hap biçimde:
-          köşe yok, tek yuvarlak gövde; odak halkası gövdenin tamamında. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           searchAll();
         }}
-        className="flex items-stretch overflow-hidden rounded-full border border-slate-200 bg-slate-50 transition focus-within:border-indigo-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100"
+        className="relative"
       >
-        <select
-          value={catId}
-          onChange={(e) => setCatId(e.target.value)}
-          aria-label="Aranacak kategori"
-          className="w-[5.5rem] shrink-0 cursor-pointer appearance-none border-r border-slate-200 bg-slate-100 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%226%22%20viewBox%3D%220%200%2010%206%22%3E%3Cpath%20d%3D%22M1%201l4%204%204-4%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_6px] bg-[position:right_0.9rem_center] bg-no-repeat py-2.5 pl-4 pr-8 text-sm text-slate-600 outline-none transition-colors hover:bg-slate-200/70"
-        >
-          <option value="">Tümü</option>
-          {anaKategoriler.map((c) => (
-            <option key={c.id} value={String(c.id)}>
-              {c.name}
-            </option>
-          ))}
-        </select>
         <input
           type="text"
           value={q}
@@ -133,12 +108,12 @@ export function StoreSearch() {
           placeholder="Ürün, kategori veya yazar ara..."
           aria-label="Mağazada ara"
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent py-2.5 pl-4 pr-3 text-sm text-slate-900 outline-none"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-14 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 "
         />
         <button
           type="submit"
           aria-label="Ara"
-          className="flex w-12 shrink-0 items-center justify-center bg-[#f8c27d] text-slate-900 transition-colors hover:bg-[#f6ad55]"
+          className="absolute inset-y-0 right-0 flex aspect-square items-center justify-center rounded-r-lg bg-slate-900 text-white transition-colors hover:bg-slate-800 "
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
