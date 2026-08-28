@@ -14,6 +14,7 @@
   "dependencies": {
     "@cloudflare/speedtest": "^1.10.1",
     "@hookform/resolvers": "^5.9.1",
+    "@measured/puck": "^0.20.2",
     "@medusajs/ui": "^4.2.1",
     "@sentry/react": "^10.68.0",
     "@tabler/icons-react": "^3.45.0",

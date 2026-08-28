@@ -92,6 +92,8 @@ const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalog
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
 // Blog editörü (TipTap) yalnız bu chunk'la gelir — public bundle'a girmez.
 const AdminBlogListPage = lazy(() => import("@/pages/admin/blog/AdminBlogListPage"));
+// SPIKE (feat/puck-spike): gizli deneme rotası — nav'da yok, merge edilmeyecek.
+const PuckSpikePage = lazy(() => import("@/pages/admin/puck/PuckSpikePage"));
 const AdminBlogEditorPage = lazy(() => import("@/pages/admin/blog/AdminBlogEditorPage"));
 const InventoryLayout = lazy(() => import("@/pages/admin/inventory/InventoryLayout"));
 const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/InventoryOverviewPage"));
@@ -480,6 +482,7 @@ function App() {
               <Route path="kutuphaneler" element={<AdminLibraries />} />
               <Route path="deneme-kataloglari" element={<AdminExamCatalogs />} />
               <Route path="blog" element={<AdminBlogListPage />} />
+              <Route path="puck-deneme" element={<PuckSpikePage />} />
               <Route path="blog/yeni" element={<AdminBlogEditorPage />} />
               <Route path="blog/:postId" element={<AdminBlogEditorPage />} />
               <Route path="magaza" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
