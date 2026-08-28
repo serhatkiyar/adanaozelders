@@ -98,6 +98,11 @@ class TutorPromotion(Base, TimestampMixin):
     refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # `escrow.finalize_refund` bu kolonu yazar — spec'i olan her modelde
+    # bulunmak zorundadır (yoksa iade faz-2'si derleme hatasıyla düşer).
+    refunded_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     refund_attempts: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )

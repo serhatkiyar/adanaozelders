@@ -54,6 +54,7 @@ def upgrade() -> None:
     sa.Column('paid_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('refunded_amount', sa.Numeric(precision=10, scale=2), server_default=sa.text('0'), nullable=False),
     sa.Column('refund_requested_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('refunded_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('refund_attempts', sa.Integer(), server_default=sa.text('0'), nullable=False),
     sa.Column('starts_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('ends_at', sa.DateTime(timezone=True), nullable=True),
