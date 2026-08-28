@@ -23,7 +23,23 @@ os.environ["SMTP_USERNAME"] = ""
 os.environ["SMTP_PASSWORD"] = ""
 os.environ["SMTP_USE_TLS"] = "False"
 
-# Pytest dış hizmetlere ve gerçek hesaplara çıkmaz.
-os.environ["PAYMENT_PROVIDER"] = "fake"
 os.environ["SMS_PROVIDER"] = "console"
-os.environ["SUPPLIER_NETWORK_DISABLED"] = "True"
+
+# TB-21: ödeme sağlayıcısı ve tedarikçi ağ kilidi `setdefault` İLE konur;
+# doğrudan atama DEĞİL. Sebep ölçüldü (CI koşumu 33202874820, 247 test):
+#
+# `setdefault` yalnız değişken YOKKEN korur, açıkça verilmiş bir gerçek
+# sağlayıcıyı ezmez — ezmesi de yanlış olurdu, env ayarın son sözüdür. O durum
+# için ikinci savunma vardır: `tests/integration/db_guard.py` gerçek sağlayıcı
+# görürse suite'i hiç başlatmaz ve `test_ip5_provider_guard_pg.py::test_t1b`
+# tam olarak bunu sınar.
+#
+# Doğrudan atamaya çevrildiğinde nöbetçi asla tetiklenmedi: t1b'nin başlattığı
+# alt süreç suite'i sonuna kadar koştu ve ANA KOŞUMLA AYNI test veritabanındaki
+# ortak ürün kategorisini teardown'da sildi. Ana koşumun kalan testleri
+# kategoriyi bulamadı.
+#
+# Aynı gerekçe tedarikçi kilidi için de geçerli: canlı doğrulama turunda
+# açıkça `0` verilebilmelidir.
+os.environ.setdefault("PAYMENT_PROVIDER", "fake")
+os.environ.setdefault("SUPPLIER_NETWORK_DISABLED", "True")
