@@ -481,7 +481,7 @@ export const puckConfig: Config = {
                         {gorseller.map((g, j) => (
                           <div key={j}>
                             {g.image_url ? (
-                              <img src={g.image_url} alt={g.alt_text || ""} className={`w-full rounded-sm object-cover ${tekil ? "aspect-[4/3]" : "aspect-square"}`} />
+                              <img src={g.image_url} alt={g.alt_text || ""} className={`w-full rounded-sm bg-white ${g.fit === "cover" ? "object-cover" : "object-contain"} ${tekil ? "aspect-[4/3]" : "aspect-square"}`} />
                             ) : (
                               <div className={`flex items-center justify-center rounded-sm border border-dashed border-slate-300 text-[11px] text-slate-400 ${tekil ? "aspect-[4/3]" : "aspect-square"}`}>
                                 Görsel seçin

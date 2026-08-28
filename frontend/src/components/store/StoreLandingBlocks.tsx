@@ -661,7 +661,9 @@ function CardRow({
                       src={item.image_url}
                       alt={item.decorative ? "" : (item.alt_text ?? "")}
                       loading="lazy"
-                      className={`w-full rounded-sm object-cover ${tekil ? "aspect-[4/3]" : "aspect-square"}`}
+                      className={`w-full rounded-sm bg-white ${
+                        item.fit === "cover" ? "object-cover" : "object-contain"
+                      } ${tekil ? "aspect-[4/3]" : "aspect-square"}`}
                     />
                     {item.label && (
                       <p className="mt-1 truncate text-xs text-slate-700 group-hover:underline">
