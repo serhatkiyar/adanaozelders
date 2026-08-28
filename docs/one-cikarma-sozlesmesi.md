@@ -1,7 +1,9 @@
 # Eğitmen İlanı Öne Çıkarma — Sözleşme ve Test Matrisi
 
-> Durum: **sözleşme + kırmızı test matrisi** (üretim kodu yazılmadı).
+> Durum: **uygulandı ve yeşil** (29 Ağu 2026).
 > Dal: `feat/ilan-one-cikarma`. Zemin: `2f91ffc`.
+> Kapı: backend 1204 birim/kabul + 23 gerçek-PG senaryosu, frontend 1957 test.
+> Ödeme kolu varsayılan **KAPALI** — operatör açmadan para akmaz.
 >
 > Kod ile belge çelişirse **belge kazanır**; davranış bilinçli değişiyorsa önce
 > burası güncellenir.
@@ -121,55 +123,59 @@ ve iki fazlı iadeyi başlatır.
 
 ## 4. Test matrisi
 
-`✗` = bu belge yazıldığında kırmızı (üretim kodu yok).
+`✓` = yazıldı ve yeşil. Karşılıkları:
+`backend/tests/integration/test_promotion_pg.py`,
+`backend/tests/test_promotion_guards.py`,
+`frontend/src/__guards__/oneCikarmaBlogu.test.tsx`,
+`frontend/src/__guards__/egitmenKusaklari.test.tsx`.
 
-### Backend — `backend/tests/test_tutor_promotion_service.py`
-
-| # | Kural | Test | Durum |
-|---|---|---|---|
-| T-1 | S-6 | İstemcinin gönderdiği fiyat alanı yok sayılır; kayda katalog fiyatı yazılır | ✗ |
-| T-2 | S-6 | Katalog fiyatı değişse bile geçmiş kaydın `price`'ı değişmez | ✗ |
-| T-3 | S-7 | `DRAFT`/`PENDING_APPROVAL`/`SUSPENDED` eğitmen satın alamaz (409) | ✗ |
-| T-4 | S-8 | Bayrak kapalıyken `POST` 503 + `PAYMENT_BRANCH_CLOSED` | ✗ |
-| T-5 | S-8 | Kol `BRANCH_NEEDS_MARKETPLACE=False` — iyzico ile de açılabilir | ✗ |
-| T-6 | S-9 | Aktif promosyon varken alınan paket `starts_at = aktif.ends_at` ile kuyruğa girer | ✗ |
-| T-7 | S-9 | Aktif + kuyrukta kayıt varken üçüncü alım 409 | ✗ |
-| T-8 | S-10 | Aynı token ile iki kez `complete_checkout` → tek PAID, süre bir kez eklenir | ✗ |
-| T-9 | S-11 | `paid_price` kayıttan farklıysa PAID olmaz, iade çağrılır | ✗ |
-| T-10 | S-12 | İptal edilmiş kayda gelen tahsilat iade edilir | ✗ |
-| T-11 | S-2 | `ends_at` geçmişte olan kayıt aktif sayılmaz | ✗ |
-| T-12 | S-2 | `starts_at` gelecekte olan (kuyruktaki) kayıt aktif sayılmaz | ✗ |
-| T-13 | S-14 | Eğitmen kendi promosyonunu iptal edemez (403/405) | ✗ |
-| T-14 | S-14 | Admin iptali `cancelled_at` yazar ve kayıt anında aktiflikten çıkar | ✗ |
-
-### Backend — `backend/tests/test_tutor_featured.py`
+### Backend — `backend/tests/integration/test_promotion_pg.py`
 
 | # | Kural | Test | Durum |
 |---|---|---|---|
-| T-15 | S-3 | 5 aktif promosyon varken uç en fazla 3 döner | ✗ |
-| T-16 | S-3 | `subject` filtresi verildiğinde yalnız o dersi veren öne çıkanlar döner | ✗ |
-| T-17 | S-3 | `SUSPENDED` olmuş ama promosyonu süren eğitmen blokta ÇIKMAZ | ✗ |
-| T-18 | S-3 | Eşleşme yoksa boş liste (blok çizilmez) | ✗ |
-| T-19 | S-1 | Aktif promosyon `search_tutors` sonuç **sırasını** değiştirmez | ✗ |
-| T-20 | S-1 | `_apply_tutor_filters` çıkarımı sonrası arama ve histogram davranışı aynı | ✗ |
+| T-1 | S-6 | İstemcinin gönderdiği fiyat alanı yok sayılır; kayda katalog fiyatı yazılır | ✓ |
+| T-2 | S-6 | Katalog fiyatı değişse bile geçmiş kaydın `price`'ı değişmez | ✓ |
+| T-3 | S-7 | `DRAFT`/`PENDING_APPROVAL`/`SUSPENDED` eğitmen satın alamaz (409) | ✓ |
+| T-4 | S-8 | Bayrak kapalıyken `POST` 503 + `PAYMENT_BRANCH_CLOSED` | ✓ |
+| T-5 | S-8 | Kol `BRANCH_NEEDS_MARKETPLACE=False` — iyzico ile de açılabilir | ✓ |
+| T-6 | S-9 | Aktif promosyon varken alınan paket `starts_at = aktif.ends_at` ile kuyruğa girer | ✓ |
+| T-7 | S-9 | Aktif + kuyrukta kayıt varken üçüncü alım 409 | ✓ |
+| T-8 | S-10 | Aynı token ile iki kez `complete_checkout` → tek PAID, süre bir kez eklenir | ✓ |
+| T-9 | S-11 | `paid_price` kayıttan farklıysa PAID olmaz, iade çağrılır | ✓ |
+| T-10 | S-12 | İptal edilmiş kayda gelen tahsilat iade edilir | ✓ |
+| T-11 | S-2 | `ends_at` geçmişte olan kayıt aktif sayılmaz | ✓ |
+| T-12 | S-2 | `starts_at` gelecekte olan (kuyruktaki) kayıt aktif sayılmaz | ✓ |
+| T-13 | S-14 | Eğitmen için iptal ucu HİÇ YOK (yalnız admin router'ında) | ✓ |
+| T-14 | S-14 | Admin iptali `cancelled_at` yazar ve kayıt anında aktiflikten çıkar | ✓ |
 
-### Backend — kayıt defteri nöbetçileri
+### Backend — görünürlük (aynı dosya)
 
 | # | Kural | Test | Durum |
 |---|---|---|---|
-| T-21 | — | `promotions.view` / `promotions.manage` izin kataloğunda ve DB'de | ✗ |
-| T-22 | S-13 | `reconcile_stale_checkouts` promosyon tablosunu tarar | ✗ |
-| T-23 | — | `"promo"` referans türü `_REFERENCE_KINDS` içinde ve callback dallanmasında | ✗ |
-| T-24 | — | `PROMOTION_SPEC.lock_class` başka hiçbir spec ile çakışmaz | ✗ |
+| T-15 | S-3 | 5 aktif promosyon varken uç en fazla 3 döner | ✓ |
+| T-16 | S-3 | `subject` filtresi verildiğinde yalnız o dersi veren öne çıkanlar döner | ✓ |
+| T-17 | S-3 | `SUSPENDED` olmuş ama promosyonu süren eğitmen blokta ÇIKMAZ | ✓ |
+| T-18 | S-3 | Eşleşme yoksa boş liste (blok çizilmez) | ✓ |
+| T-19 | S-1 | Aktif promosyon `search_tutors` sonuç **sırasını** değiştirmez | ✓ |
+| T-20 | S-1 | `_apply_tutor_filters` çıkarımı sonrası arama ve histogram davranışı aynı | ✓ |
+
+### Backend — kayıt defteri nöbetçileri (`tests/test_promotion_guards.py`)
+
+| # | Kural | Test | Durum |
+|---|---|---|---|
+| T-21 | — | `promotions.view` / `promotions.manage` izin kataloğunda ve DB'de | ✓ |
+| T-22 | S-13 | `reconcile_stale_checkouts` promosyon tablosunu tarar | ✓ |
+| T-23 | — | `"promo"` referans türü `_REFERENCE_KINDS` içinde ve callback dallanmasında | ✓ |
+| T-24 | — | `PROMOTION_SPEC.lock_class` başka hiçbir spec ile çakışmaz | ✓ |
 
 ### Frontend
 
 | # | Kural | Test | Durum |
 |---|---|---|---|
-| T-25 | S-4 | Öne çıkan blokta çizilen HER kart "Reklam" metnini taşır (nöbetçi) | ✗ |
-| T-26 | S-3 | Blok en fazla 3 kart basar | ✗ |
-| T-27 | S-5 | 2. sayfada blok çizilmez | ✗ |
-| T-28 | S-5 | Blokta görünen eğitmen aynı sayfanın organik listesinde tekrar çizilmez | ✗ |
+| T-25 | S-4 | Öne çıkan blokta çizilen HER kart "Reklam" metnini taşır (nöbetçi) | ✓ |
+| T-26 | S-3 | Blok en fazla 3 kart basar | ✓ |
+| T-27 | S-5 | 2. sayfada blok çizilmez | ✓ |
+| T-28 | S-5 | Blokta görünen eğitmen aynı sayfanın organik listesinde tekrar çizilmez | ✓ |
 
 ---
 
@@ -190,3 +196,21 @@ ve iki fazlı iadeyi başlatır.
   satışını kapsıyor mu — teyit edilmeli.
 - **Hizmet koşulları metni**: mevcut mesafeli satış ve ön bilgilendirme metinleri
   bu hizmeti kapsamıyor (`core/flags.py:101-116` beyan kapsamını anlatıyor).
+
+---
+
+## 7. Uygulamada değişen üç karar
+
+Sözleşme yazıldıktan sonra kod üç noktada onu genişletti; ikisi gerçek bir
+boşluğu kapattı, biri fazladan savunma ekledi.
+
+1. **`refunded_at` kolonu** — `escrow.finalize_refund` iade faz-2'sinde bu
+   kolonu yazar. Modelde yokken iade akışı SQL derleme hatasıyla düşüyordu;
+   entegrasyon testi bunu ilk koşumda yakaladı (T-10/T-14 kırmızıydı).
+2. **`terms_accepted_at`** — cayma hakkı istisnası onayı yalnız arayüzde
+   sorulup unutulmuyor: onaysız satın alma 422 verir ve onayın zamanı kayda
+   yazılır (S-14 kanıtı).
+3. **Arayüzde ikinci slot sınırı** — `FeaturedTutorBlock` sunucudan gelen
+   listeyi `MAX_SLOTS` ile keser. Nöbetçi testi (T-26) sunucu sınırının
+   arayüzde karşılığı olmadığını gösterdi; uca ileride bir `limit` eklenirse
+   blok sessizce taşmayacak.
