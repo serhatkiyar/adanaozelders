@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 FLAG_STORE_PAYMENTS_LIVE = "store_payments_live"
 FLAG_TUTOR_MARKETPLACE_PAYMENTS_LIVE = "tutor_marketplace_payments_live"
 FLAG_LIBRARY_MARKETPLACE_PAYMENTS_LIVE = "library_marketplace_payments_live"
+FLAG_TUTOR_PROMOTION_PAYMENTS_LIVE = "tutor_promotion_payments_live"
 FLAG_DIGITAL_PRODUCTS_LIVE = "digital_products_live"
 FLAG_MINOR_BOOKINGS_LIVE = "minor_bookings_live"
 FLAG_INVOICING_LIVE = "invoicing_live"
@@ -95,6 +96,20 @@ FLAG_SPECS: tuple[FlagSpec, ...] = (
         description=(
             "Kütüphane adına para tahsil edilir. Eğitmen pazaryeriyle aynı "
             "koşullara tabidir; ek olarak 5580 (etüt merkezi) görüşü beklenir."
+        ),
+        enforced=True,
+    ),
+    FlagSpec(
+        key=FLAG_TUTOR_PROMOTION_PAYMENTS_LIVE,
+        default=False,
+        label="İlan öne çıkarma satışı (eğitmen reklam paketi)",
+        description=(
+            "Eğitmenin ilanını süreli olarak arama sonuçlarının üstünde "
+            "göstermek için satın aldığı reklam paketi. Para PLATFORMUN kendi "
+            "cirosudur — üçüncü kişi adına tahsilat yoktur, bu yüzden alt üye "
+            "işyeri gerektirmez ve eğitmen pazaryeri kolundan bağımsızdır. "
+            "Varsayılanı kapalı: hizmet koşulları metni yayımlanmadan ve "
+            "sanal POS faaliyet kapsamı teyit edilmeden açılmamalıdır."
         ),
         enforced=True,
     ),

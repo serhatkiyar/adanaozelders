@@ -5,11 +5,12 @@ import re
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.config import settings
+from core.promotion_packages import SLOT_LIMIT
 from models.booking import Booking, BookingStatus
 from models.messaging import Conversation, Message
 from core.search_text import (
@@ -19,9 +20,10 @@ from core.search_text import (
     tsquery as search_tsquery,
 )
 from models.tutor import Gender, Tutor, TutorAvailability, TutorStatus, TutorSubject
+from models.tutor_promotion import TutorPromotion
 from schemas.education import EducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
-from services import education_service
+from services import education_service, tutor_promotion_service
 from services.ranking import bayesian_average, bayesian_score_expr, compute_global_mean
 
 
@@ -98,8 +100,8 @@ def _haversine_km(lat: float, lng: float):
     return 6371.0 * func.acos(clamped)
 
 
-async def search_tutors(
-    db: AsyncSession,
+def _apply_tutor_filters(
+    stmt,
     *,
     q: str | None = None,
     min_rate: Decimal | None = None,
@@ -110,32 +112,27 @@ async def search_tutors(
     max_age: int | None = None,
     subjects: list[str] | None = None,
     districts: list[str] | None = None,
-    exam: str | None = None,
-    sort: TutorSort | None = None,
-    lat: float | None = None,
-    lng: float | None = None,
+    distance_expr=None,
     radius_km: float | None = None,
-    limit: int = 20,
-    offset: int = 0,
-) -> list[TutorSearchOut]:
-    prior_mean = await compute_global_mean(db)
-    confidence = settings.BAYESIAN_CONFIDENCE
-    score = bayesian_score_expr(prior_mean, confidence)
+):
+    """Eğitmen listeleyen HER yolun ortak sert filtreleri. `(stmt, relevance)`.
 
-    geo = lat is not None and lng is not None
-    distance_expr = _haversine_km(lat, lng) if geo else None
+    Neden ortak: bu filtreler bir zamanlar `search_tutors` ile `price_histogram`
+    arasında elle ikizlenmişti ve kodun kendi yorumu ikisinin senkron kalması
+    gerektiğini söylüyordu — ayrıştıklarında histogramın gösterdiği dağılım
+    listedeki eğitmenlere ait olmuyordu. Öne çıkarma sorgusu üçüncü bir kopya
+    üretecekti; onun yerine tek kaynak buraya alındı.
 
-    base_cols = (Tutor, distance_expr.label("distance_km")) if geo else (Tutor,)
-    stmt = (
-        select(*base_cols)
-        .options(selectinload(Tutor.subject_links))
-        .where(
-            Tutor.status == TutorStatus.APPROVED,
-            Tutor.is_active.is_(True),
-            Tutor.deleted_at.is_(None),
-        )
+    `relevance` yalnız `q` verildiğinde doludur ve **sıralama içindir**;
+    filtrenin parçası değildir (çok kelimeli sorguda pg_trgm `%` operatörü
+    bilinçli olarak WHERE'den çıkarılmıştır, yalnız skorda kalır).
+    """
+    stmt = stmt.where(
+        Tutor.status == TutorStatus.APPROVED,
+        Tutor.is_active.is_(True),
+        Tutor.deleted_at.is_(None),
     )
-    if geo:
+    if distance_expr is not None:
         # Konumu olmayan eğitmenler "yakınımdaki" aramasında elenir.
         stmt = stmt.where(
             Tutor.location_lat.isnot(None), Tutor.location_lng.isnot(None)
@@ -198,13 +195,6 @@ async def search_tutors(
                 norm_name, normalized(q)
             )
 
-    # Sınav bağlamı: SERT FİLTRE DEĞİL. İlanında ilgili sınavdan (ör. "KPSS")
-    # bahseden eğitmenleri sıralamada öne çıkarır; bahsetmeyenler elenmez.
-    if exam:
-        exam_tsquery = search_tsquery(exam)
-        exam_rank = func.ts_rank(Tutor.search_vector, exam_tsquery)
-        relevance = exam_rank if relevance is None else relevance + exam_rank
-
     if min_rate is not None:
         stmt = stmt.where(Tutor.hourly_rate >= min_rate)
     if max_rate is not None:
@@ -225,6 +215,62 @@ async def search_tutors(
         stmt = stmt.where(Tutor.birth_date <= _years_ago(min_age))
     if max_age is not None:
         stmt = stmt.where(Tutor.birth_date > _years_ago(max_age + 1))
+
+    return stmt, relevance
+
+
+async def search_tutors(
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    min_rate: Decimal | None = None,
+    max_rate: Decimal | None = None,
+    modes: list[str] | None = None,
+    gender: Gender | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+    subjects: list[str] | None = None,
+    districts: list[str] | None = None,
+    exam: str | None = None,
+    sort: TutorSort | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[TutorSearchOut]:
+    prior_mean = await compute_global_mean(db)
+    confidence = settings.BAYESIAN_CONFIDENCE
+    score = bayesian_score_expr(prior_mean, confidence)
+
+    geo = lat is not None and lng is not None
+    distance_expr = _haversine_km(lat, lng) if geo else None
+
+    base_cols = (Tutor, distance_expr.label("distance_km")) if geo else (Tutor,)
+    stmt = select(*base_cols).options(selectinload(Tutor.subject_links))
+    stmt, relevance = _apply_tutor_filters(
+        stmt,
+        q=q,
+        min_rate=min_rate,
+        max_rate=max_rate,
+        modes=modes,
+        gender=gender,
+        min_age=min_age,
+        max_age=max_age,
+        subjects=subjects,
+        districts=districts,
+        distance_expr=distance_expr,
+        radius_km=radius_km,
+    )
+
+    # Sınav bağlamı: SERT FİLTRE DEĞİL. İlanında ilgili sınavdan (ör. "KPSS")
+    # bahseden eğitmenleri sıralamada öne çıkarır; bahsetmeyenler elenmez.
+    # Ortak filtre yardımcısına ALINMADI: yalnız aramanın sıralamasına aittir,
+    # histogram ve öne çıkarma sorgusu sıralama yapmaz.
+    if exam:
+        exam_tsquery = search_tsquery(exam)
+        exam_rank = func.ts_rank(Tutor.search_vector, exam_tsquery)
+        relevance = exam_rank if relevance is None else relevance + exam_rank
 
     if sort == TutorSort.PRICE_ASC:
         stmt = stmt.order_by(Tutor.hourly_rate.asc().nulls_last(), score.desc())
@@ -283,73 +329,104 @@ async def price_histogram(
     geo = lat is not None and lng is not None
     distance_expr = _haversine_km(lat, lng) if geo else None
 
-    stmt = select(Tutor.hourly_rate).where(
-        Tutor.status == TutorStatus.APPROVED,
-        Tutor.is_active.is_(True),
-        Tutor.deleted_at.is_(None),
-        Tutor.hourly_rate.isnot(None),
+    # Ücreti olmayan eğitmen dağılıma giremez — bu filtre histograma özgüdür ve
+    # bilinçli olarak ortak yardımcıda DEĞİLDİR (aramada ücretsiz ilan görünür).
+    stmt = select(Tutor.hourly_rate).where(Tutor.hourly_rate.isnot(None))
+    # min/max_rate KASITLI olarak geçilmez: kullanıcı aralığı daraltsa da
+    # histogram tüm dağılımı göstermelidir.
+    stmt, _ = _apply_tutor_filters(
+        stmt,
+        q=q,
+        modes=modes,
+        gender=gender,
+        min_age=min_age,
+        max_age=max_age,
+        subjects=subjects,
+        districts=districts,
+        distance_expr=distance_expr,
+        radius_km=radius_km,
     )
-    if geo:
-        stmt = stmt.where(
-            Tutor.location_lat.isnot(None), Tutor.location_lng.isnot(None)
-        )
-        if radius_km is not None:
-            stmt = stmt.where(distance_expr <= radius_km)
-
-    if subjects:
-        stmt = stmt.where(
-            Tutor.id.in_(
-                select(TutorSubject.tutor_id).where(
-                    TutorSubject.subject.in_(subjects)
-                )
-            )
-        )
-
-    if districts:
-        stmt = stmt.where(Tutor.district.in_(districts))
-
-    if q:
-        words = [re.sub(r"[^\w]", "", w, flags=re.UNICODE)
-                 for w in q.strip().split()]
-        words = [w for w in words if w]
-
-        # Filtre, ana aramayla BİREBİR aynı olmalı: ayrılırsa histogram
-        # gösterdiği sonuç sayısı listedekiyle tutmaz.
-        tsquery = search_tsquery(q)
-        norm_name = normalized(Tutor.full_name)
-
-        if len(words) > 1:
-            like = f"%{normalize_tr(q.strip())}%"
-            stmt = stmt.where(
-                or_(
-                    Tutor.search_vector.op("@@")(tsquery),
-                    norm_name.ilike(like),
-                )
-            )
-        else:
-            stmt = stmt.where(
-                or_(
-                    Tutor.search_vector.op("@@")(tsquery),
-                    norm_name.op("%")(normalized(q)),
-                )
-            )
-
-    if modes:
-        acceptable: set[str] = set()
-        for m in modes:
-            acceptable.add(m)
-            acceptable.add("BOTH")
-        stmt = stmt.where(Tutor.teaching_mode.in_(acceptable))
-
-    if gender is not None:
-        stmt = stmt.where(Tutor.gender == gender)
-    if min_age is not None:
-        stmt = stmt.where(Tutor.birth_date <= _years_ago(min_age))
-    if max_age is not None:
-        stmt = stmt.where(Tutor.birth_date > _years_ago(max_age + 1))
 
     rates = (await db.execute(stmt)).scalars().all()
     return [float(r) for r in rates if r is not None]
+
+
+async def featured_tutors(
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    min_rate: Decimal | None = None,
+    max_rate: Decimal | None = None,
+    modes: list[str] | None = None,
+    gender: Gender | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+    subjects: list[str] | None = None,
+    districts: list[str] | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float | None = None,
+) -> list[TutorSearchOut]:
+    """Yürürlükteki öne çıkarma paketi olan eğitmenler (en fazla `SLOT_LIMIT`).
+
+    ## Neden ayrı sorgu
+
+    Öne çıkarma organik sıralamayı DEĞİŞTİRMEZ (sözleşme S-1): `search_tutors`
+    ORDER BY'ı promosyon tablosuna hiçbir koşulda bakmaz. Para ile puan aynı
+    listede yarıştırılsaydı sıralamanın anlamı ölçülemez hâle gelirdi ve
+    sayfalama da bozulurdu.
+
+    ## Neden rastgele
+
+    Aday sayısı slottan fazlaysa seçim `random()`'dır: gösterim garantisi
+    verilmediği hizmet koşullarında yazılıdır. Alternatif (satın alma sırası ya
+    da fiyat) ilk gelen eğitmeni kalıcı olarak öne kilitlerdi.
+    """
+    prior_mean = await compute_global_mean(db)
+    confidence = settings.BAYESIAN_CONFIDENCE
+
+    geo = lat is not None and lng is not None
+    distance_expr = _haversine_km(lat, lng) if geo else None
+    base_cols = (Tutor, distance_expr.label("distance_km")) if geo else (Tutor,)
+
+    stmt = select(*base_cols).options(selectinload(Tutor.subject_links))
+    stmt, _ = _apply_tutor_filters(
+        stmt,
+        q=q,
+        min_rate=min_rate,
+        max_rate=max_rate,
+        modes=modes,
+        gender=gender,
+        min_age=min_age,
+        max_age=max_age,
+        subjects=subjects,
+        districts=districts,
+        distance_expr=distance_expr,
+        radius_km=radius_km,
+    )
+    # Eğitmenin görünürlük kapısı (APPROVED/is_active) ortak filtrededir; ödenmiş
+    # bir paket onu ATLATAMAZ — askıya alınmış eğitmen parasını ödemiş olsa bile
+    # blokta çıkmaz.
+    stmt = stmt.where(
+        exists(
+            select(TutorPromotion.id).where(
+                TutorPromotion.tutor_id == Tutor.id,
+                tutor_promotion_service.aktif_kosul(),
+            )
+        )
+    ).order_by(func.random()).limit(SLOT_LIMIT)
+
+    rows = (await db.execute(stmt)).all()
+    return [
+        _to_search_out(
+            row[0],
+            prior_mean,
+            confidence,
+            subjects=[link.subject for link in row[0].subject_links],
+            distance_km=float(row[1]) if geo and row[1] is not None else None,
+        )
+        for row in rows
+    ]
 
 
 async def tutor_avg_response_seconds(

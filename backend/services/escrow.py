@@ -32,6 +32,7 @@ from core.payments.base import RefundState
 from models.library_exam import RegistrationStatus
 from models.payment import PaymentStatus
 from models.store import OrderPaymentStatus
+from models.tutor_promotion import PromotionPaymentStatus
 
 logger = logging.getLogger("adana.escrow")
 
@@ -172,9 +173,25 @@ RETURN_SPEC = EscrowSpec(
     lock_class=5,
 )
 
+# İlan öne çıkarma: mağaza siparişiyle aynı sınıf — doğrudan satış, hak ediş
+# yok, dolayısıyla `released_at` guard'ı da yok. Fark, paranın YÖNÜDÜR: ödeyen
+# taraf eğitmendir. İade tutarı paketin kendi fiyatıdır (`price`); kısmi iade
+# YOKTUR — satılan şey bölünemeyen bir süre hakkıdır.
+PROMOTION_SPEC = EscrowSpec(
+    held=PromotionPaymentStatus.PAID.value,
+    refunding=PromotionPaymentStatus.REFUNDING.value,
+    refunded=PromotionPaymentStatus.REFUNDED.value,
+    reference_prefix="promo",
+    status_attr="payment_status",
+    has_released_guard=False,
+    amount_attr="price",
+    manual_review=PromotionPaymentStatus.MANUAL_REVIEW.value,
+    lock_class=8,
+)
+
 # ── Advisory kilit sınıfı kayıt defteri ────────────────────────────────────────
 #
-# Yukarıdaki `EscrowSpec.lock_class` değerleri (1-5) iade uçuş-içi nöbeti
+# Yukarıdaki `EscrowSpec.lock_class` değerleri (1-5 ve 8) iade uçuş-içi nöbeti
 # içindir. Kütüphane kolunun KONTENJAN serileştirmesi de advisory kilit kullanır
 # (satır kilidi değil — bkz. `services/library_capacity.py`) ve **aynı isim
 # alanını** paylaşır; bu yüzden sınıf numaraları tek bir yerden dağıtılır. İki

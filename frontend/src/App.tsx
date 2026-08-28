@@ -7,6 +7,7 @@ import { trackPageview } from "@/lib/analytics";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
+import { ALISVERIS_ROLLERI } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
@@ -121,6 +122,8 @@ const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 const DeliveryRunHandover = lazy(() => import("@/pages/DeliveryRunHandover"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
+const TutorPromotion = lazy(() => import("@/pages/TutorPromotion"));
+const AdminPromotionsPage = lazy(() => import("@/pages/admin/AdminPromotionsPage"));
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
 const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
@@ -390,6 +393,7 @@ function App() {
           <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
           <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
           <Route path={PATHS.preliminaryInfo} element={<LegalPage doc="preliminary-info" />} />
+          <Route path={PATHS.rankingCriteria} element={<LegalPage doc="ranking-criteria" />} />
           <Route path={PATHS.about} element={<LegalPage doc="about" />} />
 
           {/* ── Destek (public) ── */}
@@ -456,6 +460,12 @@ function App() {
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path={PATHS.favorites} element={<Favorites />} />
             {DENEMELER_ACIK && <Route path={PATHS.exams} element={<Exams />} />}
+          </Route>
+
+          {/* ── Mağaza alıcı yüzeyi: öğrenci + eğitmen ──
+              Eğitmen kendi oturumuyla alışveriş yapar; sunucu tarafında bir
+              `Client` yansımasına çevrilir (docs/egitmen-alici-sozlesme.md). */}
+          <Route element={<ProtectedRoute allowedRoleIds={[...ALISVERIS_ROLLERI]} />}>
             <Route path={PATHS.storeCheckout} element={<CheckoutPage />} />
             <Route path={PATHS.orders} element={<OrdersPage />} />
             <Route path={PATHS.orderDetail} element={<OrderDetailPage />} />
@@ -465,6 +475,7 @@ function App() {
           {/* ── Yalnızca TUTOR ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.TUTOR} />}>
             <Route path={PATHS.tutorListing} element={<TutorSettings />} />
+            <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
             <Route path={PATHS.studentProfile} element={<StudentProfile />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
@@ -476,6 +487,7 @@ function App() {
               <Route path="kullanicilar" element={<AdminUsersPage />} />
               <Route path="kullanicilar/:role/:id" element={<AdminUserDetailPage />} />
               <Route path="egitmenler" element={<AdminSectionPage section="listings" />} />
+              <Route path="one-cikarmalar" element={<AdminPromotionsPage />} />
               <Route path="diplomalar" element={<AdminSectionPage section="diplomas" />} />
               <Route path="kutuphaneler" element={<AdminLibraries />} />
               <Route path="deneme-kataloglari" element={<AdminExamCatalogs />} />

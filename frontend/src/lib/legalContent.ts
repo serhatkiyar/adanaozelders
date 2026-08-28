@@ -77,6 +77,7 @@ export type LegalDocId =
   | "refund"
   | "cookies"
   | "preliminary-info"
+  | "ranking-criteria"
   | "about";
 
 export interface LegalDoc {
@@ -951,6 +952,92 @@ const ABOUT: LegalDoc = {
 };
 
 /** Tüm yasal belgeler — footer/menü sırası bu dizidir. */
+/* ───────────────────────── Sıralama Ölçütleri ───────────────────────── */
+//
+// 6563 sayılı Kanun ve ETAHS Yönetmeliği, aracı hizmet sağlayıcının arama
+// sonuçlarını hangi ölçütlere göre sıraladığını erişilebilir biçimde
+// açıklamasını ister. Ticari Reklam ve Haksız Ticari Uygulamalar Yönetmeliği
+// ise ücretli yerleşimin "Reklam" ibaresiyle ayırt edilmesini şart koşar.
+// Bu belge ikisinin de karşılığıdır ve ÜRÜN DAVRANIŞIYLA BİRLİKTE değişir:
+// sıralama mantığı değiştiğinde önce burası güncellenir.
+
+const RANKING_CRITERIA: LegalDoc = {
+  id: "ranking-criteria",
+  title: "Sıralama Ölçütleri",
+  description:
+    "Adana Özel Ders'te eğitmen arama sonuçlarının hangi ölçütlere göre sıralandığı ve ücretli öne çıkarmanın nasıl çalıştığı.",
+  updatedAt: "2026-08-29",
+  sections: [
+    {
+      id: "ozet",
+      heading: "Kısaca",
+      blocks: [
+        p(
+          "Arama sonuçlarındaki sıralama satın alınamaz. Ücretli öne çıkarma ayrı bir bloktur, \"Reklam\" ibaresiyle gösterilir ve listenin geri kalanını hiçbir şekilde etkilemez."
+        ),
+      ],
+    },
+    {
+      id: "organik-siralama",
+      heading: "Organik sıralama neye göre yapılır",
+      blocks: [
+        p(
+          "Filtrelerinize (ders, ilçe, eğitim şekli, fiyat aralığı, yaş, cinsiyet) uyan eğitmenler belirlendikten sonra sonuçlar şu ölçütlerle sıralanır:"
+        ),
+        list(
+          "Değerlendirme puanı: öğrenci puanlarının ağırlıklı ortalaması. Az sayıda puanı olan eğitmenin ortalaması platform ortalamasına doğru dengelenir; böylece tek bir beş yıldız, yüzlerce dersi olan bir eğitmenin önüne geçmez.",
+          "Konum: konumunuzu paylaştıysanız mesafe önceliklidir.",
+          "Fiyat: fiyata göre sıralamayı siz seçerseniz o ölçüt öne alınır.",
+          "Metin uyumu: arama kutusuna yazdığınız ifadenin ilan başlığı ve tanıtımıyla ne kadar örtüştüğü.",
+          "Eşitlik hâlinde ilanın yayına giriş tarihi."
+        ),
+        p(
+          "Eğitmenin platforma ödeme yapmış olması bu ölçütlerin hiçbirine girmez."
+        ),
+      ],
+    },
+    {
+      id: "one-cikarma",
+      heading: "Ücretli öne çıkarma",
+      blocks: [
+        p(
+          "Eğitmenler ilanlarının arama sonuçlarının üstündeki ayrı blokta gösterilmesi için süreli bir paket satın alabilir. Bu blok her zaman \"Reklam\" ibaresi taşır."
+        ),
+        list(
+          "Blokta aynı anda en fazla üç ilan gösterilir.",
+          "Blok, aramanızla aynı filtrelere tabidir: Fizik ararken Matematik reklamı görmezsiniz.",
+          "Uygun ilan sayısı üçten fazlaysa hangilerinin gösterileceği rastgele belirlenir; sıra, ödenen tutara veya satın alma zamanına göre değişmez.",
+          "Eşleşen ücretli ilan yoksa blok hiç gösterilmez.",
+          "Öne çıkarma yalnız görünürlük sağlar; eğitmenin puanını, yorumlarını veya organik sıradaki yerini değiştirmez."
+        ),
+      ],
+    },
+    {
+      id: "egitmen-icin",
+      heading: "Öne çıkarma satın alan eğitmenler için",
+      blocks: [
+        list(
+          "Öne çıkarma yalnız onaylanmış ilanlar için satın alınabilir.",
+          "Hizmet ödemenin onaylanmasıyla başlar ve satın alınan süre boyunca devam eder.",
+          "Belirli sayıda görüntülenme, tıklanma veya öğrenci garantisi verilmez.",
+          "Yürürlükteki paketiniz varken alınan yeni paket, mevcut paketin bitiminde başlar; süreler üst üste binmez.",
+          "Hizmet anında ifa edildiğinden cayma hakkı istisnası kapsamındadır; satın alma sırasında bu istisna ayrıca onaylanır."
+        ),
+      ],
+    },
+    {
+      id: "iletisim",
+      heading: "Soru ve itiraz",
+      blocks: [
+        p(
+          `Sıralama veya öne çıkarma hakkında sorunuz için ${OPERATOR.email} adresine yazabilirsiniz.`
+        ),
+        p(operatorIdentity()),
+      ],
+    },
+  ],
+};
+
 export const LEGAL_DOCS: readonly LegalDoc[] = [
   ABOUT,
   KVKK,
@@ -960,6 +1047,7 @@ export const LEGAL_DOCS: readonly LegalDoc[] = [
   DISTANCE_SALES,
   REFUND,
   COOKIES,
+  RANKING_CRITERIA,
 ];
 
 export function getLegalDoc(id: LegalDocId): LegalDoc {

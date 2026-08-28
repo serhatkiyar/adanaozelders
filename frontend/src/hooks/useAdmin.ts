@@ -15,6 +15,8 @@ import {
   toggleDisputeAdminBooking,
   fetchPendingEducations,
   verifyEducation,
+  fetchAdminPromotions,
+  cancelAdminPromotion,
   fetchAdminUser,
   type AdminUsersParams,
   fetchAdminAuditLogs,
@@ -251,6 +253,28 @@ export function useVerifyEducation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "educations", "pending"] });
       qc.invalidateQueries({ queryKey: ["admin", "tutors"] });
+    },
+  });
+}
+
+// ── İlan öne çıkarma ──
+
+export function useAdminPromotions(status?: string) {
+  return useQuery({
+    queryKey: ["admin", "promotions", status ?? "all"],
+    queryFn: () => fetchAdminPromotions(status),
+  });
+}
+
+export function useCancelPromotion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      cancelAdminPromotion(id, reason),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "promotions"] });
+      // İptal görünürlüğü ANINDA düşürür: öne çıkarma bloğu tazelenmeli.
+      qc.invalidateQueries({ queryKey: ["tutors", "featured"] });
     },
   });
 }

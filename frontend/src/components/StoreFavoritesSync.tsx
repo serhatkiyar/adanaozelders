@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { listFavorites, addFavorite } from "@/api/store";
 import { useAuthStore } from "@/store/authStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 
 /** Girişte mağaza favorilerini sunucuyla birleştirir (App'te mount).
  * Anonimken kalplenenler sunucuya itilir, sunucudakiler yerele indirilir —
@@ -13,7 +13,7 @@ export function StoreFavoritesSync() {
   const syncedFor = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!token || user?.role_id !== ROLE_IDS.CLIENT) {
+    if (!token || !user || !alisverisYapabilir(user.role_id)) {
       syncedFor.current = null;
       return;
     }

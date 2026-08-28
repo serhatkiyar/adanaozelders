@@ -24,6 +24,7 @@ import { GENDER_LABEL } from "@/lib/demographics";
 import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
+import { alisverisYapabilir } from "@/lib/roles";
 import { Gender, ROLE_IDS } from "@/types";
 
 type CategoryKey = "personal" | "security" | "payments" | "appearance" | "addresses";
@@ -105,7 +106,7 @@ export default function Settings() {
       ? [{ key: "payments" as const, label: "Ödeme bilgileri", icon: WalletIcon }]
       : []),
     { key: "appearance", label: "Görünüm ve tercihler", icon: SlidersIcon },
-    ...(user?.role_id === ROLE_IDS.CLIENT
+    ...(alisverisYapabilir(user?.role_id)
       ? [{ key: "addresses" as const, label: "Adreslerim", icon: PinIcon }]
       : []),
   ];
@@ -113,7 +114,7 @@ export default function Settings() {
   // Rol değişince geçersiz kategoride kalmayı önle
   useEffect(() => {
     if (!user) return;
-    if (active === "addresses" && user.role_id !== ROLE_IDS.CLIENT) {
+    if (active === "addresses" && !alisverisYapabilir(user.role_id)) {
       setActive("personal");
     } else if (active === "payments" && !showPayments) {
       setActive("personal");
@@ -178,7 +179,7 @@ export default function Settings() {
                   </div>
                 </section>
               )}
-              {active === "addresses" && user.role_id === ROLE_IDS.CLIENT && (
+              {active === "addresses" && alisverisYapabilir(user.role_id) && (
                 <section>
                   <h2 className="mb-1 text-xl font-bold text-slate-900 ">
                     Adreslerim

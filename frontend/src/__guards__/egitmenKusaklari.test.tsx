@@ -19,9 +19,24 @@
  *
  * ## Sözleşme
  *
- * Eğitmen tarafında TEK kuşak kalır ve başlığı "Eğitmenler"dir. Sınav
- * bağlamlı (`exam`) kuşak YOKTUR: sıralama boost'u bir kategori adı
+ * Eğitmen tarafında TEK ORGANİK kuşak kalır ve başlığı "Eğitmenler"dir.
+ * Sınav bağlamlı (`exam`) kuşak YOKTUR: sıralama boost'u bir kategori adı
  * hak etmez.
+ *
+ * ## Sözleşme genişletmesi (29 Ağu 2026) — ücretli öne çıkarma şeridi
+ *
+ * Ana sayfaya ikinci bir kuşak eklendi: başlığı "Reklam" olan, ÜCRETLİ öne
+ * çıkarma şeridi. Yukarıdaki gerekçe ihlal EDİLMİYOR, çünkü bu şerit gerçekten
+ * farklı bir küme döndürür — ayrı bir uçtan (`/tutors/featured`) gelir ve
+ * yalnız yürürlükte ödenmiş paketi olan eğitmenleri içerir; boşsa hiç çizilmez.
+ * İhlal edilen şey "kategori vaat edip aynı listeyi göstermek"ti; burada vaat
+ * edilen şey kategori değil, ücretli yerleşimdir ve etiketi yönetmelik gereği
+ * zorunludur.
+ *
+ * Bu yüzden iddialar şu biçimde daraltıldı:
+ *   - ORGANİK kuşak başlıkları hâlâ tam olarak ["Eğitmenler"]dir,
+ *   - "Reklam" başlığı yalnız `fetchFeaturedTutors` sonuç döndürdüğünde çıkar,
+ *   - `searchTutors` çağrı sayısı hâlâ 1'dir (şerit ayrı fonksiyonu çağırır).
  *
  * Test türü (§H): gerçek DOM (jsdom + RTL) + GERÇEKTEN GÖNDERİLEN istek
  * parametrelerinin doğrulanması. Ağ sınırı (`api/tutors::searchTutors`)
@@ -36,11 +51,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TutorSearchParams } from "@/api/tutors";
 
 const gonderilenParametreler: TutorSearchParams[] = [];
+/** Öne çıkarma ucunun bu koşumda ne döndüreceği (varsayılan: boş). */
+let oneCikanlar: unknown[] = [];
 
 vi.mock("@/api/tutors", async (orijinal) => {
   const mod = await orijinal<typeof import("@/api/tutors")>();
   return {
     ...mod,
+    fetchFeaturedTutors: vi.fn(async () => oneCikanlar as never),
     searchTutors: vi.fn(async (params: TutorSearchParams) => {
       gonderilenParametreler.push(params);
       return [
@@ -100,6 +118,7 @@ function kusakBasliklari() {
 
 beforeEach(() => {
   gonderilenParametreler.length = 0;
+  oneCikanlar = [];
 });
 afterEach(cleanup);
 
@@ -116,6 +135,34 @@ describe("ana sayfa eğitmen kuşakları", () => {
     sayfayiBas();
     await waitFor(() => expect(screen.getAllByText("Ayşe")[0]).toBeTruthy());
     expect(kusakBasliklari()).toEqual(["Eğitmenler"]);
+  });
+
+  it("öne çıkarma YOKKEN 'Reklam' başlığı hiç çizilmez", async () => {
+    sayfayiBas();
+    await waitFor(() => expect(screen.getAllByText("Ayşe")[0]).toBeTruthy());
+    expect(kusakBasliklari()).not.toContain("Reklam");
+  });
+
+  it("öne çıkarma VARKEN 'Reklam' başlığı çizilir ve kart etiketlenir", async () => {
+    oneCikanlar = [
+      {
+        id: 9,
+        slug: "zeynep-kaya-9",
+        first_name: "Zeynep",
+        last_name: "Kaya",
+        full_name: "Zeynep Kaya",
+        hourly_rate: "350.00",
+        rating_avg: 4.9,
+        rating_count: 5,
+        teaching_mode: "ONLINE",
+        subjects: ["Matematik"],
+      },
+    ];
+    sayfayiBas();
+    await waitFor(() => expect(screen.getAllByText("Zeynep")[0]).toBeTruthy());
+    expect(kusakBasliklari()).toEqual(["Reklam", "Eğitmenler"]);
+    // Yasal zorunluluk: ücretli yerleşim kartın ÜZERİNDE ayırt edilebilir.
+    expect(screen.getAllByText("Reklam").length).toBeGreaterThanOrEqual(2);
   });
 
   it("TYT/AYT/YKS/LGS başlığı KALMADI", async () => {

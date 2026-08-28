@@ -9,11 +9,12 @@ import {
 import { PublicShell } from "@/components/PublicShell";
 import { Seo } from "@/components/Seo";
 import { TutorCard } from "@/components/TutorCard";
+import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
 import { TeachingMode, TutorSort } from "@/types";
-import type { TutorSearchParams } from "@/api/tutors";
+import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
@@ -100,6 +101,26 @@ export default function PublicMarketplace() {
   }, [debouncedQ, subjects, district, remote, exam, sort, limit]);
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
+
+  // ── Öne çıkarma bloğu ──
+  // Arama ile AYNI filtreler; `sort`/`exam` GEÇMEZ (blokta sıralama satın
+  // alınmaz). Yalnız ilk sayfada çizilir: 2. sayfada reklam beklenmez ve
+  // aynı kartın iki sayfada birden çıkması kafa karıştırır.
+  const featuredParams = useMemo<FeaturedTutorParams>(() => {
+    const p: FeaturedTutorParams = {};
+    if (debouncedQ.trim()) p.q = debouncedQ.trim();
+    if (subjects.length) p.subject = subjects;
+    if (district.length) p.district = district;
+    if (remote) p.mode = [TeachingMode.ONLINE];
+    return p;
+  }, [debouncedQ, subjects, district, remote]);
+
+  const featuredOnFirstPage = page === 1;
+  const [featuredIds, setFeaturedIds] = useState<number[]>([]);
+  // Blokta gösterilen eğitmen organik listede TEKRAR çizilmez.
+  const organicTutors = (data ?? []).filter(
+    (t) => !(featuredOnFirstPage && featuredIds.includes(t.id))
+  );
 
   const hasActiveFilters = sort !== TutorSort.RELEVANCE;
 
@@ -273,7 +294,7 @@ export default function PublicMarketplace() {
               <span>⚠</span>
               {getErrorMessage(error, "Eğitmenler yüklenemedi.")}
             </div>
-          ) : !data || data.length === 0 ? (
+          ) : organicTutors.length === 0 && featuredIds.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">
                 🔍
@@ -284,8 +305,13 @@ export default function PublicMarketplace() {
             </div>
           ) : (
             <>
+              <FeaturedTutorBlock
+                params={featuredParams}
+                enabled={featuredOnFirstPage}
+                onIds={setFeaturedIds}
+              />
               <div className="mb-3 flex items-center gap-2 text-xs text-slate-400 ">
-                <span>{data.length} eğitmen listeleniyor</span>
+                <span>{organicTutors.length} eğitmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
@@ -295,11 +321,11 @@ export default function PublicMarketplace() {
               </div>
               {/* Anonim de kalbi görür — tıklayınca giriş modalı, giriş sonrası niyet uygulanır */}
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                {data.map((tutor) => (
+                {organicTutors.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}
               </div>
-              {data.length === limit && (
+              {(data?.length ?? 0) === limit && (
                 <div className="mt-6 flex justify-center">
                   {/* Gerçek bağlantı: crawler takip edebilsin ve kullanıcı
                       yeni sekmede açabilsin. Tıklama SPA içinde kalır. */}

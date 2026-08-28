@@ -50,6 +50,12 @@ export const PATHS = {
   cookiePolicy: "/cerez-politikasi",
   // Mesafeli satış sözleşmesi bu forma atıf yapar; sipariş öncesi özet niteliğindedir.
   preliminaryInfo: "/on-bilgilendirme-formu",
+  /**
+   * Sıralama ölçütleri — 6563 sayılı Kanun ve ETAHS Yönetmeliği aracı hizmet
+   * sağlayıcının sıralama kriterlerini erişilebilir biçimde açıklamasını
+   * ister. Ücretli öne çıkarma bloğu buraya bağlantı verir.
+   */
+  rankingCriteria: "/siralama-kriterleri",
   about: "/hakkimizda",
 
   // ── Blog (public, SEO) ──
@@ -115,6 +121,8 @@ export const PATHS = {
   addresses: "/adreslerim",
   settings: "/ayarlar",
   tutorListing: "/ilan-ayarlari",
+  /** Eğitmenin ilanını öne çıkarma (reklam paketi satın alma). */
+  tutorPromotion: "/ilanimi-one-cikar",
   /** Dağıtıcı saha ekranı — kendi-filo teslimat turu (ADMIN + KURYE). */
   deliveryRun: "/dagitim/:id",
   /** Zimmet ekranı — paketleri araca alma (ADMIN + KURYE, F30 §3.4). */
@@ -130,6 +138,7 @@ export const PATHS = {
   adminUsers: "/yonetim/kullanicilar",
   adminUser: "/yonetim/kullanicilar/:role/:id",
   adminTutors: "/yonetim/egitmenler",
+  adminPromotions: "/yonetim/one-cikarmalar",
   adminDiplomas: "/yonetim/diplomalar",
   adminLibraries: "/yonetim/kutuphaneler",
   adminExamCatalogs: "/yonetim/deneme-kataloglari",
@@ -216,6 +225,7 @@ export const ROUTES = {
   refundPolicy: PATHS.refundPolicy,
   cookiePolicy: PATHS.cookiePolicy,
   preliminaryInfo: PATHS.preliminaryInfo,
+  rankingCriteria: PATHS.rankingCriteria,
   about: PATHS.about,
 
   // ── Blog ──
@@ -273,6 +283,7 @@ export const ROUTES = {
   addresses: PATHS.addresses,
   settings: PATHS.settings,
   tutorListing: PATHS.tutorListing,
+  tutorPromotion: PATHS.tutorPromotion,
   deliveryRun: (id: string | number) => `/dagitim/${id}`,
   deliveryRunHandover: (id: string | number) => `/dagitim/${id}/zimmet`,
   studentProfile: (id: string | number) => `/ogrenciler/${id}`,
@@ -283,6 +294,7 @@ export const ROUTES = {
   adminUser: (role: "admin" | "tutor" | "client", id: string | number) =>
     `/yonetim/kullanicilar/${role}/${id}`,
   adminTutors: PATHS.adminTutors,
+  adminPromotions: PATHS.adminPromotions,
   adminDiplomas: PATHS.adminDiplomas,
   adminLibraries: PATHS.adminLibraries,
   adminExamCatalogs: PATHS.adminExamCatalogs,
@@ -337,6 +349,7 @@ export const LEGAL_ROUTES = {
   refund: PATHS.refundPolicy,
   cookies: PATHS.cookiePolicy,
   "preliminary-info": PATHS.preliminaryInfo,
+  "ranking-criteria": PATHS.rankingCriteria,
   about: PATHS.about,
 } as const;
 

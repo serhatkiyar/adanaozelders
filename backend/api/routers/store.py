@@ -20,7 +20,12 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_admin_permission, require_roles, user_rate_limit
+from api.deps import (
+    get_shopping_client,
+    require_admin_permission,
+    require_roles,
+    user_rate_limit,
+)
 from core import storage
 from core.config import settings
 from core.ratelimit import rate_limit
@@ -890,17 +895,21 @@ async def upload_seller_asset(
     )
 
 
-# ── Sepet / sipariş (CLIENT) ─────────────────────────────────────────────────────
+# ── Sepet / sipariş (alıcı: öğrenci ya da eğitmenin gölgesi) ────────────────────
 
 
 @router.post("/cart/validate", response_model=CartValidateOut)
 async def validate_cart(
     payload: OrderCreate,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.validate_cart(
-        db, payload.items, coupon_code=payload.coupon_code, client_id=client.id
+        db,
+        payload.items,
+        coupon_code=payload.coupon_code,
+        client_id=client.id,
+        buyer_tutor_id=client.shadow_of_tutor_id,
     )
 
 
@@ -913,7 +922,7 @@ async def validate_cart(
 async def create_order(
     payload: OrderCreate,
     request: Request,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     phone_service.require_phone_verified(client)
@@ -926,7 +935,7 @@ async def create_order(
 
 @router.get("/orders/mine", response_model=list[OrderOut])
 async def list_my_orders(
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.list_mine(db, client)
@@ -1025,7 +1034,7 @@ async def public_delivery_feedback(
 async def set_delivery_pref(
     order_id: int,
     payload: DeliveryPrefIn,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     order = await order_service.get_order_for_pay(db, order_id, client.id)
@@ -1036,7 +1045,7 @@ async def set_delivery_pref(
 @router.post("/orders/{order_id}/postpone", response_model=OrderOut)
 async def postpone_order(
     order_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     """"Yarına ertele" — açık durak RESCHEDULED olur, söz günü ileri alınır."""
@@ -1049,7 +1058,7 @@ async def postpone_order(
 async def change_order_address(
     order_id: int,
     payload: ShipAddressChangeIn,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     """Teslimat adresi değişikliği — yalnız dağıtıma çıkmadan; bölge dışına
@@ -1064,7 +1073,7 @@ async def change_order_address(
 async def delivery_feedback(
     order_id: int,
     payload: DeliveryFeedbackIn,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     """Teslim sonrası değerlendirme (👍/👎 + yapısal sorun) — sipariş başına tek."""
@@ -1077,7 +1086,7 @@ async def delivery_feedback(
 @router.get("/orders/{order_id}/feedback", response_model=DeliveryFeedbackOut | None)
 async def get_delivery_feedback(
     order_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     order = await order_service.get_order_for_pay(db, order_id, client.id)
@@ -1087,7 +1096,7 @@ async def get_delivery_feedback(
 @router.get("/orders/{order_id}/tracking", response_model=OrderTrackingOut)
 async def order_tracking(
     order_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     """Kendi-filo teslimat canlı takibi: kurye konumu + sıra + tahmini varış."""
@@ -1099,7 +1108,7 @@ async def order_tracking(
 @router.get("/orders/{order_id}/invoice")
 async def get_order_invoice(
     order_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     """Sipariş faturası — sunucu tarafı, e-Arşiv formatına HAZIR.
@@ -1137,7 +1146,7 @@ async def tax_health(
 @router.get("/orders/{order_id}", response_model=OrderOut)
 async def get_my_order(
     order_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.get_order(db, order_id, client_id=client.id)
@@ -1151,7 +1160,7 @@ async def get_my_order(
 async def pay_order(
     order_id: int,
     request: Request,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     phone_service.require_phone_verified(client)
@@ -1167,7 +1176,7 @@ async def pay_order(
 @router.post("/orders/{order_id}/cancel", response_model=OrderOut)
 async def cancel_my_order(
     order_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     order = await order_service.get_order_for_pay(db, order_id, client.id)
@@ -1182,7 +1191,7 @@ async def cancel_my_order(
 async def request_order_return(
     order_id: int,
     payload: OrderReturnCreate,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
     _rl: None = Depends(_return_limit),
 ):
@@ -1235,7 +1244,7 @@ async def list_product_reviews(
 async def create_product_review(
     product_id: int,
     payload: ProductReviewCreate,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.create_review(db, client, product_id, payload)
@@ -1244,7 +1253,7 @@ async def create_product_review(
 @router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product_review(
     review_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     await store_service.delete_review(db, client, review_id)
@@ -1267,7 +1276,7 @@ async def notify_when_in_stock(
 
 @router.get("/favorites", response_model=list[ProductSearchOut])
 async def list_favorites(
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.list_favorites(db, client.id)
@@ -1276,7 +1285,7 @@ async def list_favorites(
 @router.put("/favorites/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def add_favorite(
     product_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     await store_service.add_favorite(db, client.id, product_id)
@@ -1285,7 +1294,7 @@ async def add_favorite(
 @router.delete("/favorites/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_favorite(
     product_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     await store_service.remove_favorite(db, client.id, product_id)
@@ -1297,7 +1306,7 @@ async def remove_favorite(
 
 @router.get("/collections", response_model=list[CollectionOut])
 async def list_collections(
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await collection_service.list_collections(db, client)
@@ -1310,7 +1319,7 @@ async def list_collections(
 )
 async def create_collection(
     payload: CollectionCreate,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await collection_service.create_collection(db, client, payload.name)
@@ -1328,7 +1337,7 @@ async def get_shared_collection(
 @router.get("/collections/{collection_id}", response_model=CollectionDetailOut)
 async def get_collection(
     collection_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await collection_service.get_collection(db, client, collection_id)
@@ -1338,7 +1347,7 @@ async def get_collection(
 async def rename_collection(
     collection_id: int,
     payload: CollectionUpdate,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await collection_service.rename_collection(
@@ -1351,7 +1360,7 @@ async def rename_collection(
 )
 async def delete_collection(
     collection_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     await collection_service.delete_collection(db, client, collection_id)
@@ -1361,7 +1370,7 @@ async def delete_collection(
 async def add_collection_item(
     collection_id: int,
     payload: CollectionItemAdd,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await collection_service.add_item(
@@ -1376,7 +1385,7 @@ async def add_collection_item(
 async def remove_collection_item(
     collection_id: int,
     product_id: int,
-    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    client: Client = Depends(get_shopping_client),
     db: AsyncSession = Depends(get_db),
 ):
     return await collection_service.remove_item(

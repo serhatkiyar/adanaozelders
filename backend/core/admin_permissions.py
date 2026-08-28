@@ -93,6 +93,12 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     # kuyruğu GÖREN kişi tek başına dış yan etki TETİKLEYEMEZ.
     ("operations.view", "Sıkışmış para ve ölü iş kuyruğunu görüntüleme", "Platform"),
     ("operations.manage", "Ölü işi yeniden kuyruğa alma", "Platform"),
+    # İlan öne çıkarma (reklam paketi satışı). `tutors.*` bilinçli olarak
+    # YENİDEN KULLANILMADI: eğitmeni onaylamak ile onun ödediği reklam
+    # bedelini iade etmek farklı işlerdir — ikincisi para çıkışıdır ve
+    # `orders.*`/`returns.*` ile aynı görev ayrılığı gerekçesine tabidir.
+    ("promotions.view", "Öne çıkarma satışlarını görüntüleme", "Ticaret"),
+    ("promotions.manage", "Öne çıkarma iptali ve iadesi", "Ticaret"),
     ("reports.view", "Şikâyet görüntüleme", "Güvenlik"),
     ("reports.manage", "Şikâyet yönetimi", "Güvenlik"),
     ("audit.view", "Denetim kayıtlarını görüntüleme", "Güvenlik"),

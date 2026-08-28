@@ -18,7 +18,7 @@ import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { useTutorSearch } from "@/hooks/useTutorSearch";
+import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import type { TutorSearchParams } from "@/api/tutors";
 import type { LibrarySearchParams } from "@/api/libraries";
@@ -219,6 +219,14 @@ function CategoryContent({ active }: { active: CategoryKey }) {
           anlamlı sayıya ulaştığında ve VERİDEN türetilebildiğinde geri
           gelmelidir — sabit liste olarak değil.
           Nöbetçi: `__guards__/egitmenKusaklari.test.tsx`. */}
+      {/* Ücretli öne çıkarma şeridi — eğitmen kuşağının ÜSTÜNDE ve ondan
+          bağımsız bir uçtan gelir. Organik kuşağın sırasını değiştirmez;
+          "Reklam" ibaresi yönetmelik gereği zorunludur ve blok yalnız
+          yürürlükte bir paket varsa çizilir. Ana sayfa filtresiz olduğu için
+          burada eşleşme daraltması yoktur — arama sayfasındaki blok ise
+          aramanın filtrelerine tabidir. */}
+      {(active === "hepsi" || active === "egitmenler") && <FeaturedTutorRow />}
+
       {(active === "hepsi" || active === "egitmenler") && (
         <TutorRow heading="Eğitmenler" params={{ limit: 12, offset: 0 }} />
       )}
@@ -289,6 +297,36 @@ function RowSkeleton() {
         />
       ))}
     </div>
+  );
+}
+
+function FeaturedTutorRow() {
+  const { data } = useFeaturedTutors({});
+  const tutors = data ?? [];
+  if (tutors.length === 0) return null;
+
+  return (
+    <section aria-label="Reklam" className="mx-auto max-w-[1216px] px-6">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold tracking-wide text-slate-500">
+          Reklam
+        </h2>
+        <Link
+          to={ROUTES.rankingCriteria}
+          className="text-xs text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
+        >
+          Sıralama nasıl belirleniyor?
+        </Link>
+      </div>
+      <HScroll className="gap-5 pb-2">
+        {tutors.map((tutor) => (
+          <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
+            <TutorCard tutor={tutor} featured />
+          </div>
+        ))}
+      </HScroll>
+      <div className="mt-8 h-px w-full bg-slate-200" />
+    </section>
   );
 }
 

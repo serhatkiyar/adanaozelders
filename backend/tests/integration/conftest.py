@@ -354,6 +354,12 @@ from tests.integration.ip16_factory import (  # noqa: E402,F401
     ip16_saat,
 )
 
+# İlan öne çıkarma fixture'ları — aynı F811 gerekçesi.
+from tests.integration.promotion_factory import (  # noqa: E402,F401
+    promo_fab,
+    promo_kol_acik,
+)
+
 # ═══════════════ İP-3: yetki / kişisel veri / hesap güvenliği ═══════════════
 
 

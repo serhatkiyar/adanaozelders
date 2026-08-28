@@ -17,7 +17,7 @@ import {
   useAddToCollection,
   useRemoveFromCollection,
 } from "@/hooks/useStore";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 import type { Collection, ProductSearchOut } from "@/types";
 import { toast } from "@/store/toastStore";
 
@@ -34,10 +34,10 @@ export default function FavoritesPage() {
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
-  const isClient = !!token && user?.role_id === ROLE_IDS.CLIENT;
+  const alisverisAcik = !!token && alisverisYapabilir(user?.role_id);
 
   const favCount = useFavoritesStore((s) => s.items.length);
-  const { data: collections } = useCollections(isClient);
+  const { data: collections } = useCollections(alisverisAcik);
   const createCol = useCreateCollection();
   const renameCol = useRenameCollection();
   const deleteCol = useDeleteCollection();
@@ -69,7 +69,7 @@ export default function FavoritesPage() {
             <button
               type="button"
               onClick={() =>
-                isClient ? setNameModal({ mode: "create" }) : navigate("?modal=login")
+                alisverisAcik ? setNameModal({ mode: "create" }) : navigate("?modal=login")
               }
               className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-700 "
             >
@@ -105,7 +105,7 @@ export default function FavoritesPage() {
               ))}
             </nav>
 
-            {!isClient && (
+            {!alisverisAcik && (
               <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 ">
                 Kendi listelerini oluşturmak için{" "}
                 <Link to="?modal=login" className="font-semibold text-indigo-600 hover:underline ">
@@ -119,7 +119,7 @@ export default function FavoritesPage() {
           {/* Sağ: seçili listenin içeriği */}
           <section className="min-w-0">
             {showFavorites ? (
-              <FavoritesPane isClient={isClient} />
+              <FavoritesPane alisverisAcik={alisverisAcik} />
             ) : (
               <CollectionPane
                 key={selectedCol.id}
@@ -207,7 +207,7 @@ function EmptyBox({ title, desc, cta }: { title: string; desc: string; cta?: Rea
 }
 
 /* ── Sağ panel: Favori Listem (kalp favorileri, localStorage) ── */
-function FavoritesPane({ isClient }: { isClient: boolean }) {
+function FavoritesPane({ alisverisAcik }: { alisverisAcik: boolean }) {
   const navigate = useNavigate();
   const items = useFavoritesStore((s) => s.items);
   const removeFav = useFavoritesStore((s) => s.remove);
@@ -259,7 +259,7 @@ function FavoritesPane({ isClient }: { isClient: boolean }) {
                       {
                         label: "Listelerime ekle",
                         // Koleksiyonlar oturum ister — anonim tıklamada giriş modalı.
-                        onClick: () => (isClient ? setAddTarget(p) : navigate("?modal=login")),
+                        onClick: () => (alisverisAcik ? setAddTarget(p) : navigate("?modal=login")),
                       },
                       { label: "Sil", danger: true, onClick: () => removeFav(p.id) },
                     ]}

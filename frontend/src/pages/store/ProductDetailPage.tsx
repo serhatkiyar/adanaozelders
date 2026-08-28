@@ -27,7 +27,7 @@ import {
 import { useCartStore } from "@/store/cartStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useAuthStore } from "@/store/authStore";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 import type { ProductCategory, ProductKind, ProductVariants } from "@/types";
 import { toast } from "@/store/toastStore";
 
@@ -159,7 +159,7 @@ export default function ProductDetailPage() {
     product.stock > 0 &&
     lowStockThreshold != null &&
     product.stock <= lowStockThreshold;
-  const isClient = user?.role_id === ROLE_IDS.CLIENT;
+  const alisverisAcik = alisverisYapabilir(user?.role_id);
   // D&R gibi: platform ürününde satıcı adı gösterilmez; yalnız eğitmen (çok-satıcılı) üründe.
   const showSeller = product.seller_type === "TUTOR" && !!product.tutor_name;
   const subtitle = [product.author, product.publisher].filter(Boolean).join(" · ");
@@ -583,7 +583,7 @@ export default function ProductDetailPage() {
                   <RatingHistogram data={distribution} />
                 </div>
               )}
-              {isClient && <ReviewForm productId={product.id} />}
+              {alisverisAcik && <ReviewForm productId={product.id} />}
               <div className="mt-5 space-y-5">
                 {reviews && reviews.length > 0 ? (
                   reviews.map((r) => (

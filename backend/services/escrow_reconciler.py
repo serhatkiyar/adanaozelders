@@ -36,6 +36,7 @@ from models.payment import Payment, PaymentStatus
 from models.role import ROLE_IDS, RoleType
 from models.store import Order, OrderPaymentStatus, OrderReturn
 from models.study_reservation import StudyReservation
+from models.tutor_promotion import PromotionPaymentStatus, TutorPromotion
 from services import escrow, notification_service
 
 logger = logging.getLogger("adana.escrow")
@@ -70,6 +71,9 @@ _REFUNDING_TARGETS: tuple[tuple[type, escrow.EscrowSpec], ...] = (
     # Sarkan iade talepleri: kısmi iade sağlayıcı çağrısında süreç ölürse
     # talep REFUNDING'de kalır ve buradan devralınır.
     (OrderReturn, escrow.RETURN_SPEC),
+    # İlan öne çıkarma iptali de gerçek bir para çıkışıdır; admin iptalinde
+    # sağlayıcı çağrısı sonuçsuz kalırsa kayıt burada devralınır.
+    (TutorPromotion, escrow.PROMOTION_SPEC),
 )
 
 
@@ -452,6 +456,7 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
         order_service,
         payment_service,
         study_reservation_service,
+        tutor_promotion_service,
     )
 
     payments_rows = (
@@ -631,5 +636,47 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
         await db.commit()
         handled += 1
         logger.warning("reconciler: kayıp callback tamamlandı (order#%s)", order_id)
+
+    # İlan öne çıkarma: eğitmen öder, tarayıcıyı kapatır → para çekilmiştir ama
+    # ilan hiç öne çıkmaz. Sipariş döngüsüyle aynı izolasyon deseni (kayıt-başı
+    # try/except, savepoint YOK — gerekçe yukarıda).
+    promo_rows = (
+        await db.execute(
+            select(TutorPromotion).where(
+                TutorPromotion.payment_status.in_(
+                    [
+                        PromotionPaymentStatus.PENDING.value,
+                        PromotionPaymentStatus.FAILED.value,
+                    ]
+                ),
+                TutorPromotion.provider_ref.isnot(None),
+                TutorPromotion.paid_at.is_(None),
+                TutorPromotion.updated_at <= newest,
+                TutorPromotion.updated_at >= oldest,
+            )
+        )
+    ).scalars().all()
+    promo_specs = [(p.id, p.provider_ref) for p in promo_rows]
+    for promo_id, promo_token in promo_specs:
+        try:
+            result = await retrieve(token=promo_token)
+            if not result.success:
+                continue
+            await tutor_promotion_service.complete_checkout(
+                db, promotion_id=promo_id, success=True,
+                provider_ref=result.provider_ref,
+                token=promo_token, paid_price=result.paid_price,
+            )
+        except Exception:  # noqa: BLE001 — kayıt izole edilir, parti ölmez
+            await db.rollback()
+            logger.exception(
+                "reconciler: promo#%s mutabakatı BAŞARISIZ — kayıt atlandı, "
+                "parti devam ediyor (elle inceleyin)",
+                promo_id,
+            )
+            continue
+        await db.commit()
+        handled += 1
+        logger.warning("reconciler: kayıp callback tamamlandı (promo#%s)", promo_id)
 
     return handled

@@ -34,8 +34,26 @@ MODEL_BY_ROLE_ID: dict[int, type] = {
 }
 
 
+def _exclude_shadow(stmt, model: type):
+    """Eğitmenin alışveriş gölgesini her kimlik sorgusundan düşürür.
+
+    Gölge satır bir GİRİŞ ÖZNESİ DEĞİLDİR (docs/egitmen-alici-sozlesme.md §1.2):
+    eğitmenin gerçek e-postasını taşır ama onunla giriş yapılamaz, şifre
+    sıfırlanamaz ve kullanıcı adı tekilliğinde yer tutmaz. Filtre olmadan
+    `authenticate`/`find_by_email` içindeki `scalar_one_or_none()` — eğitmenin
+    e-postasıyla ayrı bir gerçek öğrenci hesabı da varsa — iki satır bulup
+    MultipleResultsFound ile 500 verirdi.
+    """
+    if model is Client:
+        return stmt.where(Client.shadow_of_tutor_id.is_(None))
+    return stmt
+
+
 async def _email_taken(db: AsyncSession, model: type, email: str) -> bool:
-    stmt = select(model.id).where(model.email == email, model.deleted_at.is_(None))
+    stmt = _exclude_shadow(
+        select(model.id).where(model.email == email, model.deleted_at.is_(None)),
+        model,
+    )
     return (await db.execute(stmt)).first() is not None
 
 
@@ -52,8 +70,11 @@ async def _username_taken(
     exclude_id: int | None = None,
 ) -> bool:
     for model in _ALL_USER_MODELS:
-        stmt = select(model.id).where(
-            model.username == username, model.deleted_at.is_(None)
+        stmt = _exclude_shadow(
+            select(model.id).where(
+                model.username == username, model.deleted_at.is_(None)
+            ),
+            model,
         )
         if exclude_model is model and exclude_id is not None:
             stmt = stmt.where(model.id != exclude_id)
@@ -189,7 +210,10 @@ async def change_password(
 
 async def authenticate(db: AsyncSession, *, email: str, password: str):
     for role, model in _LOGIN_PRECEDENCE:
-        stmt = select(model).where(model.email == email, model.deleted_at.is_(None))
+        stmt = _exclude_shadow(
+            select(model).where(model.email == email, model.deleted_at.is_(None)),
+            model,
+        )
         user = (await db.execute(stmt)).scalar_one_or_none()
         if user is not None and await verify_password_async(password, user.hashed_password):
             return user, role
@@ -201,7 +225,10 @@ async def find_by_email(db: AsyncSession, *, email: str):
     kullanılır (kimlik doğrulamasız). Bulunamazsa None — çağıran enumeration'a
     karşı yanıtı her durumda aynı tutmalıdır."""
     for _role, model in _LOGIN_PRECEDENCE:
-        stmt = select(model).where(model.email == email, model.deleted_at.is_(None))
+        stmt = _exclude_shadow(
+            select(model).where(model.email == email, model.deleted_at.is_(None)),
+            model,
+        )
         user = (await db.execute(stmt)).scalar_one_or_none()
         if user is not None:
             return user
