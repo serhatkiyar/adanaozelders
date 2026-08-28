@@ -4,7 +4,7 @@
 // PostToolUse sonrası geri bildirim) — Alembic autogenerate kayıtsız tabloyu
 // GÖRMEZ, bu "sessiz eksik migration" tuzağını erkenden yakalar.
 import { readFileSync } from "node:fs";
-import { dirname, basename, join } from "node:path";
+import { dirname, join } from "node:path";
 
 let raw = "";
 try {
@@ -47,10 +47,10 @@ const imported = new RegExp(
 if (!imported) {
   console.error(
     `⚠️  models/${moduleName}.py models/__init__.py'de import EDİLMEMİŞ.\n` +
-      `   Modeli \`from models.${moduleName} import <SınıfAdı>\` ile import et ve ` +
-      `__all__ listesine ekle.\n` +
+      `   Modeli \`from models.${moduleName} import <SınıfAdı>\` ile import et. ` +
+      `Dışa aktarılacak sınıfları __all__ listesine ayrıca ekle.\n` +
       `   Aksi halde Alembic autogenerate tabloyu görmez → sessiz eksik migration. ` +
-      `Şema değiştiyse /create-migration kullan.`
+      `Şema değiştiyse Alembic migration üret.`
   );
   process.exit(2); // PostToolUse'da exit 2 → stderr Claude'a geri bildirim olur
 }
