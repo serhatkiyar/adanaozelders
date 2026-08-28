@@ -49,7 +49,7 @@ import { korumasizTembeller, tabanTaramasi } from "../../scripts/tembel-modul.mj
  */
 const GEREKCELI = [
   // Manuel vitrin sökümü kayıtları satırı 593'e taşıdı.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:585 /src/**/*.tsx",
+  "src/__guards__/calismaZamaniKapisi.test.tsx:591 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

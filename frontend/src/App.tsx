@@ -122,6 +122,7 @@ const DeliveryRunHandover = lazy(() => import("@/pages/DeliveryRunHandover"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
 const TutorPromotion = lazy(() => import("@/pages/TutorPromotion"));
+const AdminPromotionsPage = lazy(() => import("@/pages/admin/AdminPromotionsPage"));
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
 const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
@@ -479,6 +480,7 @@ function App() {
               <Route path="kullanicilar" element={<AdminUsersPage />} />
               <Route path="kullanicilar/:role/:id" element={<AdminUserDetailPage />} />
               <Route path="egitmenler" element={<AdminSectionPage section="listings" />} />
+              <Route path="one-cikarmalar" element={<AdminPromotionsPage />} />
               <Route path="diplomalar" element={<AdminSectionPage section="diplomas" />} />
               <Route path="kutuphaneler" element={<AdminLibraries />} />
               <Route path="deneme-kataloglari" element={<AdminExamCatalogs />} />

@@ -12,7 +12,9 @@ import { LEGAL_ROUTES } from "@/lib/routes";
 
 describe("legalContent", () => {
   it("her belge başlık, açıklama ve en az 4 bölüm içerir", () => {
-    expect(LEGAL_DOCS.length).toBe(8);
+    // 9. belge (29 Ağu 2026): Sıralama Ölçütleri — ücretli öne çıkarma
+    // yayına girdiği için 6563/ETAHS şeffaflık yükümlülüğünün karşılığı.
+    expect(LEGAL_DOCS.length).toBe(9);
     for (const doc of LEGAL_DOCS) {
       expect(doc.title.length).toBeGreaterThan(5);
       expect(doc.description.length).toBeGreaterThan(30);

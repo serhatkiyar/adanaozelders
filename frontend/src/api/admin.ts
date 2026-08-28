@@ -253,3 +253,44 @@ export async function verifyEducation(
   });
   return data;
 }
+
+// ── İlan öne çıkarma satışları ──
+
+export interface AdminPromotion {
+  id: number;
+  tutor_id: number;
+  tutor_name: string | null;
+  package_days: number;
+  price: string;
+  currency: string;
+  payment_status: string;
+  provider: string | null;
+  provider_ref: string | null;
+  paid_at: string | null;
+  refunded_amount: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+}
+
+export async function fetchAdminPromotions(
+  status?: string
+): Promise<AdminPromotion[]> {
+  const { data } = await apiClient.get<AdminPromotion[]>("/admin/promotions", {
+    params: status ? { status } : undefined,
+  });
+  return data;
+}
+
+/** İptal + iade. Gerekçe zorunludur ve denetim iznine yazılır. */
+export async function cancelAdminPromotion(
+  id: number,
+  reason: string
+): Promise<AdminPromotion> {
+  const { data } = await apiClient.post<AdminPromotion>(
+    `/admin/promotions/${id}/cancel`,
+    { reason }
+  );
+  return data;
+}

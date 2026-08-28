@@ -38,7 +38,7 @@ describe("StoreCategoryBar", () => {
     expect(screen.getByRole("link", { name: "Sınav Kitapları" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Özel Ders Al" })).toBeTruthy();
     expect(screen.getAllByRole("link").map((link) => link.textContent?.trim())).toEqual([
-      "Kategoriler",
+      "Tümü",
       "Özel Ders Al",
       "Sınav Kitapları",
     ]);

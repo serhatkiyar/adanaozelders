@@ -20,4 +20,5 @@ export const LEGAL_NAV: readonly LegalNavItem[] = [
   { id: "distance-sales", title: "Mesafeli Satış Sözleşmesi", path: LEGAL_ROUTES["distance-sales"] },
   { id: "refund", title: "Teslimat, İptal ve İade Politikası", path: LEGAL_ROUTES.refund },
   { id: "cookies", title: "Çerez Politikası", path: LEGAL_ROUTES.cookies },
+  { id: "ranking-criteria", title: "Sıralama Ölçütleri", path: LEGAL_ROUTES["ranking-criteria"] },
 ];

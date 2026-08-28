@@ -288,6 +288,7 @@ export const OLCUM_TABANI = [
   "src/pages/admin/AdminDemandsPage.tsx",
   "src/pages/admin/AdminOperationsPage.tsx",
   "src/pages/admin/AdminPayoutsPage.tsx",
+  "src/pages/admin/AdminPromotionsPage.tsx",
   "src/pages/admin/AdminReportsPage.tsx",
   "src/pages/admin/AdminSectionPage.tsx",
   "src/pages/admin/AdminSettingsPage.tsx",

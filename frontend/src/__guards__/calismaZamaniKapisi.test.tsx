@@ -345,6 +345,7 @@ const KAPI_KAPSAMI = [
   "src/pages/admin/AdminDemandsPage.tsx",
   "src/pages/admin/AdminOperationsPage.tsx",
   "src/pages/admin/AdminPayoutsPage.tsx",
+  "src/pages/admin/AdminPromotionsPage.tsx",
   "src/pages/admin/AdminReportsPage.tsx",
   "src/pages/admin/AdminSectionPage.tsx",
   "src/pages/admin/AdminSettingsPage.tsx",
@@ -487,6 +488,11 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/pages/admin/AdminDashboardPage.tsx": "kosullu",
   "src/pages/admin/AdminOperationsPage.tsx": "kosullu",
   "src/pages/admin/AdminPayoutsPage.tsx": "kosullu",
+  // Öne çıkarma satışları: varsayılan render bir LİSTE ekranıdır — filtre
+  // çipleri düğmedir, tek form kontrolü (gerekçe alanı) yalnız iptal
+  // penceresi AÇIKKEN mount olur. Pencerenin kendi sözleşmesi ayrıca
+  // ölçülür (`ui/gerekcePenceresi.test.tsx`, SK-7/SK-8).
+  "src/pages/admin/AdminPromotionsPage.tsx": "kosullu",
   "src/pages/admin/AdminSectionPage.tsx": "kabuk",
   "src/pages/admin/AdminSettingsPage.tsx": "kosullu",
   "src/pages/admin/AdminUserDetailPage.tsx": "kosullu",

@@ -60,6 +60,10 @@ export const TAM_ADMIN_IZINLERI: readonly string[] = [
   "delivery.manage",
   "payments.view",
   "payments.manage",
+  // İlan öne çıkarma satışları — `tutors.*` bilinçli olarak yeniden
+  // kullanılmadı (iptal + iade para çıkışıdır, eğitmen onayı değil).
+  "promotions.view",
+  "promotions.manage",
   "inventory.view",
   "inventory.count",
   "inventory.apply",

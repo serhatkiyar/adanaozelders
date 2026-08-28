@@ -99,7 +99,7 @@ export function AnaVitrin() {
       {/* ── Hero üzerine binen Amazon kartları ── */}
       <section
         aria-label="Öne çıkan bölümler"
-        className="relative z-30 -mt-16 px-4 sm:-mt-24 md:-mt-40 md:px-8"
+        className="relative z-30 -mt-20 px-4 sm:-mt-36 md:-mt-64 md:px-8"
       >
         <div className="grid items-stretch gap-5 sm:grid-cols-2 md:grid-cols-4">
           {KARTLAR.map((kart) => (

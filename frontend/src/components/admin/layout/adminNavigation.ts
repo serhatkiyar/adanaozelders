@@ -73,6 +73,15 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "tutors.view",
   },
   {
+    label: "Öne Çıkarmalar",
+    shortLabel: "Öne çıkarma",
+    to: ROUTES.adminPromotions,
+    group: "Ticaret",
+    description: "Eğitmenlerin satın aldığı reklam paketleri; iptal ve iade.",
+    icon: "education",
+    requiredPermission: "promotions.view",
+  },
+  {
     label: "Diploma Doğrulama",
     shortLabel: "Diplomalar",
     to: ROUTES.adminDiplomas,
