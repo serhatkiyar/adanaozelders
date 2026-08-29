@@ -74,7 +74,7 @@ export default function ContactPage() {
             >
               sıkça sorulan sorularda
             </Link>{" "}
-            olabilir — oradan daha hızlı sonuç alırsın.
+            olabilir, oradan daha hızlı sonuç alırsın.
           </p>
         </header>
 

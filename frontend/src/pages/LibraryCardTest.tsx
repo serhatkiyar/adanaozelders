@@ -105,11 +105,11 @@ export default function LibraryCardTest() {
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-100 pb-6 ">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900 ">
-              Kütüphane kartı — tasarım karşılaştırması
+              Kütüphane kartı, tasarım karşılaştırması
             </h1>
             <p className="mt-1 text-sm text-slate-500 ">
               Aynı gerçek veri, üç tasarım. İlk iki kayıt dolu (kapak/olanak/puan/fiyat),
-              son ikisi çıplak — katalogdaki kayıtların çoğu böyle.
+              son ikisi çıplak, katalogdaki kayıtların çoğu böyle.
             </p>
           </div>
         </header>
@@ -122,7 +122,7 @@ export default function LibraryCardTest() {
 
         {isError && (
           <p className="py-16 text-center text-sm text-rose-600 ">
-            Kütüphaneler alınamadı — backend çalışıyor mu?
+            Kütüphaneler alınamadı, backend çalışıyor mu?
           </p>
         )}
 

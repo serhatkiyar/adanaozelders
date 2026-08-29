@@ -79,7 +79,7 @@ export default function PublicTutorProfile() {
     tutor.bio ||
     tutor.headline ||
     (tutor.subjects?.length
-      ? `${tutor.full_name} — ${tutor.subjects.join(", ")} özel ders eğitmeni.`
+      ? `${tutor.full_name}, ${tutor.subjects.join(", ")} özel ders eğitmeni.`
       : `${tutor.full_name} ile özel ders.`);
   const personLd: Record<string, unknown> = {
     "@context": "https://schema.org",

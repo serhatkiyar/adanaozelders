@@ -146,7 +146,7 @@ export default function LibraryDetail() {
             title={lib.name}
             description={
               lib.description ??
-              `${lib.name} — çalışma kütüphanesi. Konum, çalışma saatleri ve değerlendirmeler.`
+              `${lib.name}, çalışma kütüphanesi. Konum, çalışma saatleri ve değerlendirmeler.`
             }
           />
 
@@ -248,7 +248,7 @@ export default function LibraryDetail() {
               <ExamSessionsSection libraryId={lib.id} />
 
               {/* NOT: İnternet hız testi (LibrarySpeedTestSection) bilinçli olarak
-                  arşivde — bileşen ve backend duruyor, sayfada gösterilmiyor. */}
+                  arşivde, bileşen ve backend duruyor, sayfada gösterilmiyor. */}
             </div>
 
             {/* Sol / bilgi kolonu */}
@@ -307,7 +307,7 @@ export default function LibraryDetail() {
                 </div>
 
                 {/* Salt-gösterim harita: oynatılamaz, tıklanınca Google Haritalar açılır.
-                    Ayrı bir "Haritada Görüntüle" butonu yok — haritanın kendisi bağlantı. */}
+                    Ayrı bir "Haritada Görüntüle" butonu yok, haritanın kendisi bağlantı. */}
                 {lib.location_lat != null &&
                   lib.location_lng != null &&
                   mapViewUrl(lib) && (

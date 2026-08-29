@@ -484,7 +484,7 @@ export default function Exams() {
                 {totals.wrong} Y
               </span>{" "}
               <span className="text-slate-400">{totals.blank} B</span>
-              {" — "}
+              {", "}
               <span className="font-bold text-slate-900 ">
                 {fmtNet(totals.net)} net
               </span>

@@ -228,7 +228,7 @@ export default function ProductDetailPage() {
   return (
     <StoreLayout title={product.title}>
       <Seo
-        title={`${product.title} — Mağaza`}
+        title={`${product.title}, Mağaza`}
         description={product.description ?? undefined}
         type="article"
         image={product.cover_url ?? undefined}
@@ -414,7 +414,7 @@ export default function ProductDetailPage() {
 
             {/* Tedarikçi stoğundan karşılanan ürün (D-2).
                 Tek satır, nötr renk: bu bir uyarı değil, dürüst bir beklenti
-                ayarı. Maliyet/marj BURADA GÖRÜNMEZ (D-6) — `supplier` bloğu
+                ayarı. Maliyet/marj BURADA GÖRÜNMEZ (D-6), `supplier` bloğu
                 public yanıtta zaten boştur. */}
             {product.fulfillment === "SUPPLIER" && (
               <p className="mt-2 text-sm text-slate-500 ">
@@ -456,7 +456,7 @@ export default function ProductDetailPage() {
                 stoğu hiç bilmez. Bu, tedarikçi katmanından ÖNCE sorun
                 değildi: rafta olmayan ürün zaten satın alınamıyordu ve rozet
                 hiç görünmüyordu. Artık görünebiliyor ve "bugün kapında"
-                diyor — oysa mal Yıldırım'dan getirilecek.
+                diyor, oysa mal Yıldırım'dan getirilecek.
 
                 Yıldırım'ın hazırlık/teslim süresi HENÜZ BİLİNMİYOR (rapor
                 §4 açık konu 1) ve 1.000 TL minimum sipariş kuralı toplu alım
@@ -825,7 +825,7 @@ function BackInStockForm({ productId }: { productId: number }) {
       className="mt-4 rounded-xl border border-slate-200 p-4 "
     >
       <p className="mb-2 text-sm font-medium text-slate-700 ">
-        Tükendi — gelince haber verelim mi?
+        Tükendi, gelince haber verelim mi?
       </p>
       <div className="flex gap-2">
         <input

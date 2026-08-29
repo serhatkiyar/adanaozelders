@@ -214,7 +214,7 @@ export default function Calendar() {
                         key={b.id}
                         to={ROUTES.lesson(b.id)}
                         className="block rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs transition hover:border-indigo-200 hover:bg-indigo-50/60 "
-                        title={`${BOOKING_STATUS_LABEL[b.status]} — ${counterparty ?? ""}`}
+                        title={`${BOOKING_STATUS_LABEL[b.status]}, ${counterparty ?? ""}`}
                       >
                         <div className="font-semibold text-slate-700 ">
                           {timeFmt.format(new Date(b.start_at))}

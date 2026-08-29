@@ -200,7 +200,7 @@ export default function DeepWork() {
                 value={taskLabel}
                 onChange={(e) => setTask(e.target.value)}
                 maxLength={120}
-                placeholder="Örn. Matematik — türev soruları"
+                placeholder="Örn. Matematik, türev soruları"
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
               />
           )}

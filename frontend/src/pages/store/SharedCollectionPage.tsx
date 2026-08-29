@@ -17,7 +17,7 @@ export default function SharedCollectionPage() {
   if (isError || !data) {
     return (
       <StoreLayout title="Liste" showCategoryBar={false}>
-        <Seo title="Liste — Mağaza" noindex />
+        <Seo title="Liste, Mağaza" noindex />
         <div className="mx-auto max-w-md py-24 text-center">
           <p className="text-slate-600 ">Liste bulunamadı.</p>
           <Link to={ROUTES.store} className="mt-4 inline-block text-sm font-medium underline">
@@ -30,7 +30,7 @@ export default function SharedCollectionPage() {
 
   return (
     <StoreLayout title={data.name} showCategoryBar={false}>
-      <Seo title={`${data.name} — Liste`} noindex />
+      <Seo title={`${data.name}, Liste`} noindex />
       <div className="mx-auto max-w-[76rem] px-4 py-8 md:px-8">
         <p className="text-sm text-slate-400 ">Paylaşılan liste</p>
         <h1 className="mt-1 text-2xl font-semibold text-slate-900 ">

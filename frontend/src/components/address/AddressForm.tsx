@@ -102,7 +102,7 @@ export function AddressForm({
       return;
     }
     if (!district.trim()) {
-      toast.error("İlçe boş olamaz — teslimat bölgesi ilçeye göre belirlenir.");
+      toast.error("İlçe boş olamaz, teslimat bölgesi ilçeye göre belirlenir.");
       return;
     }
     onSubmit({

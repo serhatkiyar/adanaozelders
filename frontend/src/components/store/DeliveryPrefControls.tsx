@@ -62,7 +62,7 @@ export function DeliveryPrefControls({
         setNeighborNote("");
       },
       onError: (e: unknown) =>
-        toast.error(getErrorMessage(e, "Güncellenemedi — bağlantını kontrol et.")),
+        toast.error(getErrorMessage(e, "Güncellenemedi, bağlantını kontrol et.")),
     };
     if (mode.kind === "token") publicSet.mutate({ token: mode.token, pref, note }, opts);
     else orderSet.mutate({ orderId: mode.orderId, pref, note }, opts);
@@ -84,7 +84,7 @@ export function DeliveryPrefControls({
         setPostponeOpen(false);
       },
       onError: (e: unknown) =>
-        toast.error(getErrorMessage(e, "Ertelenemedi — hakkın dolmuş olabilir.")),
+        toast.error(getErrorMessage(e, "Ertelenemedi, hakkın dolmuş olabilir.")),
     };
     if (mode.kind === "token") publicPostpone.mutate(mode.token, opts);
     else orderPostpone.mutate(mode.orderId, opts);
@@ -130,7 +130,7 @@ export function DeliveryPrefControls({
         <p className="mt-2 text-xs text-slate-500 ">
           {currentOption.description}
           {current === "KOMSUYA_BIRAK" && t.delivery_pref_note && (
-            <> — Komşu: {t.delivery_pref_note}</>
+            <>, Komşu: {t.delivery_pref_note}</>
           )}
         </p>
       )}

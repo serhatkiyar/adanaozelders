@@ -100,6 +100,14 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           <Icon name="profile" className="h-5 w-5" />
           Hesabım
         </NavLink>
+        {/* Admin artık kökten panele ZORLA yönlendirilmiyor (29 Ağu: admin de
+            özel ders yüzeyini gezebilmeli); panele dönüş yolu bu menüde durur. */}
+        {user?.role_id === ROLE_IDS.ADMIN && (
+          <NavLink to={ROUTES.admin} onClick={onClick} className={menuItemClass}>
+            <Icon name="settings" className="h-5 w-5" />
+            Yönetim Paneli
+          </NavLink>
+        )}
         {sidebarItems.map((l) =>
           // Donmuş bölüm: bağlantı DEĞİL. `NavLink`e `aria-disabled` eklemek
           // yetmezdi — anchor `href`i taşımaya ve tıklamayı yutmaya devam
@@ -157,8 +165,9 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   // px/py header elementine değil iç wrapper'a taşındı; böylece bottom slot
   // kendi max-width'ini bağımsız yönetebiliyor (çift girintileme önlenir).
   const headerClass = transparent
-    ? "sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md "
-    : "border-b border-slate-200 bg-white ";
+    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    ? "sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md "
+    : "border-b border-slate-200 bg-[#fafafa] ";
   const innerPad = "px-4 md:px-8 pt-5 pb-2";
   // md+'de tam yatay wordmark; altında yalnız yazısız simge (mobilde yer açmak için).
   const logoClass = transparent
@@ -200,8 +209,8 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
                 key={l.to}
                 aria-disabled="true"
                 tabIndex={-1}
-                title={`${l.label} — Yakında`}
-                aria-label={`${l.label} — Yakında`}
+                title={`${l.label}, Yakında`}
+                aria-label={`${l.label}, Yakında`}
                 className={`${navIconClass} cursor-default opacity-40`}
               >
                 {l.icon ? (

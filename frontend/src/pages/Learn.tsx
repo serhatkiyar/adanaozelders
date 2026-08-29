@@ -174,8 +174,9 @@ export default function Learn() {
               </span>
             </div>
           </Link>
-          {/* Denemelerim — bölüm donduruldu (bkz. lib/ozellikBayraklari.ts).
-              Kart menüde GÖRÜNÜR kalır ama bağlantı değildir. */}
+          {/* Denemelerim — bölüm kapalıyken kart HİÇ gösterilmez (kullanıcı
+              kararı, 29 Ağu: donuk-görünür yerine tam gizleme). Bayrak açılınca
+              kart kendiliğinden geri gelir (bkz. lib/ozellikBayraklari.ts). */}
           {DENEMELER_ACIK ? (
           <Link
             to={ROUTES.exams}
@@ -200,26 +201,7 @@ export default function Learn() {
               </span>
             </div>
           </Link>
-          ) : (
-          <span
-            aria-disabled="true"
-            tabIndex={-1}
-            className="group relative block cursor-default overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white opacity-60 shadow-lg shadow-indigo-500/20"
-          >
-            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
-            <div className="relative">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9z" />
-                </svg>
-              </span>
-              <h2 className="mt-4 text-lg font-bold">Denemelerim</h2>
-              <p className="mt-1 text-sm text-indigo-50">
-                Girdiğin deneme sınavlarını kaydet, netlerini ve ilerlemeni analiz et.
-              </p>
-            </div>
-          </span>
-          )}
+          ) : null}
 
           {/* Takvim */}
           <Link

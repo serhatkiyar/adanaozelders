@@ -161,7 +161,7 @@ export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
         // eklenmedi" diyordu; operatör bunu "oturumlarım silinmiş" diye okur.
         <div data-testid="oturum-hata">
           <ErrorState
-            description="Oturum listesi yüklenemedi. Listenin boş olduğu anlamına gelmez — bağlantını kontrol edip yeniden dene."
+            description="Oturum listesi yüklenemedi. Listenin boş olduğu anlamına gelmez, bağlantını kontrol edip yeniden dene."
             onRetry={() => void refetch()}
           />
         </div>
@@ -535,7 +535,7 @@ function ResultsPanel({
       )}
       {!isPast && (
         <p className="mb-2 text-[11px] text-amber-600 ">
-          Bu oturumun tarihi henüz gelmedi — karneleri sınav sonrası yükleyin.
+          Bu oturumun tarihi henüz gelmedi, karneleri sınav sonrası yükleyin.
         </p>
       )}
 
@@ -653,13 +653,13 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
         {/* Erişilebilir ad ÖĞRENCİYİ de içerir: tablo satırında tek başına
             "Net" demek ekran okuyucuda hangi öğrencinin neti olduğunu
             söylemez (nöbetçi sayacında bu iki alan `ExamSessionsManager: 2`
-            borcuydu — A7d2'de kapandı). */}
+            borcuydu, A7d2'de kapandı). */}
         <input
           type="number"
           min={0}
           step="0.01"
           value={net}
-          aria-label={`${row.client_name} — toplam net`}
+          aria-label={`${row.client_name}, toplam net`}
           placeholder="—"
           onChange={(e) => setNet(e.target.value)}
           className={numCls}
@@ -670,7 +670,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           type="number"
           min={1}
           value={rank}
-          aria-label={`${row.client_name} — sıra`}
+          aria-label={`${row.client_name}, sıra`}
           placeholder="—"
           onChange={(e) => setRank(e.target.value)}
           className={numCls}
@@ -685,7 +685,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           size="sm"
           isPending={summary.isPending}
           disabled={!dirty}
-          aria-label={`${row.client_name} — özeti kaydet`}
+          aria-label={`${row.client_name}, özeti kaydet`}
           onClick={save}
         >
           Kaydet
@@ -842,7 +842,7 @@ function SessionEditorIcerik({
                   <option key={c.id} value={c.id}>
                     {c.is_nationwide ? "🇹🇷 " : ""}
                     {c.exam_name} ({c.exam_type})
-                    {c.publisher_name ? ` — ${c.publisher_name}` : ""}
+                    {c.publisher_name ? `, ${c.publisher_name}` : ""}
                   </option>
                 ))}
               </select>
@@ -960,7 +960,7 @@ function SessionEditorIcerik({
 
       {/* Gönder düğmesi geçerlilik yüzünden KAPANMAZ (kilitli karar): geçersiz
           formda basılır, gönderim yapılmaz, hatalar alanlarda belirir ve odak
-          ilk hatalı alana gider. "Vazgeç" YOKTUR — `DuzenlemePenceresi`
+          ilk hatalı alana gider. "Vazgeç" YOKTUR, `DuzenlemePenceresi`
           kapatmayı × / ESC / dış tıklamadan bekçiye bağlı olarak veriyor. */}
       <div className="flex justify-end pt-1">
         <Button isPending={busy} onClick={gonder}>

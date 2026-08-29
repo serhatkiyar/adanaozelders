@@ -3,21 +3,32 @@ import { ROUTES } from "@/lib/routes";
 import { StarRating } from "@/components/StarRating";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { regionLabel } from "@/lib/region";
-import { PinIcon } from "@/components/PinIcon";
 import type { LibrarySearchOut } from "@/types";
 
+/**
+ * Kütüphane kartı — eğitmen kartıyla AYNI anatomi (kullanıcı kararı, 29 Ağu):
+ * çerçevesiz kart, yuvarlatılmış kare görsel, altta gradyan üzerinde beyaz
+ * ad + konum, görselin dışında puan satırı. Hover'da yakınlaşma YOK.
+ */
 export function LibraryCard({ library }: { library: LibrarySearchOut }) {
+  const hasRatings = library.rating_count > 0;
+  const bolge = regionLabel(library.city, library.district, library.location_text);
+  const konum = [bolge, library.distance_km != null ? `~${library.distance_km} km` : null]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <Link
       to={ROUTES.library(library.slug)}
-      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg "
+      className="group mx-auto flex w-full max-w-[310px] flex-col transition duration-300"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-indigo-100 to-violet-100 ">
+      {/* ── Görsel alanı ── */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 ">
         {library.cover_url ? (
           <img
             src={library.cover_url}
             alt={library.name}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover"
             loading="lazy"
           />
         ) : (
@@ -25,9 +36,10 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
             📚
           </div>
         )}
+
         {library.open_now != null && (
           <span
-            className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm ${
+            className={`absolute left-4 top-4 z-10 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm ${
               library.open_now
                 ? "bg-emerald-500/95 text-white"
                 : "bg-rose-500/95 text-white"
@@ -36,51 +48,46 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
             {library.open_now ? "Şu an açık" : "Kapalı"}
           </span>
         )}
+
         {/* Favorile — kart bir Link olduğundan buton tıklamayı durdurur. */}
         <div className="absolute right-3 top-3 z-10">
-          <LibraryBookmarkButton libraryId={library.id} size="lg" />
+          <LibraryBookmarkButton libraryId={library.id} size="md" />
         </div>
-        {library.distance_km != null && (
-          <span className="absolute bottom-2 right-3 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
-            {library.distance_km} km
-          </span>
-        )}
-        {library.logo_url && (
-          <img
-            src={library.logo_url}
-            alt=""
-            className="absolute bottom-2 left-3 h-11 w-11 rounded-full bg-white object-cover shadow-md ring-2 ring-white "
-            loading="lazy"
-          />
-        )}
-      </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-1 text-base font-bold text-slate-900 ">
-          {library.name}
-        </h3>
-        {regionLabel(library.city, library.district, library.location_text) && (
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 ">
-            <PinIcon className="h-3.5 w-3.5 shrink-0" />
-            <span className="line-clamp-1">
-              {regionLabel(library.city, library.district, library.location_text)}
-            </span>
+        {/* Alt gradyan maskesi */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
+
+        {/* Görsel üstündeki metin. Eğitmen kartındaki xl, KISA bir ön ad
+            içindir; kütüphanenin uzun tam adı aynı boyutta kart kaplıyordu.
+            Optik denge için base + iki satır. Logo overlay'i sıkıştırdığı
+            için kalktı. */}
+        <div className="absolute bottom-4 left-4 right-4 flex flex-col">
+          <p className="line-clamp-2 text-base font-bold leading-snug text-white drop-shadow-md">
+            {library.name}
           </p>
-        )}
-
-        <div className="mt-2 flex items-center gap-2">
-          <StarRating value={library.rating_average} />
-          <span className="text-xs font-medium text-slate-600 ">
-            {library.rating_average != null
-              ? library.rating_average.toFixed(1)
-              : "Yeni"}
-          </span>
-          {library.rating_count > 0 && (
-            <span className="text-xs text-slate-400">
-              ({library.rating_count} değerlendirme)
-            </span>
+          {konum && (
+            <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">
+              <span className="line-clamp-1">{konum}</span>
+            </div>
           )}
         </div>
+      </div>
+
+      {/* ── Alt kısım ── */}
+      <div className="flex flex-col px-1 pb-1 pt-3">
+        <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 ">
+          <li className="flex items-center gap-1">
+            <StarRating value={library.rating_average ?? 0} single={true} />
+            <span className="text-xs font-bold text-slate-900">
+              {hasRatings ? (library.rating_average ?? 0).toFixed(1) : "Yeni"}
+            </span>
+            {hasRatings && (
+              <span className="text-slate-500 ">
+                ({library.rating_count} değerlendirme)
+              </span>
+            )}
+          </li>
+        </ul>
       </div>
     </Link>
   );

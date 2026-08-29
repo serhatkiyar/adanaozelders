@@ -98,7 +98,7 @@ function paketKapisi(
   if (durum === "bilinmiyor" || row == null) {
     return {
       acik: true,
-      uyari: "Paket durumu doğrulanamadı — teslimden önce kutunun elinde olduğundan emin ol.",
+      uyari: "Paket durumu doğrulanamadı, teslimden önce kutunun elinde olduğundan emin ol.",
     };
   }
   if (row.package_status == null) {
@@ -112,7 +112,7 @@ function paketKapisi(
     return {
       acik: false,
       not:
-        "Bu paketin depoya geri dönmesi bekleniyor — teslim edilemez. " +
+        "Bu paketin depoya geri dönmesi bekleniyor, teslim edilemez. " +
         "Depoda okutulup kabul edilmeden yeniden yola çıkamaz.",
       zimmetLinki: false,
     };
@@ -121,14 +121,14 @@ function paketKapisi(
     return {
       acik: false,
       not:
-        "Paket henüz zimmetlenmedi — depodan teslim alıp araca yüklemen gerekiyor. " +
+        "Paket henüz zimmetlenmedi, depodan teslim alıp araca yüklemen gerekiyor. " +
         "Kutuyu okutmadan teslim akışı açılmaz.",
       zimmetLinki: true,
     };
   }
   return {
     acik: false,
-    not: `Bu paket teslim akışına uygun değil (durum: ${row.package_status}) — yöneticini ara.`,
+    not: `Bu paket teslim akışına uygun değil (durum: ${row.package_status}), yöneticini ara.`,
     zimmetLinki: false,
   };
 }
@@ -268,7 +268,7 @@ function CurrentStopCard({
                   } else {
                     setMaskedPhone(null);
                     toast.error(
-                      "SMS gönderilemedi — tekrar dene ya da notlu teslime geç."
+                      "SMS gönderilemedi, tekrar dene ya da notlu teslime geç."
                     );
                   }
                 },
@@ -357,7 +357,7 @@ function CurrentStopCard({
       {mode === "deliver" && dropMode && (
         <div className="mt-4 space-y-2">
           <p className="text-xs text-slate-500 ">
-            Müşteri talimatı: bırakma teslimi — OTP alınmaz, kanıt fotoğrafı zorunlu.
+            Müşteri talimatı: bırakma teslimi, OTP alınmaz, kanıt fotoğrafı zorunlu.
           </p>
           <button
             onClick={() =>
@@ -386,7 +386,7 @@ function CurrentStopCard({
         <div className="mt-4 space-y-2">
           {maskedPhone && (
             <p className="text-xs text-slate-500 ">
-              Kod {maskedPhone} numarasına gitti — müşteri kodu söylesin.
+              Kod {maskedPhone} numarasına gitti, müşteri kodu söylesin.
             </p>
           )}
           <div className="flex gap-2">
@@ -456,7 +456,7 @@ function CurrentStopCard({
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Ek not (isteğe bağlı) — yalnız operasyon görür, müşteriye gitmez."
+            placeholder="Ek not (isteğe bağlı), yalnız operasyon görür, müşteriye gitmez."
             rows={2}
             className="input w-full"
           />
@@ -587,7 +587,7 @@ export default function DeliveryDriver() {
         ) : runQuery.isError ? (
           <>
             {/* Ağ hatası ile 404 ayrışır — sahada en sık senaryo bağlantı kopması. */}
-            <p>Bağlantı kurulamadı — tur bilgisi alınamıyor.</p>
+            <p>Bağlantı kurulamadı, tur bilgisi alınamıyor.</p>
             <button
               onClick={() => runQuery.refetch()}
               className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white "
@@ -639,11 +639,11 @@ export default function DeliveryDriver() {
           setTarama({ hata: true, mesaj: m });
           toast.error(m);
         } else if (current && stop.id === current.id) {
-          const m = `Doğru paket ✓ — ${stop.recipient ?? `#${stop.order_id}`}`;
+          const m = `Doğru paket ✓, ${stop.recipient ?? `#${stop.order_id}`}`;
           setTarama({ hata: false, mesaj: m });
           toast.success(m);
         } else {
-          const m = `Bu paket ${stop.sequence}. durağın (${stop.recipient ?? "?"}) — sıradaki ${current ? `#${current.sequence}` : "yok"}.`;
+          const m = `Bu paket ${stop.sequence}. durağın (${stop.recipient ?? "?"}), sıradaki ${current ? `#${current.sequence}` : "yok"}.`;
           setTarama({ hata: false, mesaj: m });
           toast.info(m);
         }
@@ -707,7 +707,7 @@ export default function DeliveryDriver() {
         {/* Zimmet ekranına kalıcı giriş.
             PLANNED turda ÖZELLİKLE gerekli: paketler tur başlamadan önce
             araca alınır (sunucu PLANNED/ACTIVE turda zimmete izin verir) ve
-            başlatma, eksik paket varsa 409 ile reddedilir — kurye eksiği
+            başlatma, eksik paket varsa 409 ile reddedilir, kurye eksiği
             depoda görmeli, kapıda değil. */}
         {(run.status === "PLANNED" || run.status === "ACTIVE") && (
           <Link
@@ -721,8 +721,8 @@ export default function DeliveryDriver() {
           <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 ">
             {run.status === "PLANNED"
               ? isAdmin
-                ? "Tur henüz başlatılmadı — admin panelinden başlatın."
-                : "Tur henüz başlatılmadı — yönetici başlatınca burada görünecek."
+                ? "Tur henüz başlatılmadı, admin panelinden başlatın."
+                : "Tur henüz başlatılmadı, yönetici başlatınca burada görünecek."
               : "Bu tur sonuçlandı."}
           </p>
         ) : current ? (
@@ -735,7 +735,7 @@ export default function DeliveryDriver() {
               return (
                 <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 ">
                   Bu adrese bu turda {siblings.length} paket daha var (durak{" "}
-                  {siblings.map((s) => `#${s.sequence}`).join(", ")}) — hepsini
+                  {siblings.map((s) => `#${s.sequence}`).join(", ")}), hepsini
                   birlikte götür, her paketi ayrı okut.
                 </p>
               );

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { ROUTES } from "@/lib/routes";
 
 // Anonim (oturumsuz) yüzeyin ortak üst barı — landing'de beğenilen navbar.
 // Hem Landing hem PublicShell (public arama/profil) kullanır; böylece sitenin
@@ -18,7 +17,8 @@ export function PublicNavbar({
   expanded?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md ">
+    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md ">
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
         <div className="flex w-full items-start justify-between gap-4 pt-5 pb-2">
           <div className="flex-1 flex justify-start">
@@ -30,13 +30,13 @@ export function PublicNavbar({
               {/* Küçük ekranda yazısız (yalnız simge) logo — kategori şeridine yer açar.
                   Eşik `md:` DEĞİL `xl:`: kelime logosu 257.7 px genişliğinde doğuyor ve
                   768-1279 arasında orta sütundaki kategori şeridinin ÜSTÜNE biniyordu
-                  (ölçüm: 768'de 146.1 px, 1024'te hâlâ 88.6 px kesişim — yani `lg:`
+                  (ölçüm: 768'de 146.1 px, 1024'te hâlâ 88.6 px kesişim, yani `lg:`
                   eşiği de çakışmanın içine düşüyor). Kesişimin sıfır olduğu ilk üst
                   nokta 1280'dir.
 
                   Bu eşik KALICI BİR TASARIM KARARIDIR, kozmetik bir tercih değil:
                   navbar'ın üç sütunlu flex modeli (flex-1 · shrink-0 · flex-1)
-                  değişirse eşik yeniden ÖLÇÜLMELİDİR — varsayılmaz. Ölçüm aracı
+                  değişirse eşik yeniden ÖLÇÜLMELİDİR, varsayılmaz. Ölçüm aracı
                   hazır: `node scripts/marka_logo_turu.mjs` (11 genişlik; kabul
                   ölçütü her genişlikte kesişim 0 ve yatay taşma 0).
                   Ayrıntı: docs/magaza-merge-dogrulama-raporu.md */}
@@ -56,22 +56,10 @@ export function PublicNavbar({
           )}
           <div className="flex-1 flex shrink-0 items-center justify-end gap-2">
             <Link
-              to={ROUTES.tutors}
-              className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 lg:block "
-            >
-              Eğitmenler
-            </Link>
-            <Link
-              to={ROUTES.store}
-              className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 lg:block "
-            >
-              Mağaza
-            </Link>
-            <Link
-              to="?modal=register&role=tutor"
+              to="?modal=register"
               className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
             >
-              Eğitmen Ol
+              Kayıt Ol
             </Link>
             <Link
               to="?modal=login"

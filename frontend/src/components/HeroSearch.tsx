@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DistrictSelect } from "@/components/DistrictSelect";
+import { MekanSelect, type MekanDegeri } from "@/components/MekanSelect";
 import { categoryMeta, type CategoryKey } from "@/components/CategoryBar";
+import { dersAra } from "@/lib/dersTaksonomisi";
 
 /* ─── arama bileşenleri: büyük (açık) + kompakt (tetikleyici) ───────────
    Landing'in beğenilen Airbnb tarzı arama hapı. Hem ana sayfa hem de
@@ -124,6 +126,130 @@ export function BigSearch({
               </span>
               <span>{t}</span>
             </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── DersArama: Landing'in yeni arama hapı (kullanıcı tasarımı, 29 Ağu) ───
+   Solda YAZILABİLİR ders kategorisi seçici (yazdıkça taksonomiden öneriler),
+   ortada ders mekânı (Online/Yüz yüze checkbox'ları; yüz yüze → ilçe),
+   sağda Ara. Serbest metin arama KALDIRILDI, kategori seçimi onun yerini
+   aldı (eğitmen adıyla arama /egitmenler sayfasında yaşar). Diğer yüzeyler
+   (Libraries/Marketplace) BigSearch'ü kullanmaya devam eder. */
+
+export function DersArama({
+  ders,
+  dersEtiket,
+  onDersChange,
+  mekan,
+  setMekan,
+  onSubmit,
+}: {
+  /** Seçili dersin kanonik `q` değeri; "" = seçim yok. */
+  ders: string;
+  /** Seçili dersin görünen adı (özet ve input değeri için). */
+  dersEtiket: string;
+  onDersChange: (q: string, label: string) => void;
+  mekan: MekanDegeri;
+  setMekan: (v: MekanDegeri) => void;
+  onSubmit: (e: React.FormEvent) => void;
+}) {
+  const [text, setText] = useState(dersEtiket);
+  const [focused, setFocused] = useState(false);
+  // Öneri paneli MekanSelect ile AYNI desende `fixed` konumlanır: navbar'ın
+  // max-height'la katlanan kabı `absolute` paneli akışa karıştırıyordu
+  // ("seçenekler ana akışın altına yükleniyor" hatası).
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const oneriler = dersAra(ders && text === dersEtiket ? "" : text);
+  const acik = focused && oneriler.length > 0 && pos != null;
+
+  const odaklan = () => {
+    const r = formRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 8, left: r.left, width: r.width });
+    setFocused(true);
+  };
+
+  return (
+    <div className="relative w-full max-w-2xl">
+      <form
+        ref={formRef}
+        onSubmit={onSubmit}
+        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-indigo-400 focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-indigo-500/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
+      >
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (ders) onDersChange("", ""); // yazmaya başlayınca seçim bozulur
+          }}
+          onFocus={odaklan}
+          onBlur={() => setFocused(false)}
+          placeholder='Ders "Matematik"'
+          aria-label="Ders kategorisi"
+          // İki bölme EŞİT genişlikte (flex-1 basis-0) — kullanıcı kararı.
+          className="min-w-0 flex-1 basis-0 bg-transparent py-2.5 pl-5 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 "
+        />
+
+        <div className="h-7 w-px shrink-0 bg-slate-200 " />
+
+        {/* Ders girdisiyle AYNI his: hover zemini/hap yok, düz yazı alanı. */}
+        <div className="flex min-w-0 flex-1 basis-0 items-center py-2.5 pl-3 pr-2">
+          <MekanSelect
+            value={mekan}
+            onChange={setMekan}
+            hizaRef={formRef}
+            // cursor-pointer YOK: burası artık yazılabilir bir metin alanı,
+            // el imleci "buraya yazılmaz" hissi veriyordu.
+            triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
+          />
+        </div>
+
+        <button
+          type="submit"
+          aria-label="Ara"
+          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:from-indigo-700 hover:to-violet-700 active:scale-95"
+        >
+          <SearchIconSvg />
+        </button>
+      </form>
+
+      {/* Kategori önerileri — yazdıkça süzülür; boşken tam taksonomi.
+          MekanSelect ile aynı desen: fixed konum + aynı kabuk görünümü. */}
+      {acik && (
+        <div
+          style={{ position: "fixed", top: pos!.top, left: pos!.left, width: pos!.width }}
+          className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 "
+        >
+          {oneriler.map((g) => (
+            <div key={g.grup}>
+              <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ">
+                {g.grup}
+              </p>
+              {g.dersler.map((s) => (
+                <button
+                  key={`${g.grup}:${s.q}`}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onDersChange(s.q, s.label);
+                    setText(s.label);
+                    setFocused(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
+                >
+                  <span className="shrink-0 text-slate-400">
+                    <SearchIconSvg className="h-4 w-4" />
+                  </span>
+                  <span>{s.label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}

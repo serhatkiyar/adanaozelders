@@ -61,7 +61,7 @@ export default function CartPage() {
 
   return (
     <StoreLayout title="Sepet" showCategoryBar={false}>
-      <Seo title="Sepet — Mağaza" noindex />
+      <Seo title="Sepet, Mağaza" noindex />
       <div className="mx-auto max-w-[1464px] px-4 py-6 md:px-8">
         <h1 className="text-2xl font-semibold text-slate-900 ">
           Sepetim{" "}

@@ -53,7 +53,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
         },
         onError: (err) => {
           if (err instanceof AxiosError && err.response?.status === 409) {
-            toast.error("Bu saat dolu — başka bir zaman seç.");
+            toast.error("Bu saat dolu, başka bir zaman seç.");
             return;
           }
           if (err instanceof AxiosError && err.response?.status === 422) {

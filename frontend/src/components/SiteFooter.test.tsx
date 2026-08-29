@@ -31,15 +31,25 @@ function sar(ui: React.ReactNode) {
 }
 
 describe("SiteFooter", () => {
-  it("yasal belgelerin TAMAMINI legalNav'dan türeterek listeler", () => {
+  it("yasal linkler ÜÇE indirildi (29 Ağu kullanıcı kararı): koşullar/gizlilik/çerez", () => {
+    // Sekiz sözleşmeyi footer'a dizmek kaldırıldı — Amazon paritesi. Diğer
+    // belgeler ödeme/kayıt akışlarında ve kendi sayfalarında erişilebilir.
     sar(<SiteFooter />);
     const footer = screen.getByRole("contentinfo");
 
-    expect(LEGAL_NAV.length).toBeGreaterThan(0);
-    for (const doc of LEGAL_NAV) {
-      const link = within(footer).getByRole("link", { name: doc.title });
+    for (const [id, kisaAd] of [
+      ["privacy", "Gizlilik"],
+      ["terms", "Şartlar"],
+      ["cookies", "Çerezler"],
+    ] as const) {
+      const doc = LEGAL_NAV.find((d) => d.id === id)!;
+      const link = within(footer).getByRole("link", { name: kisaAd });
       expect(link.getAttribute("href")).toBe(doc.path);
     }
+    // Kalabalık geri gelmesin: örnek olarak mesafeli satış footer'da YOK.
+    expect(
+      within(footer).queryByRole("link", { name: "Mesafeli Satış Sözleşmesi" })
+    ).toBeNull();
   });
 
   it("destek linklerini (SSS, İletişim) korur — eski Landing footer'ından", () => {
@@ -70,8 +80,8 @@ describe("SiteFooter", () => {
     const footer = screen.getByRole("contentinfo");
     const rozetler = within(footer).getAllByAltText("iyzico ile güvenli ödeme");
 
-    // Açık + koyu tema sürümü.
-    expect(rozetler).toHaveLength(2);
+    // Tek sürüm: site TEK temadır (koyu sürüm 29 Ağu'da ölü kod olarak silindi).
+    expect(rozetler).toHaveLength(1);
     for (const img of rozetler) {
       expect(img.getAttribute("loading")).toBe("lazy");
       expect(img.getAttribute("src")).toMatch(/^\/odeme\/iyzico-logo-band/);
@@ -100,7 +110,7 @@ describe("PublicShell", () => {
     // footer'ımız olduğunu ödeme rozetinden anlıyoruz.
     expect(
       within(footer).getAllByAltText("iyzico ile güvenli ödeme").length
-    ).toBe(2);
+    ).toBe(1);
     expect(
       within(footer)
         .getByRole("link", { name: LEGAL_NAV[0].title })

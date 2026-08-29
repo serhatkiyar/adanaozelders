@@ -85,7 +85,7 @@ export function LibraryReservationModal({
               </p>
               <ChoiceCard
                 title="Çalışma Alanı Rezervasyonu"
-                description="Saatlik koltuk — tarih ve saat seç, online öde, QR ile giriş yap."
+                description="Saatlik koltuk, tarih ve saat seç, online öde, QR ile giriş yap."
                 onClick={() => setChoice("study")}
                 icon={
                   <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>

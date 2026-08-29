@@ -742,7 +742,7 @@ export default function SrsDeckDetail() {
                         <span aria-hidden>·</span>
                         <span>
                           {note.cards.length} kart
-                          {" — "}
+                          {", "}
                           {note.cards
                             .map((c) => STATE_LABELS[c.state] ?? c.state)
                             .join(", ")}

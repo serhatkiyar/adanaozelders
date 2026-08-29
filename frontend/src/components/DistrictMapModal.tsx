@@ -13,7 +13,7 @@ import { tileSource } from "@/lib/mapTiles";
 
    Yakınlaştırınca polygon centroid'ine sabitlenen etiketler kadrajdan çıkıp
    "hangi ilçedeyim" belirsizleşiyordu. Çözüm (Leaflet choropleth standardı):
-   viewport'a SABİT bir bilgi kutusu (HUD) — fareyle gezilen ya da harita
+   viewport'a SABİT bir bilgi kutusu (HUD), fareyle gezilen ya da harita
    merkezindeki ilçeyi her zaman gösterir (zoom'dan bağımsız). Centroid
    etiketleri yalnız genel görünüm (düşük zoom) için kalır.
    ──────────────────────────────────────────────────────────────────────── */
@@ -174,7 +174,7 @@ export function DistrictMapModal({ open, value, onApply, onClose }: Props) {
           <div>
             <h2 className="text-lg font-bold text-slate-900 ">Haritadan ilçe seç</h2>
             <p className="mt-0.5 text-xs text-slate-500 ">
-              İlçelere tıklayarak seç (yeşil) — birden fazla seçebilirsin.
+              İlçelere tıklayarak seç (yeşil), birden fazla seçebilirsin.
             </p>
           </div>
           <button

@@ -28,7 +28,7 @@ export function TutorCard({
   const locationText = tutor.distance_km != null
     ? `~${tutor.distance_km} km`
     : tutor.teaching_mode === "ONLINE"
-      ? "Uzaktan (webcam)"
+      ? "Uzaktan"
       : tutor.district || "Yüzyüze & Uzaktan";
     
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
@@ -45,7 +45,7 @@ export function TutorCard({
         <img 
           src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=c7d2fe&color=3730a3&size=400"} 
           alt={tutor.full_name} 
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover"
           loading="lazy"
         />
         
@@ -58,8 +58,8 @@ export function TutorCard({
 
         {/* Bookmark top right */}
         {showBookmark && (
-          <div className="absolute right-4 top-4 z-10">
-            <BookmarkButton tutorId={tutor.id} size="lg" />
+          <div className="absolute right-3 top-3 z-10">
+            <BookmarkButton tutorId={tutor.id} size="md" />
           </div>
         )}
 
@@ -68,7 +68,9 @@ export function TutorCard({
         
         {/* Text Container over image */}
         <div className="absolute bottom-4 left-4 right-4 flex flex-col">
-          <p className="text-xl font-bold text-white drop-shadow-md">
+          {/* base boyut: uzun ön adlar (Abdurrezzak vb.) xl'de kartı kaplıyordu;
+              kütüphane kartıyla da aynı boyut. */}
+          <p className="line-clamp-1 text-base font-bold leading-snug text-white drop-shadow-md">
             {firstName}
           </p>
           <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">

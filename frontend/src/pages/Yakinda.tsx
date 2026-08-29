@@ -17,7 +17,7 @@ export default function Yakinda() {
   return (
     <PublicShell>
       <Seo
-        title="Yakında — Adana Özel Ders"
+        title="Yakında, Adana Özel Ders"
         description="Bu bölüm üzerinde çalışıyoruz. Çok yakında burada olacak."
         // Donmuş bölüm arama motorlarına verilmez: bugün içeriği yok.
         noindex

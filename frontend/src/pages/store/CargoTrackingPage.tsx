@@ -191,7 +191,7 @@ const COPY: Record<
   },
   EN_ROUTE: {
     title: "Kuryemiz dağıtımda",
-    sub: "Paketin yolda — kuryeyi haritada canlı izleyebilirsin.",
+    sub: "Paketin yolda, kuryeyi haritada canlı izleyebilirsin.",
     tone: "live",
   },
   DELIVERED: {
@@ -284,7 +284,7 @@ export default function CargoTrackingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 ">
-      <Seo title="Kargo Takip — Adana Özel Ders" noindex />
+      <Seo title="Kargo Takip, Adana Özel Ders" noindex />
       <div className="mx-auto max-w-xl">
         <div className="mb-6 flex items-center justify-center gap-2 text-center">
           <Link
@@ -384,7 +384,7 @@ export default function CargoTrackingPage() {
                   </div>
                   {reordered && (
                     <p className="mt-2 text-xs text-amber-600 ">
-                      Teslimat sırası güncellendi — kuryen az sonra sende.
+                      Teslimat sırası güncellendi, kuryen az sonra sende.
                     </p>
                   )}
                   </>
@@ -395,7 +395,7 @@ export default function CargoTrackingPage() {
                     {formatEventTime(t.delivered_at)}
                     {proofLabel(t.proof) && (
                       <>
-                        {" — "}
+                        {", "}
                         {proofLabel(t.proof)}
                       </>
                     )}

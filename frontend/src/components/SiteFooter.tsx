@@ -25,73 +25,95 @@ export function SiteFooter() {
   const loggedIn = !!token && !!user;
 
   const linkCls = "transition hover:text-slate-900 ";
+  const baslikCls = "text-sm font-semibold text-slate-900";
+
+  // 29 Ağu (3. tur, kullanıcı kararı): footer'da SEKİZ sözleşme DEĞİL,
+  // Amazon paritesinde ÜÇ link durur (Kullanım Koşulları · Gizlilik · Çerez).
+  // Diğer belgeler footer'a bağımlı değildir: ödeme/kayıt akışları ilgili
+  // sözleşmeyi kendi adımında linkler, tümü kendi sayfalarında yaşar.
+  const hakkimizda = LEGAL_NAV.find((doc) => doc.id === "about");
+  // Airbnb'deki gibi KISA adlarla, telif satırının içinde "·" ayraçlı.
+  const FOOTER_YASAL: { id: string; kisaAd: string }[] = [
+    { id: "privacy", kisaAd: "Gizlilik" },
+    { id: "terms", kisaAd: "Şartlar" },
+    { id: "cookies", kisaAd: "Çerezler" },
+  ];
+  const yasalBelgeler = FOOTER_YASAL.map(({ id, kisaAd }) => ({
+    ...LEGAL_NAV.find((d) => d.id === id)!,
+    kisaAd,
+  }));
 
   return (
-    <footer className="mt-auto w-full border-t border-slate-100 bg-white py-10 ">
+    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    <footer className="mt-auto w-full border-t border-slate-100 bg-[#fafafa] py-12 ">
       <div className="mx-auto max-w-[1216px] px-6">
-        <div className="flex flex-col items-center justify-between gap-6 sm:flex-row sm:items-start">
-          <Link to="/" className="flex shrink-0 items-center gap-2 transition hover:opacity-90">
+        <nav
+          aria-label="Site bağlantıları"
+          className="grid grid-cols-2 gap-x-10 gap-y-8 text-sm text-slate-500 sm:gap-x-14"
+        >
+            <div className="space-y-2.5">
+              <p className={baslikCls}>Kurumsal</p>
+              {hakkimizda && (
+                <Link to={hakkimizda.path} className={`block ${linkCls}`}>
+                  {hakkimizda.title}
+                </Link>
+              )}
+              <Link to={ROUTES.blog} className={`block ${linkCls}`}>
+                Blog
+              </Link>
+              {/* Destek: mesafeli satışta erişilebilir iletişim kanalı zorunlu. */}
+              <Link to={ROUTES.faq} className={`block ${linkCls}`}>
+                SSS
+              </Link>
+              <Link to={ROUTES.contact} className={`block ${linkCls}`}>
+                İletişim
+              </Link>
+            </div>
+
+            {!loggedIn && (
+              <div className="space-y-2.5">
+                <p className={baslikCls}>Hesap</p>
+                <Link to="?modal=login" className={`block ${linkCls}`}>
+                  Giriş Yap
+                </Link>
+                <Link to="?modal=register" className={`block ${linkCls}`}>
+                  Kayıt Ol
+                </Link>
+              </div>
+            )}
+          </nav>
+
+        {/* Logo + ödeme rozetleri — ayırıcı ÇİZGİNİN ÜSTÜNDE (Amazon deseni).
+            iyzico bandı logodan bir tık KÜÇÜK (h-6 < h-7) durur.
+            Band tek dosyada iyzico + Visa + Mastercard + Amex taşır (429×32);
+            Troy vb. eklenecekse bandın SAĞINA aynı yükseklikte gelir. */}
+        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+          <Link to="/" className="shrink-0 transition hover:opacity-90">
             <img
               src="/logo.svg"
               alt="Adana Özel Ders Logo"
-              className="h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9"
+              className="h-7 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0"
             />
           </Link>
-
-          <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-slate-500 sm:justify-end ">
-            <Link to={ROUTES.blog} className={linkCls}>
-              Blog
-            </Link>
-            {/* Destek: mesafeli satışta erişilebilir iletişim kanalı zorunlu. */}
-            <Link to={ROUTES.faq} className={linkCls}>
-              SSS
-            </Link>
-            <Link to={ROUTES.contact} className={linkCls}>
-              İletişim
-            </Link>
-
-            {/* Yasal belgelerin TAMAMI — tek kaynak lib/legalNav.ts. */}
-            {LEGAL_NAV.map((doc) => (
-              <Link key={doc.id} to={doc.path} className={linkCls}>
-                {doc.title}
-              </Link>
-            ))}
-
-            {!loggedIn && (
-              <>
-                <Link to="?modal=login" className={linkCls}>
-                  Giriş Yap
-                </Link>
-                <Link to="?modal=register" className={linkCls}>
-                  Kayıt Ol
-                </Link>
-              </>
-            )}
-          </nav>
+          <img
+            src="/odeme/iyzico-logo-band.svg"
+            alt="iyzico ile güvenli ödeme"
+            loading="lazy"
+            className="h-6 w-auto max-w-full object-contain "
+          />
         </div>
 
-        <div className="mt-8 flex flex-col items-center gap-4 border-t border-slate-100 pt-6 text-sm text-slate-500 sm:flex-row sm:justify-between ">
-          <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
-
-          {/* Ödeme rozetleri — iyzico'nun resmî "logo band"i. Tek dosyada
-              iyzico + Visa + Mastercard + American Express bulunur (429×32).
-              Renkli sürüm açık temada, beyaz sürüm koyu temada okunur.
-              TODO: Troy gibi ek kart şeması logoları temin edilirse bu satıra,
-              bandın SAĞINA aynı yükseklikte (h-7) eklenir. */}
-          <div className="flex items-center gap-3">
-            <img
-              src="/odeme/iyzico-logo-band.svg"
-              alt="iyzico ile güvenli ödeme"
-              loading="lazy"
-              className="h-7 w-auto max-w-full object-contain "
-            />
-            <img
-              src="/odeme/iyzico-logo-band-white.svg"
-              alt="iyzico ile güvenli ödeme"
-              loading="lazy"
-              className="hidden h-7 w-auto max-w-full object-contain "
-            />
-          </div>
+        {/* Çizginin ALTINDA, Amazon'un alt şeridi gibi iki ortalı satır:
+            önce yasal linkler, en altta telif. */}
+        <div className="mt-6 border-t border-slate-100 pt-6 text-center text-xs text-slate-400">
+          <p className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
+            {yasalBelgeler.map((doc) => (
+              <Link key={doc.id} to={doc.path} className="transition hover:text-slate-600">
+                {doc.kisaAd}
+              </Link>
+            ))}
+          </p>
+          <p className="mt-2.5">© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
         </div>
       </div>
     </footer>

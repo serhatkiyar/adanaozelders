@@ -368,7 +368,7 @@ export default function TutorSettings() {
                     }`}
                   >
                     {headlineTooShort
-                      ? `En az ${HEADLINE_MIN_WORDS} sözcük gerekli — şu an ${headlineWords}. Branşını, sınav türünü ve deneyimini ekle.`
+                      ? `En az ${HEADLINE_MIN_WORDS} sözcük gerekli, şu an ${headlineWords}. Branşını, sınav türünü ve deneyimini ekle.`
                       : `${headlineWords} sözcük`}
                   </p>
                 </div>
@@ -507,7 +507,7 @@ export default function TutorSettings() {
                   />
                   <p className="mt-1.5 text-xs text-slate-400 ">
                     {locationLat != null
-                      ? `Seçili konum: ${locationLat.toFixed(4)}, ${locationLng?.toFixed(4)} — öğrenciler "yakınımdaki" aramasında seni bulabilir.`
+                      ? `Seçili konum: ${locationLat.toFixed(4)}, ${locationLng?.toFixed(4)}, öğrenciler "yakınımdaki" aramasında seni bulabilir.`
                       : "Haritaya tıklayarak baz konumunu işaretle (opsiyonel)."}
                   </p>
                 </div>

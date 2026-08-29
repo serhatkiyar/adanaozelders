@@ -137,7 +137,7 @@ export function DeliveryRouteMap({
         ))}
         {courier?.lat != null && courier?.lng != null && (
           <Marker position={[courier.lat, courier.lng]} icon={courierIcon}>
-            <Tooltip direction="top" offset={[0, -15]}>Kurye — canlı konum</Tooltip>
+            <Tooltip direction="top" offset={[0, -15]}>Kurye, canlı konum</Tooltip>
           </Marker>
         )}
       </MapContainer>

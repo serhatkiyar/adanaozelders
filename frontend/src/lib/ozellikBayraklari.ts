@@ -22,8 +22,9 @@
  * boş bir katalogla karşılaşılmıyor.
  */
 
-/** Kütüphane/etüt merkezi kataloğu, profili ve self-servis kaydı. */
-export const KUTUPHANELER_ACIK = false;
+/** Kütüphane/etüt merkezi kataloğu, profili ve self-servis kaydı.
+ *  29 Ağu 2026: kullanıcı kararıyla AÇILDI. */
+export const KUTUPHANELER_ACIK = true;
 
 /**
  * "Denemeler" — İKİ yüzeyi birden kapsar:

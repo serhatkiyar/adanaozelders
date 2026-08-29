@@ -26,7 +26,7 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
     if (order.status === "SHIPPED") {
       return (
         <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-400 ">
-          Kurye yola çıktı — adres değişikliği kapandı
+          Kurye yola çıktı, adres değişikliği kapandı
         </p>
       );
     }
@@ -76,7 +76,7 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
         <div className="mt-2 space-y-1">
           {addresses.length === 0 ? (
             <p className="text-xs text-slate-400 ">
-              Kayıtlı başka adresin yok — önce Hesabım → Adreslerim'den ekle.
+              Kayıtlı başka adresin yok, önce Hesabım → Adreslerim'den ekle.
             </p>
           ) : (
             addresses.map((a) => (

@@ -1,37 +1,27 @@
 /**
- * BÖLÜM DONDURMA — "Kütüphaneler" ve "Denemeler" lansmana yetişmiyor.
+ * BÖLÜM BAYRAKLARI — güncel sözleşme (29 Ağu 2026, kullanıcı kararları):
  *
- * Karar: iki bölüm arayüzde DONDURULUR. Menü öğeleri GÖRÜNÜR kalır (ürünün
- * yol haritası okunsun diye) ama tıklanamaz olur, yanlarında "Yakında" rozeti
- * durur, klavyeyle de erişilemez; doğrudan URL yazan kullanıcı gerçek sayfayı
- * DEĞİL "Yakında" sayfasını görür. Backend'e dokunulmaz — bu yalnız arayüz
- * dondurmasıdır.
+ *   • KUTUPHANELER_ACIK = true  → Kütüphaneler HER YERDE gerçek bağlantı.
+ *   • DENEMELER_ACIK   = false → Denemeler donuk-görünür DEĞİL, tamamen
+ *     GİZLİ (menülerde hiç render edilmez); doğrudan URL "Yakında" açar.
+ *   • "Hepsi" sekmesi KALDIRILDI — varsayılan yüzey Eğitmenler.
  *
- * ## Bu dosya üretim kodundan ÖNCE yazıldı
+ * Tarihçe: bu dosya iki bölümün de DONDURULDUĞU dönemin nöbetçisiydi
+ * (görünür + tıklanamaz + "Yakında" rozeti). Rozetler 29 Ağu'da kalktı,
+ * ardından aynı gün Denemeler tam gizlemeye, Kütüphaneler açık hâle geçti;
+ * iddialar buna göre TERSİNE çevrildi. Bayrak kombinasyonlarının mock'lu
+ * provaları `bolumDondurmaBayrakAcik` ve `bolumDondurmaBayrakBagimsiz`
+ * dosyalarındadır — buradaki her iddia GERÇEK bayrak değerleriyle koşar.
  *
- * Bir şeyin "tıklanamadığını" iddia eden test, o şey hiç render edilmemiş
- * olsa da geçer — dondurma testlerinin en olası yalancı yeşil kılığı budur
- * (kök CLAUDE.md §E). Bu yüzden her dondurma iddiasının yanında bir DOLULUK
- * NÖBETÇİSİ vardır: donmayan komşunun (Eğitmenler / /egitmenler / Öğren
- * hub'ının diğer kartları) hâlâ ÇALIŞTIĞI ayrıca ölçülür. Nöbetçi olmadan
- * "kategori çubuğu hiç render olmadı" ile "kategori donduruldu" ayırt
- * edilemezdi.
- *
- * Kırmızı faz: bayraklar ve `Yakinda` sayfası henüz yokken koşuldu, çıktı
- * commit mesajına yazıldı.
+ * Yalancı yeşile karşı her iddianın yanında DOLULUK NÖBETÇİSİ vardır:
+ * "görünmüyor" iddiaları, komşu öğelerin görünüp ÇALIŞTIĞI ölçülmeden
+ * geçemez (kök CLAUDE.md §E).
  *
  * Test türleri (kök CLAUDE.md §H): tamamı GERÇEK DOM (jsdom + RTL); rota
- * düğümleri ayrıca GERÇEK `App` + gerçek react-router kullanır. Kaynak/AST
- * taraması YOKTUR.
- *
- * SINIR (§F): jsdom gerçek tarayıcının yerine geçmez — gerçek gezinme, lazy
- * chunk yüklenmesi ve görsel yerleşim burada ölçülmez.
- *
- * Bu dosya bayrak KAPALI hâli ölçer. Bayrak açıkken eski davranışın aynen
- * geri geldiği `bolumDondurmaBayrakAcik.test.tsx` dosyasında ölçülür.
+ * düğümleri gerçek `App` + gerçek react-router kullanır.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -49,8 +39,6 @@ import { TUTOR_NAV } from "@/lib/nav";
 import Learn from "@/pages/Learn";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 
-const DONMUS_ETIKETLER = ["Kütüphaneler", "Denemeler"] as const;
-
 function sar(ui: React.ReactNode) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
@@ -67,77 +55,52 @@ afterEach(() => {
   window.history.pushState({}, "", "/");
 });
 
-describe("ÖN KOŞUL — bayraklar kapalı", () => {
-  it("KUTUPHANELER_ACIK ve DENEMELER_ACIK varsayılanı `false`", () => {
-    // Bu dosyadaki her iddia bayrakların KAPALI olmasına dayanır. Biri
-    // sessizce `true` yapılırsa aşağıdaki düğümler kırılır ama sebebi
-    // anlaşılmaz olurdu; burada açıkça söylenir.
-    expect(KUTUPHANELER_ACIK).toBe(false);
+describe("ÖN KOŞUL — bayrak değerleri", () => {
+  it("KUTUPHANELER_ACIK=true, DENEMELER_ACIK=false", () => {
+    // Bu dosyadaki her iddia bu ikiliye dayanır. Biri sessizce değişirse
+    // aşağıdaki düğümler kırılır ama sebebi anlaşılmaz olurdu; burada
+    // açıkça söylenir.
+    expect(KUTUPHANELER_ACIK).toBe(true);
     expect(DENEMELER_ACIK).toBe(false);
   });
 });
 
 describe("A — kategori çubuğu (gerçek DOM)", () => {
-  it("NÖBETÇİ: çubuk gerçekten render oluyor ve donmayan kategoriler ÇALIŞIYOR", () => {
-    // Boş kümede ölçüm yapılmasın: aşağıdaki "tıklanamaz" iddiaları çubuk hiç
-    // basılmadığında da geçerdi.
+  it("NÖBETÇİ: çubuk render oluyor; Eğitmenler ve Kütüphaneler GERÇEK bağlantı", () => {
     sar(<CategoryBar />);
-    expect(screen.getByRole("link", { name: /Hepsi/ }).getAttribute("href")).toBe("/");
     expect(
       screen.getByRole("link", { name: /Eğitmenler/ }).getAttribute("href")
     ).toBe("/egitmenler");
+    expect(
+      screen.getByRole("link", { name: /Kütüphaneler/ }).getAttribute("href")
+    ).toBe("/kutuphaneler");
   });
 
-  it.each(DONMUS_ETIKETLER)("%s hâlâ GÖRÜNÜR (menüden silinmedi)", (etiket) => {
+  it("'Hepsi' sekmesi KALDIRILDI", () => {
     sar(<CategoryBar />);
-    expect(screen.getByText(etiket)).toBeTruthy();
+    expect(screen.queryByText("Hepsi")).toBeNull();
   });
 
-  it.each(DONMUS_ETIKETLER)("%s bir bağlantı DEĞİL (tıklanamaz)", (etiket) => {
-    const { container } = sar(<CategoryBar />);
-    // 1. Erişilebilirlik ağacında link/button olarak görünmüyor.
-    expect(screen.queryByRole("link", { name: new RegExp(etiket) })).toBeNull();
-    expect(screen.queryByRole("button", { name: new RegExp(etiket) })).toBeNull();
-    // 2. `href` de kalmadı: rolü gizleyip anchor'ı bırakmak tıklanabilirliği
-    //    korurdu (fare kullanıcısı için hiçbir şey değişmezdi).
-    const oluLink = Array.from(container.querySelectorAll("a[href]")).filter((a) =>
-      (a.textContent ?? "").includes(etiket)
-    );
-    expect(oluLink.map((a) => a.getAttribute("href"))).toEqual([]);
-  });
-
-  it.each(DONMUS_ETIKETLER)("%s klavyeden erişilemez (aria-disabled + tabIndex)", (etiket) => {
+  it("'Denemeler' HİÇ görünmüyor (bayrak kapalıyken tamamen gizli)", () => {
     sar(<CategoryBar />);
-    const oge = screen.getByText(etiket).closest("[aria-disabled]");
-    expect(oge).not.toBeNull();
-    expect(oge!.getAttribute("aria-disabled")).toBe("true");
-    expect(oge!.getAttribute("tabindex")).toBe("-1");
+    expect(screen.queryByText("Denemeler")).toBeNull();
   });
 
-  it.each(DONMUS_ETIKETLER)("%s yanında 'Yakında' rozeti YOK (kullanıcı kararı, 29 Ağu)", (etiket) => {
-    // Rozet kaldırıldı: soluk + tıklanamaz hâl durumu zaten anlatıyor,
-    // ek "Yakında" metni gürültüydü. Donukluk yukarıdaki iddialarla sınanır.
-    sar(<CategoryBar />);
-    const oge = screen.getByText(etiket).closest("[aria-disabled]");
-    expect(within(oge as HTMLElement).queryByText("Yakında")).toBeNull();
-  });
-
-  it("sekme kipinde donmuş kategoriye tıklamak sekmeyi DEĞİŞTİRMEZ", () => {
-    // Landing kategorileri sekme gibi kullanır (`onSelect`): rota
-    // değişmediği için rota kapısı burada koruma sağlamaz. Donmuş sekme
-    // seçilebilirse kullanıcı boş/kırık içeriğe düşer.
+  it("'Mağaza' kapısı sekme kipinde bile bağlantı (onSelect'e düşmez)", () => {
     const onSelect = vi.fn();
-    sar(<CategoryBar active="hepsi" onSelect={onSelect} />);
-
-    for (const etiket of DONMUS_ETIKETLER) {
-      fireEvent.click(screen.getByText(etiket));
-    }
+    sar(<CategoryBar active="egitmenler" onSelect={onSelect} />);
+    expect(screen.getByRole("link", { name: /Mağaza/ }).getAttribute("href")).toBe(
+      "/magaza"
+    );
+    fireEvent.click(screen.getByText("Mağaza"));
     expect(onSelect).not.toHaveBeenCalled();
+  });
 
-    // NÖBETÇİ: donmamış sekme hâlâ seçilebiliyor — yoksa "onSelect hiç
-    // bağlanmamış" durumu da yukarıdaki iddiayı geçirirdi.
-    fireEvent.click(screen.getByText("Eğitmenler"));
-    expect(onSelect).toHaveBeenCalledWith("egitmenler");
+  it("sekme kipinde Kütüphaneler artık SEÇİLEBİLİR", () => {
+    const onSelect = vi.fn();
+    sar(<CategoryBar active="egitmenler" onSelect={onSelect} />);
+    fireEvent.click(screen.getByText("Kütüphaneler"));
+    expect(onSelect).toHaveBeenCalledWith("kutuphaneler");
   });
 });
 
@@ -159,21 +122,17 @@ describe("B — rota kapısı (gerçek App + gerçek router)", () => {
     return sonuc;
   };
 
-  const DONMUS_YOLLAR = [
-    "/kutuphaneler",
-    "/kutuphaneler/bizim-kutuphane",
-    "/kutuphane-kayit",
-    "/denemeler",
-  ];
-
-  it.each(DONMUS_YOLLAR)("%s → 'Yakında' sayfası (gerçek sayfa açılmıyor)", async (yol) => {
-    await yoluBas(yol);
+  it("/denemeler → 'Yakında' sayfası (gerçek sayfa açılmıyor)", async () => {
+    await yoluBas("/denemeler");
     expect(screen.getByRole("heading", { name: /Yakında/i })).toBeTruthy();
   });
 
-  it("NÖBETÇİ: donmayan /egitmenler 'Yakında' göstermiyor", async () => {
-    // Yukarıdaki dört iddia, router tamamen bozulup HER yol 'Yakında'ya
-    // düşse de geçerdi.
+  it("/kutuphaneler artık 'Yakında' DEĞİL (bölüm açık)", async () => {
+    await yoluBas("/kutuphaneler");
+    expect(screen.queryByRole("heading", { name: /^Yakında$/i })).toBeNull();
+  });
+
+  it("NÖBETÇİ: /egitmenler 'Yakında' göstermiyor", async () => {
     await yoluBas("/egitmenler");
     expect(screen.queryByRole("heading", { name: /^Yakında$/i })).toBeNull();
   });
@@ -191,32 +150,22 @@ describe("C — Öğren hub'ındaki 'Denemelerim' kartı (gerçek DOM)", () => {
     return sar(<Learn />);
   }
 
-  it("NÖBETÇİ: hub render oluyor ve donmayan kartlar hâlâ bağlantı", () => {
+  it("NÖBETÇİ: hub render oluyor ve diğer kartlar hâlâ bağlantı", () => {
     hubuBas();
     expect(screen.getByRole("heading", { level: 1, name: "Öğren" })).toBeTruthy();
-    const { container } = { container: document.body };
-    const hedefler = Array.from(container.querySelectorAll("a[href]")).map((a) =>
+    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map((a) =>
       a.getAttribute("href")
     );
     expect(hedefler).toContain("/ogren/tekrar");
   });
 
-  it("'Denemelerim' görünür ama /denemeler'e giden bağlantı kalmadı", () => {
+  it("'Denemelerim' kartı HİÇ görünmüyor ve /denemeler'e bağlantı yok (tam gizleme)", () => {
     hubuBas();
-    expect(screen.getByText("Denemelerim")).toBeTruthy();
+    expect(screen.queryByText("Denemelerim")).toBeNull();
     const olu = Array.from(document.body.querySelectorAll("a[href]")).filter(
       (a) => (a.getAttribute("href") ?? "") === "/denemeler"
     );
     expect(olu).toEqual([]);
-  });
-
-  it("'Denemelerim' kartı aria-disabled ve rozetsiz (29 Ağu: 'Yakında' metni kalktı)", () => {
-    hubuBas();
-    const kart = screen.getByText("Denemelerim").closest("[aria-disabled]");
-    expect(kart).not.toBeNull();
-    expect(kart!.getAttribute("aria-disabled")).toBe("true");
-    expect(kart!.getAttribute("tabindex")).toBe("-1");
-    expect(within(kart as HTMLElement).queryByText("Yakında")).toBeNull();
   });
 });
 
@@ -227,7 +176,7 @@ describe("D — eğitmen menüsündeki 'Kütüphaneler' girdisi (gerçek DOM)", 
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
   }
 
-  it("NÖBETÇİ: menü render oluyor ve donmayan girdiler hâlâ bağlantı", () => {
+  it("NÖBETÇİ: menü render oluyor ve diğer girdiler hâlâ bağlantı", () => {
     menuyuAc();
     // Üst bar kısayolu + yan menü girdisi: aynı hedefe iki bağlantı normaldir.
     const mesajlar = screen.getAllByRole("link", { name: /Mesajlar/ });
@@ -235,35 +184,15 @@ describe("D — eğitmen menüsündeki 'Kütüphaneler' girdisi (gerçek DOM)", 
     for (const a of mesajlar) expect(a.getAttribute("href")).toBe("/mesajlar");
   });
 
-  it("'Kütüphaneler' görünür ama /kutuphaneler'e giden bağlantı kalmadı", () => {
+  it("'Kütüphaneler' yeniden GERÇEK bağlantı (/kutuphaneler)", () => {
     menuyuAc();
-    expect(screen.getByText("Kütüphaneler")).toBeTruthy();
-    const olu = Array.from(document.body.querySelectorAll("a[href]")).filter(
-      (a) => (a.getAttribute("href") ?? "") === "/kutuphaneler"
+    const linkler = screen.getAllByRole("link", { name: /Kütüphaneler/ });
+    expect(linkler.length).toBeGreaterThan(0);
+    for (const a of linkler) expect(a.getAttribute("href")).toBe("/kutuphaneler");
+    // Donuk kalıntı yok: aria-disabled taşıyan Kütüphaneler öğesi kalmadı.
+    const donuk = Array.from(document.body.querySelectorAll("[aria-disabled='true']")).filter(
+      (el) => (el.textContent ?? "").includes("Kütüphaneler")
     );
-    expect(olu).toEqual([]);
-  });
-
-  it("'Kütüphaneler' girdisi aria-disabled + tabIndex=-1 ve rozetsiz", () => {
-    menuyuAc();
-    const oge = screen.getByText("Kütüphaneler").closest("[aria-disabled]");
-    expect(oge).not.toBeNull();
-    expect(oge!.getAttribute("aria-disabled")).toBe("true");
-    expect(oge!.getAttribute("tabindex")).toBe("-1");
-    // Görünür "Yakında" metni kalktı (29 Ağu); ekran okuyucu için durum
-    // aria-label'da ("… — Yakında") anlatılmaya devam eder.
-    expect(within(oge as HTMLElement).queryByText("Yakında")).toBeNull();
-  });
-
-  it("üst bar kısayolu da bağlantı değil (yan menüyü açmadan)", () => {
-    // Yan menü kapalıyken üst barda ikon-only bir kısayol duruyor. Yalnız yan
-    // menüyü dondurmak, kullanıcının en sık gördüğü yüzeyi açık bırakırdı.
-    sar(<DashboardHeader navItems={TUTOR_NAV} />);
-    expect(
-      screen.queryByRole("link", { name: /Kütüphaneler/ })
-    ).toBeNull();
-    const kisayol = screen.getByLabelText("Kütüphaneler — Yakında");
-    expect(kisayol.getAttribute("aria-disabled")).toBe("true");
-    expect(kisayol.getAttribute("tabindex")).toBe("-1");
+    expect(donuk).toEqual([]);
   });
 });

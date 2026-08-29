@@ -219,7 +219,7 @@ function BalanceView({
               (`api/routers/payouts.py`: "Ödeme banka üzerinden ELLE yapılır;
               burada yalnız defter tutulur"). Pazaryeri alt üye işyeri
               kurulmadan sağlayıcının IBAN'a doğrudan aktarması da mümkün
-              değildir — yanlış vaat, ödeme gecikince güveni bozar. */}
+              değildir, yanlış vaat, ödeme gecikince güveni bozar. */}
           <p
             data-testid="bakiye-odeme-aciklamasi"
             className="mt-1 text-sm text-slate-500 "
@@ -363,7 +363,7 @@ function BalanceView({
           {/* Sessiz kesme dürüstlüğü: sunucu kaynak başına 200 satırda kesiyor
               (`library_service`/`payment_service` earnings_transactions).
               Sayfalama bu paketin kapsamında değil; ekranın yapabileceği en
-              az şey kesildiğini SÖYLEMEK — "eski bir işlem kayboldu"
+              az şey kesildiğini SÖYLEMEK, "eski bir işlem kayboldu"
               şikâyetinde yanıltıcı olmasın. */}
           {transactions && kesildiMi(transactions) && (
             <p

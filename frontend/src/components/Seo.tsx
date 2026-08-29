@@ -34,7 +34,7 @@ export function Seo({
 }: SeoProps) {
   const fullTitle = title
     ? `${SITE_NAME} · ${title}`
-    : `${SITE_NAME} — Uzman Eğitmenle Öğren`;
+    : `${SITE_NAME}, Uzman Eğitmenle Öğren`;
   const desc = clampDescription(description ?? DEFAULT_DESCRIPTION);
   const path =
     canonicalPath ??

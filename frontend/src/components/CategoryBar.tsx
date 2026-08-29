@@ -8,27 +8,34 @@ import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
  * altında, ders karuselinin üstünde durur.
  */
 
+// "hepsi" sekmesi KALDIRILDI (29 Ağu, kullanıcı kararı): varsayılan yüzey
+// artık Eğitmenler.
 export type CategoryKey =
-  | "hepsi"
   | "egitmenler"
   | "kutuphaneler"
   | "denemeler";
 
 type Category = {
-  key: CategoryKey;
+  key: CategoryKey | "magaza";
   label: string;
   icon: string;
   to: string;
+  /** Sekme DEĞİL, düz bağlantı: onSelect kipinde de yeni sayfaya götürür (Mağaza). */
+  harici?: boolean;
   /** Bölüm donduruldu: görünür kalır ama tıklanamaz (bkz. ozellikBayraklari). */
   donuk?: boolean;
+  /** Bölüm tamamen gizli: HİÇ render edilmez (kullanıcı kararı, 29 Ağu). */
+  gizli?: boolean;
 };
 
 const CATEGORIES: Category[] = [
-  { key: "hepsi", label: "Hepsi", icon: "/icons/categories/hepsi.webp", to: ROUTES.home },
   { key: "egitmenler", label: "Eğitmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.tutors },
   { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries, donuk: !KUTUPHANELER_ACIK },
-  // Deneme oturumları kütüphane profillerinde yer alır.
-  { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries, donuk: !DENEMELER_ACIK },
+  // Deneme oturumları kütüphane profillerinde yer alır. Kütüphaneler'den farklı
+  // olarak donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
+  { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries, gizli: !DENEMELER_ACIK },
+  // Mağaza: kategori sekmesi değil, mağazaya geçiş kapısı (kullanıcı isteği, 29 Ağu).
+  { key: "magaza", label: "Mağaza", icon: "/icons/categories/magaza.webp", to: ROUTES.store, harici: true },
 ];
 
 
@@ -51,12 +58,14 @@ export function CategoryBar({
   return (
     <div className="w-full">
       <div
-        className="flex items-end justify-center gap-8 overflow-x-auto px-2 sm:gap-12"
+        className="flex items-end justify-center gap-6 overflow-x-auto px-2 sm:gap-8"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {CATEGORIES.map((c) => {
+        {CATEGORIES.filter((c) => !c.gizli).map((c) => {
           const isActive = active === c.key;
-          const cls = `group flex shrink-0 flex-col items-center gap-1.5 border-b-2 pb-2 pt-0 transition-colors duration-200 ${
+          // Airbnb düzeni (29 Ağu): ikon ETİKETİN YANINDA; yazı yarı-kalın ve
+          // koyu gri, hover/aktifte tam siyah.
+          const cls = `group flex shrink-0 flex-row items-center gap-2 border-b-2 pb-2 pt-0 transition-colors duration-200 ${
             isActive
               ? "border-slate-900 "
               : "border-transparent hover:border-slate-200 "
@@ -70,18 +79,18 @@ export function CategoryBar({
                 src={c.icon}
                 alt=""
                 aria-hidden
-                width={48}
-                height={48}
+                width={40}
+                height={40}
                 decoding="async"
-                className={`h-12 w-12 object-contain transition-all duration-200 group-hover:scale-105 ${
+                className={`h-10 w-10 object-contain transition-all duration-200 group-hover:scale-105 ${
                   isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
                 }`}
               />
               <span
-                className={`whitespace-nowrap text-[13px] transition-colors duration-200 ${
+                className={`whitespace-nowrap text-[15px] font-semibold transition-colors duration-200 ${
                   isActive
-                    ? "font-semibold text-slate-900 "
-                    : "font-medium text-slate-500 group-hover:text-slate-900 "
+                    ? "text-slate-900 "
+                    : "text-slate-600 group-hover:text-slate-900 "
                 }`}
               >
                 {c.label}
@@ -104,11 +113,11 @@ export function CategoryBar({
             );
           }
 
-          return onSelect ? (
+          return onSelect && !c.harici ? (
             <button
               key={c.key}
               type="button"
-              onClick={() => onSelect(c.key)}
+              onClick={() => onSelect(c.key as CategoryKey)}
               aria-current={isActive ? "page" : undefined}
               className={cls}
             >

@@ -151,7 +151,7 @@ export default function StorePage() {
   return (
     <StoreLayout title="Mağaza">
       <Seo
-        title="Mağaza — Adana Özel Ders"
+        title="Mağaza, Adana Özel Ders"
         description="Kitaplar, deneme setleri, kırtasiye ve eğitmenlerin dijital ders notları. Tek hesapla alışveriş."
       />
 
@@ -266,7 +266,7 @@ export default function StorePage() {
                 </label>
 
                 {/* Kitap künyesi: seçenekler veriden gelir, sayaçlı. Boşsa
-                    bölüm hiç çizilmez — kırtasiye kategorisinde yayınevi
+                    bölüm hiç çizilmez, kırtasiye kategorisinde yayınevi
                     listesi göstermek kullanıcıyı boş sonuca sürüklerdi. */}
                 <FacetGroup
                   title="Yayınevi"
@@ -287,7 +287,7 @@ export default function StorePage() {
                   onToggle={setCoverTypes}
                 />
                 {/* Varyant eksenleri: eksen ADINA göre ayrı kutular (Renk,
-                    Ebat…) — değerler karışmaz; bkz. backend list_book_facets. */}
+                    Ebat…), değerler karışmaz; bkz. backend list_book_facets. */}
                 {Object.entries(bookFacets?.variant_axes ?? {}).map(
                   ([eksen, secenekler]) => (
                     <FacetGroup
@@ -424,7 +424,7 @@ export default function StorePage() {
            Eski sözleşme "ana sayfa VERİDİR, panelden düzenlenir" idi; CMS/Puck
            yönetimi kullanıcı kararıyla söküldü. Vitrin artık KODDUR
            (pages/store/vitrin/AnaVitrin.tsx): sıfır istek, sıfır düşüş yolu,
-           yükleme/degraded durumu yok — değişiklik = kod düzenlemesi. */
+           yükleme/degraded durumu yok, değişiklik = kod düzenlemesi. */
         <AnaVitrin />
       )}
     </StoreLayout>

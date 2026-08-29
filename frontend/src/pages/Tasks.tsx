@@ -440,7 +440,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
           {/* Hatırlatıcılar */}
           <div>
             {/* Alt bileşen kendi kontrollerini çizer; <label> hiçbir kontrole
-                bağlanamaz — grup adı olarak duyurulur. */}
+                bağlanamaz, grup adı olarak duyurulur. */}
             <span className="mb-1.5 block text-xs font-medium text-slate-500 ">Hatırlatıcılar</span>
             <div role="group" aria-label="Hatırlatıcılar">
               <ReminderEditor reminders={reminders} due={due ? localInputToIso(due) : null} onChange={setReminders} />
@@ -1581,7 +1581,7 @@ export default function Tasks() {
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-2xl ">✓</div>
                 <p className="mt-4 text-sm font-medium text-slate-700 ">
-                  {selection.kind === "view" && selection.view === "completed" ? "Henüz tamamlanan görev yok." : "Görev yok — harika!"}
+                  {selection.kind === "view" && selection.view === "completed" ? "Henüz tamamlanan görev yok." : "Görev yok, harika!"}
                 </p>
                 <p className="mt-1 text-xs text-slate-400 ">Aşağıdaki “Görev ekle” ile başla.</p>
               </div>

@@ -103,7 +103,7 @@ export default function DeliveryRunHandover() {
       setSonuc({
         tur: "hata",
         mesaj:
-          "Bu bir paket etiketi değil — okuttuğun kod durak/teslimat etiketine " +
+          "Bu bir paket etiketi değil, okuttuğun kod durak/teslimat etiketine " +
           "benziyor. Zimmet için kutunun üstündeki paket QR'ını okut " +
           "(kod PKT- ile başlar).",
       });
@@ -122,7 +122,7 @@ export default function DeliveryRunHandover() {
           // sessizce "tamam" demek yanlış olurdu.
           setSonuc({
             tur: "hata",
-            mesaj: `${paket.code} zimmetlenemedi — sunucu paketi "${paket.status}" durumunda bildirdi.`,
+            mesaj: `${paket.code} zimmetlenemedi, sunucu paketi "${paket.status}" durumunda bildirdi.`,
           });
           return;
         }
@@ -131,7 +131,7 @@ export default function DeliveryRunHandover() {
           // geçilmemeli: kurye ikinci bir kutu aradığını sanmasın.
           setSonuc({
             tur: "tekrar",
-            mesaj: `${paket.code} zaten zimmetli — bu paket araçta, ikinci kayıt oluşmadı.`,
+            mesaj: `${paket.code} zaten zimmetli, bu paket araçta, ikinci kayıt oluşmadı.`,
           });
           toast.info(`${paket.code} zaten araçta.`);
           return;
@@ -219,7 +219,7 @@ export default function DeliveryRunHandover() {
                 }`}
               >
                 {eksik > 0
-                  ? `${eksik} paket eksik — yola çıkmadan önce hepsini okut.`
+                  ? `${eksik} paket eksik, yola çıkmadan önce hepsini okut.`
                   : "Eksik paket yok, yola çıkabilirsin."}
               </p>
             </>
@@ -344,7 +344,7 @@ export default function DeliveryRunHandover() {
             </ul>
           )}
           <p className="px-1 text-xs text-slate-400 ">
-            Alıcı adı ve adresi burada gösterilmez — depoda kutuyu etiketteki kodla
+            Alıcı adı ve adresi burada gösterilmez, depoda kutuyu etiketteki kodla
             eşlersin; müşteri bilgisi kapıda, saha ekranında görünür.
           </p>
         </section>

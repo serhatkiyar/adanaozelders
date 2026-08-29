@@ -91,10 +91,10 @@ export default function OrderDetailPage() {
     (order.status === "PAID" || order.status === "SHIPPED" || order.status === "DELIVERED");
   const trackSub =
     order.status === "DELIVERED"
-      ? "Teslim edildi — teslimat özetini görüntüle"
+      ? "Teslim edildi, teslimat özetini görüntüle"
       : order.status === "SHIPPED"
-        ? "Kuryemiz yolda — canlı konumu ve tahmini varışı izle"
-        : "Siparişin hazırlanıyor — kuryeye verildiğinde canlı izle";
+        ? "Kuryemiz yolda, canlı konumu ve tahmini varışı izle"
+        : "Siparişin hazırlanıyor, kuryeye verildiğinde canlı izle";
 
   function handleCancel() {
     if (!order) return;
@@ -132,7 +132,7 @@ export default function OrderDetailPage() {
 
   return (
     <StoreLayout title={`Sipariş #${order.id}`} showCategoryBar={false}>
-      <Seo title={`Sipariş #${order.id} — Mağaza`} noindex />
+      <Seo title={`Sipariş #${order.id}, Mağaza`} noindex />
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
         {/* Breadcrumb */}
         <nav className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 ">
@@ -187,7 +187,7 @@ export default function OrderDetailPage() {
               </div>
             ) : (
               <p className="text-sm text-slate-500 ">
-                Dijital teslimat — ürünler hesabından indirilir.
+                Dijital teslimat, ürünler hesabından indirilir.
               </p>
             )}
             <ShipAddressUpdate order={order} />
@@ -361,7 +361,7 @@ export default function OrderDetailPage() {
               }
             >
               {returnWindowClosed ? (
-                <>İade süresi doldu — son iade tarihi {formatDate(order.return_deadline)} idi.</>
+                <>İade süresi doldu, son iade tarihi {formatDate(order.return_deadline)} idi.</>
               ) : (
                 <>
                   Son iade tarihi:{" "}
@@ -513,7 +513,7 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl "
       >
         <h2 className="text-lg font-semibold text-slate-900 ">
-          İade talebi — Sipariş #{order.id}
+          İade talebi, Sipariş #{order.id}
         </h2>
 
         {/* Tür */}

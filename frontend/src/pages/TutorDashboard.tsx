@@ -377,7 +377,7 @@ export default function TutorDashboard() {
             />
             <BookingSection
               title="Onaylı Dersler"
-              hint="Yaklaşan dersler — bittiğinde tamamlandı olarak işaretle."
+              hint="Yaklaşan dersler, bittiğinde tamamlandı olarak işaretle."
               bookings={groups.accepted}
               onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
             />

@@ -141,7 +141,7 @@ export default function CheckoutPage() {
 
   return (
     <StoreLayout title="Ödeme" minimalHeader>
-      <Seo title="Ödeme — Mağaza" noindex />
+      <Seo title="Ödeme, Mağaza" noindex />
       <div className="mx-auto max-w-[1464px] px-4 py-6 md:px-8">
         <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
           {/* ── SOL KOLON ── */}
@@ -586,7 +586,7 @@ function PreInfoForm({
               ? deliveryInfo
                 ? `Cıncık Teslimat · ${promiseDayLabel(deliveryInfo.promised_date_now)} kapında`
                 : `Adrese teslimat · tahmini ${estimateDelivery("PHYSICAL")}`
-              : "Dijital — ödeme onayında anında erişim"}
+              : "Dijital, ödeme onayında anında erişim"}
           </dd>
         </div>
         <div className="py-1.5">

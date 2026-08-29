@@ -175,7 +175,7 @@ export default function AccountHub() {
       center={
         <div className="flex w-full justify-center">
           <CompactSearch
-            active="hepsi"
+            active="egitmenler"
             placeholder="Ders, eğitmen, kütüphane ara…"
             q=""
             district={[]}

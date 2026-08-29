@@ -127,7 +127,7 @@ export default function LibraryRegister() {
 
             <Field
               label="Konum"
-              hint="Haritada arayıp tam noktanı işaretle — haritada bulunman ve yol tarifi için önemli."
+              hint="Haritada arayıp tam noktanı işaretle, haritada bulunman ve yol tarifi için önemli."
             >
               <div className="h-64 overflow-hidden rounded-xl ring-1 ring-slate-200 [&_.map-picker-root]:h-full">
                 <MapPicker

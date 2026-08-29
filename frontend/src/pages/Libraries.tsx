@@ -296,7 +296,7 @@ export default function Libraries() {
       <div className="mx-auto max-w-[1100px] space-y-5">
         <Seo
           title="Kütüphaneler ve Etüt Merkezleri"
-          description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet — değerlendirmeler, konum ve çalışma saatleriyle."
+          description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet, değerlendirmeler, konum ve çalışma saatleriyle."
         />
 
         {/* ── Liste/Harita geçişi ── */}

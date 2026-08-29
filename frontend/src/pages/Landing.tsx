@@ -17,7 +17,8 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
-import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { DersArama, CompactSearch } from "@/components/HeroSearch";
+import type { MekanDegeri } from "@/components/MekanSelect";
 import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import type { TutorSearchParams } from "@/api/tutors";
@@ -32,17 +33,17 @@ import type { LibrarySearchParams } from "@/api/libraries";
    • İçerik = yatay listeler (Öne çıkan eğitmenler, Ortaokul Matematik, …). */
 
 const HERO_PLACEHOLDER: Record<CategoryKey, string> = {
-  hepsi: "Ders, eğitmen, kütüphane ara…",
   egitmenler: "Ders, eğitmen ya da konu ara…",
   kutuphaneler: "Kütüphane adı veya semt ara…",
   denemeler: "TYT, AYT, deneme oturumu ara…",
 };
 
 export default function Landing() {
-  const [active, setActive] = useState<CategoryKey>("hepsi");
-  const [q, setQ] = useState("");
-  const [district, setDistrict] = useState<string[]>([]);
-  const [remote, setRemote] = useState(false);
+  const [active, setActive] = useState<CategoryKey>("egitmenler");
+  // Yeni arama modeli (29 Ağu): serbest metin yerine ders kategorisi + mekân.
+  const [ders, setDers] = useState("");
+  const [dersEtiket, setDersEtiket] = useState("");
+  const [mekan, setMekan] = useState<MekanDegeri>({ online: false, yuzyuze: false, district: [] });
   const [scrolled, setScrolled] = useState(false);
   // Daralmışken kompakt aramaya tıklayınca geniş navbar'ı YERİNDE aç (sayfa
   // kaymaz). Tekrar kaydırınca kapanır.
@@ -66,21 +67,17 @@ export default function Landing() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Kütüphane/deneme aramasında "Uzaktan Eğitim" anlamsız (fiziksel mekan).
-  const showRemoteOption = active !== "kutuphaneler" && active !== "denemeler";
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const base =
-      active === "kutuphaneler" || active === "denemeler"
-        ? ROUTES.libraries
-        : ROUTES.tutors;
     const sp = new URLSearchParams();
-    district.forEach((d) => sp.append("district", d));
-    if (showRemoteOption && remote) sp.set("mode", TeachingMode.ONLINE);
-    if (q.trim()) sp.set("q", q.trim());
+    if (ders) sp.append("subject", ders);
+    // İki mekân da (veya hiçbiri) seçiliyse filtre uygulanmaz — tek arama
+    // her iki mekânı birden kapsar (kullanıcı tasarımı).
+    if (mekan.online && !mekan.yuzyuze) sp.set("mode", TeachingMode.ONLINE);
+    if (mekan.yuzyuze && !mekan.online) sp.set("mode", TeachingMode.IN_PERSON);
+    if (mekan.yuzyuze) mekan.district.forEach((d) => sp.append("district", d));
     const qs = sp.toString();
-    navigate(`${base}${qs ? `?${qs}` : ""}`);
+    navigate(`${ROUTES.tutors}${qs ? `?${qs}` : ""}`);
   };
 
   const expanded = !scrolled || searchOpen;
@@ -95,9 +92,9 @@ export default function Landing() {
         <CompactSearch
           active={active}
           placeholder={placeholder}
-          q={q}
-          district={district}
-          remote={showRemoteOption && remote}
+          q={dersEtiket}
+          district={mekan.yuzyuze ? mekan.district : []}
+          remote={mekan.online && !mekan.yuzyuze}
           onOpen={() => setSearchOpen(true)}
         />
       )}
@@ -109,16 +106,16 @@ export default function Landing() {
   // (bottom slot artık justify-center içermiyor — her sayfa kendi hizalar).
   const bottom = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      <BigSearch
-        q={q}
-        setQ={setQ}
-        district={district}
-        setDistrict={setDistrict}
-        remote={remote}
-        setRemote={setRemote}
-        showRemoteOption={showRemoteOption}
+      <DersArama
+        ders={ders}
+        dersEtiket={dersEtiket}
+        onDersChange={(qDeger, etiket) => {
+          setDers(qDeger);
+          setDersEtiket(etiket);
+        }}
+        mekan={mekan}
+        setMekan={setMekan}
         onSubmit={submit}
-        placeholder={placeholder}
       />
     </div>
   );
@@ -209,7 +206,7 @@ function CategoryContent({ active }: { active: CategoryKey }) {
           hazırlık" / "Ortaokul Matematik" / "LGS Matematik" diye SABİT
           yazılmış kuşaklar vardı. İkisi gerçek bir daraltma yapıyordu
           (`subject` sert filtredir), üçü YAPMIYORDU: `exam` backend'de sert
-          filtre değil, yalnız SIRALAMA BOOST'udur — üç kuşak da aynı eğitmen
+          filtre değil, yalnız SIRALAMA BOOST'udur, üç kuşak da aynı eğitmen
           listesini gösteriyordu (ölçüm: 7 eğitmenin üçünde de aynısı).
           Kategori vaat edip kategori uygulamayan başlık, kullanıcıya "sahte
           veri" gibi görünür; şikâyetin sebebi buydu.
@@ -217,27 +214,18 @@ function CategoryContent({ active }: { active: CategoryKey }) {
           Sadeleştirme: tek dürüst başlık. Kuşak boşsa `TutorRow` zaten
           kendini gizler. Kategori kırılımı, arz gerçekten kategori başına
           anlamlı sayıya ulaştığında ve VERİDEN türetilebildiğinde geri
-          gelmelidir — sabit liste olarak değil.
+          gelmelidir, sabit liste olarak değil.
           Nöbetçi: `__guards__/egitmenKusaklari.test.tsx`. */}
       {/* Ücretli öne çıkarma şeridi — eğitmen kuşağının ÜSTÜNDE ve ondan
           bağımsız bir uçtan gelir. Organik kuşağın sırasını değiştirmez;
           "Reklam" ibaresi yönetmelik gereği zorunludur ve blok yalnız
           yürürlükte bir paket varsa çizilir. Ana sayfa filtresiz olduğu için
-          burada eşleşme daraltması yoktur — arama sayfasındaki blok ise
+          burada eşleşme daraltması yoktur, arama sayfasındaki blok ise
           aramanın filtrelerine tabidir. */}
-      {(active === "hepsi" || active === "egitmenler") && <FeaturedTutorRow />}
+      {active === "egitmenler" && <FeaturedTutorRow />}
 
-      {(active === "hepsi" || active === "egitmenler") && (
+      {active === "egitmenler" && (
         <TutorRow heading="Eğitmenler" params={{ limit: 12, offset: 0 }} />
-      )}
-
-      {/* Kütüphane kuşakları yalnız bölüm AÇIKKEN çizilir: donmuş bölüme
-          giden kart, "Yakında" ekranına tıklatırdı. */}
-      {KUTUPHANELER_ACIK && active === "hepsi" && (
-        <LibraryRow
-          heading="Kütüphaneler & etüt merkezleri"
-          params={{ limit: 12, offset: 0 }}
-        />
       )}
 
       {KUTUPHANELER_ACIK && active === "kutuphaneler" && (
@@ -272,16 +260,21 @@ function CategoryContent({ active }: { active: CategoryKey }) {
 }
 
 function RowHeader({ heading, href }: { heading: string; href: string }) {
+  // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
+  // yanında gri dairesel ok butonu — tamamına o götürür.
   return (
-    <div className="mb-4 flex items-center justify-between">
+    <div className="mb-4 flex items-center gap-2.5">
       <h2 className="text-xl font-bold tracking-tight text-slate-900 ">
         {heading}
       </h2>
       <Link
         to={href}
-        className="shrink-0 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 "
+        aria-label={`${heading}, tümünü gör`}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
       >
-        Tümü →
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
+        </svg>
       </Link>
     </div>
   );
@@ -388,7 +381,7 @@ function LibraryRow({
       ) : (
         <HScroll className="gap-5 pb-2">
           {data!.map((lib) => (
-            <div key={lib.id} className="w-[235px] shrink-0 sm:w-[255px]">
+            <div key={lib.id} className="w-[190px] shrink-0 sm:w-[210px]">
               <LibraryCard library={lib} />
             </div>
           ))}

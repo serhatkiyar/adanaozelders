@@ -87,7 +87,7 @@ export function LibrarySpeedTestSection({
       )}
 
       <p className="mt-1.5 text-[11px] text-slate-400 ">
-        Cloudflare ile ölçülür — genel internet hızı (kullanıcı ölçümlerinin ortalaması).
+        Cloudflare ile ölçülür, genel internet hızı (kullanıcı ölçümlerinin ortalaması).
       </p>
 
       {/* Canlı (test sürerken kısmi sonuç) */}

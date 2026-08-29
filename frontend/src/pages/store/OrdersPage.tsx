@@ -84,7 +84,7 @@ export default function OrdersPage() {
 
   return (
     <StoreLayout title="Siparişlerim" showCategoryBar={false}>
-      <Seo title="Siparişlerim — Mağaza" noindex />
+      <Seo title="Siparişlerim, Mağaza" noindex />
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-semibold text-slate-900 ">Siparişlerim</h1>

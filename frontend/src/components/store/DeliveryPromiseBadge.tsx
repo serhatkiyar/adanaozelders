@@ -44,8 +44,8 @@ export function DeliveryPromiseBadge({
   const sub =
     remaining != null
       ? closing
-        ? `${day} garantisi kapanmak üzere — son ${formatCountdown(remaining)}.`
-        : `${formatCountdown(remaining)} içinde sipariş ver — Adana Merkez'e kendi kuryemizle.`
+        ? `${day} garantisi kapanmak üzere, son ${formatCountdown(remaining)}.`
+        : `${formatCountdown(remaining)} içinde sipariş ver, Adana Merkez'e kendi kuryemizle.`
       : "Adana Merkez'e kendi kuryemizle; 16:00 sonrası siparişler ertesi gün.";
 
   if (variant === "inline") {
