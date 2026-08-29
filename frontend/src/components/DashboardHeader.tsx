@@ -169,13 +169,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     ? "sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md "
     : "border-b border-slate-200 bg-[#fafafa] ";
   const innerPad = "px-4 md:px-8 pt-5 pb-2";
-  // md+'de tam yatay wordmark; altında yalnız yazısız simge (mobilde yer açmak için).
+  // 30 Ağu: telefonda da TAM (yazılı) logo — kategori şeridi mobilde ikinci
+  // satırda olduğundan üstte çakışma yok; yazısız simge devre dışı.
   const logoClass = transparent
-    ? "hidden md:block md:h-9 w-auto object-contain"
-    : "hidden md:block md:h-8 w-auto object-contain";
-  const logoCompactClass = transparent
-    ? "h-8 w-auto object-contain md:hidden"
-    : "h-7 w-auto object-contain md:hidden";
+    ? "block h-8 md:h-9 w-auto object-contain"
+    : "block h-7 md:h-8 w-auto object-contain";
+  const logoCompactClass = "hidden";
 
   return (
     <>

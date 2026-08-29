@@ -57,10 +57,15 @@ export function CategoryBar({
 }) {
   return (
     <div className="w-full">
+      {/* Kaydırma kabında justify-center KULLANILMAZ: içerik ekrandan genişse
+          sol uç erişilmez kesilir (telefonda "Eğitmenler taşmış" hatası).
+          İç sarmalayıcının mx-auto'su dar içerikte ortalar, geniş içerikte
+          soldan kaydırmaya izin verir. */}
       <div
-        className="flex items-end justify-center gap-6 overflow-x-auto px-2 sm:gap-8"
+        className="flex items-end overflow-x-auto px-4"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
+        <div className="mx-auto flex items-end gap-6 sm:gap-8">
         {CATEGORIES.filter((c) => !c.gizli).map((c) => {
           const isActive = active === c.key;
           // Airbnb düzeni (29 Ağu): ikon ETİKETİN YANINDA; yazı yarı-kalın ve
@@ -134,7 +139,7 @@ export function CategoryBar({
             </Link>
           );
         })}
-
+        </div>
       </div>
     </div>
   );

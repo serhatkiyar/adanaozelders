@@ -8,7 +8,6 @@ import { ModalShell } from "@/components/store/ModalShell";
 import { formatTL } from "@/lib/money";
 import { isSelected } from "@/lib/cart";
 import { estimateDelivery } from "@/lib/delivery";
-import { promiseDayLabel } from "@/lib/deliveryPromise";
 import { useDeliveryInfo } from "@/hooks/useDelivery";
 import { getLegalDoc, OPERATOR } from "@/lib/legalContent";
 import { validateCart } from "@/api/store";
@@ -584,7 +583,7 @@ function PreInfoForm({
           <dd className="text-right font-medium text-slate-700 ">
             {hasPhysical
               ? deliveryInfo
-                ? `Cıncık Teslimat · ${promiseDayLabel(deliveryInfo.promised_date_now)} kapında`
+                ? "Hızlı Teslimat · adrese teslimat"
                 : `Adrese teslimat · tahmini ${estimateDelivery("PHYSICAL")}`
               : "Dijital, ödeme onayında anında erişim"}
           </dd>

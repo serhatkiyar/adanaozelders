@@ -47,7 +47,7 @@ export default function CourierHome() {
               {ws ? `${ws.account.first_name} ${ws.account.last_name}` : "Kurye"}
             </p>
             <p className="text-xs text-slate-500 ">
-              Cıncık Teslimat · Kurye
+              Kurye
             </p>
           </div>
         </div>

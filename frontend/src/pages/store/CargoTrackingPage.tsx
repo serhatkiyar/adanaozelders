@@ -121,7 +121,7 @@ function CourierCard({ t }: { t: OrderTracking }) {
         <p className="truncate text-sm font-medium text-slate-900 ">
           {t.courier_name}
         </p>
-        <p className="text-xs text-slate-500 ">Cıncık Teslimat kuryen</p>
+        <p className="text-xs text-slate-500 ">Kuryen</p>
       </div>
       {t.courier_plate && (
         <span className="shrink-0 rounded-md border border-slate-300 px-2 py-1 font-mono text-xs font-semibold tracking-wider text-slate-700 ">
@@ -325,7 +325,7 @@ export default function CargoTrackingPage() {
                         </span>
                       </>
                     ) : (
-                      "Cıncık Teslimat"
+                      "Hızlı Teslimat"
                     )}
                   </span>
                   {t.recipient_masked && <span>Alıcı: {t.recipient_masked}</span>}
