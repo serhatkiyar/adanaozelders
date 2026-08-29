@@ -65,6 +65,8 @@ const BlogListPage = lazy(() => import("@/pages/blog/BlogListPage"));
 const BlogPostPage = lazy(() => import("@/pages/blog/BlogPostPage"));
 const FaqPage = lazy(() => import("@/pages/FaqPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
+// Eğitmen ön başvurusu — sosyal medyada paylaşılan hesapsız lead sayfası.
+const TutorPreApply = lazy(() => import("@/pages/TutorPreApply"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 // Kurye açılış ekranı (rol 5) — menüsüz; aktif tura yönlendirir.
 const CourierHome = lazy(() => import("@/pages/dashboards/CourierHome"));
@@ -124,6 +126,9 @@ const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
 const TutorPromotion = lazy(() => import("@/pages/TutorPromotion"));
 const AdminPromotionsPage = lazy(() => import("@/pages/admin/AdminPromotionsPage"));
+const AdminTutorApplicationsPage = lazy(
+  () => import("@/pages/admin/AdminTutorApplicationsPage")
+);
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
 const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
@@ -230,13 +235,15 @@ function WsManager() {
 // Kök (`/`) root dispatcher: anonim → public Landing (prerender/SEO hedefi),
 // oturumlu → role workspace (URL `/` kalır). Hem öğrenci hem EĞİTMEN kökten,
 // Landing workspace'inden başlar (zenginleştirilecek); ders talepleri kökte DEĞİL,
-// `/ders-talepleri`'ndedir. Yalnız ADMIN'in kök ekranı kendi panosudur.
+// `/ders-talepleri`'ndedir. ADMIN dahil herkes kökte Landing görür.
 function RootDispatcher() {
   const token = useAuthStore((s) => s.token);
   const { data: user, isLoading } = useCurrentUser();
   if (!token) return <Landing />;
   if (isLoading || !user) return <FullScreenSpinner />;
-  if (user.role_id === ROLE_IDS.ADMIN) return <Navigate to={ROUTES.admin} replace />;
+  // Admin kökten panele ZORLA yönlendirilmez (29 Ağu): "Özel Ders Al" `/`e
+  // götürür ve admin de bu yüzeyi gezebilmelidir. Panele dönüş, hesap
+  // menüsündeki "Yönetim Paneli" bağlantısıyla.
   if (user.role_id === ROLE_IDS.LIBRARY_OPERATOR) return <OperatorHome />;
   if (user.role_id === ROLE_IDS.COURIER) return <CourierHome />;
   return <Landing />;
@@ -402,6 +409,7 @@ function App() {
 
           <Route path={PATHS.faq} element={<FaqPage />} />
           <Route path={PATHS.contact} element={<ContactPage />} />
+          <Route path={PATHS.tutorPreApply} element={<TutorPreApply />} />
 
           {/* ── Geliştirme prototipleri ──
               YALNIZ dev sunucusunda. Üretimde bu rotalar kimlik doğrulamasız
@@ -487,6 +495,7 @@ function App() {
               <Route path="kullanicilar" element={<AdminUsersPage />} />
               <Route path="kullanicilar/:role/:id" element={<AdminUserDetailPage />} />
               <Route path="egitmenler" element={<AdminSectionPage section="listings" />} />
+              <Route path="egitmen-basvurulari" element={<AdminTutorApplicationsPage />} />
               <Route path="one-cikarmalar" element={<AdminPromotionsPage />} />
               <Route path="diplomalar" element={<AdminSectionPage section="diplomas" />} />
               <Route path="kutuphaneler" element={<AdminLibraries />} />

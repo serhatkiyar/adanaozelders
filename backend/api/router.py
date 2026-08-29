@@ -38,6 +38,7 @@ from api.routers import (
     supplier,
     study_reservations,
     tasks,
+    tutor_pre_applications,
     tutors,
     ws,
 )
@@ -88,4 +89,5 @@ api_router.include_router(store_merchandising.admin_router)
 api_router.include_router(supplier.router)
 api_router.include_router(study_reservations.router)
 api_router.include_router(tasks.router)
+api_router.include_router(tutor_pre_applications.router)
 api_router.include_router(ws.router)

@@ -66,6 +66,12 @@ export const PATHS = {
   faq: "/sss",
   contact: "/iletisim",
 
+  /**
+   * Eğitmen ön başvurusu (public lead formu) — sosyal medyada paylaşılan
+   * hesapsız başvuru sayfası; tam kayıt /kayit'ta kalır.
+   */
+  tutorPreApply: "/egitmen-on-basvuru",
+
   // ── Kimlik & token akışları ──
   login: "/giris",
   register: "/kayit",
@@ -138,6 +144,7 @@ export const PATHS = {
   adminUsers: "/yonetim/kullanicilar",
   adminUser: "/yonetim/kullanicilar/:role/:id",
   adminTutors: "/yonetim/egitmenler",
+  adminTutorApplications: "/yonetim/egitmen-basvurulari",
   adminPromotions: "/yonetim/one-cikarmalar",
   adminDiplomas: "/yonetim/diplomalar",
   adminLibraries: "/yonetim/kutuphaneler",
@@ -236,6 +243,8 @@ export const ROUTES = {
   faq: PATHS.faq,
   contact: PATHS.contact,
 
+  tutorPreApply: PATHS.tutorPreApply,
+
   // ── Kimlik & token akışları ──
   login: PATHS.login,
   register: PATHS.register,
@@ -294,6 +303,7 @@ export const ROUTES = {
   adminUser: (role: "admin" | "tutor" | "client", id: string | number) =>
     `/yonetim/kullanicilar/${role}/${id}`,
   adminTutors: PATHS.adminTutors,
+  adminTutorApplications: PATHS.adminTutorApplications,
   adminPromotions: PATHS.adminPromotions,
   adminDiplomas: PATHS.adminDiplomas,
   adminLibraries: PATHS.adminLibraries,

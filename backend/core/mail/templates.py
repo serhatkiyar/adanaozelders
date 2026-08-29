@@ -184,6 +184,50 @@ def contact_message_email(
     )
 
 
+def tutor_lead_email(
+    *,
+    to: str,
+    name: str,
+    phone: str,
+    subjects: str,
+    email: str | None = None,
+    district: str | None = None,
+    experience: str | None = None,
+    note: str | None = None,
+    document_count: int = 0,
+) -> EmailMessage:
+    """Eğitmen ön başvurusunu işletme kutusuna iletir.
+
+    Dönüş kanalı telefondur; teyit maili bu yüzden yoktur. Belgelerin kendisi
+    maile EKLENMEZ (private/ altında dururlar) — panel linkinden açılır.
+    """
+    lines = [
+        "Yeni eğitmen ön başvurusu",
+        "-" * 40,
+        f"Ad Soyad: {name}",
+        f"Telefon: {phone}",
+        f"Dersler: {subjects}",
+    ]
+    if email:
+        lines.append(f"E-posta: {email}")
+    if district:
+        lines.append(f"İlçe: {district}")
+    if experience:
+        lines.append(f"Deneyim: {experience}")
+    if document_count:
+        lines.append(f"Belge: {document_count} dosya (panelden görüntülenir)")
+    if note:
+        lines.append(f"\nNot:\n{note}")
+    lines += ["", "-" * 40, "Kayıt, yönetim panelindeki Eğitmen Başvuruları listesinde."]
+    body = "\n".join(lines)
+    return EmailMessage(
+        to=to,
+        subject=f"[Ön Başvuru] {name}",
+        text=body,
+        html=_plain_html(body),
+    )
+
+
 def contact_ack_email(*, to: str, name: str, subject: str) -> EmailMessage:
     """Gönderene 'mesajını aldık' teyidi (kullanıcı boşluğa yazmasın)."""
     body = (

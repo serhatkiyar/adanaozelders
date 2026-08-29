@@ -48,9 +48,10 @@ import { korumasizTembeller, tabanTaramasi } from "../../scripts/tembel-modul.mj
  *     kurulduğunu ölçer). Statik import bu iddiayı yok eder.
  */
 const GEREKCELI = [
-  // Manuel vitrin sökümü 593'e, YakindaRozeti kayıtlarının silinmesi 581'e
-  // taşıdı; merge sonrası gerçek değer aşağıdaki koşuyla doğrulanır.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:587 /src/**/*.tsx",
+  // Manuel vitrin sökümü 593'e, YakindaRozeti kayıtlarının silinmesi 581'e,
+  // eğitmen ön başvuru ekranının kapı kayıtları 592'ye taşıdı; merge sonrası
+  // gerçek değer aşağıdaki koşuyla doğrulanır.
+  "src/__guards__/calismaZamaniKapisi.test.tsx:592 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

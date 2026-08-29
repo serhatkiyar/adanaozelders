@@ -73,6 +73,15 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "tutors.view",
   },
   {
+    label: "Eğitmen Başvuruları",
+    shortLabel: "Başvurular",
+    to: ROUTES.adminTutorApplications,
+    group: "Eğitim",
+    description: "Ön başvuru formundan gelen adaylar; arama ve sonuç takibi.",
+    icon: "education",
+    requiredPermission: "tutors.view",
+  },
+  {
     label: "Öne Çıkarmalar",
     shortLabel: "Öne çıkarma",
     to: ROUTES.adminPromotions,

@@ -125,6 +125,15 @@ async def _h_email_contact(p: dict[str, Any]) -> bool:
     return ok
 
 
+async def _h_email_tutor_lead(p: dict[str, Any]) -> bool:
+    return await mail.send_tutor_lead_email(
+        to=p["to"], name=p["name"], phone=p["phone"], subjects=p["subjects"],
+        email=p.get("email"), district=p.get("district"),
+        experience=p.get("experience"), note=p.get("note"),
+        document_count=p.get("document_count", 0),
+    )
+
+
 _HANDLERS: dict[str, Callable[[dict[str, Any]], Awaitable[bool]]] = {
     "sms:tracking_link": _h_sms_tracking_link,
     "sms:approach": _h_sms_approach,
@@ -132,6 +141,7 @@ _HANDLERS: dict[str, Callable[[dict[str, Any]], Awaitable[bool]]] = {
     "sms:postponed": _h_sms_postponed,
     "email:order_status": _h_email_order_status,
     "email:contact": _h_email_contact,
+    "email:tutor_lead": _h_email_tutor_lead,
 }
 
 

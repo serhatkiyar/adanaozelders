@@ -288,6 +288,8 @@ export const OLCUM_TABANI = [
   "src/pages/admin/AdminPromotionsPage.tsx",
   "src/pages/admin/AdminReportsPage.tsx",
   "src/pages/admin/AdminSectionPage.tsx",
+  // Eğitmen ön başvuruları (lead listesi).
+  "src/pages/admin/AdminTutorApplicationsPage.tsx",
   "src/pages/admin/AdminSettingsPage.tsx",
   "src/pages/admin/AdminUserDetailPage.tsx",
   "src/pages/admin/AdminUsersPage.tsx",

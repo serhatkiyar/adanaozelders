@@ -93,6 +93,27 @@ async def send_contact_message_email(
     )
 
 
+async def send_tutor_lead_email(
+    *,
+    to: str,
+    name: str,
+    phone: str,
+    subjects: str,
+    email: str | None = None,
+    district: str | None = None,
+    experience: str | None = None,
+    note: str | None = None,
+    document_count: int = 0,
+) -> bool:
+    return await _safe_send(
+        templates.tutor_lead_email(
+            to=to, name=name, phone=phone, subjects=subjects, email=email,
+            district=district, experience=experience, note=note,
+            document_count=document_count,
+        )
+    )
+
+
 async def send_contact_ack_email(*, to: str, name: str, subject: str) -> bool:
     return await _safe_send(templates.contact_ack_email(to=to, name=name, subject=subject))
 

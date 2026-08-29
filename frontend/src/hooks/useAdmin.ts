@@ -17,6 +17,9 @@ import {
   verifyEducation,
   fetchAdminPromotions,
   cancelAdminPromotion,
+  fetchAdminTutorPreApplications,
+  updateTutorPreApplicationStatus,
+  type PreApplicationStatus,
   fetchAdminUser,
   type AdminUsersParams,
   fetchAdminAuditLogs,
@@ -253,6 +256,26 @@ export function useVerifyEducation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "educations", "pending"] });
       qc.invalidateQueries({ queryKey: ["admin", "tutors"] });
+    },
+  });
+}
+
+// ── Eğitmen ön başvuruları (lead) ──
+
+export function useAdminTutorPreApplications(status?: string) {
+  return useQuery({
+    queryKey: ["admin", "tutor-pre-applications", status ?? "all"],
+    queryFn: () => fetchAdminTutorPreApplications(status),
+  });
+}
+
+export function useUpdateTutorPreApplicationStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: PreApplicationStatus }) =>
+      updateTutorPreApplicationStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "tutor-pre-applications"] });
     },
   });
 }

@@ -348,6 +348,7 @@ const KAPI_KAPSAMI = [
   "src/pages/admin/AdminReportsPage.tsx",
   "src/pages/admin/AdminSectionPage.tsx",
   "src/pages/admin/AdminSettingsPage.tsx",
+  "src/pages/admin/AdminTutorApplicationsPage.tsx",
   "src/pages/admin/AdminUserDetailPage.tsx",
   "src/pages/admin/AdminUsersPage.tsx",
   // CMS Faz 1 · blog yönetimi.
@@ -491,6 +492,10 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/pages/admin/AdminPromotionsPage.tsx": "kosullu",
   "src/pages/admin/AdminSectionPage.tsx": "kabuk",
   "src/pages/admin/AdminSettingsPage.tsx": "kosullu",
+  // Eğitmen ön başvuruları: öne çıkarma listesiyle aynı sınıf — varsayılan
+  // render filtre çipleri (düğme) + boş liste basar, form kontrolü yok;
+  // durum geçişi düğmeleri yalnız veri gelince doğar.
+  "src/pages/admin/AdminTutorApplicationsPage.tsx": "kosullu",
   "src/pages/admin/AdminUserDetailPage.tsx": "kosullu",
   "src/pages/admin/delivery/DeliveryLayout.tsx": "kabuk",
   "src/pages/admin/delivery/DeliveryOrdersPage.tsx": "kosullu",

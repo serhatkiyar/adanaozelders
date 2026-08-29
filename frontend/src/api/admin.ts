@@ -254,6 +254,57 @@ export async function verifyEducation(
   return data;
 }
 
+// ── Eğitmen ön başvuruları (lead) ──
+
+export type PreApplicationStatus =
+  | "NEW"
+  | "CONTACTED"
+  | "CONVERTED"
+  | "REJECTED";
+
+export interface PreApplicationDocument {
+  /** Sunucu imzalı (kısa ömürlü) private URL döner — doğrudan açılabilir. */
+  url: string;
+  name: string;
+}
+
+export interface AdminTutorPreApplication {
+  id: number;
+  full_name: string;
+  phone: string;
+  email: string | null;
+  /** Virgülle ayrılmış branş etiketleri (sunucuda düz metin saklanır). */
+  subjects: string;
+  district: string | null;
+  experience: string | null;
+  note: string | null;
+  documents: PreApplicationDocument[] | null;
+  status: PreApplicationStatus;
+  kvkk_accepted_at: string;
+  created_at: string;
+}
+
+export async function fetchAdminTutorPreApplications(
+  status?: string
+): Promise<AdminTutorPreApplication[]> {
+  const { data } = await apiClient.get<AdminTutorPreApplication[]>(
+    "/admin/tutor-pre-applications",
+    { params: status ? { status } : undefined }
+  );
+  return data;
+}
+
+export async function updateTutorPreApplicationStatus(
+  id: number,
+  status: PreApplicationStatus
+): Promise<AdminTutorPreApplication> {
+  const { data } = await apiClient.post<AdminTutorPreApplication>(
+    `/admin/tutor-pre-applications/${id}/status`,
+    { status }
+  );
+  return data;
+}
+
 // ── İlan öne çıkarma satışları ──
 
 export interface AdminPromotion {

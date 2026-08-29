@@ -35,7 +35,12 @@ from schemas.admin_access import (
     AdminRoleUpdate,
 )
 from schemas.tutor import TutorOut
+from schemas.tutor_pre_application import (
+    AdminTutorPreApplicationOut,
+    PreApplicationStatusIn,
+)
 from schemas.tutor_promotion import AdminTutorPromotionOut, PromotionCancelIn
+from models.tutor_pre_application import TutorPreApplication
 from schemas.booking import BookingCancel
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
@@ -413,6 +418,53 @@ async def list_tutors(
         stmt = stmt.where(Tutor.status == status_filter)
     stmt = stmt.order_by(Tutor.created_at.desc())
     return (await db.execute(stmt)).scalars().all()
+
+
+@router.get(
+    "/tutor-pre-applications",
+    response_model=list[AdminTutorPreApplicationOut],
+    dependencies=[Depends(require_admin_permission("tutors.view"))],
+)
+async def list_tutor_pre_applications(
+    status_filter: str | None = Query(default=None, alias="status"),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """Eğitmen ön başvuruları (lead) — en yeni önce."""
+    stmt = select(TutorPreApplication)
+    if status_filter:
+        stmt = stmt.where(TutorPreApplication.status == status_filter)
+    stmt = stmt.order_by(TutorPreApplication.id.desc()).limit(limit).offset(offset)
+    return (await db.execute(stmt)).scalars().all()
+
+
+@router.post(
+    "/tutor-pre-applications/{application_id}/status",
+    response_model=AdminTutorPreApplicationOut,
+)
+async def update_tutor_pre_application_status(
+    application_id: int,
+    payload: PreApplicationStatusIn,
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lead durum geçişi (Arandı / Kazanıldı / Olumsuz)."""
+    record = await db.get(TutorPreApplication, application_id)
+    if record is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Başvuru bulunamadı")
+    record.status = payload.status
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="tutor_pre_application.status",
+        target_type="tutor_pre_application",
+        target_id=application_id,
+        reason=payload.status,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
 
 
 @router.get("/promotions", response_model=list[AdminTutorPromotionOut])
