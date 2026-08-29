@@ -22,6 +22,16 @@ import type {
   AdminRoleOut,
 } from "@/types";
 
+/** Kullanıcı hesabını anonimleştirip kapatır (geri alınamaz) — users.manage.
+ *  Açık para taahhüdü varsa backend 409 döner (gerekçesi detail'dedir). */
+export async function deleteAdminUser(payload: {
+  role: "tutor" | "client";
+  user_id: number;
+  reason: string;
+}): Promise<void> {
+  await apiClient.post("/admin/users/delete", payload);
+}
+
 export async function fetchAdminPermissions(): Promise<AdminPermissionOut[]> {
   const { data } = await apiClient.get<AdminPermissionOut[]>("/admin/access/permissions");
   return data;

@@ -8,6 +8,7 @@ from api.deps import require_admin_permission, require_roles
 from core import flags
 from core.database import get_db
 from models.admin import Admin
+from models.client import Client
 from models.role import RoleType
 from models.tutor import Tutor, TutorStatus
 from models.booking import Booking, BookingStatus
@@ -73,7 +74,9 @@ from schemas.report import ReportCountOut, ReportOut, ReportResolve
 from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
 from schemas.user import NameChangeRequestOut
 from models.demand import DemandStatus
+from core.storage import delete_file
 from services import (
+    account_deletion_service,
     admin_service,
     admin_access_service,
     admin_operations_service,
@@ -757,6 +760,60 @@ async def reset_user_password(
         meta={"email_masked": email_masked, "sessions_revoked": True},
     )
     return PasswordResetOut(email_masked=email_masked)
+
+
+class UserDeleteIn(BaseModel):
+    role: Literal["tutor", "client"]
+    user_id: int
+    # Hassas işlem: gerekçe zorunlu (audit'e yazılır — kim, neden).
+    reason: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/users/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_account(
+    payload: UserDeleteIn,
+    admin: Admin = Depends(require_admin_permission("users.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kullanıcı hesabını anonimleştirip kapatır (geri alınamaz) — 30 Ağu.
+
+    Kullanıcının KENDİ silme akışıyla (auth /me/delete) AYNI servis ve AYNI
+    korumalar: açık para taahhüdü (emanet ödeme, yoldaki kargo, bekleyen iade)
+    varken silinemez (409); mali kayıtlar mevzuat gereği durur, yalnız
+    kimlik/iletişim verisi temizlenir. Admin hesapları bu uçtan silinemez.
+    """
+    model = Tutor if payload.role == "tutor" else Client
+    user = await db.get(model, payload.user_id)
+    if user is None or user.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    # Gölge müşteri kimliği dizinde yok (§5.2): eğitmenin alışveriş gölgesi
+    # tek başına silinmez, eğitmen hesabıyla yaşar.
+    if payload.role == "client" and user.shadow_of_tutor_id is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    ok, reason = await account_deletion_service.can_delete(db, user)
+    if not ok:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, reason or "Hesap şu an silinemez"
+        )
+
+    orphan_files = await account_deletion_service.anonymize_account(db, user)
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="user.delete",
+        target_type=payload.role,
+        target_id=payload.user_id,
+        reason=payload.reason,
+        meta={"orphan_files": len(orphan_files)},
+    )
+    await db.commit()
+
+    # Depo silme commit SONRASI ve best-effort (İP-3 §3 açık kararı — auth
+    # /me/delete ile aynı sıra): DB referansı temizlendi, dosya silme
+    # başarısız kalırsa işlem geri alınmaz.
+    for key in orphan_files:
+        await delete_file(key)
 
 
 # ── Operasyon kurtarma: sıkışmış para + ölü iş (İP-4 / P1-4) ─────────
