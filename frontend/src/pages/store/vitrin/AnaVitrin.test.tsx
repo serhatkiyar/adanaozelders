@@ -20,20 +20,20 @@ describe("AnaVitrin (manuel vitrin)", () => {
       </MemoryRouter>,
     );
 
+    // 30 Ağu: başlıklar görsellerle eşleşir, dört CTA da kampanyaya götürür.
     for (const baslik of [
-      "Okula dönüş sezonu",
-      "YKS hazırlık kaynakları",
-      "LGS kitapları",
-      "Defter ve ajandalar",
+      "Sırt Çantaları",
+      "Suluklar",
+      "Beslenme Çantaları",
+      "Resim Malzemeleri",
     ]) {
       expect(screen.getByRole("heading", { name: baslik })).toBeTruthy();
     }
-    expect(screen.getByRole("link", { name: "Kampanyayı keşfet" }).getAttribute("href")).toBe(
-      "/magaza/okula-donus",
-    );
-    expect(screen.getByRole("link", { name: "YKS kitaplarına git" }).getAttribute("href")).toBe(
-      "/magaza?category=57",
-    );
+    const ctalar = screen.getAllByRole("link", { name: "Okula Dönüş Alışverişi" });
+    expect(ctalar).toHaveLength(4);
+    for (const cta of ctalar) {
+      expect(cta.getAttribute("href")).toBe("/magaza/okula-donus");
+    }
     expect(istek).not.toHaveBeenCalled();
   });
 

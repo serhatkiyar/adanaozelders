@@ -9,8 +9,8 @@ import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 
 const KARTLAR = [
-  { etiket: "Çantalar", gorsel: "/vitrin/kart-cantalar.webp" },
-  { etiket: "Suluk", gorsel: "/vitrin/kart-suluk.webp" },
+  { etiket: "Sırt Çantaları", gorsel: "/vitrin/kart-cantalar.webp" },
+  { etiket: "Suluklar", gorsel: "/vitrin/kart-suluk.webp" },
   { etiket: "Beslenme Çantaları", gorsel: "/vitrin/kart-beslenme.webp" },
   { etiket: "Resim Malzemeleri", gorsel: "/vitrin/kart-resim-malzemeleri.webp" },
 ];

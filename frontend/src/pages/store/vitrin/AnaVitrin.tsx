@@ -13,7 +13,6 @@
  */
 import { Link } from "react-router-dom";
 
-import { ROUTES } from "@/lib/routes";
 
 const KART_GORSEL_SINIFI = "h-full w-full object-cover";
 
@@ -25,35 +24,36 @@ interface VitrinKarti {
   cta: string;
 }
 
-/** Kart içerikleri — düzenlenecek yer burası. Linkler gerçek kategori/rota. */
+/** Kart içerikleri — düzenlenecek yer burası (kullanıcı dikte etti, 30 Ağu):
+ *  başlıklar görsellerle eşleşir, dördü de kampanya sayfasına götürür. */
 const KARTLAR: VitrinKarti[] = [
   {
-    baslik: "Okula dönüş sezonu",
+    baslik: "Sırt Çantaları",
     gorsel: "/vitrin/kart-cantalar.webp",
-    alt: "Okula dönüş ürünleri",
+    alt: "Sırt çantaları",
     link: "/magaza/okula-donus",
-    cta: "Kampanyayı keşfet",
+    cta: "Okula Dönüş Alışverişi",
   },
   {
-    baslik: "YKS hazırlık kaynakları",
+    baslik: "Suluklar",
     gorsel: "/vitrin/kart-suluk.webp",
-    alt: "YKS hazırlık kitapları",
-    link: `${ROUTES.store}?category=57`,
-    cta: "YKS kitaplarına git",
+    alt: "Suluklar",
+    link: "/magaza/okula-donus",
+    cta: "Okula Dönüş Alışverişi",
   },
   {
-    baslik: "LGS kitapları",
+    baslik: "Beslenme Çantaları",
     gorsel: "/vitrin/kart-beslenme.webp",
-    alt: "LGS hazırlık kitapları",
-    link: `${ROUTES.store}?category=58`,
-    cta: "LGS kitaplarına git",
+    alt: "Beslenme çantaları",
+    link: "/magaza/okula-donus",
+    cta: "Okula Dönüş Alışverişi",
   },
   {
-    baslik: "Defter ve ajandalar",
+    baslik: "Resim Malzemeleri",
     gorsel: "/vitrin/kart-resim-malzemeleri.webp",
-    alt: "Defter ve ajandalar",
-    link: `${ROUTES.store}?category=67`,
-    cta: "Defterlere göz at",
+    alt: "Resim malzemeleri",
+    link: "/magaza/okula-donus",
+    cta: "Okula Dönüş Alışverişi",
   },
 ];
 
