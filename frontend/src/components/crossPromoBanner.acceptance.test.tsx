@@ -32,7 +32,14 @@ beforeEach(() => {
   apiClient.defaults.adapter = async (config: AxiosRequestConfig) => {
     const url = String(config.url);
     return ({
-      data: /\/search\b/.test(url) ? { items: [], total: 0, page: 1, size: 20, pages: 0 } : [],
+      // /tutors/search DİZİ döner (bkz. api/tutors.ts) — {items:...} verilirse
+      // TutorRow `data.map`te patlar ve Vitest "unhandled error" ile KIRMIZI
+      // düşer (CI 33274844233 dersi). {items:...} yalnız mağaza aramasının.
+      data: url.includes("/tutors/")
+        ? []
+        : /\/search\b/.test(url)
+          ? { items: [], total: 0, page: 1, size: 20, pages: 0 }
+          : [],
       status: 200,
       statusText: "OK",
       headers: {},
@@ -65,14 +72,19 @@ function sar(yol: string, rota: string, element: React.ReactElement) {
 describe("vitrin hero + banner söküm nöbetçisi", () => {
   it("N-1: Landing'de mağaza banner'ı YOK (söküm geri gelmez)", async () => {
     sar("/", "/", <Landing />);
-    // Eski banner /magaza'ya giden görselli bir linkti; bugün Landing'de
-    // /magaza'ya giden görsel taşıyan HİÇBİR link olmamalı (navbar linki
-    // metin linkidir, görsel taşımaz).
+    // Eski banner /magaza'ya giden, İÇERİK görseli taşıyan bir linkti.
+    // Kategori şeridindeki meşru "Mağaza" kapısı da görselli bir linktir ama
+    // ikonu dekoratiftir (aria-hidden) — ayrım oradan yapılır: /magaza'ya
+    // giden hiçbir link aria-hidden OLMAYAN bir <img> taşımamalı.
     await waitFor(() => {
-      const magazaLinkleri = screen
+      const bannerBenzeri = screen
         .queryAllByRole("link")
-        .filter((l) => l.getAttribute("href") === PATHS.store && l.querySelector("img"));
-      expect(magazaLinkleri).toHaveLength(0);
+        .filter(
+          (l) =>
+            l.getAttribute("href") === PATHS.store &&
+            l.querySelector("img:not([aria-hidden])")
+        );
+      expect(bannerBenzeri).toHaveLength(0);
     });
   });
 
