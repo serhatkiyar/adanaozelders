@@ -5,6 +5,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
+import { useKayitAcik } from "@/hooks/useKayitAcik";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
@@ -23,6 +24,7 @@ export function AuthModal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const modal = searchParams.get("modal"); // "login" | "register"
   const roleParam = searchParams.get("role") as RegisterRole | null;
+  const kayitAcik = useKayitAcik();
   const isOpen = modal === "login" || modal === "register";
 
   const close = () => {
@@ -41,6 +43,37 @@ export function AuthModal() {
   }, [isOpen, searchParams]);
 
   if (!isOpen) return null;
+
+  // Kayıt bayrağı kapalıyken ?modal=register doğrudan URL'den açılsa bile
+  // form yerine bilgilendirme gösterilir (asıl kilit backend'de, 403).
+  if (modal === "register" && !kayitAcik) {
+    return (
+      <Modal
+        open
+        onClose={close}
+        ariaLabel="Kayıt kapalı"
+        hideCloseButton
+        panelClassName="w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200 "
+      >
+        <h2 className="text-lg font-bold text-slate-900">Kayıtlar şu anda kapalı</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Yeni üye kaydı geçici olarak durduruldu. Mevcut hesabınız varsa giriş
+          yapabilirsiniz.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            searchParams.set("modal", "login");
+            searchParams.delete("role");
+            setSearchParams(searchParams, { replace: true });
+          }}
+          className="mt-5 w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+        >
+          Giriş Yap
+        </button>
+      </Modal>
+    );
+  }
 
   return (
     <Modal

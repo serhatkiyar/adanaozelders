@@ -55,6 +55,7 @@ FLAG_MINOR_BOOKINGS_LIVE = "minor_bookings_live"
 FLAG_INVOICING_LIVE = "invoicing_live"
 FLAG_MANUAL_PAYOUT_ENABLED = "manual_payout_enabled"
 FLAG_MARKETING_MESSAGES_ENABLED = "marketing_messages_enabled"
+FLAG_REGISTRATION_OPEN = "registration_open"
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +173,18 @@ FLAG_SPECS: tuple[FlagSpec, ...] = (
             "bayraktan etkilenmez. Uygulaması İYS paketiyle bağlanacak."
         ),
         enforced=False,
+    ),
+    FlagSpec(
+        key=FLAG_REGISTRATION_OPEN,
+        default=True,
+        label="Yeni üye kaydı",
+        description=(
+            "Kapalıyken /register/tutor ve /register/client 403 döner ve "
+            "sitedeki Kayıt Ol düğmeleri gizlenir. Mevcut hesapların girişi "
+            "ETKİLENMEZ; eğitmen ÖN BAŞVURU formu da ayrı tutulur (hesap "
+            "açmaz). Lansman öncesi halka kapalı çalışma için eklendi (30 Ağu)."
+        ),
+        enforced=True,
     ),
 )
 

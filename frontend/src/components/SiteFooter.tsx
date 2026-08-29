@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useKayitAcik } from "@/hooks/useKayitAcik";
 import { ROUTES } from "@/lib/routes";
 import { LEGAL_NAV } from "@/lib/legalNav";
 
@@ -23,6 +24,7 @@ export function SiteFooter() {
   const token = useAuthStore((s) => s.token);
   const { data: user } = useCurrentUser();
   const loggedIn = !!token && !!user;
+  const kayitAcik = useKayitAcik();
 
   const linkCls = "transition hover:text-slate-900 ";
   const baslikCls = "text-sm font-semibold text-slate-900";
@@ -76,9 +78,12 @@ export function SiteFooter() {
                 <Link to="?modal=login" className={`block ${linkCls}`}>
                   Giriş Yap
                 </Link>
-                <Link to="?modal=register" className={`block ${linkCls}`}>
-                  Kayıt Ol
-                </Link>
+                {/* Kayıt bayrağı kapalıyken gizli (asıl kilit backend'de). */}
+                {kayitAcik && (
+                  <Link to="?modal=register" className={`block ${linkCls}`}>
+                    Kayıt Ol
+                  </Link>
+                )}
               </div>
             )}
           </nav>

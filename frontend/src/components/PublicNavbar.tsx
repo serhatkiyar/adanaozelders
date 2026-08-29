@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { useKayitAcik } from "@/hooks/useKayitAcik";
 
 // Anonim (oturumsuz) yüzeyin ortak üst barı — landing'de beğenilen navbar.
 // Hem Landing hem PublicShell (public arama/profil) kullanır; böylece sitenin
@@ -16,6 +17,7 @@ export function PublicNavbar({
   /** false iken alt arama satırı yumuşakça katlanır (Landing scroll daralması). */
   expanded?: boolean;
 }) {
+  const kayitAcik = useKayitAcik();
   return (
     // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md ">
@@ -40,12 +42,15 @@ export function PublicNavbar({
                   hazır: `node scripts/marka_logo_turu.mjs` (11 genişlik; kabul
                   ölçütü her genişlikte kesişim 0 ve yatay taşma 0).
                   Ayrıntı: docs/magaza-merge-dogrulama-raporu.md */}
-              <img src="/logo-compact.svg" alt="" aria-hidden className="h-8 w-auto object-contain xl:hidden" />
+              {/* 30 Ağu: telefonda da TAM (yazılı) logo — kategori şeridi <md'de
+                  ikinci satıra indiği için üstte çakışacak orta sütun yok.
+                  Simge logo yalnız md..xl bandında kalır (yukarıdaki ölçüm). */}
+              <img src="/logo-compact.svg" alt="" aria-hidden className="hidden h-8 w-auto object-contain md:block xl:hidden" />
               <img
                 src="/logo.svg"
                 alt=""
                 aria-hidden
-                className="hidden xl:block xl:h-9 w-auto object-contain"
+                className="block h-8 w-auto object-contain md:hidden xl:block xl:h-9"
               />
             </Link>
           </div>
@@ -55,15 +60,18 @@ export function PublicNavbar({
             </div>
           )}
           <div className="flex-1 flex shrink-0 items-center justify-end gap-2">
-            <Link
-              to="?modal=register"
-              className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
-            >
-              Kayıt Ol
-            </Link>
+            {/* Kayıt bayrağı kapalıyken düğme gizlenir (asıl kilit backend'de). */}
+            {kayitAcik && (
+              <Link
+                to="?modal=register"
+                className="btn-neon-hover rounded-full px-3 py-2.5 text-sm sm:px-5 font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
+              >
+                Kayıt Ol
+              </Link>
+            )}
             <Link
               to="?modal=login"
-              className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
+              className="btn-neon-hover rounded-full px-3 py-2.5 text-sm sm:px-5 font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
             >
               Giriş Yap
             </Link>

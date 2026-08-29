@@ -33,6 +33,7 @@ from core.cookies import (
 )
 from core.database import get_db
 from core.config import settings
+from core import flags
 from core.ratelimit import client_ip, rate_limit
 from core.security import (
     create_access_token,
@@ -129,6 +130,25 @@ async def _record_signup_consents(
     await db.commit()
 
 
+async def _kayit_kapisi(db: AsyncSession) -> None:
+    """Yeni üye kaydı bayrağı (admin panelinden yönetilir, 30 Ağu).
+
+    `is_enabled` fail-CLOSED'dır: bayrak okunamazsa kayıt KAPALI kabul edilir,
+    yanlışlıkla halka açık kayıt almaktan iyidir. Girişler etkilenmez.
+    """
+    if not await flags.is_enabled(db, flags.FLAG_REGISTRATION_OPEN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Yeni üye kaydı şu anda kapalı.",
+        )
+
+
+@router.get("/register/open")
+async def registration_open(db: AsyncSession = Depends(get_db)) -> dict[str, bool]:
+    """Public: kayıt açık mı? Frontend 'Kayıt Ol' düğmelerini buna göre gizler."""
+    return {"open": await flags.is_enabled(db, flags.FLAG_REGISTRATION_OPEN)}
+
+
 @router.post(
     "/register/tutor",
     response_model=TutorOut,
@@ -140,6 +160,7 @@ async def register_tutor(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await _kayit_kapisi(db)
     tutor = await auth_service.register_tutor(
         db,
         email=payload.email,
@@ -166,6 +187,7 @@ async def register_client(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await _kayit_kapisi(db)
     client = await auth_service.register_client(
         db,
         email=payload.email,
