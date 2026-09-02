@@ -212,6 +212,9 @@ export const OLCUM_TABANI = [
   "src/components/admin/layout/panelKabuguDurumu.ts",
   "src/components/admin/packing/PackageLabel.tsx",
   "src/components/admin/packing/PackingLabelSheet.tsx",
+  // Kısmi teslimat penceresi (Faz 3). Ortak `DuzenlemePenceresi` + `Button`
+  // kullanır; kendi overlay'ini kurmaz, ham `<button>` taşımaz.
+  "src/components/admin/packing/SplitDialog.tsx",
   // CMS Faz 1 · blog editörü. Toolbar'ın ham `<button>`ı bilinçli istisnadır:
   // `aria-pressed` taşıyan biçim SEÇİM durumları (kalın/italik/liste…) — ortak
   // `Button`ın dolgu/gölge varyantları kompakt araç çubuğuna uymuyor

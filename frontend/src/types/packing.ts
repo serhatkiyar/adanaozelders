@@ -100,7 +100,25 @@ export interface Package {
   void_reason: string | null;
   unpacked_at: string | null;
   created_at: string | null;
+  /** Paketin kökeni: `ORDER` (ilk paket / yeniden paketleme) | `SPLIT` (bölünerek). */
+  created_by: "ORDER" | "SPLIT";
+  /** Bölmede kaynak paket — "bu paket hangi paketten koptu". */
+  origin_package_id: number | null;
+  /** Bu paketin KENDİ teslimat sözü; `null` ise "temin ediliyor". */
+  promised_delivery_date: string | null;
   items: PackageItem[];
+}
+
+/** Kısmi teslimatta İKİNCİ pakete taşınacak kalem ve adedi. */
+export interface PackageSplitLine {
+  order_item_id: number;
+  quantity: number;
+}
+
+export interface PackageSplitPayload {
+  lines: PackageSplitLine[];
+  /** Tedarik tarihi biliniyorsa (ISO `YYYY-MM-DD`); bilinmiyorsa gönderilmez. */
+  promised_date?: string | null;
 }
 
 /**

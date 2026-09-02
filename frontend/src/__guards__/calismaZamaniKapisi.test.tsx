@@ -369,6 +369,7 @@ const KAPI_KAPSAMI = [
   "src/pages/admin/inventory/DamageEventsPage.tsx",
   "src/pages/admin/inventory/InventoryLayout.tsx",
   "src/pages/admin/inventory/InventoryOverviewPage.tsx",
+  "src/components/admin/packing/SplitDialog.tsx",
   "src/pages/admin/packing/PackagesPage.tsx",
   "src/pages/admin/packing/PackingLayout.tsx",
   "src/pages/admin/packing/PackingQueuePage.tsx",
@@ -468,6 +469,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/store/SupplierPanel.tsx": "kosullu",
   "src/components/admin/ui/Badge.tsx": "sunum",
   "src/components/admin/ui/Button.tsx": "sunum",
+  // Kapalı pencere hiçbir şey render etmez; adet alanları yalnız `open`
+  // iken doğar. Gerçek DOM ölçümü kendi davranış testindedir.
+  "src/components/admin/packing/SplitDialog.tsx": "pencere-kabugu",
   "src/components/admin/ui/ConfirmDialog.tsx": "pencere-kabugu",
   "src/components/admin/ui/Dialog.tsx": "pencere-kabugu",
   "src/components/admin/ui/PageState.tsx": "sunum",

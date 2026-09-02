@@ -37,6 +37,11 @@ PAKETLEME_UCLARI = [
     ("POST", "/api/v1/packing/packages/1/scan"),
     ("POST", "/api/v1/packing/packages/1/undo-scan"),
     ("POST", "/api/v1/packing/packages/1/complete"),
+    # Kısmi teslimat: eksiği gören kişi raftaki paketleyicidir, iş onun elinde
+    # durur — bölme `pack` kademesindedir. `manage` bir GERİ ALMA kademesidir
+    # (void/repack/unpack); bölme geri alma değil, o anki fiziksel gerçeğin
+    # kaydıdır.
+    ("POST", "/api/v1/packing/packages/1/split"),
 ]
 YONETIM_UCLARI = [
     ("POST", "/api/v1/packing/packages/1/return-in"),

@@ -78,6 +78,11 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/components/admin/CourierManager.tsx <Button> closeAccount.isPending": "islem",
   "src/components/admin/delivery/ClosedDays.tsx <Button> remove.isPending": "islem",
   "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": "islem",
+  // Kısmi teslimat penceresinin "Vazgeç"i. "Sonraki teslimata ayır"
+  // düğmesi geçerlilikle KAPANMAZ (kilitli karar): seçim boşsa ya da kutu
+  // tamamen boşalıyorsa gönderim iş yapmaz, sebep pencerede yazılır ve
+  // odak ilk adet alanına gider — bu yüzden burada tek kayıt var.
+  "src/components/admin/packing/SplitDialog.tsx <Button> isPending": "islem",
   // Tedarikçi bağlama penceresinin "Vazgeç"i — `ReasonDialog`ınkiyle aynı
   // gerekçe: istek uçarken kapatmak sonucu gizler. "Bağla" düğmesi
   // geçerlilikle KAPANMAZ (kilitli karar), bu yüzden burada tek kayıt var.

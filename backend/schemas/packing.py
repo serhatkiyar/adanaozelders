@@ -116,6 +116,26 @@ class PackageReturnInIn(_Istek):
     note: str | None = Field(default=None, max_length=NOTE_MAX)
 
 
+class PackageSplitLineIn(_Istek):
+    """Bölmede İKİNCİ teslimata kalacak kalem ve adedi."""
+
+    order_item_id: int = Field(gt=0)
+    quantity: int = Field(gt=0)
+
+
+class PackageSplitIn(_Istek):
+    """Kısmi teslimat: seçilen kalemler yeni (ikinci) pakete taşınır.
+
+    `lines` neyin SONRAYA kalacağını söyler (Trendyol'un adet bazlı
+    `split-packages` deseni). `promised_date` bu paketin KENDİ teslimat sözü;
+    tedarik tarihi bilinmiyorsa boş bırakılır ve müşteriye "temin ediliyor"
+    denir — tutturulamayan tarih şikâyet üretir.
+    """
+
+    lines: list[PackageSplitLineIn] = Field(min_length=1)
+    promised_date: datetime.date | None = None
+
+
 class HandoverScanIn(_Istek):
     payload: str = Field(min_length=1, max_length=200)
 
@@ -159,6 +179,11 @@ class PackageOut(BaseModel):
     void_reason: str | None = None
     unpacked_at: datetime.datetime | None = None
     created_at: datetime.datetime | None = None
+    #: Paketin kökeni: ORDER (ilk paket / yeniden paketleme) | SPLIT (bölünerek).
+    created_by: str = "ORDER"
+    origin_package_id: int | None = None
+    #: Bu paketin kendi teslimat sözü; boşsa "temin ediliyor".
+    promised_delivery_date: datetime.date | None = None
     items: list[PackageItemOut] = []
 
 

@@ -65,7 +65,7 @@ import secrets
 from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException, status as http
-from sqlalchemy import func, select, true as sa_true, update
+from sqlalchemy import and_, func, or_, select, true as sa_true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -795,15 +795,33 @@ async def packing_queue(
         .where(OrderPackage.order_id == Order.id, OrderPackage.status == "PACKED")
         .exists()
     )
+    # Kısmi teslimatta soru "paketlenecek SİPARİŞ var mı" değil, "paketlenecek
+    # PAKET var mı"dır. Bölmeden doğan ikinci paket `OPEN` bekler; eski yüklem
+    # birinci paket hazır olduğu an tüm siparişi kuyruktan düşürdüğü için o
+    # paket ekranda hiç görünmez ve operatör onu ASLA açamazdı.
+    acik_paket = (
+        select(OrderPackage.id)
+        .where(OrderPackage.order_id == Order.id, OrderPackage.status == "OPEN")
+        .exists()
+    )
     kosullar = (
         Order.deleted_at.is_(None),
         Order.has_physical.is_(True),
         Order.payment_status == "PAID",
-        Order.status == "PAID",
+        # SHIPPED yalnız "açık paket var" dalında anlamlıdır: birinci paket
+        # zimmetlenince sipariş SHIPPED olur ama ikinci paket hâlâ paketlenmeyi
+        # bekler. İkinci dal (paket açılmamış sipariş) eski kuralda kalır.
+        Order.status.in_(("PAID", "SHIPPED")),
         Order.ship_in_zone.is_(True),
-        ~hazir_paket,
-        ~packing_events.off_premise_package_exists(),
-        ~packing_events.open_stop_without_package_exists(),
+        or_(
+            acik_paket,
+            and_(
+                Order.status == "PAID",
+                ~hazir_paket,
+                ~packing_events.off_premise_package_exists(),
+                ~packing_events.open_stop_without_package_exists(),
+            ),
+        ),
         _deneme_hakki_var(),
     )
     toplam = int(

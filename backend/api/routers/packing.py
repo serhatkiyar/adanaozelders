@@ -57,6 +57,7 @@ from schemas.packing import (
     PackageOut,
     PackagePage,
     PackageReturnInIn,
+    PackageSplitIn,
     PackageScanIn,
     PackageScanOut,
     PackageUndoScanIn,
@@ -105,6 +106,9 @@ def _paket(gorunum: packing_service.PackageView) -> PackageOut:
         void_reason=gorunum.void_reason,
         unpacked_at=gorunum.unpacked_at,
         created_at=gorunum.created_at,
+        created_by=gorunum.created_by,
+        origin_package_id=gorunum.origin_package_id,
+        promised_delivery_date=gorunum.promised_delivery_date,
         items=[
             PackageItemOut(
                 id=s.id,
@@ -435,6 +439,38 @@ async def void_package(
             admin_id=admin.id,
             reason=payload.reason,
             izin_dogrula=_dogrula,
+        )
+    )
+
+
+@router.post("/packages/{package_id}/split", response_model=PackageOut)
+async def split_package(
+    package_id: int,
+    payload: PackageSplitIn,
+    admin: Admin = Depends(PACK),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kısmi teslimat: seçilen kalemler İKİNCİ pakete taşınır.
+
+    Operatör hazırlarken stok eksiği görürse "eldekini bugün gönderelim, kalanı
+    temin edilince" diyebilir. **Otomatik değildir** — bu uç çağrılmazsa sipariş
+    tek teslimat olarak bekler.
+
+    `packing.pack` yeter (`manage` DEĞİL): eksiği gören kişi raftaki paketleyici
+    ve iş onun elinde durur. Bölme, başkasının kararını geri almak değil, o anki
+    fiziksel gerçeği kaydetmektir — `void`/`repack` gibi bir geri alma işlemi
+    olsaydı `manage` isterdi.
+
+    Kaynak paket `OPEN`/`PACKED` olmalıdır — araçtaki paketi ekrandan ikiye
+    ayırmak fiziksel karşılığı olmayan bir iddiadır (409).
+    """
+    return _paket(
+        await packing_service.split_package(
+            db,
+            package_id,
+            {satir.order_item_id: satir.quantity for satir in payload.lines},
+            admin_id=admin.id,
+            promised_date=payload.promised_date,
         )
     )
 

@@ -30,6 +30,7 @@ import type {
   PackageReturnInPayload,
   PackageScan,
   PackageScanPayload,
+  PackageSplitPayload,
   PackageStatus,
   PackageUndoScanPayload,
   PackingQueuePage,
@@ -200,6 +201,24 @@ export async function voidPackage(packageId: number, reason: string): Promise<Pa
   const { data } = await apiClient.post<Package>(`/packing/packages/${packageId}/void`, {
     reason,
   });
+  return data;
+}
+
+/**
+ * Kısmi teslimat: seçilen kalemler İKİNCİ pakete taşınır ve yeni paket döner.
+ *
+ * Hangi kalemin sonraya kalacağını çağıran söyler. Bölme OTOMATİK DEĞİLDİR —
+ * bu çağrı yapılmazsa sipariş tek teslimat olarak bekler. Kaynak paket
+ * `OPEN`/`PACKED` olmalıdır; araçtaki paketi bölmek 409 döner.
+ */
+export async function splitPackage(
+  packageId: number,
+  payload: PackageSplitPayload,
+): Promise<Package> {
+  const { data } = await apiClient.post<Package>(
+    `/packing/packages/${packageId}/split`,
+    payload,
+  );
   return data;
 }
 

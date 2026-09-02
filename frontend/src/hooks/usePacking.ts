@@ -18,6 +18,7 @@ import * as packingApi from "@/api/packing";
 import type {
   Package,
   PackageReturnInPayload,
+  PackageSplitPayload,
   PackageScan,
   PackageScanPayload,
   PackageUndoScanPayload,
@@ -230,6 +231,31 @@ export function useCompletePackage() {
     mutationFn: (packageId: number) => packingApi.completePackage(packageId),
     onSuccess: (paket) => {
       qc.setQueryData<Package>(packageKey(paket.id), paket);
+      invalidate();
+    },
+  });
+}
+
+export interface SplitVariables {
+  packageId: number;
+  payload: PackageSplitPayload;
+}
+
+/**
+ * Kısmi teslimat: seçilen kalemler ikinci pakete taşınır.
+ *
+ * Dönen paket YENİ (ikinci) pakettir; kaynak paket de değiştiği için tekil
+ * önbelleğe yazmak yetmez — kuyruklar ve kaynak paket `invalidate` ile tazelenir.
+ */
+export function useSplitPackage() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidatePacking();
+  return useMutation({
+    mutationFn: ({ packageId, payload }: SplitVariables) =>
+      packingApi.splitPackage(packageId, payload),
+    onSuccess: (yeni, { packageId }) => {
+      qc.setQueryData<Package>(packageKey(yeni.id), yeni);
+      qc.invalidateQueries({ queryKey: packageKey(packageId) });
       invalidate();
     },
   });

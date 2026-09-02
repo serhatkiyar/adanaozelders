@@ -567,6 +567,40 @@ async def test_C5_SHIPPED_siparise_ikinci_paket_icin_durak_acilabilir(fab):
     assert list(durak_paketi) == [yeni.id]
 
 
+@pytest.mark.asyncio
+async def test_C6_bolunen_ikinci_paket_PAKETLEME_KUYRUGUNDA_gorunur(fab):
+    """Kuyruk "paketlenecek paket" sorusunu sormalı, "paketlenecek sipariş"i değil.
+
+    Eski yüklem siparişin HAZIR paketi varsa tüm siparişi kuyruktan düşürüyordu;
+    bölmede birinci paket hazır olduğu an ikinci paket (OPEN) ekranda hiç
+    görünmez ve operatör onu asla açamazdı — özellik kullanılamaz olurdu.
+    """
+    servis = _packing()
+    aid = await fab.admin()
+    p1, _s1, _e1 = await fab.barkodlu_urun(stock=10)
+    p2, _s2, _e2 = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(p1, 1), (p2, 1)])
+    _k1, k2 = await fab.kalem_idleri(oid)
+
+    async with AsyncSessionLocal() as s:
+        kaynak = await servis.open_package(s, oid, admin_id=aid)
+        yeni = await servis.split_package(s, kaynak.id, {k2: 1}, admin_id=aid)
+    # Birinci paket hazırlanır; ikincisi OPEN olarak bekler.
+    async with AsyncSessionLocal() as s:
+        paket = await servis.get_package(s, kaynak.id)
+        for satir in paket.items:
+            for _ in range(satir.expected_qty):
+                await servis.scan(s, kaynak.id, code=satir.sku, admin_id=aid)
+        await servis.complete(s, kaynak.id, admin_id=aid)
+
+    async with AsyncSessionLocal() as s:
+        satirlar, _toplam = await servis.packing_queue(s)
+    assert oid in [satir.order_id for satir in satirlar], (
+        f"ikinci paket ({yeni.code}) paketleme kuyruğunda görünmüyor — "
+        "operatör onu hiç açamaz"
+    )
+
+
 # ══════════════════ D. Müşteri görünümü ═════════════════════════════════════
 
 

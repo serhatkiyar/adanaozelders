@@ -34,10 +34,12 @@ import {
   PageSkeleton,
   ReasonDialog,
 } from "@/components/admin/ui";
+import { SplitDialog } from "@/components/admin/packing/SplitDialog";
 import {
   useCompletePackage,
   usePackage,
   useScanPackageItem,
+  useSplitPackage,
   useUndoPackageScan,
   useVoidPackage,
 } from "@/hooks/usePacking";
@@ -109,6 +111,9 @@ const DURUM_TONU: Record<PackageStatus, "neutral" | "info" | "success" | "warnin
  */
 const VAZGECILEBILIR: readonly string[] = ["OPEN", "PACKED", "RETURNED"];
 
+/** Bölme penceresi = hazırlama evresi (sunucu da yalnız bunlara izin verir). */
+const BOLUNEBILIR: readonly string[] = ["OPEN", "PACKED"];
+
 /**
  * Vazgeçme yetkisi DURUMA BAĞLIDIR — ekran bunu birebir yansıtmalı.
  *
@@ -155,6 +160,7 @@ export default function PackingStationPage() {
   const undo = useUndoPackageScan();
   const complete = useCompletePackage();
   const voidPackage = useVoidPackage();
+  const split = useSplitPackage();
 
   const [kod, setKod] = useState("");
   const [bildirim, setBildirim] = useState<Bildirim | null>(null);
@@ -170,6 +176,7 @@ export default function PackingStationPage() {
   const manuelYuzeyi = useDuzenlemeYuzeyi<PackageItem, void>();
   const geriAlYuzeyi = useDuzenlemeYuzeyi<PackageItem, void>();
   const vazgecYuzeyi = useDuzenlemeYuzeyi<never, void>();
+  const bolYuzeyi = useDuzenlemeYuzeyi<never, void>();
   const manuelSatir = manuelYuzeyi.kayit;
   const geriAlSatir = geriAlYuzeyi.kayit;
   const [tamamlaHatasi, setTamamlaHatasi] = useState<string | null>(null);
@@ -338,6 +345,14 @@ export default function PackingStationPage() {
           code={paket.code}
           status={paket.status}
         />
+        {/* Kısmi teslimat: stok eksiğini gören kişi buradaki paketleyicidir ve
+            iş onun elinde durur (yetki `packing.pack`). Bölme yalnız hazırlama
+            penceresinde anlamlıdır — araçtaki kutu ekrandan ikiye ayrılamaz. */}
+        {canPack && BOLUNEBILIR.includes(paket.status) && paket.items.length > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => bolYuzeyi.yeniAc()}>
+            Kalanı sonraya ayır
+          </Button>
+        )}
         {vazgecebilir(paket.status, canPack, canManage) && (
           <Button size="sm" variant="ghost" onClick={() => vazgecYuzeyi.yeniAc()}>
             Paketten vazgeç
@@ -676,6 +691,32 @@ export default function PackingStationPage() {
               onError: (e) => {
                 vazgecYuzeyi.kapat();
                 toast.error(getErrorMessage(e, "Paketten vazgeçilemedi."));
+              },
+            },
+          )
+        }
+      />
+
+      <SplitDialog
+        open={bolYuzeyi.acik}
+        code={paket.code}
+        items={paket.items}
+        isPending={split.isPending}
+        onClose={bolYuzeyi.kapat}
+        onConfirm={(lines, promisedDate) =>
+          split.mutate(
+            { packageId: paket.id, payload: { lines, promised_date: promisedDate } },
+            {
+              onSuccess: (yeni) => {
+                bolYuzeyi.kapat();
+                toast.success(
+                  `Kalan kalemler ${yeni.code} paketine ayrıldı (${yeni.package_no}. teslimat).`,
+                );
+              },
+              onError: (e) => {
+                // Pencere AÇIK kalır: adetler duruyor, operatör düzeltip
+                // yeniden gönderebilir. Kapatmak seçimi çöpe atardı.
+                toast.error(getErrorMessage(e, "Bölme yapılamadı."));
               },
             },
           )
