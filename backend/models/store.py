@@ -30,6 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed, FetchedValue
 
 from core.database import Base
+from core.order_no import generate_order_no
 from models.mixins import ModeratableMixin, SoftDeleteMixin, TimestampMixin
 
 
@@ -644,6 +645,17 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "orders"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    #: Müşteriye gösterilen KALICI sipariş numarası ("4827-1930-5612").
+    #: `id` sıralıdır (sipariş hacmini sızdırır), `tracking_no` ise teslimat
+    #: denemesine bağlıdır ve her başarısızlıkta değişir — ikisi de müşteri
+    #: referansı olamaz. Üretim: `core.order_no.generate_order_no`.
+    order_no: Mapped[str] = mapped_column(
+        String(14),
+        nullable=False,
+        unique=True,
+        index=True,
+        default=generate_order_no,
+    )
     client_id: Mapped[int] = mapped_column(
         ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )

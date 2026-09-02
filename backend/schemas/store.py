@@ -512,6 +512,9 @@ class OrderItemOut(BaseModel):
 
 class OrderOut(BaseModel):
     id: int
+    #: Müşteriye gösterilen kalıcı sipariş numarası ("4827-1930-5612"). Ekranlarda
+    #: `id` yerine BU yazılır: `id` sıralıdır ve sipariş hacmini sızdırır.
+    order_no: str
     status: str
     payment_status: str
     subtotal: str

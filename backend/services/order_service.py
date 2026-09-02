@@ -1346,6 +1346,7 @@ def _to_out(order: Order) -> OrderOut:
     return_status = order.returns[-1].status if order.returns else None
     return OrderOut(
         id=order.id,
+        order_no=order.order_no,
         status=order.status,
         payment_status=order.payment_status,
         subtotal=str(order.subtotal),

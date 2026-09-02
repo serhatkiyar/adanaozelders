@@ -40,7 +40,7 @@ from models.delivery import (
 )
 from models.packing import OrderPackage
 from models.role import ROLE_IDS, RoleType
-from models.store import DeliveryPref, Order, OrderStatusHistory
+from models.store import DeliveryPref, Order, OrderItem, OrderStatusHistory
 from schemas.delivery import (
     CourierCreate,
     CourierOut,
@@ -59,6 +59,8 @@ from schemas.delivery import (
     CapacityDayOut,
     EligibleOrderOut,
     OrderTrackingOut,
+    ShipmentItemOut,
+    ShipmentOut,
     StopItemOut,
     TimelineEventOut,
 )
@@ -73,6 +75,7 @@ from services import (
     packing_rules,
     packing_service,
 )
+from services.order_identity import fulfillment_state
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -1678,6 +1681,104 @@ def resolve_tracking_status(
     return "NOT_DISPATCHED"
 
 
+#: Paket kuryededir — "yolda mı, teslim edilemedi mi, ertelendi mi" sorusunun
+#: cevabını durak taşır, paketin kendi durumu değil.
+_PACKAGE_ON_VEHICLE = ("HANDED_OVER", "RETURN_PENDING")
+
+
+def shipment_status(package_status: str | None, order_status: str) -> str:
+    """Bir teslimatın müşteriye gösterilecek durumu (saf — pytest'li).
+
+    ``package_status`` None ise sipariş paketsizdir (F30 öncesi) ve sentetik tek
+    teslimat siparişin kendi takip durumunu alır. Depodaki paket (OPEN/PACKED/
+    RETURNED) sipariş DELIVERED görünse bile **teslim edilmiş sayılmaz** —
+    kısmi teslimatta ikinci paket tam olarak bu durumdadır.
+    """
+    if package_status is None:
+        return order_status
+    if package_status == "DELIVERED":
+        return "DELIVERED"
+    if package_status in _PACKAGE_ON_VEHICLE:
+        return order_status
+    return "NOT_DISPATCHED"
+
+
+async def _shipments_view(
+    db: AsyncSession,
+    order: Order,
+    *,
+    tracking_status: str,
+    stop: DeliveryStop | None,
+) -> tuple[list[ShipmentOut], str]:
+    """Siparişin teslimat listesi + teslimat ilerlemesi (fulfillment_state).
+
+    Paket = gönderi nesnesidir (F30). `VOID` paketler listeye GİRMEZ: bozulmuş
+    paket müşteri için hiç var olmamıştır ve numarayı da atlatmamalıdır — sıra
+    `package_no` değil, listedeki konumdur.
+
+    Paketi olmayan (F30 öncesi) siparişte sentetik TEK teslimat üretilir; ekran
+    böylece her siparişte aynı listeyi görür.
+    """
+    packages = (
+        await db.execute(
+            select(OrderPackage)
+            .options(selectinload(OrderPackage.items))
+            .where(OrderPackage.order_id == order.id, OrderPackage.status != "VOID")
+            .order_by(OrderPackage.package_no)
+        )
+    ).scalars().all()
+
+    fiziksel = (
+        await db.execute(
+            select(OrderItem).where(
+                OrderItem.order_id == order.id, OrderItem.kind == "PHYSICAL"
+            )
+        )
+    ).scalars().all()
+    siparis_edilen = {it.id: it.quantity for it in fiziksel}
+    teslim_edilen: dict[int, int] = {}
+    shipments: list[ShipmentOut] = []
+
+    if packages:
+        for sira, paket in enumerate(packages, start=1):
+            durum = shipment_status(paket.status, tracking_status)
+            shipments.append(
+                ShipmentOut(
+                    no=sira,
+                    status=durum,
+                    items=[
+                        ShipmentItemOut(title=satir.title, quantity=satir.expected_qty)
+                        for satir in paket.items
+                    ],
+                    promised_date=order.promised_delivery_date,
+                    delivered_at=paket.delivered_at,
+                )
+            )
+            if durum == "DELIVERED":
+                for satir in paket.items:
+                    teslim_edilen[satir.order_item_id] = (
+                        teslim_edilen.get(satir.order_item_id, 0) + satir.expected_qty
+                    )
+    elif fiziksel:
+        durum = shipment_status(None, tracking_status)
+        shipments.append(
+            ShipmentOut(
+                no=1,
+                status=durum,
+                items=[
+                    ShipmentItemOut(title=it.title, quantity=it.quantity)
+                    for it in fiziksel
+                ],
+                promised_date=order.promised_delivery_date,
+                delivered_at=(stop.delivered_at if stop else None) or order.delivered_at,
+            )
+        )
+        if durum == "DELIVERED":
+            teslim_edilen = dict(siparis_edilen)
+
+    return shipments, fulfillment_state(siparis_edilen, teslim_edilen)
+
+
 async def track_run(db: AsyncSession, run_id: int, *, lat: float, lng: float) -> None:
     """Dağıtıcı konum ping'i → Redis (yalnız aktif turda; kalıcı iz tutulmaz)."""
     run = await _load_run(db, run_id)
@@ -1774,8 +1875,15 @@ async def order_tracking(
         ),
     )
 
+    shipments, teslimat_ilerlemesi = await _shipments_view(
+        db, order, tracking_status=tracking_status, stop=stop
+    )
+
     out = OrderTrackingOut(
         status=tracking_status,
+        order_no=order.order_no,
+        fulfillment_state=teslimat_ilerlemesi,
+        shipments=shipments,
         ship_lat=float(order.ship_lat) if order.ship_lat is not None else None,
         ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
         tracking_no=order.tracking_no,

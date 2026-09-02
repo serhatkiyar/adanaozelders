@@ -296,6 +296,36 @@ class TimelineEventOut(BaseModel):
     at: datetime.datetime
 
 
+class ShipmentItemOut(BaseModel):
+    """Teslimat içindeki kalem — başlık + adet (fiyat/PII yok, sayfa oturumsuz)."""
+
+    title: str
+    quantity: int
+
+
+class ShipmentOut(BaseModel):
+    """Siparişin bir teslimatı ("1. Teslimat").
+
+    Kaynak `order_packages`: paket = gönderi nesnesidir (F30). Paketi olmayan
+    eski siparişler için sentetik TEK teslimat üretilir, böylece ekran her
+    siparişte aynı listeyi görür. `VOID` paketler listeye girmez — bozulmuş
+    paket müşteri için hiç var olmamıştır.
+
+    Bugün bir siparişin tek teslimatı olur; liste, kısmi teslimat geldiğinde
+    ("eldekini bugün gönder, kalanı temin edilince") çoğullaşmaya hazırdır.
+    """
+
+    #: Müşteriye gösterilen sıra: 1, 2, 3… (paket `package_no`'su değil —
+    #: bozulan paketler numarayı atlatır, müşteri boşluk görmemeli).
+    no: int
+    #: NOT_DISPATCHED | EN_ROUTE | DELIVERED | FAILED | POSTPONED
+    status: str
+    items: list[ShipmentItemOut] = []
+    #: Bu teslimat için söz verilen gün; bilinmiyorsa None ("temin ediliyor").
+    promised_date: datetime.date | None = None
+    delivered_at: datetime.datetime | None = None
+
+
 class OrderTrackingOut(BaseModel):
     """Müşterinin sipariş takibi: kurye nerede, kaç durak önde, tahmini varış.
 
@@ -304,6 +334,13 @@ class OrderTrackingOut(BaseModel):
     """
 
     status: str
+    #: Müşteriye gösterilen kalıcı sipariş numarası. `tracking_no` bunun yerine
+    #: geçemez: o teslimat denemesine bağlıdır ve her başarısızlıkta değişir.
+    order_no: str | None = None
+    #: Teslimat ilerlemesi (services.order_identity.fulfillment_state):
+    #: NONE | PARTIAL | ALL. Türetilir, saklanmaz.
+    fulfillment_state: str = "NONE"
+    shipments: list[ShipmentOut] = []
     sequence: int | None = None
     stops_ahead: int | None = None
     # Turdaki toplam durak ("önünde 3 / toplam 12" bağlamı).
