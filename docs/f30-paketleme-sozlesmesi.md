@@ -469,8 +469,25 @@ tedarik tarihi bilinmeyebilir). İlk ikisi Trendyol'un `createdBy` /
 Kabul matrisi: `backend/tests/integration/test_kismi_teslimat_pg.py` (17 düğüm).
 Migration: `e8b3c1d95a47` (kısıtlar + trigger), `d7e2f4a6c918` (durak ↔ paket bağı).
 
-**Hâlâ kapsam dışı:** operatör bölme ekranı (Faz 3), paket başına ayrı SMS ve
-paket bazlı teslimat değerlendirmesi (Faz 4).
+Operatör ekranı ve müşteri bildirimi de tamamlandı:
+
+* **Bölme ekranı** paketleme istasyonundadır ("Kalanı sonraya ayır"), yetkisi
+  `packing.pack` — eksiği gören raftaki kişidir, iş onun elinde durmaz.
+* **Sipariş SON pakette teslim edilmiş sayılır.** İlk paketin teslimi siparişi
+  kapatsaydı `DELIVERED` neredeyse terminal olduğu için ikinci paket bir daha
+  dağıtıma çıkamaz, iade penceresi erken başlar ve müşteriye elinde olmayan
+  ürün için "teslim edildi" yazılırdı. Aynı gerekçeyle `start_run` zimmet
+  kontrolü, `zimmet_zorunlu` ve `on_package_delivered`/`on_package_returning`
+  **durağın paketine** bakar, siparişin "canlı paketine" değil.
+* **Cayma süresi** son parçanın teslim gününde başlar (Mesafeli Sözleşmeler
+  Yönetmeliği). Ayrı koda gerek kalmadı: `delivered_at` yalnız `DELIVERED`
+  geçişinde damgalanır ve o geçiş artık son pakette olur.
+* **SMS** paket başına gider ve bölünmüşse sırayı söyler; takip linki tektir.
+
+**Hâlâ kapsam dışı:** paket bazlı teslimat değerlendirmesi. Sipariş yalnız son
+paketten sonra `DELIVERED` olduğu için değerlendirme zaten teslimatın tamamı
+bittiğinde bir kez sorulur; `uq_delivery_feedback_order` bilinçli olarak
+korunmuştur.
 | `OrderItem`'a SKU kolonu | §3.6. |
 | Müşteri iadesinin (RMA) fiziksel kabulü | F29'da da yok (`RETURN_RECEIVED` kaydı yok); ayrı paket. |
 | `reserved_on_premise` formülünün değiştirilmesi | F29 kapalı; §7 sapması bilinçli borç olarak taşınıyor. |
