@@ -86,7 +86,12 @@ class _ZimmetAktoru:
 
     id: int
     role_id: int
-from services.delivery_timeline import eta_window, mask_recipient, project_customer_timeline
+from services.delivery_timeline import (
+    eta_window,
+    mask_address,
+    mask_recipient,
+    project_customer_timeline,
+)
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
 
@@ -1775,6 +1780,9 @@ async def order_tracking(
         ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
         tracking_no=order.tracking_no,
         recipient_masked=mask_recipient(order.ship_recipient),
+        address_masked=mask_address(
+            order.ship_address, order.ship_district, order.ship_city
+        ),
         promised_delivery_date=order.promised_delivery_date,
         delivery_pref=order.delivery_pref,
         delivery_pref_note=order.delivery_pref_note,

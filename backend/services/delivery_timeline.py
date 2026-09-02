@@ -103,9 +103,46 @@ def eta_window(
     return _floor(start), _ceil(end)
 
 
+_MASK_KEEP = 2
+_MASK_TAIL = "*****"
+
+
+def _mask_words(text: str) -> str:
+    """Kargo sektörü maskesi: her kelimenin ilk 2 karakteri kalır, gerisi yıldız.
+
+    Yurtiçi/Aras vb. takip sayfalarındaki davranış — sayı da harf de aynı kurala
+    girer ("18*****", "KE*****"). Alıcı gönderisini tanır, üçüncü kişi adresi
+    okuyamaz.
+    """
+    return " ".join(w[:_MASK_KEEP] + _MASK_TAIL for w in text.split())
+
+
+def mask_address(
+    address: str | None,
+    district: str | None = None,
+    city: str | None = None,
+) -> str | None:
+    """Teslimat adresini oturumsuz takip sayfası için maskeler.
+
+    "Kurtuluş Mah. Atatürk Cad. No:12 Daire 5" + Seyhan/Adana
+      → "Ku***** Ma***** At***** Ca***** No***** Da***** 5***** Se***** Ad*****"
+
+    Takip linki SMS ile gider ve iletilebilir; adresin tamamı maskelenir. Adres
+    zaten ilçe/il içeriyorsa kuyruk tekrar eklenmez.
+    """
+    base = " ".join(address.split()) if address else ""
+    lower = base.casefold()
+    tail = " ".join(
+        p.strip()
+        for p in (district, city)
+        if p and p.strip() and p.strip().casefold() not in lower
+    )
+    full = " ".join(p for p in (base, tail) if p)
+    return _mask_words(full) or None
+
+
 def mask_recipient(name: str | None) -> str | None:
-    """"Serhat Kıyar" → "S*** K***" (oturumsuz sayfada PII koruması)."""
+    """"Serhat Kıyar" → "Se***** Kı***** (oturumsuz sayfada PII koruması)."""
     if not name:
         return None
-    parts = [p for p in name.split() if p]
-    return " ".join(p[0] + "***" for p in parts) or None
+    return _mask_words(name) or None

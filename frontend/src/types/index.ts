@@ -2337,6 +2337,8 @@ export interface OrderTracking {
   ship_lng?: number | null;
   tracking_no?: string | null;
   recipient_masked?: string | null;
+  /** Kapı/daire sayıları maskeli teslimat adresi (oturumsuz sayfa PII koruması). */
+  address_masked?: string | null;
   promised_delivery_date?: string | null;
   /** Kurye kimlik kartı (yalnız EN_ROUTE'ta dolu). */
   courier_name?: string | null;

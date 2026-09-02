@@ -320,6 +320,8 @@ class OrderTrackingOut(BaseModel):
     # Kimlik/bağlam (oturumsuz sayfada da güvenli: alıcı maskeli, kurye public kimlik).
     tracking_no: str | None = None
     recipient_masked: str | None = None
+    # Kapı/daire sayıları maskeli teslimat adresi (services.delivery_timeline.mask_address).
+    address_masked: str | None = None
     promised_delivery_date: datetime.date | None = None
     courier_name: str | None = None
     courier_photo_url: str | None = None

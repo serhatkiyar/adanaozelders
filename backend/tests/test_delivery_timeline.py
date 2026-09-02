@@ -3,6 +3,7 @@ import datetime
 
 from services.delivery_timeline import (
     eta_window,
+    mask_address,
     mask_recipient,
     project_customer_timeline,
 )
@@ -97,7 +98,32 @@ def test_eta_window_exact_boundary_not_expanded():
 
 
 def test_mask_recipient():
-    assert mask_recipient("Serhat Kıyar") == "S*** K***"
-    assert mask_recipient("Ayşe") == "A***"
+    # Sektör maskesi: her kelimenin ilk 2 karakteri kalır (Yurtiçi/Aras deseni).
+    assert mask_recipient("Serhat Kıyar") == "Se***** Kı*****"
+    assert mask_recipient("Ayşe") == "Ay*****"
     assert mask_recipient("  ") is None
     assert mask_recipient(None) is None
+
+
+# ── mask_address ──────────────────────────────────────────────────────────────────
+
+
+def test_mask_address_keeps_only_first_two_chars_of_each_word():
+    out = mask_address("Kurtuluş Mah. Atatürk Cad. No:12", "Seyhan", "Adana")
+    assert out == "Ku***** Ma***** At***** Ca***** No***** Se***** Ad*****"
+
+
+def test_mask_address_masks_numbers_like_words():
+    # Kapı/blok sayısı da aynı kurala girer: "18*****" (sektör davranışı).
+    assert mask_address("1845 Sokak", None, None) == "18***** So*****"
+
+
+def test_mask_address_does_not_repeat_district_and_city():
+    out = mask_address("Kurtuluş Mah. Seyhan Adana", "Seyhan", "Adana")
+    assert out == "Ku***** Ma***** Se***** Ad*****"
+
+
+def test_mask_address_district_only_when_address_missing():
+    assert mask_address(None, "Seyhan", "Adana") == "Se***** Ad*****"
+    assert mask_address("   ", None, None) is None
+    assert mask_address(None, None, None) is None
