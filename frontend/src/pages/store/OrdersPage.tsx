@@ -71,8 +71,10 @@ export default function OrdersPage() {
       if (!tabDef.match(o.status)) return false;
       if (year !== "all" && new Date(o.created_at).getFullYear() !== Number(year)) return false;
       if (q) {
+        // Müşteri elindeki numarayı arar: sipariş no (tireli ya da tiresiz).
         const hit =
-          String(o.id).includes(q) ||
+          o.order_no.includes(q) ||
+          o.order_no.replace(/-/g, "").includes(q.replace(/-/g, "")) ||
           o.items.some((it) => it.title.toLocaleLowerCase("tr").includes(q));
         if (!hit) return false;
       }
@@ -187,14 +189,18 @@ function OrderCard({ order }: { order: OrderOut }) {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right text-xs">
-            <p className="text-slate-400 ">SİPARİŞ NO #{order.id}</p>
+            <p className="text-slate-400 ">SİPARİŞ NO {order.order_no}</p>
             <div className="flex items-center justify-end gap-3">
               {/* Takip kısayolu — dağıtımdaki sipariş için listeden tek tık
-                  (önceden takip yalnız detay sayfasının içindeydi). */}
+                  (önceden takip yalnız detay sayfasının içindeydi).
+                  DELIVERED de dahildir: teslim sonrası sayfa teslim kanıtını ve
+                  değerlendirmeyi taşır — detay sayfası da aynı koşulu kullanır. */}
               {order.track_token &&
                 order.has_physical &&
                 order.payment_status === "PAID" &&
-                (order.status === "PAID" || order.status === "SHIPPED") && (
+                (order.status === "PAID" ||
+                  order.status === "SHIPPED" ||
+                  order.status === "DELIVERED") && (
                   <Link
                     to={ROUTES.cargoTracking(order.track_token)}
                     className="font-semibold text-indigo-600 hover:underline "

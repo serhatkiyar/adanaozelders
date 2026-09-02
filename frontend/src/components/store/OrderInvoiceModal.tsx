@@ -98,7 +98,7 @@ export function OrderInvoiceModal({
                 {belge ? "Fatura Bilgileri" : "Sipariş Özeti"}
               </p>
               <p className="mt-1 text-xs text-slate-500 ">
-                Sipariş No: <span className="font-medium text-slate-700 ">#{order.id}</span>
+                Sipariş No: <span className="font-medium text-slate-700 ">{order.order_no}</span>
               </p>
               <p className="text-xs text-slate-500 ">
                 Tarih: <span className="font-medium text-slate-700 ">{formatDate(order.created_at)}</span>

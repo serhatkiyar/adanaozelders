@@ -131,8 +131,8 @@ export default function OrderDetailPage() {
   const cell = "flex-1 p-5";
 
   return (
-    <StoreLayout title={`Sipariş #${order.id}`} showCategoryBar={false}>
-      <Seo title={`Sipariş #${order.id}, Mağaza`} noindex />
+    <StoreLayout title={`Sipariş ${order.order_no}`} showCategoryBar={false}>
+      <Seo title={`Sipariş ${order.order_no}, Mağaza`} noindex />
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
         {/* Breadcrumb */}
         <nav className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 ">
@@ -147,7 +147,7 @@ export default function OrderDetailPage() {
           <div>
             <h1 className="text-2xl font-semibold text-slate-900 ">Sipariş Bilgileri</h1>
             <p className="mt-1 text-sm text-slate-500 ">
-              Sipariş Tarihi {formatDate(order.created_at)} · Sipariş No #{order.id}
+              Sipariş Tarihi {formatDate(order.created_at)} · Sipariş No {order.order_no}
             </p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
@@ -513,7 +513,7 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl "
       >
         <h2 className="text-lg font-semibold text-slate-900 ">
-          İade talebi, Sipariş #{order.id}
+          İade talebi, Sipariş {order.order_no}
         </h2>
 
         {/* Tür */}

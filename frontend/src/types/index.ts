@@ -1829,6 +1829,9 @@ export interface OrderItemOut {
 
 export interface OrderOut {
   id: number;
+  /** Müşteriye gösterilen kalıcı sipariş numarası ("4827-1930-5612").
+   *  Ekranlarda `id` yerine BU yazılır — `id` sıralıdır, hacmi sızdırır. */
+  order_no: string;
   status: string;
   payment_status: string;
   subtotal: string;
@@ -2318,8 +2321,31 @@ export interface TimelineEvent {
   at: string;
 }
 
+/** Bir teslimatın içindeki kalem (fiyat yok — sayfa oturumsuz). */
+export interface ShipmentItem {
+  title: string;
+  quantity: number;
+}
+
+/** Siparişin bir teslimatı ("1. Teslimat"). Bugün her siparişte tek eleman;
+ *  kısmi teslimat geldiğinde çoğullaşır. Kaynak: order_packages. */
+export interface Shipment {
+  /** Müşteriye gösterilen sıra (1, 2, …) — paket numarası değil. */
+  no: number;
+  status: OrderTrackingStatus;
+  items: ShipmentItem[];
+  /** Bu teslimat için söz verilen gün; bilinmiyorsa null ("temin ediliyor"). */
+  promised_date?: string | null;
+  delivered_at?: string | null;
+}
+
 export interface OrderTracking {
   status: OrderTrackingStatus;
+  /** Kalıcı müşteri-yüzü sipariş numarası ("4827-1930-5612"). */
+  order_no?: string | null;
+  /** Teslimat ilerlemesi — order.status'ten ayrı eksen (türetilir). */
+  fulfillment_state?: "NONE" | "PARTIAL" | "ALL";
+  shipments?: Shipment[];
   can_feedback: boolean;
   feedback_given: boolean;
   sequence?: number | null;
