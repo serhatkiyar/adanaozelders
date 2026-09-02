@@ -516,7 +516,10 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
         # bir varsayımdır (G5); paket geri bekleniyor işaretlenir ve ancak
         # depoda okutulunca (`return_in`) işletmeye geri sayılır.
         await packing_events.on_package_returning(
-            db, stop.order_id, reason="Tur iptal edildi"
+            db,
+            stop.order_id,
+            reason="Tur iptal edildi",
+            package_id=stop.package_id,
         )
         stop.status = DeliveryStopStatus.FAILED.value
         stop.courier_note = stop.courier_note or "Tur iptal edildi"
@@ -547,22 +550,26 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     # koşulsuz dayatma, paketi HİÇ olmamış (F30 öncesinden gelen) siparişler
     # için bilinçli olarak yapılmadı — onları da zorunlu kılmak dağıtımdaki
     # mevcut siparişleri anında kilitlerdi.
-    paketler = {
-        stop.order_id: await packing_events.live_package(db, stop.order_id)
-        for stop in run.stops
-        if stop.status == DeliveryStopStatus.PENDING.value
-    }
-    zimmetsiz = [
-        order_id
-        for order_id, paket in paketler.items()
-        if paket is not None and paket.status != "HANDED_OVER"
-    ]
-    # F30 commit 5 — VOID kör noktası: canlı paketi olmayan ama paket GEÇMİŞİ
-    # olan sipariş de zimmetsiz sayılır. `VOID` bir paket "canlı paket yok"
-    # demektir ve eski hâlde bu durak sessizce eski (okutmasız) yola düşerdi.
-    for order_id, paket in paketler.items():
-        if paket is None and await _paket_gecmisi_var(db, order_id):
-            zimmetsiz.append(order_id)
+    #
+    # Soru DURAĞIN paketi üzerinedir, siparişin "canlı paketi" üzerine değil:
+    # kısmi teslimatta bir siparişin iki paketi olabilir ve biri depoda beklerken
+    # (henüz temin edilmemiş ikinci teslimat) diğerinin turu başlayabilmelidir.
+    # Sipariş üzerinden bakan eski hâl, depodaki paketi "zimmetlenmemiş" sayıp
+    # yola çıkmış paketin turunu kilitliyordu.
+    bekleyen = [s for s in run.stops if s.status == DeliveryStopStatus.PENDING.value]
+    zimmetsiz: list[int] = []
+    for stop in bekleyen:
+        if stop.package_id is not None:
+            paket = await db.get(OrderPackage, stop.package_id)
+            if paket is None or paket.status != "HANDED_OVER":
+                zimmetsiz.append(stop.order_id)
+            continue
+        # Paketi olmayan (F30 öncesi akıştan gelen) durak eski davranışı sürdürür.
+        # F30 commit 5 — VOID kör noktası: paket GEÇMİŞİ olan ama durağa paket
+        # bağlanmamış sipariş de zimmetsiz sayılır; `VOID` bir paket "canlı paket
+        # yok" demektir ve eski hâlde bu durak sessizce okutmasız yola düşerdi.
+        if await _paket_gecmisi_var(db, stop.order_id):
+            zimmetsiz.append(stop.order_id)
     if zimmetsiz:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -576,7 +583,7 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
         if stop.status != DeliveryStopStatus.PENDING.value:
             continue
         order = stop.order
-        if paketler.get(order.id) is not None:
+        if stop.package_id is not None:
             # Çıkışı zimmet yazdı: sipariş zaten SHIPPED, takip numarası ve
             # takip SMS'i o anda üretildi. Burada tekrarlamak ikinci bir
             # bildirim ve bayat bir tracking_no üretirdi.
@@ -712,7 +719,10 @@ async def expire_stale_runs(db: AsyncSession) -> int:
             # F30 §3.5: watchdog turu kapattı (kurye telefonu öldü) — paket
             # hâlâ araçta. Dört geri dönüş yolundan biri.
             await packing_events.on_package_returning(
-                db, stop.order_id, reason="Tur zaman aşımıyla kapatıldı"
+                db,
+                stop.order_id,
+                reason="Tur zaman aşımıyla kapatıldı",
+                package_id=stop.package_id,
             )
             stop.status = DeliveryStopStatus.FAILED.value
             stop.courier_note = stop.courier_note or "Tur zaman aşımıyla kapatıldı"
@@ -818,6 +828,25 @@ async def _paket_gecmisi_var(db: AsyncSession, order_id: int) -> bool:
             select(OrderPackage.id).where(OrderPackage.order_id == order_id).limit(1)
         )
     ).first() is not None
+
+
+async def _bekleyen_paket_var(db: AsyncSession, order_id: int) -> bool:
+    """Siparişin HENÜZ TESLİM EDİLMEMİŞ (canlı) bir paketi var mı?
+
+    "Sipariş teslim edildi" sorusunun tek doğru cevabı budur: bölünmüş siparişte
+    ilk paketin teslimi siparişi kapatmaz. `VOID` paketler sayılmaz — bozulmuş
+    paket teslimatı bekletmez, yerine yenisi açılır.
+    """
+    return bool(
+        (
+            await db.execute(
+                select(OrderPackage.id).where(
+                    OrderPackage.order_id == order_id,
+                    OrderPackage.status.in_(packing_rules.LIVE_STATUSES),
+                )
+            )
+        ).first()
+    )
 
 
 async def _turda_olmayan_hazir_paketler(
@@ -2305,7 +2334,7 @@ async def _finalize_delivered(
     kapsamın kapalı kaldığını bir call-graph nöbetçisi denetler
     (`tests/acceptance/test_f30_delivery_guard_contract.py`).
     """
-    await packing_events.zimmet_zorunlu(db, stop.order_id)
+    await packing_events.zimmet_zorunlu(db, stop.order_id, package_id=stop.package_id)
     now = _now()
     eta_drift = (now - stop.eta) if stop.eta is not None else None
     stop.status = DeliveryStopStatus.DELIVERED.value
@@ -2316,15 +2345,34 @@ async def _finalize_delivered(
     if note:
         stop.courier_note = note
     order = stop.order
-    await order_fsm.transition_order(db, order, "DELIVERED", changed_by="courier")
     # F30: paket müşteride → terminal (`DELIVERED`). QR'ı da o anda geçersizleşir
     # (sözleşme §3.3): aynı etiketle ikinci bir teslim akışı açılamaz.
-    await packing_events.on_package_delivered(db, order.id)
+    await packing_events.on_package_delivered(
+        db, order.id, package_id=stop.package_id
+    )
+    # ── Sipariş SON pakette kapanır ──
+    #
+    # Kısmi teslimatta ilk paketin teslimi siparişi KAPATMAMALIDIR. Kapatsaydı üç
+    # şey birden bozulurdu: `DELIVERED` neredeyse terminaldir ve depoda bekleyen
+    # ikinci paket bir daha dağıtıma çıkamazdı; `delivered_at` damgalanır ve iade
+    # penceresi henüz gelmemiş ürün için başlardı; müşteriye elinde olmayan ürün
+    # için "teslim edildi" yazılırdı.
+    #
+    # Mevzuat da bunu söylüyor: birden fazla parça hâlinde teslimde cayma süresi
+    # SON parçanın teslim alındığı gün başlar (Mesafeli Sözleşmeler Yönetmeliği).
+    # Paket durumu ÖNCE yazılır: "bekleyen paket var mı" sorusu az önce teslim
+    # edilen paketi hâlâ canlı görürse tek paketli sipariş de kapanmazdı.
+    await db.flush()
+    if await _bekleyen_paket_var(db, order.id):
+        await db.commit()
+        await _notify_upcoming(db, stop.run_id)
+        return
+    await order_fsm.transition_order(db, order, "DELIVERED", changed_by="courier")
     await notification_service.notify(
         db,
         user_id=order.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"Siparişin #{order.id} teslim edildi. İyi çalışmalar!",
+        message=f"Siparişin {order.order_no} teslim edildi. İyi çalışmalar!",
         link="/siparislerim",
     )
     await order_service._email_order(db, order, "DELIVERED")
@@ -2418,7 +2466,10 @@ async def fail_stop(
     # "depoya döndü" varsayıyordu; artık paket geri bekleniyor işaretlenir ve
     # `packing_service.return_queue`'da kaç gündür beklediğiyle görünür (TB-7).
     await packing_events.on_package_returning(
-        db, order.id, reason=f"Teslim edilemedi: {reason}"
+        db,
+        order.id,
+        reason=f"Teslim edilemedi: {reason}",
+        package_id=stop.package_id,
     )
     # Söz borcu: yarına öncelikli yeniden deneme + başarısızlık sayacı (PDS B7).
     # Tavana ulaşırsa (üç-deneme) yeniden kuyruğa GİRMEZ → operatör istisna kuyruğu.

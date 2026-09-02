@@ -601,6 +601,108 @@ async def test_C6_bolunen_ikinci_paket_PAKETLEME_KUYRUGUNDA_gorunur(fab):
     )
 
 
+# ══════════════════ E. Teslim: sipariş SON pakette biter ════════════════════
+
+
+@pytest.mark.asyncio
+async def test_E1_ilk_paket_teslim_edilince_siparis_DELIVERED_OLMAZ(fab):
+    """Bölünmüş siparişte ilk teslim, siparişi kapatmamalı.
+
+    Kapatırsa üç şey birden bozulur: (a) `DELIVERED` neredeyse terminaldir ve
+    ikinci paket bir daha dağıtıma ÇIKAMAZ, (b) `delivered_at` damgalanır ve
+    iade penceresi henüz gelmemiş ürün için başlar, (c) müşteriye "siparişin
+    teslim edildi" yazılır — elinde olmayan ürün için.
+    """
+    servis = _packing()
+    teslimat = _delivery()
+    aid = await fab.admin()
+    p1, _s1, _e1 = await fab.barkodlu_urun(stock=10)
+    p2, _s2, _e2 = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(p1, 1), (p2, 1)])
+    _k1, k2 = await fab.kalem_idleri(oid)
+
+    async with AsyncSessionLocal() as s:
+        kaynak = await servis.open_package(s, oid, admin_id=aid)
+        await servis.split_package(s, kaynak.id, {k2: 1}, admin_id=aid)
+    # Gerçek akış: ikinci paket henüz TEMİN EDİLMEDİ, `OPEN` bekler. Yalnız
+    # birinci paket hazırlanır, tura girer ve teslim edilir.
+    async with AsyncSessionLocal() as s:
+        paket = await servis.get_package(s, kaynak.id)
+        for satir in paket.items:
+            for _ in range(satir.expected_qty):
+                await servis.scan(s, kaynak.id, code=satir.sku, admin_id=aid)
+        await servis.complete(s, kaynak.id, admin_id=aid)
+
+    kurye = await fab.kurye()
+    run_id = await fab.tur(courier_id=kurye)
+    async with AsyncSessionLocal() as s:
+        await teslimat.add_stops(s, run_id, [oid])
+    # Zimmet turdan ÖNCEDİR: kurye paketi araca yüklerken okutur.
+    async with AsyncSessionLocal() as s:
+        paket = await servis.get_package(s, kaynak.id)
+        await teslimat.handover_scan(
+            s, paket.qr_payload, courier_id=kurye, actor="test"
+        )
+    async with AsyncSessionLocal() as s:
+        await teslimat.start_run(s, run_id)
+    async with AsyncSessionLocal() as s:
+        durak_id = (
+            await s.execute(
+                text(
+                    "SELECT id FROM delivery_stops WHERE order_id = :o "
+                    "AND package_id = :p"
+                ),
+                {"o": oid, "p": kaynak.id},
+            )
+        ).scalar_one()
+        await teslimat.override_deliver(s, durak_id, note="test teslimi")
+
+    durum, _odeme = await fab.siparis_durumu(oid)
+    assert durum != "DELIVERED", (
+        "ilk paket teslim edilince sipariş kapandı — ikinci paket artık "
+        "dağıtıma çıkamaz ve iade penceresi erken başlar"
+    )
+    async with AsyncSessionLocal() as s:
+        teslim_ani = (
+            await s.execute(
+                text("SELECT delivered_at FROM orders WHERE id = :i"), {"i": oid}
+            )
+        ).scalar_one()
+    assert teslim_ani is None, "iade penceresi eksik teslimatla başlatıldı"
+
+
+@pytest.mark.asyncio
+async def test_E2_SON_paket_teslim_edilince_siparis_DELIVERED_olur(fab):
+    """Ters prova: bölme olmayan (tek paketli) siparişte davranış değişmez."""
+    servis = _packing()
+    teslimat = _delivery()
+    aid = await fab.admin()
+    p1, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(p1, 1)])
+    paket = await _hazir_paket(fab, servis, oid, aid)
+
+    kurye = await fab.kurye()
+    run_id = await fab.tur(courier_id=kurye)
+    async with AsyncSessionLocal() as s:
+        await teslimat.add_stops(s, run_id, [oid])
+    async with AsyncSessionLocal() as s:
+        await teslimat.handover_scan(
+            s, paket.qr_payload, courier_id=kurye, actor="test"
+        )
+    async with AsyncSessionLocal() as s:
+        await teslimat.start_run(s, run_id)
+    async with AsyncSessionLocal() as s:
+        durak_id = (
+            await s.execute(
+                text("SELECT id FROM delivery_stops WHERE order_id = :o"), {"o": oid}
+            )
+        ).scalar_one()
+        await teslimat.override_deliver(s, durak_id, note="test teslimi")
+
+    durum, _odeme = await fab.siparis_durumu(oid)
+    assert durum == "DELIVERED"
+
+
 # ══════════════════ D. Müşteri görünümü ═════════════════════════════════════
 
 

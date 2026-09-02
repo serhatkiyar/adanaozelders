@@ -126,7 +126,11 @@ TESLIME_HAZIR_PAKET_DURUMLARI: frozenset[str] = frozenset({"HANDED_OVER"})
 
 
 async def zimmet_zorunlu(
-    db: AsyncSession, order_id: int, *, expected_courier_id: int | None = None
+    db: AsyncSession,
+    order_id: int,
+    *,
+    expected_courier_id: int | None = None,
+    package_id: int | None = None,
 ) -> None:
     """Sipariş `DELIVERED` olmadan ÖNCE: paket gerçekten kuryede mi?
 
@@ -174,7 +178,15 @@ async def zimmet_zorunlu(
     okuma yeterlidir: zimmet de ilk halkada `Order`'ı kilitler, yani eş zamanlı
     bir zimmet bu noktada ya tamamen bitmiştir ya hiç başlamamıştır.
     """
-    paket = await live_package(db, order_id)
+    # `package_id` verilirse SORU O PAKET ÜZERİNEDİR. Kısmi teslimatta bir
+    # siparişin iki canlı paketi olabilir; "siparişin canlı paketi" sorusu
+    # o zaman rastgele birini seçer ve depoda bekleyen ikinci paket yüzünden
+    # teslim edilmiş birinci paketin teslimi reddedilirdi.
+    paket = (
+        await db.get(OrderPackage, package_id)
+        if package_id is not None
+        else await live_package(db, order_id)
+    )
     if paket is None:
         return   # F30 öncesi sipariş — bilinçli istisna, yukarıdaki sözleşme
 
@@ -362,7 +374,7 @@ async def on_order_terminal(db: AsyncSession, order: Order, *, reason: str) -> N
 
 
 async def on_package_returning(
-    db: AsyncSession, order_id: int, *, reason: str
+    db: AsyncSession, order_id: int, *, reason: str, package_id: int | None = None
 ) -> bool:
     """Paket kuryede kaldı: `HANDED_OVER` → `RETURN_PENDING` (sözleşme §3.5).
 
@@ -373,7 +385,13 @@ async def on_package_returning(
     **okutularak** doğrulanır (`packing_service.return_in`).
     """
     await _lock_order(db, order_id)
-    package = await live_package(db, order_id, lock=True)
+    # Terminale giden PAKET açıkça verilir (kısmi teslimat): siparişin
+    # "canlı paketi" iki paketten rastgele birini seçerdi.
+    package = (
+        await db.get(OrderPackage, package_id)
+        if package_id is not None
+        else await live_package(db, order_id, lock=True)
+    )
     if package is None:
         return False
     return await _gecis(
@@ -381,14 +399,22 @@ async def on_package_returning(
     )
 
 
-async def on_package_delivered(db: AsyncSession, order_id: int) -> bool:
+async def on_package_delivered(
+    db: AsyncSession, order_id: int, *, package_id: int | None = None
+) -> bool:
     """Durak teslim edildi: `HANDED_OVER` → `DELIVERED` (terminal).
 
     Paket terminal olunca QR'ı da geçersizleşir (sözleşme §3.3) — aynı etiketle
     ikinci bir teslim akışı açılamaz.
     """
     await _lock_order(db, order_id)
-    package = await live_package(db, order_id, lock=True)
+    # Terminale giden PAKET açıkça verilir (kısmi teslimat): siparişin
+    # "canlı paketi" iki paketten rastgele birini seçerdi.
+    package = (
+        await db.get(OrderPackage, package_id)
+        if package_id is not None
+        else await live_package(db, order_id, lock=True)
+    )
     if package is None:
         return False
     return await _gecis(
