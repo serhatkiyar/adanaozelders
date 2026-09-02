@@ -136,7 +136,8 @@ async def _yan_etkiler(order_id: int, package_id: int) -> dict:
         siparis = (
             await s.execute(
                 text(
-                    "SELECT status, tracking_no, client_id FROM orders WHERE id = :o"
+                    "SELECT status, tracking_no, client_id, order_no "
+                    "FROM orders WHERE id = :o"
                 ),
                 {"o": order_id},
             )
@@ -195,7 +196,10 @@ async def _yan_etkiler(order_id: int, package_id: int) -> dict:
                         "SELECT count(*) FROM notifications "
                         "WHERE user_id = :c AND role_id = 3 AND message LIKE :k"
                     ),
-                    {"c": siparis.client_id, "k": f"%#{order_id} %dağıtımda%"},
+                    {
+                        "c": siparis.client_id,
+                        "k": f"%{siparis.order_no}%dağıtımda%",
+                    },
                 )
             ).scalar_one(),
         }

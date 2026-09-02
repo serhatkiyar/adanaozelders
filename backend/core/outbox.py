@@ -84,7 +84,15 @@ def next_allowed_send(
 
 
 async def _h_sms_tracking_link(p: dict[str, Any]) -> bool:
-    return await sms.send_tracking_link_sms(to=p["to"], order_id=p["order_id"], url=p["url"])
+    # `order_no` bu yüke sonradan eklendi. Dağıtım anında KUYRUKTA BEKLEYEN eski
+    # satırlar onu taşımaz; anahtar hatası o SMS'i kalıcı olarak düşürürdü.
+    # Geri düşüş iç kimliktir — eski davranışın aynısı.
+    return await sms.send_tracking_link_sms(
+        to=p["to"],
+        order_no=p.get("order_no") or f"#{p['order_id']}",
+        url=p["url"],
+        shipment_no=p.get("shipment_no"),
+    )
 
 
 async def _h_sms_approach(p: dict[str, Any]) -> bool:

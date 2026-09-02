@@ -830,6 +830,32 @@ async def _paket_gecmisi_var(db: AsyncSession, order_id: int) -> bool:
     ).first() is not None
 
 
+async def _teslimat_sirasi(
+    db: AsyncSession, order_id: int, package_id: int
+) -> int | None:
+    """Paket, müşteriye gösterilen listede kaçıncı teslimat? Tek teslimatta None.
+
+    `package_no` DEĞİL listedeki konum: bozulan (`VOID`) paketler numarayı
+    atlatır ve müşteri "2. teslimat" yazan tek bir SMS alırdı. Takip sayfası da
+    aynı sırayı kullanır (`_shipments_view`), ikisi ayrışmamalı.
+    """
+    paketler = list(
+        (
+            await db.execute(
+                select(OrderPackage.id)
+                .where(
+                    OrderPackage.order_id == order_id,
+                    OrderPackage.status != "VOID",
+                )
+                .order_by(OrderPackage.package_no)
+            )
+        ).scalars()
+    )
+    if len(paketler) < 2 or package_id not in paketler:
+        return None
+    return paketler.index(package_id) + 1
+
+
 async def _bekleyen_paket_var(db: AsyncSession, order_id: int) -> bool:
     """Siparişin HENÜZ TESLİM EDİLMEMİŞ (canlı) bir paketi var mı?
 
@@ -1925,10 +1951,20 @@ async def track_run(db: AsyncSession, run_id: int, *, lat: float, lng: float) ->
     await courier_position.set_position(run_id, lat, lng)
 
 
-def _enqueue_tracking_link(db: AsyncSession, order: Order) -> None:
+def _enqueue_tracking_link(
+    db: AsyncSession, order: Order, *, shipment_no: int | None = None
+) -> None:
     """Sipariş dağıtıma çıkarken oturumsuz kargo takip linki SMS'ini outbox'lar
     (SHIPPED geçişiyle AYNI transaction'da — tur geri alınırsa SMS de gitmez;
-    gönderim + retry worker'da). Telefonsuz siparişte sessizce atlanır."""
+    gönderim + retry worker'da). Telefonsuz siparişte sessizce atlanır.
+
+    `shipment_no` yalnız bölünmüş siparişte doludur: müşteri ikinci bir SMS alır
+    ve hangi teslimatın yola çıktığını bilmelidir (Shopify de her fulfillment
+    için ayrı kargo bildirimi gönderir). Tek teslimatta metin değişmez.
+
+    Link TEK'tir ve değişmez: müşteriye ikinci bir numara ezberletmiyoruz —
+    sayfa siparişin bütün teslimatlarını zaten listeliyor.
+    """
     if not order.ship_phone or not order.track_token:
         return
     base = settings.PUBLIC_TRACKING_BASE_URL.rstrip("/")
@@ -1937,8 +1973,13 @@ def _enqueue_tracking_link(db: AsyncSession, order: Order) -> None:
         "sms:tracking_link",
         {
             "to": order.ship_phone,
+            # `order_id` metinde KULLANILMAZ (müşteri `order_no` görür) ama
+            # yükte kalır: outbox satırını siparişe bağlayan tek anahtar odur
+            # (operasyon sorgusu ve test temizliği bunun üzerinden gider).
             "order_id": order.id,
+            "order_no": order.order_no,
             "url": f"{base}/{order.track_token}",
+            "shipment_no": shipment_no,
         },
     )
 
@@ -2684,14 +2725,22 @@ async def handover_scan(
 
     await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
     order.tracking_no = f"ELDEN-R{stop.run_id}-S{stop.id}"
+    # Sipariş bölünmüşse müşteri bu SMS'i ikinci kez alır; hangi teslimatın yola
+    # çıktığını söylemek zorundayız. Sıra müşteriye gösterilen sıradır (`VOID`
+    # paketler sayılmaz), `package_no` değil.
+    kacinci = await _teslimat_sirasi(db, order.id, paket.id)
     await notification_service.notify(
         db,
         user_id=order.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"Siparişin #{order.id} bugün dağıtımda — kuryemiz yola çıktı.",
+        message=(
+            f"Siparişin {order.order_no} bugün dağıtımda — kuryemiz yola çıktı."
+            if kacinci is None
+            else f"Siparişin {order.order_no} · {kacinci}. teslimat bugün dağıtımda."
+        ),
         link="/siparislerim",
     )
-    _enqueue_tracking_link(db, order)
+    _enqueue_tracking_link(db, order, shipment_no=kacinci)
     if actor_id is not None and actor_role is not None:
         # Zimmet bir SAHA aksiyonudur ve aktörü admin olmayabilir (kurye
         # rol 5). `audit_logs` deseni (actor_role, actor_id) çifti taşıdığı

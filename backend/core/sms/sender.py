@@ -58,11 +58,28 @@ async def send_delivery_otp_sms(*, to: str, code: str, order_id: int) -> bool:
     return await _safe_send(SmsMessage(to=to, text=text))
 
 
-async def send_tracking_link_sms(*, to: str, order_id: int, url: str) -> bool:
-    """Sipariş dağıtıma çıkınca oturumsuz kargo takip linki (canlı kurye takibi)."""
-    text = (
-        f"#{order_id} siparişin dağıtıma çıktı! Kuryeni canlı takip et:\n{url}"
+async def send_tracking_link_sms(
+    *,
+    to: str,
+    order_no: str,
+    url: str,
+    shipment_no: int | None = None,
+) -> bool:
+    """Sipariş dağıtıma çıkınca oturumsuz kargo takip linki (canlı kurye takibi).
+
+    Numara `order_no`dur, iç `id` değil: müşteri ekranlarda o numarayı görüyor
+    ve destekte onu söylüyor.
+
+    `shipment_no` yalnız sipariş BÖLÜNMÜŞSE doludur — kısmi teslimatta müşteri
+    aynı sipariş için ikinci bir SMS alır ve hangi teslimatın yola çıktığını
+    bilmelidir. Tek teslimatta yazılmaz; fazladan karakter fazladan kredidir.
+    """
+    ne = (
+        f"{order_no} siparişin"
+        if shipment_no is None
+        else f"{order_no} siparişinin {shipment_no}. teslimatı"
     )
+    text = f"{ne} dağıtıma çıktı! Kuryeni canlı takip et:\n{url}"
     return await _safe_send(SmsMessage(to=to, text=text))
 
 
