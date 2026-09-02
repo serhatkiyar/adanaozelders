@@ -66,6 +66,22 @@ async def fab(pg) -> PaketFabrikasi:
     await f.temizle()
 
 
+async def _token(order_id: int) -> str:
+    """Siparişin oturumsuz takip token'ı — müşteri yüzeyi bu yoldan okunur."""
+    async with AsyncSessionLocal() as s:
+        return (
+            await s.execute(
+                text("SELECT track_token FROM orders WHERE id = :i"),
+                {"i": order_id},
+            )
+        ).scalar_one()
+
+
+async def _izin_serbest(_action: str) -> None:
+    """`void` izin kancası — testte izin katmanı ölçülmüyor."""
+    return None
+
+
 async def _hazir_paket(fab: PaketFabrikasi, servis, oid: int, aid: int):
     """Siparişin paketini açar, tüm kalemleri okutur ve PACKED yapar."""
     async with AsyncSessionLocal() as s:
@@ -169,7 +185,13 @@ async def test_A3_VOID_paket_satirlari_tavana_SAYILMAZ(fab):
 
     async with AsyncSessionLocal() as s:
         paket = await servis.open_package(s, oid, admin_id=aid)
-        await servis.void(s, paket.id, admin_id=aid, reason="test bozma")
+        await servis.void(
+            s,
+            paket.id,
+            admin_id=aid,
+            reason="test bozma",
+            izin_dogrula=_izin_serbest,
+        )
 
     async with AsyncSessionLocal() as s:
         yeni = await servis.open_package(s, oid, admin_id=aid)
@@ -195,8 +217,11 @@ async def test_A4_TESLIM_EDILMIS_paket_satirlari_tavana_SAYILIR(fab):
         await servis.split_package(s, paket.id, {kalem_id: 1}, admin_id=aid)
         # İlk paket (2 adet) teslim edilmiş sayılsın.
         await s.execute(
-            text("UPDATE order_packages SET status='DELIVERED', delivered_at=now() "
-                 "WHERE id = :p"),
+            text(
+                "UPDATE order_packages SET status='DELIVERED', "
+                "packed_at=now(), handed_over_at=now(), delivered_at=now() "
+                "WHERE id = :p"
+            ),
             {"p": paket.id},
         )
         await s.commit()
@@ -294,8 +319,11 @@ async def test_B4_KURYEDEKI_paket_bolunemez(fab):
 
     async with AsyncSessionLocal() as s:
         await s.execute(
-            text("UPDATE order_packages SET status='HANDED_OVER', "
-                 "handed_over_at=now() WHERE id = :p"),
+            text(
+                "UPDATE order_packages SET status='HANDED_OVER', "
+                "packed_at=coalesce(packed_at, now()), handed_over_at=now() "
+                "WHERE id = :p"
+            ),
             {"p": paket.id},
         )
         await s.commit()
@@ -472,8 +500,11 @@ async def test_C4_birinci_paket_ARACTAYKEN_ikinci_paket_kuyrukta_gorunur(fab):
 
     async with AsyncSessionLocal() as s:
         await s.execute(
-            text("UPDATE order_packages SET status='HANDED_OVER', "
-                 "handed_over_at=now() WHERE id = :p"),
+            text(
+                "UPDATE order_packages SET status='HANDED_OVER', "
+                "packed_at=coalesce(packed_at, now()), handed_over_at=now() "
+                "WHERE id = :p"
+            ),
             {"p": kaynak.id},
         )
         await s.commit()
@@ -507,8 +538,11 @@ async def test_C5_SHIPPED_siparise_ikinci_paket_icin_durak_acilabilir(fab):
 
     async with AsyncSessionLocal() as s:
         await s.execute(
-            text("UPDATE order_packages SET status='HANDED_OVER', "
-                 "handed_over_at=now() WHERE id = :p"),
+            text(
+                "UPDATE order_packages SET status='HANDED_OVER', "
+                "packed_at=coalesce(packed_at, now()), handed_over_at=now() "
+                "WHERE id = :p"
+            ),
             {"p": kaynak.id},
         )
         await s.execute(
@@ -551,7 +585,7 @@ async def test_D1_bolunmus_siparis_takipte_IKI_teslimat_gosterir(fab):
         await servis.split_package(s, kaynak.id, {k2: 1}, admin_id=aid)
 
     async with AsyncSessionLocal() as s:
-        cikti = await teslimat.order_tracking(s, order_id=oid, client_id=None)
+        cikti = await teslimat.order_tracking(s, track_token=await _token(oid))
     assert [x.no for x in cikti.shipments] == [1, 2]
     assert sum(len(x.items) for x in cikti.shipments) == 2
 
@@ -570,12 +604,15 @@ async def test_D2_biri_teslim_biri_beklerken_fulfillment_PARTIAL(fab):
         kaynak = await servis.open_package(s, oid, admin_id=aid)
         await servis.split_package(s, kaynak.id, {k2: 1}, admin_id=aid)
         await s.execute(
-            text("UPDATE order_packages SET status='DELIVERED', delivered_at=now() "
-                 "WHERE id = :p"),
+            text(
+                "UPDATE order_packages SET status='DELIVERED', "
+                "packed_at=now(), handed_over_at=now(), delivered_at=now() "
+                "WHERE id = :p"
+            ),
             {"p": kaynak.id},
         )
         await s.commit()
 
     async with AsyncSessionLocal() as s:
-        cikti = await teslimat.order_tracking(s, order_id=oid, client_id=None)
+        cikti = await teslimat.order_tracking(s, track_token=await _token(oid))
     assert cikti.fulfillment_state == "PARTIAL"

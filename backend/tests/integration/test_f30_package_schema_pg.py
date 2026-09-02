@@ -123,12 +123,23 @@ async def test_AYNI_QR_TOKEN_ikinci_kez_yazilamaz(siparis):
     "mevcut",
     ["OPEN", "PACKED", "HANDED_OVER", "RETURN_PENDING", "RETURNED"],
 )
-async def test_IKINCI_CANLI_PAKET_reddedilir(siparis, mevcut):
-    """Canlı küme = `{OPEN, PACKED, HANDED_OVER, RETURN_PENDING, RETURNED}`.
+async def test_IKINCI_CANLI_PAKET_ARTIK_KABUL_EDILIR(siparis, mevcut):
+    """DEĞİŞTİ (kısmi teslimat): ikinci canlı paket artık yasak DEĞİL.
 
-    İkinci paket, aynı ürünleri ikinci kez raftan almak demektir (§3.5). Beşi
-    de ayrı düğümdür: yüklem yanlışlıkla daraltılırsa (ör. yalnız `OPEN`)
-    tek bir örnekle test edilseydi bu SESSİZCE geçerdi.
+    Eskiden `uq_order_packages_live` "bir siparişin tek canlı paketi olur"
+    diyordu ve bu test onu kilitliyordu. Kısmi teslimat ("eldekini bugün
+    gönder, kalanı temin edilince") tam olarak birden çok canlı paket
+    demektir — index kaldırıldı (migration e8b3c1d95a47).
+
+    Korunan asıl şey — "aynı ürünü ikinci kez raftan alma" — kaybolmadı, YER
+    DEĞİŞTİRDİ: artık paket sayısı değil ADET sınırlanıyor
+    (`order_package_items_ceiling` trigger'ı). Buradaki paketlerin satırı
+    olmadığı için tavan hiç devreye girmez; tavanın kendisi
+    `test_kismi_teslimat_pg.py` A1-A4'te ve aşağıdaki
+    `test_TAVAN_TRIGGERI_YALNIZ_VOID_HARIC_TUTAR`da ölçülür.
+
+    Beş durum ayrı düğüm olarak KALIR: kaldırma yanlışlıkla daraltılıp bazı
+    durumlar için başka bir kısıt eklenirse tek örnekle sessizce geçerdi.
     """
     _fab, oid, _kalem = siparis
     async with AsyncSessionLocal() as s:
@@ -144,11 +155,10 @@ async def test_IKINCI_CANLI_PAKET_reddedilir(siparis, mevcut):
         )
         await s.commit()
 
-    with pytest.raises(IntegrityError) as hata:
-        async with AsyncSessionLocal() as s:
-            await _paket(s, oid, package_no=2)
-            await s.commit()
-    assert "uq_order_packages_live" in str(hata.value)
+    async with AsyncSessionLocal() as s:
+        ikinci = await _paket(s, oid, package_no=2)
+        await s.commit()
+    assert ikinci
 
 
 @pytest.mark.asyncio
@@ -532,28 +542,55 @@ async def _index_yuklemi(ad: str) -> str | None:
 
 
 @pytest.mark.asyncio
-async def test_CANLI_INDEX_YUKLEMI_TERMINAL_KUMESIYLE_AYNI(pg):
-    """`uq_order_packages_live` yüklemi ↔ modelin terminal durum kümesi.
+async def test_TAVAN_TRIGGERI_YALNIZ_VOID_HARIC_TUTAR(pg):
+    """Adet tavanı trigger'ı var mı ve neyi hariç tutuyor?
 
-    Denetim bulgusu P2-2: `alembic check` kısmi index'in `WHERE`'ini
-    karşılaştırmaz. Yüklem sessizce daralırsa (ör. yalnız `'VOID'`) teslim
-    edilmiş siparişe ikinci paket açılabilir; genişlerse (`'RETURNED'` de
-    eklenirse) `repack` akışı ölür. İkisi de üretimde ancak sahada görülür.
+    `uq_order_packages_live`'ın yerini alan koruma budur (migration
+    e8b3c1d95a47) ve `alembic check` bir trigger'ın GÖVDESİNİ karşılaştırmaz.
 
-    Karşılaştırma anlam düzeyindedir: PostgreSQL yüklemi
-    `(status)::text <> ALL (ARRAY[...])` biçimine normalize eder, metin
-    eşitliği aramak her koşumda yalancı kırmızı üretirdi.
+    Hariç tutulan küme tam olarak `{VOID}` olmalıdır:
+      * `DELIVERED` de hariç tutulursa (V1'deki `_tuketilen_adetler` kusuru),
+        teslim edilmiş bir paketin ürünleri "hiç istenmemiş" sayılır ve ikinci
+        teslimat için açılan paket aynı ürünleri YENİDEN ister — depodan ikinci
+        kez toplanır.
+      * `VOID` hariç tutulmazsa bozulan paketin satırları tavanı yer ve
+        `repack` akışı ölür.
 
-    Saf eşi: `test_f30_packing_contract.py::test_CANLI_PAKET_yuklemi_UCLU_AYRISAMAZ`.
+    Davranış eşi: `test_kismi_teslimat_pg.py::test_A3/test_A4`.
     """
-    from models.packing import PACKAGE_STATUSES, TERMINAL_PACKAGE_STATUSES
-    from tests.f30_predicate import canli_kume
+    from sqlalchemy import text as sa_text
 
-    yuklem = await _index_yuklemi("uq_order_packages_live")
-    assert yuklem, "uq_order_packages_live KISMİ değil — her siparişte tek paket olurdu"
-    assert canli_kume(yuklem, tum_durumlar=PACKAGE_STATUSES) == (
-        frozenset(PACKAGE_STATUSES) - frozenset(TERMINAL_PACKAGE_STATUSES)
-    ), f"uygulanmış index yüklemi terminal kümeden ayrışmış: {yuklem}"
+    async with AsyncSessionLocal() as s:
+        govde = (
+            await s.execute(
+                sa_text(
+                    "SELECT prosrc FROM pg_proc "
+                    "WHERE proname = 'order_package_items_ceiling'"
+                )
+            )
+        ).scalar_one_or_none()
+        tetik = (
+            await s.execute(
+                sa_text(
+                    "SELECT count(*) FROM pg_trigger t "
+                    "JOIN pg_class c ON c.oid = t.tgrelid "
+                    "WHERE c.relname = 'order_package_items' "
+                    "AND t.tgname = 'order_package_items_ceiling_trg'"
+                )
+            )
+        ).scalar_one()
+
+    assert govde, "adet tavanı fonksiyonu YOK — ikinci paket sınırsız ürün isterdi"
+    assert tetik == 1, "tavan trigger'ı order_package_items üzerinde bağlı değil"
+    haric = {
+        d
+        for d in ("OPEN", "PACKED", "HANDED_OVER", "RETURN_PENDING", "RETURNED",
+                  "DELIVERED", "VOID")
+        if f"'{d}'" in govde
+    }
+    assert haric == {"VOID"}, (
+        f"tavan yükleminde hariç tutulan küme {sorted(haric)} — beklenen ['VOID']"
+    )
 
 
 @pytest.mark.asyncio

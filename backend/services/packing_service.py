@@ -151,6 +151,11 @@ class PackageView:
     qr_token: str
     qr_payload: str
     items_fingerprint: str
+    #: Paketin kökeni: ORDER (ilk paket / yeniden paketleme) | SPLIT (bölünerek).
+    created_by: str
+    origin_package_id: int | None
+    #: Bu paketin kendi teslimat sözü; NULL = "temin ediliyor".
+    promised_delivery_date: datetime.date | None
     packed_at: datetime.datetime | None
     packed_by_admin_id: int | None
     handed_over_at: datetime.datetime | None
@@ -226,6 +231,9 @@ def _view(paket: OrderPackage) -> PackageView:
         qr_token=paket.qr_token,
         qr_payload=packing_rules.build_package_qr(paket.id, paket.qr_token),
         items_fingerprint=paket.items_fingerprint,
+        created_by=paket.created_by,
+        origin_package_id=paket.origin_package_id,
+        promised_delivery_date=paket.promised_delivery_date,
         packed_at=paket.packed_at,
         packed_by_admin_id=paket.packed_by_admin_id,
         handed_over_at=paket.handed_over_at,
@@ -943,15 +951,20 @@ async def return_queue_page(
 
 
 async def _tuketilen_adetler(db: AsyncSession, order_id: int) -> dict[int, int]:
-    """Kalem başına, CANLI paketlerin şimdiden talep ettiği toplam adet.
+    """Kalem başına, paketlerin şimdiden talep ettiği toplam adet (tavan payı).
 
-    V1'de sipariş başına tek canlı paket olduğu için bu toplam pratikte her
-    zaman sıfırdır (yeni paket ancak öncekiler terminal olunca açılır) — ve
-    tam olarak bu yüzden yazılmıştır: `VOID` / `DELIVERED` geçmiş paketlerin
-    satırları **sayılmaz**, yoksa bozulan bir paketten sonra açılan yenisi
-    "hepsi zaten paketlenmiş" diye boş doğardı. V2'de bir sipariş birden çok
-    kutuya bölündüğünde aynı toplam gerçek bir tavana dönüşür ve invariant
-    (`Σ aktif expected_qty ≤ order_item.quantity`) kendiliğinden korunur.
+    Sayılmayan tek durum **`VOID`**: bozulan paket fiziksel olarak geri
+    açılmıştır, ürün raftadır — yoksa bozulan bir paketten sonra açılan yenisi
+    "hepsi zaten paketlenmiş" diye boş doğardı.
+
+    `DELIVERED` **SAYILIR**. Bu, V1'de fark edilmeyen bir kusurun düzeltmesidir:
+    tek paketliyken teslim edilmiş siparişe yeni paket açılmadığı için görünmez
+    kalmıştı. Kısmi teslimatta zararlıdır — "3 üründen 2'si teslim edildi"
+    durumunda açılan yeni paket 3 ürünün hepsini yeniden isteyebilir ve depodan
+    ikinci kez toplanırdı.
+
+    Aynı invariant DB'de de dayatılır (`order_package_items_ceiling` trigger'ı,
+    migration e8b3c1d95a47) — tek katmanlı koruma koruma değildir (§4.1/2).
     """
     rows = (
         await db.execute(
@@ -962,7 +975,7 @@ async def _tuketilen_adetler(db: AsyncSession, order_id: int) -> dict[int, int]:
             .join(OrderPackage, OrderPackage.id == OrderPackageItem.package_id)
             .where(
                 OrderPackage.order_id == order_id,
-                OrderPackage.status.in_(packing_rules.LIVE_STATUSES),
+                OrderPackage.status != "VOID",
             )
             .group_by(OrderPackageItem.order_item_id)
         )
@@ -1085,6 +1098,161 @@ async def open_package(
     )
     await db.commit()
     return _view(paket)
+
+
+#: Bölmeye izin verilen paket durumları — hazırlama penceresi. Trendyol da
+#: paket bölmeyi yalnız `Created`/`Picking` statüsünde açar; araçtaki paketi
+#: ekrandan ikiye ayırmak fiziksel karşılığı olmayan bir iddiadır.
+SPLITTABLE_STATUSES: tuple[str, ...] = ("OPEN", "PACKED")
+
+
+async def split_package(
+    db: AsyncSession,
+    package_id: int,
+    lines: dict[int, int],
+    *,
+    admin_id: int,
+    promised_date: datetime.date | None = None,
+) -> PackageView:
+    """Paketi böler: ``lines`` kadar adet YENİ (ikinci teslimat) pakete taşınır.
+
+    Kısmi teslimatın tek giriş kapısıdır ve **elle** çağrılır — sistem stok
+    eksiği görüp kendiliğinden bölmez. Operatör hazırlarken "bu kalem çıkmadı,
+    eldekini bugün gönderelim" derse bu çalışır; demezse sipariş tek teslimat
+    olarak bekler ("ship complete").
+
+    ``lines``: ``{order_item_id: yeni pakete taşınacak adet}``. Trendyol'un adet
+    bazlı `split-packages` deseni — çağıran neyin SONRAYA kalacağını söyler.
+
+    Kapılar:
+      * Kaynak paket `OPEN`/`PACKED` olmalı (hazırlama penceresi).
+      * Taşınan adet kaynaktaki `expected_qty`'yi aşamaz.
+      * Kaynağı tamamen boşaltan bölme reddedilir — o bölme değil taşımadır ve
+        geriye boş bir paket bırakırdı.
+      * Kalan adet, o satırda ZATEN OKUTULMUŞ adedin altına inemez; yoksa
+        "okuttum, eşleşti" güveni yalanlanırdı.
+
+    Yeni paket `OPEN` doğar: ikinci teslimat da kalem kalem doğrulanacaktır.
+    Kökeni (`created_by='SPLIT'`, `origin_package_id`) kaydedilir.
+    """
+    order = await _lock_order(db, (await _peek(db, package_id)).order_id)
+    _require_open_order(order)
+    kaynak = await _lock_package(db, package_id)
+
+    if kaynak.status not in SPLITTABLE_STATUSES:
+        raise _hata(
+            http.HTTP_409_CONFLICT,
+            f"Paket {packing_rules.package_code(kaynak.id)} bölünemez: durum "
+            f"{kaynak.status}, beklenen {' veya '.join(SPLITTABLE_STATUSES)}",
+        )
+    istenen = {k: int(v) for k, v in lines.items() if int(v) > 0}
+    if not istenen:
+        raise _hata(http.HTTP_400_BAD_REQUEST, "Ayrılacak kalem belirtilmedi")
+
+    kaynak_satirlar = {s.order_item_id: s for s in kaynak.items}
+    for order_item_id, adet in istenen.items():
+        satir = kaynak_satirlar.get(order_item_id)
+        if satir is None:
+            raise _hata(
+                http.HTTP_409_CONFLICT,
+                f"Sipariş kalemi #{order_item_id} bu pakette yok",
+            )
+        if adet > satir.expected_qty:
+            raise _hata(
+                http.HTTP_409_CONFLICT,
+                f"Sipariş kalemi #{order_item_id} için {adet} adet ayrılamaz "
+                f"(pakette {satir.expected_qty} adet var)",
+            )
+        if satir.expected_qty - adet < satir.scanned_qty:
+            raise _hata(
+                http.HTTP_409_CONFLICT,
+                f"Sipariş kalemi #{order_item_id} zaten {satir.scanned_qty} adet "
+                "okutuldu — ayırmadan önce okutmayı geri al",
+            )
+
+    kalan_toplam = sum(
+        s.expected_qty - istenen.get(s.order_item_id, 0) for s in kaynak.items
+    )
+    if kalan_toplam <= 0:
+        raise _hata(
+            http.HTTP_409_CONFLICT,
+            "Bölme kaynağı tamamen boşaltıyor — bu bölme değil taşımadır",
+        )
+
+    sonraki_no = int(
+        (
+            await db.execute(
+                select(func.coalesce(func.max(OrderPackage.package_no), 0)).where(
+                    OrderPackage.order_id == kaynak.order_id
+                )
+            )
+        ).scalar_one()
+    ) + 1
+
+    yeni = OrderPackage(
+        order_id=kaynak.order_id,
+        package_no=sonraki_no,
+        status="OPEN",
+        qr_token=secrets.token_urlsafe(QR_TOKEN_BYTES),
+        items_fingerprint=kaynak.items_fingerprint,
+        created_by="SPLIT",
+        origin_package_id=kaynak.id,
+        promised_delivery_date=promised_date,
+    )
+    for order_item_id, adet in istenen.items():
+        satir = kaynak_satirlar[order_item_id]
+        yeni.items.append(
+            OrderPackageItem(
+                order_item_id=order_item_id,
+                product_id=satir.product_id,
+                sku=satir.sku,
+                barcode=satir.barcode,
+                title=satir.title,
+                expected_qty=adet,
+                scanned_qty=0,
+            )
+        )
+
+    # Kaynak satırlar ÖNCE küçültülür. Tavan trigger'ı satır bazlı ve IMMEDIATE:
+    # yeni satır önce eklenseydi toplam bir an için sipariş adedini aşar ve
+    # bölme sınırda kendi korumasına takılırdı. Azaltma her zaman güvenlidir.
+    for order_item_id, adet in istenen.items():
+        satir = kaynak_satirlar[order_item_id]
+        satir.expected_qty -= adet
+        if satir.expected_qty == 0:
+            await db.delete(satir)
+    await db.flush()
+    db.add(yeni)
+    await db.flush()
+
+    packing_events.record(
+        db,
+        yeni,
+        event_type="OPEN",
+        from_status=None,
+        to_status="OPEN",
+        actor_role=_ADMIN_ROLE,
+        actor_id=admin_id,
+        meta={
+            "package_no": sonraki_no,
+            "item_count": len(istenen),
+            "split_from": kaynak.id,
+        },
+    )
+    await _audit(
+        db,
+        yeni,
+        admin_id=admin_id,
+        action="package.split",
+        after={
+            "status": "OPEN",
+            "package_no": sonraki_no,
+            "origin_package_id": kaynak.id,
+            "lines": istenen,
+        },
+    )
+    await db.commit()
+    return _view(yeni)
 
 
 def _mevcut_paketi_dondur(paket: OrderPackage) -> PackageView:

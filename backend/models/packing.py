@@ -56,6 +56,7 @@ import secrets
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -167,6 +168,25 @@ class OrderPackage(Base, TimestampMixin):
     #: sırasında liste değişmişse STALE tespiti için.
     items_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
 
+    #: Paket nasıl doğdu: `ORDER` (siparişin ilk paketi / yeniden paketleme) ya
+    #: da `SPLIT` (kısmi teslimat için bölünerek). Trendyol'un `createdBy`
+    #: alanının karşılığı — bir paketin kökeni sonradan sorulabilmelidir.
+    created_by: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'ORDER'")
+    )
+    #: Bölmede kaynak paket (Trendyol `originPackageIds`). `SET NULL`: kaynak
+    #: kaydı düşse de bu paket yaşamaya devam eder.
+    origin_package_id: Mapped[int | None] = mapped_column(
+        ForeignKey("order_packages.id", ondelete="SET NULL"), nullable=True
+    )
+    #: Bu paketin KENDİ teslimat sözü. Bölünen ikinci pakette tedarik tarihi
+    #: bilinmeyebilir; NULL ise müşteriye "temin ediliyor" denir, uydurma bir
+    #: tarih verilmez. Sipariş düzeyindeki `promised_delivery_date` ilk
+    #: teslimatın sözü olarak kalır.
+    promised_delivery_date: Mapped[datetime.date | None] = mapped_column(
+        Date, nullable=True
+    )
+
     # ── Aktör + zaman damgaları ──
     # RESTRICT: admin hesapları soft-delete edilir, bu yüzden pratikte hiç
     # tetiklenmez; niyeti belgeler — bir paketleme kararı aktörünü kaybedemez.
@@ -260,15 +280,18 @@ class OrderPackage(Base, TimestampMixin):
         ),
         # ── Yarış otoritesi + tekillik ──
         Index("uq_order_packages_qr_token", "qr_token", unique=True),
-        # Bir siparişin aynı anda TEK canlı paketi olur. Servisteki kontrol
-        # UX içindir; iki eşzamanlı "Paketle" isteğinde son sözü bu index söyler.
-        Index(
-            "uq_order_packages_live",
-            "order_id",
-            unique=True,
-            postgresql_where=text(LIVE_PACKAGE_SQL),
-        ),
+        # NOT: "bir siparişin tek canlı paketi olur" (`uq_order_packages_live`)
+        # KALDIRILDI — kısmi teslimat tam olarak birden çok canlı paket demek.
+        # Yerine `order_package_items` üzerindeki `order_package_items_ceiling`
+        # trigger'ı GERÇEK invariant'ı dayatır:
+        #     Σ (canlı + teslim edilmiş) expected_qty ≤ order_items.quantity
+        # Kaldırılan index bu sayıyı hiç kontrol etmiyordu; yeni koruma daha
+        # dardır. Migration: e8b3c1d95a47.
         UniqueConstraint("order_id", "package_no", name="uq_order_packages_no"),
+        CheckConstraint(
+            "created_by IN ('ORDER', 'SPLIT')",
+            name="ck_order_packages_created_by",
+        ),
         Index("ix_order_packages_status", "status", text("created_at DESC")),
         # Geri dönüş kuyruğu (§3.5): kuryede kalan paketler, en eskisi başta —
         # "kaç gündür bekliyor" sorusunun sorgusu bu kısmi index'te kalır.

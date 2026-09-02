@@ -428,12 +428,49 @@ Bu sınır bir kabul testiyle korunur: `packing_events` ve `packing_rules`,
 
 | Konu | Neden |
 |---|---|
-| Çoklu paket / parça bölme (1 sipariş = N kutu) | Bir sipariş = bir paket varsayımı. Adana içi kitap siparişi tek kutuya sığıyor; V2. |
+| ~~Çoklu paket / parça bölme (1 sipariş = N kutu)~~ | **KAPSAMA ALINDI (2 Eyl 2026).** Aşağıya bakın. |
 | Bölge dışı (dış kargo) siparişlerin paketlenmesi | O kuyruk zaten manuel (`outsourced_orders`); kargo API'si şirket+sandbox sonrası. |
 | Desi / ağırlık / ambalaj malzemesi yönetimi | Tarife işi; F30 fiziksel doğrulama paketi. |
 | Seri no / IMEI / parti-lot takibi | Ürün tipimizde yok. |
 | Raf adresi / toplama rotası (pick path) | F29 "tek fiziksel havuz" varsayımını değiştirir (`f29-envanter-sozlesmesi.md:223`). |
 | 1D barkod **üretimi** | Okutmada EAN kabul edilir; ürettiğimiz etikette QR var. |
+
+### 4.2.1 Kapsam genişlemesi: kısmi teslimat (2 Eyl 2026)
+
+"Bir sipariş = bir paket" varsayımı **kalktı**. Gerekçe operasyonel: hazırlama
+sırasında stok eksik çıktığında tek seçenek siparişin tamamını bekletmek ya da
+iptal etmekti. Artık operatör eldekini bugün gönderip kalanı temin edilince
+gönderebilir.
+
+**Bölme otomatik değildir.** Sistem stok eksiği görüp kendiliğinden bölmez;
+`packing_service.split_package` yalnız operatör çağırdığında çalışır. Operatör
+bölmezse sipariş tek teslimat olarak bekler ("ship complete"). Bölme penceresi
+hazırlama evresidir (`OPEN`/`PACKED`) — araçtaki paket bölünemez. Aynı kural
+Trendyol'un "Paket Bölme"sinde de geçerlidir (yalnız `Created`/`Picking`).
+
+Değişen üç yapı:
+
+| Eski | Yeni | Neden |
+|---|---|---|
+| `uq_order_packages_live` (sipariş başına tek canlı paket) | **kaldırıldı**; yerine `order_package_items_ceiling` trigger'ı: `Σ (canlı + teslim edilmiş) expected_qty ≤ order_items.quantity` | Index adedi hiç saymıyordu, yalnız ikinci paketi yasaklıyordu. Yeni koruma "aynı ürünü ikinci kez raftan alma"yı doğrudan ölçer ve daha dardır. |
+| `uq_delivery_stop_open` (sipariş başına tek açık durak) | paket bazında; paketsiz (F30 öncesi) durakta sipariş bazında KALIR | Bir siparişin iki paketi aynı anda yolda olabilir. |
+| `add_stops`: `order.status == PAID` | `PAID` **veya** `SHIPPED` — yalnız PAKETLİ dalda | Birinci paket zimmetlenince sipariş SHIPPED olur; ikinci paket yine de dağıtıma çıkmalı. Paketsiz SHIPPED sipariş yeniden kuyruğa GİRMEZ (zaten yolda). |
+
+Ayrıca `_tuketilen_adetler` artık `DELIVERED` paketleri de sayar. V1'de yalnız
+canlı paketler sayılıyordu; tek paketliyken görünmeyen bu kusur bölmede
+zararlıdır ("3 üründen 2'si teslim edildi" durumunda yeni paket 3 ürünü
+yeniden isterdi).
+
+Yeni paket alanları: `created_by` (`ORDER`|`SPLIT`), `origin_package_id` ve
+`promised_delivery_date` (bölünen paketin KENDİ sözü; NULL = "temin ediliyor",
+tedarik tarihi bilinmeyebilir). İlk ikisi Trendyol'un `createdBy` /
+`originPackageIds` desenidir.
+
+Kabul matrisi: `backend/tests/integration/test_kismi_teslimat_pg.py` (17 düğüm).
+Migration: `e8b3c1d95a47` (kısıtlar + trigger), `d7e2f4a6c918` (durak ↔ paket bağı).
+
+**Hâlâ kapsam dışı:** operatör bölme ekranı (Faz 3), paket başına ayrı SMS ve
+paket bazlı teslimat değerlendirmesi (Faz 4).
 | `OrderItem`'a SKU kolonu | §3.6. |
 | Müşteri iadesinin (RMA) fiziksel kabulü | F29'da da yok (`RETURN_RECEIVED` kaydı yok); ayrı paket. |
 | `reserved_on_premise` formülünün değiştirilmesi | F29 kapalı; §7 sapması bilinçli borç olarak taşınıyor. |

@@ -24,6 +24,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import func, select, text
 
+from core.order_no import generate_order_no
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
 from tests.integration.product_category import integration_product_category_id
@@ -540,11 +541,11 @@ async def _seed_order(product_id: int, quantity: int) -> tuple[int, int]:
         order_id = (
             await s.execute(
                 text(
-                    "INSERT INTO orders (client_id, subtotal, total, payment_status, "
-                    "status, has_physical, track_token) VALUES (:c, 100.00, 100.00, "
+                    "INSERT INTO orders (client_id, order_no, subtotal, total, payment_status, "
+                    "status, has_physical, track_token) VALUES (:c, :no, 100.00, 100.00, "
                     "'PENDING', 'PENDING', true, :t) RETURNING id"
                 ),
-                {"c": client_id, "t": _uniq() + _uniq()},
+                {"c": client_id, "t": _uniq() + _uniq(), "no": generate_order_no()},
             )
         ).scalar_one()
         await s.execute(

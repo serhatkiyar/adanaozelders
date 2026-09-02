@@ -23,7 +23,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -178,18 +177,41 @@ class DeliveryStop(Base, TimestampMixin):
     """
 
     __tablename__ = "delivery_stops"
+    # Tekillik PAKET bazındadır (kısmi teslimat: bir siparişin birden çok paketi
+    # aynı anda yolda olabilir), paketi olmayan F30-öncesi duraklarda SİPARİŞ
+    # bazında kalır. Her kural bu yüzden iki kısmi index'e ayrılır — `package_id`
+    # NULL olan ve olmayan satırlar birbirini kısıtlamaz. Migration: e8b3c1d95a47.
     __table_args__ = (
-        # Aynı sipariş aynı tura iki kez eklenemez (aktif turlar arası tekillik
-        # servis katmanında — FAILED sonrası ertesi günün turuna yeniden eklenebilir).
-        UniqueConstraint("run_id", "order_id", name="uq_delivery_stop_run_order"),
-        # Bir siparişin aynı anda TEK açık (PENDING) durağı olabilir — turlar
-        # arası tekillik. Servisteki _has_open_stop kontrolü UX içindir; yarışta
-        # (çift dispatch-day / iki admin) son söz bu index'indir.
+        # Aynı paket aynı tura iki kez eklenemez.
+        Index(
+            "uq_delivery_stop_run_pkg",
+            "run_id",
+            "package_id",
+            unique=True,
+            postgresql_where=text("package_id IS NOT NULL"),
+        ),
+        # Paketsiz (legacy) durakta eski kural: aynı sipariş aynı tura iki kez giremez.
+        Index(
+            "uq_delivery_stop_run_order",
+            "run_id",
+            "order_id",
+            unique=True,
+            postgresql_where=text("package_id IS NULL"),
+        ),
+        # Bir PAKETİN aynı anda TEK açık (PENDING) durağı olabilir — turlar arası
+        # tekillik. Servisteki kontrol UX içindir; yarışta (çift dispatch-day /
+        # iki admin) son söz bu index'indir.
+        Index(
+            "uq_delivery_stop_open_pkg",
+            "package_id",
+            unique=True,
+            postgresql_where=text("status = 'PENDING' AND package_id IS NOT NULL"),
+        ),
         Index(
             "uq_delivery_stop_open",
             "order_id",
             unique=True,
-            postgresql_where=text("status = 'PENDING'"),
+            postgresql_where=text("status = 'PENDING' AND package_id IS NULL"),
         ),
     )
 

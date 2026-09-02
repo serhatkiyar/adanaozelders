@@ -334,14 +334,23 @@ class PaketFabrikasi(Fabrika):
                     },
                 )
                 await s.commit()
-            # `package_scan_events` append-only + FK RESTRICT → ortak, test
-            # veritabanıyla sınırlı yardımcı üzerinden (kendi commit'ini atar).
-            await purge_packages(s, paket_ids)
+            # Duraklar paketlerden ÖNCE silinir. `delivery_stops.package_id`
+            # FK'si `SET NULL`'dır: paket önce silinirse aynı siparişin birden
+            # çok bekleyen durağı bir anda "paketsiz" hâle gelir ve legacy
+            # `uq_delivery_stop_open` (sipariş başına tek açık paketsiz durak)
+            # ihlal edilir — teardown yarıda kalır, tur satırları sızar ve bir
+            # sonraki test `uq_delivery_run_planned` ile düşer. Üretimde paket
+            # SERT silinmez (VOID edilir), bu yüzden sıra yalnız burada önemli.
             if self.order_ids:
                 await s.execute(
                     text("DELETE FROM delivery_stops WHERE order_id = ANY(:i)"),
                     {"i": self.order_ids},
                 )
+                await s.commit()
+            # `package_scan_events` append-only + FK RESTRICT → ortak, test
+            # veritabanıyla sınırlı yardımcı üzerinden (kendi commit'ini atar).
+            await purge_packages(s, paket_ids)
+            if self.order_ids:
                 # Zimmet/teslim akışı bildirim ve SMS outbox satırı üretir.
                 # Tablo adı `outbox_events`'tir (`models/outbox.py:33`);
                 # `outbox_messages` diye bir tablo YOKTUR. Karşılaştırma metin

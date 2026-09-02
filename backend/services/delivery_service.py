@@ -820,6 +820,34 @@ async def _paket_gecmisi_var(db: AsyncSession, order_id: int) -> bool:
     ).first() is not None
 
 
+async def _turda_olmayan_hazir_paketler(
+    db: AsyncSession, order_id: int
+) -> list[OrderPackage]:
+    """Siparişin HAZIR (`PACKED`) ve henüz açık durağı olmayan paketleri.
+
+    Kilitli okunur: `void` ile yarışta bayat durum üzerinden karar verilirse
+    VOID paketli bir durak doğardı. Sıra `package_no` — birinci teslimat önce.
+
+    Bugün liste tipik olarak tek elemanlıdır; kısmi teslimatta ikinci paket de
+    hazır olduğunda ikisi birden aynı tura girebilir.
+    """
+    return list(
+        (
+            await db.execute(
+                select(OrderPackage)
+                .where(
+                    OrderPackage.order_id == order_id,
+                    OrderPackage.status == "PACKED",
+                    ~_acik_durak_var(OrderPackage.id),
+                )
+                .order_by(OrderPackage.package_no)
+                .with_for_update(of=OrderPackage)
+                .execution_options(populate_existing=True)
+            )
+        ).scalars().all()
+    )
+
+
 async def _has_open_stop(db: AsyncSession, order_id: int) -> bool:
     """Siparişin planlı/aktif bir turda bekleyen durağı var mı?"""
     row = (
@@ -989,6 +1017,45 @@ async def retry_exhausted_order(db: AsyncSession, order_id: int) -> EligibleOrde
 # fonksiyonun geri gelmesini.
 
 
+def _acik_durak_var(paket_kolonu):
+    """Verilen pakete ait bekleyen durak var mı — EXISTS alt sorgusu."""
+    return (
+        select(DeliveryStop.id)
+        .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+        .where(
+            DeliveryStop.package_id == paket_kolonu,
+            DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+            DeliveryRun.status.in_(_ACTIVE_RUN_STATUSES),
+            DeliveryRun.deleted_at.is_(None),
+        )
+        .exists()
+    )
+
+
+def _dagitilabilir_paketi_var():
+    """Siparişin HAZIR (`PACKED`) ve henüz turda olmayan bir paketi var mı?
+
+    Kısmi teslimatta soru sipariş değil **paket** düzeyindedir: birinci paket
+    kuryedeyken depoda bekleyen ikinci paket dağıtıma çıkabilmelidir. Eskiden
+    `off_premise_package_exists()` bunun tersini yapıyordu — bir paket araçtaysa
+    TÜM siparişi kuyruktan düşürüyordu ve ikinci paket hiç yola çıkamazdı.
+    """
+    return (
+        select(OrderPackage.id)
+        .where(
+            OrderPackage.order_id == Order.id,
+            OrderPackage.status == "PACKED",
+            ~_acik_durak_var(OrderPackage.id),
+        )
+        .exists()
+    )
+
+
+def _paketsiz_siparis():
+    """Paketi HİÇ olmamış (F30 öncesi) sipariş — eski kural onlarda sürer."""
+    return ~select(OrderPackage.id).where(OrderPackage.order_id == Order.id).exists()
+
+
 async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
     """Tura eklenebilir siparişler: ödenmiş + fiziksel + Adana-içi (Cıncık bölgesi)
     + HAZIRLANMIŞ + henüz açık durağı yok. Söz verilen günü yaklaşan/geçen en önde.
@@ -1014,23 +1081,33 @@ async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
                 Order.deleted_at.is_(None),
                 Order.has_physical.is_(True),
                 Order.payment_status == "PAID",
-                Order.status == "PAID",
+                # SHIPPED de kuyrukta olabilir: kısmi teslimatta birinci paket
+                # zimmetlenince sipariş SHIPPED olur, ama depodaki ikinci paket
+                # hâlâ dağıtıma çıkmalıdır. Tek paketli siparişte bu bir şey
+                # değiştirmez — aşağıdaki paket koşulu HAZIR paket arar ve
+                # zimmetlenmiş paket PACKED değildir.
+                Order.status.in_(("PAID", "SHIPPED")),
                 Order.ship_in_zone.is_(True),
                 # Yalnız hazırlanmış (etiketi basılmış) paket tura eklenebilir.
                 Order.prepared_at.is_not(None),
                 # Deneme hakkı dolanlar istisna kuyruğunda — otomatik dağıtılmaz.
                 _within_attempt_cap(),
-                # F30: paketi kuryede kalan sipariş yeniden tura verilemez
-                # (sözleşme §3.5). `postpone_delivery` `prepared_at`'i
-                # SIFIRLAMADIĞI için tek başına `prepared_at` süzgeci yetmez —
-                # paket araçtayken sipariş buraya sızardı.
-                ~packing_events.off_premise_package_exists(),
-                # F30 commit 5: paket geçmişi varsa CANLI ve HAZIR bir paket
-                # şart. Çözülmüş (`VOID`) ya da yeniden onaylanmamış
-                # (`RETURNED`) paketli sipariş, bayat bir `prepared_at` damgası
-                # yüzünden buraya sızmamalı.
-                packing_events.dispatchable_package_condition(),
-                ~open_stop_exists,
+                # Paketli siparişte soru PAKET düzeyindedir: hazır ve turda
+                # olmayan bir paket var mı? Çözülmüş (`VOID`) ya da yeniden
+                # onaylanmamış (`RETURNED`) paket `PACKED` olmadığı için
+                # kendiliğinden elenir — bayat bir `prepared_at` damgası da
+                # siparişi buraya sızdıramaz (F30 commit 5'in koruduğu şey).
+                # Paketi hiç olmayan (F30 öncesi) siparişte eski kural sürer.
+                or_(
+                    _dagitilabilir_paketi_var(),
+                    # Paketsiz siparişte SHIPPED gevşemesi GEÇERSİZDİR: o sipariş
+                    # zaten yolda ve geri dönüşünün kaydı yok — yeniden kuyruğa
+                    # alınırsa ikinci kez dağıtıma çıkardı. Nöbetçi:
+                    # test_delivery_zone_pg::test_non_paid_orders_in_neither_queue.
+                    (Order.status == "PAID")
+                    & _paketsiz_siparis()
+                    & ~open_stop_exists,
+                ),
             )
             .order_by(
                 Order.promised_delivery_date.asc().nulls_last(),
@@ -1264,7 +1341,11 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, f"Sipariş #{order_id} fiziksel ürün içermiyor"
             )
-        if order.payment_status != "PAID" or order.status != "PAID":
+        # `SHIPPED` de kabul edilir: kısmi teslimatta birinci paket zimmetlenince
+        # sipariş SHIPPED olur, ama depoda bekleyen ikinci paket hâlâ dağıtıma
+        # çıkmalıdır. Tek paketli siparişte bu bir şey değiştirmez — aşağıdaki
+        # paket kapısı yalnız HAZIR (PACKED) paket için durak açar.
+        if order.payment_status != "PAID" or order.status not in ("PAID", "SHIPPED"):
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 f"Sipariş #{order_id} dağıtıma uygun değil (ödenmiş ve açıkta olmalı)",
@@ -1274,55 +1355,80 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
                 status.HTTP_409_CONFLICT,
                 f"Sipariş #{order_id} henüz hazırlanmadı — önce paketi hazırlayıp etiketle",
             )
-        if await _has_open_stop(db, order_id):
-            raise HTTPException(
-                status.HTTP_409_CONFLICT, f"Sipariş #{order_id} zaten bir turda bekliyor"
-            )
-        # Paket KİLİTLİ okunur: `void` ile yarışta bayat durum üzerinden karar
+        # Paketler KİLİTLİ okunur: `void` ile yarışta bayat durum üzerinden karar
         # verilirse VOID paketli durak doğar (yukarıdaki gerekçe).
-        paket = await packing_events.live_package(db, order_id, lock=True)
+        hazir_paketler = await _turda_olmayan_hazir_paketler(db, order_id)
         # F30 commit 5: paket geçmişi olan sipariş tura ancak **hazır (PACKED)**
         # bir paketle girer. Eskiden yalnız "araçta değil" aranıyordu; o hâlde
         # `cancel_run` sonrası `return_in` ile depoya dönen ama `repack` ile
         # YENİDEN ONAYLANMAMIŞ (`RETURNED`) bir paket tura eklenebiliyordu —
         # sözleşme §3.5 "sıra atlanamaz" kuralının delindiği yer buydu.
-        if paket is None:
+        if hazir_paketler:
+            hedefler: list[OrderPackage | None] = list(hazir_paketler)
+        else:
+            paket = await packing_events.live_package(db, order_id, lock=True)
+            if paket is not None and paket.status != "PACKED":
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Sipariş #{order_id} paketi hazır değil "
+                    f"({packing_rules.package_code(paket.id)} durumu {paket.status}) — "
+                    "tura yalnız tamamlanmış paket eklenir",
+                )
             if await _paket_gecmisi_var(db, order_id):
+                # Paket geçmişi var ama hazır/turda olmayan paket yok: ya
+                # çözülmüş ya da hepsi zaten bir turda bekliyor.
+                if paket is not None:
+                    raise HTTPException(
+                        status.HTTP_409_CONFLICT,
+                        f"Sipariş #{order_id} zaten bir turda bekliyor",
+                    )
                 raise HTTPException(
                     status.HTTP_409_CONFLICT,
                     f"Sipariş #{order_id} paketi çözülmüş — dağıtıma girebilmesi "
                     "için yeniden paketlenmeli (paketleme istasyonu)",
                 )
-        elif paket.status != "PACKED":
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} paketi hazır değil "
-                f"({packing_rules.package_code(paket.id)} durumu {paket.status}) — "
-                "tura yalnız tamamlanmış paket eklenir",
+            # Paketi HİÇ olmamış (F30 öncesi) sipariş: eski kural, tek durak.
+            # SHIPPED gevşemesi burada GEÇERSİZDİR — paketsiz SHIPPED sipariş
+            # zaten yolda ve geri dönüşünün kaydı yok; ikinci kez dağıtıma
+            # çıkarmak fiziksel karşılığı olmayan bir durak üretirdi.
+            if order.status != "PAID":
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Sipariş #{order_id} dağıtıma uygun değil (ödenmiş ve açıkta olmalı)",
+                )
+            if await _has_open_stop(db, order_id):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Sipariş #{order_id} zaten bir turda bekliyor",
+                )
+            hedefler = [None]
+
+        for paket in hedefler:
+            stop = DeliveryStop(
+                run_id=run.id,
+                order_id=order_id,
+                # Durak hangi paketi taşıyor: zimmet ve teslim bunun üzerinden
+                # eşleşir. Paketi hiç olmamış (F30 öncesi) siparişte NULL kalır.
+                package_id=paket.id if paket is not None else None,
+                sequence=next_seq,
+                qr_token=new_qr_token(),
+                status=DeliveryStopStatus.PENDING.value,
             )
-        stop = DeliveryStop(
-            run_id=run.id,
-            order_id=order_id,
-            # Durak hangi paketi taşıyor: zimmet ve teslim bunun üzerinden
-            # eşleşir. Paketi hiç olmamış (F30 öncesi) siparişte NULL kalır.
-            package_id=paket.id if paket is not None else None,
-            sequence=next_seq,
-            qr_token=new_qr_token(),
-            status=DeliveryStopStatus.PENDING.value,
-        )
-        next_seq += 1
-        db.add(stop)
-        # Aktif turda eklenen durak da hemen 'dağıtımda' sayılır; takip SMS'i
-        # outbox'a aynı transaction'da yazılır (geri sarımda SMS de gitmez).
-        #
-        # F30 (sözleşme §3.4): paketi OLAN sipariş burada SHIPPED YAPILMAZ —
-        # çıkışı kuryenin paketi okutması (zimmet) yazar. Paketi HİÇ olmamış
-        # (F30 öncesinden gelen) sipariş eski davranışı sürdürür.
-        if run.status == DeliveryRunStatus.ACTIVE.value and paket is None:
-            await db.flush()
-            await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
-            order.tracking_no = f"ELDEN-R{run.id}-S{stop.id}"
-            _enqueue_tracking_link(db, order)
+            next_seq += 1
+            db.add(stop)
+            # Aktif turda eklenen durak da hemen 'dağıtımda' sayılır; takip SMS'i
+            # outbox'a aynı transaction'da yazılır (geri sarımda SMS de gitmez).
+            #
+            # F30 (sözleşme §3.4): paketi OLAN sipariş burada SHIPPED YAPILMAZ —
+            # çıkışı kuryenin paketi okutması (zimmet) yazar. Paketi HİÇ olmamış
+            # (F30 öncesinden gelen) sipariş eski davranışı sürdürür.
+            if run.status == DeliveryRunStatus.ACTIVE.value and paket is None:
+                await db.flush()
+                await order_fsm.transition_order(
+                    db, order, "SHIPPED", changed_by="courier"
+                )
+                order.tracking_no = f"ELDEN-R{run.id}-S{stop.id}"
+                _enqueue_tracking_link(db, order)
     # Yarışta (_has_open_stop iki istekte de geçtiyse) son sözü
     # uq_delivery_stop_open söyler → IntegrityError, global handler 409'lar.
     await db.commit()

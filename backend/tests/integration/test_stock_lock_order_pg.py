@@ -33,6 +33,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import func, select, text
 
+from core.order_no import generate_order_no
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
 from tests.integration.product_category import integration_product_category_id
@@ -142,11 +143,11 @@ class Fabrika:
             oid = (
                 await s.execute(
                     text(
-                        "INSERT INTO orders (client_id, subtotal, total, "
+                        "INSERT INTO orders (client_id, order_no, subtotal, total, "
                         "payment_status, status, has_physical, track_token) VALUES "
-                        "(:c, 100.00, 100.00, 'PAID', 'PAID', true, :t) RETURNING id"
+                        "(:c, :no, 100.00, 100.00, 'PAID', 'PAID', true, :t) RETURNING id"
                     ),
-                    {"c": cid, "t": _uniq() + _uniq()},
+                    {"c": cid, "t": _uniq() + _uniq(), "no": generate_order_no()},
                 )
             ).scalar_one()
             for pid, adet in kalemler:

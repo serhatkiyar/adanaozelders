@@ -16,6 +16,7 @@ import pytest
 from sqlalchemy import select, text
 
 from core import flags
+from core.order_no import generate_order_no
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
 from tests.integration.product_category import (
@@ -85,11 +86,12 @@ class Fabrika:
             oid = (
                 await s.execute(
                     text(
-                        "INSERT INTO orders (client_id, subtotal, total, "
+                        "INSERT INTO orders (client_id, order_no, subtotal, total, "
                         "payment_status, status, has_physical, track_token) VALUES "
-                        "(:c, 100.00, 100.00, :ps, :st, true, :t) RETURNING id"
+                        "(:c, :no, 100.00, 100.00, :ps, :st, true, :t) RETURNING id"
                     ),
-                    {"c": cid, "ps": durum, "st": durum, "t": _uniq() + _uniq()},
+                    {"c": cid, "ps": durum, "st": durum, "t": _uniq() + _uniq(),
+                     "no": generate_order_no()},
                 )
             ).scalar_one()
             for pid, adet in kalemler:
