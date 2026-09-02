@@ -200,6 +200,14 @@ class DeliveryStop(Base, TimestampMixin):
     order_id: Mapped[int] = mapped_column(
         ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    #: Durağın taşıdığı paket (F30). Paketi hiç olmamış (F30 öncesi) siparişin
+    #: durağında NULL'dır. "Hangi durak hangi paketi taşıyor" sorusunun cevabı
+    #: burasıdır: bir siparişin birden çok paketi olabildiğinde (kısmi teslimat)
+    #: zimmet ve teslim, sipariş üzerinden DEĞİL paket üzerinden eşleşmelidir.
+    #: `SET NULL`: paket kaydı düşerse durak geçmişi silinmez, legacy durağa döner.
+    package_id: Mapped[int | None] = mapped_column(
+        ForeignKey("order_packages.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
     # String(20): "RESCHEDULED" (11 kr) String(10)'a sığmaz.
     status: Mapped[str] = mapped_column(

@@ -17,7 +17,7 @@ import logging
 import secrets
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, true as sa_true, update
+from sqlalchemy import func, or_, select, true as sa_true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -1303,6 +1303,9 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
         stop = DeliveryStop(
             run_id=run.id,
             order_id=order_id,
+            # Durak hangi paketi taşıyor: zimmet ve teslim bunun üzerinden
+            # eşleşir. Paketi hiç olmamış (F30 öncesi) siparişte NULL kalır.
+            package_id=paket.id if paket is not None else None,
             sequence=next_seq,
             qr_token=new_qr_token(),
             status=DeliveryStopStatus.PENDING.value,
@@ -2453,18 +2456,28 @@ async def handover_scan(
         )
 
     # 3b) Bekleyen durak — kanonik sıranın üçüncü halkası.
+    # Eşleşme PAKET üzerindendir: bir siparişin birden çok paketi olduğunda
+    # (kısmi teslimat) sipariş üzerinden aramak YANLIŞ durağı bulur ve okutulan
+    # paket başka bir teslimatın durağına zimmetlenirdi. `package_id IS NULL`
+    # dalı F30 öncesinden gelen duraklar içindir: o siparişlerde paket yok,
+    # bağı kurabileceğimiz tek şey siparişin kendisi.
     stop = (
         await db.execute(
             select(DeliveryStop)
             .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
             .where(
                 DeliveryStop.order_id == order.id,
+                or_(
+                    DeliveryStop.package_id == paket.id,
+                    DeliveryStop.package_id.is_(None),
+                ),
                 DeliveryStop.status == DeliveryStopStatus.PENDING.value,
                 DeliveryRun.status.in_(_ACTIVE_RUN_STATUSES),
                 DeliveryRun.deleted_at.is_(None),
                 *kurye_kosulu,
             )
-            .order_by(DeliveryStop.id)
+            # Paketi açıkça yazılmış durak, legacy (NULL) durağa TERCİH EDİLİR.
+            .order_by(DeliveryStop.package_id.is_(None), DeliveryStop.id)
             .with_for_update(of=DeliveryStop)
             .execution_options(populate_existing=True)
         )
