@@ -11,7 +11,8 @@ import {
 } from "./reservationStatus";
 import type { ReservationStatusKey } from "./reservationModel";
 
-const DERS_ANAHTARI: Record<BookingStatus, ReservationStatusKey> = {
+/** Ders durumu → ortak rezervasyon anahtarı. Rozet çizen her yüzey bunu kullanır. */
+export const DERS_ANAHTARI: Record<BookingStatus, ReservationStatusKey> = {
   [BookingStatus.PENDING]: "BEKLIYOR",
   [BookingStatus.ACCEPTED]: "ONAYLANDI",
   [BookingStatus.REJECTED]: "REDDEDILDI",
