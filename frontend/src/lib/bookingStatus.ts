@@ -1,17 +1,32 @@
+// Ders durum haritası — artık `reservationStatus.ts`'ten TÜRER.
+//
+// Bu dosya bir shim'dir ve bilinçli olarak duruyor: onlarca çağrı yeri
+// `BOOKING_STATUS_LABEL`/`STYLE` isimleriyle bu modülü import ediyor. İsimleri
+// korumak göçü risksiz kılar; değer artık tek kaynaktan gelir ve ders/kütüphane
+// rozetleri ayrışamaz (`reservationStatus.test.ts` bunu kilitliyor).
 import { BookingStatus } from "@/types";
+import {
+  RESERVATION_STATUS_LABEL,
+  RESERVATION_STATUS_STYLE,
+} from "./reservationStatus";
+import type { ReservationStatusKey } from "./reservationModel";
 
-export const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
-  [BookingStatus.PENDING]: "Bekliyor",
-  [BookingStatus.ACCEPTED]: "Onaylandı",
-  [BookingStatus.REJECTED]: "Reddedildi",
-  [BookingStatus.CANCELLED]: "İptal",
-  [BookingStatus.COMPLETED]: "Tamamlandı",
+const DERS_ANAHTARI: Record<BookingStatus, ReservationStatusKey> = {
+  [BookingStatus.PENDING]: "BEKLIYOR",
+  [BookingStatus.ACCEPTED]: "ONAYLANDI",
+  [BookingStatus.REJECTED]: "REDDEDILDI",
+  [BookingStatus.CANCELLED]: "IPTAL",
+  [BookingStatus.COMPLETED]: "TAMAMLANDI",
 };
 
-export const BOOKING_STATUS_STYLE: Record<BookingStatus, string> = {
-  [BookingStatus.PENDING]: "bg-amber-50 text-amber-700",
-  [BookingStatus.ACCEPTED]: "bg-indigo-50 text-indigo-700",
-  [BookingStatus.REJECTED]: "bg-red-50 text-red-700",
-  [BookingStatus.CANCELLED]: "bg-slate-100 text-slate-600",
-  [BookingStatus.COMPLETED]: "bg-emerald-50 text-emerald-700",
-};
+function esle<T>(kaynak: Record<ReservationStatusKey, T>): Record<BookingStatus, T> {
+  return Object.fromEntries(
+    Object.entries(DERS_ANAHTARI).map(([ders, anahtar]) => [
+      ders,
+      kaynak[anahtar as ReservationStatusKey],
+    ]),
+  ) as Record<BookingStatus, T>;
+}
+
+export const BOOKING_STATUS_LABEL = esle(RESERVATION_STATUS_LABEL);
+export const BOOKING_STATUS_STYLE = esle(RESERVATION_STATUS_STYLE);
