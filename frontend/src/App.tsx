@@ -258,7 +258,7 @@ function AccountDispatcher() {
 
 // "Ders Talepleri" — ortak `/ders-talepleri` URL'i, rol göre içerik:
 //  • TUTOR  → panosu (gelen talepler/kazanç) = TutorDashboard
-//  • CLIENT → kendi talep listesi = StudentBookings
+//  • CLIENT → kendi rezervasyon listesi = Reservations
 function BookingsHome() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;

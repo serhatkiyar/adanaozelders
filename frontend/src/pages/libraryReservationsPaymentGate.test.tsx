@@ -35,7 +35,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { apiClient } from "@/api/axios";
-import { LibraryReservationsContent } from "@/pages/LibraryReservations";
+import { ReservationsList } from "@/pages/Reservations";
 import type { PaymentAvailability } from "@/lib/paymentAvailability";
 
 const KAPALI: PaymentAvailability = {
@@ -134,7 +134,7 @@ function sar() {
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <LibraryReservationsContent />
+        <ReservationsList />
       </MemoryRouter>
     </QueryClientProvider>
   );

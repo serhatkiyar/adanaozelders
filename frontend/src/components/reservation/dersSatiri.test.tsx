@@ -19,7 +19,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { BookingStatus, PaymentStatus } from "@/types";
-import { BookingRow } from "./StudentBookings";
+import { BookingRow } from "./LessonRow";
 import type { BookingOut } from "@/types";
 
 function ders(over: Partial<BookingOut> = {}): BookingOut {

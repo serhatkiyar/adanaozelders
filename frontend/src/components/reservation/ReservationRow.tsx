@@ -60,7 +60,7 @@ export function ReservationRow({ item, to }: { item: ReservationItem; to: string
           {goreli && <> · {goreli}</>}
           {/* Tutar satırda kalır: ödenmemiş kayıtta kullanıcı "Ödemeyi
               tamamla"ya basmadan ÖNCE ne ödeyeceğini bilmeli. Ders listesi
-              (`StudentBookings`) da aynısını yapıyor. */}
+              (`LessonRow`) da aynısını yapıyor. */}
           {item.tutar && <> · {formatTRY(item.tutar)}</>}
         </p>
       </div>
