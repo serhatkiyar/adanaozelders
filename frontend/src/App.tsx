@@ -278,7 +278,7 @@ function PanelQuestions() {
 
 // Eski URL'ler → yeni düz yapı. Tek hop `replace`; query string LegacyRedirect
 // tarafından korunur (?token=, ?q=, ?to= …). Eski `/panel/*` öneki dahil.
-const LEGACY_STATIC: [string, string][] = [
+export const LEGACY_STATIC: [string, string][] = [
   // İngilizce/karışık eski yüzey
   ["/login", ROUTES.login],
   ["/register", ROUTES.register],
@@ -300,6 +300,9 @@ const LEGACY_STATIC: [string, string][] = [
   ["/messages", ROUTES.messages],
   ["/calendar", ROUTES.calendar],
   ["/leaderboard", ROUTES.leaderboard],
+  // KALICI: bilet metaforu kalktı ama bu yol SİLİNEMEZ. Veritabanındaki eski
+  // bildirim satırları ve gönderilmiş e-postalar hâlâ "/biletlerim" taşıyor;
+  // yönlendirme kalkarsa o linkler 404 olur. Nöbetçisi routes.test.ts.
   ["/biletlerim", ROUTES.bookings],
   // Eski `/panel/*` öneki → yeni düz path
   ["/panel", ROUTES.home],

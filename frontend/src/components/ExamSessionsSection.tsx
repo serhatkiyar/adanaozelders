@@ -108,7 +108,7 @@ function ExamSessionRow({
         window.location.href = result.redirect_url;
         return;
       }
-      toast.success("Kaydın ve ödemen alındı! Biletin Biletlerim'de.");
+      toast.success("Kaydın ve ödemen alındı! Rezervasyonun Rezervasyonlarım'da.");
     } catch (e) {
       toast.error(getErrorMessage(e, "Kayıt/ödeme başarısız."));
     }
@@ -122,7 +122,7 @@ function ExamSessionRow({
         window.location.href = result.redirect_url;
         return;
       }
-      toast.success("Ödeme alındı! Biletin Biletlerim'de.");
+      toast.success("Ödeme alındı! Rezervasyonun Rezervasyonlarım'da.");
     } catch (e) {
       toast.error(getErrorMessage(e, "Ödeme başarısız."));
     }
@@ -181,7 +181,7 @@ function ExamSessionRow({
             to={ROUTES.bookings}
             className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 "
           >
-            {status === "ATTENDED" ? "✓ Katıldın" : "✓ Biletin hazır"}
+            {status === "ATTENDED" ? "✓ Katıldın" : "✓ Rezervasyonun hazır"}
           </Link>
         ) : status === "PENDING_PAYMENT" ? (
           <button

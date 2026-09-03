@@ -818,7 +818,7 @@ async def _attend_study(
         user_id=res.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
         message="Çalışma alanı rezervasyon girişin doğrulandı.",
-        link="/biletlerim",
+        link="/rezervasyonlar",
     )
     await db.commit()
     # Karma puanlama: bu öğrenci daha önce bu kütüphaneye yorum yazdıysa artık yıldız

@@ -696,7 +696,7 @@ const REFUND: LegalDoc = {
       heading: "8. İtiraz ve Destek",
       blocks: [
         p(
-          `İptal/iade süreçlerine ilişkin itirazlarınız için ${OPERATOR.email} adresine işlem bilgilerinizle (rezervasyon/bilet numarası) başvurabilirsiniz. Tüketici Hakem Heyetlerine ve Tüketici Mahkemelerine başvuru hakkınız saklıdır.`
+          `İptal/iade süreçlerine ilişkin itirazlarınız için ${OPERATOR.email} adresine işlem bilgilerinizle (rezervasyon kodu) başvurabilirsiniz. Tüketici Hakem Heyetlerine ve Tüketici Mahkemelerine başvuru hakkınız saklıdır.`
         ),
       ],
     },
@@ -915,7 +915,7 @@ const ABOUT: LegalDoc = {
           "ÖZEL DERS EŞLEŞTİRME: Öğrenciler branşa, ilçeye, bütçeye ve ders biçimine (online / yüz yüze) göre eğitmen arar, uygun saati seçip rezervasyon oluşturur.",
           "KÜTÜPHANE VE ETÜT MERKEZİ KATALOĞU: Adana'daki çalışma mekânlarının konumu, çalışma saatleri ve olanakları (sessiz alan, wifi, kafeterya vb.) tek yerde listelenir.",
           "ÇALIŞMA ALANI REZERVASYONU: Anlaşmalı kütüphanelerde saatlik koltuk rezervasyonu yapılır; girişte QR kod okutularak kullanım başlar.",
-          "DENEME SINAVI OTURUMLARI: Kütüphanelerin düzenlediği deneme sınavlarına çevrimiçi kayıt ve biletleme yapılır.",
+          "DENEME SINAVI OTURUMLARI: Kütüphanelerin düzenlediği deneme sınavlarına çevrimiçi kayıt ve rezervasyon yapılır.",
           "EĞİTİM KİTABI SATIŞI: Mağazamızdan sipariş edilen basılı kitaplar, Adana içinde kendi araç ve kuryelerimizle elden teslim edilir.",
           "ÇALIŞMA ARAÇLARI: Görev takibi, aralıklı tekrar (flash kart), alışkanlık takibi ve deneme sonucu analizi gibi ücretsiz araçlar hesabınıza dâhildir."
         ),

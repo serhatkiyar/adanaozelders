@@ -32,7 +32,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.bookings,    title: "Rezervasyonlarım",
-    desc: "Derslerin, biletlerin ve talep durumların.",
+    desc: "Derslerin, kütüphane rezervasyonların ve talep durumların.",
     img: "/hesap/rezervasyonlar.webp",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
