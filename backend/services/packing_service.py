@@ -1118,10 +1118,21 @@ async def open_package(
     return _view(paket)
 
 
-#: Bölmeye izin verilen paket durumları — hazırlama penceresi. Trendyol da
-#: paket bölmeyi yalnız `Created`/`Picking` statüsünde açar; araçtaki paketi
-#: ekrandan ikiye ayırmak fiziksel karşılığı olmayan bir iddiadır.
-SPLITTABLE_STATUSES: tuple[str, ...] = ("OPEN", "PACKED")
+#: Bölmeye izin verilen tek durum: paket HÂLÂ AÇIK.
+#:
+#: `PACKED` bilinçli olarak YOK ve bu bir duman turunda bulundu. `complete`
+#: ancak BÜTÜN satırlar okutulunca çalışır (`packing_rules.is_complete`), yani
+#: `PACKED` bir pakette her satırda `scanned_qty == expected_qty`'dir ve
+#: aşağıdaki "okutulmuş adedin altına inme" kapısı böyle bir paketin HER
+#: bölmesini reddeder. `PACKED`'i listede tutmak tutulamayan bir söz veriyordu:
+#: ekran düğmeyi gösteriyor, bölme "önce okutmayı geri al" diyor, `undo_scan`
+#: ise "paket OPEN olmalı" diyordu — operatör kendi kuyruğunu kovalıyordu.
+#:
+#: Fiziksel gerçek de aynı: kapanmış kutudan ürün çıkarmak kutuyu açmaktır ve
+#: sistemdeki karşılığı `void` + yeniden paketlemedir. Araçtaki paket zaten
+#: dışarıdadır (Trendyol da bölmeyi yalnız `Created`/`Picking` penceresinde
+#: açar).
+SPLITTABLE_STATUSES: tuple[str, ...] = ("OPEN",)
 
 
 async def split_package(
@@ -1158,10 +1169,19 @@ async def split_package(
     kaynak = await _lock_package(db, package_id)
 
     if kaynak.status not in SPLITTABLE_STATUSES:
+        kod = packing_rules.package_code(kaynak.id)
+        # Mesaj YAPILACAK İŞİ söyler. "beklenen OPEN" demek yetmiyordu: kapanmış
+        # pakette operatör "o hâlde okutmayı geri alayım" diye deniyor ve
+        # `undo_scan`ın "paket OPEN olmalı" duvarına toslıyordu (duman turu).
+        cikis = (
+            "kutu kapandı — içinden ürün çıkarmak onu fiziksel olarak açmaktır. "
+            "Paketten vazgeçip yeniden paketle, ayırmayı paket açıkken yap."
+            if kaynak.status == "PACKED"
+            else "yalnız hazırlanmakta olan (açık) paket bölünebilir."
+        )
         raise _hata(
             http.HTTP_409_CONFLICT,
-            f"Paket {packing_rules.package_code(kaynak.id)} bölünemez: durum "
-            f"{kaynak.status}, beklenen {' veya '.join(SPLITTABLE_STATUSES)}",
+            f"Paket {kod} bölünemez (durum {kaynak.status}): {cikis}",
         )
     istenen = {k: int(v) for k, v in lines.items() if int(v) > 0}
     if not istenen:

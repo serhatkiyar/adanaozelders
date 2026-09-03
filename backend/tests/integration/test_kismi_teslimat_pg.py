@@ -335,6 +335,29 @@ async def test_B4_KURYEDEKI_paket_bolunemez(fab):
 
 
 @pytest.mark.asyncio
+async def test_B4b_KAPANMIS_paket_bolunemez(fab):
+    """`PACKED` pakette her satır tam okutulmuştur; bölme her hâlde reddedilir.
+
+    Duman turunda bulundu: `PACKED` bölünebilir sayılınca ekran düğmeyi
+    gösteriyor, bölme "önce okutmayı geri al" diyor, `undo_scan` ise "paket
+    OPEN olmalı" diyordu. Mesaj artık gerçek çıkışı söylüyor (paketi çöz).
+    """
+    servis = _packing()
+    aid = await fab.admin()
+    p1, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(p1, 2)])
+    kalem_id = (await fab.kalem_idleri(oid))[0]
+    paket = await _hazir_paket(fab, servis, oid, aid)
+    assert paket.status == "PACKED"
+
+    async with AsyncSessionLocal() as s:
+        with pytest.raises(HTTPException) as exc:
+            await servis.split_package(s, paket.id, {kalem_id: 1}, admin_id=aid)
+    assert exc.value.status_code == 409
+    assert "vazgeç" in str(exc.value.detail).lower()
+
+
+@pytest.mark.asyncio
 async def test_B5_OKUTULMUS_adedin_altina_dusuren_bolme_reddedilir(fab):
     """2 adetten 2'si okutulmuşken 1'ini ayırmak, okutulmuş sayıyı yalanlar."""
     servis = _packing()
@@ -724,6 +747,35 @@ async def test_D1_bolunmus_siparis_takipte_IKI_teslimat_gosterir(fab):
         cikti = await teslimat.order_tracking(s, track_token=await _token(oid))
     assert [x.no for x in cikti.shipments] == [1, 2]
     assert sum(len(x.items) for x in cikti.shipments) == 2
+
+
+@pytest.mark.asyncio
+async def test_D1b_tarihsiz_ikinci_teslimat_SIPARIS_TARIHINI_gostermez(fab):
+    """Bölünen paketin sözü kendisinindir; yoksa boştur ("temin ediliyor").
+
+    Duman turunda yakalandı: ikinci teslimat siparişin ESKİ söz tarihini
+    gösteriyordu — tedariki bilinmeyen ürün için tutulamayacak bir söz.
+    """
+    servis = _packing()
+    teslimat = _delivery()
+    aid = await fab.admin()
+    p1, _s1, _e1 = await fab.barkodlu_urun(stock=10)
+    p2, _s2, _e2 = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(p1, 1), (p2, 1)])
+    _k1, k2 = await fab.kalem_idleri(oid)
+
+    async with AsyncSessionLocal() as s:
+        kaynak = await servis.open_package(s, oid, admin_id=aid)
+        await servis.split_package(s, kaynak.id, {k2: 1}, admin_id=aid)
+
+    async with AsyncSessionLocal() as s:
+        cikti = await teslimat.order_tracking(s, track_token=await _token(oid))
+    birinci, ikinci = cikti.shipments
+    assert birinci.promised_date is not None, "ilk teslimatın sözü kayboldu"
+    assert ikinci.promised_date is None, (
+        "tarihsiz ikinci teslimat siparişin tarihini miras aldı — "
+        "müşteriye tutulamayacak söz verilir"
+    )
 
 
 @pytest.mark.asyncio

@@ -111,8 +111,10 @@ const DURUM_TONU: Record<PackageStatus, "neutral" | "info" | "success" | "warnin
  */
 const VAZGECILEBILIR: readonly string[] = ["OPEN", "PACKED", "RETURNED"];
 
-/** Bölme penceresi = hazırlama evresi (sunucu da yalnız bunlara izin verir). */
-const BOLUNEBILIR: readonly string[] = ["OPEN", "PACKED"];
+/** Bölme yalnız AÇIK pakette anlamlıdır (`packing_service.SPLITTABLE_STATUSES`).
+ *  Kapanmış pakette her satır okutulmuştur; ayrılacak adet kalmaz ve sunucu
+ *  her bölmeyi 409'lar — düğmeyi göstermek tutulamayan bir söz olurdu. */
+const BOLUNEBILIR: readonly string[] = ["OPEN"];
 
 /**
  * Vazgeçme yetkisi DURUMA BAĞLIDIR — ekran bunu birebir yansıtmalı.

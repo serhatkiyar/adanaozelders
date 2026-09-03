@@ -1914,7 +1914,16 @@ async def _shipments_view(
                         ShipmentItemOut(title=satir.title, quantity=satir.expected_qty)
                         for satir in paket.items
                     ],
-                    promised_date=order.promised_delivery_date,
+                    # Bölmeden doğan paketin sözü KENDİSİNİNDİR. Siparişin
+                    # tarihine düşmek, tedariki bilinmeyen ikinci teslimat için
+                    # tutulamayacak bir söz verirdi — operatör tarih girmediyse
+                    # müşteri "temin ediliyor" görmeli (duman turunda yakalandı).
+                    promised_date=(
+                        paket.promised_delivery_date
+                        if paket.created_by == "SPLIT"
+                        else paket.promised_delivery_date
+                        or order.promised_delivery_date
+                    ),
                     delivered_at=paket.delivered_at,
                 )
             )
