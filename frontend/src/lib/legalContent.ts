@@ -474,8 +474,8 @@ const DISTANCE_SALES: LegalDoc = {
       blocks: [
         list(
           "Özel ders: rezervasyonda belirtilen tarih ve saatte, online ise Platform içindeki görüntülü görüşme penceresiyle, yüz yüze ise kararlaştırılan buluşma noktasında ifa edilir.",
-          "Deneme sınavı oturumu: ilanda belirtilen tarihte ilgili kurumda gerçekleşir; ALICI, girişte Platformdaki QR biletini okutarak katılımını doğrular.",
-          "Çalışma alanı: rezerve edilen saat aralığında ilgili kurumda kullanılır; girişte QR kod doğrulaması yapılır.",
+          "Deneme sınavı oturumu: ilanda belirtilen tarihte ilgili kurumda gerçekleşir; ALICI, girişte Platformdaki rezervasyon kodunu görevliye ileterek katılımını doğrular.",
+          "Çalışma alanı: rezerve edilen saat aralığında ilgili kurumda kullanılır; girişte rezervasyon kodu ile doğrulama yapılır.",
           "Hizmet ifa edildikten sonra bedel, platform komisyonu düşülerek HİZMET SAĞLAYICI'ya aktarılır."
         ),
       ],

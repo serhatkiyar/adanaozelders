@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { OPERATOR_NAV } from "@/lib/nav";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
-import { QrScanner } from "@/components/QrScanner";
 import { useOperatorMe, useVerifyAttendance } from "@/hooks/useLibraryExams";
 import { useLibraryAdminDetail } from "@/hooks/useLibraries";
 import {
@@ -28,13 +27,13 @@ export default function OperatorSessions() {
   const isActive = lib?.status === "ACTIVE";
 
   return (
-    <DashboardShell title="Oturumlar & QR" navItems={OPERATOR_NAV}>
+    <DashboardShell title="Oturumlar" navItems={OPERATOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-5">
         {isLoading ? (
           <div className="h-40 animate-pulse rounded-2xl bg-slate-100 " />
         ) : !isActive ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 ">
-            Deneme oturumları, QR doğrulama ve çalışma rezervasyonları kütüphanen{" "}
+            Deneme oturumları, katılım doğrulama ve çalışma rezervasyonları kütüphanen{" "}
             <strong>onaylandıktan</strong> sonra açılır. Bu sırada{" "}
             <Link to={ROUTES.operatorLibrary} className="font-semibold underline">
               profilini tamamla
@@ -44,7 +43,7 @@ export default function OperatorSessions() {
         ) : (
           op && (
             <>
-              <QrVerifyCard />
+              <OperatorSessionsQrKart />
               <div className={cardCls}>
                 <ExamSessionsManager libraryId={op.library_id} />
               </div>
@@ -57,10 +56,12 @@ export default function OperatorSessions() {
   );
 }
 
-/* ── QR doğrulama (kamera + elle/USB) ── */
-function QrVerifyCard() {
+/* ── Katılım doğrulama (rezervasyon kodu) ── */
+/** Testten doğrudan render edilebilsin diye dışa açık (bkz.
+ *  `operatorKodDogrulama.test.tsx`) — sayfanın geri kalanı operatör
+ *  oturumu ve kütüphane çekimi ister. */
+export function OperatorSessionsQrKart() {
   const verify = useVerifyAttendance();
-  const [scanning, setScanning] = useState(false);
   const [code, setCode] = useState("");
   const [result, setResult] = useState<AttendanceResult | null>(null);
 
@@ -69,7 +70,6 @@ function QrVerifyCard() {
     verify.mutate(payload.trim(), {
       onSuccess: (res) => {
         setResult(res);
-        setScanning(false);
         setCode("");
         if (res.already) toast.success("Zaten doğrulanmıştı.");
         else toast.success(`${res.client_name} doğrulandı ✓`);
@@ -83,34 +83,11 @@ function QrVerifyCard() {
 
   return (
     <div className={cardCls}>
-      <h2 className="mb-3 text-base font-bold text-slate-900 ">Katılım Doğrula (QR)</h2>
+      <h2 className="mb-3 text-base font-bold text-slate-900 ">Katılım Doğrula</h2>
 
-      {scanning ? (
-        <QrScanner
-          onScan={runVerify}
-          onClose={() => setScanning(false)}
-          manualHint="Öğrencinin biletindeki kodu elle girebilir veya USB barkod okuyucu kullanabilirsiniz."
-          manualPlaceholder="Bilet kodu (ör. 12:abc…)"
-        />
-      ) : (
-        <Button
-          className="mb-3 w-full rounded-xl py-3"
-          onClick={() => {
-            setResult(null);
-            setScanning(true);
-          }}
-        >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
-          </svg>
-          Kamera ile QR tara
-        </Button>
-      )}
-
-      <div className="mt-3">
+      <div>
         <p className="mb-1 text-xs font-semibold text-slate-500 ">
-          veya kodu elle gir / USB okuyucu ile okut
+          Öğrencinin rezervasyon kodunu gir (USB okuyucu da kullanılabilir)
         </p>
         {/* İP-A7d3: kutu `placeholder`ı etiket yerine kullanıyordu. Elle kod
             girişi bu ekranın YEDEK yoludur (kamera yoksa / iOS Safari'de
@@ -118,14 +95,14 @@ function QrVerifyCard() {
             düşen kullanıcıyı yalnız bırakıyordu. */}
         <div className="flex gap-2">
           <label className="flex-1">
-            <span className="sr-only">Bilet kodu</span>
+            <span className="sr-only">Rezervasyon kodu</span>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") runVerify(code);
               }}
-              placeholder="Bilet kodu…"
+              placeholder="Rezervasyon kodu…"
               className="input w-full"
             />
           </label>

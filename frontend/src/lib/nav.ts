@@ -64,7 +64,7 @@ export const TUTOR_NAV: NavItem[] = [
 export const OPERATOR_NAV: NavItem[] = [
   { to: "/", label: "Panel", icon: "dashboard", end: true },
   { to: ROUTES.operatorLibrary, label: "Kütüphanem", icon: "library" },
-  { to: ROUTES.operatorSessions, label: "Oturumlar & QR", icon: "tickets" },
+  { to: ROUTES.operatorSessions, label: "Oturumlar", icon: "tickets" },
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
 ];

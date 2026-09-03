@@ -156,8 +156,6 @@ const Settings = lazy(() => import("@/pages/Settings"));
 const Balance = lazy(() => import("@/pages/Balance"));
 const Demands = lazy(() => import("@/pages/Demands"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
-// Geliştirme prototipi: "yırtılan kupon" bilet animasyonu (/test-bilet)
-const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
 const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
 // Geliştirme prototipi: kütüphane kartı tasarım karşılaştırması (/test-kutuphane-karti)
@@ -417,7 +415,6 @@ function App() {
               LibraryCardTest gerçek arama API'sini de çağırıyor. */}
           {import.meta.env.DEV && (
             <>
-              <Route path="/test-bilet" element={<TicketTearTest />} />
               <Route path="/test-canli-ders" element={<TestLiveLesson />} />
               <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
             </>
