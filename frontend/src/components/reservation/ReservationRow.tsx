@@ -51,11 +51,20 @@ export function ReservationRow({ item, to }: { item: ReservationItem; to: string
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-slate-900">{item.baslik}</p>
-        <p className="truncate text-sm text-slate-500">
-          {TUR_ETIKETI[item.tur]}
-          {item.altBaslik && <> · {item.altBaslik}</>}
+        <p className="text-sm text-slate-500">
+          {/* Başlığın KENDİSİ tür adıysa (ders · çalışma alanı) ikinci satırda
+              tekrarlanmaz — ekranda "Ders / Ders · Eda Yılmaz" diye çift
+              yazıyordu. Denemede başlık sınavın adı olduğu için tür kalır. */}
+          {item.baslik !== TUR_ETIKETI[item.tur] && (
+            <>
+              {TUR_ETIKETI[item.tur]}
+              {item.altBaslik && " · "}
+            </>
+          )}
+          {item.altBaslik}
         </p>
-        <p className="mt-0.5 truncate text-xs text-slate-400">
+        {/* Telefonda kırpma YOK: saat ve tutar okunamaz hâle geliyordu. */}
+        <p className="mt-0.5 text-xs text-slate-400">
           {mutlakZaman(item.baslangic, item.bitis)}
           {goreli && <> · {goreli}</>}
           {/* Tutar satırda kalır: ödenmemiş kayıtta kullanıcı "Ödemeyi

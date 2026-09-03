@@ -114,7 +114,7 @@ export default function LibraryReservationDetail() {
       <div className="mx-auto max-w-2xl space-y-6">
         <nav className="flex items-center gap-1.5 text-sm text-slate-500">
           <Link to={ROUTES.bookings} className="hover:text-slate-800">
-            Rezervasyonlarım
+            Rezervasyonlar
           </Link>
           <span className="text-slate-300">/</span>
           <span className="text-slate-700">Detay</span>
@@ -147,7 +147,10 @@ export default function LibraryReservationDetail() {
 
           <ReservationFactList
             facts={[
-              { etiket: "Tür", deger: denemeMi ? "Deneme sınavı" : "Çalışma alanı" },
+              // Çalışma alanında başlığın kendisi "Çalışma alanı" — olgu
+              // listesinde tekrarlamak boş satır üretiyordu. Denemede başlık
+              // sınavın adı olduğu için tür bilgi taşır.
+              { etiket: "Tür", deger: denemeMi ? "Deneme sınavı" : null },
               {
                 etiket: "Süre",
                 deger:
