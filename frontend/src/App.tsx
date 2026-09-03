@@ -136,6 +136,7 @@ const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
+const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
@@ -459,6 +460,10 @@ function App() {
             {/* Ders talepleri — CLIENT + TUTOR ortak (rol göre içerik) */}
             <Route path={PATHS.bookings} element={<BookingsHome />} />
             <Route path={PATHS.lesson} element={<LessonDetail />} />
+            <Route
+              path={PATHS.libraryReservation}
+              element={<LibraryReservationDetail />}
+            />
           </Route>
 
           {/* ── Yalnızca CLIENT ── */}

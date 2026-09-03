@@ -106,6 +106,26 @@ describe("üç kaynak tek modele iner", () => {
     expect(i.tutar).toBe("300.00");
   });
 
+  it("kayıt tipi TEK alana bağlı değildir (kısmi yükte de doğru dal)", () => {
+    // Gerçek kusur: `session_id` olmayan ama gömülü `session` taşıyan kayıt
+    // DERS sanılıyordu; başlık "Ders" oluyor, tarih ve kütüphane kayboluyordu.
+    const kismi = {
+      id: 11,
+      status: "PENDING_PAYMENT",
+      amount: "150.00",
+      session: {
+        title: "TYT Genel Deneme",
+        starts_at: "2026-09-05T10:00:00+03:00",
+        duration_minutes: 135,
+        library_name: "Merkez Kütüphane",
+      },
+    } as unknown as RegistrationOut;
+    const i = toReservationItem(kismi, SIMDI);
+    expect(i.tur).toBe("deneme");
+    expect(i.baslik).toBe("TYT Genel Deneme");
+    expect(i.baslangic).toBe("2026-09-05T10:00:00+03:00");
+  });
+
   it("oturumu okunamayan deneme kaydı ekranı çökertmez", () => {
     const i = toReservationItem(kayit({ session: undefined }), SIMDI);
     expect(i.baslik).toBeTruthy();

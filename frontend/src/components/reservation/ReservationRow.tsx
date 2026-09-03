@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 
 import { ReservationStatusBadge } from "./ReservationStatusBadge";
 import { SOLUK_DURUMLAR } from "@/lib/reservationStatus";
+import { formatTRY } from "@/lib/money";
 import { goreliGun, mutlakZaman, tarihCipasi } from "@/lib/reservationTime";
 import type { ReservationItem, ReservationKind } from "@/lib/reservationModel";
 
@@ -57,6 +58,10 @@ export function ReservationRow({ item, to }: { item: ReservationItem; to: string
         <p className="mt-0.5 truncate text-xs text-slate-400">
           {mutlakZaman(item.baslangic, item.bitis)}
           {goreli && <> · {goreli}</>}
+          {/* Tutar satırda kalır: ödenmemiş kayıtta kullanıcı "Ödemeyi
+              tamamla"ya basmadan ÖNCE ne ödeyeceğini bilmeli. Ders listesi
+              (`StudentBookings`) da aynısını yapıyor. */}
+          {item.tutar && <> · {formatTRY(item.tutar)}</>}
         </p>
       </div>
 

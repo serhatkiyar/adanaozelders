@@ -3,11 +3,11 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV } from "@/lib/nav";
 import { useCheckoutResultToast } from "@/hooks/useCheckoutResult";
 import { StudentBookingsContent } from "./StudentBookings";
-import { TicketsContent } from "./Tickets";
+import { LibraryReservationsContent } from "./LibraryReservations";
 
 const TABS = [
   { key: "bookings", label: "Dersler" },
-  { key: "tickets", label: "Biletler" },
+  { key: "library", label: "Kütüphane" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -22,7 +22,7 @@ export default function Reservations() {
           Rezervasyonlar
         </h1>
         <p className="mt-1 text-sm text-slate-500 ">
-          Derslerini, deneme biletlerini ve çalışma alanı girişlerini tek yerden yönet.
+          Derslerini, deneme sınavlarını ve çalışma alanı rezervasyonlarını tek yerden yönet.
         </p>
 
         {/* Sekmeler — nötr underline (renk yalnız aksiyonlarda) */}
@@ -46,7 +46,7 @@ export default function Reservations() {
           })}
         </div>
 
-        {activeTab === "bookings" ? <StudentBookingsContent /> : <TicketsContent />}
+        {activeTab === "bookings" ? <StudentBookingsContent /> : <LibraryReservationsContent />}
       </div>
     </DashboardShell>
   );

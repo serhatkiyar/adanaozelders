@@ -107,12 +107,18 @@ function tamIadeHakki(baslangic: string | null, simdi: Date): boolean {
   return bas - simdi.getTime() > IADE_PENCERESI_SAAT * 3_600_000;
 }
 
+// Ayrım TEK bir alana bağlanmaz: kayıt bazen `session_id`, bazen gömülü
+// `session` ile gelir (liste ucu ikisini de döndürebiliyor) ve dar bir
+// yüklem kaydı sessizce DERS dalına düşürüyordu — başlık "Ders" oluyor,
+// tarih kayboluyordu.
 function denemeMi(x: Kaynak): x is RegistrationOut {
-  return "session_id" in x;
+  return "session_id" in x || "session" in x;
 }
 
+// `BookingOut` `end_at` taşır (`ends_at` DEĞİL); `ends_at` çalışma
+// rezervasyonuna özgüdür.
 function calismaMi(x: Kaynak): x is StudyReservationOut {
-  return "ends_at" in x && "library_id" in x;
+  return "ends_at" in x;
 }
 
 type Kaynak = BookingOut | RegistrationOut | StudyReservationOut;

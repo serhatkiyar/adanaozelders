@@ -1,7 +1,7 @@
 /**
  * Biletlerim / Rezervasyonlarım — ödeme kolu kapısı (GERÇEK DOM).
  *
- * Regresyon: `Tickets.tsx`'teki iki "Ödemeyi tamamla" butonu ödeme kolunu hiç
+ * Regresyon: kütüphane listesindeki iki "Ödemeyi tamamla" butonu ödeme kolunu hiç
  * sorgulamıyordu. Üretimde kütüphane pazaryeri kolu kapalıdır
  * (`core/payments/iyzico.py::supports_marketplace = False` +
  * `payment_gates.BRANCH_NEEDS_MARKETPLACE[LIBRARY_MARKETPLACE] = True`), yani
@@ -35,7 +35,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { apiClient } from "@/api/axios";
-import { TicketsContent } from "@/pages/Tickets";
+import { LibraryReservationsContent } from "@/pages/LibraryReservations";
 import type { PaymentAvailability } from "@/lib/paymentAvailability";
 
 const KAPALI: PaymentAvailability = {
@@ -134,7 +134,7 @@ function sar() {
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <TicketsContent />
+        <LibraryReservationsContent />
       </MemoryRouter>
     </QueryClientProvider>
   );

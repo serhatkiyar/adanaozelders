@@ -80,8 +80,12 @@ export const PATHS = {
   verifyEmail: "/e-posta-dogrula",
 
   // ── Oturum-içi (DÜZ, role-adaptive) ──
-  /** Rezervasyonlar (Ders + Biletler) (CLIENT). Eğitmen için sadece dersler. */
+  /** Rezervasyonlar (ders + kütüphane) (CLIENT). Eğitmen için sadece dersler. */
   bookings: "/rezervasyonlar",
+  /** Kütüphane rezervasyon detayı. `tur`: `deneme` | `calisma`.
+   *  Kapıda söylenecek giriş kodu URL'lenebilir olmalı — bildirimden ya da
+   *  telefondan tek tıkla açılsın diye ayrı bir yol var. */
+  libraryReservation: "/rezervasyonlar/:tur/:id",
   /** Ders/talep detayı — CLIENT + TUTOR ortak. */
   lesson: "/ders-talepleri/:id",
   messages: "/mesajlar",
@@ -91,7 +95,6 @@ export const PATHS = {
   /** Açık talepler (ilan) — CLIENT açar, TUTOR görüp yanıtlar (rol-adaptif). */
   demands: "/talepler",
   exams: "/denemeler",
-  /** Öğrencinin deneme oturumu biletleri (QR). */
   tasks: "/gorevler",
   /** Bildirimler gelen kutusu (tüm roller). */
   notifications: "/bildirimler",
@@ -255,6 +258,8 @@ export const ROUTES = {
   // ── Oturum-içi ──
   bookings: PATHS.bookings,
   lesson: (id: string | number) => `/ders-talepleri/${id}`,
+  libraryReservation: (tur: "deneme" | "calisma", id: string | number) =>
+    `/rezervasyonlar/${tur}/${id}`,
   messages: PATHS.messages,
   /** Belirli bir kişiyle/kütüphaneyle sohbeti açar (to/name + opsiyonel role). */
   messageWith: (
