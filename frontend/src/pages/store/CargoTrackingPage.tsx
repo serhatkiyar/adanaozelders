@@ -111,7 +111,7 @@ function Stepper({ status }: { status: OrderTrackingStatus }) {
 /** Bölüm başlığı — turuncu yazı + altında saç-teli çizgi. */
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="border-b border-orange-200 pb-1.5 text-base font-semibold text-orange-600">
+    <h2 className="border-b border-orange-200 pb-2 text-lg font-semibold text-orange-600 sm:text-base">
       {children}
     </h2>
   );
@@ -217,7 +217,7 @@ function OrderTabs({ t }: { t: OrderTracking }) {
       type="button"
       onClick={() => setTab(key)}
       className={[
-        "px-8 py-2.5 text-sm font-medium transition",
+        "flex-1 px-4 py-2.5 text-sm font-medium transition sm:flex-none sm:px-8",
         tab === key ? "bg-orange-500 text-white" : "text-slate-500 hover:text-slate-800",
       ].join(" ")}
     >
@@ -242,7 +242,7 @@ function OrderTabs({ t }: { t: OrderTracking }) {
       <dl className="mt-4 space-y-2 text-sm">
         {rows.map(([label, value]) => (
           <div key={label} className="flex gap-3">
-            <dt className="w-32 shrink-0 text-orange-600">{label}</dt>
+            <dt className="w-24 shrink-0 text-orange-600 sm:w-32">{label}</dt>
             <dd className="min-w-0 flex-1 text-slate-700">
               <span className="mr-3 text-slate-400">:</span>
               {value}
@@ -292,16 +292,16 @@ export default function CargoTrackingPage() {
     <div className="min-h-screen bg-slate-50">
       <Seo title="Kargo Takip, Adana Özel Ders" noindex />
 
-      <div className="border-b border-slate-200 bg-white px-6 pb-5 pt-6">
+      <div className="border-b border-slate-200 bg-white px-4 pb-5 pt-6 sm:px-6">
         <Link to={ROUTES.home} className="inline-flex items-center">
           <img src="/logo.svg" alt="Adana Özel Ders" className="h-9 w-auto object-contain" />
         </Link>
       </div>
-      <div className="bg-orange-500 px-6 py-3 shadow-sm">
+      <div className="bg-orange-500 px-4 py-3 shadow-sm sm:px-6">
         <h1 className="text-base font-semibold tracking-tight text-white">Kargo Takip</h1>
       </div>
 
-      <div className="mx-auto max-w-3xl px-6 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
             <div className="h-7 w-7 animate-spin rounded-full border-4 border-slate-200 border-t-orange-500" />
@@ -326,7 +326,7 @@ export default function CargoTrackingPage() {
             <section className="pt-7">
               <SectionTitle>Sipariş Durumu</SectionTitle>
               <p className="mt-3 text-sm text-slate-600">{COPY[t.status]}</p>
-              <div className="mt-4 max-w-sm">
+              <div className="mt-4 sm:max-w-sm">
                 <Stepper status={t.status} />
               </div>
 
