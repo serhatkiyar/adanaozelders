@@ -1,7 +1,8 @@
 // Teslimat tercihi + erteleme — İKİ yüzeyde aynı bileşen:
-//   mode="token": SMS'ten gelen oturumsuz takip sayfası. Güvenlik: KAPIYA/
-//     KOMSUYA burada SEÇİLEMEZ (backend 403 — takip linki sızarsa paket kapıya
-//     yönlendirilemesin); çipler kilitli gösterilir, giriş önerilir.
+//   mode="token": SMS'ten gelen oturumsuz takip sayfası. ÜÇ AKSİYON KUTUSU
+//     gösterir (komşuma / istediğim zaman / farklı adrese). Güvenlik: komşuya
+//     bırakma ve adres değişikliği burada YAPILAMAZ (backend 403 — takip linki
+//     iletilebilir), kutular girişe yönlendirir; erteleme serbesttir.
 //   mode="order": oturumlu sipariş detayı — tüm tercihler serbest.
 // window.prompt/confirm yerine Modal (tasarım dili + iOS uyumu).
 import { useState } from "react";
@@ -22,18 +23,89 @@ import type { DeliveryPref, OrderTracking } from "@/types";
 
 type Mode = { kind: "token"; token: string } | { kind: "order"; orderId: number };
 
-// Token'lı yüzeyde kilitli tercihler (backend 403 — burada dürüstçe kilit).
-const TOKEN_LOCKED: DeliveryPref[] = ["KAPIYA_BIRAK", "KOMSUYA_BIRAK"];
+/** Token yüzeyindeki tek aksiyon kutusu — çerçeveli, ikonlu, eşit genişlikte.
+ *  `to` verilirse bağlantıdır (giriş gerektiren aksiyon), `onClick` verilirse
+ *  düğmedir. İkisi de yoksa kutu pasiftir ve nedenini `hint` söyler. */
+function ActionBox({
+  icon,
+  label,
+  hint,
+  to,
+  onClick,
+  disabled = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+  to?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  const cls = [
+    "flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition",
+    disabled
+      ? "cursor-not-allowed border-slate-200 opacity-60"
+      : "border-slate-300 hover:border-orange-400 hover:bg-orange-50/40",
+  ].join(" ");
+  const govde = (
+    <>
+      <span className="shrink-0 text-orange-500">{icon}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium text-slate-800">
+          {label}
+        </span>
+        <span className="block truncate text-xs text-slate-400">{hint}</span>
+      </span>
+    </>
+  );
+  if (to && !disabled) {
+    return (
+      <Link to={to} className={cls}>
+        {govde}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className={cls}>
+      {govde}
+    </button>
+  );
+}
+
+const ikonSinifi = "h-5 w-5";
+
+function NeighborIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={ikonSinifi}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V9l6-4 6 4v12M9 21v-5h4v5M15 21h6V12l-3-2" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={ikonSinifi}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className={ikonSinifi}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
 
 export function DeliveryPrefControls({
   t,
   mode,
-  loggedIn = false,
 }: {
   t: OrderTracking;
   mode: Mode;
-  /** Token yüzeyinde giriş durumu — kilitli çip metnini belirler. */
-  loggedIn?: boolean;
 }) {
   const publicSet = usePublicSetDeliveryPref();
   const publicPostpone = usePublicPostpone();
@@ -90,6 +162,83 @@ export function DeliveryPrefControls({
     else orderPostpone.mutate(mode.orderId, opts);
   };
 
+  // ── Token yüzeyi: üç eşit aksiyon kutusu ──
+  //
+  // Oturumsuz sayfada müşterinin sorduğu şey "tercihim ne" değil, "ne
+  // yapabilirim". Emoji çipleri + ayrı bir metin bağlantısı bu soruyu dağıtıyordu.
+  //
+  // Üçün ikisi GİRİŞ İSTER ve bu bir tasarım tercihi değil güvenlik kuralıdır:
+  // takip linki SMS'le geliyor ve iletilebiliyor; linki eline geçiren birinin
+  // paketi kapıya/komşuya yönlendirmesi ya da adresi değiştirmesi engellenir
+  // (backend de 403 verir). Kilit dürüstçe gösterilir, tıklayınca girişe gider.
+  if (mode.kind === "token") {
+    const ertelenebilir = t.can_postpone && t.status !== "POSTPONED";
+    return (
+      <div className="text-left">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <ActionBox
+            icon={<NeighborIcon />}
+            label="Komşuma gelsin"
+            hint="Giriş gerekli"
+            to={ROUTES.login}
+          />
+          <ActionBox
+            icon={<ClockIcon />}
+            label="İstediğim zaman gelsin"
+            hint={
+              ertelenebilir
+                ? "Bir sonraki güne ertele"
+                : "Erteleme hakkın kalmadı"
+            }
+            onClick={ertelenebilir ? () => setPostponeOpen(true) : undefined}
+            disabled={!ertelenebilir || postponePending}
+          />
+          <ActionBox
+            icon={<PinIcon />}
+            label="Farklı adrese gelsin"
+            hint="Giriş gerekli"
+            to={ROUTES.login}
+          />
+        </div>
+        {current !== "ADRESIMDEYIM" && currentOption && (
+          <p className="mt-3 text-sm text-slate-500">
+            Şu anki talimatın: {currentOption.label}
+            {current === "KOMSUYA_BIRAK" && t.delivery_pref_note && (
+              <> · Komşu: {t.delivery_pref_note}</>
+            )}
+          </p>
+        )}
+        <Modal
+          open={postponeOpen}
+          onClose={() => setPostponeOpen(false)}
+          title="Teslimatı ertele"
+          maxWidth="max-w-sm"
+        >
+          <p className="text-sm text-slate-600">
+            Siparişin bir sonraki çalışma gününün dağıtımına alınır.
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setPostponeOpen(false)}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              Vazgeç
+            </button>
+            <button
+              type="button"
+              onClick={doPostpone}
+              disabled={postponePending}
+              className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+            >
+              Ertele
+            </button>
+          </div>
+        </Modal>
+      </div>
+    );
+  }
+
   return (
     <div className="border-t border-slate-100 px-6 py-5 text-left ">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
@@ -98,28 +247,20 @@ export function DeliveryPrefControls({
       <div className="mt-3 flex flex-wrap gap-2">
         {PREF_OPTIONS.map((opt) => {
           const selected = current === opt.value;
-          const locked = mode.kind === "token" && TOKEN_LOCKED.includes(opt.value) && !selected;
           return (
             <button
               key={opt.value}
-              onClick={() => (locked ? undefined : choose(opt.value))}
-              disabled={setPending || locked}
-              title={
-                locked
-                  ? "Güvenlik gereği bu tercih yalnız giriş yapılınca seçilebilir"
-                  : opt.description
-              }
+              onClick={() => choose(opt.value)}
+              disabled={setPending}
+              title={opt.description}
               className={[
                 "rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-50",
                 selected
                   ? "bg-slate-900 text-white "
-                  : locked
-                    ? "text-slate-400 ring-1 ring-slate-200 "
-                    : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 ",
+                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 ",
               ].join(" ")}
             >
               {opt.emoji} {opt.label}
-              {locked && " 🔒"}
             </button>
           );
         })}
@@ -132,15 +273,6 @@ export function DeliveryPrefControls({
           {current === "KOMSUYA_BIRAK" && t.delivery_pref_note && (
             <>, Komşu: {t.delivery_pref_note}</>
           )}
-        </p>
-      )}
-      {mode.kind === "token" && !loggedIn && (
-        <p className="mt-1.5 text-[11px] text-slate-400 ">
-          🔒 Kapıya/komşuya bırakma güvenlik gereği{" "}
-          <Link to={ROUTES.login} className="font-medium text-indigo-600 hover:underline ">
-            giriş yaparak
-          </Link>{" "}
-          seçilir.
         </p>
       )}
 

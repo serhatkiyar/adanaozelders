@@ -263,7 +263,7 @@ export default function OrderDetailPage() {
             (SMS'teki token sayfasında kapıya/komşuya kilitlidir, burada serbest). */}
         {canTrack && order.status !== "DELIVERED" && tracking && orderId != null && (
           <div className="mt-5 rounded-2xl border border-slate-200 ">
-            <DeliveryPrefControls t={tracking} mode={{ kind: "order", orderId }} loggedIn />
+            <DeliveryPrefControls t={tracking} mode={{ kind: "order", orderId }} />
           </div>
         )}
 

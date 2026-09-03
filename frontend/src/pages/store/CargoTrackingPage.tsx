@@ -16,8 +16,6 @@ import { Seo } from "@/components/Seo";
 import { DeliveryFeedbackSection } from "@/components/store/DeliveryFeedbackSection";
 import { DeliveryPrefControls } from "@/components/store/DeliveryPrefControls";
 import { usePublicOrderTracking } from "@/hooks/useDelivery";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useAuthStore } from "@/store/authStore";
 import { stopsAheadIncreased } from "@/lib/trackingSignals";
 import { formatEtaWindow, formatEventTime, proofLabel } from "@/lib/deliveryTimeline";
 import { tileSource } from "@/lib/mapTiles";
@@ -260,11 +258,6 @@ export default function CargoTrackingPage() {
   const { token } = useParams<{ token: string }>();
   const { data: t, isLoading, isError } = usePublicOrderTracking(token ?? null);
 
-  // Token varsa oturum geçerlidir; `user` bu sayfada persist edilmediği için
-  // yalnız ona bakmak her zaman "girişsiz" görünürdü.
-  useCurrentUser();
-  const loggedIn = useAuthStore((s) => !!s.token);
-
   // PDS E8: kurye bir durağı sona atınca "önünde N durak" ARTABİLİR. Sayacı
   // sessizce büyütmek yerine "sıra güncellendi" mikro-metnini gösteririz.
   const prevAhead = useRef<number | null>(null);
@@ -448,11 +441,7 @@ export default function CargoTrackingPage() {
 
             {token && (
               <section className="pt-8">
-                <DeliveryPrefControls
-                  t={t}
-                  mode={{ kind: "token", token }}
-                  loggedIn={loggedIn}
-                />
+                <DeliveryPrefControls t={t} mode={{ kind: "token", token }} />
               </section>
             )}
 
