@@ -1,22 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
-import { Avatar } from "@/components/Avatar";
-import { ReviewModal } from "@/components/ReviewModal";
-import { QuestionModal } from "@/components/QuestionModal";
-import { CancelModal } from "@/components/CancelModal";
-import { RescheduleModal } from "@/components/RescheduleModal";
+import { ReservationRow } from "@/components/reservation/ReservationRow";
+import { toReservationItem } from "@/lib/reservationModel";
 
 import { useMeetingStore } from "@/store/meetingStore";
 import { useBookings } from "@/hooks/useBookings";
 import { usePayBooking } from "@/hooks/usePayments";
-import { PaymentBadge } from "@/components/PaymentBadge";
 import { PaymentConsentNote } from "@/components/LegalConsent";
 import { BookingStatus, PaymentStatus, type BookingOut } from "@/types";
-import { formatRange } from "@/lib/datetime";
-import { formatTRY, parseMoney } from "@/lib/money";
-import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
-import { qaEligibility } from "@/lib/qaWindow";
+import { formatTRY } from "@/lib/money";
 import { isLessonJoinable } from "@/lib/lesson";
 import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
 import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
@@ -24,29 +17,14 @@ import { isBranchOpen } from "@/lib/paymentAvailability";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
-interface AskTarget {
-  bookingId: number;
-  tutorName: string;
-}
-
 /* ─── ortak buton sınıfları (sakin / nötr palet) ────────── */
 
 const PRIMARY_BTN =
   "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ";
-const GHOST_BTN =
-  "rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 ";
 
 /* ─── ikonlar ────────────────────────────────────────── */
 
 const PAY_CLOSED_NOTICE_ID = "tutor-payment-closed-notice";
-
-function ChevronRight({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className={className} aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
-    </svg>
-  );
-}
 
 function VideoIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -88,30 +66,29 @@ const FILTERS: { value: Filter; label: string }[] = [
 
 /* ─── ders satırı (kart değil; saç-teli çizgiyle ayrılır) ── */
 
-function BookingRow({
+/**
+ * Ders liste satırı — ortak `ReservationRow` + zamana duyarlı aksiyonlar.
+ *
+ * ## Hangi aksiyon nerede
+ *
+ * Satırda YALNIZ iki aksiyon kalır ve ikisinin de gerekçesi var:
+ *   • **Öde** — ödenmemiş kaydın tek işi tamamlanmaktır.
+ *   • **Derse katıl** — ders 10 dakika sonra başlıyorsa öğrenciyi bir tık daha
+ *     uzağa göndermek yanlış olur.
+ *
+ * Ertele · iptal · değerlendir · soru sor DETAYA taşındı (`LessonDetail`de
+ * hepsi zaten var). Satırdaki aksiyon yığını tarama ritmini bozuyor ve
+ * yanlışlıkla tıklanıyordu — Resy · Zocdoc · Preply da aynı ayrımı yapar.
+ *
+ * Nöbetçi: `dersSatiri.test.tsx`.
+ */
+export function BookingRow({
   booking,
-  reviewed,
-  onReview,
-  onAsk,
   onJoinMeeting,
 }: {
   booking: BookingOut;
-  reviewed: boolean;
-  onReview: (id: number) => void;
-  onAsk: (target: AskTarget) => void;
   onJoinMeeting: (booking: BookingOut) => void;
 }) {
-  const canReview = booking.status === BookingStatus.COMPLETED && !reviewed;
-  const reviewedDone = booking.status === BookingStatus.COMPLETED && reviewed;
-  const tutorName = booking.tutor_name ?? `Eğitmen #${booking.tutor_id}`;
-  const price = parseMoney(booking.price);
-  const qa = qaEligibility(booking);
-  const [showCancel, setShowCancel] = useState(false);
-  const [showReschedule, setShowReschedule] = useState(false);
-  const canCancel =
-    booking.status === BookingStatus.PENDING ||
-    booking.status === BookingStatus.ACCEPTED;
-
   const payMutation = usePayBooking();
   // Onaylanmış ama ödenmemiş ders → öğrenci ödeyebilir (escrow).
   const needsPayment =
@@ -135,67 +112,13 @@ function BookingRow({
     });
   };
 
-  const hasActions =
-    needsPayment || canJoin || canReview || reviewedDone || canCancel;
+  const aksiyonVar = needsPayment || canJoin;
 
   return (
-    <div className="px-5 py-5 sm:px-6">
-      {/* Üst satır: eğitmen + durum */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <Link
-          to={ROUTES.tutor(booking.tutor_id)}
-          className="group flex min-w-0 items-center gap-3"
-        >
-          <Avatar name={tutorName} avatar_url={booking.tutor_avatar_url} size="sm" />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 transition group-hover:text-slate-600 ">
-              {tutorName}
-            </p>
-            <p className="mt-0.5 text-xs text-slate-500 ">
-              {formatRange(booking.start_at, booking.end_at)}
-              {booking.is_free_lesson ? (
-                <span className="font-semibold text-emerald-600 ">
-                  {" · Ücretsiz ilk ders"}
-                </span>
-              ) : (
-                price !== null && ` · ${formatTRY(booking.price)}`
-              )}
-            </p>
-          </div>
-        </Link>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${BOOKING_STATUS_STYLE[booking.status]}`}
-          >
-            {BOOKING_STATUS_LABEL[booking.status]}
-          </span>
-          {booking.payment && <PaymentBadge payment={booking.payment} />}
-          <Link
-            to={ROUTES.lesson(booking.id)}
-            className="ml-0.5 inline-flex items-center gap-0.5 text-xs font-semibold text-slate-500 transition hover:text-slate-900 "
-          >
-            Detay
-            <ChevronRight />
-          </Link>
-        </div>
-      </div>
-
-      {/* Notlar / iptal nedeni */}
-      {booking.notes && (
-        <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-xs italic text-slate-500 ">
-          “{booking.notes}”
-        </p>
-      )}
-      {booking.status === BookingStatus.CANCELLED && booking.cancel_reason && (
-        <p className="mt-3 rounded-xl bg-rose-50 px-4 py-2.5 text-xs text-rose-700 ">
-          İptal nedeni: {booking.cancel_reason}
-        </p>
-      )}
-
-      {/* Aksiyonlar */}
-      {hasActions && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+    <div>
+      <ReservationRow item={toReservationItem(booking)} to={ROUTES.lesson(booking.id)} />
+      {aksiyonVar && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
           {needsPayment &&
             (payOpen ? (
               <button onClick={handlePay} disabled={payMutation.isPending} className={PRIMARY_BTN}>
@@ -206,7 +129,7 @@ function BookingRow({
             ) : (
               // Sebep LİSTE BAŞINDA bir kez söyleniyor; satırda nötr bir durum
               // yeterli. Her satıra tam genişlikte amber blok koymak rengi
-              // "istisna" olmaktan çıkarıyor ve diğer aksiyonları alt satıra itiyordu.
+              // "istisna" olmaktan çıkarıyordu.
               <span
                 aria-describedby={PAY_CLOSED_NOTICE_ID}
                 className="text-sm font-medium text-slate-500 "
@@ -233,75 +156,7 @@ function BookingRow({
                 Ders saatinde açılır
               </span>
             ))}
-
-          {canReview && (
-            <button onClick={() => onReview(booking.id)} className={PRIMARY_BTN}>
-              Değerlendir
-            </button>
-          )}
-
-          {reviewedDone && (
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 ">
-              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor" aria-hidden>
-                <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.16 4.87L6.67 9.36 4.42 7.1 3.29 8.23l3.38 3.38L12.29 6z" />
-              </svg>
-              Değerlendirildi
-            </span>
-          )}
-
-          {canCancel && (
-            <button onClick={() => setShowReschedule(true)} className={GHOST_BTN}>
-              Ertele
-            </button>
-          )}
-          {canCancel && (
-            <button
-              onClick={() => setShowCancel(true)}
-              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-rose-50 hover:text-rose-600 active:scale-95 "
-            >
-              İptal et
-            </button>
-          )}
         </div>
-      )}
-
-      {/* Soru sorma penceresi */}
-      {qa && qa.ended && (
-        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p
-            className={`text-xs font-medium ${
-              qa.expired
-                ? "text-slate-400 "
-                : "text-slate-600 "
-            }`}
-          >
-            {qa.expired
-              ? "Soru sorma süresi doldu"
-              : `Soru sorma hakkının bitmesine ${qa.daysLeft} gün kaldı`}
-          </p>
-          <button
-            type="button"
-            disabled={!qa.canAsk}
-            onClick={() => onAsk({ bookingId: booking.id, tutorName })}
-            className={`shrink-0 ${PRIMARY_BTN}`}
-          >
-            Soru Sor
-          </button>
-        </div>
-      )}
-
-      {showCancel && (
-        <CancelModal
-          bookingId={booking.id}
-          counterpartName={tutorName}
-          onClose={() => setShowCancel(false)}
-        />
-      )}
-      {showReschedule && (
-        <RescheduleModal
-          bookingId={booking.id}
-          onClose={() => setShowReschedule(false)}
-        />
       )}
     </div>
   );
@@ -312,16 +167,10 @@ function BookingRow({
 export function StudentBookingsContent() {
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
   const { joinMeeting } = useMeetingStore();
-  const [activeReview, setActiveReview] = useState<number | null>(null);
-  const [activeAsk, setActiveAsk]       = useState<AskTarget | null>(null);
-  const [reviewed, setReviewed]         = useState<Set<number>>(new Set());
   const [filter, setFilter]             = useState<Filter>("ACTIVE");
 
   const { data: availability } = usePaymentAvailability();
   const payOpen = isBranchOpen(availability, "tutor_marketplace");
-
-  const markReviewed = (id: number) =>
-    setReviewed((prev) => new Set(prev).add(id));
 
   const counts = useMemo(() => {
     const c: Record<BookingStatus, number> = {
@@ -462,9 +311,6 @@ export function StudentBookingsContent() {
               <BookingRow
                 key={b.id}
                 booking={b}
-                reviewed={b.reviewed || reviewed.has(b.id)}
-                onReview={setActiveReview}
-                onAsk={setActiveAsk}
                 onJoinMeeting={(bk) =>
                   joinMeeting(
                     bk.id,
@@ -485,21 +331,6 @@ export function StudentBookingsContent() {
         </>
       )}
 
-      {activeReview !== null && (
-        <ReviewModal
-          bookingId={activeReview}
-          onClose={() => setActiveReview(null)}
-          onReviewed={markReviewed}
-        />
-      )}
-
-      {activeAsk && (
-        <QuestionModal
-          bookingId={activeAsk.bookingId}
-          tutorName={activeAsk.tutorName}
-          onClose={() => setActiveAsk(null)}
-        />
-      )}
     </div>
   );
 }
