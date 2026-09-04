@@ -20,6 +20,7 @@ from core.search_text import (
     tsquery as search_tsquery,
 )
 from models.tutor import Gender, Tutor, TutorAvailability, TutorStatus, TutorSubject
+from services import subject_service
 from models.tutor_promotion import TutorPromotion
 from schemas.education import EducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
@@ -141,10 +142,18 @@ def _apply_tutor_filters(
             stmt = stmt.where(distance_expr <= radius_km)
 
     if subjects:
+        # NORMALİZE eşleşme: `subjects` buraya `subject_service.resolve_filter_terms`
+        # tarafından çözülmüş, `tr_normalize`'dan geçmiş terimler olarak gelir
+        # (dersin adı + tüm eşanlamlıları + alt derslerinin adları).
+        #
+        # Eskiden burada ham `IN` vardı ve TAM + BÜYÜK/KÜÇÜK HARFE DUYARLI
+        # eşleşiyordu: branşını "Fen Bilgisi" diye bildiren eğitmen "Fen"
+        # aramasında ÇIKMIYORDU. Yazma tarafı serbest metin olduğu için bu
+        # sessiz bir arıza — hata vermez, yalnız "sonuç bulunamadı" der.
         stmt = stmt.where(
             Tutor.id.in_(
                 select(TutorSubject.tutor_id).where(
-                    TutorSubject.subject.in_(subjects)
+                    normalized(TutorSubject.subject).in_(subjects)
                 )
             )
         )
@@ -243,6 +252,11 @@ async def search_tutors(
     confidence = settings.BAYESIAN_CONFIDENCE
     score = bayesian_score_expr(prior_mean, confidence)
 
+    # `?subject=` ham metin DEĞİL kanonik terime çözülür (slug / eşanlamlı /
+    # ders adı → o dersin ve alt derslerinin tüm yazımları). Üç listeleme
+    # yolunun da aynı kümeyi kullanması şart: ayrışırlarsa histogram listedeki
+    # eğitmenlere ait olmayan bir dağılım gösterir.
+    subjects = await subject_service.resolve_filter_terms(db, subjects or []) or None
     geo = lat is not None and lng is not None
     distance_expr = _haversine_km(lat, lng) if geo else None
 
@@ -326,6 +340,11 @@ async def price_histogram(
     fiyat aralığını daraltsa da tüm dağılımı göstermelidir. Ücreti olmayan
     eğitmenler elenir. Sıralama/limit yok; tüm eşleşen ücretler döner.
     """
+    # `?subject=` ham metin DEĞİL kanonik terime çözülür (slug / eşanlamlı /
+    # ders adı → o dersin ve alt derslerinin tüm yazımları). Üç listeleme
+    # yolunun da aynı kümeyi kullanması şart: ayrışırlarsa histogram listedeki
+    # eğitmenlere ait olmayan bir dağılım gösterir.
+    subjects = await subject_service.resolve_filter_terms(db, subjects or []) or None
     geo = lat is not None and lng is not None
     distance_expr = _haversine_km(lat, lng) if geo else None
 
@@ -385,6 +404,11 @@ async def featured_tutors(
     prior_mean = await compute_global_mean(db)
     confidence = settings.BAYESIAN_CONFIDENCE
 
+    # `?subject=` ham metin DEĞİL kanonik terime çözülür (slug / eşanlamlı /
+    # ders adı → o dersin ve alt derslerinin tüm yazımları). Üç listeleme
+    # yolunun da aynı kümeyi kullanması şart: ayrışırlarsa histogram listedeki
+    # eğitmenlere ait olmayan bir dağılım gösterir.
+    subjects = await subject_service.resolve_filter_terms(db, subjects or []) or None
     geo = lat is not None and lng is not None
     distance_expr = _haversine_km(lat, lng) if geo else None
     base_cols = (Tutor, distance_expr.label("distance_km")) if geo else (Tutor,)

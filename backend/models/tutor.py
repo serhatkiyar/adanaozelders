@@ -210,14 +210,61 @@ class TutorEducation(Base, TimestampMixin, SoftDeleteMixin):
 
 
 class TutorSubject(Base):
+    """Eğitmenin bildirdiği branş.
+
+    ``subject`` metin kolonu KALIYOR ve bileşik PK'nin parçası olmayı sürdürüyor.
+    İki sebep: (a) geriye uyum — arama, `attach_subjects` ve `TutorSearchOut`
+    bugünkü gibi metin taşımaya devam eder; (b) taksonomide karşılığı olmayan
+    gerçek bir branşı (ör. "Osmanlı Türkçesi Paleografyası") kaybetmemek.
+    Kanonik derse bağ ``subject_id`` ile kurulur ve eşleşmeyen kayıtta NULL kalır.
+    """
+
     __tablename__ = "tutor_subjects"
 
     tutor_id: Mapped[int] = mapped_column(
         ForeignKey("tutors.id", ondelete="CASCADE"), primary_key=True
     )
     subject: Mapped[str] = mapped_column(String(100), primary_key=True)
+    #: Kanonik ders bağı. NULL = taksonomiye eşlenememiş serbest metin.
+    subject_id: Mapped[int | None] = mapped_column(
+        ForeignKey("subjects.id", ondelete="RESTRICT"), nullable=True
+    )
 
-    __table_args__ = (Index("ix_tutor_subjects_subject", "subject"),)
+    __table_args__ = (
+        Index("ix_tutor_subjects_subject", "subject"),
+        Index("ix_tutor_subjects_subject_id", "subject_id"),
+        # Aynı eğitmenin iki farklı serbest metni ("Fen", "Fen Bilgisi") aynı
+        # kanonik derse bağlanıp listede çift görünmesin.
+        Index(
+            "uq_tutor_subjects_canonical",
+            "tutor_id",
+            "subject_id",
+            unique=True,
+            postgresql_where=text("subject_id IS NOT NULL"),
+        ),
+    )
+
+
+class TutorSubjectLevel(Base):
+    """Eğitmenin bir derste verdiği seviyeler (ör. Matematik → ilkokul, ortaokul).
+
+    `tutor_subjects`'e YABANCI ANAHTAR YOK ve bu bilinçli: `_replace_subjects`
+    her profil kaydında o eğitmenin tüm branş satırlarını SİLİP yeniden yazıyor.
+    Bileşik FK, her kayıtta bu satırları da düşürür ya da yetim bırakırdı.
+    Bütünlüğü servis sağlar: ders kaldırılınca seviyeleri de kaldırılır.
+    """
+
+    __tablename__ = "tutor_subject_levels"
+
+    tutor_id: Mapped[int] = mapped_column(
+        ForeignKey("tutors.id", ondelete="CASCADE"), primary_key=True
+    )
+    subject_id: Mapped[int] = mapped_column(
+        ForeignKey("subjects.id", ondelete="RESTRICT"), primary_key=True
+    )
+    level_id: Mapped[int] = mapped_column(
+        ForeignKey("levels.id", ondelete="RESTRICT"), primary_key=True
+    )
 
 
 class TutorAvailability(Base):

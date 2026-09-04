@@ -563,6 +563,8 @@ export interface TutorProfileUpdate {
   location_lng?: number | null;
   district?: string | null;
   subjects?: string[] | null;
+  /** Ders başına seviye seçimi. `subjects` ile birlikte gönderilir. */
+  subject_levels?: { subject_id: number; level_ids: number[] }[] | null;
   availability?: Availability[] | null;
 }
 
@@ -583,6 +585,8 @@ export interface TutorOut extends UserOut {
   location_lng?: number | null;
   district?: string | null;
   subjects?: string[];
+  /** {subject_id: [level_id]} — JSON'da anahtar dize gelir. */
+  subject_levels?: Record<string, number[]>;
   availability?: Availability[];
 }
 

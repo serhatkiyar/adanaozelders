@@ -1,0 +1,9286 @@
+{
+ "_aciklama": "Türetilmiş ders taksonomisi. Kaynak: Superprof TR HAR kaydı (süzülmüş + temizlenmiş) + backend/data/ders_eklemeleri.json. Üreten: scripts/dersler_disa_aktar.py — elle düzenleme, betiği koş.",
+ "dersler": [
+  {
+   "slug": "3d-animasyon",
+   "ad": "3D animasyon",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "animasyon",
+    "3ds max"
+   ]
+  },
+  {
+   "slug": "3d-goruntuleme",
+   "ad": "3D görüntüleme",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "3d-yazici",
+   "ad": "3D yazıcı",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "asp-net",
+   "ad": "ASP.NET",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "adobe-premiere-pro",
+   "ad": "Adobe Premiere Pro",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "adobe"
+   ]
+  },
+  {
+   "slug": "after-effects",
+   "ad": "After effects",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "algoritma-ve-veri-yapilari",
+   "ad": "Algoritma ve Veri Yapıları",
+   "ust_slug": null,
+   "grup": "BILISIM",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": [
+    "algoritma"
+   ]
+  },
+  {
+   "slug": "android",
+   "ad": "Android",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "apple",
+   "ad": "Apple",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "apple-store",
+   "ad": "Apple Store",
+   "grup": "BILISIM",
+   "ust_slug": "apple",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "archicad",
+   "ad": "ArchiCAD",
+   "grup": "BILISIM",
+   "ust_slug": "cao",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "arduino",
+   "ad": "Arduino",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "autocad",
+   "ad": "AutoCAD",
+   "grup": "BILISIM",
+   "ust_slug": "cao",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "autocad elektrik"
+   ]
+  },
+  {
+   "slug": "autodesk-maya",
+   "ad": "Autodesk Maya",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "autodesk-3ds-max",
+   "ad": "Autodesk-3ds Max",
+   "grup": "BILISIM",
+   "ust_slug": "cao",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "autodest-inventor",
+   "ad": "Autodest Inventor",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ag",
+   "ad": "Ağ",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilgi-ve-iletisim-tekonolojileri",
+   "ad": "Bilgi ve İletişim Tekonolojileri",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilgisayar-aglari",
+   "ad": "Bilgisayar ağları",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilgisayar-bakimi",
+   "ad": "Bilgisayar bakımı",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilgisayar-grafikleri",
+   "ad": "Bilgisayar grafikleri",
+   "grup": "BILISIM",
+   "ust_slug": "grafik-tasarim",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilgisayar-guvenligi",
+   "ad": "Bilgisayar güvenliği",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilisim-egitimi",
+   "ad": "Bilişim eğitimi",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilisime-giris",
+   "ad": "Bilişime giriş",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "bilgisayar"
+   ]
+  },
+  {
+   "slug": "blender",
+   "ad": "Blender",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "blog-yazarligi",
+   "ad": "Blog yazarlığı",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "c-c",
+   "ad": "C / C++",
+   "ust_slug": null,
+   "grup": "BILISIM",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": [
+    "c++"
+   ]
+  },
+  {
+   "slug": "c",
+   "ad": "C#",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "programlama-dilleri-c",
+   "ad": "C#",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "c-net",
+   "ad": "C#.NET",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "c-2",
+   "ad": "C++",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cao",
+   "ad": "CAO",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "css",
+   "ad": "CSS",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "catia",
+   "ad": "Catia",
+   "grup": "BILISIM",
+   "ust_slug": "cao",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "chatgpt",
+   "ad": "ChatGPT",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "coreldraw",
+   "ad": "CorelDRAW",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "creo",
+   "ad": "Creo",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dao",
+   "ad": "DAO",
+   "grup": "BILISIM",
+   "ust_slug": "grafik-tasarim",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "db2",
+   "ad": "DB2",
+   "grup": "BILISIM",
+   "ust_slug": "veri-tabani",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dos",
+   "ad": "DOS",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dijital-cizim",
+   "ad": "Dijital çizim",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dreamweaver",
+   "ad": "Dreamweaver",
+   "grup": "BILISIM",
+   "ust_slug": "web-yazilimi",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "excel",
+   "ad": "Excel",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "facebook",
+   "ad": "Facebook",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "facebook-ads",
+   "ad": "Facebook Ads",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "final-cut-pro",
+   "ad": "Final Cut Pro",
+   "grup": "BILISIM",
+   "ust_slug": "video-montaj",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "firebird",
+   "ad": "Firebird",
+   "grup": "BILISIM",
+   "ust_slug": "veri-tabani",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "flash",
+   "ad": "Flash",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "flutter",
+   "ad": "Flutter",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fusion-360",
+   "ad": "Fusion 360",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gmail",
+   "ad": "Gmail",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "google-adwords",
+   "ad": "Google Adwords",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "google-analytics",
+   "ad": "Google Analytics",
+   "grup": "BILISIM",
+   "ust_slug": "seo",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "google-chrome",
+   "ad": "Google Chrome",
+   "grup": "BILISIM",
+   "ust_slug": "web-tarayicilari",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "google-hangouts",
+   "ad": "Google Hangouts",
+   "grup": "BILISIM",
+   "ust_slug": "video-arama",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "google-search-console",
+   "ad": "Google Search Console",
+   "grup": "BILISIM",
+   "ust_slug": "seo",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "grafik-tasarim",
+   "ad": "Grafik tasarım",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "canva",
+    "figma"
+   ]
+  },
+  {
+   "slug": "growth-hacking",
+   "ad": "Growth hacking",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "html",
+   "ad": "HTML",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "inkscape",
+   "ad": "INKSCAPE",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "illustrator",
+   "ad": "Illustrator",
+   "grup": "BILISIM",
+   "ust_slug": "grafik-tasarim",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "indesign",
+   "ad": "InDesign",
+   "grup": "BILISIM",
+   "ust_slug": "grafik-tasarim",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "informix",
+   "ad": "Informix",
+   "grup": "BILISIM",
+   "ust_slug": "veri-tabani",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "instagram",
+   "ad": "Instagram",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "internet-explorer",
+   "ad": "Internet Explorer",
+   "grup": "BILISIM",
+   "ust_slug": "web-tarayicilari",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "java",
+   "ad": "Java",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "javascript",
+   "ad": "JavaScript",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "joomla",
+   "ad": "Joomla",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "keynote",
+   "ad": "Keynote",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kod-sanatlari",
+   "ad": "Kod sanatları",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kodlama",
+   "ad": "Kodlama",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "python kodlama",
+    "robotik kodlama",
+    "c kodlama"
+   ]
+  },
+  {
+   "slug": "lightroom",
+   "ad": "Lightroom",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "lightworks",
+   "ad": "Lightworks",
+   "grup": "BILISIM",
+   "ust_slug": "video-montaj",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "linkedin",
+   "ad": "Linkedin",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "linux",
+   "ad": "Linux",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mac",
+   "ad": "Mac",
+   "grup": "BILISIM",
+   "ust_slug": "apple",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "machine-learning",
+   "ad": "Machine learning",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mail",
+   "ad": "Mail",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "masaustu-bilgisayar",
+   "ad": "Masaüstü bilgisayar",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "masaustu-yayincilik",
+   "ad": "Masaüstü yayıncılık",
+   "grup": "BILISIM",
+   "ust_slug": "grafik-tasarim",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "matlab",
+   "ad": "MatLab",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "microsoft-project",
+   "ad": "Microsoft Project",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "microsoft-publisher",
+   "ad": "Microsoft Publisher",
+   "grup": "BILISIM",
+   "ust_slug": "grafik-tasarim",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "microsoft-access",
+   "ad": "Microsoft access",
+   "grup": "BILISIM",
+   "ust_slug": "veri-tabani",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "microsoft-office",
+   "ad": "Microsoft office",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "midjourney",
+   "ad": "Midjourney",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mozilla-firefox",
+   "ad": "Mozilla Firefox",
+   "grup": "BILISIM",
+   "ust_slug": "web-tarayicilari",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mysql",
+   "ad": "MySQL",
+   "grup": "BILISIM",
+   "ust_slug": "veri-tabani",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "netlinking",
+   "ad": "Netlinking",
+   "grup": "BILISIM",
+   "ust_slug": "seo",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "numbers",
+   "ad": "Numbers",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ofis-programlari",
+   "ad": "Ofis Programları",
+   "ust_slug": null,
+   "grup": "BILISIM",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "on-parmak",
+   "ad": "On parmak",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "openoffice-calc",
+   "ad": "OpenOffice Calc",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "openoffice-writer",
+   "ad": "OpenOffice Writer",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "oracle",
+   "ad": "Oracle",
+   "grup": "BILISIM",
+   "ust_slug": "veri-tabani",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "outlook",
+   "ad": "Outlook",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "oyun-motorlari",
+   "ad": "Oyun motorları",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "oyun-tasarimi",
+   "ad": "Oyun tasarımı",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "php",
+   "ad": "PHP",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pages",
+   "ad": "Pages",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "perl",
+   "ad": "Perl",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "photoshop",
+   "ad": "Photoshop",
+   "grup": "BILISIM",
+   "ust_slug": "grafik-tasarim",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pinterest",
+   "ad": "Pinterest",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pixologic-zbrush",
+   "ad": "Pixologic Zbrush",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "postgresql",
+   "ad": "PostgreSQL",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "power-bi",
+   "ad": "Power BI",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "powerpoint",
+   "ad": "Powerpoint",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "prestashop",
+   "ad": "Prestashop",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "presto",
+   "ad": "Presto",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "prezi",
+   "ad": "Prezi",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "programlama",
+   "ad": "Programlama",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "programlama-dilleri",
+   "ad": "Programlama dilleri",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "yazilim"
+   ]
+  },
+  {
+   "slug": "prompt-engineering",
+   "ad": "Prompt Engineering",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "python",
+   "ad": "Python",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "phyton"
+   ]
+  },
+  {
+   "slug": "revit",
+   "ad": "Revit",
+   "grup": "BILISIM",
+   "ust_slug": "cao",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "rhinoceros",
+   "ad": "Rhinoceros",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "rhino"
+   ]
+  },
+  {
+   "slug": "robotik-ve-kodlama",
+   "ad": "Robotik ve Kodlama",
+   "ust_slug": null,
+   "grup": "BILISIM",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": [
+    "robotik"
+   ]
+  },
+  {
+   "slug": "ruby",
+   "ad": "Ruby",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ruby-on-rails",
+   "ad": "Ruby on Rails",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sap",
+   "ad": "SAP",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "semrush",
+   "ad": "SEMrush",
+   "grup": "BILISIM",
+   "ust_slug": "seo",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "seo",
+   "ad": "SEO",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sgml",
+   "ad": "SGML",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sql",
+   "ad": "SQL",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sql-veritabani",
+   "ad": "SQL / Veritabanı",
+   "ust_slug": null,
+   "grup": "BILISIM",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": [
+    "sql"
+   ]
+  },
+  {
+   "slug": "safari",
+   "ad": "Safari",
+   "grup": "BILISIM",
+   "ust_slug": "apple",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "scratch",
+   "ad": "Scratch",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "siber-guvenlik",
+   "ad": "Siber güvenlik",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "skectchup",
+   "ad": "SkectchUp",
+   "grup": "BILISIM",
+   "ust_slug": "cao",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sketch",
+   "ad": "Sketch",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "sketchup"
+   ]
+  },
+  {
+   "slug": "skype",
+   "ad": "Skype",
+   "grup": "BILISIM",
+   "ust_slug": "video-arama",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "smartphone",
+   "ad": "Smartphone",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "snapchat",
+   "ad": "Snapchat",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "solidworks",
+   "ad": "SolidWorks",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyal-medya",
+   "ad": "Sosyal medya",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "stenografi",
+   "ad": "Stenografi",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sybase",
+   "ad": "Sybase",
+   "grup": "BILISIM",
+   "ust_slug": "veri-tabani",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tablet",
+   "ad": "Tablet",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "telekominikasyon",
+   "ad": "Telekominikasyon",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "thunderbird",
+   "ad": "Thunderbird",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tipografi",
+   "ad": "Tipografi",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "twitter",
+   "ad": "Twitter",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "unity",
+   "ad": "Unity",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "v-ray",
+   "ad": "V-Ray",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "veri-analizi",
+   "ad": "Veri analizi",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "veri bilimi"
+   ]
+  },
+  {
+   "slug": "veri-tabani",
+   "ad": "Veri tabanı",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "video-arama",
+   "ad": "Video arama",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "video-montaj",
+   "ad": "Video montaj",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "video kurgu"
+   ]
+  },
+  {
+   "slug": "video-oyunlari-programlama",
+   "ad": "Video oyunları programlama",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "visual-basic",
+   "ad": "Visual basic",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "vue-js",
+   "ad": "Vue.js",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "web-gelistirme",
+   "ad": "Web Geliştirme",
+   "ust_slug": null,
+   "grup": "BILISIM",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "web-design",
+   "ad": "Web design",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "web-sitesi-tasarimi",
+   "ad": "Web sitesi tasarımı",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "web-tarayicilari",
+   "ad": "Web tarayıcıları",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "web-yazilimi",
+   "ad": "Web yazılımı",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "whatsapp",
+   "ad": "Whatsapp",
+   "grup": "BILISIM",
+   "ust_slug": "sosyal-medya",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "windows",
+   "ad": "Windows",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "windows-movie-maker",
+   "ad": "Windows Movie Maker",
+   "grup": "BILISIM",
+   "ust_slug": "video-montaj",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "windows-phone",
+   "ad": "Windows Phone",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "word",
+   "ad": "Word",
+   "grup": "BILISIM",
+   "ust_slug": "microsoft-office",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "wordpress",
+   "ad": "Wordpress",
+   "grup": "BILISIM",
+   "ust_slug": "web-yazilimi",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "xml",
+   "ad": "XML",
+   "grup": "BILISIM",
+   "ust_slug": "programlama-dilleri",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yapay-zeka",
+   "ad": "Yapay zeka",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yazilimlar",
+   "ad": "Yazılımlar",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "imovie",
+   "ad": "iMovie",
+   "grup": "BILISIM",
+   "ust_slug": "video-montaj",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ios",
+   "ad": "iOS",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ipad",
+   "ad": "iPad",
+   "grup": "BILISIM",
+   "ust_slug": "apple",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "iphone",
+   "ad": "iPhone",
+   "grup": "BILISIM",
+   "ust_slug": "apple",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ipod",
+   "ad": "iPod",
+   "grup": "BILISIM",
+   "ust_slug": "apple",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "itunes",
+   "ad": "iTunes",
+   "grup": "BILISIM",
+   "ust_slug": "apple",
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "internete-baslangic",
+   "ad": "İnternete başlangıç",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "isletim-sistemi",
+   "ad": "İşletim sistemi",
+   "grup": "BILISIM",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "afrikanca",
+   "ad": "Afrikanca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "alman-vatandaslik-testi",
+   "ad": "Alman vatandaşlık testi",
+   "grup": "DIL",
+   "ust_slug": "almanca",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "almanca",
+   "ad": "Almanca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "almanca c1",
+    "almanca ingilizce",
+    "almanca goethe",
+    "almanca online",
+    "telc",
+    "almanca ceviri",
+    "almanca aksan",
+    "almanca kelime bilgisi",
+    "almanca duydugunu anlama",
+    "almanca okudugunu anlama",
+    "almanca konusma becerileri",
+    "almanca yazma becerileri",
+    "yds almanca",
+    "ydt almanca"
+   ]
+  },
+  {
+   "slug": "amerikan-ingilizcesi",
+   "ad": "Amerikan İngilizcesi",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "arapca",
+   "ad": "Arapça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "arabic",
+    "kur an okuma",
+    "arapca ceviri",
+    "arapca aksan",
+    "arapca kelime bilgisi",
+    "arapca duydugunu anlama",
+    "arapca okudugunu anlama",
+    "arapca konusma becerileri",
+    "arapca yazma becerileri",
+    "yds arapca"
+   ]
+  },
+  {
+   "slug": "arjantin-ispanyolcasi",
+   "ad": "Arjantin İspanyolcası",
+   "grup": "DIL",
+   "ust_slug": "ispanyolca",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "arnavutca",
+   "ad": "Arnavutça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "asturianca",
+   "ad": "Asturianca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "aymaraca",
+   "ad": "Aymaraca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "azerice",
+   "ad": "Azerice",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bask-dili",
+   "ad": "Bask dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bengalce",
+   "ad": "Bengalce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "birman",
+   "ad": "Birman",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "braille-alfabesi",
+   "ad": "Braille alfabesi",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bretonca",
+   "ad": "Bretonca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "brezilya-portekizcesi",
+   "ad": "Brezilya Portekizcesi",
+   "grup": "DIL",
+   "ust_slug": "portekizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cae",
+   "ad": "CAE",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "celi",
+   "ad": "CELI",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "celpe-bras-hazirlik",
+   "ad": "CELPE-Bras hazırlık",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cils",
+   "ad": "CILS",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cpe",
+   "ad": "CPE",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cavaca",
+   "ad": "Cavaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dalf",
+   "ad": "DALF",
+   "grup": "DIL",
+   "ust_slug": "fransizca",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dele",
+   "ad": "DELE",
+   "grup": "DIL",
+   "ust_slug": "ispanyolca",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "delf",
+   "ad": "DELF",
+   "grup": "DIL",
+   "ust_slug": "fransizca",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "danca",
+   "ad": "Danca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diger-diller",
+   "ad": "Diğer diller",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "efl-english-as-a-foreign-language",
+   "ad": "EFL - English as a Foreign Language",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "eiken",
+   "ad": "EIKEN",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "endonezce",
+   "ad": "Endonezce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ermenice",
+   "ad": "Ermenice",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "esperanto",
+   "ad": "Esperanto",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "estonca",
+   "ad": "Estonca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fce",
+   "ad": "FCE",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "farsca",
+   "ad": "Farsça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fince",
+   "ad": "Fince",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fransizca",
+   "ad": "Fransızca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "fransizca aksan",
+    "fransizca kelime bilgisi",
+    "yds fransizca",
+    "ydt fransizca"
+   ]
+  },
+  {
+   "slug": "fransizca-konusma",
+   "ad": "Fransızca konuşma",
+   "grup": "DIL",
+   "ust_slug": "fransizca",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fransizca-okuma",
+   "ad": "Fransızca okuma",
+   "grup": "DIL",
+   "ust_slug": "fransizca",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fransizca-ceviri",
+   "ad": "Fransızca çeviri",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "frizce",
+   "ad": "Frizce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gmat",
+   "ad": "GMAT",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "galca",
+   "ad": "Galca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "galicyaca",
+   "ad": "Galiçyaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gurcuce",
+   "ad": "Gürcüce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hintce",
+   "ad": "Hintçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hollanda-vatandaslik-sinavi",
+   "ad": "Hollanda vatandaşlık sınavı",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hollandaca",
+   "ad": "Hollandaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "felemenkce",
+    "flemenkce",
+    "hollandaca okudugunu anlama",
+    "hollandaca duydugunu anlama",
+    "hollandaca yazma becerileri",
+    "hollandaca konusma becerileri",
+    "hollandaca aksan",
+    "hollandaca kelime bilgisi"
+   ]
+  },
+  {
+   "slug": "hollandaca-ceviri",
+   "ad": "Hollandaca çeviri",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "japonca",
+   "ad": "Japonca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "japonca ceviri",
+    "japonca aksan",
+    "japonca kelime bilgisi",
+    "japonca duydugunu anlama",
+    "japonca okudugunu anlama",
+    "japonca konusma becerileri",
+    "japonca yazma becerileri"
+   ]
+  },
+  {
+   "slug": "kambocya-dili",
+   "ad": "Kamboçya dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kantonca",
+   "ad": "Kantonca",
+   "grup": "DIL",
+   "ust_slug": "cince",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "katalanca",
+   "ad": "Katalanca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "keltce",
+   "ad": "Keltçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kicva-dili",
+   "ad": "Kiçva dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "korece",
+   "ad": "Korece",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "kore"
+   ]
+  },
+  {
+   "slug": "korsikaca",
+   "ad": "Korsikaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kreole-dili",
+   "ad": "Kreole dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kucuva-dilleri",
+   "ad": "Kuçuva dilleri",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kurtce",
+   "ad": "Kürtçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "laosca",
+   "ad": "Laosça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "lehce",
+   "ad": "Lehçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "letonca",
+   "ad": "Letonca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "litvanca",
+   "ad": "Litvanca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "lunfardo-dili",
+   "ad": "Lunfardo dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "luksemburgca",
+   "ad": "Lüksemburgca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "macarca",
+   "ad": "Macarca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "madagaskarca",
+   "ad": "Madagaskarca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "makedonca",
+   "ad": "Makedonca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "malayca",
+   "ad": "Malayca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mandarin",
+   "ad": "Mandarin",
+   "grup": "DIL",
+   "ust_slug": "cince",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mapudundun-dili",
+   "ad": "Mapudundun dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mapuce",
+   "ad": "Mapuçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "marathi-dili",
+   "ad": "Marathi dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "maya-dili",
+   "ad": "Maya dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mbaya-dili",
+   "ad": "Mbaya dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mlat",
+   "ad": "Mlat",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mocovi-dili",
+   "ad": "Moçovi dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mogolca",
+   "ad": "Moğolca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "nahuatl-dili",
+   "ad": "Nahuatl dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "nepalce",
+   "ad": "Nepalce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "nivakle-dili",
+   "ad": "Nivakle dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "norvecce",
+   "ad": "Norveççe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "oksitanca",
+   "ad": "Oksitanca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pet",
+   "ad": "PET",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "plida",
+   "ad": "PLIDA",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "papiamento",
+   "ad": "Papiamento",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pencapca",
+   "ad": "Pencapça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pilaga-dilleri",
+   "ad": "Pilaga dilleri",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "portekiz-portekizcesi",
+   "ad": "Portekiz Portekizcesi",
+   "grup": "DIL",
+   "ust_slug": "portekizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "portekizce",
+   "ad": "Portekizce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "portekizce ceviri",
+    "portekizce kelime bilgisi",
+    "portekizce duydugunu anlama",
+    "portekizce okudugunu anlama",
+    "portekizce konusma becerileri",
+    "portekizce yazma becerileri"
+   ]
+  },
+  {
+   "slug": "rapa-nui-dili",
+   "ad": "Rapa Nui dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "romence",
+   "ad": "Romence",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "rusca",
+   "ad": "Rusça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sanskritce",
+   "ad": "Sanskritçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "singalaca",
+   "ad": "Singalaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "slovakca",
+   "ad": "Slovakça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "svahili",
+   "ad": "Svahili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sozlu-ceviri",
+   "ad": "Sözlü çeviri",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sirp-hirvatca",
+   "ad": "Sırp-Hırvatça",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "toeic",
+   "ad": "TOEIC",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tagalogca",
+   "ad": "Tagalogca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tamilce",
+   "ad": "Tamilce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "taylandca",
+   "ad": "Taylandca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "teluguca",
+   "ad": "Teluguca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tibetce",
+   "ad": "Tibetçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tigrinya-dili",
+   "ad": "Tigrinya dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "toba-dili",
+   "ad": "Toba dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tzeltalca",
+   "ad": "Tzeltalca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ukraynaca",
+   "ad": "Ukraynaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "urduca",
+   "ad": "Urduca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "valensiyaca",
+   "ad": "Valensiyaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "vietnamca",
+   "ad": "Vietnamca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "vicice",
+   "ad": "Viçice",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yabancilar-icin-turkce",
+   "ad": "Yabancılar için Türkçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "yds",
+    "ales"
+   ]
+  },
+  {
+   "slug": "yerli-dilleri",
+   "ad": "Yerli dilleri",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yidis",
+   "ad": "Yidiş",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yunanca",
+   "ad": "Yunanca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cekce",
+   "ad": "Çekçe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ceviri-teknikleri",
+   "ad": "Çeviri teknikleri",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cince",
+   "ad": "Çince",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "chinese",
+    "cince ceviri",
+    "cince aksan",
+    "cince kelime bilgisi",
+    "cince duydugunu anlama",
+    "cince okudugunu anlama",
+    "cince konusma becerileri",
+    "cince yazma becerileri"
+   ]
+  },
+  {
+   "slug": "corot-dili",
+   "ad": "Çorot dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ibranice",
+   "ad": "İbranice",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ingiliz-ingilizcesi",
+   "ad": "İngiliz İngilizcesi",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ingilizce",
+   "ad": "İngilizce",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "i ngilizce",
+    "english",
+    "inglizce",
+    "ingilizce ogretmeni",
+    "ingilizce cocuk",
+    "ingilizce yds",
+    "ingilizce kelime",
+    "ielts ingilizce",
+    "ingilizce b1",
+    "online ingilizce",
+    "ingilizce is",
+    "ingilizce erasmus",
+    "ingilizce speaking",
+    "ingilizce dersi",
+    "ingilizce aksan",
+    "ingilizce ceviri",
+    "ingilizce kelime bilgisi",
+    "ingilizce duydugunu anlama",
+    "ingilizce okudugunu anlama",
+    "ingilizce konusma becerileri",
+    "ingilizce yazma becerileri",
+    "ilkokul ingilizce",
+    "lgs ingilizce",
+    "oabt ingilizce",
+    "yds ingilizce",
+    "ydt ingilizce"
+   ]
+  },
+  {
+   "slug": "ingilizce-hukuk-dili",
+   "ad": "İngilizce hukuk dili",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "irlandaca",
+   "ad": "İrlandaca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ispanyolca",
+   "ad": "İspanyolca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "i spanyolca",
+    "ispanyolca ceviri",
+    "ispanyolca aksan",
+    "ispanyolca kelime bilgisi",
+    "ispanyolca duydugunu anlama",
+    "ispanyolca okudugunu anlama",
+    "ispanyolca konusma becerileri",
+    "ispanyolca yazma becerileri"
+   ]
+  },
+  {
+   "slug": "isvecce",
+   "ad": "İsveççe",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "italyanca",
+   "ad": "İtalyanca",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": [
+    "italyanca ceviri",
+    "italyanca aksan",
+    "italyanca sozcuk bilgisi",
+    "italyanca duydugunu anlama",
+    "italyanca okudugunu anlama",
+    "italyanca konusma becerileri",
+    "italyanca yazma becerileri"
+   ]
+  },
+  {
+   "slug": "is-ingilizcesi",
+   "ad": "İş İngilizcesi",
+   "grup": "DIL",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "isaret-dili",
+   "ad": "İşaret Dili",
+   "grup": "DIL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "CEFR"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "adaylik-egitimi",
+   "ad": "Adaylık eğitimi",
+   "grup": "KOCLUK",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "akil-ve-zeka-oyunlari",
+   "ad": "Akıl ve Zeka Oyunları",
+   "ust_slug": null,
+   "grup": "KOCLUK",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diksiyon",
+   "ad": "Diksiyon",
+   "grup": "KOCLUK",
+   "ust_slug": "konusma-becerileri",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": [
+    "diksiyon hitabet"
+   ]
+  },
+  {
+   "slug": "etkili-iletisim",
+   "ad": "Etkili İletişim",
+   "ust_slug": null,
+   "grup": "KOCLUK",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hafiza-teknikleri",
+   "ad": "Hafıza Teknikleri",
+   "ust_slug": null,
+   "grup": "KOCLUK",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hizli-okuma",
+   "ad": "Hızlı Okuma",
+   "grup": "KOCLUK",
+   "ust_slug": null,
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kariyer-koclugu",
+   "ad": "Kariyer koçluğu",
+   "grup": "KOCLUK",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "liderlik",
+   "ad": "Liderlik",
+   "grup": "KOCLUK",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "profesyonel-kocluk",
+   "ad": "Profesyonel koçluk",
+   "grup": "KOCLUK",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sunum-becerileri",
+   "ad": "Sunum Becerileri",
+   "ust_slug": null,
+   "grup": "KOCLUK",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ogrenci-koclugu",
+   "ad": "Öğrenci Koçluğu",
+   "ust_slug": null,
+   "grup": "KOCLUK",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "is-arama-koclugu",
+   "ad": "İş arama koçluğu",
+   "grup": "KOCLUK",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "akordeon",
+   "ad": "Akordeon",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "akustik-gitar",
+   "ad": "Akustik gitar",
+   "grup": "MUZIK",
+   "ust_slug": "gitar",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "alto",
+   "ad": "Alto",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "aranjman",
+   "ad": "Aranjman",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "armonika",
+   "ad": "Armonika",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "arp",
+   "ad": "Arp",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "autoharp",
+   "ad": "Autoharp",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "agiz-kopuzu",
+   "ad": "Ağız kopuzu",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "balayka",
+   "ad": "Balayka",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bandoneon",
+   "ad": "Bandoneon",
+   "grup": "MUZIK",
+   "ust_slug": "akordeon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "banjo",
+   "ad": "Banjo",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bas-gitar",
+   "ad": "Bas gitar",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bateri",
+   "ad": "Bateri",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "baglama",
+   "ad": "Bağlama",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "saz"
+   ]
+  },
+  {
+   "slug": "beatbox",
+   "ad": "Beatbox",
+   "grup": "MUZIK",
+   "ust_slug": "san",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "beatbox-flut",
+   "ad": "Beatbox flüt",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "berimbau",
+   "ad": "Berimbau",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "beste",
+   "ad": "Beste",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilgisayar-muzigi",
+   "ad": "Bilgisayar müziği",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "blokflut",
+   "ad": "Blokflüt",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "blues-gitari",
+   "ad": "Blues gitarı",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bodhran",
+   "ad": "Bodhran",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bombo",
+   "ad": "Bombo",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bongo",
+   "ad": "Bongo",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "borazan",
+   "ad": "Borazan",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cajon",
+   "ad": "Cajon",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "canga-calgisi",
+   "ad": "Canga çalgısı",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "chapman-gitari",
+   "ad": "Chapman gitarı",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "charango",
+   "ad": "Charango",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "country-gitar",
+   "ad": "Country gitar",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cuica",
+   "ad": "Cuica",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dj-mix",
+   "ad": "DJ mix",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "darbuka",
+   "ad": "Darbuka",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "didgeridoo",
+   "ad": "Didgeridoo",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diyatonik-akordeon",
+   "ad": "Diyatonik akordeon",
+   "grup": "MUZIK",
+   "ust_slug": "akordeon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diger-telli-calgilar",
+   "ad": "Diğer telli çalgılar",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diger-uflemeli-calgilar",
+   "ad": "Diğer üflemeli çalgılar",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dj",
+   "ad": "Dj",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "djembe",
+   "ad": "Djembe",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dogaclama-jazz",
+   "ad": "Doğaçlama jazz",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dogaclama-muzik",
+   "ad": "Doğaçlama müzik",
+   "grup": "MUZIK",
+   "ust_slug": "muzik",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "elektro-gitar",
+   "ad": "Elektro Gitar",
+   "grup": "MUZIK",
+   "ust_slug": "gitar",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "euphonium",
+   "ad": "Euphonium",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fagot",
+   "ad": "Fagot",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fiddle",
+   "ad": "Fiddle",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "flamenco-gitari",
+   "ad": "Flamenco gitarı",
+   "grup": "MUZIK",
+   "ust_slug": "gitar",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "flamenko-cajonu",
+   "ad": "Flamenko cajonu",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "flut",
+   "ad": "Flüt",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fransiz-kornosu",
+   "ad": "Fransız kornosu",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "geleneksel-cin-muzigi",
+   "ad": "Geleneksel Çin müziği",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gitar",
+   "ad": "Gitar",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "gitar dersi",
+    "gitar klasik",
+    "san gitar"
+   ]
+  },
+  {
+   "slug": "guzheng",
+   "ad": "Guzheng",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "handpan",
+   "ad": "Handpan",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hang",
+   "ad": "Hang",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "home-studio",
+   "ad": "Home Studio",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "jazz",
+   "ad": "Jazz",
+   "grup": "MUZIK",
+   "ust_slug": "san",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "jazz-baterisi",
+   "ad": "Jazz baterisi",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "jazz-gitari",
+   "ad": "Jazz gitarı",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "jazz-piyanosu",
+   "ad": "Jazz piyanosu",
+   "grup": "MUZIK",
+   "ust_slug": "piyano",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kazoo",
+   "ad": "Kazoo",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "keman",
+   "ad": "Keman",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "keman dersi",
+    "piyano ve keman"
+   ]
+  },
+  {
+   "slug": "kemence",
+   "ad": "Kemençe",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kithara",
+   "ad": "Kithara",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klarnet",
+   "ad": "Klarnet",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klasik-gitar",
+   "ad": "Klasik gitar",
+   "grup": "MUZIK",
+   "ust_slug": "gitar",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klasik-muzik",
+   "ad": "Klasik müzik",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klasik-san",
+   "ad": "Klasik şan",
+   "grup": "MUZIK",
+   "ust_slug": "san",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klavsen",
+   "ad": "Klavsen",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klavye",
+   "ad": "Klavye",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klezmer",
+   "ad": "Klezmer",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kontrabas",
+   "ad": "Kontrabas",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kornet",
+   "ad": "Kornet",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "koro",
+   "ad": "Koro",
+   "grup": "MUZIK",
+   "ust_slug": "san",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kromatik-akordeon",
+   "ad": "Kromatik akordeon",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ksilofon",
+   "ad": "Ksilofon",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kulak-egitimi",
+   "ad": "Kulak eğitimi",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzik-teorisi-kulak-egitimi",
+   "ad": "Kulak eğitimi",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kultrun",
+   "ad": "Kultrun",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "latva",
+   "ad": "Latva",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "lir",
+   "ad": "Lir",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mandolin",
+   "ad": "Mandolin",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "marimba",
+   "ad": "Marimba",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "metal-gitari",
+   "ad": "Metal gitarı",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzik",
+   "ad": "Müzik",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "konservatuvar"
+   ]
+  },
+  {
+   "slug": "muzik-aletleri-tumu",
+   "ad": "Müzik aletleri (tümü)",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "davul",
+    "keman piyano",
+    "kanun",
+    "enstruman"
+   ]
+  },
+  {
+   "slug": "muzik-egitimi",
+   "ad": "Müzik eğitimi",
+   "grup": "MUZIK",
+   "ust_slug": "muzik",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "san dersi",
+    "san egitimi",
+    "san egitim"
+   ]
+  },
+  {
+   "slug": "muzik-odasi",
+   "ad": "Müzik odası",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzik-produksiyon",
+   "ad": "Müzik prodüksiyon",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzik-teknolojisi",
+   "ad": "Müzik teknolojisi",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzik-teorisi",
+   "ad": "Müzik teorisi",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzik-yapim",
+   "ad": "Müzik yapım",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzikoloji",
+   "ad": "Müzikoloji",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzisyenler-icin-alexander-teknigi",
+   "ad": "Müzisyenler için Alexander tekniği",
+   "grup": "MUZIK",
+   "ust_slug": "muzik",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "nefes-egzersizleri-san",
+   "ad": "Nefes egzersizleri - şan",
+   "grup": "MUZIK",
+   "ust_slug": "san",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "nefes"
+   ]
+  },
+  {
+   "slug": "ney",
+   "ad": "Ney",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "obua",
+   "ad": "Obua",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "okarina",
+   "ad": "Okarina",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "org",
+   "ad": "Org",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "organoloji",
+   "ad": "Organoloji",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "orkestra-yonetimi",
+   "ad": "Orkestra yönetimi",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "orkestrasyon",
+   "ad": "Orkestrasyon",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pandeiro",
+   "ad": "Pandeiro",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "panflut",
+   "ad": "Panflüt",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "perkusyon",
+   "ad": "Perküsyon",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pikolo-flut",
+   "ad": "Pikolo flüt",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "piyano",
+   "ad": "Piyano",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "piano",
+    "piyano dersi"
+   ]
+  },
+  {
+   "slug": "rap",
+   "ad": "Rap",
+   "grup": "MUZIK",
+   "ust_slug": "san",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "rebec",
+   "ad": "Rebec",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "rock-gitari",
+   "ad": "Rock gitarı",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "saksafon",
+   "ad": "Saksafon",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sentezleyici",
+   "ad": "Sentezleyici",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ses-egitimi-san",
+   "ad": "Ses Eğitimi (Şan)",
+   "ust_slug": null,
+   "grup": "MUZIK",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "san"
+   ]
+  },
+  {
+   "slug": "ses-egitimi",
+   "ad": "Ses eğitimi",
+   "grup": "MUZIK",
+   "ust_slug": "san",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "vokal"
+   ]
+  },
+  {
+   "slug": "ses-muhendisligi",
+   "ad": "Ses mühendisliği",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sibelius",
+   "ad": "Sibelius",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sitar",
+   "ad": "Sitar",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "solfej",
+   "ad": "Solfej",
+   "grup": "MUZIK",
+   "ust_slug": "muzik",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "solfej-ve-muzik-teorisi",
+   "ad": "Solfej ve Müzik Teorisi",
+   "ust_slug": null,
+   "grup": "MUZIK",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "solfej"
+   ]
+  },
+  {
+   "slug": "steel-drum",
+   "ad": "Steel drum",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tabla",
+   "ad": "Tabla",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tambur",
+   "ad": "Tambur",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tanbur",
+   "ad": "Tanbur",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "temel-muzik-egitimi",
+   "ad": "Temel müzik eğitimi",
+   "grup": "MUZIK",
+   "ust_slug": "muzik",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tenor-horn",
+   "ad": "Tenor Horn",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "timbal",
+   "ad": "Timbal",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tombak",
+   "ad": "Tombak",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "trombon",
+   "ad": "Trombon",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "trompet",
+   "ad": "Trompet",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tuba",
+   "ad": "Tuba",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "turk-sanat-muzigi",
+   "ad": "Türk sanat müziği",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ud",
+   "ad": "Ud",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ukulele",
+   "ad": "Ukulele",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "viola-da-gamba",
+   "ad": "Viola da Gamba",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yan-flut",
+   "ad": "Yan Flüt",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "calpara",
+   "ad": "Çalpara",
+   "grup": "MUZIK",
+   "ust_slug": "perkusyon",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cello",
+   "ad": "Çello",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ingiliz-kornosu",
+   "ad": "İngiliz kornosu",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "san",
+   "ad": "Şan",
+   "grup": "MUZIK",
+   "ust_slug": null,
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": [
+    "opera san"
+   ]
+  },
+  {
+   "slug": "sarki-sozu-yazarligi",
+   "ad": "Şarkı sözü yazarlığı",
+   "grup": "MUZIK",
+   "ust_slug": "muzik-teorisi",
+   "merdivenler": [
+    "KONSERVATUVAR",
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "acca",
+   "ad": "ACCA",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "aia",
+   "ad": "AIA",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "aca",
+   "ad": "Aca",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "adli-bilimler",
+   "ad": "Adli bilimler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "advanced-placement",
+   "ad": "Advanced Placement",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "agronomi",
+   "ad": "Agronomi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "akaid",
+   "ad": "Akaid",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "akiskanlar-mekanigi",
+   "ad": "Akışkanlar Mekaniği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "algoritma",
+   "ad": "Algoritma",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "c ve algoritma"
+   ]
+  },
+  {
+   "slug": "amerikan-calismalari",
+   "ad": "Amerikan çalışmaları",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "anatomi",
+   "ad": "Anatomi",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "anayasa-hukuku",
+   "ad": "Anayasa hukuku",
+   "grup": "OKUL",
+   "ust_slug": "kamu-hukuku",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "antropoloji",
+   "ad": "Antropoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "arastirma-yontemleri",
+   "ad": "Araştırma yöntemleri",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "aritmetik",
+   "ad": "Aritmetik",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "arkeoloji",
+   "ad": "Arkeoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "asperger-sendromlu-ogrencilere-takviye",
+   "ad": "Asperger sendromlu öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "astrofizik",
+   "ad": "Astrofizik",
+   "grup": "OKUL",
+   "ust_slug": "fizik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "astronomi",
+   "ad": "Astronomi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "autizmli-ogrencilere-takviye",
+   "ad": "Autizmli öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "avrupa-hukuku",
+   "ad": "Avrupa hukuku",
+   "grup": "OKUL",
+   "ust_slug": "uluslararasi-hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "baro",
+   "ad": "Baro",
+   "grup": "OKUL",
+   "ust_slug": "droit-concours-examens",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bask-dili-ve-edebiyati",
+   "ad": "Bask dili ve edebiyatı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "basin-ve-halkla-iliskiler",
+   "ad": "Basın ve halkla ilişkiler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "beden-egitimi",
+   "ad": "Beden eğitimi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "besin-kimyasi",
+   "ad": "Besin kimyası",
+   "grup": "OKUL",
+   "ust_slug": "kimya",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "betonarme",
+   "ad": "Betonarme",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilgisayar-muhendisligi",
+   "ad": "Bilgisayar mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bilim-tarihi",
+   "ad": "Bilim tarihi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bina-otomasyonu",
+   "ad": "Bina otomasyonu",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bitcoin",
+   "ad": "Bitcoin",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "biyokimya",
+   "ad": "Biyokimya",
+   "grup": "OKUL",
+   "ust_slug": "kimya",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "biyoloji",
+   "ad": "Biyoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "biyoloj",
+    "ayt biyoloji",
+    "tyt biyoloji"
+   ]
+  },
+  {
+   "slug": "biyoteknoloji",
+   "ad": "Biyoteknoloji",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "blockchain",
+   "ad": "Blockchain",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "borsa-analizi",
+   "ad": "Borsa analizi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "borsa-tacirligi",
+   "ad": "Borsa tacirliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "borsa-yatirim",
+   "ad": "Borsa yatırım",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "botanik",
+   "ad": "Botanik",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bulgarca",
+   "ad": "Bulgarca",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cbs",
+   "ad": "CBS",
+   "grup": "OKUL",
+   "ust_slug": "cografya",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cima",
+   "ad": "CIMA",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cipfa",
+   "ad": "CIPFA",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cv-motivasyon-mektubu-yazimi",
+   "ad": "CV - Motivasyon mektubu yazımı",
+   "grup": "OKUL",
+   "ust_slug": "redaktorluk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "calculus",
+   "ad": "Calculus",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "calculus 1"
+   ]
+  },
+  {
+   "slug": "cebir",
+   "ad": "Cebir",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "linear algebra"
+   ]
+  },
+  {
+   "slug": "ceza-hukuku",
+   "ad": "Ceza hukuku",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cinsel-egitim",
+   "ad": "Cinsel eğitim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "cinsel"
+   ]
+  },
+  {
+   "slug": "cool-hunting",
+   "ad": "Cool hunting",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cografya",
+   "ad": "Coğrafya",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ayt cografya",
+    "kpss cografya",
+    "oabt cografya",
+    "tyt cografya"
+   ]
+  },
+  {
+   "slug": "dekorasyon",
+   "ad": "Dekorasyon",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "devre-analizi",
+   "ad": "Devre Analizi",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diferansiyel-denklemler",
+   "ad": "Diferansiyel Denklemler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dijital-iletisim",
+   "ad": "Dijital iletişim",
+   "grup": "OKUL",
+   "ust_slug": "iletisim",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dijital-pazarlama",
+   "ad": "Dijital pazarlama",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dikkat-eksikligi-olan-ogrencilerine-takviye",
+   "ad": "Dikkat eksikliği olan öğrencilerine takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dilbilgisi",
+   "ad": "Dilbilgisi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dilbilim",
+   "ad": "Dilbilim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "din-kulturu",
+   "ad": "Din Kültürü",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "din",
+    "lgs din",
+    "tyt din"
+   ]
+  },
+  {
+   "slug": "din-kulturu-ve-ahlak-bilgisi",
+   "ad": "Din kültürü ve ahlak bilgisi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dinamik",
+   "ad": "Dinamik",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "disfazi-ogrencilerine-takviye",
+   "ad": "Disfazi öğrencilerine takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diskalkuli-ogrencilere-takviye",
+   "ad": "Diskalkuli öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "diskalkuli"
+   ]
+  },
+  {
+   "slug": "disleksi-ogrencilere-takviye",
+   "ad": "Disleksi öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "disleksi"
+   ]
+  },
+  {
+   "slug": "disortografi-ogrencilerine-takviye",
+   "ad": "Disortografi öğrencilerine takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dispraksi-ogrencilerine-takviye",
+   "ad": "Dispraksi öğrencilerine takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diyestisyenlik",
+   "ad": "Diyestisyenlik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diger-bilimler",
+   "ad": "Diğer bilimler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "diger-insani-bilimler",
+   "ad": "Diğer insani bilimler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "droit-concours-examens",
+   "ad": "Droit (Concours/Examens)",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "droit-mixte",
+   "ad": "Droit (Mixte)",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "durum-tespiti",
+   "ad": "Durum tespiti",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dis-politika",
+   "ad": "Dış politika",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ebelik",
+   "ad": "Ebelik",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "eczacilik",
+   "ad": "Eczacılık",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "eczacilik-kimyasi",
+   "ad": "Eczacılık kimyası",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "edebiyat",
+   "ad": "Edebiyat",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ekoloji",
+   "ad": "Ekoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ekonometri",
+   "ad": "Ekonometri",
+   "grup": "OKUL",
+   "ust_slug": "ekonomi",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ekonomi",
+   "ad": "Ekonomi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "iktisat"
+   ]
+  },
+  {
+   "slug": "el-yazisi",
+   "ad": "El yazısı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "elektrik",
+   "ad": "Elektrik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "elektrik dersi"
+   ]
+  },
+  {
+   "slug": "elektrik-elektronik-muhendisligi",
+   "ad": "Elektrik elektronik mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": "elektrik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "elektrik elektronik"
+   ]
+  },
+  {
+   "slug": "elektrik-teknisyenligi",
+   "ad": "Elektrik teknisyenliği",
+   "grup": "OKUL",
+   "ust_slug": "muhendislik-bilimleri",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "elektrokimya",
+   "ad": "Elektrokimya",
+   "grup": "OKUL",
+   "ust_slug": "kimya",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "elektromanyetik",
+   "ad": "Elektromanyetik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "elektronik",
+   "ad": "Elektronik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "elestirel-dusunme",
+   "ad": "Eleştirel düşünme",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "endustri-muhendisligi",
+   "ad": "Endüstri mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "endustriyel-kimya",
+   "ad": "Endüstriyel kimya",
+   "grup": "OKUL",
+   "ust_slug": "kimya",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "endustriyel-tasarim",
+   "ad": "Endüstriyel tasarım",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "enerji-hukuku",
+   "ad": "Enerji hukuku",
+   "grup": "OKUL",
+   "ust_slug": "hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "engelli-ogrencilere-takviye",
+   "ad": "Engelli öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "epidemiyoloji",
+   "ad": "Epidemiyoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ergoterapi",
+   "ad": "Ergoterapi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "eski-yunanca",
+   "ad": "Eski Yunanca",
+   "grup": "OKUL",
+   "ust_slug": "klasik-edebiyat",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "etik",
+   "ad": "Etik",
+   "grup": "OKUL",
+   "ust_slug": "felsefe",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "evrensel-edebiyat",
+   "ad": "Evrensel edebiyat",
+   "grup": "OKUL",
+   "ust_slug": "edebiyat",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "evrim-biyolojisi",
+   "ad": "Evrim biyolojisi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "egitim-bilimleri",
+   "ad": "Eğitim Bilimleri",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "egitim",
+    "kpss egitim"
+   ]
+  },
+  {
+   "slug": "egitim-danismanligi",
+   "ad": "Eğitim danışmanlığı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "felsefe",
+   "ad": "Felsefe",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ayt felsefe",
+    "tyt felsefe"
+   ]
+  },
+  {
+   "slug": "fen-bilimleri",
+   "ad": "Fen Bilimleri",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "fen bilgisi",
+    "fen bilimleri lgs",
+    "fen",
+    "lgs fen",
+    "oabt fen"
+   ]
+  },
+  {
+   "slug": "fen-ve-teknoloji",
+   "ad": "Fen ve teknoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fikri-mulkiyet",
+   "ad": "Fikri mülkiyet",
+   "grup": "OKUL",
+   "ust_slug": "ozel-hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "filozofi-tarihi",
+   "ad": "Filozofi tarihi",
+   "grup": "OKUL",
+   "ust_slug": "felsefe",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "filozofik-dusunce",
+   "ad": "Filozofik düşünce",
+   "grup": "OKUL",
+   "ust_slug": "felsefe",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "finans",
+   "ad": "Finans",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "finans-hukuku",
+   "ad": "Finans hukuku",
+   "grup": "OKUL",
+   "ust_slug": "hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "finansal-yonetim",
+   "ad": "Finansal yönetim",
+   "grup": "OKUL",
+   "ust_slug": "finans",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fizik",
+   "ad": "Fizik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "fizik ogretmeni",
+    "lise fizik",
+    "fizik hacettepe",
+    "yks fizik",
+    "fizik yks",
+    "fizik matematik",
+    "ayt fizik",
+    "msu fizik",
+    "tyt fizik"
+   ]
+  },
+  {
+   "slug": "fizik-tedavi",
+   "ad": "Fizik tedavi",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "fizyoterapist",
+    "fizyo"
+   ]
+  },
+  {
+   "slug": "fizik-kimya",
+   "ad": "Fizik-Kimya",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fizyoloji",
+   "ad": "Fizyoloji",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fizyopatoloji",
+   "ad": "Fizyopatoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fonetik",
+   "ad": "Fonetik",
+   "grup": "OKUL",
+   "ust_slug": "konusma-becerileri",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fonotik",
+   "ad": "Fonotik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fransiz-dili-ve-edebiyati",
+   "ad": "Fransız dili ve edebiyatı",
+   "grup": "OKUL",
+   "ust_slug": "edebiyat",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fikih",
+   "ad": "Fıkıh",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gre",
+   "ad": "GRE",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "galicya-dili-ve-edebiyati",
+   "ad": "Galiçya dili ve edebiyatı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gazetecilik",
+   "ad": "Gazetecilik",
+   "grup": "OKUL",
+   "ust_slug": "iletisim",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "genel-insan-bilimleri",
+   "ad": "Genel insan bilimleri",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "genel-kultur",
+   "ad": "Genel kültür",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "genetik",
+   "ad": "Genetik",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "geometri",
+   "ad": "Geometri",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "tyt geometri"
+   ]
+  },
+  {
+   "slug": "geri-donusum",
+   "ad": "Geri dönüşüm",
+   "grup": "OKUL",
+   "ust_slug": "ekoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gerontoloji",
+   "ad": "Gerontoloji",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "girisimcilik",
+   "ad": "Girişimcilik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "glycobiologie",
+   "ad": "Glycobiologie",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "grafoloji",
+   "ad": "Grafoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gorme-iyilestirme",
+   "ad": "Görme iyileştirme",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gostergebilim",
+   "ad": "Göstergebilim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "gunluk",
+   "ad": "Günlük",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "haber-takibi",
+   "ad": "Haber takibi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hadis",
+   "ad": "Hadis",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hafiza-guclendirme",
+   "ad": "Hafıza güçlendirme",
+   "grup": "OKUL",
+   "ust_slug": "okul-derslerine-destek",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hayat-bilgisi",
+   "ad": "Hayat Bilgisi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ilkokul hayat bilgisi"
+   ]
+  },
+  {
+   "slug": "hemsirelik",
+   "ad": "Hemşirelik",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hesaplama-sorunu-olan-ogrencilere-takviye",
+   "ad": "Hesaplama sorunu olan öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hidrobiyoloji",
+   "ad": "Hidrobiyoloji",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hiperaktivite-ve-dikkat-eksikligi-olan-ogrencilere-takviye",
+   "ad": "Hiperaktivite ve dikkat eksikliği olan öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hitabet",
+   "ad": "Hitabet",
+   "grup": "OKUL",
+   "ust_slug": "konusma-becerileri",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "iletisim ve sunum becerileri"
+   ]
+  },
+  {
+   "slug": "hristiyanlik",
+   "ad": "Hristiyanlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hukuk",
+   "ad": "Hukuk",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hukuk-diplomasi",
+   "ad": "Hukuk diploması",
+   "grup": "OKUL",
+   "ust_slug": "droit-concours-examens",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hucresel-biyoloji",
+   "ad": "Hücresel biyoloji",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "immunologie",
+   "ad": "Immunologie",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "isi-transferi",
+   "ad": "Isı transferi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "jeoloji",
+   "ad": "Jeoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "jeopolitik",
+   "ad": "Jeopolitik",
+   "grup": "OKUL",
+   "ust_slug": "siyaset-bilimi",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kpss-hazirlik",
+   "ad": "KPSS hazırlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "kpss"
+   ]
+  },
+  {
+   "slug": "kpss-ve-ales-sinavlarina-hazirlik",
+   "ad": "KPSS ve ALES sınavlarına hazırlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kamu-hukuku",
+   "ad": "Kamu hukuku",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kamu-maliyesi-hukuku",
+   "ad": "Kamu maliyesi hukuku",
+   "grup": "OKUL",
+   "ust_slug": "kamu-hukuku",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kamu-politikasi",
+   "ad": "Kamu politikası",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kamu-sagligi",
+   "ad": "Kamu sağlığı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kamu-sekreterligi",
+   "ad": "Kamu sekreterliği",
+   "grup": "OKUL",
+   "ust_slug": "kpss-hazirlik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "karsilastirmali-edebiyat",
+   "ad": "Karşılaştırmalı edebiyat",
+   "grup": "OKUL",
+   "ust_slug": "edebiyat",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "katalan-dili-ve-edebiyati",
+   "ad": "Katalan dili ve edebiyatı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kaynak-yonetimi",
+   "ad": "Kaynak yönetimi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kelam",
+   "ad": "Kelam",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kimya",
+   "ad": "Kimya",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "analitik kimya",
+    "yks kimya",
+    "kimya ogretmeni",
+    "kimya tyt",
+    "lise 1 kimya",
+    "ayt kimya",
+    "tyt kimya"
+   ]
+  },
+  {
+   "slug": "kimya-muhendisligi",
+   "ad": "Kimya mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": "kimya",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kinesiyoloji",
+   "ad": "Kinesiyoloji",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klasik-edebiyat",
+   "ad": "Klasik edebiyat",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "klasik-kultur",
+   "ad": "Klasik kültür",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kompozisyon-yazimi",
+   "ad": "Kompozisyon yazımı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "konusma-becerileri",
+   "ad": "Konuşma becerileri",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kriminal-arastirmalar",
+   "ad": "Kriminal araştırmalar",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kriminoloji",
+   "ad": "Kriminoloji",
+   "grup": "OKUL",
+   "ust_slug": "ceza-hukuku",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kripto-para",
+   "ad": "Kripto para",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kuran",
+   "ad": "Kuran",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "kuran dersi",
+    "kuran kerim",
+    "tecvid kuran",
+    "tecvid",
+    "kurani kerim"
+   ]
+  },
+  {
+   "slug": "kuran-meali",
+   "ad": "Kuran meali",
+   "grup": "OKUL",
+   "ust_slug": "muslumanlik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kuran-okuma",
+   "ad": "Kuran okuma",
+   "grup": "OKUL",
+   "ust_slug": "muslumanlik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "kultur-sanat-egitimi",
+   "ad": "Kültür sanat eğitimi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "latince",
+   "ad": "Latince",
+   "grup": "OKUL",
+   "ust_slug": "klasik-edebiyat",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "lineer-cebir",
+   "ad": "Lineer Cebir",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "lojistik",
+   "ad": "Lojistik",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mba",
+   "ad": "MBA",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "makina-muhendisligi",
+   "ad": "Makina mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": "mekanik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "makina-teknisyenligi",
+   "ad": "Makina teknisyenliği",
+   "grup": "OKUL",
+   "ust_slug": "muhendislik-bilimleri",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "makro-iktisat",
+   "ad": "Makro İktisat",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "makroekonomi",
+   "ad": "Makroekonomi",
+   "grup": "OKUL",
+   "ust_slug": "ekonomi",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mali-hukuk",
+   "ad": "Mali hukuk",
+   "grup": "OKUL",
+   "ust_slug": "hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "maliye",
+   "ad": "Maliye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "malzeme",
+   "ad": "Malzeme",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mantik",
+   "ad": "Mantık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "matematik",
+   "ad": "Matematik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "matematik lise",
+    "lgs matematik",
+    "matematik kpss",
+    "matematik geometri",
+    "i lkokul matematik",
+    "matemetik",
+    "yks matematik",
+    "tyt matematik",
+    "matematik lgs",
+    "matematik fen",
+    "diferansiyel denklemler",
+    "lise matematik",
+    "lise temel matemetik",
+    "ingilizce matematik",
+    "matematik fizik kimya biyoloji",
+    "matematik fen bilimleri",
+    "matematik yks",
+    "matematik tyt",
+    "dgs matematik",
+    "matematik tyt yks",
+    "matematik ogretmeni",
+    "matematik ilkokul",
+    "ortaokul matematik",
+    "matematik ozel ders",
+    "ales matematik",
+    "matematik igcse",
+    "ayt matematik",
+    "ilkokul matematik",
+    "kpss matematik",
+    "msu matematik",
+    "oabt matematik"
+   ]
+  },
+  {
+   "slug": "matematik-mantigi",
+   "ad": "Matematik mantığı",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "matematiksel-analiz",
+   "ad": "Matematiksel analiz",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "medeni-hukuk",
+   "ad": "Medeni hukuk",
+   "grup": "OKUL",
+   "ust_slug": "ozel-hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mediko-sosyal-bilimler",
+   "ad": "Mediko-sosyal bilimler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "medya-sosyolojisi",
+   "ad": "Medya sosyolojisi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mekanik",
+   "ad": "Mekanik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "metalurji",
+   "ad": "Metalurji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "metodoloji",
+   "ad": "Metodoloji",
+   "grup": "OKUL",
+   "ust_slug": "okul-derslerine-destek",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "microekonomi",
+   "ad": "Microekonomi",
+   "grup": "OKUL",
+   "ust_slug": "ekonomi",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mikro-iktisat",
+   "ad": "Mikro İktisat",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mikrobiyoloji",
+   "ad": "Mikrobiyoloji",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mimari",
+   "ad": "Mimari",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "mimar",
+    "mimarlik",
+    "mimari proje"
+   ]
+  },
+  {
+   "slug": "mimarlik-boiumlerine-hazirlik",
+   "ad": "Mimarlık böiümlerine hazırlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mitoloji",
+   "ad": "Mitoloji",
+   "grup": "OKUL",
+   "ust_slug": "antropoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "modern-calismalar",
+   "ad": "Modern çalışmalar",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "molekuler-biyoloji",
+   "ad": "Moleküler biyoloji",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muhasebe",
+   "ad": "Muhasebe",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "genel muhasebe"
+   ]
+  },
+  {
+   "slug": "muhasebe-yonetimi",
+   "ad": "Muhasebe yönetimi",
+   "grup": "OKUL",
+   "ust_slug": "muhasebe",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "mukavemet",
+   "ad": "Mukavemet",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muhendislik-bilimleri",
+   "ad": "Mühendislik bilimleri",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "muhendislik"
+   ]
+  },
+  {
+   "slug": "muhendislik-icin-matematik",
+   "ad": "Mühendislik için matematik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "muhendislik matematik"
+   ]
+  },
+  {
+   "slug": "muslumanlik",
+   "ad": "Müslümanlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "muzik-tarihi",
+   "ad": "Müzik tarihi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "nukleer-fizik",
+   "ad": "Nükleer fizik",
+   "grup": "OKUL",
+   "ust_slug": "fizik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "odontoloji",
+   "ad": "Odontoloji",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "okul-derslerine-destek",
+   "ad": "Okul derslerine destek",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "okul-oncesi-egitim",
+   "ad": "Okul öncesi eğitim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "i lkokul",
+    "ilkokul",
+    "sinif",
+    "okul oncesi"
+   ]
+  },
+  {
+   "slug": "okula-uyum",
+   "ad": "Okula uyum",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "rehber ogretmen"
+   ]
+  },
+  {
+   "slug": "okuma",
+   "ad": "Okuma",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "okuma yazma"
+   ]
+  },
+  {
+   "slug": "okuma-guclugu-ceken-ogrencilere-takviye",
+   "ad": "Okuma güçlüğü çeken öğrencilere takviye",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "okuma-yazma",
+   "ad": "Okuma-Yazma",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ilkokul okuma-yazma"
+   ]
+  },
+  {
+   "slug": "okuryazarlik",
+   "ad": "Okuryazarlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "olasilik",
+   "ad": "Olasılık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "organik-kimya",
+   "ad": "Organik kimya",
+   "grup": "OKUL",
+   "ust_slug": "kimya",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ortadogu-calismalari",
+   "ad": "Ortadoğu çalışmaları",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ortofoni",
+   "ad": "Ortofoni",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ortografi",
+   "ad": "Ortografi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ortopedagoji",
+   "ad": "Ortopedagoji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ortopedi",
+   "ad": "Ortopedi",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "osmanli-turkcesi",
+   "ad": "Osmanlı Türkçesi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "osmanlica"
+   ]
+  },
+  {
+   "slug": "osteopati",
+   "ad": "Osteopati",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "otomasyon",
+   "ad": "Otomasyon",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "otomotiv",
+   "ad": "Otomotiv",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "osinografi",
+   "ad": "Oşinografi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "paramedik",
+   "ad": "Paramedik",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pazarlama",
+   "ad": "Pazarlama",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pazarlik",
+   "ad": "Pazarlık",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pedagoji",
+   "ad": "Pedagoji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pedikur-podolog",
+   "ad": "Pedikür- Podolog",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "petrol-muhendisligi",
+   "ad": "Petrol Mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "polislik-sinavlarina-hazirlik",
+   "ad": "Polislik sınavlarına hazırlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "politika",
+   "ad": "Politika",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "portekizce-aksan",
+   "ad": "Portekizce aksan",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "portekizce-fonetik",
+   "ad": "Portekizce fonetik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "proje-yonetimi",
+   "ad": "Proje yönetimi",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "psikoloji",
+   "ad": "Psikoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "psikolog",
+    "pdr",
+    "klinik psikolog"
+   ]
+  },
+  {
+   "slug": "psikoloji-testlerine-hazirlik",
+   "ad": "Psikoloji testlerine hazırlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "redaktorluk",
+   "ad": "Redaktörlük",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "retorik",
+   "ad": "Retorik",
+   "grup": "OKUL",
+   "ust_slug": "konusma-becerileri",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "risk-yonetimi",
+   "ad": "Risk Yönetimi",
+   "grup": "OKUL",
+   "ust_slug": "finans",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "robot-teknolojisi",
+   "ad": "Robot teknolojisi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sat-hazirlik",
+   "ad": "SAT hazırlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "spss",
+   "ad": "SPSS",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sanat-tarihi",
+   "ad": "Sanat tarihi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "satis",
+   "ad": "Satış",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sayisal-yetenek",
+   "ad": "Sayısal Yetenek",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ales sayisal",
+    "sayisal"
+   ]
+  },
+  {
+   "slug": "sekreterlik",
+   "ad": "Sekreterlik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sermaye-piyasasi-hukuku",
+   "ad": "Sermaye piyasası hukuku",
+   "grup": "OKUL",
+   "ust_slug": "kamu-hukuku",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sigorta",
+   "ad": "Sigorta",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sinema-tarihi",
+   "ad": "Sinema tarihi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sinirbilim",
+   "ad": "Sinirbilim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "siyaset-bilimi",
+   "ad": "Siyaset bilimi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "siyaset"
+   ]
+  },
+  {
+   "slug": "siyer",
+   "ad": "Siyer",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyal-bilgiler",
+   "ad": "Sosyal Bilgiler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "sosyal bilgiler lgs"
+   ]
+  },
+  {
+   "slug": "sosyal-bilimler",
+   "ad": "Sosyal bilimler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyal-cografya",
+   "ad": "Sosyal coğrafya",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyal-guvenlik-hukuku",
+   "ad": "Sosyal güvenlik hukuku",
+   "grup": "OKUL",
+   "ust_slug": "hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyal-hizmetler",
+   "ad": "Sosyal hizmetler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyal-iletisim",
+   "ad": "Sosyal iletişim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyal-yetenekler",
+   "ad": "Sosyal yetenekler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sosyoloji",
+   "ad": "Sosyoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "spor-bilimleri",
+   "ad": "Spor bilimleri",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "spor-psikolojisi",
+   "ad": "Spor psikolojisi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "start-up",
+   "ad": "Start up",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "statik",
+   "ad": "Statik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "stochastic-calculus",
+   "ad": "Stochastic calculus",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sozel-yetenek",
+   "ad": "Sözel Yetenek",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ales sozel",
+    "sozel"
+   ]
+  },
+  {
+   "slug": "sozel-bolumu-sinavlarina-hazirlik",
+   "ad": "Sözel bölümü sınavlarına hazırlık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sozsuz-iletisim",
+   "ad": "Sözsüz iletişim",
+   "grup": "OKUL",
+   "ust_slug": "iletisim",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "surdurulebilir-kalkinma",
+   "ad": "Sürdürülebilir kalkınma",
+   "grup": "OKUL",
+   "ust_slug": "ekoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sinavlara-hazirlik-tumu",
+   "ad": "Sınavlara hazırlık (Tümü)",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "lgs",
+    "yks",
+    "ders"
+   ]
+  },
+  {
+   "slug": "t-c-inkilap-tarihi",
+   "ad": "T.C. İnkılap Tarihi",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "inkilap",
+    "lgs inkilap"
+   ]
+  },
+  {
+   "slug": "tarih",
+   "ad": "Tarih",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ayt tarih",
+    "kpss tarih",
+    "msu tarih",
+    "oabt tarih",
+    "tyt tarih"
+   ]
+  },
+  {
+   "slug": "tasarim",
+   "ad": "Tasarım",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tasavvuf",
+   "ad": "Tasavvuf",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tasinmazlar-hukuku",
+   "ad": "Taşınmazlar hukuku",
+   "grup": "OKUL",
+   "ust_slug": "ozel-hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "teknik",
+   "ad": "Teknik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "teknik-cizim",
+   "ad": "Teknik çizim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "teknoloji",
+   "ad": "Teknoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "temel-cografya",
+   "ad": "Temel coğrafya",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "termodinamik",
+   "ad": "Termodinamik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tez-yazimi",
+   "ad": "Tez yazımı",
+   "grup": "OKUL",
+   "ust_slug": "redaktorluk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "thinking-skills-assessment",
+   "ad": "Thinking Skills Assessment",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ticaret",
+   "ad": "Ticaret",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ticari-analiz",
+   "ad": "Ticari analiz",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "toksikoloji",
+   "ad": "Toksikoloji",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "topluluk-yonetimi",
+   "ad": "Topluluk yönetimi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "topografi",
+   "ad": "Topografi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "trigonometri",
+   "ad": "Trigonometri",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tuketim-hukuku",
+   "ad": "Tüketim hukuku",
+   "grup": "OKUL",
+   "ust_slug": "hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "turk-dili-ve-edebiyati",
+   "ad": "Türk Dili ve Edebiyatı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ayt edebiyat",
+    "edebiyat"
+   ]
+  },
+  {
+   "slug": "turkce",
+   "ad": "Türkçe",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "turkce ders",
+    "turkce ogretmen",
+    "turkish teacher",
+    "turkce lgs",
+    "dgs turkce",
+    "ilkokul turkce",
+    "kpss turkce",
+    "lgs turkce",
+    "msu turkce",
+    "oabt turkce",
+    "tyt turkce"
+   ]
+  },
+  {
+   "slug": "tip",
+   "ad": "Tıp",
+   "grup": "OKUL",
+   "ust_slug": "mediko-sosyal-bilimler",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ukcat",
+   "ad": "Ukcat",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "uluslararasi-bakalorya",
+   "ad": "Uluslararası bakalorya",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "uluslararasi-hukuk",
+   "ad": "Uluslararası hukuk",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "uluslararasi-iliskiler",
+   "ad": "Uluslararası ilişkiler",
+   "grup": "OKUL",
+   "ust_slug": "siyaset-bilimi",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "uluslararasi-ticaret",
+   "ad": "Uluslararası ticaret",
+   "grup": "OKUL",
+   "ust_slug": "ticaret",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "uygulamali-bilimler",
+   "ad": "Uygulamalı bilimler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ucak-ve-uzay-muhendisligi",
+   "ad": "Uçak ve uzay mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "valensiya-dili-ve-debiyati",
+   "ad": "Valensiya dili ve debiyatı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "vatandaslik",
+   "ad": "Vatandaşlık",
+   "ust_slug": null,
+   "grup": "OKUL",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "kpss vatandaslik"
+   ]
+  },
+  {
+   "slug": "veterinerlik",
+   "ad": "Veterinerlik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yaratici-yazarlik",
+   "ad": "Yaratıcı yazarlık",
+   "grup": "OKUL",
+   "ust_slug": "redaktorluk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yayimcilik",
+   "ad": "Yayımcılık",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yazilim-muhendisligi",
+   "ad": "Yazılım mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yasli-bakimi",
+   "ad": "Yaşlı bakımı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yenilenebilir-enerji",
+   "ad": "Yenilenebilir enerji",
+   "grup": "OKUL",
+   "ust_slug": "ekoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "zihin-haritasi-guclendirme",
+   "ad": "Zihin haritası güçlendirme",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ziraat-bilimleri",
+   "ad": "Ziraat bilimleri",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "zooloji",
+   "ad": "Zooloji",
+   "grup": "OKUL",
+   "ust_slug": "biyoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "calisma-hukuku",
+   "ad": "Çalışma hukuku",
+   "grup": "OKUL",
+   "ust_slug": "hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cagdas-edebiyat",
+   "ad": "Çağdaş edebiyat",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cevre-muhendisligi",
+   "ad": "Çevre Mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cevre-hukuku",
+   "ad": "Çevre hukuku",
+   "grup": "OKUL",
+   "ust_slug": "hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "cevre-calismalari",
+   "ad": "Çevre çalışmaları",
+   "grup": "OKUL",
+   "ust_slug": "ekoloji",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "odevlere-yardim",
+   "ad": "Ödevlere yardım",
+   "grup": "OKUL",
+   "ust_slug": "okul-derslerine-destek",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ozel-egitim-ihtiyaclari",
+   "ad": "Özel eğitim ihtiyaçları",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "otizm",
+    "ozel egitim"
+   ]
+  },
+  {
+   "slug": "ozel-hukuk",
+   "ad": "Özel hukuk",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ozel-yetenekli-ogrenciler",
+   "ad": "Özel yetenekli öğrenciler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ogrenci"
+   ]
+  },
+  {
+   "slug": "universiteye-giris-sinavlari",
+   "ad": "Üniversiteye giriş sınavları",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "urun-tasarim",
+   "ad": "Ürün tasarım",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "idare-hukuku",
+   "ad": "İdare hukuku",
+   "grup": "OKUL",
+   "ust_slug": "kamu-hukuku",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "idari-bilimler",
+   "ad": "İdari bilimler",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ilahiyat",
+   "ad": "İlahiyat",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "iletisim",
+   "ad": "İletişim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ingiliz-edebiyati",
+   "ad": "İngiliz edebiyatı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "english literature"
+   ]
+  },
+  {
+   "slug": "inkilap",
+   "ad": "İnkılap",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "insan-haklari-yurttaslik-ve-demokrasi",
+   "ad": "İnsan hakları, yurttaşlık ve demokrasi",
+   "grup": "OKUL",
+   "ust_slug": "hayat-bilgisi",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "insan-kaynaklari",
+   "ad": "İnsan kaynakları",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "insan-kaynaklari-ve-iletisim",
+   "ad": "İnsan kaynakları ve iletişim",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "insaat",
+   "ad": "İnşaat",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "insaat-muhendisligi",
+   "ad": "İnşaat mühendisliği",
+   "grup": "OKUL",
+   "ust_slug": "muhendislik-bilimleri",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "insaat muh"
+   ]
+  },
+  {
+   "slug": "islam-calismalari",
+   "ad": "İslam çalışmaları",
+   "grup": "OKUL",
+   "ust_slug": "muslumanlik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "istatistik",
+   "ad": "İstatistik",
+   "grup": "OKUL",
+   "ust_slug": "matematik",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "i statistik"
+   ]
+  },
+  {
+   "slug": "ic-mimari",
+   "ad": "İç mimari",
+   "grup": "OKUL",
+   "ust_slug": "mimari",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ic mimarlik"
+   ]
+  },
+  {
+   "slug": "ic-tasarim",
+   "ad": "İç tasarım",
+   "grup": "OKUL",
+   "ust_slug": "tasarim",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "is-guvenligi",
+   "ad": "İş güvenliği",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "is-hukuku",
+   "ad": "İş hukuku",
+   "grup": "OKUL",
+   "ust_slug": "ozel-hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "isletme",
+   "ad": "İşletme",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "isletme-denetimi",
+   "ad": "İşletme denetimi",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "isletme-yonetimi",
+   "ad": "İşletme yönetimi",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sehir-yasami",
+   "ad": "Şehir yaşamı",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sehircilik",
+   "ad": "Şehircilik",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "siir",
+   "ad": "Şiir",
+   "grup": "OKUL",
+   "ust_slug": null,
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sirket-kurma",
+   "ad": "Şirket kurma",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sirket-stratejisi",
+   "ad": "Şirket stratejisi",
+   "grup": "OKUL",
+   "ust_slug": "isletme",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sirketler-hukuku",
+   "ad": "Şirketler hukuku",
+   "grup": "OKUL",
+   "ust_slug": "ozel-hukuk",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "drama-ve-tiyatro",
+   "ad": "Drama ve Tiyatro",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": [
+    "drama"
+   ]
+  },
+  {
+   "slug": "ebru",
+   "ad": "Ebru",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "el-sanatlari",
+   "ad": "El Sanatları",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fotografcilik",
+   "ad": "Fotoğrafçılık",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "hat",
+   "ad": "Hat",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "karakalem",
+   "ad": "Karakalem",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "resim",
+   "ad": "Resim",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "satranc",
+   "ad": "Satranç",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "sulu-boya",
+   "ad": "Sulu Boya",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yagli-boya",
+   "ad": "Yağlı Boya",
+   "ust_slug": null,
+   "grup": "SANAT",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ales",
+   "ad": "ALES",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ayt",
+   "ad": "AYT",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "dgs",
+   "ad": "DGS",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ielts",
+   "ad": "IELTS",
+   "grup": "SINAV",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": [
+    "ingilizce ielts"
+   ]
+  },
+  {
+   "slug": "kpss",
+   "ad": "KPSS",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "lgs",
+   "ad": "LGS",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "msu",
+   "ad": "MSÜ",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "toefl",
+   "ad": "TOEFL",
+   "grup": "SINAV",
+   "ust_slug": "ingilizce",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tyt",
+   "ad": "TYT",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yds",
+   "ad": "YDS",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "ydt",
+   "ad": "YDT",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yokdil",
+   "ad": "YÖKDİL",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "oabt",
+   "ad": "ÖABT",
+   "ust_slug": null,
+   "grup": "SINAV",
+   "merdivenler": [
+    "OKUL"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "bale",
+   "ad": "Bale",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "basketbol",
+   "ad": "Basketbol",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "fitness",
+   "ad": "Fitness",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "futbol",
+   "ad": "Futbol",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "halk-oyunlari",
+   "ad": "Halk Oyunları",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "pilates",
+   "ad": "Pilates",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "tenis",
+   "ad": "Tenis",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "voleybol",
+   "ad": "Voleybol",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yoga",
+   "ad": "Yoga",
+   "ust_slug": null,
+   "grup": "SPOR",
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  },
+  {
+   "slug": "yuzme",
+   "ad": "Yüzme",
+   "grup": "SPOR",
+   "ust_slug": null,
+   "merdivenler": [
+    "SANAT"
+   ],
+   "aliaslar": []
+  }
+ ]
+}

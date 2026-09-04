@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import { DistrictSelect } from "@/components/DistrictSelect";
 import { MekanSelect, type MekanDegeri } from "@/components/MekanSelect";
 import { categoryMeta, type CategoryKey } from "@/components/CategoryBar";
-import { dersAra } from "@/lib/dersTaksonomisi";
+import { dersAra } from "@/lib/dersArama";
+import { useSubjects } from "@/hooks/useSubjects";
 
 /* ─── arama bileşenleri: büyük (açık) + kompakt (tetikleyici) ───────────
    Landing'in beğenilen Airbnb tarzı arama hapı. Hem ana sayfa hem de
@@ -165,7 +166,12 @@ export function DersArama({
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const oneriler = dersAra(ders && text === dersEtiket ? "" : text);
+  // Öneri kutusu TAM katalogdan beslenir. Küratörlü listeyle sınırlamak
+  // ölçüldü ve kırıktı: "yazılım", "hukuk", "psikoloji", "Kuran" gibi gerçek
+  // aramalar hiçbir şey döndürmüyordu. Arkasında eğitmen olmayan ders
+  // gizlenmez, sıralamada aşağı iner (bkz. dersAra).
+  const { data: katalog } = useSubjects("secim");
+  const oneriler = dersAra(katalog, ders && text === dersEtiket ? "" : text);
   const acik = focused && oneriler.length > 0 && pos != null;
 
   const odaklan = () => {
@@ -229,16 +235,16 @@ export function DersArama({
           {oneriler.map((g) => (
             <div key={g.grup}>
               <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ">
-                {g.grup}
+                {g.baslik}
               </p>
               {g.dersler.map((s) => (
                 <button
-                  key={`${g.grup}:${s.q}`}
+                  key={`${g.grup}:${s.id}`}
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    onDersChange(s.q, s.label);
-                    setText(s.label);
+                    onDersChange(s.name, s.name);
+                    setText(s.name);
                     setFocused(false);
                   }}
                   className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
@@ -246,7 +252,7 @@ export function DersArama({
                   <span className="shrink-0 text-slate-400">
                     <SearchIconSvg className="h-4 w-4" />
                   </span>
-                  <span>{s.label}</span>
+                  <span>{s.name}</span>
                 </button>
               ))}
             </div>

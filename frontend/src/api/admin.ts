@@ -292,6 +292,27 @@ export interface AdminTutorPreApplication {
   status: PreApplicationStatus;
   kvkk_accepted_at: string;
   created_at: string;
+  /**
+   * İlan dosyası — formun isteğe bağlı bölümleri. `photo_url` de `private/`
+   * anahtarıdır; sunucudaki imzalama katmanı yanıtta kısa ömürlü adrese
+   * çevirir.
+   */
+  photo_url: string | null;
+  headline: string | null;
+  bio: string | null;
+  intro_video_url: string | null;
+  teaching_mode: string | null;
+  hourly_rate: string | null;
+  availability_note: string | null;
+  education_note: string | null;
+  /**
+   * Serbest metin ders alanının kanonik taksonomiye çözülmüş hâli. Sunucuda
+   * SAKLANMAZ, her okumada yeniden hesaplanır — panelden yeni bir eşanlamlı
+   * eklendiğinde eski başvurular da anında doğru dersi gösterir.
+   */
+  matched_subjects: { id: number; slug: string; name: string; source_text: string }[];
+  /** Hiçbir derse çözülemeyen metinler — eşleme kuyruğu bunlardır. */
+  unmatched_subjects: string[];
 }
 
 export async function fetchAdminTutorPreApplications(

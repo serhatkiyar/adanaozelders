@@ -95,6 +95,20 @@ ignore = [
 "scripts/import_ucdortbes.py" = ["T201"]
 # Stok defteri raporu: konsol tablosu aracın çıktısıdır (CSV opsiyoneldir).
 "scripts/stock_ledger_report.py" = ["T201"]
+# Ders taksonomisi dışa aktarımı: aracın ÇIKTISI rapordur. Kaç ders süzüldü,
+# hangi eşanlamlı çakıştı ve atlandı, hangi yetim ders köke alındı, hangi slug
+# çakışması nasıl çözüldü — üretilen dosyayı depoya almadan önce gözden
+# geçirilen şey tam olarak bu satırlardır. Sessiz çalışması, kaynaktaki bir
+# değişikliğin fark edilmeden taksonomiye sızması demek olurdu.
+"scripts/dersler_disa_aktar.py" = ["T201"]
+# Ders taksonomisi yükleyicisi: aynı gerekçe. Kuru koşu raporu (kaç yeni ders,
+# hangi eşanlamlı çakıştı, hangi merdiven bağlandı) --uygula'dan ÖNCE gözden
+# geçirilen şeyin ta kendisidir.
+"scripts/dersler_yukle.py" = ["T201"]
+# Branş eşleme aracı: hangi serbest metnin hangi derse bağlandığı ve hangisinin
+# EŞLEŞMEDİĞİ, --uygula'dan önce gözden geçirilen çıktıdır; eşleşmeyenler
+# panelin kuyruğuna düşecek kayıtlardır.
+"scripts/brans_eslestir.py" = ["T201"]
 # Tedarikçi tur tohumu: elle çalıştırılan bir CLI aracıdır ve konsol çıktısı
 # aracın kullanıcıyla konuşma biçimidir. Özellikle "REDDEDİLDİ:" satırları
 # (üretimde koşma reddi, SUPPLIER_NETWORK_DISABLED kapalıyken red) betiğin

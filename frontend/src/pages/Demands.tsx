@@ -13,7 +13,7 @@ import {
   useRespondDemand,
 } from "@/hooks/useDemands";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
-import { uniqueSubjects } from "@/lib/examTree";
+import { useSubjects } from "@/hooks/useSubjects";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
@@ -21,9 +21,9 @@ import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS, type DemandOut } from "@/types";
 
-const SUBJECT_OPTIONS = uniqueSubjects();
-const SUBJECT_LABEL = new Map(SUBJECT_OPTIONS.map((s) => [s.q, s.label]));
-const subjectLabel = (q: string) => SUBJECT_LABEL.get(q) ?? q;
+// Ders listesi artık koda gömülü DEĞİL, katalogdan gelir. Talep formu
+// öğrenci yüzeyidir: vitrin kapsamı (arkasında eğitmen olan dersler).
+const subjectLabel = (q: string) => q;
 
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
@@ -88,6 +88,7 @@ function StudentDemands() {
 
 function DemandForm() {
   const create = useCreateDemand();
+  const { data: katalog } = useSubjects();
   const [subject, setSubject] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -143,9 +144,9 @@ function DemandForm() {
                 className={inputCls}
               >
                 <option value="">Alan seç…</option>
-                {SUBJECT_OPTIONS.map((s) => (
-                  <option key={s.q} value={s.q}>
-                    {s.label}
+                {(katalog ?? []).map((d) => (
+                  <option key={d.id} value={d.name}>
+                    {d.name}
                   </option>
                 ))}
               </select>

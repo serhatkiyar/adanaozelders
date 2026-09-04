@@ -21,6 +21,17 @@ from schemas.education import EducationOut
 from schemas.user import UserOut
 
 
+class SubjectLevelIn(BaseModel):
+    """Bir derste verilen seviyeler.
+
+    `subject_id` kanonik ders kimliğidir (`GET /subjects`). Seviyeler o dersin
+    merdivenlerinden gelmelidir — `Matematik`'e `b1` (CEFR) verilemez.
+    """
+
+    subject_id: int
+    level_ids: list[int] = Field(default_factory=list, max_length=20)
+
+
 class AvailabilityIn(BaseModel):
     weekday: int = Field(ge=0, le=6)
     start_minute: int = Field(ge=0, le=1440)
@@ -104,6 +115,10 @@ class TutorProfileUpdate(BaseModel):
     district: str | None = Field(default=None, max_length=80)
     # Verilirse eğitmenin ders/branş kümesini tümüyle değiştirir (replace).
     subjects: list[str] | None = Field(default=None, max_length=40)
+    # Verilirse ders başına seviye seçimlerini tümüyle değiştirir (replace).
+    # `subjects` ile BİRLİKTE gönderilmelidir: seviye verilen ders, bildirilen
+    # dersler arasında değilse 422 döner (sessizce yutulmaz).
+    subject_levels: list["SubjectLevelIn"] | None = Field(default=None, max_length=40)
     # Verilirse haftalık müsaitlik pencerelerini tümüyle değiştirir (replace).
     availability: list[AvailabilityIn] | None = Field(default=None, max_length=60)
 
@@ -124,6 +139,9 @@ class TutorOut(UserOut):
     location_lng: float | None = None
     district: str | None = None
     subjects: list[str] = []
+    #: Ders başına seçilen seviyeler: {subject_id: [level_id, ...]}.
+    #: Anahtar JSON'da dize olur; istemci `Number(k)` ile çözer.
+    subject_levels: dict[int, list[int]] = {}
     availability: list[AvailabilityOut] = []
 
     @computed_field  # type: ignore[prop-decorator]

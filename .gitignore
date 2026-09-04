@@ -52,6 +52,9 @@ frontend/vite.config.d.ts
 # bir `pg_dump` çıktısı ve iki adet ~1 MB'lik JSONL — üretilebilir veri, üstelik
 # dump gerçek katalog içeriği taşıyor. Betikler bu klasörü kendileri oluşturur.
 backend/scripts/data/
+# Betiklerin ürettiği rapor/yedek CSV'leri (kategori yedeği, ders yükleme
+# raporu). Üretilebilir çıktı ve kazara commit'lenmeye açıktı.
+backend/scripts/out/
 frontend/ip19-kabul/
 frontend/ip19-kabul-log.txt
 

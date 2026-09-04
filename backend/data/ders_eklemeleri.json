@@ -1,0 +1,587 @@
+{
+ "_aciklama": "Bizim küratörlü ders listemiz — Superprof türetmesinin ÜSTÜNE eklenir. Kaynakta olmayan ders burada oluşur, olan dersin alias'ları birleşir. `aliaslar` geriye uyum taşır: bugün tutor_subjects'te yazılı kısa değerler (fen, din, edebiyat, c++) ve sınav+ders kombinasyonları (tyt matematik) buradan kanonike bağlanır. Değerler normalize_tr() çıktısıdır.",
+ "dersler": [
+  {
+   "ad": "Matematik",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt matematik",
+    "dgs matematik",
+    "ilkokul matematik",
+    "kpss matematik",
+    "lgs matematik",
+    "msu matematik",
+    "oabt matematik",
+    "tyt matematik"
+   ]
+  },
+  {
+   "ad": "Geometri",
+   "grup": "OKUL",
+   "aliaslar": [
+    "tyt geometri"
+   ]
+  },
+  {
+   "ad": "Türkçe",
+   "grup": "OKUL",
+   "aliaslar": [
+    "dgs turkce",
+    "ilkokul turkce",
+    "kpss turkce",
+    "lgs turkce",
+    "msu turkce",
+    "oabt turkce",
+    "tyt turkce"
+   ]
+  },
+  {
+   "ad": "Türk Dili ve Edebiyatı",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt edebiyat",
+    "edebiyat"
+   ]
+  },
+  {
+   "ad": "Fen Bilimleri",
+   "grup": "OKUL",
+   "aliaslar": [
+    "fen",
+    "lgs fen",
+    "oabt fen"
+   ]
+  },
+  {
+   "ad": "Fizik",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt fizik",
+    "msu fizik",
+    "tyt fizik"
+   ]
+  },
+  {
+   "ad": "Kimya",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt kimya",
+    "tyt kimya"
+   ]
+  },
+  {
+   "ad": "Biyoloji",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt biyoloji",
+    "tyt biyoloji"
+   ]
+  },
+  {
+   "ad": "Sosyal Bilgiler",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Tarih",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt tarih",
+    "kpss tarih",
+    "msu tarih",
+    "oabt tarih",
+    "tyt tarih"
+   ]
+  },
+  {
+   "ad": "T.C. İnkılap Tarihi",
+   "grup": "OKUL",
+   "aliaslar": [
+    "inkilap",
+    "lgs inkilap"
+   ]
+  },
+  {
+   "ad": "Coğrafya",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt cografya",
+    "kpss cografya",
+    "oabt cografya",
+    "tyt cografya"
+   ]
+  },
+  {
+   "ad": "Felsefe",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ayt felsefe",
+    "tyt felsefe"
+   ]
+  },
+  {
+   "ad": "Din Kültürü",
+   "grup": "OKUL",
+   "aliaslar": [
+    "din",
+    "lgs din",
+    "tyt din"
+   ]
+  },
+  {
+   "ad": "Hayat Bilgisi",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ilkokul hayat bilgisi"
+   ]
+  },
+  {
+   "ad": "Okuma-Yazma",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ilkokul okuma-yazma"
+   ]
+  },
+  {
+   "ad": "TYT",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "AYT",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "YDT",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "LGS",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "KPSS",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "ÖABT",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "DGS",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "ALES",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "YDS",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "YÖKDİL",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "MSÜ",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "IELTS",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "TOEFL",
+   "grup": "SINAV"
+  },
+  {
+   "ad": "İngilizce",
+   "grup": "DIL",
+   "aliaslar": [
+    "ilkokul ingilizce",
+    "lgs ingilizce",
+    "oabt ingilizce",
+    "yds ingilizce",
+    "ydt ingilizce"
+   ]
+  },
+  {
+   "ad": "Almanca",
+   "grup": "DIL",
+   "aliaslar": [
+    "yds almanca",
+    "ydt almanca"
+   ]
+  },
+  {
+   "ad": "Fransızca",
+   "grup": "DIL",
+   "aliaslar": [
+    "yds fransizca",
+    "ydt fransizca"
+   ]
+  },
+  {
+   "ad": "İspanyolca",
+   "grup": "DIL"
+  },
+  {
+   "ad": "Arapça",
+   "grup": "DIL",
+   "aliaslar": [
+    "yds arapca"
+   ]
+  },
+  {
+   "ad": "Rusça",
+   "grup": "DIL"
+  },
+  {
+   "ad": "İtalyanca",
+   "grup": "DIL"
+  },
+  {
+   "ad": "Japonca",
+   "grup": "DIL"
+  },
+  {
+   "ad": "Korece",
+   "grup": "DIL"
+  },
+  {
+   "ad": "Çince",
+   "grup": "DIL"
+  },
+  {
+   "ad": "Yabancılar için Türkçe",
+   "grup": "DIL"
+  },
+  {
+   "ad": "İşaret Dili",
+   "grup": "DIL"
+  },
+  {
+   "ad": "Calculus",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Lineer Cebir",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Diferansiyel Denklemler",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "İstatistik",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Olasılık",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Statik",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Dinamik",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Mukavemet",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Termodinamik",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Akışkanlar Mekaniği",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Devre Analizi",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Muhasebe",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Mikro İktisat",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Makro İktisat",
+   "grup": "OKUL"
+  },
+  {
+   "ad": "Python",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "Java",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "C / C++",
+   "grup": "BILISIM",
+   "aliaslar": [
+    "c++"
+   ]
+  },
+  {
+   "ad": "C#",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "JavaScript",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "Web Geliştirme",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "SQL / Veritabanı",
+   "grup": "BILISIM",
+   "aliaslar": [
+    "sql"
+   ]
+  },
+  {
+   "ad": "Algoritma ve Veri Yapıları",
+   "grup": "BILISIM",
+   "aliaslar": [
+    "algoritma"
+   ]
+  },
+  {
+   "ad": "Scratch",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "Robotik ve Kodlama",
+   "grup": "BILISIM",
+   "aliaslar": [
+    "robotik"
+   ]
+  },
+  {
+   "ad": "Arduino",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "Excel",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "Ofis Programları",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "Photoshop",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "AutoCAD",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "SolidWorks",
+   "grup": "BILISIM"
+  },
+  {
+   "ad": "Piyano",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Gitar",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Elektro Gitar",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Keman",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Bağlama",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Ukulele",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Yan Flüt",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Bateri",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Ney",
+   "grup": "MUZIK"
+  },
+  {
+   "ad": "Ses Eğitimi (Şan)",
+   "grup": "MUZIK",
+   "aliaslar": [
+    "san"
+   ]
+  },
+  {
+   "ad": "Solfej ve Müzik Teorisi",
+   "grup": "MUZIK",
+   "aliaslar": [
+    "solfej"
+   ]
+  },
+  {
+   "ad": "Resim",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Karakalem",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Yağlı Boya",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Sulu Boya",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Ebru",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Hat",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Fotoğrafçılık",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Drama ve Tiyatro",
+   "grup": "SANAT",
+   "aliaslar": [
+    "drama"
+   ]
+  },
+  {
+   "ad": "Satranç",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "El Sanatları",
+   "grup": "SANAT"
+  },
+  {
+   "ad": "Yüzme",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Tenis",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Basketbol",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Futbol",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Voleybol",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Fitness",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Yoga",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Pilates",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Bale",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Halk Oyunları",
+   "grup": "SPOR"
+  },
+  {
+   "ad": "Diksiyon",
+   "grup": "KOCLUK"
+  },
+  {
+   "ad": "Hızlı Okuma",
+   "grup": "KOCLUK"
+  },
+  {
+   "ad": "Hafıza Teknikleri",
+   "grup": "KOCLUK"
+  },
+  {
+   "ad": "Etkili İletişim",
+   "grup": "KOCLUK"
+  },
+  {
+   "ad": "Sunum Becerileri",
+   "grup": "KOCLUK"
+  },
+  {
+   "ad": "Öğrenci Koçluğu",
+   "grup": "KOCLUK"
+  },
+  {
+   "ad": "Akıl ve Zeka Oyunları",
+   "grup": "KOCLUK"
+  },
+  {
+   "ad": "Eğitim Bilimleri",
+   "grup": "OKUL",
+   "aliaslar": [
+    "egitim",
+    "kpss egitim"
+   ]
+  },
+  {
+   "ad": "Sayısal Yetenek",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ales sayisal",
+    "sayisal"
+   ]
+  },
+  {
+   "ad": "Sözel Yetenek",
+   "grup": "OKUL",
+   "aliaslar": [
+    "ales sozel",
+    "sozel"
+   ]
+  },
+  {
+   "ad": "Vatandaşlık",
+   "grup": "OKUL",
+   "aliaslar": [
+    "kpss vatandaslik"
+   ]
+  }
+ ]
+}

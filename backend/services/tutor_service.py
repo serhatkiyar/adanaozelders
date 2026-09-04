@@ -7,9 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.moderation import mask_contact_info
 from core.text import HEADLINE_MIN_WORDS, count_words
 from models.role import ROLE_IDS, RoleType
-from models.tutor import Tutor, TutorAvailability, TutorStatus, TutorSubject
+from models.tutor import (
+    Tutor,
+    TutorAvailability,
+    TutorStatus,
+    TutorSubject,
+    TutorSubjectLevel,
+)
 from schemas.tutor import TutorProfileUpdate
-from services import education_service, notification_service
+from core.search_text import normalize_tr
+from services import education_service, notification_service, subject_service
 
 _MAX_SUBJECTS = 40
 _MAX_AVAILABILITY = 60
@@ -28,12 +35,32 @@ async def attach_subjects(db: AsyncSession, tutor: Tutor) -> Tutor:
         .order_by(TutorSubject.subject)
     )
     tutor.subjects = [r[0] for r in rows.all()]
+    seviyeler: dict[int, list[int]] = {}
+    for sid, lid in (
+        await db.execute(
+            select(TutorSubjectLevel.subject_id, TutorSubjectLevel.level_id)
+            .where(TutorSubjectLevel.tutor_id == tutor.id)
+            .order_by(TutorSubjectLevel.subject_id, TutorSubjectLevel.level_id)
+        )
+    ).all():
+        seviyeler.setdefault(sid, []).append(lid)
+    tutor.subject_levels = seviyeler
     return tutor
 
 
 async def _replace_subjects(
     db: AsyncSession, tutor: Tutor, subjects: list[str]
 ) -> None:
+    """Branşları tam olarak yeniden yazar ve kanonik derse BAĞLAR.
+
+    Metin kolonu korunuyor (geriye uyum + taksonomide karşılığı olmayan gerçek
+    branşları kaybetmemek), ama artık her satır mümkünse `subject_id` taşıyor.
+    Bağ olmadan arama filtresi ve seviye seçimi çalışmaz.
+
+    Aynı eğitmende iki farklı metin aynı derse çıkarsa ("İngilizce" +
+    "İngilizce konuşma becerileri") İLKİ bağlanır, ikincisi metin olarak durur
+    ama `subject_id` almaz — `uq_tutor_subjects_canonical` bunu zaten reddederdi.
+    """
     clean: list[str] = []
     seen: set[str] = set()
     for raw in subjects:
@@ -43,9 +70,80 @@ async def _replace_subjects(
             clean.append(s)
         if len(clean) >= _MAX_SUBJECTS:
             break
+
+    harita = await subject_service.map_texts_to_ids(db, clean)
     await db.execute(delete(TutorSubject).where(TutorSubject.tutor_id == tutor.id))
+    alinan: set[int] = set()
     for s in clean:
-        db.add(TutorSubject(tutor_id=tutor.id, subject=s))
+        sid = harita.get(normalize_tr(s))
+        if sid is not None and sid in alinan:
+            sid = None
+        elif sid is not None:
+            alinan.add(sid)
+        db.add(TutorSubject(tutor_id=tutor.id, subject=s, subject_id=sid))
+    # Artık verilmeyen derslerin seviyeleri de gitmeli; yoksa eğitmen dersi
+    # kaldırdıktan sonra o dersin seviyeleri sessizce kayıtta kalır.
+    await db.execute(
+        delete(TutorSubjectLevel).where(
+            TutorSubjectLevel.tutor_id == tutor.id,
+            TutorSubjectLevel.subject_id.notin_(alinan) if alinan else True,
+        )
+    )
+    await db.flush()
+
+
+async def _replace_levels(
+    db: AsyncSession, tutor: Tutor, secimler: list
+) -> None:
+    """Ders başına seviye seçimlerini yeniden yazar.
+
+    Doğrulama SESSİZ ATLAMA yapmaz — geçersiz seçim 422 döner. Eski davranış
+    (sessizce yut) "kapalı liste" iddiasıyla bağdaşmıyordu: eğitmen seçtiğini
+    kaydettiğini sanıp profilinde bulamıyordu.
+    """
+    if not secimler:
+        await db.execute(
+            delete(TutorSubjectLevel).where(TutorSubjectLevel.tutor_id == tutor.id)
+        )
+        return
+
+    bildirilen = {
+        r[0]
+        for r in (
+            await db.execute(
+                select(TutorSubject.subject_id).where(
+                    TutorSubject.tutor_id == tutor.id,
+                    TutorSubject.subject_id.isnot(None),
+                )
+            )
+        ).all()
+    }
+    gecerli = await subject_service.valid_level_ids(
+        db, [(s.subject_id, s.level_ids) for s in secimler]
+    )
+
+    await db.execute(
+        delete(TutorSubjectLevel).where(TutorSubjectLevel.tutor_id == tutor.id)
+    )
+    for secim in secimler:
+        if secim.subject_id not in bildirilen:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Seviye verilen ders, bildirilen dersler arasında değil.",
+            )
+        for level_id in dict.fromkeys(secim.level_ids):
+            if (secim.subject_id, level_id) not in gecerli:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Bu ders için geçersiz seviye seçimi.",
+                )
+            db.add(
+                TutorSubjectLevel(
+                    tutor_id=tutor.id,
+                    subject_id=secim.subject_id,
+                    level_id=level_id,
+                )
+            )
     await db.flush()
 
 
@@ -114,6 +212,10 @@ async def update_profile(
         )
     payload = data.model_dump(exclude_unset=True)
     subjects = payload.pop("subjects", None)
+    # Ham şemadan alınır (model_dump sözlüğe çevirirdi; `_replace_levels`
+    # nitelik erişimi bekliyor).
+    subject_levels = data.subject_levels if "subject_levels" in payload else None
+    payload.pop("subject_levels", None)
     availability = payload.pop("availability", None)
     for field, value in payload.items():
         # Public profil metinleri maskeden geçer. Bu, anti-disintermediation'ın
@@ -125,6 +227,10 @@ async def update_profile(
         setattr(tutor, field, value)
     if subjects is not None:
         await _replace_subjects(db, tutor, subjects)
+    # Seviyeler branşlardan SONRA yazılır: doğrulama "bu ders bildirilmiş mi"
+    # sorusuna bakıyor ve cevabı ancak branşlar yazıldıktan sonra doğrudur.
+    if subject_levels is not None:
+        await _replace_levels(db, tutor, subject_levels)
     if availability is not None:
         await _replace_availability(db, tutor, availability)
     await db.flush()

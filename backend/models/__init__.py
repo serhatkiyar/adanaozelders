@@ -149,6 +149,15 @@ from models.store import (
     StockNotification,
     VariantGroup,
 )
+from models.subject import (
+    LEVEL_SCALES,
+    SUBJECT_GROUPS,
+    Level,
+    LevelScale,
+    Subject,
+    SubjectAlias,
+    SubjectLevelScale,
+)
 from models.task import Subtask, Task, TaskFilter, TaskLabel, TaskList
 from models.tutor import (
     Tutor,
@@ -156,6 +165,7 @@ from models.tutor import (
     TutorEducation,
     TutorStatus,
     TutorSubject,
+    TutorSubjectLevel,
 )
 from models.tutor_pre_application import (
     PreApplicationStatus,
@@ -331,6 +341,13 @@ __all__ = [
     "SrsProgress",
     "SrsReviewLog",
     "SrsTag",
+    "Level",
+    "LevelScale",
+    "Subject",
+    "SubjectAlias",
+    "SubjectLevelScale",
+    "SUBJECT_GROUPS",
+    "LEVEL_SCALES",
     "Subtask",
     "Task",
     "TaskFilter",
@@ -346,6 +363,7 @@ __all__ = [
     "TutorPromotion",
     "TutorStatus",
     "TutorSubject",
+    "TutorSubjectLevel",
     "PromotionPaymentStatus",
     "VerificationToken",
     "PhoneOtp",

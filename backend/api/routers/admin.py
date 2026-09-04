@@ -38,6 +38,7 @@ from schemas.admin_access import (
 from schemas.tutor import TutorOut
 from schemas.tutor_pre_application import (
     AdminTutorPreApplicationOut,
+    MatchedSubjectOut,
     PreApplicationStatusIn,
 )
 from schemas.tutor_promotion import AdminTutorPromotionOut, PromotionCancelIn
@@ -89,6 +90,7 @@ from services import (
     payment_gates,
     report_service,
     revenue_service,
+    subject_service,
     tutor_promotion_service,
     tutor_service,
 )
@@ -439,7 +441,22 @@ async def list_tutor_pre_applications(
     if status_filter:
         stmt = stmt.where(TutorPreApplication.status == status_filter)
     stmt = stmt.order_by(TutorPreApplication.id.desc()).limit(limit).offset(offset)
-    return (await db.execute(stmt)).scalars().all()
+    kayitlar = (await db.execute(stmt)).scalars().all()
+    return [await _lead_with_matches(db, k) for k in kayitlar]
+
+
+async def _lead_with_matches(db: AsyncSession, kayit) -> AdminTutorPreApplicationOut:
+    """Serbest metin ders alanını kanonik taksonomiye çözerek döndürür.
+
+    Form bilinçli olarak açık uçlu; "kategoriyi biz atarız" sözünün panel
+    tarafındaki karşılığı budur. Eşleşme SAKLANMAZ, her okumada yeniden
+    hesaplanır — yeni bir eşanlamlı eklendiğinde eski başvurular da düzelir.
+    """
+    eslesen, eslesmeyen = await subject_service.match_free_text(db, kayit.subjects)
+    cikti = AdminTutorPreApplicationOut.model_validate(kayit)
+    cikti.matched_subjects = [MatchedSubjectOut(**m) for m in eslesen]
+    cikti.unmatched_subjects = eslesmeyen
+    return cikti
 
 
 @router.post(

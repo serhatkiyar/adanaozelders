@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
 import {
@@ -65,6 +65,73 @@ function sonrakiAdimlar(
   }
 }
 
+const BICIM_LABELS: Record<string, string> = {
+  ONLINE: "Online",
+  IN_PERSON: "Yüz yüze",
+  BOTH: "Online + yüz yüze",
+};
+
+/**
+ * Formun isteğe bağlı bölümlerinden gelen alanlar. Tabloya kolon eklemek
+ * yerine satır altında açılır: 6 kolonluk tablo 14 kolona çıksaydı mobil
+ * kaydırma kullanılamaz hâle gelirdi ve operatörün asıl işi (numarayı arayıp
+ * durumu ilerletmek) gürültüye gömülürdü.
+ */
+function DetaySatiri({ basvuru }: { basvuru: AdminTutorPreApplication }) {
+  const satirlar: { etiket: string; deger: string | null }[] = [
+    { etiket: "Başlık", deger: basvuru.headline },
+    { etiket: "Ders biçimi", deger: basvuru.teaching_mode ? BICIM_LABELS[basvuru.teaching_mode] ?? basvuru.teaching_mode : null },
+    { etiket: "Saatlik ücret", deger: basvuru.hourly_rate ? `${basvuru.hourly_rate} ₺` : null },
+    { etiket: "Eğitim", deger: basvuru.education_note },
+    { etiket: "Müsaitlik", deger: basvuru.availability_note },
+  ].filter((s) => s.deger);
+
+  const bosMu =
+    satirlar.length === 0 && !basvuru.bio && !basvuru.intro_video_url;
+
+  return (
+    <td colSpan={6} className="bg-slate-50/70 px-4 py-4">
+      {bosMu ? (
+        <p className="text-sm text-slate-500">
+          Aday isteğe bağlı bölümleri doldurmadı — bu bilgileri aramada sorabilirsiniz.
+        </p>
+      ) : (
+        <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+          {satirlar.length > 0 && (
+            <dl className="space-y-2 text-sm">
+              {satirlar.map((s) => (
+                <div key={s.etiket} className="flex gap-3">
+                  <dt className="w-28 shrink-0 text-slate-500">{s.etiket}</dt>
+                  <dd className="text-slate-800">{s.deger}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {(basvuru.bio || basvuru.intro_video_url) && (
+            <div className="space-y-3">
+              {basvuru.bio && (
+                <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+                  {basvuru.bio}
+                </p>
+              )}
+              {basvuru.intro_video_url && (
+                <a
+                  href={basvuru.intro_video_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-sm font-medium text-panel-accent underline-offset-2 hover:underline"
+                >
+                  Tanıtım videosunu aç
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </td>
+  );
+}
+
 const FILTRELER: { value: string | undefined; label: string }[] = [
   { value: "NEW", label: "Yeni" },
   { value: "CONTACTED", label: "Arandı" },
@@ -77,6 +144,7 @@ export default function AdminTutorApplicationsPage() {
   const { canView, canManage } = useAdminAreaAccess("tutors");
   // Operasyonel varsayılan: ekran "aranacaklar" listesi olarak açılır.
   const [filtre, setFiltre] = useState<string | undefined>("NEW");
+  const [acikId, setAcikId] = useState<number | null>(null);
 
   const { data, isLoading, isError, refetch } =
     useAdminTutorPreApplications(filtre);
@@ -141,8 +209,18 @@ export default function AdminTutorApplicationsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {data.map((b: AdminTutorPreApplication) => (
-                <tr key={b.id} className="align-top">
+                <Fragment key={b.id}>
+                <tr className="align-top">
                   <td className="py-3 pr-4">
+                    <div className="flex items-start gap-2.5">
+                      {b.photo_url && (
+                        <img
+                          src={b.photo_url}
+                          alt=""
+                          className="mt-0.5 h-9 w-9 shrink-0 rounded-full object-cover"
+                        />
+                      )}
+                      <div className="min-w-0">
                     <div className="font-medium text-slate-900">
                       {b.full_name}
                     </div>
@@ -183,9 +261,37 @@ export default function AdminTutorApplicationsPage() {
                         {b.note}
                       </p>
                     )}
+                      </div>
+                    </div>
                   </td>
-                  <td className="max-w-[16rem] py-3 pr-4 text-slate-600">
-                    {b.subjects}
+                  <td className="max-w-[18rem] py-3 pr-4 text-slate-600">
+                    {/* Aday serbest metin yazar; kategori eşlemesini sunucu
+                        yapar. Ham metni de gösteriyoruz: eşleşmenin neyden
+                        geldiği görünmezse yanlış eşleşme fark edilmez. */}
+                    <div className="flex flex-wrap gap-1">
+                      {(b.matched_subjects ?? []).map((m) => (
+                        <span
+                          key={m.id}
+                          title={`"${m.source_text}" → ${m.name}`}
+                          className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800"
+                        >
+                          {m.name}
+                        </span>
+                      ))}
+                      {(b.unmatched_subjects ?? []).map((u) => (
+                        <span
+                          key={u}
+                          title="Katalogda karşılığı yok — eşanlamlı eklenebilir"
+                          className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
+                        >
+                          {u} <span aria-hidden>·</span> eşleşmedi
+                        </span>
+                      ))}
+                    </div>
+                    {(b.matched_subjects?.length ?? 0) === 0 &&
+                      (b.unmatched_subjects?.length ?? 0) === 0 && (
+                        <span>{b.subjects}</span>
+                      )}
                   </td>
                   <td className="py-3 pr-4 text-slate-600">
                     {b.district ?? "—"}
@@ -200,9 +306,9 @@ export default function AdminTutorApplicationsPage() {
                   </td>
                   <td className="py-3 pr-4">{durumRozeti(b.status)}</td>
                   <td className="py-3 text-right">
-                    {canManage && (
-                      <div className="flex justify-end gap-1.5">
-                        {sonrakiAdimlar(b.status).map((adim) => (
+                    <div className="flex items-center justify-end gap-1.5">
+                      {canManage &&
+                        sonrakiAdimlar(b.status).map((adim) => (
                           <Button
                             key={adim.to}
                             variant="ghost"
@@ -217,10 +323,24 @@ export default function AdminTutorApplicationsPage() {
                             {adim.label}
                           </Button>
                         ))}
-                      </div>
-                    )}
+                      <PlainButton
+                        onClick={() => setAcikId(acikId === b.id ? null : b.id)}
+                        aria-expanded={acikId === b.id}
+                        aria-controls={`basvuru-detay-${b.id}`}
+                        aria-label={`${b.full_name} başvurusunun ayrıntısı`}
+                        className="rounded-lg px-2 py-1.5 text-sm text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                      >
+                        {acikId === b.id ? "Kapat" : "Detay"}
+                      </PlainButton>
+                    </div>
                   </td>
                 </tr>
+                {acikId === b.id && (
+                  <tr id={`basvuru-detay-${b.id}`}>
+                    <DetaySatiri basvuru={b} />
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

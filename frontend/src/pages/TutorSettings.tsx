@@ -13,7 +13,9 @@ import {
 } from "@/hooks/useTutorProfile";
 import { getErrorMessage } from "@/lib/errors";
 import { parseMoney } from "@/lib/money";
-import { uniqueSubjects } from "@/lib/examTree";
+import { DersSecici } from "@/components/tutor/DersSecici";
+import { useLevelScales, useSubjects } from "@/hooks/useSubjects";
+import type { Ders } from "@/api/subjects";
 import { WEEKDAYS_LONG, hhmmToMin, minToHHMM } from "@/lib/availability";
 import { toast } from "@/store/toastStore";
 import {
@@ -23,7 +25,6 @@ import {
   type TutorOut,
 } from "@/types";
 
-const SUBJECT_OPTIONS = uniqueSubjects();
 
 // İlan başlığı için minimum sözcük kalite kapısı (backend ile aynı).
 const HEADLINE_MIN_WORDS = 10;
@@ -122,6 +123,11 @@ export default function TutorSettings() {
   const [hourlyRate, setHourlyRate] = useState("");
   const [teachingMode, setTeachingMode] = useState<TeachingMode | "">("");
   const [subjects, setSubjects] = useState<string[]>([]);
+  // {subject_id: [level_id]} — ders başına verilen seviyeler.
+  const [subjectLevels, setSubjectLevels] = useState<Record<number, number[]>>({});
+  // Eğitmen tarafı TAM kataloğu görür: branşını bildiremeyen eğitmen arzdan düşer.
+  const { data: katalog } = useSubjects("secim");
+  const { data: merdivenler } = useLevelScales();
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [locationText, setLocationText] = useState("");
   const [locationLat, setLocationLat] = useState<number | null>(null);
@@ -144,13 +150,39 @@ export default function TutorSettings() {
       setLocationLat(data.location_lat ?? null);
       setLocationLng(data.location_lng ?? null);
       setDistrict(data.district ?? "");
+      setSubjectLevels(
+        Object.fromEntries(
+          Object.entries(data.subject_levels ?? {}).map(([k, v]) => [Number(k), v])
+        )
+      );
     }
   }, [data]);
 
-  const toggleSubject = (q: string) =>
+  const toggleSubject = (ders: Ders) => {
     setSubjects((prev) =>
-      prev.includes(q) ? prev.filter((s) => s !== q) : [...prev, q]
+      prev.includes(ders.name)
+        ? prev.filter((s) => s !== ders.name)
+        : [...prev, ders.name]
     );
+    // Ders kaldırılınca seviyeleri de gider; sunucu zaten temizliyor ama
+    // ekranda asılı kalmasınlar.
+    setSubjectLevels((prev) => {
+      if (!prev[ders.id]) return prev;
+      const { [ders.id]: _cikan, ...kalan } = prev;
+      return kalan;
+    });
+  };
+
+  const toggleLevel = (dersId: number, levelId: number) =>
+    setSubjectLevels((prev) => {
+      const mevcut = prev[dersId] ?? [];
+      return {
+        ...prev,
+        [dersId]: mevcut.includes(levelId)
+          ? mevcut.filter((l) => l !== levelId)
+          : [...mevcut, levelId],
+      };
+    });
 
   const addWindow = () =>
     setAvailability((p) => [
@@ -204,6 +236,9 @@ export default function TutorSettings() {
         location_lng: locationLng,
         district: district || null,
         subjects,
+        subject_levels: Object.entries(subjectLevels)
+          .filter(([, lv]) => lv.length > 0)
+          .map(([sid, lv]) => ({ subject_id: Number(sid), level_ids: lv })),
         availability,
       },
       {
@@ -432,28 +467,18 @@ export default function TutorSettings() {
                 {/* Verdiğin Dersler — yapılandırılmış branş seçimi */}
                 <div>
                   <span className={labelCls}>Verdiğin Dersler</span>
-                  <div role="group" aria-label="Verdiğin Dersler" className="flex flex-wrap gap-2">
-                    {SUBJECT_OPTIONS.map((s) => {
-                      const selected = subjects.includes(s.q);
-                      return (
-                        <button
-                          key={s.q}
-                          type="button"
-                          disabled={!editable}
-                          onClick={() => toggleSubject(s.q)}
-                          className={`rounded-full px-3 py-1.5 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
-                            selected
-                              ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200 "
-                              : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <DersSecici
+                    katalog={katalog}
+                    merdivenler={merdivenler}
+                    secili={subjects}
+                    seviyeler={subjectLevels}
+                    duzenlenebilir={editable}
+                    onToggle={toggleSubject}
+                    onSeviye={toggleLevel}
+                  />
                   <p className="mt-1.5 text-xs text-slate-400 ">
-                    Seçtiğin dersler, öğrencilerin aramada seni bulmasını sağlar.
+                    Seçtiğin dersler ve seviyeler, öğrencilerin aramada seni
+                    bulmasını sağlar.
                   </p>
                 </div>
 
