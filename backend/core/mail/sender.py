@@ -104,12 +104,13 @@ async def send_tutor_lead_email(
     experience: str | None = None,
     note: str | None = None,
     document_count: int = 0,
+    has_photo: bool = False,
 ) -> bool:
     return await _safe_send(
         templates.tutor_lead_email(
             to=to, name=name, phone=phone, subjects=subjects, email=email,
             district=district, experience=experience, note=note,
-            document_count=document_count,
+            document_count=document_count, has_photo=has_photo,
         )
     )
 

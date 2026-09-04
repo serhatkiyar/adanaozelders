@@ -53,6 +53,15 @@ def prepare_submission(payload: TutorPreApplicationIn) -> dict:
         "district": payload.district,
         "experience": payload.experience,
         "note": note or None,
+        # İlan dosyası — formun isteğe bağlı bölümleri. Doldurulmayan alan
+        # None gelir ve NULL yazılır.
+        "headline": payload.headline or None,
+        "bio": payload.bio or None,
+        "intro_video_url": payload.intro_video_url or None,
+        "teaching_mode": payload.teaching_mode,
+        "hourly_rate": payload.hourly_rate,
+        "availability_note": payload.availability_note or None,
+        "education_note": payload.education_note or None,
     }
 
 
@@ -61,6 +70,7 @@ async def submit(
     payload: TutorPreApplicationIn,
     *,
     files: list[tuple[str, bytes, str | None]] | None = None,
+    photo: bytes | None = None,
 ) -> bool:
     """Kaydı ekler (commit ÇAĞIRANIN); yeni kayıt oluştuysa True döner.
 
@@ -93,20 +103,27 @@ async def submit(
         logger.info("ön başvuru yinelendi (mevcut id=%s), yeni kayıt yok", existing)
         return False
 
+    yuklenen: list[str] = []  # telafi silme kapsamı (belge + fotoğraf)
     documents: list[dict[str, str]] = []
-    for name, content, content_type in files or []:
-        url = await storage.upload_file(
-            content,
-            original_name=name,
-            content_type=content_type,
-            prefix="tutor-pre-applications",
-        )
-        documents.append({"url": url, "name": name})
-
+    photo_url: str | None = None
     try:
+        for name, content, content_type in files or []:
+            url = await storage.upload_file(
+                content,
+                original_name=name,
+                content_type=content_type,
+                prefix="tutor-pre-applications",
+            )
+            yuklenen.append(url)
+            documents.append({"url": url, "name": name})
+        if photo is not None:
+            photo_url = await _upload_photo(photo)
+            yuklenen.append(photo_url)
+
         db.add(
             TutorPreApplication(
                 **data,
+                photo_url=photo_url,
                 documents=documents or None,
                 kvkk_accepted_at=datetime.datetime.now(datetime.timezone.utc),
             )
@@ -124,16 +141,39 @@ async def submit(
                 "experience": data["experience"],
                 "note": data["note"],
                 "document_count": len(documents),
+                "has_photo": photo_url is not None,
             },
         )
     except Exception:
-        for doc in documents:
-            try:
-                await storage.delete_file(doc["url"])
-            except Exception:  # noqa: BLE001 — telafi best-effort, asıl hata yutulmaz
-                logger.warning("telafi silme başarısız: %s", doc["url"])
+        await _telafi_sil(yuklenen)
         raise
     logger.info(
         "yeni eğitmen ön başvurusu kuyruğa alındı (%s belge)", len(documents)
     )
     return True
+
+
+async def _upload_photo(content: bytes) -> str:
+    """Fotoğrafı private önekte saklar; çözülemeyen dosya 415'e çevrilir.
+
+    Pillow dosyayı gerçekten açar — uzantı whitelist'i yalnız ADI kontrol
+    eder. ".jpg" adıyla gelen bir PDF ya da bozuk bayt dizisi burada elenir.
+    """
+    try:
+        return await storage.upload_pre_application_photo(content)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001 — Pillow çeşitli istisna atar
+        logger.info("ön başvuru fotoğrafı çözülemedi: %s", exc)
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            "Fotoğraf okunamadı. JPG, PNG veya WEBP yükleyin.",
+        ) from exc
+
+
+async def _telafi_sil(urls: list[str]) -> None:
+    for url in urls:
+        try:
+            await storage.delete_file(url)
+        except Exception:  # noqa: BLE001 — telafi best-effort, asıl hata yutulmaz
+            logger.warning("telafi silme başarısız: %s", url)

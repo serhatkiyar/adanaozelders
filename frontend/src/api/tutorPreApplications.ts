@@ -1,16 +1,29 @@
 import { apiClient } from "@/api/axios";
 
-export interface TutorPreApplicationPayload {
-  full_name: string;
-  phone: string;
+/** Formun isteğe bağlı bölümleri (profil, ders bilgileri, eğitim/belge). */
+export interface TutorPreApplicationProfile {
   email?: string | null;
-  subjects: string[];
   district?: string | null;
   experience?: string | null;
   note?: string | null;
-  kvkk_accepted: boolean;
-  /** İsteğe bağlı diploma/sertifika ekleri (en fazla 3, dosya başı 10 MB). */
+  headline?: string | null;
+  bio?: string | null;
+  intro_video_url?: string | null;
+  teaching_mode?: string | null;
+  hourly_rate?: string | null;
+  availability_note?: string | null;
+  education_note?: string | null;
+  /** İsteğe bağlı diploma/sertifika ekleri (iki fazın toplamı en fazla 3). */
   documents?: File[];
+  /** Kırpılmış profil fotoğrafı (webp blob). */
+  photo?: Blob | null;
+}
+
+export interface TutorPreApplicationPayload extends TutorPreApplicationProfile {
+  full_name: string;
+  phone: string;
+  subjects: string[];
+  kvkk_accepted: boolean;
 }
 
 export interface TutorPreApplicationResponse {
@@ -19,10 +32,36 @@ export interface TutorPreApplicationResponse {
 
 const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
 
+/** İsteğe bağlı alanları forma yazar; hiç doldurulmayanlar (undefined/null) atlanır. */
+function profiliEkle(form: FormData, profil: TutorPreApplicationProfile): void {
+  const metinler: (keyof TutorPreApplicationProfile)[] = [
+    "email",
+    "district",
+    "experience",
+    "note",
+    "headline",
+    "bio",
+    "intro_video_url",
+    "teaching_mode",
+    "hourly_rate",
+    "availability_note",
+    "education_note",
+  ];
+  for (const alan of metinler) {
+    const deger = profil[alan];
+    if (deger === undefined || deger === null) continue;
+    form.append(alan, String(deger));
+  }
+  if (profil.photo) form.append("photo", profil.photo, "profil.webp");
+  for (const file of profil.documents ?? []) form.append("documents", file);
+}
+
 /**
  * Eğitmen ön başvurusu — oturum gerektirmez, hesap açmaz.
- * Multipart gider (belge taşıyabilir); sunucu kaydı yazar, işletmeye
- * e-postayı outbox'a bırakır ve 202 döner.
+ *
+ * Tek istek: zorunlu üç alan + doldurulmuş isteğe bağlı bölümler + fotoğraf ve
+ * belgeler birlikte gider. Sunucu kaydı yazar, işletmeye e-postayı outbox'a
+ * bırakır ve 202 döner.
  */
 export async function submitTutorPreApplication(
   payload: TutorPreApplicationPayload
@@ -31,14 +70,8 @@ export async function submitTutorPreApplication(
   form.append("full_name", payload.full_name);
   form.append("phone", payload.phone);
   form.append("subjects", JSON.stringify(payload.subjects));
-  if (payload.email) form.append("email", payload.email);
-  if (payload.district) form.append("district", payload.district);
-  if (payload.experience) form.append("experience", payload.experience);
-  if (payload.note) form.append("note", payload.note);
   form.append("kvkk_accepted", String(payload.kvkk_accepted));
-  for (const file of payload.documents ?? []) {
-    form.append("documents", file);
-  }
+  profiliEkle(form, payload);
   const { data } = await apiClient.post<TutorPreApplicationResponse>(
     "/tutor-pre-applications",
     form,

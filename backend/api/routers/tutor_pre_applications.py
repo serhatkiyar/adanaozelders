@@ -43,48 +43,14 @@ _submit_limit = rate_limit(
 MAX_DOCUMENTS = 3
 
 
-@router.post(
-    "",
-    response_model=TutorPreApplicationOut,
-    status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(_submit_limit)],
-)
-async def submit_pre_application(
-    full_name: str = Form(...),
-    phone: str = Form(...),
-    subjects: str = Form(..., description="JSON dizisi: [\"Matematik\", ...]"),
-    district: str | None = Form(None),
-    experience: str | None = Form(None),
-    note: str | None = Form(None),
-    email: str | None = Form(None),
-    kvkk_accepted: bool = Form(False),
-    documents: list[UploadFile] = File(default=[]),
-    db: AsyncSession = Depends(get_db),
-):
-    try:
-        subject_list = json.loads(subjects)
-        if not isinstance(subject_list, list):
-            raise ValueError("subjects bir dizi olmalı")
-        payload = TutorPreApplicationIn(
-            full_name=full_name,
-            phone=phone,
-            subjects=subject_list,
-            district=district or None,
-            experience=experience or None,
-            note=note,
-            email=(email or "").strip() or None,
-            kvkk_accepted=kvkk_accepted,
-        )
-    except (ValueError, ValidationError) as exc:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, f"Geçersiz başvuru: {exc}"
-        ) from exc
+async def _oku_belgeler(
+    documents: list[UploadFile],
+) -> list[tuple[str, bytes, str | None]]:
+    """Belge üçlüsünü doğrular: uzantı → içerik → boyut.
 
-    if len(documents) > MAX_DOCUMENTS:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"En fazla {MAX_DOCUMENTS} belge eklenebilir.",
-        )
+    Bu döngü bilerek router dosyasında durur (servise taşınmaz): anonim yazma
+    ucunun dosya kapısı, ucun kendisiyle aynı yerde okunabilir olmalı.
+    """
     files: list[tuple[str, bytes, str | None]] = []
     for doc in documents:
         # Diploma ucuyla aynı üçlü kalıp: uzantı → içerik → boyut. `read`
@@ -103,8 +69,89 @@ async def submit_pre_application(
                 "Dosya çok büyük (en fazla 10 MB).",
             )
         files.append((doc.filename or "belge", data, doc.content_type))
+    return files
 
-    await tutor_pre_application_service.submit(db, payload, files=files)
+
+async def _oku_fotograf(photo: UploadFile | None) -> bytes | None:
+    """Profil fotoğrafı: avatar sınırı (5 MB). İçerik doğrulaması servistedir
+    (Pillow gerçekten çözer); burada yalnız boyut kapısı vardır."""
+    if photo is None or not photo.filename:
+        return None
+    data = await photo.read(settings.MAX_AVATAR_SIZE_BYTES + 1)
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Boş dosya")
+    if len(data) > settings.MAX_AVATAR_SIZE_BYTES:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            "Fotoğraf çok büyük (en fazla 5 MB).",
+        )
+    return data
+
+
+@router.post(
+    "",
+    response_model=TutorPreApplicationOut,
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(_submit_limit)],
+)
+async def submit_pre_application(
+    full_name: str = Form(...),
+    phone: str = Form(...),
+    subjects: str = Form(..., description="JSON dizisi: [\"Matematik\", ...]"),
+    district: str | None = Form(None),
+    experience: str | None = Form(None),
+    note: str | None = Form(None),
+    email: str | None = Form(None),
+    kvkk_accepted: bool = Form(False),
+    # İlan dosyası — formun isteğe bağlı bölümleri.
+    headline: str | None = Form(None),
+    bio: str | None = Form(None),
+    intro_video_url: str | None = Form(None),
+    teaching_mode: str | None = Form(None),
+    hourly_rate: str | None = Form(None),
+    availability_note: str | None = Form(None),
+    education_note: str | None = Form(None),
+    photo: UploadFile | None = File(default=None),
+    documents: list[UploadFile] = File(default=[]),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        subject_list = json.loads(subjects)
+        if not isinstance(subject_list, list):
+            raise ValueError("subjects bir dizi olmalı")
+        payload = TutorPreApplicationIn(
+            full_name=full_name,
+            phone=phone,
+            subjects=subject_list,
+            district=district or None,
+            experience=experience or None,
+            note=note,
+            email=(email or "").strip() or None,
+            kvkk_accepted=kvkk_accepted,
+            headline=headline,
+            bio=bio,
+            intro_video_url=intro_video_url,
+            teaching_mode=teaching_mode or None,
+            hourly_rate=hourly_rate or None,
+            availability_note=availability_note,
+            education_note=education_note,
+        )
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, f"Geçersiz başvuru: {exc}"
+        ) from exc
+
+    if len(documents) > MAX_DOCUMENTS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"En fazla {MAX_DOCUMENTS} belge eklenebilir.",
+        )
+    files = await _oku_belgeler(documents)
+    photo_bytes = await _oku_fotograf(photo)
+
+    await tutor_pre_application_service.submit(
+        db, payload, files=files, photo=photo_bytes
+    )
     await db.commit()
     return TutorPreApplicationOut(
         detail="Başvurun alındı. En geç 24 saat içinde seni arayacağız."

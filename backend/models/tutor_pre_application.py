@@ -12,9 +12,10 @@ kayıt hesap silme akışındaki disiplinle elle temizlenir.
 from __future__ import annotations
 
 import datetime
+import decimal
 import enum
 
-from sqlalchemy import DateTime, Index, String, Text, text
+from sqlalchemy import DateTime, Index, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -58,6 +59,33 @@ class TutorPreApplication(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'NEW'")
     )
+
+    # ── İlan dosyası (isteğe bağlı bölümler) ─────────────────────────────
+    #
+    # Bunlar kalıcı `Tutor` alanlarının lead karşılığıdır: aday telefonla
+    # aranıp hesabı açıldığında elle taşınır. Hepsi nullable, çünkü başvuru
+    # ad + telefon + verilen derslerle tamamlanmış sayılır; gerisini yazmak
+    # başvuru sahibinin tercihidir.
+    #
+    # Profil fotoğrafı `private/` altındadır, `avatars/` DEĞİL: anonim uçtan
+    # public önek'e yazmak siteyi bedava görsel barındırmaya açardı.
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Kalıcı `Tutor` alanlarıyla AYNI adlar: aday hesaba dönüştürülürken
+    # taşıma mekanik olsun (bugün elle yapılıyor).
+    headline: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # https + youtube/vimeo — kalıcı `Tutor.intro_video_url` ile aynı kural.
+    intro_video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # ONLINE / IN_PERSON / BOTH — kalıcı `TeachingMode` ile aynı sözlük.
+    teaching_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    hourly_rate: Mapped[decimal.Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
+    # "Hafta içi akşam, hafta sonu tam gün" gibi serbest metin. Haftalık
+    # pencere modeli (`TutorAvailability`) lead aşaması için ağır.
+    availability_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # Okul + bölüm tek satır; ilişkisel `TutorEducation` lead'de kurulmaz.
+    education_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
     __table_args__ = (
         # Admin listesi "önce bekleyenler" filtresiyle açılır; telefon ise

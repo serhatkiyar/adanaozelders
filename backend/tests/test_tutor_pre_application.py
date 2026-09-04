@@ -119,3 +119,49 @@ def test_admin_uclari_izinle_korunur():
     assert 'require_admin_permission("tutors.view")' in liste.rsplit("@router.get", 1)[1]
     durum = kaynak.split("async def update_tutor_pre_application_status")[1]
     assert 'require_admin_permission("tutors.manage")' in durum.split("db:")[0]
+
+
+# ── İlan dosyası alanları (formun isteğe bağlı bölümleri) ────────────────
+
+
+def test_ders_bicimi_kapali_liste():
+    """Serbest metin kabul edilirse kalıcı profile taşınamayan değer birikir."""
+    with pytest.raises(ValueError):
+        _payload(teaching_mode="uzaydan")
+
+
+def test_tanitim_videosu_yalniz_guvenli_konak():
+    """Rastgele iframe adresi = phishing yüzeyi; kural `schemas.tutor` ile aynı."""
+    assert _payload(intro_video_url="https://youtu.be/abc").intro_video_url
+    with pytest.raises(ValueError):
+        _payload(intro_video_url="http://youtu.be/abc")
+    with pytest.raises(ValueError):
+        _payload(intro_video_url="https://kotu-site.example/abc")
+
+
+def test_ucret_araligi_dogrulanir():
+    """Serbest sayı alanı: negatif ya da uçuk tutar kayda girmemeli."""
+    assert svc.prepare_submission(_payload(hourly_rate=650))["hourly_rate"] == 650
+    with pytest.raises(ValueError):
+        _payload(hourly_rate=-1)
+    with pytest.raises(ValueError):
+        _payload(hourly_rate=999999)
+
+
+def test_bos_birakilan_alan_null_yazilir():
+    """Doldurulmayan isteğe bağlı alan boş dize değil NULL olmalı; aksi hâlde
+    panelde "dolu ama boş" satırlar görünür."""
+    data = svc.prepare_submission(_payload(headline="   ", bio=""))
+    assert data["headline"] is None
+    assert data["bio"] is None
+
+
+def test_fotograf_private_onekte_saklanir():
+    """Anonim uçtan public önek'e yazmak siteyi bedava görsel barındırmaya
+    açardı; yükleyici `private/` altına yazmak ZORUNDA."""
+    kaynak = (BACKEND / "core" / "storage.py").read_text(encoding="utf-8")
+    govde = kaynak.split("async def upload_pre_application_photo")[1].split(
+        "async def upload_library_photo"
+    )[0]
+    assert "PRIVATE_PREFIX" in govde
+    assert 'prefix="avatars"' not in govde

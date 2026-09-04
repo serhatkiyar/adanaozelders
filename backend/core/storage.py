@@ -437,6 +437,23 @@ async def _optimize_in_thread(fn, *args, **kwargs) -> bytes:
     return await asyncio.to_thread(fn, *args, **kwargs)
 
 
+async def upload_pre_application_photo(file_bytes: bytes) -> str:
+    """Eğitmen ön başvurusunun profil fotoğrafı — PRIVATE önekte.
+
+    ``upload_avatar`` ile aynı işi yapar ama ``avatars/`` yerine
+    ``private/tutor-pre-applications/`` altına yazar. Neden: bu uç ANONİMDİR.
+    Public önek'e yazan bir anonim uç, siteyi herkese açık bedava görsel
+    barındırmaya çevirirdi. Fotoğrafı yalnız panel görür; yanıttaki adresi
+    ``PresignPrivateUrls`` katmanı imzalar.
+
+    Pillow dosyayı gerçekten çözer: uzantı whitelist'i (``is_allowed_resource``)
+    adı kontrol eder, içeriği DEĞİL. Çözülemeyen dosya burada patlar ve çağıran
+    onu 415'e çevirir.
+    """
+    data = await _optimize_in_thread(optimize_image, file_bytes, size=(512, 512))
+    return await _put_webp(data, prefix=f"{PRIVATE_PREFIX}tutor-pre-applications")
+
+
 async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> str:
     """Kütüphane görseli yükler. ``square=True`` → logo (512×512 kare crop);
     aksi halde banner/galeri (en-boy korunur, max 1600px). Public URL döner."""

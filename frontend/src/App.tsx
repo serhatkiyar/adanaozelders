@@ -66,7 +66,7 @@ const BlogPostPage = lazy(() => import("@/pages/blog/BlogPostPage"));
 const FaqPage = lazy(() => import("@/pages/FaqPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
 // Eğitmen ön başvurusu — sosyal medyada paylaşılan hesapsız lead sayfası.
-const TutorPreApply = lazy(() => import("@/pages/TutorPreApply"));
+const TutorPreApply = lazy(() => import("@/pages/tutorPreApply/TutorPreApply"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 // Kurye açılış ekranı (rol 5) — menüsüz; aktif tura yönlendirir.
 const CourierHome = lazy(() => import("@/pages/dashboards/CourierHome"));

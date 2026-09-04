@@ -139,6 +139,8 @@ async def _h_email_tutor_lead(p: dict[str, Any]) -> bool:
         email=p.get("email"), district=p.get("district"),
         experience=p.get("experience"), note=p.get("note"),
         document_count=p.get("document_count", 0),
+        # `.get` ile okunur: kuyrukta bekleyen ESKİ olaylarda bu anahtar yok.
+        has_photo=p.get("has_photo", False),
     )
 
 

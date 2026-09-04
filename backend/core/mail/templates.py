@@ -195,6 +195,7 @@ def tutor_lead_email(
     experience: str | None = None,
     note: str | None = None,
     document_count: int = 0,
+    has_photo: bool = False,
 ) -> EmailMessage:
     """Eğitmen ön başvurusunu işletme kutusuna iletir.
 
@@ -216,6 +217,8 @@ def tutor_lead_email(
         lines.append(f"Deneyim: {experience}")
     if document_count:
         lines.append(f"Belge: {document_count} dosya (panelden görüntülenir)")
+    if has_photo:
+        lines.append("Profil fotoğrafı: var (panelden görüntülenir)")
     if note:
         lines.append(f"\nNot:\n{note}")
     lines += ["", "-" * 40, "Kayıt, yönetim panelindeki Eğitmen Başvuruları listesinde."]
