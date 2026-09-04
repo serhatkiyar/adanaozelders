@@ -150,7 +150,7 @@ export async function downloadResultsReference(sessionId: number): Promise<Blob>
   return data as Blob;
 }
 
-/* ── Öğrenci: kayıt + ödeme + biletlerim ── */
+/* ── Öğrenci: kayıt + ödeme + rezervasyonlarım ── */
 
 export async function registerForSession(
   sessionId: number

@@ -105,7 +105,7 @@ export const FAQ: readonly FaqCategory[] = [
         question: "Ders rezervasyonumu iptal edebilir miyim?",
         answer: [
           "Ders başlamadan önce iptal edebilirsin; ödemen iade edilir. Ders tamamlandıktan sonra iptal yapılamaz.",
-          "Deneme sınavı bileti ve çalışma alanı rezervasyonunda ödeme tamamlandıktan sonra iptal yapılamaz (katılmama durumunda iade yoktur).",
+          "Deneme sınavı ve çalışma alanı rezervasyonunda ödeme tamamlandıktan sonra iptal yapılamaz (katılmama durumunda iade yoktur).",
         ],
       },
     ],

@@ -41,7 +41,7 @@ const CLOSED_MESSAGE: Record<PaymentBranch, string> = {
   tutor_marketplace:
     "Eğitmenlere yapılan ödemeler henüz açılmadı. Ödeme altyapımız hazır olduğunda ders rezervasyonu ve eğitmen ürünleri satın alınabilecek.",
   library_marketplace:
-    "Kütüphane bileti ve çalışma alanı ödemeleri henüz açılmadı. Ödeme altyapımız hazır olduğunda satışa açılacak.",
+    "Kütüphane rezervasyon ödemeleri henüz açılmadı. Ödeme altyapımız hazır olduğunda satışa açılacak.",
 };
 
 /** Kol açık mı? Bilgi yoksa veya kol tanınmıyorsa **kapalı** sayılır. */

@@ -311,7 +311,7 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
           to={ROUTES.operatorSessions}
           className="text-xs font-semibold text-indigo-600 hover:underline "
         >
-          Oturumlar & QR →
+          Oturumlar →
         </Link>
       </div>
 
@@ -359,7 +359,7 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
   );
 }
 
-/* Operasyona kısa yol kartı — günlük iş ayrı sekmede (Oturumlar & QR). */
+/* Operasyona kısa yol kartı — günlük iş ayrı sekmede (Oturumlar). */
 function OperationsTeaser({ libraryId: _libraryId }: { libraryId: number }) {
   return (
     <Link
@@ -367,7 +367,7 @@ function OperationsTeaser({ libraryId: _libraryId }: { libraryId: number }) {
       className="flex items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-indigo-300 "
     >
       <div className="min-w-0">
-        <h2 className="text-base font-bold text-slate-900 ">Oturumlar & QR</h2>
+        <h2 className="text-base font-bold text-slate-900 ">Oturumlar</h2>
         <p className="mt-0.5 text-sm text-slate-500 ">
           Deneme oturumlarını yönet, çalışma rezervasyonlarını gör ve QR ile katılım doğrula.
         </p>

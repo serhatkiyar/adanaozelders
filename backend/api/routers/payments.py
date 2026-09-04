@@ -45,7 +45,10 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 
 # Callback sonrası kullanıcının döndürüleceği frontend sayfaları (lib/routes.ts).
 _BOOKINGS_PAGE = "/ders-talepleri"
-_TICKETS_PAGE = "/biletlerim"
+# Kütüphane ödemesi dönüşü. Eski ad "/biletlerim"di; bilet metaforu
+# kaldırıldı (bkz. components/reservation/CheckInCodeCard.tsx). Bu sabit
+# PARA YOLUNDADIR: yol çözülmezse ödemesini yapmış kullanıcı 404 görür.
+_RESERVATIONS_PAGE = "/rezervasyonlar"
 _ORDERS_PAGE = "/siparislerim"
 _PROMOTION_PAGE = "/ilanimi-one-cikar"
 
@@ -171,13 +174,13 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
     token = str(form.get("token") or "").strip()
     provider = payments.get_payment_provider()
     if not token or not isinstance(provider, IyzicoProvider):
-        return _checkout_redirect(_TICKETS_PAGE, ok=False)
+        return _checkout_redirect(_RESERVATIONS_PAGE, ok=False)
 
     result = await provider.retrieve_checkout(token=token)
     parsed = parse_reference(result.reference)
     if parsed is None:
         logger.warning("iyzico callback: çözülemeyen referans %r", result.reference)
-        return _checkout_redirect(_TICKETS_PAGE, ok=False)
+        return _checkout_redirect(_RESERVATIONS_PAGE, ok=False)
 
     kind, entity_id = parsed
     if kind == "booking":
@@ -213,7 +216,7 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
             provider_ref=result.provider_ref,
             token=token, paid_price=result.paid_price,
         )
-    return _checkout_redirect(_TICKETS_PAGE, ok=result.success)
+    return _checkout_redirect(_RESERVATIONS_PAGE, ok=result.success)
 
 
 @router.get("/earnings", response_model=EarningsSummary)

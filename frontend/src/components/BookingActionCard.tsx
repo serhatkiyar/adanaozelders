@@ -7,43 +7,9 @@ import { formatTRY } from "@/lib/money";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
+import { ReservationStatusBadge } from "@/components/reservation/ReservationStatusBadge";
+import { DERS_ANAHTARI } from "@/lib/bookingStatus";
 import { BookingStatus, ROLE_IDS, type BookingCardMetadata } from "@/types";
-
-const STATUS_CONFIG: Record<
-  BookingStatus,
-  { label: string; color: string; icon: string }
-> = {
-  [BookingStatus.PENDING]: {
-    label: "Onay Bekliyor",
-    color:
-      "bg-amber-50 text-amber-700 ring-amber-200 ",
-    icon: "⏳",
-  },
-  [BookingStatus.ACCEPTED]: {
-    label: "Onaylandı",
-    color:
-      "bg-emerald-50 text-emerald-700 ring-emerald-200 ",
-    icon: "✅",
-  },
-  [BookingStatus.REJECTED]: {
-    label: "Reddedildi",
-    color:
-      "bg-red-50 text-red-700 ring-red-200 ",
-    icon: "❌",
-  },
-  [BookingStatus.CANCELLED]: {
-    label: "İptal Edildi",
-    color:
-      "bg-slate-50 text-slate-600 ring-slate-200 ",
-    icon: "🚫",
-  },
-  [BookingStatus.COMPLETED]: {
-    label: "Tamamlandı",
-    color:
-      "bg-indigo-50 text-indigo-700 ring-indigo-200 ",
-    icon: "🎓",
-  },
-};
 
 interface BookingActionCardProps {
   meta: BookingCardMetadata;
@@ -63,7 +29,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
   const cancel = useCancelBooking();
   const [acted, setActed] = useState(false);
 
-  const statusConf = STATUS_CONFIG[currentStatus] ?? STATUS_CONFIG[BookingStatus.PENDING];
+  const durum = DERS_ANAHTARI[currentStatus] ?? "BEKLIYOR";
 
   const handleAccept = () => {
     setActed(true);
@@ -118,12 +84,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
               )}
             </div>
           </div>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${statusConf.color}`}
-          >
-            <span>{statusConf.icon}</span>
-            {statusConf.label}
-          </span>
+          <ReservationStatusBadge durum={durum} />
         </div>
 
         {/* Detaylar */}

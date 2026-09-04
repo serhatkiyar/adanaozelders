@@ -81,7 +81,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
         window.location.href = result.redirect_url;
         return;
       }
-      toast.success("Rezervasyonun alındı! QR'ın Biletlerim'de.");
+      toast.success("Rezervasyonun alındı! Giriş kodun Rezervasyonlarım'da.");
     } catch (e) {
       toast.error(getErrorMessage(e, "Rezervasyon/ödeme başarısız."));
     }

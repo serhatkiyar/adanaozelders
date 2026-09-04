@@ -73,7 +73,7 @@ const DOSYA_BUTCELERI = [
  *   • `adminStoreVariants:188` 1500 — ölçülen tepe **1550 ms**.
  *   • `adminStoreVariants:422` 4000 — ölçülen tepe 439 ms.
  *   • `storeVariants:18` 4000 (6 çağrı) — ölçülen tepe **1124 ms**.
- *   • `ticketsPaymentGate:32` 4000 (6 çağrı) — ölçülen tepe 225 ms.
+ *   • `libraryReservationsPaymentGate:32` 4000 (6 çağrı) — ölçülen tepe 225 ms.
  *
  * Yayın olayı ÜÇ çağrı yeri açtı (`vitrinYayinOlayi` 134/150/177, hepsi
  * 4000). Bunlar bir gecikme değil bir OLAY bekliyor: `BroadcastChannel`
@@ -94,8 +94,8 @@ const CAGRI_BUTCELERI = [
   "src/pages/dashboards/adminStoreDalAdlari.acceptance.test.tsx:251 4000",
   "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:188 1500",
   "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:422 4000",
+  "src/pages/libraryReservationsPaymentGate.test.tsx:32 4000",
   "src/pages/store/storeVariants.acceptance.test.tsx:18 4000",
-  "src/pages/ticketsPaymentGate.test.tsx:32 4000",
 ];
 
 describe("İP-A7d5 · bekleme bütçesi nöbetçisi", () => {

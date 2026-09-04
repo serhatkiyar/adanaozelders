@@ -1,3 +1,4 @@
+import { LEGACY_STATIC } from "@/App";
 import { describe, it, expect } from "vitest";
 import { PATHS, ROUTES, tutorSlug, parseTutorId } from "@/lib/routes";
 
@@ -27,9 +28,14 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(PATHS.profile).toBe("/hesabim");
     expect(PATHS.messages).toBe("/mesajlar");
     expect(PATHS.settings).toBe("/ayarlar");
-    // Rezervasyonlar (CLIENT liste: ders + bilet) + ders/talep detayı (ortak stem)
+    // Rezervasyonlar (CLIENT liste: ders + kütüphane) + detay yolları
     expect(PATHS.bookings).toBe("/rezervasyonlar");
     expect(PATHS.lesson).toBe("/ders-talepleri/:id");
+    expect(PATHS.libraryReservation).toBe("/rezervasyonlar/:tur/:id");
+    // ESKİ YOL KALICI: DB'deki bildirim satırları ve gönderilmiş e-postalar
+    // "/biletlerim" taşıyor. Bilet metaforu kalktı ama bu yönlendirme,
+    // o linkler ölmesin diye duruyor.
+    expect(LEGACY_STATIC.map(([from]) => from)).toContain("/biletlerim");
     // Tutor yüzeyi
     expect(PATHS.tutorListing).toBe("/ilan-ayarlari");
     expect(PATHS.studentProfile).toBe("/ogrenciler/:id");

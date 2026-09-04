@@ -470,7 +470,7 @@ describe("B · Panel ekranında bugün bloğu", () => {
 });
 
 /* ════════════════════════════════════════════════════════════════════════════
-   G · Gün gruplaması (Oturumlar & QR ekranı)
+   G · Gün gruplaması (Oturumlar ekranı)
    ════════════════════════════════════════════════════════════════════════════ */
 
 describe("G · yaklaşan liste güne göre gruplanıyor", () => {
@@ -805,7 +805,7 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
       // N-1/N-2: operatörün kendi girişleri görünür.
       const kutuphanem = await screen.findAllByRole("link", { name: /Kütüphanem/i });
       expect(kutuphanem.length).toBeGreaterThan(0);
-      expect(screen.getAllByRole("link", { name: /Oturumlar & QR/i }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("link", { name: /Oturumlar/i }).length).toBeGreaterThan(0);
       // N-3: öğrenci nav'ı gösterilmiyor.
       expect(screen.queryByRole("link", { name: /Favorilerim/i })).toBeNull();
       expect(screen.queryByRole("link", { name: /Rezervasyonlar/i })).toBeNull();
@@ -821,7 +821,7 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
  *   • `OperatorLibrary`  — 4 ham düğme + **7 adsız kontrol** (tabanın en büyük
  *     adsız kalemi: beş adres kutusu + on dört saat kutusundan ikisi)
  *   • `OperatorHome`     — 3 ham düğme + 3 adsız kontrol (şifre paneli)
- *   • `OperatorSessions` — 3 ham düğme + 1 adsız kontrol (elle bilet kodu)
+ *   • `OperatorSessions` — 3 ham düğme + 1 adsız kontrol (elle rezervasyon kodu)
  *
  * A7d2 bu üçlüyü "ayrı sahip, ayrı kabul matrisi" gerekçesiyle elemişti.
  * Bu dalganın ölçütü BORÇ YOĞUNLUĞU: kalan 26 adsız kontrolün 11'i buradaydı
@@ -905,12 +905,12 @@ describe("İP-A7d3 · operatör paneli göçü", () => {
     expect(kirli.defaultPrevented).toBe(true);
   });
 
-  it("OperatorSessions · elle bilet kodu kutusu ADLI", async () => {
+  it("OperatorSessions · elle rezervasyon kodu kutusu ADLI", async () => {
     operatorOturumu();
     temelUclar();
     const { container } = await sar("./OperatorSessions.tsx");
 
-    expect(await screen.findByLabelText("Bilet kodu")).toBeTruthy();
+    expect(await screen.findByLabelText("Rezervasyon kodu")).toBeTruthy();
     expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
   });
 

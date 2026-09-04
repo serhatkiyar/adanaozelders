@@ -136,6 +136,7 @@ const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
+const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
@@ -156,8 +157,6 @@ const Settings = lazy(() => import("@/pages/Settings"));
 const Balance = lazy(() => import("@/pages/Balance"));
 const Demands = lazy(() => import("@/pages/Demands"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
-// Geliştirme prototipi: "yırtılan kupon" bilet animasyonu (/test-bilet)
-const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
 const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
 // Geliştirme prototipi: kütüphane kartı tasarım karşılaştırması (/test-kutuphane-karti)
@@ -259,7 +258,7 @@ function AccountDispatcher() {
 
 // "Ders Talepleri" — ortak `/ders-talepleri` URL'i, rol göre içerik:
 //  • TUTOR  → panosu (gelen talepler/kazanç) = TutorDashboard
-//  • CLIENT → kendi talep listesi = StudentBookings
+//  • CLIENT → kendi rezervasyon listesi = Reservations
 function BookingsHome() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
@@ -279,7 +278,7 @@ function PanelQuestions() {
 
 // Eski URL'ler → yeni düz yapı. Tek hop `replace`; query string LegacyRedirect
 // tarafından korunur (?token=, ?q=, ?to= …). Eski `/panel/*` öneki dahil.
-const LEGACY_STATIC: [string, string][] = [
+export const LEGACY_STATIC: [string, string][] = [
   // İngilizce/karışık eski yüzey
   ["/login", ROUTES.login],
   ["/register", ROUTES.register],
@@ -301,6 +300,9 @@ const LEGACY_STATIC: [string, string][] = [
   ["/messages", ROUTES.messages],
   ["/calendar", ROUTES.calendar],
   ["/leaderboard", ROUTES.leaderboard],
+  // KALICI: bilet metaforu kalktı ama bu yol SİLİNEMEZ. Veritabanındaki eski
+  // bildirim satırları ve gönderilmiş e-postalar hâlâ "/biletlerim" taşıyor;
+  // yönlendirme kalkarsa o linkler 404 olur. Nöbetçisi routes.test.ts.
   ["/biletlerim", ROUTES.bookings],
   // Eski `/panel/*` öneki → yeni düz path
   ["/panel", ROUTES.home],
@@ -417,7 +419,6 @@ function App() {
               LibraryCardTest gerçek arama API'sini de çağırıyor. */}
           {import.meta.env.DEV && (
             <>
-              <Route path="/test-bilet" element={<TicketTearTest />} />
               <Route path="/test-canli-ders" element={<TestLiveLesson />} />
               <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
             </>
@@ -462,6 +463,10 @@ function App() {
             {/* Ders talepleri — CLIENT + TUTOR ortak (rol göre içerik) */}
             <Route path={PATHS.bookings} element={<BookingsHome />} />
             <Route path={PATHS.lesson} element={<LessonDetail />} />
+            <Route
+              path={PATHS.libraryReservation}
+              element={<LibraryReservationDetail />}
+            />
           </Route>
 
           {/* ── Yalnızca CLIENT ── */}
