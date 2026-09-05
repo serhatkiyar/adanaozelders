@@ -5,8 +5,19 @@ toplar: profil fotoğrafı, tanıtım metni, ders biçimi, saatlik ücret, müsa
 ve eğitim notu. Hepsi NULLABLE — başvuru ad + telefon + verilen derslerle
 tamamlanmış sayılır, gerisini doldurmak başvuru sahibinin tercihidir.
 
+ZİNCİR NOTU (5 Eyl 2026): bu revizyon önce `a94d3c07be21`'in üstünde duruyordu
+ve kısmi teslimat dalıyla KARDEŞ olmuştu; iki head bir merge revision'ı ile
+birleştirilmişti. `tests/integration/test_ip16_migration_pg.py::
+test_B1_ZINCIR_IP12_UZERINE_KURULU` merge revision'ı yasaklıyor — gerekçe
+oradaki docstring'de: çatallı geçmiş `upgrade head`'i kırılgan yapıyor. Bu
+yüzden ders taksonomisi dalı, main'e önce inen kısmi teslimat dalının
+(`e8b3c1d95a47`) ÜSTÜNE alındı ve merge revision silindi. İki dal ayrı
+alanlara dokunuyor (taksonomi ↔ teslimat paketleri), sıralama bağımlılık
+üretmiyor. Yeni bir dal aynı duruma düşerse çözüm yine budur: merge revision
+üretme, zinciri doğrusallaştır.
+
 Revision ID: c7f1a2d84b93
-Revises: a94d3c07be21
+Revises: e8b3c1d95a47
 Create Date: 2026-09-03
 
 """
@@ -18,7 +29,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'c7f1a2d84b93'
-down_revision: Union[str, Sequence[str], None] = 'a94d3c07be21'
+down_revision: Union[str, Sequence[str], None] = 'e8b3c1d95a47'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

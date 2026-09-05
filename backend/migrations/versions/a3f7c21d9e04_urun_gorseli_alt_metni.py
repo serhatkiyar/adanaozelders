@@ -6,7 +6,7 @@ aralarında ayrım yapamıyor. Kolon NULL doğar: doldurulana kadar vitrin bugü
 davranışına (ürün başlığına düşme) devam eder, hiçbir ekran bozulmaz.
 
 Revision ID: a3f7c21d9e04
-Revises: 31b82914cbe3
+Revises: c424a7682128
 Create Date: 2026-09-04
 
 """
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'a3f7c21d9e04'
-down_revision: Union[str, Sequence[str], None] = '31b82914cbe3'
+down_revision: Union[str, Sequence[str], None] = 'c424a7682128'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
