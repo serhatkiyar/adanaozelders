@@ -33,6 +33,10 @@ export const MERCAN = {
   halka: "focus-visible:ring-[#F2695E]",
 } as const;
 
+/** Seçili segment düğmesi (ders şekli gibi az seçenekli alanlar). */
+export const SECILI_SEGMENT =
+  "border-[#F2695E] bg-[#FDEFEE] font-medium text-[#B33A2E]";
+
 /** Bilgi kartının yumuşak pembe zemini ve kenarlığı. */
 export const BILGI = {
   zemin: "bg-[#FDEFEE]",

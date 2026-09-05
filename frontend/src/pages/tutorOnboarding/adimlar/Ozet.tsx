@@ -55,7 +55,10 @@ export function AdimOzet({ d, dis, gitAdim }: AdimProps) {
       {eksik.length > 0 && (
         <div className="rounded-2xl bg-amber-50 p-5">
           <p className="text-[14px] font-medium text-amber-900">
-            Yayına göndermeden önce tamamlanması gerekenler
+            {/* Liste artık iki tür madde taşıyor: ilerlemeyi kesen yapısal
+                eksik ve kesmeyen kalite önerisi (bkz. sozlesme.ts::oneri).
+                "tamamlanması gerekenler" ikincisi için yanlış bir vaat. */}
+            Eksikler ve öneriler
           </p>
           <ul className="mt-3 space-y-2">
             {eksik.map((e) => (

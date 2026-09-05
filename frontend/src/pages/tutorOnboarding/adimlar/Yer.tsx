@@ -6,6 +6,8 @@ import { MapPicker } from "@/components/MapPicker";
 import { ADANA_DISTRICTS } from "@/lib/districts";
 import { TeachingMode } from "@/types";
 
+import { SECILI_SEGMENT } from "../tema";
+
 import type { AdimProps } from "./ortak";
 
 const SEKILLER = [
@@ -28,6 +30,7 @@ export function AdimYer({ d, guncelle }: AdimProps) {
     <div className="space-y-7">
       <div data-alan="dersSekli">
         <SegmentSecim
+        aktifSinif={SECILI_SEGMENT}
           etiket="Ders şekli"
           deger={d.teachingMode}
           onChange={(v) => guncelle({ teachingMode: v as TeachingMode | "" })}

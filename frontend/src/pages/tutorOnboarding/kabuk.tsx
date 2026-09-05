@@ -204,7 +204,10 @@ export function BilgiKarti({
       <summary
         className={`flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-semibold ${BILGI.baslik} lg:hidden [&::-webkit-details-marker]:hidden`}
       >
-        Nasıl yazılır?
+        {/* Etiket içeriğe göre: örnek cümleler varsa "nasıl yazılır", yoksa
+            seçim/yükleme adımıdır ve doğru soru "neden soruluyor". Tek sabit
+            etiket, seçim adımlarında yanlış bir vaat verirdi. */}
+        {ornekler?.length ? "Nasıl yazılır?" : "Neden soruyoruz?"}
         <svg
           className="h-5 w-5 shrink-0 transition-transform"
           viewBox="0 0 24 24"
@@ -263,9 +266,17 @@ export function IkiKolon({
   bilgi,
   children,
 }: {
+  /** Yardım içeriği. `null` verilirse tek sütuna düşülür (bkz. aşağıda). */
   bilgi: ReactNode;
   children: ReactNode;
 }) {
+  // YARDIM YOKSA İKİ SÜTUN DA YOK. Özet adımının bilgi kartı yok; iki sütunlu
+  // ızgarayı korumak sol tarafta koca bir boşluk bırakıp içeriği sağa itiyor
+  // ve sayfa "bir şey eksik" gibi görünüyordu (1440px turunda görüldü).
+  if (!bilgi) {
+    return <div className="mx-auto max-w-2xl">{children}</div>;
+  }
+
   return (
     <div className="lg:grid lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:items-start lg:gap-14">
       {/* SORU DOM'DA ÖNCE gelir. Mobilde kapsayıcı grid DEĞİL (yalnız `lg:`),

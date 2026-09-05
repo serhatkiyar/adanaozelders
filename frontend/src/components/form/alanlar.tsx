@@ -214,12 +214,22 @@ export function SegmentSecim({
   deger,
   onChange,
   secenekler,
+  aktifSinif,
 }: {
   etiket: string;
   ipucu?: string;
   deger: string;
   onChange: (deger: string) => void;
   secenekler: readonly { deger: string; etiket: string }[];
+  /**
+   * Seçili seçeneğin sınıfları. Verilmezse varsayılan indigo kullanılır.
+   *
+   * RENK BURADA YAZILMAZ: ilan sihirbazı mercan aksan kullanıyor ve o hex'in
+   * bu dosyaya girmesi `__guards__/sihirbazMercani.test.ts` tarafından
+   * yasaklı — kapsam kilidi tam olarak bunun için var. Çağıran taraf kendi
+   * temasından geçirir.
+   */
+  aktifSinif?: string;
 }) {
   return (
     <fieldset>
@@ -235,7 +245,8 @@ export function SegmentSecim({
               aria-pressed={secili}
               className={`rounded-xl border px-4 py-3 text-left text-[15px] transition ${
                 secili
-                  ? "border-indigo-600 bg-indigo-50 font-medium text-indigo-900"
+                  ? (aktifSinif ??
+                    "border-indigo-600 bg-indigo-50 font-medium text-indigo-900")
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
               }`}
             >

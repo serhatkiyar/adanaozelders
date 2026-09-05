@@ -293,12 +293,14 @@ export default function IlanSihirbazi() {
       >
         <IkiKolon
           bilgi={
-            <BilgiKarti
-              ipucu={adim.ipucu}
-              ornekler={adim.ornekler}
-              hatirlatma={adim.hatirlatma}
-              ad={kullanici.data?.full_name?.split(" ")[0]}
-            />
+            adim.ipucu || adim.ornekler?.length || adim.hatirlatma ? (
+              <BilgiKarti
+                ipucu={adim.ipucu}
+                ornekler={adim.ornekler}
+                hatirlatma={adim.hatirlatma}
+                ad={kullanici.data?.full_name?.split(" ")[0]}
+              />
+            ) : null
           }
         >
           <AdimGovde

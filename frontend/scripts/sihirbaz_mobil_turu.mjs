@@ -28,8 +28,16 @@ const PAROLA = ARGS.parola ?? "Sifre12345!";
 const OUT = resolve(ARGS.out ?? "./sihirbaz-mobil");
 const PORT = 9333;
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const GENISLIKLER = [360, 414];
-const ADIM_SAYISI = 11;
+// Varsayılan iki mobil genişlik; `--genislikler 360,414,1440` ile masaüstü de
+// eklenebilir (iki kolonlu düzen yalnız lg'de açılıyor).
+const GENISLIKLER = (ARGS.genislikler ?? "360,414")
+  .split(",")
+  .map((x) => Number(x.trim()))
+  .filter(Boolean);
+// Adım sayısı: sözleşme TS'te yaşıyor ve bu script .mjs, import edemiyor.
+// 5 Eyl 2026'da müsaitlik ve belge adımları çıkarıldı (11 -> 9). Sözleşme
+// değişirse burası da güncellenmeli; `--adim` ile geçici olarak ezilebilir.
+const ADIM_SAYISI = Number(ARGS.adim ?? 9);
 const HEDEF_EN_AZ = 44; // dokunma hedefi eşiği (px)
 // NEGATİF KONTROL: her dokunma hedefi sentetik olarak küçültülür ve kapıların
 // KIRMIZI düşmesi beklenir. Gerekçe: sonda "etiket kutusunu ölç" kuralını
@@ -303,8 +311,15 @@ try {
       const o = await s.eval(olc);
       o.konsol = s.konsol.slice();
       sonuc.adimlar[genislik][adim] = o;
-      if (!NEGATIF && genislik === 360 && [0, 1, 5, 10].includes(adim)) {
-        await s.ss(join(OUT, `adim-${adim}-360.png`));
+      // Görsel kanıt: `--ss 0,1,8` ile hangi adımların yakalanacağı seçilir;
+      // verilmezse mobil turda birkaç temsilci adım kaydedilir.
+      const ssAdimlari = ARGS.ss
+        ? ARGS.ss.split(",").map((x) => Number(x.trim()))
+        : genislik === 360
+          ? [0, 1, 5]
+          : [];
+      if (!NEGATIF && ssAdimlari.includes(adim)) {
+        await s.ss(join(OUT, `adim-${adim}-${genislik}.png`));
       }
 
       kapi(o.tasmaPiksel === 0, `adim ${adim}/${genislik}: yatay taşma (${o.tasmaPiksel}px)`);
@@ -312,10 +327,17 @@ try {
         o.birincilEtiket !== null,
         `adim ${adim}/${genislik}: birincil düğme bulunamadı`,
       );
-      kapi(
-        o.birincilGorunurAlanda !== false,
-        `adim ${adim}/${genislik}: birincil düğme görünür alanın dışında`,
-      );
+      // Bu kural YALNIZ mobilde geçerli. Aksiyon çubuğu `sm` (640px) altında
+      // ekrana SABİTLENİR ve orada görünmemesi akışı keser; `sm` üstünde
+      // bilerek akışa döner ve uzun bir sayfada (ör. Özet) aşağıda kalması
+      // normaldir. Kuralı masaüstünde de uygulamak, olmayan bir kusuru
+      // raporlar ve gerçek kusurları gürültüye boğardı.
+      if (genislik < 640) {
+        kapi(
+          o.birincilGorunurAlanda !== false,
+          `adim ${adim}/${genislik}: birincil düğme görünür alanın dışında`,
+        );
+      }
       kapi(
         o.birincilKirpildi !== true,
         `adim ${adim}/${genislik}: birincil düğme etiketi kırpıldı (${o.birincilEtiket})`,
