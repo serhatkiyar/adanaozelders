@@ -7,10 +7,14 @@ import type { TutorOut } from "@/types";
 /**
  * İlan tamamlanma göstergesi.
  *
- * DİPLOMA MADDESİ ZORUNLUDUR ve listede ayrı durur: sunucudaki yayın kapısı
- * (`tutor_service.submit_for_approval`) belge ya da e-Devlet barkodu arıyor.
- * Bu madde eskiden hiç sayılmıyordu; %100 görünen bir profil yayına
- * gönderildiğinde 422 alıyor, eğitmen sebebini göremiyordu.
+ * DİPLOMA MADDESİ 5 Eyl 2026'da ZORUNLU OLMAKTAN ÇIKTI: yayın kapısı
+ * kaldırıldı, belge artık "Diploması Doğrulandı" rozetinin koşulu. Listede
+ * yine duruyor ama engel olarak değil kazanç olarak anlatılıyor.
+ *
+ * MÜSAİTLİK ve BELGE ARTIK BURADA SORULUYOR: ikisi de ilan sihirbazından
+ * çıkarıldı (akış 9 adıma indi), dolayısıyla eğitmenin bunları göreceği tek
+ * yer bu göstergedir. Bu yüzden panelde de (TutorDashboard) gösteriliyor,
+ * yalnız /ilan-ayarlari'nda değil.
  */
 export function ProfileCompleteness({
   tutor,

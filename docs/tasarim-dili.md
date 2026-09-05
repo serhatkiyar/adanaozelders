@@ -577,3 +577,57 @@ Bu dil aşağıdakileri **bozamaz**. Bozuyorsa tasarım kararı yanlıştır:
 Ek olarak: ölçüm tabanına giren her yeni panel dosyası `OLCUM_TABANI`'na
 **ve** çalışma zamanı kapısının kapsamına yazılır. Sessizce eklenen bir dosya
 ölçüme girmez ve borç görünmez büyür.
+
+---
+
+## Ek A — Bilinçli istisna: `/ilanini-olustur` (eğitmen ilan sihirbazı)
+
+**Tarih:** 5 Eylül 2026 · **Karar:** kullanıcı · **Kapsam:** yalnız
+`frontend/src/pages/tutorOnboarding/**`
+
+Bu belgenin kapsamı (§0) yönetim panelidir; ilan sihirbazı public bir ekrandır
+ve teknik olarak zaten kapsam dışıdır. Yine de istisna buraya yazılıyor: bu
+belge deponun tek yazılı tasarım karar kaydı ve sihirbazın kabuğu kendi içinde
+"kart yok" kararını yazmıştı. Yazılmazsa bir sonraki oturum o yorumu okuyup
+kartı söker.
+
+### Ne değişti
+
+| Kural | Sihirbazdaki hâli |
+|---|---|
+| §3.2 "kart enflasyonu yasaktır" | Adımın yardım metni **dolgulu bir kart** (`BilgiKarti`). Sorunun kendisi hâlâ kutusuz. |
+| §2 "en ağır `font-semibold`" | Adım başlığı `font-bold`, 30→46px, vurgulu sözcük ikinci renkte. |
+| Aksan indigo / panel laciverti | Sihirbaz **mercan** (`#F2695E`). |
+
+### Neden
+
+Kullanıcı akışı gerçek bir sunucuda kullandı: *"bizimki bok gibi, neyin ne
+olduğu belli değil."* Ölçülen kusur estetik değil işlevsel — her adımda
+kullanıcının aklındaki "bunu neden soruyorsunuz, ne yazmam lazım" sorusu
+ekranda cevaplanmıyordu. Saç teli çizginin yanındaki soluk gri paragraf
+okunmuyor. Sihirbaz bir dönüşüm hunisidir ve ölçüsü **tamamlanma oranıdır**,
+panelin ölçüsü olan tarama hızı değil: burada kullanıcı listeyi gözüyle
+taramıyor, tek bir soruya cevap yazıyor. Tek-soru-tek-ekran düzeninde başlık
+sayfanın tek yön bulma işaretidir; küçük bir başlık o işareti yok eder.
+
+### Kapsam kilidi
+
+Bu istisna **yalnız** `src/pages/tutorOnboarding/**` için geçerlidir. Başka bir
+ekran "sihirbazda böyle yapılmış" diyerek buraya dayanamaz.
+
+- Mercan **Tailwind token'ı DEĞİL**: `pages/tutorOnboarding/tema.ts` içinde
+  yerel sabit. Token eklemek rengi tüm siteden erişilebilir kılar ve panel
+  token ailesiyle karışırdı.
+- Nöbetçi: `src/__guards__/sihirbazMercani.test.ts` — mercan hex'inin her
+  geçtiği yer bu ağacın altında olmak zorunda, `tailwind.config.js` temiz
+  kalmak zorunda.
+- Kabuğun kendi sözleşmesi: `pages/tutorOnboarding/kabuk.test.tsx` — bilgi
+  kartı ve aksiyon çubuğu DOM'da tek kopya, ilerleme oranı adım sözleşmesinden
+  türer, iOS klavye eşiği çalışır.
+
+### Değişmeyenler
+
+Tek tema (`dark:` yasağı), 16px girdi yazısı, 44px dokunma hedefi, tek mesaj
+slotu ve birincil düğmenin doğrulamayla `disabled` olmaması bu ekranlarda da
+aynen geçerlidir.
+

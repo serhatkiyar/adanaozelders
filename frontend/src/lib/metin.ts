@@ -39,8 +39,11 @@ export function kelimeSayaci(
   return {
     yeterli,
     sayi,
+    // "gerekli" DEĞİL "öneriyoruz": 5 Eyl 2026'dan beri kelime eşiği ilerlemeyi
+    // kesmiyor (kullanıcı kararı). Kesmeyen bir kuralı zorunlulukmuş gibi
+    // yazmak, kullanıcıyı olmayan bir duvara karşı hazırlar.
     metin: yeterli
       ? `${sayi} sözcük`
-      : `En az ${enAz} sözcük gerekli, şu an ${sayi}.${ipucu ? ` ${ipucu}` : ""}`,
+      : `${sayi} sözcük — en az ${enAz} öneriyoruz.${ipucu ? ` ${ipucu}` : ""}`,
   };
 }

@@ -37,6 +37,7 @@ export function AdimUcret({ d, guncelle, odakla }: AdimProps) {
   return (
     <div className="space-y-7">
       <Metin
+        dolgu
         ad="ucret"
         etiket="Saatlik ücret (₺)"
         ipucu={

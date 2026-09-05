@@ -23,6 +23,7 @@ export function AdimBaslik({ d, guncelle, odakla }: AdimProps) {
   );
   return (
     <CokSatir
+      dolgu
       ad="baslik"
       etiket="İlan başlığı"
       ipucu={sayac.metin}
@@ -40,6 +41,7 @@ export function AdimYontem({ d, guncelle, odakla }: AdimProps) {
   const sayac = kelimeSayaci(d.lessonInfo, YONTEM_EN_AZ_KELIME);
   return (
     <CokSatir
+      dolgu
       ad="yontem"
       etiket="Dersin işleyişi"
       ipucu={sayac.metin}
@@ -57,6 +59,7 @@ export function AdimHakkinda({ d, guncelle, odakla }: AdimProps) {
   const sayac = kelimeSayaci(d.bio, HAKKINDA_EN_AZ_KELIME);
   return (
     <CokSatir
+      dolgu
       ad="hakkinda"
       etiket="Hakkında"
       ipucu={sayac.metin}
@@ -79,6 +82,7 @@ export function AdimHakkinda({ d, guncelle, odakla }: AdimProps) {
 export function TanitimVideosu({ d, guncelle }: AdimProps) {
   return (
     <Metin
+      dolgu
       ad="video"
       etiket="Tanıtım videosu"
       ipucu="İsteğe bağlı. Yalnız YouTube veya Vimeo bağlantısı."

@@ -38,6 +38,7 @@ export function AdimYer({ d, guncelle }: AdimProps) {
       {!uzaktanSadece && (
         <>
           <Liste
+            dolgu
             ad="ilce"
             etiket="İlçen"
             ipucu="Öğrenciler aramada ilçeye göre eğitmen süzüyor."
@@ -48,6 +49,7 @@ export function AdimYer({ d, guncelle }: AdimProps) {
           />
 
           <Metin
+            dolgu
             ad="konum"
             etiket="Semt veya mahalle"
             ipucu="İsteğe bağlı. Açık adres yazma — bu satır ilanında görünür."

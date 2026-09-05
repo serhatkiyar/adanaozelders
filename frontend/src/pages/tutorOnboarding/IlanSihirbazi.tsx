@@ -38,7 +38,8 @@ import {
   AdimHatasi,
   AksiyonCubugu,
   IlerlemeSeridi,
-  Ipucu,
+  BilgiKarti,
+  IkiKolon,
 } from "./kabuk";
 import { Tebrikler } from "./Tebrikler";
 
@@ -275,7 +276,7 @@ export default function IlanSihirbazi() {
       <Seo title="İlanını oluştur" noindex />
       <IlerlemeSeridi adimNo={adimNo} />
 
-      <header className="mx-auto flex max-w-xl items-center justify-between gap-3 px-5 py-2">
+      <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-2">
         <AdimHaritasi adimNo={adimNo} enUzak={enUzak} git={gitAdim} />
         <PlainButton
           onClick={kaydetVeCik}
@@ -288,42 +289,53 @@ export default function IlanSihirbazi() {
 
       <main
         ref={govdeRef}
-        className="mx-auto max-w-xl px-5 pb-40 pt-6 sm:pb-16 sm:pt-10"
+        className="mx-auto max-w-5xl px-5 pb-40 pt-6 sm:pb-16 sm:pt-10 lg:pt-14"
       >
-        <AdimGovde baslik={adim.baslik} altBaslik={adim.altBaslik}>
-          <Bilesen
-            d={durum}
-            guncelle={guncelle}
-            dis={dis}
-            odakla={odakla}
-            gitAdim={gitAdim}
-          />
-        </AdimGovde>
+        <IkiKolon
+          bilgi={
+            <BilgiKarti
+              ipucu={adim.ipucu}
+              ornekler={adim.ornekler}
+              hatirlatma={adim.hatirlatma}
+              ad={kullanici.data?.full_name?.split(" ")[0]}
+            />
+          }
+        >
+          <AdimGovde
+            baslik={adim.baslik}
+            vurgu={adim.vurgu}
+            altBaslik={adim.altBaslik}
+          >
+            <Bilesen
+              d={durum}
+              guncelle={guncelle}
+              dis={dis}
+              odakla={odakla}
+              gitAdim={gitAdim}
+            />
+          </AdimGovde>
 
-        {hata && <AdimHatasi mesaj={hata.mesaj} />}
+          {hata && <AdimHatasi mesaj={hata.mesaj} />}
 
-        {adim.ipucu && (
+          {/*
+            TEK kopya. Çubuk mobilde ekranın altına sabitlenir, sm'den itibaren
+            akışa döner (`fixed … sm:static`). İki ayrı kopya render etmek
+            DOM'da iki "İleri" düğmesi bırakır ve ekran okuyucu ikisini de okur.
+          */}
           <div className="mt-10">
-            <Ipucu>{adim.ipucu}</Ipucu>
+            <AksiyonCubugu
+              geri={adimNo > 0 ? () => gitAdim(adimNo - 1) : undefined}
+              ileri={sonAdim ? gonder : ileri}
+              ileriEtiket={
+                sonAdim
+                  ? "Yayına gönder"
+                  : `Sırada: ${ADIMLAR[adimNo + 1].kisaAd}`
+              }
+              bekliyor={bekliyor}
+              atla={adim.atlanabilir && !sonAdim ? atla : undefined}
+            />
           </div>
-        )}
-
-        {/*
-          TEK kopya. Çubuk mobilde ekranın altına sabitlenir, sm'den itibaren
-          akışa döner (`fixed … sm:static`). İki ayrı kopya render etmek
-          DOM'da iki "İleri" düğmesi bırakır ve ekran okuyucu ikisini de okur.
-        */}
-        <div className="mt-10">
-          <AksiyonCubugu
-            geri={adimNo > 0 ? () => gitAdim(adimNo - 1) : undefined}
-            ileri={sonAdim ? gonder : ileri}
-            ileriEtiket={
-              sonAdim ? "Yayına gönder" : `Sırada: ${ADIMLAR[adimNo + 1].kisaAd}`
-            }
-            bekliyor={bekliyor}
-            atla={adim.atlanabilir && !sonAdim ? atla : undefined}
-          />
-        </div>
+        </IkiKolon>
       </main>
     </div>
   );

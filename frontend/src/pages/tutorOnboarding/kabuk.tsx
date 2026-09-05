@@ -4,14 +4,27 @@ import { Modal } from "@/components/ui/Modal";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { ADIMLAR } from "./sozlesme";
+import { BILGI, MERCAN } from "./tema";
 
 /**
- * Sihirbazın çerçeve parçaları: adım göstergesi, ipucu, adım gövdesi ve
+ * Sihirbazın çerçeve parçaları: adım göstergesi, bilgi kartı, adım gövdesi ve
  * aksiyon çubuğu.
  *
- * Tasarım kararı: kart yok. Her adım tek bir soru gösteriyor; soruyu bir kutu
- * içine almak sayfada ikinci bir çerçeve doğuruyor. Ayrım boşlukla ve saç teli
- * çizgiyle kuruluyor.
+ * ESKİ KARAR (Eylül başı) — TARİH OLARAK DURUYOR, ARTIK YÜRÜRLÜKTE DEĞİL:
+ * "kart yok. Her adım tek bir soru gösteriyor; soruyu bir kutu içine almak
+ * sayfada ikinci bir çerçeve doğuruyor. Ayrım boşlukla ve saç teli çizgiyle
+ * kuruluyor."
+ *
+ * YÜRÜRLÜKTEKİ KARAR (5 Eyl 2026, kullanıcı): soru hâlâ kutusuz, ama YARDIM
+ * artık dolgulu bir kart. Kullanıcı akışı gerçek sunucuda kullandı ve "neyin
+ * ne olduğu belli değil" dedi: saç teli çizginin yanındaki soluk gri paragraf
+ * okunmuyordu. Superprof'un aynı akışı bunu dolgulu bir kartla çözüyor.
+ * Başlık da büyüdü ve `font-bold` oldu — tek-soru-tek-ekran düzeninde sayfanın
+ * tek yön bulma işareti odur.
+ *
+ * Bu iki sapmanın kapsamı ve gerekçesi `docs/tasarim-dili.md` → "Ek A"da;
+ * rengin sızmasının nöbetçisi `src/__guards__/sihirbazMercani.test.ts`,
+ * kabuğun kendi sözleşmesi `kabuk.test.tsx`.
  *
  * MOBİL: yazılım klavyesi ekranın %70'ine kadarını kaplayabiliyor; kullanıcı o
  * anda bir-iki alandan fazlasını göremiyor. Bu yüzden her adım TEK BAŞINA
@@ -32,7 +45,7 @@ export function IlerlemeSeridi({ adimNo }: { adimNo: number }) {
       aria-label="İlan oluşturma ilerlemesi"
     >
       <div
-        className="h-full bg-indigo-600 transition-[width] duration-500 ease-out"
+        className={`h-full ${MERCAN.zemin} transition-[width] duration-500 ease-out`}
         style={{ width: `${oran}%` }}
       />
     </div>
@@ -135,33 +148,172 @@ export function AdimHaritasi({
 }
 
 /**
- * Adımın yanındaki açıklama.
+ * Adımın yardım kartı.
  *
- * Kutu değil, sol kenarında saç teli çizgi olan bir paragraf: bilgi, sayfanın
- * ana akışının parçası — ayrı bir nesne değil.
+ * TASARIM DİLİNDEN BİLİNÇLİ SAPMA (5 Eyl 2026, kullanıcı kararı). Eskiden bu
+ * bir kutu DEĞİLDİ: sol kenarında saç teli çizgi olan soluk gri bir paragraftı
+ * ve `docs/tasarim-dili.md`nin "kart enflasyonu yasaktır" kuralına uyuyordu.
+ * Kullanıcı akışı gerçek bir sunucuda kullandı ve "neyin ne olduğu belli
+ * değil" dedi: her adımda aklındaki "bunu neden soruyorsunuz, ne yazmam
+ * lazım" sorusu ekranda cevaplanmıyordu. Superprof'un aynı akışı bunu dolgulu
+ * bir kartla çözüyor ve okunurluğu oradan geliyor.
+ *
+ * İstisnanın kapsamı ve gerekçesi `docs/tasarim-dili.md` → "Ek A"da yazılı;
+ * rengin sızmasının nöbetçisi `src/__guards__/sihirbazMercani.test.ts`.
+ *
+ * MOBİLDE KART FORMUN ALTINDA ve KAPALI durur. Ön başvuru turunda ölçülmüştü:
+ * anlatıyı formun üstüne koymak, dar ekranda asıl soruyu ekran dışına itiyor.
+ * Kart DOM'da tek kopyadır; sıra `order-*` ile çevrilir — iki kopya render
+ * etmek ekran okuyucuya aynı yardımı iki kez okuturdu.
  */
-export function Ipucu({ children }: { children: ReactNode }) {
+export function BilgiKarti({
+  ipucu,
+  ornekler,
+  hatirlatma,
+  ad,
+}: {
+  ipucu?: string;
+  ornekler?: string[];
+  hatirlatma?: string;
+  /** Hatırlatma satırında kullanıcıya adıyla seslenmek için. */
+  ad?: string;
+}) {
+  // Masaüstünde kart HER ZAMAN açık; mobilde kullanıcı açıp kapatır. Tek
+  // `<details>` iki davranışı da taşır — ikinci bir kopya render etmek ekran
+  // okuyucuya aynı yardımı iki kez okuturdu.
+  const [acik, setAcik] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const uygula = () => {
+      if (mq.matches) setAcik(true);
+    };
+    uygula();
+    mq.addEventListener("change", uygula);
+    return () => mq.removeEventListener("change", uygula);
+  }, []);
+
+  if (!ipucu && !ornekler?.length && !hatirlatma) return null;
+
   return (
-    <p className="border-l-2 border-slate-200 pl-4 text-[13px] leading-relaxed text-slate-500">
-      {children}
-    </p>
+    <details
+      open={acik}
+      onToggle={(e) => setAcik((e.currentTarget as HTMLDetailsElement).open)}
+      className={`${BILGI.zemin} ${BILGI.kenar} rounded-3xl border px-6 py-5`}
+    >
+      <summary
+        className={`flex cursor-pointer list-none items-center justify-between gap-3 text-[15px] font-semibold ${BILGI.baslik} lg:hidden [&::-webkit-details-marker]:hidden`}
+      >
+        Nasıl yazılır?
+        <svg
+          className="h-5 w-5 shrink-0 transition-transform"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" d={acik ? "M5 12h14" : "M12 5v14M5 12h14"} />
+        </svg>
+      </summary>
+
+      <p className={`hidden text-[17px] font-semibold ${BILGI.baslik} lg:block`}>
+        Bilgi
+      </p>
+
+      {ipucu && (
+        <p className={`mt-3 text-[14px] leading-relaxed ${BILGI.metin}`}>
+          {ipucu}
+        </p>
+      )}
+
+      {!!ornekler?.length && (
+        <>
+          <p className={`mt-5 text-[13px] font-semibold uppercase tracking-wide ${BILGI.baslik}`}>
+            İyi örnek
+          </p>
+          <ul className={`mt-2 space-y-2 text-[14px] leading-relaxed ${BILGI.metin}`}>
+            {ornekler.map((o) => (
+              <li key={o} className="flex gap-2">
+                <span aria-hidden="true">·</span>
+                <span>{o}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {hatirlatma && (
+        <p className={`mt-5 text-[13px] leading-relaxed ${BILGI.metin}`}>
+          <span className={`font-semibold ${BILGI.baslik}`}>
+            {ad ? `Unutma ${ad},` : "Unutma,"}
+          </span>{" "}
+          {hatirlatma}
+        </p>
+      )}
+    </details>
+  );
+}
+
+/**
+ * Masaüstünde iki sütun: solda yardım, sağda soru. Mobilde tek sütun ve
+ * yardım ALTTA (`order-*`), çünkü ilk görülmesi gereken şey sorunun kendisi.
+ */
+export function IkiKolon({
+  bilgi,
+  children,
+}: {
+  bilgi: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="lg:grid lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)] lg:items-start lg:gap-14">
+      {/* SORU DOM'DA ÖNCE gelir. Mobilde kapsayıcı grid DEĞİL (yalnız `lg:`),
+          dolayısıyla `order-*` orada hiçbir şey yapmaz ve DOM sırası ekran
+          sırasıdır. Yardımı DOM'da öne almak, dar ekranda asıl soruyu ekran
+          dışına iterdi — ön başvuru turunda ölçülen kusurun ta kendisi.
+          Masaüstünde sol/sağ yerleşim `lg:order-*` ile çevrilir. */}
+      <div className="lg:order-2">{children}</div>
+      <div className="mt-10 lg:order-1 lg:mt-0 lg:sticky lg:top-8">{bilgi}</div>
+    </div>
+  );
+}
+
+/**
+ * Başlığı iki renkli basar: `vurgu` sözcüğü mercan, gerisi koyu.
+ *
+ * Eşleşme `indexOf` ile yapılır, RegExp ile DEĞİL: Türkçe'de büyük/küçük harf
+ * dönüşümü (İ/ı, I/i) düzenli ifadelerde tuzaklı ve başlıklar Türkçe. Sözcük
+ * başlıkta geçmiyorsa başlık tek renk çizilir — sessiz bozulma yok.
+ */
+function DevBaslik({ baslik, vurgu }: { baslik: string; vurgu?: string }) {
+  const i = vurgu ? baslik.indexOf(vurgu) : -1;
+  if (i < 0 || !vurgu) return <>{baslik}</>;
+  return (
+    <>
+      {baslik.slice(0, i)}
+      <span className={MERCAN.metin}>{vurgu}</span>
+      {baslik.slice(i + vurgu.length)}
+    </>
   );
 }
 
 /** Adımın başlığı ve gövdesi. */
 export function AdimGovde({
   baslik,
+  vurgu,
   altBaslik,
   children,
 }: {
   baslik: string;
+  vurgu?: string;
   altBaslik?: string;
   children: ReactNode;
 }) {
   return (
     <div>
-      <h1 className="text-[26px] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[32px]">
-        {baslik}
+      <h1 className="text-[30px] font-bold leading-[1.12] tracking-tight text-slate-900 sm:text-[40px] lg:text-[46px]">
+        <DevBaslik baslik={baslik} vurgu={vurgu} />
       </h1>
       {altBaslik && (
         <p className="mt-3 text-[15px] leading-relaxed text-slate-500">
@@ -249,13 +401,13 @@ export function AksiyonCubugu({
       className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-sm sm:static sm:border-0 sm:bg-transparent sm:backdrop-blur-none"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto max-w-xl px-5 py-3 sm:px-0 sm:py-0">
+      <div className="mx-auto max-w-5xl px-5 py-3 sm:px-0 sm:py-0 lg:max-w-none">
         <div className="flex items-center gap-3">
           {geri && (
             <PlainButton
               onClick={geri}
               aria-label="Önceki adım"
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+              className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-300 hover:text-slate-700 sm:h-12 sm:w-12`}
             >
               <svg
                 className="h-5 w-5"
@@ -277,7 +429,7 @@ export function AksiyonCubugu({
             type="button"
             onClick={ileri}
             disabled={bekliyor}
-            className="h-12 flex-1 truncate rounded-xl bg-indigo-600 px-5 text-[15px] font-semibold text-white transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`h-14 flex-1 truncate rounded-full ${MERCAN.zemin} ${MERCAN.zeminHover} px-6 text-[16px] font-semibold text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F2695E] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:text-[15px]`}
           >
             {bekliyor ? "Kaydediliyor…" : ileriEtiket}
           </button>

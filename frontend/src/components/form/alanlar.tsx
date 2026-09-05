@@ -23,8 +23,32 @@ const GIRDI =
 
 const HATALI = "border-rose-300 focus:border-rose-400 focus:ring-rose-100";
 
+/**
+ * Dolgulu varyant — kenarlık yerine gri zemin.
+ *
+ * Yalnız ilan sihirbazı kullanır (5 Eyl 2026): o ekranlar Superprof'un
+ * görünüşünü aldı ve orada alanlar kenarlıksız, dolgulu ve daha büyük
+ * yarıçaplı. Varsayılan `false` — ön başvuru ve diğer public formlar hiç
+ * değişmez.
+ *
+ * KİLİTLİ KURALLAR BURADA DA GEÇERLİ: yazı `text-base` (16px) altına inmez
+ * (iOS Safari odakta sayfayı yakınlaştırıp kullanıcıyı formun ortasında
+ * kaybediyor) ve dokunma hedefi 44px altına inmez.
+ */
+const DOLGU =
+  "mt-1.5 w-full rounded-2xl border border-transparent bg-slate-100 px-5 py-4 text-base " +
+  "text-slate-900 outline-none transition placeholder:text-slate-400 " +
+  "focus:border-slate-300 focus:bg-white focus:ring-2 focus:ring-slate-200";
+
+/** Alanın taban sınıfı: dolgulu varyant mı, kenarlıklı varsayılan mı. */
+function taban(dolgu?: boolean): string {
+  return dolgu ? DOLGU : GIRDI;
+}
+
 interface OrtakProps {
   ad: string;
+  /** Gri dolgulu, kenarlıksız varyant (ilan sihirbazı). */
+  dolgu?: boolean;
   etiket: string;
   ipucu?: string;
   hata?: string;
@@ -59,6 +83,7 @@ export function Metin({
   deger,
   onChange,
   onBlur,
+  dolgu,
   tip = "text",
   inputMode,
   autoComplete,
@@ -87,7 +112,7 @@ export function Metin({
           onBlur={onBlur}
           aria-invalid={hata ? true : undefined}
           aria-describedby={describedBy}
-          className={`${GIRDI} ${hata ? HATALI : ""}`}
+          className={`${taban(dolgu)} ${hata ? HATALI : ""}`}
         />
       )}
     </Field>
@@ -111,6 +136,7 @@ export function CokSatir({
   deger,
   onChange,
   onBlur,
+  dolgu,
   satir = 3,
   placeholder,
   maxLength,
@@ -131,7 +157,7 @@ export function CokSatir({
           onBlur={onBlur}
           aria-invalid={hata ? true : undefined}
           aria-describedby={describedBy}
-          className={`${GIRDI} resize-y ${hata ? HATALI : ""}`}
+          className={`${taban(dolgu)} resize-y ${hata ? HATALI : ""}`}
         />
       )}
     </Field>
@@ -152,6 +178,7 @@ export function Liste({
   onChange,
   secenekler,
   bosEtiket,
+  dolgu,
 }: ListeProps) {
   return (
     <Field label={etiket} hint={ipucu} error={hata}>
@@ -162,7 +189,7 @@ export function Liste({
           value={deger}
           onChange={(e) => onChange(e.target.value)}
           aria-describedby={describedBy}
-          className={GIRDI}
+          className={taban(dolgu)}
         >
           <option value="">{bosEtiket}</option>
           {secenekler.map((s) => (

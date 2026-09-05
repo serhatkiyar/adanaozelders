@@ -126,13 +126,15 @@ describe("adım geçişi", () => {
     await waitFor(() => expect(guncelle).toHaveBeenCalledTimes(1));
     expect(guncelle.mock.calls[0][0]).toHaveProperty("headline");
     // Adım 2'ye geçildi.
-    expect(await screen.findByText("Dersin nasıl işliyor?")).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: "Dersin nasıl işliyor?" }),
+    ).toBeTruthy();
   });
 
   it("geri gitmek doğrulama çalıştırmaz ve yazma yapmaz", async () => {
     ekran(1);
     fireEvent.click(await screen.findByRole("button", { name: "Önceki adım" }));
-    await screen.findByText("Hangi dersleri veriyorsun?");
+    await screen.findByRole("heading", { name: "Hangi dersleri veriyorsun?" });
     expect(guncelle).not.toHaveBeenCalled();
   });
 });
@@ -154,7 +156,9 @@ describe("mobil gezinme", () => {
 
     // Ulaşılmış adım açılabilir…
     fireEvent.click(await screen.findByRole("button", { name: /1\s*Derslerin/ }));
-    expect(await screen.findByText("Hangi dersleri veriyorsun?")).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { name: "Hangi dersleri veriyorsun?" }),
+    ).toBeTruthy();
     // …ve haritadan gezinmek KAYDETMEZ; "Geri" ile aynı sözleşme.
     expect(guncelle).not.toHaveBeenCalled();
   });
@@ -195,5 +199,23 @@ describe("yayın kapısı", () => {
     expect(await screen.findByRole("alert")).toBeTruthy();
     // Tebrikler ekranına GEÇİLMEDİ.
     expect(screen.queryByText(/İlanın incelemeye alındı/)).toBeNull();
+  });
+});
+
+describe("dev başlık", () => {
+  // `vurgu` başlıkta geçmiyorsa DevBaslik sessizce tek renk çizer — kusur
+  // görünmez. Sözleşme tarafında yakalanmalı.
+  it("her adımın vurgulu sözcüğü kendi başlığında GEÇER", () => {
+    for (const a of ADIMLAR) {
+      if (!a.vurgu) continue;
+      expect(a.baslik, a.anahtar).toContain(a.vurgu);
+    }
+  });
+
+  it("başlık iki renkli basılsa da tek erişilebilir ad taşır", async () => {
+    ekran(adimIndeksi("baslik"));
+    expect(
+      await screen.findByRole("heading", { name: "İlanının başlığı ne olsun?" }),
+    ).toBeTruthy();
   });
 });

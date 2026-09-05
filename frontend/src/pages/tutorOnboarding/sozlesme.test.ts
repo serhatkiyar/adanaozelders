@@ -74,17 +74,23 @@ describe("adım sırası", () => {
 });
 
 describe("adım doğrulaması", () => {
-  it("başlık eşiği sunucudaki sabitle aynı", () => {
+  // Kelime eşiği 5 Eyl 2026'da `dogrula`dan `oneri`ye taşındı: uyarır ama
+  // ilerlemeyi KESMEZ (kullanıcı kararı). Eşiğin kendisi değişmedi ve sunucu
+  // sabitiyle aynı kalmalı — sayaç bir sayı söyleyip yayın başka bir sayıya
+  // takılırsa kullanıcı sebebi anlayamaz.
+  it("başlık eşiği sunucudaki sabitle aynı ve İLERLEMEYİ KESMEZ", () => {
     const { adim } = adimAra("baslik");
     const d = { ...BOS_DURUM };
+
+    expect(adim.dogrula, "başlık artık ilerlemeyi kesmemeli").toBeUndefined();
 
     d.headline = Array.from({ length: BASLIK_EN_AZ_KELIME - 1 }, () => "a").join(
       " ",
     );
-    expect(adim.dogrula?.(d, DIS_TAM)).not.toBeNull();
+    expect(adim.oneri?.(d)).not.toBeNull();
 
     d.headline = Array.from({ length: BASLIK_EN_AZ_KELIME }, () => "a").join(" ");
-    expect(adim.dogrula?.(d, DIS_TAM)).toBeNull();
+    expect(adim.oneri?.(d)).toBeNull();
   });
 
   it("yalnız uzaktan ders verende ilçe İSTENMEZ", () => {
@@ -145,10 +151,13 @@ describe("yayın kapısı önizlemesi", () => {
     expect(eksikler(tamDurum(), DIS_TAM)).toEqual([]);
   });
 
-  it("boş ilanda her zorunlu adım ayrı ayrı listelenir", () => {
+  it("boş ilanda hem zorunlu hem önerilen adımlar ayrı ayrı listelenir", () => {
     const eksik = eksikler(BOS_DURUM, DIS_BOS);
-    const zorunlu = ADIMLAR.filter((a) => a.dogrula).length;
-    expect(eksik).toHaveLength(zorunlu);
+    // Özet ekranı TEK yerdir: ilerlemeyi kesen yapısal eksik de, kesmeyen
+    // kalite önerisi de burada görünmeli. Yalnız birini saymak, az yazılmış
+    // bir ilanın sessizce yayına gitmesi demek olurdu.
+    const beklenen = ADIMLAR.filter((a) => a.dogrula || a.oneri).length;
+    expect(eksik).toHaveLength(beklenen);
     // Her madde kendi adımına bağlı olmalı — "Düzelt" bağlantısı buna dayanıyor.
     expect(new Set(eksik.map((e) => e.adim)).size).toBe(eksik.length);
   });

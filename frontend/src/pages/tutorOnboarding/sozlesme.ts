@@ -73,12 +73,40 @@ export interface Adim {
   baslik: string;
   /** Sorunun altındaki bir cümlelik açıklama. */
   altBaslik?: string;
-  /** Yan bilgi kutusu — bu adımın neden önemli olduğu. */
+  /**
+   * Başlıktaki VURGULU sözcük — mercan renge boyanır.
+   *
+   * Başlığın içinde birebir geçmeli; geçmezse başlık tek renk çizilir
+   * (sessiz bozulma yok). Eşleşme `indexOf` ile yapılır, RegExp ile değil:
+   * Türkçe'de büyük/küçük harf dönüşümü (İ/ı) düzenli ifadelerde tuzaklı.
+   */
+  vurgu?: string;
+  /** Bilgi kartındaki "neden soruyoruz" paragrafı. */
   ipucu?: string;
+  /** Bilgi kartındaki "iyi örnek" maddeleri — kullanıcı ne yazacağını görsün. */
+  ornekler?: string[];
+  /** Bilgi kartının en altındaki kısa uyarı ("Unutma, …"). */
+  hatirlatma?: string;
   /** Doldurulmadan geçilebilir mi. */
   atlanabilir?: boolean;
-  /** `null` dönerse adım geçerli. */
+  /**
+   * İLERLEMEYİ KESEN koşul. `null` dönerse adım geçerli.
+   *
+   * Yalnız YAPISAL eksikler burada: ders seçilmemişse ilan aramada hiç
+   * görünmez, ders şekli yoksa öğrenci nasıl ders alacağını bilemez. Bunları
+   * geçmeye izin vermek, kullanıcıya işe yaramayan bir ilan yaptırmaktır.
+   */
   dogrula?: (d: Durum, dis: DisDurum) => Hata | null;
+  /**
+   * UYARIR AMA KESMEZ (5 Eyl 2026, kullanıcı kararı: "daha yumuşak olsun").
+   *
+   * Metin uzunluğu gibi kalite önerileri burada yaşar: az yazan kullanıcı
+   * ilerleyebilir, sayacı ve uyarıyı görür, eksik Özet ekranında "Düzelt"
+   * bağlantısıyla listelenir. Superprof aynı yerde İleri düğmesini kapatıyor;
+   * bizde birincil düğmenin `disabled` olması ayrıca YASAK
+   * (`src/__guards__/gonderDugmesi.test.ts`).
+   */
+  oneri?: (d: Durum) => Hata | null;
   /** Bu adımın `PATCH /tutors/me` gövdesi. Yoksa adım kendi ucuna yazar. */
   yama?: (d: Durum) => TutorProfileUpdate;
 }
@@ -98,6 +126,7 @@ export function ucretiCoz(deger: string): number | null {
 export const ADIMLAR: Adim[] = [
   {
     anahtar: "dersler",
+    vurgu: "dersleri",
     kisaAd: "Derslerin",
     baslik: "Hangi dersleri veriyorsun?",
     altBaslik:
@@ -117,13 +146,14 @@ export const ADIMLAR: Adim[] = [
   },
   {
     anahtar: "baslik",
+    vurgu: "başlığı",
     kisaAd: "Başlığın",
     baslik: "İlanının başlığı ne olsun?",
     altBaslik:
       "Öğrencilerin arama sonuçlarında gördüğü ilk satır. Neyi, kime ve nasıl anlattığını tek cümlede söyle.",
     ipucu:
       "Başlık ilanının en çok okunan yeri. Yalnızca dersin adını yazmak yerine seviyeni ve deneyimini de ekle.",
-    dogrula: (d) =>
+    oneri: (d) =>
       kelimeSay(d.headline) < BASLIK_EN_AZ_KELIME
         ? {
             alan: "baslik",
@@ -131,16 +161,24 @@ export const ADIMLAR: Adim[] = [
           }
         : null,
     yama: (d) => ({ headline: d.headline.trim() }),
+    ornekler: [
+      "Mühendislik öğrencisi, ilkokuldan liseye matematik ve fizik dersleri",
+      "15 yıl deneyimli piyanist, evde piyano ve solfej dersi",
+      "TYT-AYT matematikte 8 yıl, hedefi ilk 10 bin olan öğrencilere",
+    ],
+    hatirlatma:
+      "İletişim bilgin ya da bağlantı adresin başlıkta yer alamaz.",
   },
   {
     anahtar: "yontem",
+    vurgu: "nasıl",
     kisaAd: "Dersin işleyişi",
     baslik: "Dersin nasıl işliyor?",
     altBaslik:
       "İlk ders nasıl başlar, hangi kaynakları kullanırsın, ödev verir misin?",
     ipucu:
       "Öğrenci burada senin yöntemini başkasınınkinden ayırt edebilmeli. Somut yaz: kaynak adı, ders süresi, ödev düzeni.",
-    dogrula: (d) =>
+    oneri: (d) =>
       kelimeSay(d.lessonInfo) < YONTEM_EN_AZ_KELIME
         ? {
             alan: "yontem",
@@ -148,15 +186,23 @@ export const ADIMLAR: Adim[] = [
           }
         : null,
     yama: (d) => ({ lesson_info: d.lessonInfo.trim() }),
+    ornekler: [
+      "Öğretim teknik ve yöntemlerin",
+      "Dersin nasıl aktığı (soru çözümü mü, konu anlatımı mı)",
+      "Kimler için uygun: sınıf, seviye, sınav türü",
+    ],
+    hatirlatma:
+      "İletişim bilgin ya da bağlantı adresin burada yer alamaz.",
   },
   {
     anahtar: "hakkinda",
+    vurgu: "kimsin",
     kisaAd: "Sen kimsin",
     baslik: "Sen kimsin?",
     altBaslik: "Eğitimin, deneyimin ve neden ders verdiğin.",
     ipucu:
       "Veli ve öğrenci burada güven arıyor. Nerede okudun, kaç yıldır ders veriyorsun, hangi sonuçları aldın?",
-    dogrula: (d) =>
+    oneri: (d) =>
       kelimeSay(d.bio) < HAKKINDA_EN_AZ_KELIME
         ? {
             alan: "hakkinda",
@@ -164,9 +210,17 @@ export const ADIMLAR: Adim[] = [
           }
         : null,
     yama: (d) => ({ bio: d.bio.trim() }),
+    ornekler: [
+      "Eğitimin ve varsa deneyim yılın",
+      "Neden ders verdiğin",
+      "Öğrencilerinin aldığı somut sonuçlar",
+    ],
+    hatirlatma:
+      "Bu metin öğrencinin senin hakkında okuduğu ilk şey; yazım kurallarına dikkat et.",
   },
   {
     anahtar: "yer",
+    vurgu: "nerede",
     kisaAd: "Ders nerede",
     baslik: "Ders nerede işleniyor?",
     altBaslik: "Uzaktan, yüz yüze ya da ikisi birden.",
@@ -189,9 +243,12 @@ export const ADIMLAR: Adim[] = [
       location_lat: d.locationLat,
       location_lng: d.locationLng,
     }),
+    hatirlatma:
+      "Açık adresin ilanda ASLA görünmez; yalnız dersi kabul ettiğin öğrenciye iletilir.",
   },
   {
     anahtar: "ucret",
+    vurgu: "ücretin",
     kisaAd: "Ücretin",
     baslik: "Saatlik ücretin ne kadar?",
     altBaslik: "İstediğin zaman değiştirebilirsin.",
@@ -213,27 +270,36 @@ export const ADIMLAR: Adim[] = [
       hourly_rate: ucretiCoz(d.hourlyRate),
       first_lesson_free: d.firstLessonFree,
     }),
+    hatirlatma:
+      "Yeni başlıyorsan yüksek bir ücret seçmemek işine yarar; yorum ve referans topladıkça yükseltirsin.",
   },
   {
     anahtar: "telefon",
+    vurgu: "numaran",
     kisaAd: "Telefonun",
     baslik: "Telefon numaran",
     altBaslik: "Ders talebi geldiğinde SMS ile haber veriyoruz.",
     ipucu:
       "Numaran ilanında görünmez. Rezervasyon ve ödeme adımlarında doğrulanmış numara istenir; şimdi atlarsan o adımda tekrar sorulur.",
     atlanabilir: true,
+    hatirlatma:
+      "Numaran ilanında görünmez; yalnız dersi kabul ettiğin öğrenciye iletilir.",
   },
   {
     anahtar: "fotograf",
+    vurgu: "Fotoğrafını",
     kisaAd: "Fotoğrafın",
     baslik: "Fotoğrafını ekle",
     altBaslik: "Öğrencinin ilanında gördüğü ilk şey.",
     ipucu:
       "Yüzün net görünsün, tek başına ol ve karşıya bak. Fotoğrafı olan ilanlar belirgin biçimde daha çok tıklanıyor.",
     atlanabilir: true,
+    hatirlatma:
+      "Fotoğrafın tüm ilanlarında kullanılır.",
   },
   {
     anahtar: "ozet",
+    vurgu: "hazır",
     kisaAd: "Özet",
     baslik: "İlanın hazır",
     altBaslik: "Gözden geçir ve yayına gönder.",
@@ -275,8 +341,12 @@ export function eksikler(
 ): { adim: number; mesaj: string }[] {
   const liste: { adim: number; mesaj: string }[] = [];
   ADIMLAR.forEach((adim, i) => {
-    if (!adim.dogrula) return;
-    const hata = adim.dogrula(d, dis);
+    // İKİSİ DE listelenir: `dogrula` ilerlemeyi kesen yapısal eksik,
+    // `oneri` kesmeyen kalite eksiği. Özet ekranı kullanıcının "neyi
+    // düzeltmem gerekiyor" sorusuna tek yerden cevap vermeli — uyarıyı
+    // buradan gizlemek, az yazılmış bir ilanın sessizce yayına gitmesi
+    // demek olurdu.
+    const hata = adim.dogrula?.(d, dis) ?? adim.oneri?.(d) ?? null;
     if (hata) liste.push({ adim: i, mesaj: hata.mesaj });
   });
   return liste;

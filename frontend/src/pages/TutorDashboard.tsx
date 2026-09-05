@@ -6,6 +6,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { CancelModal } from "@/components/CancelModal";
+import { ProfileCompleteness } from "@/components/ProfileCompleteness";
 
 import { useMeetingStore } from "@/store/meetingStore";
 import { useBookingAction, useBookings } from "@/hooks/useBookings";
@@ -295,6 +296,11 @@ export default function TutorDashboard() {
             </span>
           </Link>
         )}
+
+        {/* Müsaitlik ve belge ilan sihirbazından çıkarıldı (5 Eyl 2026); ikisi
+            de ilan yayına girdikten SONRA burada tamamlanıyor. Gösterge
+            olmadan eğitmenin bunları göreceği hiçbir yer kalmıyordu. */}
+        {ilan && <ProfileCompleteness tutor={ilan} />}
 
         {isLoading ? (
           <div className="space-y-3">
