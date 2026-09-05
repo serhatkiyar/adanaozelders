@@ -304,8 +304,13 @@ describe("E-4 · efekt kullanıcıyla inatlaşmaz", () => {
 
 /* ══════════════ E-5 · vitrindeki müşteri filtresi ══════════════ */
 
+// 1 Eylül kararı: ürün türü (Fiziksel/Dijital) filtresi vitrinden KALDIRILDI —
+// dijital ürün kolu kullanılmıyor ve müşteriye anlamsız bir teknik ayrım
+// gösteriyordu (bkz. StorePage.tsx içindeki gerekçe; backend `kind` paramı
+// duruyor). Nöbetçinin kalan görevi değişmedi: kitaba özgü "Basılı" etiketi
+// kitap dışı ürün de satan genel vitrine SIZMAMALI.
 describe("E-5 · vitrin tür filtresi", () => {
-  it("kitaba özgü 'Basılı' yerine ürün türünü söyleyen etiket kullanır", async () => {
+  it("ürün türü filtresi göstermez ve 'Basılı' etiketi sızdırmaz", async () => {
     sunucu("/store/config", { data: { low_stock_threshold: 5 } }, "get");
     sunucu("/store/categories", { data: [] }, "get");
     sunucu("/store/book-facets", { data: { publisher: [], author: [], cover_type: [] } }, "get");
@@ -313,8 +318,11 @@ describe("E-5 · vitrin tür filtresi", () => {
     // Filtre paneli yalnız filtreleme modunda görünür → q ile gir.
     sar(`${PATHS.store}?q=kalem`, PATHS.store, <StorePage />);
 
-    await screen.findByRole("button", { name: "Fiziksel ürün" });
-    expect(screen.getByRole("button", { name: "Dijital ürün" })).toBeTruthy();
+    // Önce panelin GERÇEKTEN açıldığını kanıtla; yoksa aşağıdaki üç
+    // "yok" iddiası panel hiç basılmadığı için de geçerdi.
+    await screen.findByRole("heading", { name: "Değerlendirme" });
     expect(screen.queryByRole("button", { name: "Basılı" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Fiziksel ürün" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dijital ürün" })).toBeNull();
   });
 });
