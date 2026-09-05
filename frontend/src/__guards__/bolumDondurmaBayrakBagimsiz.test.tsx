@@ -29,6 +29,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/ozellikBayraklari", () => ({
   KUTUPHANELER_ACIK: false, // donuk kalır
   DENEMELER_ACIK: true, // açılır
+  // Bu dosyanın konusu Kütüphaneler↔Denemeler bağımsızlığı; yeni iki bayrak
+  // üretim değeriyle (kapalı) bırakılır ki karışık durum bozulmasın.
+  OGREN_ACIK: false,
+  KISISELLESTIRME_ACIK: false,
 }));
 
 import { CategoryBar } from "@/components/CategoryBar";

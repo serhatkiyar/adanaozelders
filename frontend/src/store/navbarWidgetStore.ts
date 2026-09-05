@@ -33,6 +33,11 @@ export const useNavbarWidgetStore = create<NavbarWidgetState>()(
       setLgsDate: (d) => set({ lgsDate: d }),
       setCity: (c) => set({ city: c }),
     }),
-    { name: "adana-navbar-widget" }
+    // ANAHTAR BUMP'I (5 Eyl 2026): "Görünüm ve tercihler" sekmesi donduruldu.
+    // Eski anahtar bırakılsaydı, daha önce ayar yapmış bir kullanıcının
+    // tercihleri UYGULANMAYA DEVAM EDER ama değiştirilebileceği yüzey
+    // kalmazdı — kullanıcı kendi seçtiği bir düzene kilitlenirdi. Anahtarı
+    // ilerletmek herkesi varsayılana döndürür.
+    { name: "adana-navbar-widget-v2" }
   )
 );

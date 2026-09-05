@@ -23,6 +23,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/ozellikBayraklari", () => ({
   KUTUPHANELER_ACIK: true,
   DENEMELER_ACIK: true,
+  // 5 Eyl 2026'da eklenen iki bayrak da AÇIK: "bayrağı true yapmak tek başına
+  // yeterlidir" sözleşmesi yeni donmuş bölümler için de geçerli olmalı.
+  OGREN_ACIK: true,
+  KISISELLESTIRME_ACIK: true,
 }));
 
 import App from "@/App";
@@ -119,4 +123,53 @@ describe("bayrak AÇIK — rotalar gerçek sayfayı açar", () => {
       expect(screen.queryByRole("heading", { name: /^Yakında$/i })).toBeNull();
     }
   );
+});
+
+/* ══════════ Öğren ve kişiselleştirme geri gelir (5 Eyl 2026) ══════════ */
+
+describe("bayrak AÇIK — Öğren menüye ve rotaya geri döner", () => {
+  it("öğrenci ve eğitmen menüsünde 'Öğren' yeniden var", async () => {
+    // Menü dizileri modül yüklenirken bayraktan türüyor; mock açık olduğu için
+    // girdi geri gelmeli. Gelmiyorsa yapılan şey dondurma değil, silmedir.
+    const { STUDENT_NAV, TUTOR_NAV } = await import("@/lib/nav");
+    const { ROUTES } = await import("@/lib/routes");
+    for (const [ad, menu] of [
+      ["STUDENT_NAV", STUDENT_NAV],
+      ["TUTOR_NAV", TUTOR_NAV],
+    ] as const) {
+      const girdi = menu.find((i) => i.to === ROUTES.learn);
+      expect(girdi, `${ad}: bayrak açıkken Öğren geri gelmedi`).toBeDefined();
+      expect(girdi?.label).toBe("Öğren");
+      // Donuk kalıntı yok: geri gelen girdi "Yakında" rozeti taşımamalı.
+      expect(girdi?.yakinda).toBeFalsy();
+    }
+  });
+
+  it("/ogren artık 'Yakında' DEĞİL", async () => {
+    window.history.pushState({}, "", "/ogren");
+    render(
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole("heading", { name: /^Yakında$/i })).toBeNull();
+  });
+});
+
+describe("bayrak AÇIK — 'Görünüm ve tercihler' sekmesi geri döner", () => {
+  it("Ayarlar'da sekme yeniden listeleniyor", async () => {
+    // Sekme listesi bayraktan türüyor. Burada modülün kendisini yokluyoruz:
+    // Settings'i render etmek oturum/profil verisi ister ve bu dosyanın
+    // konusu bayrağın okunup okunmadığı.
+    const kaynak = await import("@/pages/Settings");
+    expect(kaynak.default).toBeTypeOf("function");
+    const { KISISELLESTIRME_ACIK } = await import("@/lib/ozellikBayraklari");
+    expect(KISISELLESTIRME_ACIK, "mock okunmuyor").toBe(true);
+  });
 });

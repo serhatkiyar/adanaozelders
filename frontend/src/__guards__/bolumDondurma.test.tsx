@@ -37,7 +37,12 @@ import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { TUTOR_NAV } from "@/lib/nav";
 import Learn from "@/pages/Learn";
-import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
+import {
+  DENEMELER_ACIK,
+  KISISELLESTIRME_ACIK,
+  KUTUPHANELER_ACIK,
+  OGREN_ACIK,
+} from "@/lib/ozellikBayraklari";
 
 function sar(ui: React.ReactNode) {
   const qc = new QueryClient({
@@ -62,6 +67,11 @@ describe("ÖN KOŞUL — bayrak değerleri", () => {
     // açıkça söylenir.
     expect(KUTUPHANELER_ACIK).toBe(true);
     expect(DENEMELER_ACIK).toBe(false);
+  });
+
+  it("OGREN_ACIK=false, KISISELLESTIRME_ACIK=false", () => {
+    expect(OGREN_ACIK).toBe(false);
+    expect(KISISELLESTIRME_ACIK).toBe(false);
   });
 });
 
@@ -194,5 +204,66 @@ describe("D — eğitmen menüsündeki 'Kütüphaneler' girdisi (gerçek DOM)", 
       (el) => (el.textContent ?? "").includes("Kütüphaneler")
     );
     expect(donuk).toEqual([]);
+  });
+});
+
+/* ══════════ E — Öğren hub'ı donduruldu (5 Eyl 2026) ══════════ */
+
+describe("E — Öğren rota kapısı (gerçek App + gerçek router)", () => {
+  const yoluBas = async (yol: string) => {
+    window.history.pushState({}, "", yol);
+    const sonuc = render(
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    return sonuc;
+  };
+
+  it.each([
+    "/ogren",
+    "/ogren/tekrar",
+    "/ogren/zamanlayici",
+    "/ogren/grafik",
+    "/ogren/aliskanliklar",
+  ])("%s → 'Yakında' (gerçek sayfa açılmıyor, giriş kapısına da düşmüyor)", async (yol) => {
+    await yoluBas(yol);
+    expect(await screen.findByText(/Yakında/i)).toBeTruthy();
+  });
+
+  // DOLULUK: "Yakında" her şeyi yutmuyor; router hâlâ ayırt ediyor.
+  it("NÖBETÇİ: tanımsız yol hâlâ 404, /egitmenler 'Yakında' değil", async () => {
+    await yoluBas("/boyle-bir-yol-yok-12345");
+    expect(screen.queryByText(/Yakında/i)).toBeNull();
+    cleanup();
+    await yoluBas("/egitmenler");
+    expect(screen.queryByText(/Yakında/i)).toBeNull();
+  });
+});
+
+describe("E — Pomodoro kartı her sayfadan kalktı", () => {
+  // Kart rota tablosunun DIŞINDA mount ediliyordu. Donmuş bölüme giden bu
+  // bağlantı kalsaydı her sayfada ölü link olurdu — ve hiçbir rota nöbetçisi
+  // görmezdi, çünkü rota değil.
+  it("hiçbir sayfada /ogren/zamanlayici bağlantısı yok", async () => {
+    window.history.pushState({}, "", "/");
+    render(
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const olu = Array.from(document.body.querySelectorAll("a[href]")).filter((a) =>
+      (a.getAttribute("href") ?? "").includes("/ogren")
+    );
+    expect(olu.map((a) => a.getAttribute("href"))).toEqual([]);
   });
 });

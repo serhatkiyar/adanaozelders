@@ -6,6 +6,7 @@ import { AddressSection } from "@/components/AddressSection";
 import { PayoutSection } from "@/components/PayoutSection";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import { PersonalizePanel } from "@/components/PersonalizeModal";
+import { KISISELLESTIRME_ACIK } from "@/lib/ozellikBayraklari";
 import { navForRole } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
@@ -105,7 +106,17 @@ export default function Settings() {
     ...(showPayments
       ? [{ key: "payments" as const, label: "Ödeme bilgileri", icon: WalletIcon }]
       : []),
-    { key: "appearance", label: "Görünüm ve tercihler", icon: SlidersIcon },
+    // Donduruldu (bkz. lib/ozellikBayraklari.ts). Bayrak `true` olunca sekme
+    // ve altındaki panel olduğu gibi geri gelir.
+    ...(KISISELLESTIRME_ACIK
+      ? [
+          {
+            key: "appearance" as const,
+            label: "Görünüm ve tercihler",
+            icon: SlidersIcon,
+          },
+        ]
+      : []),
     ...(alisverisYapabilir(user?.role_id)
       ? [{ key: "addresses" as const, label: "Adreslerim", icon: PinIcon }]
       : []),
@@ -166,13 +177,13 @@ export default function Settings() {
               {active === "personal" && <PersonalSection />}
               {active === "security" && <SecuritySection />}
               {active === "payments" && showPayments && <PaymentsSection />}
-              {active === "appearance" && (
+              {active === "appearance" && KISISELLESTIRME_ACIK && (
                 <section>
                   <h2 className="mb-1 text-xl font-bold text-slate-900 ">
                     Görünüm ve tercihler
                   </h2>
                   <p className="mb-5 text-sm text-slate-500 ">
-                    Tema, üst bar widget'ı, kısayol düzeni ve keşif tercihlerini buradan ayarla.
+                    Üst bar widget'ı, kısayol düzeni ve keşif tercihlerini buradan ayarla.
                   </p>
                   <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:p-6">
                     <PersonalizePanel navItems={roleNav} roleId={user.role_id} />

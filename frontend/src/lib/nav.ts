@@ -1,5 +1,5 @@
 import { ROUTES } from "@/lib/routes";
-import { KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
+import { KUTUPHANELER_ACIK, OGREN_ACIK } from "@/lib/ozellikBayraklari";
 
 export type NavIcon =
   | "favorites"
@@ -36,11 +36,20 @@ export interface NavItem {
   yakinda?: boolean;
 }
 
+/**
+ * Öğren TAM GİZLENİR, "Yakında" rozetiyle DURMAZ (5 Eyl 2026).
+ *
+ * Kütüphaneler'den farkı bilinçli: Kütüphaneler yakında gelecek bir bölüm ve
+ * rozet bir vaat. Öğren ise lansman hikâyesinin dışına alındı — vaat etmediğimiz
+ * bir şeyi menüde tutmak kullanıcıya boş bir söz verir.
+ */
 export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.demands, label: "Taleplerim", icon: "demand" },
-  { to: ROUTES.learn, label: "Öğren", icon: "learn" },
+  ...(OGREN_ACIK
+    ? [{ to: ROUTES.learn, label: "Öğren", icon: "learn" } as NavItem]
+    : []),
   { to: ROUTES.bookings, label: "Rezervasyonlar", icon: "bookings" },
   { to: ROUTES.store, label: "Mağaza", icon: "store" },
 ];
@@ -58,7 +67,9 @@ export const TUTOR_NAV: NavItem[] = [
   // öneremez. Öğrenci verisine erişim açılmaz — K-6 sınırı (hiçbir admin/
   // eğitmen izni `srs_progress`/`srs_review_logs` okutmaz) yerinde durur;
   // buradaki tek değişiklik hub'ın kendi araçlarına erişimdir.
-  { to: ROUTES.learn, label: "Öğren", icon: "learn" },
+  ...(OGREN_ACIK
+    ? [{ to: ROUTES.learn, label: "Öğren", icon: "learn" } as NavItem]
+    : []),
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library", yakinda: !KUTUPHANELER_ACIK },
   { to: ROUTES.store, label: "Mağaza", icon: "shop" },
 ];

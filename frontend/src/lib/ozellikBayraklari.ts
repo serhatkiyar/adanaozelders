@@ -32,3 +32,29 @@ export const KUTUPHANELER_ACIK = true;
  *  2. `/denemeler` öğrencinin kendi deneme net takibi (Öğren hub'ı kartı).
  */
 export const DENEMELER_ACIK = false;
+
+/**
+ * "Öğren" hub'ı ve altındaki çalışma araçları: aralıklı tekrar (FSRS),
+ * Pomodoro zamanlayıcı, grafik çizici, alışkanlıklar.
+ *
+ * 5 Eyl 2026, kullanıcı kararı: *"öğren sayfasını şu an kullanmayalım."*
+ * Lansmanda odak özel ders arzıdır; çalışma araçları ürünün hikâyesini
+ * dağıtıyor. Kod, veri ve backend uçları YERİNDE — yalnız arayüz donduruldu.
+ *
+ * KAPSAM DIŞI: `/gorevler`. Hub kartlarından biri olmasına rağmen ders
+ * detayındaki "Bu Derse Ait Görevler" akışı ona bağlı; dondurulursa öğrenci
+ * ders içinden görev listesi oluşturamaz hâle gelir.
+ */
+export const OGREN_ACIK = false;
+
+/**
+ * Ayarlar'daki "Görünüm ve tercihler" sekmesi: üst bar widget'ı (YKS/LGS geri
+ * sayımı, hava durumu, saat), kısayol düzeni ve "son görüntülenenler" anahtarı.
+ *
+ * 5 Eyl 2026, kullanıcı kararı. Tercihler sunucuya değil localStorage'a
+ * yazılıyordu; sekme kapanınca kullanıcının mevcut ayarları uygulanmaya devam
+ * edip DEĞİŞTİRİLEMEZ hâle gelirdi. Bunu önlemek için saklama anahtarları da
+ * bumplandı (bkz. store/navPrefsStore.ts, store/navbarWidgetStore.ts,
+ * store/uiPrefsStore.ts) — herkes varsayılana döner, kimse kilitlenmez.
+ */
+export const KISISELLESTIRME_ACIK = false;

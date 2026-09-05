@@ -10,7 +10,11 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { ALISVERIS_ROLLERI } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
-import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
+import {
+  DENEMELER_ACIK,
+  KUTUPHANELER_ACIK,
+  OGREN_ACIK,
+} from "@/lib/ozellikBayraklari";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { LegacyRedirect } from "@/routes/LegacyRedirect";
@@ -385,6 +389,24 @@ function App() {
             <Route path={PATHS.exams} element={<Yakinda />} />
           )}
 
+          {/* Öğren hub'ı donduruldu (bkz. lib/ozellikBayraklari.ts). Rotalar
+              KORUMANIN DIŞINDA: doğrudan URL yazan kullanıcı giriş ekranı ya
+              da 404 yerine "Yakında" görsün — Denemeler'le aynı sözleşme.
+              Bayrak `true` olunca aşağıdaki korumalı blokta yerlerini alırlar. */}
+          {!OGREN_ACIK && (
+            <>
+              <Route path={PATHS.learn} element={<Yakinda />} />
+              <Route path={PATHS.deepwork} element={<Yakinda />} />
+              <Route path={PATHS.grapher} element={<Yakinda />} />
+              <Route path={PATHS.habits} element={<Yakinda />} />
+              <Route path={PATHS.srs} element={<Yakinda />} />
+              <Route path={PATHS.srsDeck} element={<Yakinda />} />
+              <Route path={PATHS.srsStudy} element={<Yakinda />} />
+              <Route path={PATHS.srsBrowser} element={<Yakinda />} />
+              <Route path={PATHS.srsStats} element={<Yakinda />} />
+            </>
+          )}
+
           {/* ── Mağaza (public: katalog/detay/sepet) ── */}
           <Route path={PATHS.store} element={<StorePage />} />
           <Route path={PATHS.storeProduct} element={<ProductDetailPage />} />
@@ -443,15 +465,19 @@ function App() {
             <Route path={PATHS.messages} element={<Messages />} />
             <Route path={PATHS.messageCenter} element={<MessageCenter />} />
             <Route path={PATHS.calendar} element={<Calendar />} />
-            <Route path={PATHS.learn} element={<Learn />} />
-            <Route path={PATHS.deepwork} element={<DeepWork />} />
-            <Route path={PATHS.grapher} element={<Grapher />} />
-            <Route path={PATHS.habits} element={<Habits />} />
-            <Route path={PATHS.srs} element={<SrsDecks />} />
-            <Route path={PATHS.srsDeck} element={<SrsDeckDetail />} />
-            <Route path={PATHS.srsStudy} element={<SrsStudy />} />
-            <Route path={PATHS.srsBrowser} element={<SrsBrowser />} />
-            <Route path={PATHS.srsStats} element={<SrsStats />} />
+            {OGREN_ACIK && (
+              <>
+                <Route path={PATHS.learn} element={<Learn />} />
+                <Route path={PATHS.deepwork} element={<DeepWork />} />
+                <Route path={PATHS.grapher} element={<Grapher />} />
+                <Route path={PATHS.habits} element={<Habits />} />
+                <Route path={PATHS.srs} element={<SrsDecks />} />
+                <Route path={PATHS.srsDeck} element={<SrsDeckDetail />} />
+                <Route path={PATHS.srsStudy} element={<SrsStudy />} />
+                <Route path={PATHS.srsBrowser} element={<SrsBrowser />} />
+                <Route path={PATHS.srsStats} element={<SrsStats />} />
+              </>
+            )}
             <Route path={PATHS.tasks} element={<Tasks />} />
             {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
             <Route path={PATHS.balance} element={<Balance />} />
@@ -625,9 +651,15 @@ function App() {
         </Suspense>
         <PendingFavoriteApplier />
         <StoreFavoritesSync />
-        <Suspense fallback={null}>
-          <DeepWorkTimer />
-        </Suspense>
+        {/* Pomodoro kartı rota tablosunun DIŞINDA, her sayfada mount ediliyor.
+            Öğren donmuşken bu da kapanmalı: aksi hâlde çalışan bir zamanlayıcısı
+            olan kullanıcının yüzen kartı her sayfada çizilmeye devam eder ve
+            içindeki "zamanlayıcı sayfasına git" bağlantısı ÖLÜ LİNK olur. */}
+        {OGREN_ACIK && (
+          <Suspense fallback={null}>
+            <DeepWorkTimer />
+          </Suspense>
+        )}
       </BrowserRouter>
       <Suspense fallback={null}>
         <GlobalMeeting />

@@ -16,26 +16,38 @@ import { ROUTES } from "@/lib/routes";
 // listeyi üreten fonksiyondur (DashboardHeader onu çağırır), bu yüzden
 // görünürlük ondan geçirilerek doğrulanır — öğe listede olup varsayılan
 // gizliyse kullanıcı yine göremezdi.
-describe("TUTOR_NAV — Öğren hub'ı", () => {
-  it("eğitmen menüsünde /ogren linki bulunur", () => {
-    const hedef = TUTOR_NAV.find((i) => i.to === ROUTES.learn);
-    expect(hedef, "TUTOR_NAV'da ROUTES.learn yok").toBeDefined();
-    expect(hedef?.label).toBe("Öğren");
+describe("Öğren hub'ı — donduruldu", () => {
+  // 5 Eyl 2026: Öğren DONDURULDU (bkz. lib/ozellikBayraklari.ts::OGREN_ACIK).
+  // Yukarıdaki karar kaydı TARİH olarak duruyor — eğitmenin hub'a ulaşamaması
+  // bir kusurdu ve düzeltilmişti; bugün bölümün tamamı kapalı.
+  //
+  // İddia terse döndü ama SÖZLEŞME aynı: menüde görünen her şey tıklanabilir
+  // ve gerçek bir yere gitmeli. Donmuş bir bölümü menüde tutmak, kullanıcıya
+  // tutulmayacak bir söz vermektir.
+  //
+  // Bayrak açılınca eski davranışın tamamı geri gelir; bunun nöbetçisi
+  // `__guards__/bolumDondurmaBayrakAcik.test.tsx`.
+  it("donmuşken HİÇBİR menüde /ogren linki yok", () => {
+    for (const [ad, menu] of [
+      ["STUDENT_NAV", STUDENT_NAV],
+      ["TUTOR_NAV", TUTOR_NAV],
+      ["OPERATOR_NAV", OPERATOR_NAV],
+    ] as const) {
+      expect(
+        menu.some((i) => i.to === ROUTES.learn),
+        `${ad}: donmuş Öğren bölümü menüde duruyor`
+      ).toBe(false);
+    }
   });
 
-  it.each(["navbar", "sidebar"] as const)(
-    "tercih yokken %s yüzeyinde görünür olur",
-    (surface) => {
-      const cozulen = resolveSurface(TUTOR_NAV, undefined, surface);
-      const ogren = cozulen.find((i) => i.to === ROUTES.learn);
-      expect(ogren, `${surface}: öğe hiç yok`).toBeDefined();
-      expect(ogren?.visible, `${surface}: öğe var ama gizli`).toBe(true);
-    }
-  );
-
-  // Öğrencide zaten vardı; eklerken kaybolmadığını da sabitle.
-  it("öğrenci menüsündeki /ogren linki korunur", () => {
-    expect(STUDENT_NAV.some((i) => i.to === ROUTES.learn)).toBe(true);
+  // DOLULUK NÖBETÇİSİ: menüler boşalmış ya da import kırılmış olsaydı
+  // yukarıdaki "yok" iddiası bedava geçerdi.
+  it("menüler dolu ve çözümlenen yüzey çalışıyor", () => {
+    expect(TUTOR_NAV.length).toBeGreaterThan(3);
+    expect(STUDENT_NAV.some((i) => i.to === ROUTES.messages)).toBe(true);
+    const cozulen = resolveSurface(TUTOR_NAV, undefined, "navbar");
+    const mesajlar = cozulen.find((i) => i.to === ROUTES.messages);
+    expect(mesajlar?.visible, "navbar: Mesajlar görünür değil").toBe(true);
   });
 
   // Karar kaydı: "Tekrar" (SRS) kenar çubuğuna DOĞRUDAN eklenmez — dokuz
