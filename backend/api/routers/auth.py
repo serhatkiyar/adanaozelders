@@ -167,7 +167,6 @@ async def register_tutor(
         password=payload.password,
         first_name=payload.first_name,
         last_name=payload.last_name,
-        username=payload.username,
         birth_date=payload.birth_date,
         gender=payload.gender,
     )
@@ -194,7 +193,6 @@ async def register_client(
         password=payload.password,
         first_name=payload.first_name,
         last_name=payload.last_name,
-        username=payload.username,
         birth_date=payload.birth_date,
         gender=payload.gender,
     )

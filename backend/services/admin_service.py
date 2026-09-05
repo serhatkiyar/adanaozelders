@@ -216,7 +216,6 @@ def _user_directory_selects(*, role: str | None, q: str | None):
             model.id.label("id"),
             model.first_name.label("first_name"),
             model.last_name.label("last_name"),
-            model.username.label("username"),
             model.full_name.label("full_name"),
             model.email.label("email"),
             cast(literal(role_name), String).label("role"),
@@ -232,7 +231,6 @@ def _user_directory_selects(*, role: str | None, q: str | None):
                 or_(
                     model.first_name.ilike(pattern),
                     model.last_name.ilike(pattern),
-                    model.username.ilike(pattern),
                     model.email.ilike(pattern),
                     model.full_name.ilike(pattern),
                 )
@@ -326,7 +324,6 @@ async def get_user_detail(
         id=user.id,
         first_name=user.first_name,
         last_name=user.last_name,
-        username=user.username,
         full_name=user.full_name,
         email=user.email,
         role=role_name,

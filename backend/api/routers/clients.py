@@ -95,7 +95,6 @@ async def get_client_public(
     return ClientPublicOut(
         id=client.id,
         full_name=client.full_name,
-        username=client.username,
         about=client.about,
         avatar_url=client.avatar_url,
         # Tam doğum tarihi yalnız users.view izinli admine (destek/moderasyon).

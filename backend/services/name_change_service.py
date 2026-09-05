@@ -20,7 +20,6 @@ from models.name_change_request import NameChangeRequest
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor, TutorStatus
 from services import notification_service
-from services.auth_service import _username_taken
 
 # role_id -> kullanıcı modeli (ayrı tablolar; FK yok).
 _ROLE_MODELS: dict[int, type] = {
@@ -62,7 +61,6 @@ def annotate_change_locks(user, role_id: int) -> None:
     Kural tek kaynak: ``_name_change_needs_approval``."""
     user.name_change_locked = _name_change_needs_approval(user, role_id)
     # Kullanıcı adı için kural sayaç-tabanlı kalır (kimlik-kritik değil): ilk serbest.
-    user.username_change_locked = user.username_change_count > 0
 
 
 async def _require_no_pending(
@@ -88,13 +86,16 @@ async def apply_or_request(
     role_id: int,
     first_name: str | None,
     last_name: str | None,
-    username: str | None,
     reason: str | None,
 ) -> dict[str, list[str]]:
-    """Ad-soyad/kullanıcı adı değişikliklerini işler.
+    """Ad-soyad değişikliğini işler.
 
     İlk değişiklik doğrudan uygulanır; sonrası gerekçeyle PENDING talebe dönüşür.
-    ``{"applied": [...], "pending": [...]}`` döner (alan adları: NAME / USERNAME).
+    ``{"applied": [...], "pending": [...]}`` döner (tek alan adı: NAME).
+
+    KULLANICI ADI DALI 5 Eyl 2026'da KALDIRILDI: alan sistemde iş yapmıyordu
+    (giriş e-posta ile, profil URL'i id/slug ile) ama üstünde tam bir admin
+    onay kuyruğu vardı. Nöbetçi: `tests/test_kullanici_adi_kaldirildi.py`.
     """
     applied: list[str] = []
     pending: list[str] = []
@@ -128,33 +129,6 @@ async def apply_or_request(
                 )
             )
             pending.append("NAME")
-
-    if username is not None and username != user.username:
-        if await _username_taken(
-            db, username, exclude_model=type(user), exclude_id=user.id
-        ):
-            raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
-        if user.username_change_count == 0:
-            user.username = username
-            user.username_change_count += 1
-            applied.append("USERNAME")
-        else:
-            if not reason or not reason.strip():
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    "Kullanıcı adı değişikliği için bir gerekçe yazmalısın.",
-                )
-            await _require_no_pending(db, user.id, role_id, "USERNAME")
-            db.add(
-                NameChangeRequest(
-                    user_id=user.id,
-                    role_id=role_id,
-                    kind="USERNAME",
-                    new_username=username,
-                    reason=reason.strip(),
-                )
-            )
-            pending.append("USERNAME")
 
     await db.flush()
     return {"applied": applied, "pending": pending}
@@ -203,23 +177,14 @@ async def approve(
     if user is None or user.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kullanıcı bulunamadı")
 
+    # Tek tür kaldı: NAME. (Kullanıcı adı dalı 5 Eyl 2026'da kaldırıldı ve
+    # `kind='USERNAME'` satırları migration'da silindi.)
     if req.kind == "NAME":
         if req.new_first_name:
             user.first_name = req.new_first_name
         if req.new_last_name:
             user.last_name = req.new_last_name
         user.name_change_count += 1
-    elif req.kind == "USERNAME":
-        if req.new_username and await _username_taken(
-            db, req.new_username, exclude_model=type(user), exclude_id=user.id
-        ):
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                "Bu kullanıcı adı bu sırada başkası tarafından alınmış.",
-            )
-        if req.new_username:
-            user.username = req.new_username
-        user.username_change_count += 1
 
     req.status = "APPROVED"
     req.reviewed_by = admin_id
@@ -229,7 +194,7 @@ async def approve(
         db,
         user_id=req.user_id,
         role_id=req.role_id,
-        message="Ad/kullanıcı adı değişiklik talebin onaylandı.",
+        message="Ad değişikliği talebin onaylandı.",
         link="/hesabim",
     )
     return req
@@ -248,7 +213,7 @@ async def reject(
         db,
         user_id=req.user_id,
         role_id=req.role_id,
-        message="Ad/kullanıcı adı değişiklik talebin reddedildi.",
+        message="Ad değişikliği talebin reddedildi.",
         link="/hesabim",
     )
     return req

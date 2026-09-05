@@ -149,7 +149,6 @@ async def register_tutor(
         hashed_password=await hash_password_async(password),
         first_name=first_name,
         last_name=last_name,
-        username=username,
         birth_date=birth_date,
         gender=gender,
         role_id=ROLE_IDS[RoleType.TUTOR],
@@ -202,12 +201,11 @@ async def update_me(
     from services import name_change_service
 
     payload = data.model_dump(exclude_unset=True)
-    # Ad-soyad/kullanıcı adı kimlik bütünlüğü için kapılıdır: ilk değişiklik serbest,
+    # Ad-soyad kimlik bütünlüğü için kapılıdır: ilk değişiklik serbest,
     # sonrası admin onayı + gerekçe gerektirir (name_change_service).
     reason = payload.pop("reason", None)
     first_name = payload.pop("first_name", None)
     last_name = payload.pop("last_name", None)
-    username = payload.pop("username", None)
     result = await name_change_service.apply_or_request(
         db,
         user,
@@ -224,7 +222,6 @@ async def update_me(
     await db.refresh(user)
     # Onaya gönderilen alanları yanıtta sinyalle (transient — kalıcı kolon değil).
     user.pending_name_change = "NAME" in result["pending"]
-    user.pending_username_change = "USERNAME" in result["pending"]
     # Değişim sonrası kilit durumunu da güncelle (ör. öğrencinin ilk değişiminden
     # sonra artık onay gerekecek; frontend bir sonraki düzenlemede gerekçe ister).
     name_change_service.annotate_change_locks(user, user.role_id)

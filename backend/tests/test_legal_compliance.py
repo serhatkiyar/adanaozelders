@@ -12,7 +12,6 @@ from decimal import Decimal
 
 from services.account_deletion_service import (
     anonymized_email,
-    anonymized_username,
 )
 from services.store_service import legal_compare_price
 
@@ -61,13 +60,12 @@ def test_anonim_eposta_deterministik() -> None:
     assert anonymized_email(42, 3) == anonymized_email(42, 3)
 
 
-def test_anonim_kullanici_adi_benzersiz() -> None:
-    assert anonymized_username(1, 3) != anonymized_username(2, 3)
-    assert anonymized_username(7, 3).startswith("silinmis_")
-
-
 def test_anonim_degerler_uzunluk_sinirlarina_uyar() -> None:
-    """E-posta 255, kullanıcı adı 50 karakter sınırındadır."""
+    """E-posta 255 karakter sınırındadır.
+
+    Kullanıcı adı düğümü 5 Eyl 2026'da kalktı: alan silindi ve
+    `anonymized_username` bir gizlilik önlemi değil, NOT NULL dolgusuydu.
+    Gerçek anonimleştirme e-posta/ad/telefon/avatar alanlarında ve o duruyor.
+    """
     for uid in (1, 999_999_999):
         assert len(anonymized_email(uid, 3)) <= 255
-        assert len(anonymized_username(uid, 3)) <= 50

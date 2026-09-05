@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.client import Client
@@ -48,7 +48,13 @@ async def search_clients(
     if q:
         like = f"%{q.strip()}%"
         full_name = func.concat(Client.first_name, " ", Client.last_name)
-        stmt = stmt.where(or_(full_name.ilike(like), Client.username.ilike(like)))
+        # Kullanıcı adı yüklemi 5 Eyl 2026'da kaldırıldı (alan silindi). Geriye
+        # tek yüklem kaldı ve arama DARALDI — kabul edilen bir daralma:
+        # kullanıcı adı zaten ad-soyaddan türetiliyordu, yani her eşleşmesi
+        # pratikte bir ad eşleşmesiydi. TELAFİ OLARAK E-POSTA EKLENMEZ:
+        # öğrenci aramasını eğitmenler yapıyor ve e-postayı yükleme sokmak
+        # İP-3'ün kapattığı kimlik sızıntısını yeniden açar.
+        stmt = stmt.where(full_name.ilike(like))
 
     if gender is not None:
         stmt = stmt.where(Client.gender == gender)

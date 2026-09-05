@@ -54,11 +54,6 @@ def anonymized_email(user_id: int, role_id: int) -> str:
     return f"silinmis+{digest}@hesap.silindi"
 
 
-def anonymized_username(user_id: int, role_id: int) -> str:
-    digest = hashlib.sha256(f"{role_id}:{user_id}:uname".encode()).hexdigest()[:12]
-    return f"silinmis_{digest}"
-
-
 async def _shadow_of(db: AsyncSession, tutor_id: int) -> Client | None:
     """Eğitmenin canlı alışveriş gölgesi (docs/egitmen-alici-sozlesme.md §1).
 
@@ -92,7 +87,6 @@ async def anonymize_account(db: AsyncSession, user) -> list[str]:
     user.first_name = ANON_NAME
     user.last_name = ANON_SURNAME
     user.email = anonymized_email(uid, role_id)
-    user.username = anonymized_username(uid, role_id)
     user.hashed_password = "!"  # hiçbir parolayla eşleşmez
     user.is_active = False
     user.deleted_at = _now()
@@ -192,7 +186,6 @@ async def export_personal_data(db: AsyncSession, user) -> dict:
             "rol": role_id,
             "ad": getattr(user, "first_name", None),
             "soyad": getattr(user, "last_name", None),
-            "kullanici_adi": getattr(user, "username", None),
             "eposta": getattr(user, "email", None),
             "telefon": getattr(user, "phone", None),
             "dogum_tarihi": (

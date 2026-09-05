@@ -85,7 +85,6 @@ class AdminUserOut(BaseModel):
     id: int
     first_name: str
     last_name: str
-    username: str
     full_name: str
     email: str
     role: str
