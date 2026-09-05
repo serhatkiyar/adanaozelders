@@ -46,8 +46,13 @@ target_metadata = Base.metadata
 # `alembic check` kalıcı olarak kırmızı kalır ve gerçek şema kaymalarını
 # gizleyen bir gürültüye dönüşür.
 #
-# Adlandırma sözleşmesi: ifadeye dayanan her indeks `_trgm` ile biter.
-_EXPRESSION_INDEX_SUFFIXES = ("_trgm",)
+# Adlandırma sözleşmesi: ifadeye dayanan her indeks aşağıdaki eklerden biriyle
+# biter. Yeni bir ifade indeksi eklerken ADI bu sözleşmeye uydurulmalı, aksi
+# hâlde `alembic check` onu "silinmiş indeks" sanıp CI'ı kırar (5 Eyl'de
+# `ix_tutor_subjects_subject_norm` tam olarak böyle kırdı).
+#   _trgm → trigram/GIN araması (`tr_normalize(title) gin_trgm_ops`)
+#   _norm → normalize edici fonksiyon üzerine btree (`tr_normalize(subject)`)
+_EXPRESSION_INDEX_SUFFIXES = ("_trgm", "_norm")
 
 
 def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001
