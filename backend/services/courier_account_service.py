@@ -12,7 +12,6 @@ için 404 döner (403 değil — varlık bilgisi bile sızmaz).
 from __future__ import annotations
 
 import datetime
-import re
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, update
@@ -42,7 +41,6 @@ def _to_out(acc: CourierAccount) -> CourierAccountOut:
     return CourierAccountOut(
         id=acc.id,
         email=acc.email,
-        username=acc.username,
         first_name=acc.first_name,
         last_name=acc.last_name,
         is_active=acc.is_active,
@@ -60,16 +58,6 @@ async def _taken(db: AsyncSession, field: str, value: str) -> bool:
         if (await db.execute(stmt)).first() is not None:
             return True
     return False
-
-
-async def _unique_username(db: AsyncSession, base: str) -> str:
-    base = re.sub(r"[^a-z0-9_]+", "", base.lower()) or "kurye"
-    username = base
-    n = 1
-    while await _taken(db, "username", username):
-        n += 1
-        username = f"{base}{n}"
-    return username
 
 
 async def _revoke_all_refresh(db: AsyncSession, *, role_id: int, user_id: int) -> None:
@@ -117,7 +105,6 @@ async def create_account(
         hashed_password=await hash_password_async(payload.password),
         first_name=payload.first_name,
         last_name=payload.last_name,
-        username=await _unique_username(db, payload.email.split("@", 1)[0]),
         role_id=ROLE_IDS[RoleType.COURIER],
         courier_id=courier_id,
         email_verified_at=_now(),  # admin oluşturdu — doğrulanmış sayılır

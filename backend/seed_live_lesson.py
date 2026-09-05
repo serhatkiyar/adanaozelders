@@ -47,7 +47,6 @@ async def main() -> None:
                 hashed_password=hash_password(PASSWORD),
                 first_name="Canlı",
                 last_name="Eğitmen",
-                username="canli_egitmen_test",
                 role_id=ROLE_IDS[RoleType.TUTOR],
             )
             db.add(tutor)
@@ -73,7 +72,6 @@ async def main() -> None:
                 hashed_password=hash_password(PASSWORD),
                 first_name="Canlı",
                 last_name="Öğrenci",
-                username="canli_ogrenci_test",
                 role_id=ROLE_IDS[RoleType.CLIENT],
             )
             db.add(client)

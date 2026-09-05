@@ -106,7 +106,6 @@ class IP3Fabrika:
                 hashed_password=await hash_password_async(PAROLA),
                 first_name="Ogrenci",
                 last_name=f"IP3{u[:4]}",
-                username=f"ip3c{u}",
                 role_id=ROLE_IDS[RoleType.CLIENT],
                 birth_date=birth_date,
                 phone="+905321112233" if phone_verified else None,
@@ -135,7 +134,6 @@ class IP3Fabrika:
                 hashed_password=await hash_password_async(PAROLA),
                 first_name="Egitmen",
                 last_name=f"IP3{u[:4]}",
-                username=f"ip3t{u}",
                 role_id=ROLE_IDS[RoleType.TUTOR],
                 status=status,
                 hourly_rate=Decimal("400"),
@@ -178,7 +176,6 @@ class IP3Fabrika:
                 hashed_password=await hash_password_async(PAROLA),
                 first_name="Yonetici",
                 last_name=f"IP3{u[:4]}",
-                username=f"ip3a{u}",
                 role_id=ROLE_IDS[RoleType.ADMIN],
             )
             s.add(a)
@@ -228,7 +225,6 @@ class IP3Fabrika:
                 hashed_password=await hash_password_async(PAROLA),
                 first_name="Operator",
                 last_name=f"IP3{u[:4]}",
-                username=f"ip3o{u}",
                 role_id=ROLE_IDS[RoleType.LIBRARY_OPERATOR],
                 library_id=library.id,
                 phone="+905341112233" if phone_verified else None,
@@ -253,7 +249,6 @@ class IP3Fabrika:
                 hashed_password=await hash_password_async(PAROLA),
                 first_name="Kurye",
                 last_name=f"IP3{u[:4]}",
-                username=f"ip3k{u}",
                 role_id=ROLE_IDS[RoleType.COURIER],
                 courier_id=c.id,
             )

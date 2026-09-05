@@ -339,6 +339,13 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
         "INSERT INTO roles (id, name) VALUES (3, 'CLIENT') "
         "ON CONFLICT (id) DO NOTHING"
     )
+    # `username` BURADA KALIR — silinmedi, unutulmadı.
+    #
+    # Bu test HEAD'de değil, tedarikçi revizyonunda (`REVISION`) koşuyor. O
+    # noktada `clients.username` hâlâ var ve NOT NULL; kolon ancak daha sonraki
+    # `e7c2a91b5d3f` revizyonunda düşüyor. Kolonu buradan çıkarmak, testi
+    # şemasıyla uyumsuz hâle getirir (5 Eyl 2026'da bir kez yapıldı ve
+    # NotNullViolation verdi).
     cid = await db.insert_scalar(
         "INSERT INTO clients (email, hashed_password, first_name, last_name, "
         "username, role_id) VALUES (:e, 'x', 'A', 'B', :u, 3) RETURNING id",

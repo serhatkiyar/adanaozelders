@@ -53,7 +53,6 @@ def _kayit_govdesi() -> dict:
         "password": "Sifre123!",
         "first_name": "Kapı",
         "last_name": "Testi",
-        "username": "kapitesti",
         "consent_version": "2026-08-30",
     }
 

@@ -44,7 +44,7 @@ async def test_reason_verilmeden_ham_SQL_ile_iade_talebi_eklenebilir(pg):
         u = _uniq()
         client = Client(
             email=f"tb1-{u}@schema.test", hashed_password="test-only",
-            first_name="Sema", last_name="Test", username=f"tb1{u}", role_id=3,
+            first_name="Sema", last_name="Test", role_id=3,
         )
         s.add(client)
         await s.flush()

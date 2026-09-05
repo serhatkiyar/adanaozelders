@@ -372,7 +372,7 @@ async def test_B3_ilcesiz_adres_kaydedilemez(pg, http):
     async with AsyncSessionLocal() as s:
         c = Client(
             email=f"adres-{u}@denetim.test", hashed_password="x",
-            first_name="Adres", last_name="Denetim", username=f"ad{u}", role_id=3,
+            first_name="Adres", last_name="Denetim", role_id=3,
         )
         s.add(c)
         await s.flush()

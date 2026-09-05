@@ -39,7 +39,7 @@ class ZoneFactory:
             u = _uniq()
             client = Client(
                 email=f"c-{u}@zone.test", hashed_password="x",
-                first_name="Bolge", last_name="Testi", username=f"c{u}", role_id=3,
+                first_name="Bolge", last_name="Testi", role_id=3,
             )
             s.add(client)
             await s.flush()

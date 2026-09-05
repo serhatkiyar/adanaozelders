@@ -73,7 +73,6 @@ class Kurulum:
                 hashed_password="test-only",
                 first_name="Envanter",
                 last_name="Testi",
-                username=f"env{ek}",
                 role_id=1,
             )
             s.add(a)

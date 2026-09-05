@@ -35,7 +35,6 @@ async def main():
                 email="rm@test.com",
                 hashed_password="pw",
                 role_id=2, # Assuming 2 is Tutor role
-                username="rehber-matematik",
                 first_name="REHBER MATEMATİK YAYINLARI",
                 last_name="",
                 headline="YKS Hazırlık",

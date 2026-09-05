@@ -40,7 +40,7 @@ class _ItemFactory:
             u = _uniq()
             c = Client(
                 email=f"f26-{u}@items.test", hashed_password="x",
-                first_name="Kalem", last_name="Testi", username=f"f26{u}", role_id=3,
+                first_name="Kalem", last_name="Testi", role_id=3,
             )
             s.add(c)
             await s.flush()

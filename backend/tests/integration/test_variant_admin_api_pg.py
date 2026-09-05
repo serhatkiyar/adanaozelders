@@ -58,7 +58,7 @@ class Kurulum:
             a = Admin(
                 email=f"vry-{ek}@test.local", hashed_password="test-only",
                 first_name="Varyant", last_name="Testi",
-                username=f"vry{ek}", role_id=1,
+                role_id=1,
             )
             s.add(a)
             await s.flush()

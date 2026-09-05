@@ -528,12 +528,11 @@ async def _seed_order(product_id: int, quantity: int) -> tuple[int, int]:
         client_id = (
             await s.execute(
                 text(
-                    "INSERT INTO clients (first_name, last_name, username, email, "
-                    "hashed_password, role_id) VALUES ('Stok', 'Yaris', :u, :e, "
+                    "INSERT INTO clients (first_name, last_name, email, "
+                    "hashed_password, role_id) VALUES ('Stok', 'Yaris', :e, "
                     "'x', 3) RETURNING id"
                 ),
                 {
-                    "u": f"stokyaris{_uniq()}",
                     "e": f"stok-yaris-{_uniq()}@test.local",
                 },
             )

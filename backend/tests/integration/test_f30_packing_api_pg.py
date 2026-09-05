@@ -58,7 +58,6 @@ class Kurulum:
                 hashed_password="test-only",
                 first_name="Paket",
                 last_name="API",
-                username=f"pk4{ek}",
                 role_id=1,
             )
             s.add(a)

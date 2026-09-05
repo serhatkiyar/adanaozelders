@@ -84,14 +84,6 @@ class Client(
                 "deleted_at IS NULL AND shadow_of_tutor_id IS NULL"
             ),
         ),
-        Index(
-            "uq_clients_username_active",
-            "username",
-            unique=True,
-            postgresql_where=text(
-                "deleted_at IS NULL AND shadow_of_tutor_id IS NULL"
-            ),
-        ),
         # Eğitmen başına en fazla bir canlı gölge (sözleşme §1.1).
         Index(
             "uq_clients_shadow_tutor",

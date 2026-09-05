@@ -78,7 +78,6 @@ def _person(i: int, prefix: str) -> dict:
     return {
         "first_name": rng.choice(FIRST_NAMES),
         "last_name": rng.choice(LAST_NAMES),
-        "username": f"{prefix}{i}",
         "email": f"{prefix}{i}@scale.test",
         "hashed_password": DUMMY_HASH,
         "is_active": True,

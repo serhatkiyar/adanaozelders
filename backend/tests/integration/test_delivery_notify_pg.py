@@ -46,7 +46,7 @@ class NotifyFactory:
                 u = _uniq()
                 client = Client(
                     email=f"c-{u}@notify.test", hashed_password="x",
-                    first_name="Yaklas", last_name=f"Testi{i}", username=f"c{u}",
+                    first_name="Yaklas", last_name=f"Testi{i}",
                     role_id=3,
                 )
                 s.add(client)

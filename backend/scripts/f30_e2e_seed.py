@@ -77,7 +77,6 @@ async def _kurye_hesabi(courier_id: int) -> tuple[int, str]:
             hashed_password=hash_password(E2E_PAROLA),
             first_name="Kabul",
             last_name="Kuryesi",
-            username=f"kk{u}",
             role_id=5,
             courier_id=courier_id,
             is_active=True,

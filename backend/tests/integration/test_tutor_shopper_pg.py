@@ -82,7 +82,6 @@ class AliciFabrikasi:
                 hashed_password=await hash_password_async(TEST_PAROLA),
                 first_name="Alici",
                 last_name="Egitmen",
-                username=f"ae{ek}",
                 role_id=2,
                 status=TutorStatus.APPROVED,
                 hourly_rate=Decimal("500"),
@@ -108,7 +107,6 @@ class AliciFabrikasi:
                 hashed_password="test-only",
                 first_name="Gercek",
                 last_name="Ogrenci",
-                username=f"ac{ek}",
                 role_id=3,
                 phone=f"+90555{ek[:7]}",
                 phone_verified_at=_now(),
@@ -129,7 +127,6 @@ class AliciFabrikasi:
                 hashed_password="test-only",
                 first_name="Alici",
                 last_name="Admin",
-                username=f"aa{ek}",
                 role_id=1,
             )
             s.add(a)
@@ -252,7 +249,7 @@ class AliciFabrikasi:
             row = (
                 await s.execute(
                     text(
-                        "SELECT id, email, username, is_active, hashed_password, "
+                        "SELECT id, email, is_active, hashed_password, "
                         "first_name, last_name, phone_verified_at "
                         "FROM clients WHERE shadow_of_tutor_id = :t "
                         "AND deleted_at IS NULL"
@@ -696,27 +693,12 @@ async def test_K13_K14_golge_tekillik_alanini_tuketmez(fabA, http):
             "password": TEST_PAROLA,
             "first_name": "Ayri",
             "last_name": "Ogrenci",
-            "username": f"ayri{_uniq()}",
             "consent_version": "2026-01-01",
         },
     )
     assert r.status_code == 201, f"gölge e-posta tekilliğini kilitledi: {r.text}"
     fabA.client_ids.append(r.json()["id"])
 
-    # K-13: gölgenin türetilmiş kullanıcı adı global isim alanında yer tutmaz.
-    r = await http.post(
-        "/api/v1/auth/register/client",
-        json={
-            "email": f"ayri-{_uniq()}@example.com",
-            "password": TEST_PAROLA,
-            "first_name": "Ad",
-            "last_name": "Cakismasi",
-            "username": golge["username"],
-            "consent_version": "2026-01-01",
-        },
-    )
-    assert r.status_code == 201, f"gölge kullanıcı adını kilitledi: {r.text}"
-    fabA.client_ids.append(r.json()["id"])
 
 
 # ── K-15 — yansıtma driftte kalmaz ──────────────────────────────────────────

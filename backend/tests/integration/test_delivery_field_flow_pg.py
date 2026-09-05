@@ -52,7 +52,7 @@ class FieldFactory:
             u = _uniq()
             client = Client(
                 email=f"c-{u}@field.test", hashed_password="x", first_name="Saha",
-                last_name="Musteri", username=f"c{u}", role_id=3,
+                last_name="Musteri", role_id=3,
             )
             s.add(client)
             await s.flush()

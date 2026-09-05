@@ -228,7 +228,6 @@ class PaketFabrikasi(Fabrika):
                 hashed_password="test-only",
                 first_name="Paket",
                 last_name="Kurye",
-                username=f"pk{u}",
                 role_id=5,
                 courier_id=courier_id,
                 is_active=True,

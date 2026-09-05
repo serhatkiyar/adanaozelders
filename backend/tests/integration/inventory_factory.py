@@ -126,7 +126,6 @@ class Fabrika:
                 hashed_password="test-only",
                 first_name="Sayim",
                 last_name="Admin",
-                username=f"sa{ek}",
                 role_id=1,
             )
             s.add(a)
@@ -144,7 +143,6 @@ class Fabrika:
                 hashed_password="test-only",
                 first_name="Sayim",
                 last_name="Musteri",
-                username=f"sy{uniq()}",
                 role_id=3,
             )
             s.add(c)

@@ -84,7 +84,6 @@ class FiloFabrikasi:
                 email=f"ip19_{u}@test.local",
                 first_name="İP19",
                 last_name="Denetçi",
-                username=f"ip19_{u}",
                 hashed_password="x",
                 is_active=True,
                 role_id=1,

@@ -44,7 +44,7 @@ class Kurulum:
         async with AsyncSessionLocal() as s:
             a = Admin(
                 email=f"kapanis-{ek}@test.local", hashed_password="test-only",
-                first_name="Kapanis", last_name="Denetim", username=f"kd{ek}", role_id=1,
+                first_name="Kapanis", last_name="Denetim", role_id=1,
             )
             s.add(a)
             await s.flush()

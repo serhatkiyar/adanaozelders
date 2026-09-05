@@ -91,7 +91,6 @@ async def operator(db, library):
         hashed_password="x",
         first_name="Test",
         last_name="Operator",
-        username=f"op{u}",
         role_id=4,
     )
     db.add(op)

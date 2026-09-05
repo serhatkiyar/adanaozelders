@@ -149,7 +149,6 @@ async def ensure_admin() -> int:
                 hashed_password="x",
                 first_name="Olcum",
                 last_name="Admin",
-                username="scaleadmin",
                 role_id=1,
                 is_active=True,
             )

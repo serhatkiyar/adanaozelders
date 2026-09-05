@@ -33,7 +33,6 @@ async def test_sifreli_iban_yazilip_ayni_deger_okunur(pg):
                 hashed_password="test-only",
                 first_name="IBAN",
                 last_name="Testi",
-                username=f"iban{suffix}",
                 role_id=2,
                 status=TutorStatus.DRAFT,
                 iban=_IBAN,

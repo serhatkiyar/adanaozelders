@@ -47,7 +47,6 @@ class PromotionFabrika:
                 hashed_password="x",
                 first_name="Promo",
                 last_name="Egitmen",
-                username=f"p{u}",
                 role_id=2,
                 status=status,
                 headline=headline,

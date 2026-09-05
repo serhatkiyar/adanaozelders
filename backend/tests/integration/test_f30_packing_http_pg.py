@@ -104,7 +104,6 @@ class Kurulum:
                 hashed_password="test-only",
                 first_name="Paket",
                 last_name="Testi",
-                username=f"pak{ek}",
                 role_id=1,
             )
             s.add(a)

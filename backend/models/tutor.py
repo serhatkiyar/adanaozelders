@@ -153,12 +153,6 @@ class Tutor(
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index(
-            "uq_tutors_username_active",
-            "username",
-            unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
         Index("ix_tutors_search_vector", "search_vector", postgresql_using="gin"),
         # Ad-soyad fuzzy araması için fonksiyonel trgm index init_db migration'ında oluşturulur
         # (first_name || ' ' || last_name); SQLAlchemy DDL'inde ifade-bazlı opclass kırılgan.

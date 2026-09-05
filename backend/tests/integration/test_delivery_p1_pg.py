@@ -75,7 +75,7 @@ class P1Factory:
             u = _uniq()
             client = Client(
                 email=f"c-{u}@p1.test", hashed_password="x",
-                first_name="P1", last_name="Testi", username=f"c{u}", role_id=3,
+                first_name="P1", last_name="Testi", role_id=3,
             )
             s.add(client)
             await s.flush()

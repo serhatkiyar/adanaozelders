@@ -23,7 +23,6 @@ async def test_admin_role_permissions_are_assigned_and_replaced(pg):
                 hashed_password="test-only",
                 first_name="Yetki",
                 last_name="Testi",
-                username=f"rbac{suffix}",
                 role_id=1,
             )
             session.add(admin)

@@ -202,7 +202,7 @@ kurtarılamaz durum üretir.
 
 **Doğrulanan durum.** `api/routers/clients.py::_approved_viewer` yalnız
 "ADMIN ya da onaylı eğitmen" der. Onaydan sonra `GET /clients/search` bütün
-öğrenci tabanını sayfalar (ad-soyad, kullanıcı adı, **doğum tarihi**, cinsiyet,
+öğrenci tabanını sayfalar (ad-soyad, **doğum tarihi**, cinsiyet,
 hakkında) ve `GET /clients/{id}` ardışık id taramasıyla okunur (üstüne
 `educations`). İlişki kontrolü yok. Frontend `useClientSearch` hook'unu hiçbir
 sayfada çağırmıyor — toplu dizinin ürün karşılığı yok; kullanılan tek yüzey

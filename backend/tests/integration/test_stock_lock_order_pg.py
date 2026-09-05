@@ -133,11 +133,11 @@ class Fabrika:
             cid = (
                 await s.execute(
                     text(
-                        "INSERT INTO clients (first_name, last_name, username, email,"
-                        " hashed_password, role_id) VALUES ('Kilit','Testi',:u,:e,"
+                        "INSERT INTO clients (first_name, last_name, email,"
+                        " hashed_password, role_id) VALUES ('Kilit','Testi',:e,"
                         "'x',3) RETURNING id"
                     ),
-                    {"u": f"kilit{_uniq()}", "e": f"kilit-{_uniq()}@test.local"},
+                    {"e": f"kilit-{_uniq()}@test.local"},
                 )
             ).scalar_one()
             oid = (

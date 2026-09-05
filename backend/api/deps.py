@@ -230,12 +230,6 @@ _SHADOW_MIRRORED_FIELDS = (
 )
 
 
-def _shadow_username(tutor_id: int) -> str:
-    # Kısmi UNIQUE indeks gölgeleri kullanıcı adı tekilliğinden dışladığı için
-    # bu ad global isim alanını tüketmez; yine de çakışmasın diye türetilir.
-    return f"__shadow_t{tutor_id}"
-
-
 async def get_shopping_client(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -273,7 +267,6 @@ async def get_shopping_client(
         shadow = Client(
             shadow_of_tutor_id=user.id,
             role_id=ROLE_IDS[RoleType.CLIENT],
-            username=_shadow_username(user.id),
             hashed_password="!",  # hiçbir parolayla eşleşmez
             is_active=False,
             **{f: getattr(user, f, None) for f in _SHADOW_MIRRORED_FIELDS},

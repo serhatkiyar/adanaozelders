@@ -202,12 +202,12 @@ class MoneyFactory:
             u = _uniq()
             tutor = Tutor(
                 email=f"t-{u}@money.test", hashed_password="x",
-                first_name="Para", last_name="Testi", username=f"t{u}",
+                first_name="Para", last_name="Testi",
                 role_id=2, status=TutorStatus.APPROVED, hourly_rate=Decimal("500"),
             )
             client = Client(
                 email=f"c-{u}@money.test", hashed_password="x",
-                first_name="Para", last_name="Ogrenci", username=f"c{u}", role_id=3,
+                first_name="Para", last_name="Ogrenci", role_id=3,
             )
             s.add_all([tutor, client])
             await s.flush()
@@ -253,7 +253,7 @@ class MoneyFactory:
             u = _uniq()
             client = Client(
                 email=f"c-{u}@money.test", hashed_password="x",
-                first_name="Para", last_name="Ogrenci", username=f"c{u}", role_id=3,
+                first_name="Para", last_name="Ogrenci", role_id=3,
             )
             library = Library(name=f"Test Kutuphane {u}", slug=f"test-kutuphane-{u}")
             s.add_all([client, library])

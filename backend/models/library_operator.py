@@ -56,10 +56,4 @@ class LibraryOperator(
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index(
-            "uq_library_operators_username_active",
-            "username",
-            unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
     )

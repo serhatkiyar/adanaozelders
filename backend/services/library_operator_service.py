@@ -8,7 +8,6 @@ Hesap diğer kullanıcılar (admin/tutor/client) gibi ayrı tabloda (`library_op
 from __future__ import annotations
 
 import datetime
-import re
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -41,16 +40,6 @@ async def _taken(db: AsyncSession, field: str, value: str) -> bool:
     return False
 
 
-async def _unique_username(db: AsyncSession, base: str) -> str:
-    base = re.sub(r"[^a-z0-9_]+", "", base.lower()) or "operator"
-    username = base
-    n = 1
-    while await _taken(db, "username", username):
-        n += 1
-        username = f"{base}{n}"
-    return username
-
-
 async def create_operator(
     db: AsyncSession, library_id: int, payload: OperatorCreate
 ) -> OperatorOut:
@@ -61,13 +50,11 @@ async def create_operator(
     if await _taken(db, "email", payload.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu e-posta zaten kullanımda")
 
-    username = await _unique_username(db, payload.email.split("@", 1)[0])
     operator = LibraryOperator(
         email=payload.email,
         hashed_password=await hash_password_async(payload.password),
         first_name=payload.first_name,
         last_name=payload.last_name,
-        username=username,
         role_id=ROLE_IDS[RoleType.LIBRARY_OPERATOR],
         library_id=library_id,
         # Admin oluşturduğu için doğrulanmış kabul edilir.

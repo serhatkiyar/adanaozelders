@@ -37,7 +37,7 @@ Yani bugün satın alınabilir *görünen* ama 403 ile biten bir yüzey var.
 | 1.1 | `clients.shadow_of_tutor_id` dolu olan satır bir gölgedir | kısmi UNIQUE: eğitmen başına en fazla bir gölge |
 | 1.2 | Gölge ile giriş yapılamaz | `hashed_password` sentinel `"!"`, `is_active=False`, `_LOGIN_PRECEDENCE` CLIENT dalında dışlama |
 | 1.3 | Şifre sıfırlama / e-posta doğrulama gölgeye **hiç** ulaşmaz | `find_by_email` gölgeyi döndürmez |
-| 1.4 | Gölge, e-posta ve kullanıcı adı tekillik alanını tüketmez | `uq_clients_email_active` ve `uq_clients_username_active` kısmi indekslerine `shadow_of_tutor_id IS NULL` eklenir |
+| 1.4 | Gölge, e-posta tekillik alanını tüketmez | `uq_clients_email_active` kısmi indeksine `shadow_of_tutor_id IS NULL` eklenir. *(5 Eyl 2026: `uq_clients_username_active` kolonla birlikte kaldırıldı.)* |
 | 1.5 | Yansıtılan alanlar: ad, soyad, e-posta, telefon, telefon doğrulama zamanı, e-posta doğrulama zamanı, avatar | yalnız değer farklıysa yazılır |
 | 1.6 | Yansıtma **tek yönlüdür**: `Tutor` → gölge. Ters yön yoktur | — |
 | 1.7 | Gölge, `require_roles(RoleType.CLIENT)` kapısını açmaz — TUTOR token'ı hâlâ TUTOR'dur | kapsam dışı uçlar (ders, kütüphane, talep) kapalı kalır |
@@ -149,7 +149,7 @@ Her satır, üretim kodu değişmeden **kırmızı** olmalı.
 | K-10 | K-9 kapısı devre dışıyken bile `tutor_earning` yazılmaz | son savunma |
 | K-11 | Gölge e-postası + herhangi bir şifre ile giriş | 401 |
 | K-12 | Şifre sıfırlama eğitmen satırına gider, gölgeye değil | doğru |
-| K-13 | Gölge kullanıcı adı global tekillikte yer tutmaz | başka hesap aynı adı alabilir |
+| ~~K-13~~ | ~~Gölge kullanıcı adı global tekillikte yer tutmaz~~ | **DÜŞTÜ (5 Eyl 2026):** `username` alanı şemadan kaldırıldı, madde konusuz kaldı. Testi de silindi. |
 | K-14 | Eğitmenin e-postasıyla ayrı bir öğrenci hesabı açılabilir (bugünkü davranış) | 201 — gölge bunu kırmaz |
 | K-15 | Eğitmen adını değiştirir → sonraki alışverişte gölge adı güncel | drift yok |
 | K-16 | Admin kullanıcı dizini ve `total_clients` gölgeyi saymaz | doğru |

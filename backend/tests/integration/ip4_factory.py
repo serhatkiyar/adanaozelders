@@ -181,7 +181,6 @@ class IP4Fabrika(IadeFabrikasi):
                 hashed_password="test-only",
                 first_name="Egitmen",
                 last_name=f"IP4{ek[:4]}",
-                username=f"ip4t{ek}",
                 role_id=ROLE_IDS[RoleType.TUTOR],
                 status=status,
                 hourly_rate=Decimal("300"),

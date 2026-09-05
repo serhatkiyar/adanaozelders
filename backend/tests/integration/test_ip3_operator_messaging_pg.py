@@ -105,7 +105,9 @@ async def test_iliskisiz_hedefte_kimlik_sizmaz(ip3, http):
         f"varlık sızıyor ({var_olan.status_code} vs {olmayan.status_code})"
     )
     govde = var_olan.text.lower()
-    for sizinti in (yabanci.username.lower(), yabanci.email.lower()):
+    # `username` probu alan silinince kalktı; kapsam daralmasın diye yerine
+    # ikinci bir kimlik alanı (soyad) kondu.
+    for sizinti in (yabanci.email.lower(), yabanci.last_name.lower()):
         assert sizinti not in govde, f"yanıt gövdesinde kimlik sızıntısı: {sizinti!r}"
 
 

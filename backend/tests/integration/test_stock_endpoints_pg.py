@@ -67,7 +67,6 @@ class Kurulum:
                 hashed_password="test-only",
                 first_name="Defter",
                 last_name="Testi",
-                username=f"defter{ek}",
                 role_id=1,
             )
             s.add(a)

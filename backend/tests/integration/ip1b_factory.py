@@ -146,7 +146,6 @@ class Ip1bFabrika:
                 hashed_password="test-only",
                 first_name="Ip1b",
                 last_name="Ogrenci",
-                username=f"ip1bc{u}",
                 role_id=3,
                 # Ödeme uçları telefon doğrulaması ister; doldurulmazsa HTTP
                 # testleri 403 alır ve bu YANLIŞ bir kırmızı olurdu.

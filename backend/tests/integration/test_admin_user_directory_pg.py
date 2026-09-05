@@ -33,7 +33,6 @@ async def test_user_directory_pages_searches_and_projects_detail(pg):
                 hashed_password="test-only",
                 first_name="Aranan",
                 last_name="Egitmen",
-                username=f"t{suffix}",
                 role_id=2,
                 status=TutorStatus.APPROVED,
             )
@@ -42,7 +41,6 @@ async def test_user_directory_pages_searches_and_projects_detail(pg):
                 hashed_password="test-only",
                 first_name="Diger",
                 last_name="Ogrenci",
-                username=f"c{suffix}",
                 role_id=3,
             )
             session.add_all([tutor, client])
@@ -137,7 +135,6 @@ async def test_dashboard_runs_as_single_real_postgres_projection(pg):
                 hashed_password="test-only",
                 first_name="Pano",
                 last_name="Ogrenci",
-                username=f"d{suffix}",
                 role_id=3,
             )
             session.add(client)
@@ -169,7 +166,6 @@ async def test_admin_demand_queue_pages_searches_counts_and_cancels(pg):
                 hashed_password="test-only",
                 first_name="Talep",
                 last_name="Sahibi",
-                username=f"dc{suffix}",
                 role_id=3,
             )
             tutor = Tutor(
@@ -177,7 +173,6 @@ async def test_admin_demand_queue_pages_searches_counts_and_cancels(pg):
                 hashed_password="test-only",
                 first_name="Yanıt",
                 last_name="Veren",
-                username=f"dt{suffix}",
                 role_id=2,
                 status=TutorStatus.APPROVED,
             )
@@ -241,7 +236,6 @@ async def test_admin_booking_queue_filters_and_returns_total(pg):
                 hashed_password="test-only",
                 first_name="Ders",
                 last_name="Alan",
-                username=f"bc{suffix}",
                 role_id=3,
             )
             tutor = Tutor(
@@ -249,7 +243,6 @@ async def test_admin_booking_queue_filters_and_returns_total(pg):
                 hashed_password="test-only",
                 first_name="Ders",
                 last_name="Veren",
-                username=f"bt{suffix}",
                 role_id=2,
                 status=TutorStatus.APPROVED,
             )

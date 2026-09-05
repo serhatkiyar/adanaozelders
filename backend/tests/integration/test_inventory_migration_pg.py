@@ -226,13 +226,13 @@ async def test_F29_append_only_triggerlari_DOLU_tabloda_calisir(mig_db):
             "(SELECT id FROM product_categories WHERE slug='f29mig-kat' "
             "AND deleted_at IS NULL),now(),now())"))
         await s.execute(text(
-            "INSERT INTO admins (email,hashed_password,first_name,last_name,username,"
+            "INSERT INTO admins (email,hashed_password,first_name,last_name,"
             "role_id,is_active,created_at,updated_at) VALUES ('f29mig@t.local','x','A','B',"
-            "'f29migadmin',1,true,now(),now())"))
+            "1,true,now(),now())"))
         await s.execute(text(
             "INSERT INTO stock_damage_events (product_id,kind,qty,source_bucket,reason_code,"
             "actor_admin_id,created_at) SELECT p.id,'TRANSFER',1,'SALEABLE','KIRIK',a.id,now() "
-            "FROM products p, admins a WHERE p.slug='f29mig-t' AND a.username='f29migadmin'"))
+            "FROM products p, admins a WHERE p.slug='f29mig-t' AND a.email='f29mig@t.local'"))
         await s.commit()
 
     for sql in (

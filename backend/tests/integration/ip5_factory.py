@@ -107,7 +107,6 @@ class VergiFabrikasi:
                 hashed_password="test-only",
                 first_name="Vergi",
                 last_name="Musteri",
-                username=f"ip5{ek}",
                 role_id=3,
                 phone=f"+90555{ek[:7]}",
                 phone_verified_at=now(),
@@ -147,7 +146,6 @@ class VergiFabrikasi:
                 hashed_password="test-only",
                 first_name="Vergi",
                 last_name="Admin",
-                username=f"va{ek}",
                 role_id=1,
             )
             s.add(a)

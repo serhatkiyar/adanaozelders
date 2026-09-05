@@ -70,7 +70,6 @@ class Ip16Fabrika:
                 hashed_password="test-only",
                 first_name="Ip16",
                 last_name="Ogrenci",
-                username=f"ip16c{u}",
                 role_id=3,
             )
             s.add(c)
@@ -89,7 +88,6 @@ class Ip16Fabrika:
                 hashed_password="test-only",
                 first_name="Ip16",
                 last_name="Egitmen",
-                username=f"ip16t{u}",
                 role_id=2,
                 status=TutorStatus.APPROVED,
                 hourly_rate=Decimal("500"),
@@ -135,7 +133,6 @@ class Ip16Fabrika:
                 hashed_password="test-only",
                 first_name="Ip16",
                 last_name="Yonetici",
-                username=f"ip16a{ek}",
                 role_id=1,
             )
             s.add(a)

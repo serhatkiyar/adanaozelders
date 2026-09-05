@@ -82,7 +82,6 @@ async def _client_olustur(last_seen: datetime.datetime | None = _ESKI) -> int:
             hashed_password="test-only",
             first_name="Presence",
             last_name="Testi",
-            username=f"presence{suffix}",
             role_id=3,
             last_seen_at=last_seen,
         )

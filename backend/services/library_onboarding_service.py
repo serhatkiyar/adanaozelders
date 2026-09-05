@@ -21,7 +21,6 @@ from models.library_operator import LibraryOperator
 from models.role import ROLE_IDS, RoleType
 from schemas.library import LibraryDetailOut, LibraryRegister
 from services import audit_service, notification_service
-from services.library_operator_service import _unique_username
 from services.library_service import (
     _compose_address,
     _slugify,
@@ -69,7 +68,6 @@ async def register(db: AsyncSession, payload: LibraryRegister) -> LibraryOperato
         hashed_password=await hash_password_async(payload.password),
         first_name=payload.first_name,
         last_name=payload.last_name,
-        username=await _unique_username(db, payload.email.split("@", 1)[0]),
         role_id=ROLE_IDS[RoleType.LIBRARY_OPERATOR],
         library_id=lib.id,
     )

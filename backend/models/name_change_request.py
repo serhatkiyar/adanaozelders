@@ -22,13 +22,13 @@ class NameChangeRequest(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     role_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    # 'NAME' (ad-soyad) | 'USERNAME' (kullanıcı adı)
+    # Tek tür: 'NAME' (ad-soyad). 'USERNAME' dalı 5 Eyl 2026'da kaldırıldı
+    # ve o satırlar migration'da silindi.
     kind: Mapped[str] = mapped_column(String(12), nullable=False)
 
-    # Talep edilen yeni değerler (kind'e göre dolu).
+    # Talep edilen yeni değerler.
     new_first_name: Mapped[str | None] = mapped_column(String(75), nullable=True)
     new_last_name: Mapped[str | None] = mapped_column(String(75), nullable=True)
-    new_username: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Kullanıcının değişiklik gerekçesi (zorunlu).
     reason: Mapped[str] = mapped_column(Text, nullable=False)

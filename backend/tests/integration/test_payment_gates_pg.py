@@ -87,7 +87,6 @@ async def test_bayrak_degisikligi_audit_e_onceki_ve_sonraki_degerle_yazilir(pg):
                 hashed_password="test-only",
                 first_name="Bayrak",
                 last_name="Testi",
-                username=f"flag{suffix}",
                 role_id=1,
             )
             s.add(admin)

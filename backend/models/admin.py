@@ -45,10 +45,4 @@ class Admin(
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index(
-            "uq_admins_username_active",
-            "username",
-            unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
     )

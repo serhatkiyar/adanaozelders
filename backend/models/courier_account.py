@@ -57,12 +57,6 @@ class CourierAccount(
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
-        Index(
-            "uq_courier_accounts_username_active",
-            "username",
-            unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
         # Profil başına tek aktif hesap (işten ayrılan soft-delete edilir,
         # yeniden işe alımda YENİ satır açılır — eski token'lar dirilmez).
         Index(

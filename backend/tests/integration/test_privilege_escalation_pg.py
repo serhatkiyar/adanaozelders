@@ -35,7 +35,6 @@ async def _mk_admin(s, suffix: str) -> Admin:
         hashed_password="test-only",
         first_name="Yetki",
         last_name="Denemesi",
-        username=f"esc{suffix}",
         role_id=1,
     )
     s.add(admin)

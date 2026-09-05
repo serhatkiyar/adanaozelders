@@ -77,7 +77,9 @@ async def test_iliskisiz_ogrenci_ile_olmayan_id_ayni_yanit(ip3, http):
     assert var_olan.status_code == olmayan.status_code, (
         f"varlık sızıyor: {var_olan.status_code} vs {olmayan.status_code}"
     )
-    assert yabanci.username.lower() not in var_olan.text.lower()
+    # Prob 5 Eyl 2026'da `username`den `email`e çevrildi (alan silindi).
+    # Düğümü SİLMEK, İP-3'ün kimlik sızıntısı kapsamını sessizce daraltırdı.
+    assert yabanci.email.lower() not in var_olan.text.lower()
 
 
 @pytest.mark.asyncio

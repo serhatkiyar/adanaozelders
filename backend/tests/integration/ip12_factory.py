@@ -87,7 +87,6 @@ class PanelFabrikasi:
                 hashed_password="test-only",
                 first_name="Panel",
                 last_name="Admin",
-                username=f"pa{ek}",
                 role_id=1,
             )
             s.add(a)
@@ -123,7 +122,6 @@ class PanelFabrikasi:
                 hashed_password="test-only",
                 first_name="Panel",
                 last_name="Musteri",
-                username=f"pm{ek}",
                 role_id=3,
             )
             s.add(c)

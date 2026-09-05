@@ -61,7 +61,7 @@ class DispatchFactory:
                 client = Client(
                     email=f"c-{u}@dispatch.test", hashed_password="x",
                     first_name="Dagitim", last_name=f"Musteri{i}",
-                    username=f"c{u}", role_id=3,
+                    role_id=3,
                 )
                 s.add(client)
                 await s.flush()

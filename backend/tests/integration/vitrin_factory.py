@@ -57,7 +57,6 @@ class VitrinFabrikasi:
                 hashed_password="test-only",
                 first_name="Vitrin",
                 last_name="Admin",
-                username=f"va{ek}",
                 role_id=1,
             )
             s.add(a)

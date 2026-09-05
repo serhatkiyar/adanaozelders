@@ -93,7 +93,6 @@ class IadeFabrikasi:
                 hashed_password="test-only",
                 first_name="Iade",
                 last_name="Musteri",
-                username=f"ip2a{ek}",
                 role_id=3,
             )
             s.add(c)
@@ -115,7 +114,6 @@ class IadeFabrikasi:
                 hashed_password="test-only",
                 first_name="Iade",
                 last_name="Admin",
-                username=f"ia{ek}",
                 role_id=1,
             )
             s.add(a)

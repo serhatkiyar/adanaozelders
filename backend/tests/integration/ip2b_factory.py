@@ -111,7 +111,6 @@ class Ip2bFabrika:
                 hashed_password="test-only",
                 first_name="Ip2b",
                 last_name="Musteri",
-                username=f"ip2b{uniq()}",
                 role_id=3,
             )
             s.add(c)
@@ -138,7 +137,6 @@ class Ip2bFabrika:
                 hashed_password="test-only",
                 first_name="Ip2b",
                 last_name="Admin",
-                username=f"ipa{ek}",
                 role_id=1,
             )
             s.add(a)

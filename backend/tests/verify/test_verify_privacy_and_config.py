@@ -47,25 +47,32 @@ async def test_F1_hesap_silme_kimlik_verisini_temizler(db, factory, fake_provide
     await ads.anonymize_account(db, client)
     await db.commit()
 
+    # KOLON ADIYLA okunur, konumla DEĞİL.
+    #
+    # Eskiden `row[0]..row[8]` şeklindeydi. 5 Eyl 2026'da SELECT listesinden
+    # `username` çıkarılınca bütün indeksler bir kaydı ve test "Silinmiş"
+    # beklerken soyadı okudu — hata verdi ama SEBEBİ görünmüyordu. Aynı kayma
+    # bir INSERT'te olsaydı sessizce YANLIŞ VERİ yazardı. `.mappings()` bu
+    # sınıfı tamamen kapatır: kolon listesi değişse de iddialar yerinde kalır.
     row = (
         await db.execute(
             text(
-                "SELECT email, username, first_name, last_name, phone, about, "
+                "SELECT email, first_name, last_name, phone, about, "
                 "is_active, deleted_at, hashed_password "
                 "FROM clients WHERE id = :i"
             ),
             {"i": client.id},
         )
-    ).first()
+    ).mappings().first()
 
-    assert row[0] != orig_email, "e-posta anonimleşmeli"
-    assert "@hesap.silindi" in row[0]
-    assert row[2] == "Silinmiş" and row[3] == "Kullanıcı"
-    assert row[4] is None, "telefon temizlenmeli"
-    assert row[5] is None, "biyografi temizlenmeli"
-    assert row[6] is False, "hesap pasifleşmeli"
-    assert row[7] is not None, "deleted_at damgalanmalı"
-    assert row[8] == "!", "parola hiçbir girdiyle eşleşmemeli"
+    assert row["email"] != orig_email, "e-posta anonimleşmeli"
+    assert "@hesap.silindi" in row["email"]
+    assert row["first_name"] == "Silinmiş" and row["last_name"] == "Kullanıcı"
+    assert row["phone"] is None, "telefon temizlenmeli"
+    assert row["about"] is None, "biyografi temizlenmeli"
+    assert row["is_active"] is False, "hesap pasifleşmeli"
+    assert row["deleted_at"] is not None, "deleted_at damgalanmalı"
+    assert row["hashed_password"] == "!", "parola hiçbir girdiyle eşleşmemeli"
 
 
 async def test_F2_mali_kayitlar_silinmez(db, factory, fake_provider):

@@ -199,7 +199,6 @@ class Factory:
             hashed_password="x",
             first_name="Test",
             last_name="Musteri",
-            username=f"c{u}",
             role_id=3,
         )
         session.add(c)
@@ -216,7 +215,6 @@ class Factory:
             hashed_password="x",
             first_name="Test",
             last_name="Egitmen",
-            username=f"t{u}",
             role_id=2,
             status=status or TutorStatus.APPROVED,
             is_active=is_active,

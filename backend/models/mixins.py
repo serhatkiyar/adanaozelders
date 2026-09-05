@@ -14,15 +14,15 @@ from core.crypto import EncryptedString
 class NameMixin:
     first_name: Mapped[str] = mapped_column(String(75), nullable=False)
     last_name: Mapped[str] = mapped_column(String(75), nullable=False)
-    username: Mapped[str] = mapped_column(String(50), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    # Kimlik bütünlüğü: ad-soyad ve kullanıcı adı serbestçe değiştirilemez. İlk
-    # değişiklik serbest; ikinci ve sonrası admin onayı + gerekçe gerektirir
+    # Kimlik bütünlüğü: ad-soyad serbestçe değiştirilemez. İlk değişiklik
+    # serbest; ikinci ve sonrası admin onayı + gerekçe gerektirir
     # (bkz. name_change_request + name_change_service).
+    #
+    # `username` kolonu 5 Eyl 2026'da KALDIRILDI: giriş e-posta ile yapılıyor,
+    # profil URL'i id/slug ile kuruluyor, hiçbir sosyal yüzeyde görünmüyordu.
+    # Nöbetçi: tests/test_kullanici_adi_kaldirildi.py
     name_change_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
-    username_change_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
 

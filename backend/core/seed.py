@@ -37,13 +37,11 @@ async def seed_admin(session: AsyncSession) -> None:
         parts = settings.ADMIN_FULL_NAME.split(" ", 1)
         first_name = parts[0] or "System"
         last_name = parts[1] if len(parts) > 1 else "Admin"
-        username = settings.ADMIN_EMAIL.split("@", 1)[0] or "admin"
         admin = Admin(
             email=settings.ADMIN_EMAIL,
             hashed_password=hash_password(settings.ADMIN_PASSWORD),
             first_name=first_name,
             last_name=last_name,
-            username=username,
             role_id=ROLE_IDS[RoleType.ADMIN],
             # Seed admin'i doğrulanmış kabul et (kendine doğrulama maili göndermez).
             email_verified_at=datetime.datetime.now(datetime.timezone.utc),
@@ -85,7 +83,6 @@ _SEED_TUTORS: tuple[dict, ...] = (
         "email": "elif.yilmaz@ornek-egitmen.com",
         "first_name": "Elif",
         "last_name": "Yılmaz",
-        "username": "elifyilmaz",
         "gender": Gender.FEMALE,
         "birth_date": datetime.date(1992, 4, 18),
         "hourly_rate": 450,
@@ -124,7 +121,6 @@ _SEED_TUTORS: tuple[dict, ...] = (
         "email": "mehmet.demir@ornek-egitmen.com",
         "first_name": "Mehmet",
         "last_name": "Demir",
-        "username": "mehmetdemir",
         "gender": Gender.MALE,
         "birth_date": datetime.date(1988, 11, 3),
         "hourly_rate": 500,
@@ -162,7 +158,6 @@ _SEED_TUTORS: tuple[dict, ...] = (
         "email": "zeynep.kaya@ornek-egitmen.com",
         "first_name": "Zeynep",
         "last_name": "Kaya",
-        "username": "zeynepkaya",
         "gender": Gender.FEMALE,
         "birth_date": datetime.date(1995, 7, 22),
         "hourly_rate": 400,
@@ -216,7 +211,6 @@ async def seed_tutors(session: AsyncSession) -> None:
             status=TutorStatus.APPROVED,
             first_name=data["first_name"],
             last_name=data["last_name"],
-            username=data["username"],
             gender=data["gender"],
             birth_date=data["birth_date"],
             hourly_rate=data["hourly_rate"],

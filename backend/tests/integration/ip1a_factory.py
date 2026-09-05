@@ -179,7 +179,6 @@ class Ip1aFabrika:
             hashed_password="test-only",
             first_name="Ip1a",
             last_name="Egitmen",
-            username=f"ip1at{u}",
             role_id=2,
             status=TutorStatus.APPROVED,
             hourly_rate=Decimal("500"),
@@ -189,7 +188,6 @@ class Ip1aFabrika:
             hashed_password="test-only",
             first_name="Ip1a",
             last_name="Ogrenci",
-            username=f"ip1ac{u}",
             role_id=3,
             # `POST /bookings` ve `/payments/.../pay` telefon doğrulaması ister
             # (phone_service.require_phone_verified). Doldurulmazsa HTTP testleri
@@ -354,7 +352,6 @@ class Ip1aFabrika:
                 hashed_password="test-only",
                 first_name="Ip1a",
                 last_name="Yonetici",
-                username=f"ip1aa{ek}",
                 role_id=1,
             )
             s.add(a)
