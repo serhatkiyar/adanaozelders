@@ -1,4 +1,4 @@
-import { CokSatir, Metin } from "./alanlar";
+import { CokSatir, Metin } from "@/components/form/alanlar";
 import type { Adim1Hatalar } from "./dogrula";
 import type { FormDurumu } from "./tipler";
 

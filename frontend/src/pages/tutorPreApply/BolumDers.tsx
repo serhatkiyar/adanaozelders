@@ -1,4 +1,4 @@
-import { CokSatir, Liste, Metin, SegmentSecim } from "./alanlar";
+import { CokSatir, Liste, Metin, SegmentSecim } from "@/components/form/alanlar";
 import { dogrulaUcret, dogrulaVideo } from "./dogrula";
 import { BICIM_SECENEKLERI, ILCELER, type FormDurumu } from "./tipler";
 

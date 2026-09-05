@@ -90,11 +90,29 @@ export function BlogBodyEditor({
   value,
   onChange,
   disabled = false,
+  id,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
 }: {
   /** Sunucudan gelen (sanitize edilmiş) HTML. */
   value: string;
   onChange: (html: string) => void;
   disabled?: boolean;
+  /**
+   * Yazma yüzeyine (contentEditable) inen `id` ve `aria-*`.
+   *
+   * `Form.Control` içinde kullanılabilmesi için ZORUNLU: o katman kimliği
+   * çocuğuna verir ve mount'tan sonra DOM'da GERÇEKTEN olup olmadığını
+   * ÖLÇER. İletmeyen bir bileşen etiket bağını sessizce kurmuyordu ve
+   * kontrol ekran okuyucuya ADSIZ görünüyordu (İP-A3c'nin kapattığı üç
+   * yazımdan üçüncüsü). Blog sayfası bunları vermez; orada etiket görsel
+   * bir başlıktır ve `role="textbox"` + `aria-label` yeter.
+   */
+  id?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }) {
   const [linkAcik, setLinkAcik] = useState(false);
 
@@ -118,6 +136,14 @@ export function BlogBodyEditor({
     onUpdate: ({ editor: e }) => onChange(e.isEmpty ? "" : e.getHTML()),
     editorProps: {
       attributes: {
+        // Yazma yüzeyi bir metin kutusudur; rol ve kimlik OLMADAN ekran
+        // okuyucu onu yalnız "düzenlenebilir bölge" diye duyurur.
+        role: "textbox",
+        "aria-multiline": "true",
+        ...(id ? { id } : {}),
+        ...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {}),
+        ...(ariaDescribedBy ? { "aria-describedby": ariaDescribedBy } : {}),
+        ...(ariaInvalid ? { "aria-invalid": "true" } : {}),
         class:
           "min-h-72 px-4 py-3 text-[15px] leading-relaxed text-slate-800 outline-none " +
           "[&_p]:mt-3 [&_p:first-child]:mt-0 " +

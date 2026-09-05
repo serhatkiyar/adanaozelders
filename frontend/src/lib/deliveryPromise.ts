@@ -18,9 +18,19 @@ function fmtDay(d: Date): string {
 }
 
 /** ISO date ("2026-07-10") → "bugün"/"yarın"/"13 Tem Pazartesi" (yerel güne göre;
- * geçmiş tarih de tarihe döner — yanlışlıkla "bugün" demez). */
-export function promiseDayLabel(isoDate: string, today: Date = new Date()): string {
+ * geçmiş tarih de tarihe döner — yanlışlıkla "bugün" demez).
+ *
+ * Geçersiz/eksik tarihte `null` döner, FIRLATMAZ. Gerekçe ölçüldü: `Intl`
+ * geçersiz tarihte `RangeError` atıyor ve bu, sunucu `/store/delivery-info`den
+ * beklenmedik bir gövde döndürdüğünde ÜRÜN SAYFASININ TAMAMINI beyaz ekrana
+ * düşürüyordu. Bir teslimat rozetinin eksikliği sayfayı düşürmeyi hak etmez. */
+export function promiseDayLabel(
+  isoDate: string | null | undefined,
+  today: Date = new Date()
+): string | null {
+  if (!isoDate) return null;
   const target = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
   const diffDays = Math.round((startOfDay(target) - startOfDay(today)) / DAY_MS);
   if (diffDays === 0) return "bugün";
   if (diffDays === 1) return "yarın";
@@ -41,9 +51,15 @@ export function formatCountdown(seconds: number): string {
  * Rozet metni. Cutoff geçmemişse aciliyet verir ("2 sa 14 dk içinde sipariş ver,
  * bugün kapında"), geçmişse sözü söyler ("Şimdi sipariş ver, yarın kapında").
  */
-export function promiseText(info: DeliveryInfo, today: Date = new Date()): string {
-  const day = promiseDayLabel(info.promised_date_now, today);
-  if (info.countdown_seconds != null) {
+export function promiseText(
+  info: DeliveryInfo | null | undefined,
+  today: Date = new Date()
+): string | null {
+  const day = promiseDayLabel(info?.promised_date_now, today);
+  // Söz gününü bilmiyorsak söz VERMEYİZ. "undefined kapında" yazmak ya da
+  // sayfayı düşürmek yerine satır hiç çizilmez.
+  if (day === null) return null;
+  if (info?.countdown_seconds != null) {
     return `${formatCountdown(info.countdown_seconds)} içinde sipariş ver, ${day} kapında`;
   }
   return `Şimdi sipariş ver, ${day} kapında`;

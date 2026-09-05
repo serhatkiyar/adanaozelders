@@ -76,3 +76,36 @@ describe("ürün görseli yüzeyleri — pad kaynaşması", () => {
     expect(kutu.className, "beyaz zemin kayıp").toContain("bg-white");
   });
 });
+
+/**
+ * Ürün detay hero görseli sayfanın LCP (Largest Contentful Paint) elemanıdır.
+ * En yaygın performans hatası tam da bu görseli tembel yüklemektir; ölçümlerde
+ * sayfaların altıda biri bunu yapıyor. Sözleşme iki maddedir ve sessizce
+ * bozulabileceği için nöbetlidir.
+ */
+describe("ürün detay hero görseli — LCP sözleşmesi", () => {
+  function hero() {
+    const { container } = render(
+      <MemoryRouter>
+        <HoverZoomImage
+          src="https://ornek/kapak.webp"
+          alt="Örnek Kitap"
+          onOpen={() => {}}
+        />
+      </MemoryRouter>
+    );
+    const img = container.querySelector("img");
+    expect(img, "hero görseli render edilmedi").toBeTruthy();
+    return img!;
+  }
+
+  it("yüksek öncelikle çekilir", () => {
+    // React 18 camelCase `fetchPriority`yi DOM'a yazmaz; küçük harfli olmak
+    // ZORUNDA. Bu iddia, camelCase'e dönülürse kırılır.
+    expect(hero().getAttribute("fetchpriority")).toBe("high");
+  });
+
+  it("tembel yüklenmez", () => {
+    expect(hero().hasAttribute("loading")).toBe(false);
+  });
+});

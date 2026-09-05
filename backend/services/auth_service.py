@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import datetime
+import secrets
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import hash_password_async, verify_password_async
+from core.slug import slugify_tr
 from models.admin import Admin
 from models.client import Client
 from models.courier_account import CourierAccount
@@ -92,6 +94,36 @@ async def _ensure_unique(
         raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
 
 
+async def _turet_kullanici_adi(
+    db: AsyncSession, first_name: str, last_name: str
+) -> str:
+    """Ad-soyaddan serbest bir kullanıcı adı üretir.
+
+    NEDEN VAR: kayıt formu eğitmene kullanıcı adı SORMUYOR. Superprof'ta olduğu
+    gibi kayıt e-posta + parola + ad + soyad ile bitiyor; araya konan her ek
+    alan, ilan oluşturma akışına girmeden vazgeçen aday demek. Kullanıcı adı
+    kimlik değil bir kolaylık: public eğitmen adresi `slug` (`isim-soyisim-{id}`)
+    üzerinden kuruluyor, bu yüzden üretilmiş bir ad kimseyi bağlamıyor —
+    isteyen `/ayarlar`'dan değiştirebiliyor.
+
+    Desen `^[a-zA-Z0-9_]+$` (bkz. `schemas/user.USERNAME_PATTERN`), yani tire
+    kabul etmiyor: `slugify_tr`'nin çıktısındaki tireler alt çizgiye çevrilir.
+    """
+    taban = slugify_tr(f"{first_name} {last_name}").replace("-", "_")[:40]
+    taban = taban.strip("_") or "kullanici"
+    if len(taban) < 3:
+        taban = f"{taban}_kullanici"[:40]
+    if not await _username_taken(db, taban):
+        return taban
+    # Çakışmada sıralı sayaç (ahmet_2, ahmet_3…) KULLANILMAZ: aynı ada sahip kaç
+    # kişi olduğunu dışarıya sızdırır ve her denemede bir sorgu daha eder.
+    for _ in range(5):
+        aday = f"{taban[:40]}_{secrets.randbelow(9000) + 1000}"
+        if not await _username_taken(db, aday):
+            return aday
+    return f"{taban[:36]}_{secrets.token_hex(4)}"[:50]
+
+
 async def register_tutor(
     db: AsyncSession,
     *,
@@ -99,11 +131,19 @@ async def register_tutor(
     password: str,
     first_name: str,
     last_name: str,
-    username: str,
+    username: str | None = None,
     birth_date: datetime.date | None = None,
     gender: Gender | None = None,
 ) -> Tutor:
-    await _ensure_unique(db, Tutor, email=email, username=username)
+    if username:
+        await _ensure_unique(db, Tutor, email=email, username=username)
+    else:
+        # Kullanıcı adı SORULMADIYSA üretilir; e-posta tekilliği yine aranır.
+        if await _email_taken(db, Tutor, email):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Email already registered"
+            )
+        username = await _turet_kullanici_adi(db, first_name, last_name)
     tutor = Tutor(
         email=email,
         hashed_password=await hash_password_async(password),
@@ -127,11 +167,19 @@ async def register_client(
     password: str,
     first_name: str,
     last_name: str,
-    username: str,
+    username: str | None = None,
     birth_date: datetime.date | None = None,
     gender: Gender | None = None,
 ) -> Client:
-    await _ensure_unique(db, Client, email=email, username=username)
+    if username:
+        await _ensure_unique(db, Client, email=email, username=username)
+    else:
+        # Kullanıcı adı SORULMADIYSA üretilir; e-posta tekilliği yine aranır.
+        if await _email_taken(db, Client, email):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Email already registered"
+            )
+        username = await _turet_kullanici_adi(db, first_name, last_name)
     client = Client(
         email=email,
         hashed_password=await hash_password_async(password),

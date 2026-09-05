@@ -95,7 +95,11 @@ const CAGRI_BUTCELERI = [
   "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:188 1500",
   "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:422 4000",
   "src/pages/libraryReservationsPaymentGate.test.tsx:32 4000",
-  "src/pages/store/storeVariants.acceptance.test.tsx:18 4000",
+  // Ürün detayı iki kabul dosyasında da yük-bağımlı: sayfa dört sorgu
+  // (ürün, kategori, teslimat, yorum) çözülene kadar başlığı basmıyor ve
+  // RTL'nin 1.000 ms varsayılanı paralel koşumda yetmiyordu.
+  "src/pages/store/productDetail.acceptance.test.tsx:30 4000",
+  "src/pages/store/storeVariants.acceptance.test.tsx:24 4000",
 ];
 
 describe("İP-A7d5 · bekleme bütçesi nöbetçisi", () => {

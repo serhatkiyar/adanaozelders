@@ -90,3 +90,27 @@ describe("promisedDateLabel", () => {
     expect(promisedDateLabel("2026-07-09", TODAY)).toBe("yarın");
   });
 });
+
+describe("bozuk veride sayfa DÜŞMEZ", () => {
+  // Gerçek arıza: `/store/delivery-info` beklenmedik bir gövde döndürdüğünde
+  // `Intl` geçersiz tarihte RangeError atıyor ve ÜRÜN SAYFASININ TAMAMI beyaz
+  // ekrana düşüyordu. Bir teslimat rozetinin eksikliği bunu hak etmez.
+  it("tarih yoksa gün etiketi null döner", () => {
+    expect(promiseDayLabel(undefined)).toBeNull();
+    expect(promiseDayLabel(null)).toBeNull();
+    expect(promiseDayLabel("")).toBeNull();
+  });
+
+  it("bozuk tarih FIRLATMAZ, null döner", () => {
+    expect(() => promiseDayLabel("bozuk-tarih")).not.toThrow();
+    expect(promiseDayLabel("bozuk-tarih")).toBeNull();
+  });
+
+  it("söz günü bilinmiyorsa söz metni ÜRETİLMEZ", () => {
+    expect(promiseText(null)).toBeNull();
+    expect(promiseText(undefined)).toBeNull();
+    expect(
+      promiseText({ countdown_seconds: 60 } as never)
+    ).toBeNull();
+  });
+});

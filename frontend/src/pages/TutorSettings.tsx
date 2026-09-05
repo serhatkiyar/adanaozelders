@@ -24,10 +24,8 @@ import {
   type Availability,
   type TutorOut,
 } from "@/types";
+import { BASLIK_EN_AZ_KELIME, kelimeSay } from "@/lib/metin";
 
-
-// İlan başlığı için minimum sözcük kalite kapısı (backend ile aynı).
-const HEADLINE_MIN_WORDS = 10;
 
 /* ─── status metadata ────────────────────────────────── */
 
@@ -198,14 +196,14 @@ export default function TutorSettings() {
   const actionBusy =
     submitAction.isPending || suspendAction.isPending || activateAction.isPending;
 
-  const headlineWords = headline.trim() ? headline.trim().split(/\s+/).length : 0;
-  const headlineTooShort = headlineWords < HEADLINE_MIN_WORDS;
+  const headlineWords = kelimeSay(headline);
+  const headlineTooShort = headlineWords < BASLIK_EN_AZ_KELIME;
 
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
     if (headlineTooShort) {
       toast.error(
-        `İlan başlığın en az ${HEADLINE_MIN_WORDS} sözcük olmalı (şu an ${headlineWords}).`
+        `İlan başlığın en az ${BASLIK_EN_AZ_KELIME} sözcük olmalı (şu an ${headlineWords}).`
       );
       return;
     }
@@ -403,7 +401,7 @@ export default function TutorSettings() {
                     }`}
                   >
                     {headlineTooShort
-                      ? `En az ${HEADLINE_MIN_WORDS} sözcük gerekli, şu an ${headlineWords}. Branşını, sınav türünü ve deneyimini ekle.`
+                      ? `En az ${BASLIK_EN_AZ_KELIME} sözcük gerekli, şu an ${headlineWords}. Branşını, sınav türünü ve deneyimini ekle.`
                       : `${headlineWords} sözcük`}
                   </p>
                 </div>

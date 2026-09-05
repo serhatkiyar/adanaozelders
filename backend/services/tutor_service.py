@@ -245,8 +245,12 @@ async def submit_for_approval(db: AsyncSession, tutor: Tutor) -> Tutor:
     if not await education_service.has_verification_material(db, tutor_id=tutor.id):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Onaya göndermeden önce eğitim bilgilerinden en az birine diploma/belge "
-            "yükle ya da e-Devlet doğrulama barkodunu gir. (Profil → Eğitim)",
+            # Konum ADI VERİLMEZ: aynı koşul artık iki yerden karşılanıyor —
+            # ilan sihirbazının "Eğitimini belgele" adımı ve /hesabim → Eğitim.
+            # Tek bir yol adı yazmak, kullanıcıyı bulunduğu ekrandan başka bir
+            # yere göndermeye çalışır ve yanlış olur.
+            "Onaya göndermeden önce eğitim bilgilerinden en az birine diploma "
+            "veya öğrenci belgesi yükle ya da e-Devlet doğrulama barkodunu gir.",
         )
     # Zorunlu kalite kapısı: ilan başlığı dolu ve en az HEADLINE_MIN_WORDS sözcük olmalı.
     if count_words(tutor.headline) < HEADLINE_MIN_WORDS:
@@ -268,7 +272,7 @@ async def approve(db: AsyncSession, tutor: Tutor) -> Tutor:
         user_id=tutor.id,
         role_id=ROLE_IDS[RoleType.TUTOR],
         message="İlanın onaylandı ve artık yayında!",
-        link="/tutor/settings",
+        link="/ilan-ayarlari",
     )
     return tutor
 
@@ -281,7 +285,7 @@ async def reject(db: AsyncSession, tutor: Tutor) -> Tutor:
         user_id=tutor.id,
         role_id=ROLE_IDS[RoleType.TUTOR],
         message="İlanın reddedildi. Bilgilerini güncelleyip tekrar gönderebilirsin.",
-        link="/tutor/settings",
+        link="/ilan-ayarlari",
     )
     return tutor
 

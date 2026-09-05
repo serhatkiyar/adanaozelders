@@ -63,6 +63,18 @@ class ProductAttributeValue(Base, TimestampMixin, SoftDeleteMixin):
     slug: Mapped[str] = mapped_column(String(120), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    #: Renk örneği (#RRGGBB). Varyant seçicideki "Renk" ekseni değerini metin
+    #: yerine gerçek bir renk dairesiyle çizebilsin diye. NULL ise seçici metin
+    #: butonuna DÜŞER — eşleşme yoksa bozulmaz, sadeleşir.
+    #:
+    #: Neden burada ve `products.option1_value`da değil: "Kırmızı" bir kez
+    #: tanımlanır ve o renkteki bütün varyantlar aynı örneği gösterir. Değere
+    #: değil varyanta bağlansaydı 12 bedenli bir renkte 12 kez girilirdi
+    #: (Shopify'ın bilinen zayıflığı).
+    swatch_hex: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    #: Desenli/dokulu değerlerde düz renk yalan söyler ("Ebru", "Metalik").
+    #: Doluysa daire yerine küçük görsel çizilir.
+    swatch_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     definition: Mapped[ProductAttributeDefinition] = relationship(back_populates="values")
 
@@ -75,6 +87,16 @@ class ProductAttributeValue(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_where=text("deleted_at IS NULL"),
         ),
         CheckConstraint("sort_order >= 0", name="ck_product_attribute_values_sort"),
+        # Renk örneği ya hex ya görseldir; ikisi birden çelişkili bir sunum
+        # üretirdi (hangisi kazanır sorusu her çağrı yerinde tekrar sorulurdu).
+        CheckConstraint(
+            "swatch_hex IS NULL OR swatch_image_url IS NULL",
+            name="ck_product_attribute_values_swatch_tek",
+        ),
+        CheckConstraint(
+            "swatch_hex IS NULL OR swatch_hex ~ '^#[0-9A-Fa-f]{6}$'",
+            name="ck_product_attribute_values_swatch_hex",
+        ),
     )
 
 

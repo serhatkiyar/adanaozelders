@@ -22,7 +22,11 @@ export function StoreSearch() {
   const [params] = useSearchParams();
   const [q, setQ] = useState(params.get("q") || "");
   // Amazon deseni: soldaki seçici aramayı bir kategoriye daraltır ("" = tümü).
-  const [catId, setCatId] = useState(params.get("category") || "");
+  // URL'deki kategori BİLEREK miras alınmaz (1 Eyl): kategori sayfasında
+  // gezinirken navbar'dan arama yapan kullanıcı TÜM mağazada aradığını sanır;
+  // sessizce daraltmak "kitap → 0 sonuç" tuzağı üretiyordu. Daraltma yalnız
+  // kullanıcının BURADAN açıkça seçtiği kategoriyle olur.
+  const [catId, setCatId] = useState("");
   const { data: categories } = useCategories();
   const anaKategoriler = useMemo(
     () => (categories ?? []).filter((c) => !c.parent_id),

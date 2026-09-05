@@ -130,6 +130,11 @@ export const PATHS = {
   addresses: "/adreslerim",
   settings: "/ayarlar",
   tutorListing: "/ilan-ayarlari",
+  /**
+   * İlan oluşturma sihirbazı — kayıt olan eğitmenin ilk durağı.
+   * `/ilan-ayarlari` MEVCUT ilanın editörüdür; ikisi bilerek ayrıdır.
+   */
+  tutorOnboarding: "/ilanini-olustur",
   /** Eğitmenin ilanını öne çıkarma (reklam paketi satın alma). */
   tutorPromotion: "/ilanimi-one-cikar",
   /** Dağıtıcı saha ekranı — kendi-filo teslimat turu (ADMIN + KURYE). */
@@ -297,6 +302,7 @@ export const ROUTES = {
   addresses: PATHS.addresses,
   settings: PATHS.settings,
   tutorListing: PATHS.tutorListing,
+  tutorOnboarding: PATHS.tutorOnboarding,
   tutorPromotion: PATHS.tutorPromotion,
   deliveryRun: (id: string | number) => `/dagitim/${id}`,
   deliveryRunHandover: (id: string | number) => `/dagitim/${id}/zimmet`,

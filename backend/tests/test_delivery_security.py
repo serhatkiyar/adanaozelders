@@ -63,7 +63,7 @@ def test_is_drop_pref():
 
 def test_otp_sms_guvenlik_cumlesi_sabit():
     text = delivery_otp_sms_text(order_id=42, code="123456", ttl_minutes=30)
-    assert "kuryemiz seni arayıp kod istemez" in text
+    assert "Kuryemiz seni arayip asla kod istemez" in text
     assert "123456" in text
     assert "#42" in text
     assert "30 dk" in text

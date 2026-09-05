@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { toast } from "@/store/toastStore";
 
-import { CokSatir, Metin } from "./alanlar";
+import { CokSatir, Metin } from "@/components/form/alanlar";
 import {
   BELGE_KABUL,
   MAX_BELGE,

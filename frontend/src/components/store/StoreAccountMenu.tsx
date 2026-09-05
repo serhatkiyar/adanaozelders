@@ -17,7 +17,19 @@ export function StoreAccountMenu() {
   const logout = useLogout(ROUTES.store); // çıkışta mağazada kal, /giris'e atma
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Hover ile açılır (kullanıcı isteği, 1 Eyl). Kapanış küçük gecikmeli:
+  // tetik ile panel arasındaki 8px boşluğu geçerken menü sönmesin.
+  const kapanisZamanlayici = useRef<number | undefined>(undefined);
   const location = useLocation();
+
+  const hoverAc = () => {
+    window.clearTimeout(kapanisZamanlayici.current);
+    setOpen(true);
+  };
+  const hoverKapat = () => {
+    window.clearTimeout(kapanisZamanlayici.current);
+    kapanisZamanlayici.current = window.setTimeout(() => setOpen(false), 150);
+  };
 
   useEffect(() => {
     setOpen(false);
@@ -37,7 +49,7 @@ export function StoreAccountMenu() {
     return (
       <Link
         to="?modal=login"
-        className="group flex items-center gap-2 text-slate-600 transition-colors hover:text-indigo-600 "
+        className="group flex items-center gap-2 text-slate-600 transition-colors hover:text-[#F09A38] "
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -49,17 +61,18 @@ export function StoreAccountMenu() {
   }
 
   const alisverisAcik = alisverisYapabilir(user.role_id);
+  // Hover: açık turuncu zemin + marka turuncusu metin (Trendyol menü deseni).
   const itemClass =
-    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 ";
+    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#FEF8F0] hover:text-[#F09A38] ";
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} onMouseEnter={hoverAc} onMouseLeave={hoverKapat}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="group flex items-center gap-2 transition-colors hover:text-indigo-600 "
+        className="group flex items-center gap-2 transition-colors hover:text-[#F09A38] "
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -69,12 +82,24 @@ export function StoreAccountMenu() {
       </button>
 
       {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 "
-        >
-          <div className="my-1 border-t border-slate-100 " />
-
+        // KÖPRÜ DESENİ (1 Eyl): buton-menü arası boşluk `mt-2` (margin = ölü
+        // bölge, imleç oradan geçerken mouseleave tetiklenir) DEĞİL `pt-2`
+        // (padding = boşluk hover alanının İÇİNDE). Menü görsel olarak aynı
+        // 8px aşağıda ama imleç yavaş inerken kapanmaz — zamanlayıcı yalnız
+        // yana çıkışlarda devrededir. Tetiğin tam altına ortalanır.
+        <div className="absolute left-1/2 top-full z-40 -translate-x-1/2 pt-2">
+          <div
+            role="menu"
+            className="w-44 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 "
+          >
+          {/* Hesabım İLK sırada (kullanıcı isteği, 1 Eyl). */}
+          <Link to={ROUTES.profile} onClick={() => setOpen(false)} className={itemClass}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            Hesabım
+          </Link>
           {alisverisAcik && (
             <Link to={ROUTES.orders} onClick={() => setOpen(false)} className={itemClass}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -85,21 +110,8 @@ export function StoreAccountMenu() {
               Siparişlerim
             </Link>
           )}
-          <Link to={ROUTES.profile} onClick={() => setOpen(false)} className={itemClass}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-            Hesabım
-          </Link>
-          <Link to={ROUTES.settings} onClick={() => setOpen(false)} className={itemClass}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-            Ayarlar
-          </Link>
-
+          {/* "Ayarlar" kaldırıldı (1 Eyl, kullanıcı kararı) — Hesabım
+              üzerinden zaten ulaşılıyor, menü sade kalsın. */}
           <div className="my-1 border-t border-slate-100 " />
           <button
             type="button"
@@ -116,6 +128,7 @@ export function StoreAccountMenu() {
             </svg>
             Çıkış yap
           </button>
+          </div>
         </div>
       )}
     </div>

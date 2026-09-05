@@ -28,6 +28,9 @@ import type {
   VariantGroup,
   VariantGroupDetail,
   VariantGroupWrite,
+  VariantMatrixPreview,
+  VariantMatrixRow,
+  VariantMatrixResult,
 } from "@/types";
 
 const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
@@ -95,6 +98,22 @@ export async function fetchProduct(
 
 export async function fetchCategories(): Promise<ProductCategory[]> {
   const { data } = await apiClient.get<ProductCategory[]>("/store/categories");
+  return data;
+}
+
+/** Aramaya KAPSAMLI kategori sayaçları (kenar çubuğu "İlgili kategoriler"):
+ *  yalnız eşleşme içeren kategoriler, alt-ağaç toplamı sayılarla. Filtre
+ *  semantiği ürün aramasıyla aynı kaynaktan (backend tek koşul listesi). */
+export async function fetchCategoryFacets(
+  params: Pick<
+    ProductSearchParams,
+    "q" | "kind" | "min_price" | "max_price" | "min_rating" | "publisher" | "author" | "cover_type" | "variant"
+  >
+): Promise<ProductCategory[]> {
+  const { data } = await apiClient.get<ProductCategory[]>("/store/category-facets", {
+    params,
+    paramsSerializer: { indexes: null },
+  });
   return data;
 }
 
@@ -268,6 +287,11 @@ export async function requestReturn(
 /** Mağaza yüzeylerinin paylaştığı sunucu sabitleri. */
 export interface StoreConfig {
   low_stock_threshold: number;
+  /** Ücretsiz kargo eşiği (TL). İstemci kendi kopyasını TAŞIMAZ: `.env`'den
+   *  değişen bir eşik vitrinde eski değeriyle görünürdü. */
+  shipping_free_threshold?: string;
+  /** Eşik altı fiziksel siparişin sabit kargo ücreti (TL). */
+  shipping_flat_fee?: string;
 }
 
 export async function fetchStoreConfig(): Promise<StoreConfig> {
@@ -419,6 +443,32 @@ export async function deleteProductImage(
   return data;
 }
 
+/** Galeri sırası. Dizide GEÇMEYEN görsel silinmez; sunucu onu sona alır —
+ *  başka bir yönetici bu sırada görsel yüklediyse kaybolmasın. */
+export async function reorderProductImages(
+  id: number,
+  imageIds: number[]
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.patch<ProductDetailOut>(
+    `/store/admin/products/${id}/images/reorder`,
+    { image_ids: imageIds }
+  );
+  return data;
+}
+
+/** Görsel üstverisi. Yalnız gönderilen alan güncellenir; boş dize temizler. */
+export async function updateProductImage(
+  id: number,
+  imageId: number,
+  payload: { alt_text?: string | null; caption?: string | null }
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.patch<ProductDetailOut>(
+    `/store/admin/products/${id}/images/${imageId}`,
+    payload
+  );
+  return data;
+}
+
 export async function createCategory(
   payload: ProductCategoryWrite
 ): Promise<ProductCategory> {
@@ -501,6 +551,30 @@ export async function deriveVariant(
   const { data } = await apiClient.post<ProductDetailOut>(
     `/store/admin/products/${productId}/derive-variant`,
     payload
+  );
+  return data;
+}
+
+/** Kombinasyon önizlemesi — KURU ÇALIŞTIRMA, hiçbir şey yazmaz. */
+export async function previewVariantMatrix(
+  productId: number,
+  payload: { option1_values: string[]; option2_values?: string[] | null }
+): Promise<VariantMatrixPreview> {
+  const { data } = await apiClient.post<VariantMatrixPreview>(
+    `/store/admin/products/${productId}/variant-matrix/preview`,
+    payload
+  );
+  return data;
+}
+
+/** Kardeş varyantları toplu üretir — hepsi ya da hiçbiri (tek transaction). */
+export async function createVariantMatrix(
+  productId: number,
+  rows: VariantMatrixRow[]
+): Promise<VariantMatrixResult> {
+  const { data } = await apiClient.post<VariantMatrixResult>(
+    `/store/admin/products/${productId}/variant-matrix`,
+    { rows }
   );
   return data;
 }

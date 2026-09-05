@@ -12,7 +12,7 @@ import { normalizePhoneTR } from "@/lib/phone";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 
-import { AnaDugme, OnayKutusu } from "./alanlar";
+import { AnaDugme, OnayKutusu } from "@/components/form/alanlar";
 import { Anlati } from "./anlati";
 import { Basvuruldu } from "./Basvuruldu";
 import { BolumBelge } from "./BolumBelge";

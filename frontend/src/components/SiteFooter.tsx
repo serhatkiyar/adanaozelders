@@ -1,8 +1,5 @@
 import { Link } from "react-router-dom";
-import { useAuthStore } from "@/store/authStore";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useKayitAcik } from "@/hooks/useKayitAcik";
-import { ROUTES } from "@/lib/routes";
+import { LEGAL_ROUTES, ROUTES } from "@/lib/routes";
 import { LEGAL_NAV } from "@/lib/legalNav";
 
 /* ─── ortak site footer'ı ──────────────────────────────────
@@ -20,11 +17,61 @@ import { LEGAL_NAV } from "@/lib/legalNav";
    max-w-[1216px]); mağaza footer'ının `mt-auto w-full`'u korundu çünkü
    StoreLayout dikey flex kolonudur ve onsuz footer yukarı kayar. */
 
+/** Sosyal hesaplar — URL'i BOŞ olan çizilmez. Gerçek hesap adresleri
+ *  açıldıkça buraya yazılır (uydurma handle koymuyoruz: yanlış hesaba
+ *  işaret etmek hiç ikon göstermemekten kötü). */
+const SOSYAL_HESAPLAR: { ad: string; url: string; ikon: React.ReactNode }[] = [
+  {
+    ad: "Instagram",
+    url: "https://www.instagram.com/adanaozeldersofficial/",
+    ikon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="3" y="3" width="18" height="18" rx="5" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  {
+    ad: "TikTok",
+    url: "https://www.tiktok.com/@adanaozeldersofficial",
+    ikon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M16.6 3c.4 2 1.7 3.4 3.9 3.6v3c-1.5 0-2.8-.4-3.9-1.2v5.9c0 3.7-2.4 6.1-5.8 6.1-3.2 0-5.5-2.3-5.5-5.3 0-3.4 2.9-5.6 6.3-5.1v3.1c-.3-.1-.7-.2-1.1-.2-1.4 0-2.4 1-2.4 2.3 0 1.4 1 2.3 2.5 2.3 1.7 0 2.9-1.2 2.9-3.4V3h3.1z" />
+      </svg>
+    ),
+  },
+  {
+    ad: "YouTube",
+    url: "https://www.youtube.com/@adanaozeldersofficial",
+    ikon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="2.5" y="5.5" width="19" height="13" rx="3.5" />
+        <path d="M10 9.5v5l4.5-2.5L10 9.5z" fill="currentColor" stroke="none" />
+      </svg>
+    ),
+  },
+  {
+    ad: "Facebook",
+    url: "https://www.facebook.com/adanaozeldersofficial",
+    ikon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.9.2-1.5 1.5-1.5h1.4V4.9c-.3 0-1.1-.1-2.1-.1-2.1 0-3.6 1.3-3.6 3.7V11H8.3v3h2.4v7h2.8z" />
+      </svg>
+    ),
+  },
+  {
+    ad: "X",
+    url: "https://x.com/adanaozelderstr",
+    ikon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.7 3H21l-7.3 8.3L22.2 21h-6.7l-5.3-6.5L4.2 21H1l7.8-8.9L1.8 3h6.9l4.8 5.9L17.7 3zm-1.2 16h1.9L7.6 4.9H5.5L16.5 19z" />
+      </svg>
+    ),
+  },
+];
+
 export function SiteFooter() {
-  const token = useAuthStore((s) => s.token);
-  const { data: user } = useCurrentUser();
-  const loggedIn = !!token && !!user;
-  const kayitAcik = useKayitAcik();
 
   const linkCls = "transition hover:text-slate-900 ";
   const baslikCls = "text-sm font-semibold text-slate-900";
@@ -47,78 +94,100 @@ export function SiteFooter() {
 
   return (
     // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <footer className="mt-auto w-full border-t border-slate-100 bg-[#fafafa] py-12 ">
-      <div className="mx-auto max-w-[1216px] px-6">
+    <footer className="mt-auto w-full border-t border-slate-100 bg-[#fafafa] ">
+      {/* "Başa dön" — Amazon deseni (30 Ağu): yüzen FAB yerine footer'ın hemen
+          üstünde tam genişlik şerit. Gerekçe: FAB içerik/aksiyonların üstünde
+          yüzüp mobilde parmak alanı çalar; şerit ise tam kullanıcının "sayfa
+          bitti, şimdi ne yapacağım" anına yerleşir, layout'la yarışmaz ve tüm
+          sayfalarda (ortak footer) kendiliğinden var olur. */}
+      <button
+        type="button"
+        onClick={() => {
+          const az = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          window.scrollTo({ top: 0, behavior: az ? "auto" : "smooth" });
+        }}
+        className="block w-full bg-slate-100 py-3.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900"
+      >
+        Başa dön
+      </button>
+      <div className="mx-auto max-w-[1216px] px-6 py-12">
         <nav
           aria-label="Site bağlantıları"
-          className="grid grid-cols-2 gap-x-10 gap-y-8 text-sm text-slate-500 sm:gap-x-14"
+          className="grid grid-cols-2 gap-x-10 gap-y-8 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14"
         >
+            {/* 31 Ağu (kullanıcı kararları): Destek EN SOLDA, sonra Hakkımızda.
+                Destek linkleri — mesafeli satışta erişilebilir iletişim
+                kanalı zorunlu. */}
             <div className="space-y-2.5">
-              <p className={baslikCls}>Kurumsal</p>
+              <p className={baslikCls}>Destek</p>
+              {/* Kısa "İletişim" iki uzun satır arasında güdük kalıyordu — en üste. */}
+              <Link to={ROUTES.contact} className={`block ${linkCls}`}>
+                İletişim
+              </Link>
+              <Link to={ROUTES.faq} className={`block ${linkCls}`}>
+                Sıkça Sorulan Sorular
+              </Link>
+              <Link to={LEGAL_ROUTES.refund} className={`block ${linkCls}`}>
+                Nasıl iade edebilirim
+              </Link>
+            </div>
+
+            <div className="space-y-2.5">
+              <p className={baslikCls}>Hakkımızda</p>
               {hakkimizda && (
                 <Link to={hakkimizda.path} className={`block ${linkCls}`}>
-                  {hakkimizda.title}
+                  Biz Kimiz
                 </Link>
               )}
               <Link to={ROUTES.blog} className={`block ${linkCls}`}>
                 Blog
               </Link>
-              {/* Destek: mesafeli satışta erişilebilir iletişim kanalı zorunlu. */}
-              <Link to={ROUTES.faq} className={`block ${linkCls}`}>
-                SSS
-              </Link>
-              <Link to={ROUTES.contact} className={`block ${linkCls}`}>
-                İletişim
-              </Link>
             </div>
 
-            {!loggedIn && (
-              <div className="space-y-2.5">
-                <p className={baslikCls}>Hesap</p>
-                <Link to="?modal=login" className={`block ${linkCls}`}>
-                  Giriş Yap
-                </Link>
-                {/* Kayıt bayrağı kapalıyken gizli (asıl kilit backend'de). */}
-                {kayitAcik && (
-                  <Link to="?modal=register" className={`block ${linkCls}`}>
-                    Kayıt Ol
-                  </Link>
-                )}
-              </div>
-            )}
+            {/* "Hesap" sütunu KALDIRILDI (31 Ağu): giriş/kayıt navbar'da. */}
+
+            {/* Güvenli ödeme — Trendyol'daki "Güvenli Alışveriş" gibi kendi
+                sütununda (iyzico bandı: iyzico+Visa+MC+Amex tek dosyada). */}
+            <div className="space-y-2.5">
+              <p className={baslikCls}>Güvenli Ödeme</p>
+              <img
+                src="/odeme/iyzico-logo-band.svg"
+                alt="iyzico ile güvenli ödeme"
+                loading="lazy"
+                className="h-6 w-auto max-w-full object-contain "
+              />
+            </div>
           </nav>
 
-        {/* Logo + ödeme rozetleri — ayırıcı ÇİZGİNİN ÜSTÜNDE (Amazon deseni).
-            iyzico bandı logodan bir tık KÜÇÜK (h-6 < h-7) durur.
-            Band tek dosyada iyzico + Visa + Mastercard + Amex taşır (429×32);
-            Troy vb. eklenecekse bandın SAĞINA aynı yükseklikte gelir. */}
-        <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-          <Link to="/" className="shrink-0 transition hover:opacity-90">
-            <img
-              src="/logo.svg"
-              alt="Adana Özel Ders Logo"
-              className="h-7 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0"
-            />
-          </Link>
-          <img
-            src="/odeme/iyzico-logo-band.svg"
-            alt="iyzico ile güvenli ödeme"
-            loading="lazy"
-            className="h-6 w-auto max-w-full object-contain "
-          />
-        </div>
-
-        {/* Çizginin ALTINDA, Amazon'un alt şeridi gibi iki ortalı satır:
-            önce yasal linkler, en altta telif. */}
-        <div className="mt-6 border-t border-slate-100 pt-6 text-center text-xs text-slate-400">
-          <p className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
-            {yasalBelgeler.map((doc) => (
-              <Link key={doc.id} to={doc.path} className="transition hover:text-slate-600">
-                {doc.kisaAd}
-              </Link>
-            ))}
-          </p>
-          <p className="mt-2.5">© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
+        {/* Alt bölge — Trendyol deseni (31 Ağu): sosyal ikonlar da BURADA.
+            Satır 1: sosyaller (solda). Satır 2: solda telif, sağda yasal. */}
+        <div className="mt-10 space-y-4 border-t border-slate-100 pt-6">
+          {SOSYAL_HESAPLAR.some((h) => h.url) && (
+            <div className="flex items-center gap-4">
+              {SOSYAL_HESAPLAR.filter((h) => h.url).map((h) => (
+                <a
+                  key={h.ad}
+                  href={h.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={h.ad}
+                  className="text-slate-400 transition hover:text-slate-700"
+                >
+                  {h.ikon}
+                </a>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col gap-2 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+            <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
+            <p className="flex flex-wrap items-center gap-x-5 gap-y-1">
+              {yasalBelgeler.map((doc) => (
+                <Link key={doc.id} to={doc.path} className="transition hover:text-slate-600">
+                  {doc.kisaAd}
+                </Link>
+              ))}
+            </p>
+          </div>
         </div>
       </div>
     </footer>

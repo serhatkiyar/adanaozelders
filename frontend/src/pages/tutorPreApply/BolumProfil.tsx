@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { toast } from "@/store/toastStore";
 
-import { CokSatir, Metin, SegmentSecim } from "./alanlar";
+import { CokSatir, Metin, SegmentSecim } from "@/components/form/alanlar";
 import { DENEYIM_SECENEKLERI, MAX_FOTO_BAYT, type FormDurumu } from "./tipler";
 
 /**

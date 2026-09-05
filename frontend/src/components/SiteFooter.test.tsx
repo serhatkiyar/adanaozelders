@@ -56,7 +56,7 @@ describe("SiteFooter", () => {
     sar(<SiteFooter />);
     const footer = screen.getByRole("contentinfo");
     expect(
-      within(footer).getByRole("link", { name: "SSS" }).getAttribute("href")
+      within(footer).getByRole("link", { name: "Sıkça Sorulan Sorular" }).getAttribute("href")
     ).toBe(ROUTES.faq);
     expect(
       within(footer)
@@ -88,11 +88,11 @@ describe("SiteFooter", () => {
     }
   });
 
-  it("anonim kullanıcıya giriş/kayıt kısayollarını gösterir", () => {
+  it("giriş/kayıt footer'da YOK (31 Ağu: Hesap sütunu kaldırıldı, navbar'da yaşar)", () => {
     sar(<SiteFooter />);
     const footer = screen.getByRole("contentinfo");
-    expect(within(footer).getByRole("link", { name: "Giriş Yap" })).toBeTruthy();
-    expect(within(footer).getByRole("link", { name: "Kayıt Ol" })).toBeTruthy();
+    expect(within(footer).queryByRole("link", { name: "Giriş Yap" })).toBeNull();
+    expect(within(footer).queryByRole("link", { name: "Kayıt Ol" })).toBeNull();
   });
 });
 
@@ -111,10 +111,9 @@ describe("PublicShell", () => {
     expect(
       within(footer).getAllByAltText("iyzico ile güvenli ödeme").length
     ).toBe(1);
+    // Hakkımızda sayfası "Biz Kimiz" etiketiyle durur (31 Ağu düzeni).
     expect(
-      within(footer)
-        .getByRole("link", { name: LEGAL_NAV[0].title })
-        .getAttribute("href")
+      within(footer).getByRole("link", { name: "Biz Kimiz" }).getAttribute("href")
     ).toBe(LEGAL_NAV[0].path);
   });
 });

@@ -1,8 +1,17 @@
 import { Link } from "react-router-dom";
+import { useMyEducations } from "@/hooks/useEducations";
 import { parseMoney } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import type { TutorOut } from "@/types";
 
+/**
+ * İlan tamamlanma göstergesi.
+ *
+ * DİPLOMA MADDESİ ZORUNLUDUR ve listede ayrı durur: sunucudaki yayın kapısı
+ * (`tutor_service.submit_for_approval`) belge ya da e-Devlet barkodu arıyor.
+ * Bu madde eskiden hiç sayılmıyordu; %100 görünen bir profil yayına
+ * gönderildiğinde 422 alıyor, eğitmen sebebini göremiyordu.
+ */
 export function ProfileCompleteness({
   tutor,
   showLink = true,
@@ -10,6 +19,11 @@ export function ProfileCompleteness({
   tutor: TutorOut;
   showLink?: boolean;
 }) {
+  const { data: egitimler } = useMyEducations();
+  const belgeVar = (egitimler ?? []).some(
+    (e) => !!e.document_url || !!e.verification_code,
+  );
+
   const items = [
     { label: "Başlık", done: !!tutor.headline?.trim() },
     { label: "Biyografi", done: !!tutor.bio?.trim() },
@@ -18,6 +32,7 @@ export function ProfileCompleteness({
     { label: "Eğitim şekli", done: !!tutor.teaching_mode },
     { label: "Verdiğin dersler", done: (tutor.subjects?.length ?? 0) > 0 },
     { label: "Müsaitlik", done: (tutor.availability?.length ?? 0) > 0 },
+    { label: "Diploma veya belge", done: belgeVar },
   ];
   const doneCount = items.filter((i) => i.done).length;
   const pct = Math.round((doneCount / items.length) * 100);
@@ -48,6 +63,12 @@ export function ProfileCompleteness({
           <span className="font-medium text-amber-600 ">
             {" "}
             Branş seçmeden aramada görünmezsin.
+          </span>
+        )}
+        {!belgeVar && (
+          <span className="font-medium text-amber-600 ">
+            {" "}
+            Belge eklemeden ilanı yayına gönderemezsin.
           </span>
         )}
       </p>

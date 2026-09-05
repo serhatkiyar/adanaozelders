@@ -368,6 +368,15 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     barcode: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Kargo ağırlık ipucu (ileride il/ağırlık bazlı tarife için). MVP'de bilgi amaçlı.
     weight_grams: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Marka / üretici.
+    #:
+    #: Kitapta YAYINEVİ ayrı bir alandır (`publisher`) ve marka onun yerine
+    #: geçmez: kırtasiye ve eğitim materyalinde marka ("Faber-Castell",
+    #: "Palme") satın alma kararının doğrudan girdisidir ve bugüne dek yalnız
+    #: tedarikçi kataloğunda vardı, ürüne hiç taşınmıyordu.
+    #:
+    #: schema.org `Product.brand` da bu alandan beslenir.
+    brand: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
 
     # ── Kitap künyesi (hepsi opsiyonel; kitap-dışı/dijital üründe boş kalır, gösterilmez).
     # D&R/Kitapseç/Trendyol "Ürün Özellikleri" tablosunun karşılığı; schema.org Book'a eşlenir.
@@ -593,6 +602,11 @@ class ProductImage(Base, TimestampMixin):
     )
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     caption: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    #: Ekran okuyucu için görsel açıklaması. NULL ise vitrin ürün başlığına
+    #: düşer — bu doğru bir yedek ama "kapağın arkası", "iç sayfa örneği" gibi
+    #: ayrımı taşıyamaz; galeride her görselin aynı adı taşıması, klavye/ekran
+    #: okuyucu kullanıcısının görseller arasında ayrım yapamaması demektir.
+    alt_text: Mapped[str | None] = mapped_column(String(200), nullable=True)
     sort_order: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )

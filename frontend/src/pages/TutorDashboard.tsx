@@ -10,9 +10,10 @@ import { CancelModal } from "@/components/CancelModal";
 import { useMeetingStore } from "@/store/meetingStore";
 import { useBookingAction, useBookings } from "@/hooks/useBookings";
 import { useEarnings } from "@/hooks/usePayments";
+import { useMyTutorProfile } from "@/hooks/useTutorProfile";
 import { useMyPayout } from "@/hooks/usePayout";
 import { PaymentBadge } from "@/components/PaymentBadge";
-import { BookingStatus, type BookingOut } from "@/types";
+import { BookingStatus, TutorStatus, type BookingOut } from "@/types";
 import { ROUTES } from "@/lib/routes";
 import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
@@ -247,6 +248,7 @@ export default function TutorDashboard() {
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
   const { data: earnings } = useEarnings();
   const { data: payout } = useMyPayout();
+  const { data: ilan } = useMyTutorProfile();
   const { joinMeeting } = useMeetingStore();
 
   const groups = useMemo(() => {
@@ -269,6 +271,31 @@ export default function TutorDashboard() {
   return (
     <DashboardShell title="Eğitmen Paneli" navItems={TUTOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-6 pb-12">
+        {/*
+          Taslak ilan panelin en üstünde durur. Eğitmen kayıt olup akışı yarıda
+          bıraktığında, geri döndüğünde kaldığı yeri bulabileceği tek yer
+          burasıydı — eskiden hiçbir yerden görünmüyordu.
+        */}
+        {ilan?.status === TutorStatus.DRAFT && (
+          <Link
+            to={ROUTES.tutorOnboarding}
+            className="flex items-center justify-between gap-4 rounded-2xl bg-indigo-50 px-5 py-4 ring-1 ring-indigo-100 transition hover:bg-indigo-100/70"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-indigo-900">
+                İlanın henüz yayında değil
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-indigo-700">
+                Kaldığın yerden devam et; tamamlayınca öğrenciler seni aramada
+                bulmaya başlar.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white">
+              Devam et
+            </span>
+          </Link>
+        )}
+
         {isLoading ? (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">

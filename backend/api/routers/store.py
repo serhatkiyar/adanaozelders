@@ -68,6 +68,8 @@ from schemas.store import (
     ProductCategoryUpdate,
     ProductCreate,
     ProductDetailOut,
+    ProductImagePatchIn,
+    ProductImageReorderIn,
     ProductReviewCreate,
     ProductReviewOut,
     ProductSearchOut,
@@ -81,6 +83,10 @@ from schemas.store import (
     VariantGroupDetailOut,
     VariantGroupOut,
     VariantGroupUpdate,
+    VariantMatrixCreateIn,
+    VariantMatrixCreateOut,
+    VariantMatrixPreviewIn,
+    VariantMatrixPreviewOut,
 )
 from schemas.delivery import (
     DeliveryFeedbackIn,
@@ -157,8 +163,17 @@ async def store_config():
     tam da bu paketin düzelttiği sorundu: değer üç yerde ayrı ayrı gömülüydü
     ve biri kaydığında alarm kartı ile ürün listesi farklı küme gösteriyordu.
     Tek kaynak `core.stock_policy`; istemci onu OKUR, tekrarlamaz.
+
+    Kargo eşiği ve sabit ücreti aynı gerekçeyle burada: `lib/shipping.ts` bugün
+    kendi kopyasını taşıyor ve `.env`'den değiştirilen bir eşik vitrinde eski
+    değeriyle görünürdü — müşteriye "ücretsiz kargoya 20 TL kaldı" deyip
+    ödemede farklı bir tutar göstermek en pahalı sürprizdir.
     """
-    return {"low_stock_threshold": LOW_STOCK_THRESHOLD}
+    return {
+        "low_stock_threshold": LOW_STOCK_THRESHOLD,
+        "shipping_free_threshold": str(settings.SHIPPING_FREE_THRESHOLD),
+        "shipping_flat_fee": str(settings.SHIPPING_FLAT_FEE),
+    }
 
 
 @router.get("/categories", response_model=list[ProductCategoryOut])
@@ -173,6 +188,42 @@ async def list_book_facets(
 ):
     """Kitap filtrelerinin seçenekleri (yayınevi / yazar / kapak) + sayıları."""
     return await store_service.list_book_facets(db, category_id=category_id)
+
+
+@router.get("/category-facets", response_model=list[ProductCategoryOut])
+async def search_category_facets(
+    q: str | None = Query(default=None, max_length=200),
+    kind: str | None = Query(default=None, pattern="^(PHYSICAL|DIGITAL)$"),
+    min_price: Decimal | None = Query(default=None, ge=0),
+    max_price: Decimal | None = Query(default=None, ge=0),
+    min_rating: float | None = Query(default=None, ge=0, le=5),
+    publisher: list[str] | None = Query(default=None),
+    author: list[str] | None = Query(default=None),
+    cover_type: list[str] | None = Query(default=None),
+    variant: list[str] | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aramaya KAPSAMLI kategori sayaçları (kenar çubuğu "İlgili kategoriler").
+
+    Yalnız eşleşme içeren kategoriler döner; sayılar alt-ağaç toplamıdır ve
+    ürün aramasıyla AYNI filtre koşullarından türetilir (tek kaynak:
+    `_urun_filtre_kosullari`)."""
+    try:
+        variant_filters = store_service.parse_variant_filters(variant)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return await store_service.search_category_facets(
+        db,
+        q=q,
+        kind=kind,
+        min_price=min_price,
+        max_price=max_price,
+        min_rating=min_rating,
+        publisher=publisher,
+        author=author,
+        cover_type=cover_type,
+        variant_filters=variant_filters or None,
+    )
 
 
 @router.get("/products", response_model=list[ProductSearchOut])
@@ -412,6 +463,51 @@ async def delete_product_image(
     return product
 
 
+# Sıralama ucu, `{image_id}` yakalayıcısından ÖNCE tanımlanır: aksi hâlde
+# "/images/reorder" isteği `{image_id}` kalıbına düşer ve "reorder" int'e
+# çevrilemediği için 422 döner.
+@router.patch(
+    "/admin/products/{product_id}/images/reorder", response_model=ProductDetailOut
+)
+async def reorder_product_images(
+    product_id: int,
+    payload: ProductImageReorderIn,
+    admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await store_service.reorder_images(db, product_id, payload.image_ids)
+    await audit_service.record(
+        db, actor=admin, action="product.media_update", target_type="product",
+        target_id=product_id,
+        meta={"op": "images_reorder", "count": len(payload.image_ids)},
+    )
+    return product
+
+
+@router.patch(
+    "/admin/products/{product_id}/images/{image_id}", response_model=ProductDetailOut
+)
+async def update_product_image(
+    product_id: int,
+    image_id: int,
+    payload: ProductImagePatchIn,
+    admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await store_service.update_image_meta(
+        db,
+        product_id,
+        image_id,
+        fields=payload.model_dump(exclude_unset=True),
+    )
+    await audit_service.record(
+        db, actor=admin, action="product.media_update", target_type="product",
+        target_id=product_id,
+        meta={"op": "image_meta", "image_id": image_id},
+    )
+    return product
+
+
 @router.post(
     "/admin/categories",
     response_model=ProductCategoryOut,
@@ -561,6 +657,44 @@ async def derive_variant(
         meta={"source_product_id": product_id},
     )
     return product
+
+
+@router.post(
+    "/admin/products/{product_id}/variant-matrix/preview",
+    response_model=VariantMatrixPreviewOut,
+)
+async def preview_variant_matrix(
+    product_id: int,
+    payload: VariantMatrixPreviewIn,
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kuru çalıştırma: ne üretilecek, ne zaten var. Hiçbir şey YAZMAZ.
+
+    Audit kaydı yok — bu uç yazma yapmaz; her tuş vuruşunda çağrılabilecek bir
+    önizlemeyi denetim defterine yazmak defteri gürültüye boğardı.
+    """
+    return await store_service.preview_variant_matrix(db, product_id, payload)
+
+
+@router.post(
+    "/admin/products/{product_id}/variant-matrix",
+    response_model=VariantMatrixCreateOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_variant_matrix(
+    product_id: int,
+    payload: VariantMatrixCreateIn,
+    admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    sonuc = await store_service.create_variant_matrix(db, admin, product_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="product.variant_matrix", target_type="product",
+        target_id=product_id,
+        meta={"created": sonuc.created, "product_ids": sonuc.product_ids},
+    )
+    return sonuc
 
 
 # ── Admin: sipariş yönetimi ──────────────────────────────────────────────────────

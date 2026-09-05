@@ -23,14 +23,17 @@ import { SITE_NAME } from "@/lib/seo";
  */
 export const OPERATOR = {
   name: SITE_NAME,
-  entity: "Serhat Kıyar Çukurova Dijital Pazarlama ve Yazılım",
+  // Şahıs şirketinde tescilli unvan yalnız AD SOYAD'dır (31 Ağu düzeltmesi):
+  // "Dijital Pazarlama ve Yazılım" eki alınmış bir ticaret unvanı DEĞİLDİ.
+  entity: "Serhat Kıyar",
   address: "Emek Mah. Oktar Cirit Cad. No: 81 D: 201 Ceyhan/Adana",
   email: "bilgi@adanaozelders.com.tr",
   /** Ekranda ve yasal metinlerde okunacak biçim. */
-  phone: "+90 539 879 63 69",
+  // İşletme sabit hattı (Netgsm, 30 Ağu) — kişisel cep BURADA KULLANILMAZ.
+  phone: "+90 322 911 07 89",
   /** `tel:` bağlantısı için boşluksuz biçim — telefon uygulamaları boşluklu
    *  numarayı bazı platformlarda yanlış ayrıştırır, bu yüzden ayrı tutulur. */
-  phoneHref: "+905398796369",
+  phoneHref: "+903229110789",
   taxNumber: "5590521517",
   taxOffice: "Ceyhan Vergi Dairesi Müdürlüğü",
   mersis: "",
@@ -100,7 +103,7 @@ const KVKK: LegalDoc = {
   title: "KVKK Aydınlatma Metni",
   description:
     "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Adana Özel Ders platformunda işlenen kişisel verilere ilişkin aydınlatma metni.",
-  updatedAt: "2026-06-11",
+  updatedAt: "2026-09-03",
   sections: [
     {
       id: "veri-sorumlusu",
@@ -125,6 +128,7 @@ const KVKK: LegalDoc = {
           "Mesajlaşma içerikleri: Platform üzerinden eğitmen-öğrenci yazışmaları (hizmet güvenliği ve uyuşmazlık çözümü amacıyla saklanır).",
           "Finansal işlem bilgileri: ödeme tutarı, ödeme durumu ve ödeme kuruluşu işlem referansı. Kart bilgileriniz Platform tarafından GÖRÜLMEZ ve SAKLANMAZ; ödeme sayfası doğrudan iyzico Ödeme Hizmetleri A.Ş. tarafından sunulur.",
           "Kimlik ve ödeme doğrulama verileri (yalnızca ödeme alan eğitmen ve kütüphane sorumluları için): T.C. Kimlik Numarası, IBAN ve diploma/denklik/öğrenci belgesi ile e-Devlet doğrulama (barkod) kodu. T.C. Kimlik Numarası veritabanında şifreli (kriptolu) saklanır; arayüzde yalnızca son dört hanesi gösterilir. Ödeme alıcısı hesabının kurulması için ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi ödeme kuruluşuna (iyzico) aktarılır.",
+          "Ön başvuru bilgileri (hesap açmadan iletilen): ad-soyad, cep telefonu, verdiğiniz dersler, isteğe bağlı e-posta, profil fotoğrafı, tanıtım metni, saatlik ücret, müsaitlik ve diploma/sertifika belgeleri. Bu veriler yalnızca başvurunuzun değerlendirilmesi ve sizinle iletişime geçilmesi için işlenir; üyelik açılmadığı sürece profil olarak yayımlanmaz.",
           "İşlem güvenliği bilgileri: IP adresi, oturum kayıtları, hata/erişim logları."
         ),
       ],
@@ -141,6 +145,7 @@ const KVKK: LegalDoc = {
           "Para alan tarafların (eğitmen, kütüphane) kimlik ve diploma/öğrenim belgesi doğrulaması ile ödeme alıcısı (alt üye işyeri) hesabının ödeme kuruluşu nezdinde kurulması.",
           "Platform güvenliğinin sağlanması, kötüye kullanımın önlenmesi ve uyuşmazlıkların çözümü.",
           "Yasal yükümlülüklerin yerine getirilmesi ve yetkili kurum taleplerinin karşılanması.",
+          "Eğitmen ön başvurularının değerlendirilmesi ve başvuru sahibiyle telefonla iletişime geçilmesi.",
           "Hizmet kalitesinin ölçülmesi ve geliştirilmesi."
         ),
       ],

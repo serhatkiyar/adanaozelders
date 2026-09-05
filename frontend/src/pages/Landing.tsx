@@ -17,7 +17,7 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
-import { DersArama, CompactSearch } from "@/components/HeroSearch";
+import { BigSearch, DersArama, CompactSearch } from "@/components/HeroSearch";
 import type { MekanDegeri } from "@/components/MekanSelect";
 import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
@@ -44,6 +44,9 @@ export default function Landing() {
   const [ders, setDers] = useState("");
   const [dersEtiket, setDersEtiket] = useState("");
   const [mekan, setMekan] = useState<MekanDegeri>({ online: false, yuzyuze: false, district: [] });
+  // Kütüphane sekmesinin KENDİ araması: ders/mekân değil, ad-semt + ilçe.
+  const [kutQ, setKutQ] = useState("");
+  const [kutDistrict, setKutDistrict] = useState<string[]>([]);
   const [scrolled, setScrolled] = useState(false);
   // Daralmışken kompakt aramaya tıklayınca geniş navbar'ı YERİNDE aç (sayfa
   // kaymaz). Tekrar kaydırınca kapanır.
@@ -66,6 +69,15 @@ export default function Landing() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const kutSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const sp = new URLSearchParams();
+    if (kutQ.trim()) sp.set("q", kutQ.trim());
+    kutDistrict.forEach((d) => sp.append("district", d));
+    const qs = sp.toString();
+    navigate(`${ROUTES.libraries}${qs ? `?${qs}` : ""}`);
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,9 +104,9 @@ export default function Landing() {
         <CompactSearch
           active={active}
           placeholder={placeholder}
-          q={dersEtiket}
-          district={mekan.yuzyuze ? mekan.district : []}
-          remote={mekan.online && !mekan.yuzyuze}
+          q={active === "kutuphaneler" ? kutQ : dersEtiket}
+          district={active === "kutuphaneler" ? kutDistrict : mekan.yuzyuze ? mekan.district : []}
+          remote={active !== "kutuphaneler" && mekan.online && !mekan.yuzyuze}
           onOpen={() => setSearchOpen(true)}
         />
       )}
@@ -104,19 +116,33 @@ export default function Landing() {
   // Büyük arama her zaman mount; navbar daralınca header onu max-height ile
   // yumuşakça katlar (sert zıplama yerine). Wrapper kendi ortalasını yapar
   // (bottom slot artık justify-center içermiyor — her sayfa kendi hizalar).
+  // Arama hapı SEKMEYE bakar (30 Ağu): eğitmenlerde ders+mekân, kütüphanelerde
+  // ad/semt yazısı + ilçe (uzaktan seçeneği yok — fiziksel mekân).
   const bottom = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      <DersArama
-        ders={ders}
-        dersEtiket={dersEtiket}
-        onDersChange={(qDeger, etiket) => {
-          setDers(qDeger);
-          setDersEtiket(etiket);
-        }}
-        mekan={mekan}
-        setMekan={setMekan}
-        onSubmit={submit}
-      />
+      {active === "kutuphaneler" ? (
+        <BigSearch
+          q={kutQ}
+          setQ={setKutQ}
+          district={kutDistrict}
+          setDistrict={setKutDistrict}
+          showRemoteOption={false}
+          onSubmit={kutSubmit}
+          placeholder={HERO_PLACEHOLDER.kutuphaneler}
+        />
+      ) : (
+        <DersArama
+          ders={ders}
+          dersEtiket={dersEtiket}
+          onDersChange={(qDeger, etiket) => {
+            setDers(qDeger);
+            setDersEtiket(etiket);
+          }}
+          mekan={mekan}
+          setMekan={setMekan}
+          onSubmit={submit}
+        />
+      )}
     </div>
   );
 

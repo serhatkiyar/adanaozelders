@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
@@ -8,11 +8,25 @@ import { StarRating } from "@/components/StarRating";
 import { RatingHistogram } from "@/components/store/RatingHistogram";
 import { ProductCard } from "@/components/store/ProductCard";
 import { HoverZoomImage } from "@/components/store/HoverZoomImage";
-import { DeliveryPromiseBadge } from "@/components/store/DeliveryPromiseBadge";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { StoreLayout } from "@/pages/store/StoreLayout";
-import { formatTL } from "@/lib/money";
-import { buildSpecRows } from "@/lib/productSpecs";
+import { buildSpecGroups, buildSpecRows } from "@/lib/productSpecs";
+import { buildProductJsonLd } from "@/lib/productJsonLd";
+import { shippingConfig, shippingFor } from "@/lib/shipping";
+import { CAYMA_HAKKI_GUN } from "@/lib/storePolicy";
+import {
+  buildAxes,
+  istenenCoz,
+  karsilanmayanSecim,
+  seciciGosterilsin,
+} from "@/lib/variantAxes";
+import { promiseText } from "@/lib/deliveryPromise";
+import { PriceBlock } from "@/components/store/PriceBlock";
+import { VariantSelector } from "@/components/store/VariantSelector";
+import { StickyBuyBar } from "@/components/store/StickyBuyBar";
+import { MiniCartDrawer } from "@/components/store/MiniCartDrawer";
+import { useDeliveryInfo } from "@/hooks/useDelivery";
+import { useModalA11y } from "@/hooks/useModalA11y";
 import { recordViewedProduct } from "@/lib/recentlyViewedProducts";
 import {
   useProduct,
@@ -28,7 +42,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useAuthStore } from "@/store/authStore";
 import { alisverisYapabilir } from "@/lib/roles";
-import type { ProductCategory, ProductKind, ProductVariants } from "@/types";
+import type { ProductCategory, ProductKind } from "@/types";
 import { toast } from "@/store/toastStore";
 
 // Düşük stok eşiği burada SABİT DEĞİL: sunucudan (`GET /store/config`)
@@ -39,13 +53,36 @@ import { toast } from "@/store/toastStore";
 
 type DetailTab = "about" | "reviews" | "policy";
 
+/** Zengin açıklama tipografisi — blog gövdesinin mağaza ölçeğindeki karşılığı.
+ *  Sunucu allowlist'i ne üretiyorsa yalnız onlar biçimlendirilir. */
+const ACIKLAMA_SINIFI = [
+  "text-sm leading-relaxed text-slate-700",
+  "[&_p]:mt-3",
+  "[&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-900",
+  "[&_h3]:mt-5 [&_h3]:font-semibold [&_h3]:text-slate-900",
+  "[&_h4]:mt-4 [&_h4]:font-semibold [&_h4]:text-slate-900",
+  "[&_a]:font-medium [&_a]:text-indigo-600 [&_a]:underline [&_a]:underline-offset-2",
+  "[&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1",
+  "[&_blockquote]:mt-4 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_blockquote]:italic",
+  "[&_hr]:my-6 [&_hr]:border-slate-200",
+].join(" ");
+
+/** Kategori linki — breadcrumb, keşif çipleri ve BreadcrumbList markup'ı AYNI
+ *  kaynaktan üretsin diye tek yerde. Markup ile ekranın ayrışması Google'ın
+ *  yapılandırılmış veri politikasının ihlali sayılır. */
+const categoryChipHref = (categoryId: number) =>
+  `${ROUTES.store}?category=${categoryId}`;
+
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, isError } = useProduct(slug);
-  const lowStockThreshold = useStoreConfig().data?.low_stock_threshold;
+  const { data: storeConfig } = useStoreConfig();
+  const lowStockThreshold = storeConfig?.low_stock_threshold;
   const { data: reviews } = useProductReviews(product?.id);
   const { data: distribution } = useProductRatingDistribution(product?.id);
   const { data: categories } = useCategories();
+  const { data: deliveryInfo } = useDeliveryInfo();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const add = useCartStore((s) => s.add);
   const toggleFav = useFavoritesStore((s) => s.toggle);
@@ -54,6 +91,18 @@ export default function ProductDetailPage() {
   const [activeImg, setActiveImg] = useState<string | null>(null);
   const [tab, setTab] = useState<DetailTab>("about");
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Lightbox erişilebilirliği ortak kancadan: odak tuzağı, Esc (pencere
+  // yığınına saygılı), kaydırma kilidi ve kapanınca odağın tetikleyiciye
+  // dönmesi. Bunların hiçbiri elle yazılmış hâlinde yoktu.
+  const lightboxPanelRef = useRef<HTMLDivElement>(null);
+  // Mobil sabit çubuk yalnız ASIL düğme ekrandan çıkınca görünür.
+  const sepetDugmesiRef = useRef<HTMLButtonElement>(null);
+  const [miniSepetAcik, setMiniSepetAcik] = useState(false);
+  useModalA11y({
+    open: lightboxOpen,
+    onClose: () => setLightboxOpen(false),
+    panelRef: lightboxPanelRef,
+  });
 
   // Benzer ürünler: aynı kategoriden (kendisi hariç). Kategori yoksa -1 → boş döner.
   const { data: relatedRaw } = useProducts({
@@ -92,19 +141,21 @@ export default function ProductDetailPage() {
     );
   }, [categories, category]);
 
-  // Lightbox klavye gezinmesi (Esc kapatır, ←/→ galeride gezer).
+  // Lightbox'ta ←/→ ile galeride gezinme.
+  //
+  // Esc BURADA ELE ALINMAZ: kapatmayı `useModalA11y` üstlenir. O kanca açık
+  // pencereleri bir yığında tutar ve klavye olayını yalnız EN ÜSTTEKİ pencere
+  // işler; kendi Esc dinleyicimizi eklemek iç içe pencerelerde iki kapanışa
+  // yol açardı.
   useEffect(() => {
     if (!lightboxOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setLightboxOpen(false);
-        return;
-      }
       if (!product) return;
       const g = [
         ...(product.cover_url ? [product.cover_url] : []),
         ...product.images.map((i) => i.url),
       ];
+      // (aynı sıra `galleryUrls` ile; burada erken-dönüş öncesi hesaplanıyor)
       if (g.length < 2) return;
       const cur = Math.max(0, g.indexOf(activeImg ?? g[0]));
       if (e.key === "ArrowLeft") setActiveImg(g[(cur - 1 + g.length) % g.length]);
@@ -133,12 +184,23 @@ export default function ProductDetailPage() {
     );
   }
 
+  // Galeri öğesi ARTIK kendi alt metnini taşır: sekiz görselin sekizi de
+  // "ürün başlığı" diye okunduğunda ekran okuyucu kullanıcısı aralarında ayrım
+  // yapamıyordu. Alt metin boşsa başlığa düşülür — sözlük dolmadan da bozulmaz.
   const gallery = [
-    ...(product.cover_url ? [product.cover_url] : []),
-    ...product.images.map((i) => i.url),
+    ...(product.cover_url
+      ? [{ url: product.cover_url, alt: product.title }]
+      : []),
+    ...product.images.map((i) => ({
+      url: i.url,
+      alt: i.alt_text?.trim() || product.title,
+    })),
   ];
-  const hero = activeImg ?? gallery[0] ?? null;
-  const heroIndex = Math.max(0, gallery.indexOf(hero ?? ""));
+  const galleryUrls = gallery.map((g) => g.url);
+  const hero = activeImg ?? galleryUrls[0] ?? null;
+  const heroIndex = Math.max(0, galleryUrls.indexOf(hero ?? ""));
+  const heroAlt =
+    gallery.find((g) => g.url === hero)?.alt ?? product.title;
   const soldOut = !product.in_stock;
   // Eşik bilinmiyorsa (config ucu düştü) uyarı BASILMAZ: yanlış eşikle
   // "son N ürün" demek müşteriye uydurulmuş bir aciliyet gösterir.
@@ -167,7 +229,10 @@ export default function ProductDetailPage() {
 
   function addToCart() {
     add(product!, 1);
-    toast.success("Sepete eklendi");
+    // Toast yerine çekmece: "sepete eklendi" tek başına hangi varyantın
+    // gittiğini söylemez ve üç yoldan (devam / sepet / ödeme) hiçbirini açmaz.
+    // Ekran okuyucu için duyuru çekmecenin kendi `role="dialog"` adıyla gelir.
+    setMiniSepetAcik(true);
   }
 
   // "Şimdi Al": sepete ekle + doğrudan ödemeye git (giriş/adres gerekirse checkout yönlendirir).
@@ -191,14 +256,46 @@ export default function ProductDetailPage() {
     }
   }
 
+  // ── Varyant eksenleri ──
+  //
+  // Seçici tek üyeli grupta hiç çizilmez: tek şıklı bir "seçim" karar değildir.
+  const eksenler = seciciGosterilsin(product.variants)
+    ? buildAxes(product.variants!, product.id)
+    : null;
+  // Karşılanamayan seçim bağlantıdan gelir (`?istenen=Ebat:M`) — varış sayfası
+  // ne kaybedildiğini bilmeden açıklayamazdı.
+  const kayipMesaji = eksenler
+    ? karsilanmayanSecim(eksenler, istenenCoz(searchParams.get("istenen")))
+    : null;
+
+  // ── Teslimat sözü ──
+  //
+  // Söz YALNIZ kendi stoğumuzdaki fiziksel üründe verilir. Tedarikçiden temin
+  // edilen üründe hazırlık süresi bilinmiyor (TB-77) ve "yarın kapında" demek
+  // tutulamayacak bir söz olurdu; o dalda aşağıdaki nötr not tek başına kalır.
+  const teslimatMetni =
+    product.kind === "PHYSICAL" &&
+    product.fulfillment !== "SUPPLIER" &&
+    deliveryInfo
+      ? promiseText(deliveryInfo)
+      : null;
+
+  // Sabit çubukta hangi varyantın sepete gideceği görünsün.
+  const varyantOzeti =
+    [product.option1_value, product.option2_value].filter(Boolean).join(" · ") ||
+    null;
+
   const specRows = buildSpecRows(product);
+  // Tam künye tablosu: gruplu + yönetilen nitelikler dahil. Nitelikler bugüne
+  // dek yönetimden GİRİLEBİLİYOR ama vitrine hiç çıkmıyordu.
+  const specGroups = buildSpecGroups(product, product.attributes ?? []);
   // Alış kutusu yakınında öne çıkan birkaç künye (yazar/yayınevi başlıkta zaten var).
   const highlightRows = specRows
     .filter((r) => r.key !== "author" && r.key !== "publisher")
     .slice(0, 4);
 
   // Sekmeler — "Ürün Açıklaması" (serbest metin + künye birlikte) yalnız içerik varsa görünür.
-  const hasAbout = !!product.description || specRows.length > 0;
+  const hasAbout = !!product.description || specGroups.length > 0;
   const tabDefs: { key: DetailTab; label: string }[] = [
     ...(hasAbout ? [{ key: "about" as const, label: "Ürün Açıklaması" }] : []),
     { key: "reviews" as const, label: "Değerlendirmeler" },
@@ -211,55 +308,34 @@ export default function ProductDetailPage() {
     document.getElementById("urun-sekmeler")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // schema.org: künye doluysa Product + Book çoklu-tip (offers + kitap meta).
-  const isBook = specRows.length > 0;
-  const bookProps = isBook
-    ? {
-        ...(product.author ? { author: { "@type": "Person", name: product.author } } : {}),
-        ...(product.publisher ? { publisher: product.publisher } : {}),
-        ...(product.isbn ? { isbn: product.isbn } : {}),
-        ...(product.page_count ? { numberOfPages: product.page_count } : {}),
-        ...(product.language ? { inLanguage: product.language } : {}),
-        ...(product.edition ? { bookEdition: product.edition } : {}),
-        ...(product.publication_year ? { datePublished: String(product.publication_year) } : {}),
-      }
-    : {};
+  // schema.org: künye doluysa Product + Book çoklu-tip. Markup saf modülden
+  // üretilir (`lib/productJsonLd.ts`) — orada test edilebiliyor ve sayfada
+  // görünen değerlerle aynı kaynaktan besleniyor.
+  const jsonLd = buildProductJsonLd({
+    product,
+    gallery: galleryUrls,
+    categoryTrail,
+    canonicalPath: ROUTES.storeProduct(product.slug),
+    storePath: ROUTES.store,
+    categoryHref: categoryChipHref,
+    isBook: specRows.length > 0,
+    // Markup'taki kargo tutarı EKRANDAKİYLE aynı kaynaktan; dijitalde gönderi
+    // olmadığı için null geçilir.
+    shippingRate:
+      product.kind === "PHYSICAL"
+        ? shippingFor(Number(product.price), shippingConfig(storeConfig))
+        : null,
+  });
 
   return (
     <StoreLayout title={product.title}>
       <Seo
         title={`${product.title}, Mağaza`}
         description={product.description ?? undefined}
-        type="article"
+        type="product"
         image={product.cover_url ?? undefined}
       >
-        <JsonLd
-          data={{
-            "@context": "https://schema.org",
-            "@type": isBook ? ["Product", "Book"] : "Product",
-            name: product.title,
-            description: product.description ?? undefined,
-            image: gallery,
-            ...bookProps,
-            offers: {
-              "@type": "Offer",
-              price: Number(product.price),
-              priceCurrency: product.currency,
-              availability: soldOut
-                ? "https://schema.org/OutOfStock"
-                : "https://schema.org/InStock",
-            },
-            ...(product.rating_count > 0 && product.rating_average
-              ? {
-                  aggregateRating: {
-                    "@type": "AggregateRating",
-                    ratingValue: product.rating_average.toFixed(1),
-                    reviewCount: product.rating_count,
-                  },
-                }
-              : {}),
-          }}
-        />
+        <JsonLd data={jsonLd} />
       </Seo>
 
       <div className="mx-auto max-w-[76rem] px-4 py-6 md:px-0">
@@ -271,10 +347,7 @@ export default function ProductDetailPage() {
           {categoryTrail.map((c) => (
             <span key={c.id} className="flex items-center gap-1.5">
               <span className="text-slate-300 ">/</span>
-              <Link
-                to={`${ROUTES.store}?category=${c.id}`}
-                className="hover:text-indigo-600 "
-              >
+              <Link to={categoryChipHref(c.id)} className="hover:text-indigo-600 ">
                 {c.name}
               </Link>
             </span>
@@ -286,8 +359,52 @@ export default function ProductDetailPage() {
         <div className="mt-5 grid gap-10 md:grid-cols-2">
           {/* Galeri */}
           <div className="flex flex-col gap-3">
+            {/* Mobil galeri: tam genişlik, parmakla kaydırmalı şerit + konum
+                sayacı. Masaüstündeki küçük resim şeridi mobilde yer israfıydı
+                ve hero'yu değiştirmenin TEK yolu ona dokunmaktı — kullanıcılar
+                galeriyi büyük oranda kaçırıyordu. */}
+            {hero && (
+              <div className="md:hidden">
+                <ul className="flex snap-x snap-mandatory gap-2 overflow-x-auto">
+                  {gallery.map((g, i) => (
+                    <li
+                      key={g.url}
+                      className="w-full shrink-0 snap-center"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveImg(g.url);
+                          setLightboxOpen(true);
+                        }}
+                        aria-label={`${g.alt} — büyüt`}
+                        className="block aspect-square w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6"
+                      >
+                        <img
+                          src={g.url}
+                          alt={g.alt}
+                          // İlk görsel mobilde LCP ögesidir: tembel YÜKLENMEZ.
+                          {...(i === 0
+                            ? { fetchpriority: "high" }
+                            : { loading: "lazy" as const })}
+                          decoding="async"
+                          className="h-full w-full object-contain mix-blend-multiply"
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {gallery.length > 1 && (
+                  <p className="mt-2 text-center text-xs text-slate-400">
+                    {gallery.length} görsel · kaydırarak gezin
+                  </p>
+                )}
+              </div>
+            )}
+
             {hero ? (
-              <HoverZoomImage src={hero} alt={product.title} onOpen={() => setLightboxOpen(true)}>
+              <div className="hidden md:block">
+              <HoverZoomImage src={hero} alt={heroAlt} onOpen={() => setLightboxOpen(true)}>
                 {/* Favori + paylaş — sağ üst köşe */}
                 <div className="absolute right-3 top-3 z-10 flex gap-2">
                   <button
@@ -327,33 +444,50 @@ export default function ProductDetailPage() {
                   </button>
                 </div>
               </HoverZoomImage>
+              </div>
             ) : (
               <div className="flex aspect-square items-center justify-center rounded-2xl border border-slate-200 text-slate-300 ">
                 Görsel yok
               </div>
             )}
             {gallery.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {gallery.map((url) => (
+              <div className="hidden gap-2 overflow-x-auto pb-1 md:flex">
+                {gallery.map((g, i) => (
                   <button
-                    key={url}
+                    key={g.url}
                     type="button"
-                    onClick={() => setActiveImg(url)}
+                    onClick={() => setActiveImg(g.url)}
+                    aria-label={`${i + 1}. görsel: ${g.alt}`}
+                    aria-current={hero === g.url ? "true" : undefined}
                     className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-white p-1 transition-colors ${
-                      hero === url ? "border-indigo-500 ring-1 ring-indigo-500" : "border-slate-200 hover:border-slate-300 "
+                      hero === g.url ? "border-indigo-500 ring-1 ring-indigo-500" : "border-slate-200 hover:border-slate-300 "
                     }`}
                   >
-                    <img src={url} alt="" className="h-full w-full object-contain mix-blend-multiply" />
+                    <img
+                      src={g.url}
+                      alt=""
+                      width={64}
+                      height={64}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-contain mix-blend-multiply"
+                    />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Bilgi + fiyat + sepet */}
-          <div className="flex flex-col">
+          {/* Bilgi + fiyat + sepet.
+              Masaüstünde bu kolon SABİTLENİR: galeri kaydırılırken satın alma
+              kararı ekranda kalır. `self-start` olmadan kolon grid hücresinin
+              tam yüksekliğine uzar ve `sticky` hiç tutmaz. */}
+          <div className="flex flex-col md:sticky md:top-24 md:self-start">
             {showSeller && (
               <span className="text-sm text-slate-400 ">{product.tutor_name}</span>
+            )}
+            {product.brand && (
+              <p className="text-sm font-medium text-slate-600">{product.brand}</p>
             )}
             <h1 className="mt-1 text-2xl font-semibold leading-snug text-slate-900 ">
               {product.title}
@@ -381,36 +515,25 @@ export default function ProductDetailPage() {
               <div className="mt-3 text-sm text-slate-400">Henüz değerlendirme yok</div>
             )}
 
-            {/* Varyant seçici — kardeşler; görsel değişimi ek iş istemez,
-                seçim kardeşin SAYFASINA gider ve görseller ürün başınadır. */}
-            {product.variants && product.variants.members.length > 1 && (
-              <VariantPicker variants={product.variants} currentId={product.id} />
-            )}
+            {/* Varyant seçici — eksen bazlı ızgara. Seçim kardeşin SAYFASINA
+                gider (her varyantın kendi slug'ı ve kanonik URL'i var);
+                görseller zaten ürün başınadır. Mantık `lib/variantAxes`te. */}
+            {eksenler && <VariantSelector axes={eksenler} />}
 
-            {/* Fiyat */}
-            <div className="mt-6 flex items-baseline gap-3">
-              <span className="text-3xl font-semibold text-slate-900 ">
-                {formatTL(product.price)}
-              </span>
-              {product.compare_at_price &&
-                Number(product.compare_at_price) > Number(product.price) && (
-                  <span className="text-base text-slate-400 line-through">
-                    {formatTL(product.compare_at_price)}
-                  </span>
-                )}
-            </div>
-
-            {product.kind === "PHYSICAL" && (soldOut || lowStock) && (
-              <p className="mt-1 text-sm">
-                {soldOut ? (
-                  <span className="text-slate-500">Stokta yok</span>
-                ) : (
-                  <span className="font-medium text-amber-600 ">
-                    Son {product.stock} ürün
-                  </span>
-                )}
+            {/* Karşılanamayan seçim SESSİZ geçilmez: kullanıcı "M" ebadındayken
+                "Mavi"ye geçtiyse ve mavi M üretilmiyorsa ne olduğunu okur. */}
+            {kayipMesaji && (
+              <p role="status" className="mt-2 text-sm text-amber-700">
+                {kayipMesaji}
               </p>
             )}
+
+            <PriceBlock
+              product={product}
+              config={storeConfig}
+              lowStock={lowStock}
+              deliveryText={teslimatMetni}
+            />
 
             {/* Tedarikçi stoğundan karşılanan ürün (D-2).
                 Tek satır, nötr renk: bu bir uyarı değil, dürüst bir beklenti
@@ -434,6 +557,7 @@ export default function ProductDetailPage() {
                 {soldOut ? "Tükendi" : "Şimdi Al"}
               </button>
               <button
+                ref={sepetDugmesiRef}
                 type="button"
                 disabled={soldOut}
                 onClick={addToCart}
@@ -452,22 +576,25 @@ export default function ProductDetailPage() {
               {/*
                 Tedarikçiden temin edilen üründe AYNI GÜN sözü VERİLMEZ.
 
-                `DeliveryPromiseBadge` sözü yalnız 16:00 cutoff'undan üretir;
-                stoğu hiç bilmez. Bu, tedarikçi katmanından ÖNCE sorun
-                değildi: rafta olmayan ürün zaten satın alınamıyordu ve rozet
-                hiç görünmüyordu. Artık görünebiliyor ve "bugün kapında"
-                diyor, oysa mal Yıldırım'dan getirilecek.
+                Söz yalnız 16:00 cutoff'undan üretilir ve stoğu hiç bilmez. Bu,
+                tedarikçi katmanından ÖNCE sorun değildi: rafta olmayan ürün
+                zaten satın alınamıyordu ve söz hiç görünmüyordu. Artık
+                görünebiliyor ve "bugün kapında" diyor, oysa mal Yıldırım'dan
+                getirilecek.
 
                 Yıldırım'ın hazırlık/teslim süresi HENÜZ BİLİNMİYOR (rapor
                 §4 açık konu 1) ve 1.000 TL minimum sipariş kuralı toplu alım
                 gerektiriyor. Doğru süreyi bilmeden bir gün yazmak, yanlış
                 sözü başka bir yanlış sözle değiştirmek olurdu; bu yüzden söz
-                GİZLENİR ve yukarıdaki nötr tedarikçi notu tek başına kalır.
+                GİZLENİR ve aşağıdaki nötr tedarikçi notu tek başına kalır.
                 Borç: TB-77.
+
+                KENDİ STOĞUMUZDAKİ fiziksel ürünün teslim TARİHİ artık fiyat
+                bloğunda (`PriceBlock`) yazıyor; burada ikinci bir teslimat
+                satırı çizmek aynı bilgiyi iki kez söylemek olurdu.
               */}
-              {product.kind === "PHYSICAL" && product.fulfillment !== "SUPPLIER" ? (
-                <DeliveryPromiseBadge />
-              ) : product.kind === "PHYSICAL" ? (
+              {product.kind === "PHYSICAL" ? (
+                product.fulfillment === "SUPPLIER" ? (
                 <div className="flex items-start gap-2.5 text-slate-600 ">
                   <svg
                     className="mt-0.5 shrink-0 text-slate-400"
@@ -488,6 +615,7 @@ export default function ProductDetailPage() {
                     bildirilir.
                   </span>
                 </div>
+                ) : null
               ) : (
                 <div className="flex items-start gap-2.5 text-slate-600 ">
                   <svg className="mt-0.5 shrink-0 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -556,20 +684,53 @@ export default function ProductDetailPage() {
         <div className="pt-6">
           {activeTab === "about" && (
             <div className="space-y-8">
-              {product.description && (
-                <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700 ">
-                  {product.description}
-                </div>
-              )}
-              {specRows.length > 0 && (
-                <dl className="max-w-xl divide-y divide-slate-100 ">
-                  {specRows.map((r) => (
-                    <div key={r.key} className="flex justify-between gap-6 py-2.5 text-sm">
-                      <dt className="text-slate-500 ">{r.label}</dt>
-                      <dd className="text-right font-medium text-slate-800 ">{r.value}</dd>
-                    </div>
+              {/* Açıklama zengin metin OLABİLİR (TipTap).
+                  `dangerouslySetInnerHTML` yalnız SUNUCUDA temizlenmiş içerikle
+                  kullanılır: `store_service._temiz_aciklama` her yazma yolunda
+                  `core/html_sanitize` allowlist'inden geçirir ve bunun kapsamı
+                  `test_urun_aciklama_sanitize.py` ile nöbetlidir.
+
+                  Etiket taşımayan (eski, düz metin) açıklamalar HTML olarak
+                  basılırsa satır sonları kaybolurdu; o yüzden düz metin dalı
+                  `whitespace-pre-line` ile korunuyor. Göç gerekmiyor. */}
+              {product.description &&
+                (/<[a-z][\s\S]*>/i.test(product.description) ? (
+                  <div
+                    className={ACIKLAMA_SINIFI}
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                  />
+                ) : (
+                  <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700 ">
+                    {product.description}
+                  </div>
+                ))}
+              {/* Künye TEK KOLON kalır: iki kolonlu bir özellik tablosu
+                  kullanıcılar tarafından ürün KARŞILAŞTIRMASI sanılıyor ve
+                  veri yanlış okunuyor. Gruplar taramayı, zebra satırlar
+                  etiketten değere yatay izi kolaylaştırıyor. */}
+              {specGroups.length > 0 && (
+                <div className="max-w-xl space-y-6">
+                  {specGroups.map((grup) => (
+                    <section key={grup.key}>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {grup.title}
+                      </h3>
+                      <dl className="mt-2">
+                        {grup.rows.map((r) => (
+                          <div
+                            key={r.key}
+                            className="flex justify-between gap-6 rounded px-2 py-2 text-sm odd:bg-slate-50"
+                          >
+                            <dt className="text-slate-500">{r.label}</dt>
+                            <dd className="text-right font-medium text-slate-800">
+                              {r.value}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </section>
                   ))}
-                </dl>
+                </div>
               )}
             </div>
           )}
@@ -635,7 +796,7 @@ export default function ProductDetailPage() {
               {discoverChips.map((c) => (
                 <Link
                   key={c.id}
-                  to={`${ROUTES.store}?category=${c.id}`}
+                  to={categoryChipHref(c.id)}
                   className="rounded-full border border-slate-200 px-3.5 py-1.5 text-sm text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
                 >
                   {c.name}
@@ -646,6 +807,23 @@ export default function ProductDetailPage() {
         )}
       </div>
 
+      <MiniCartDrawer
+        open={miniSepetAcik}
+        onClose={() => setMiniSepetAcik(false)}
+        product={product}
+        variantOzeti={varyantOzeti}
+        shipping={shippingConfig(storeConfig)}
+      />
+
+      <StickyBuyBar
+        price={product.price}
+        label={soldOut ? "Tükendi" : "Sepete Ekle"}
+        disabled={soldOut}
+        variantOzeti={varyantOzeti}
+        onAdd={addToCart}
+        anchorRef={sepetDugmesiRef}
+      />
+
       {/* Görsel büyütme (lightbox) — navbar backdrop-blur'ü bozmasın diye body'ye portal */}
       {lightboxOpen && hero &&
         createPortal(
@@ -653,6 +831,13 @@ export default function ProductDetailPage() {
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
             onClick={() => setLightboxOpen(false)}
           >
+            <div
+              ref={lightboxPanelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`${product.title} — görsel önizleme`}
+              className="relative flex h-full w-full items-center justify-center"
+            >
             <button
               type="button"
               aria-label="Kapat"
@@ -670,7 +855,7 @@ export default function ProductDetailPage() {
                   aria-label="Önceki"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setActiveImg(gallery[(heroIndex - 1 + gallery.length) % gallery.length]);
+                    setActiveImg(galleryUrls[(heroIndex - 1 + galleryUrls.length) % galleryUrls.length]);
                   }}
                   className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
                 >
@@ -681,7 +866,7 @@ export default function ProductDetailPage() {
                   aria-label="Sonraki"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setActiveImg(gallery[(heroIndex + 1) % gallery.length]);
+                    setActiveImg(galleryUrls[(heroIndex + 1) % galleryUrls.length]);
                   }}
                   className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
                 >
@@ -691,64 +876,15 @@ export default function ProductDetailPage() {
             )}
             <img
               src={hero}
-              alt={product.title}
+              alt={heroAlt}
               onClick={(e) => e.stopPropagation()}
-              className="max-h-[90vh] max-w-[90vw] object-contain"
+              className="max-h-[90vh] max-w-[90vw] touch-pinch-zoom object-contain"
             />
+            </div>
           </div>,
           document.body
         )}
     </StoreLayout>
-  );
-}
-
-/** Kardeş varyant seçici. Eksen adları GRUPTAN gelir (option1/2_name); seçim
- *  kardeşin sayfasına Link ile gider. Tükenen kardeş tıklanabilir kalır ama
- *  "Tükendi" işaretlidir — o sayfada stok bildirimi formu var.
- */
-function VariantPicker({
-  variants,
-  currentId,
-}: {
-  variants: ProductVariants;
-  currentId: number;
-}) {
-  const baslik = variants.option2_name
-    ? `${variants.option1_name} / ${variants.option2_name}`
-    : variants.option1_name;
-  return (
-    <div className="mt-6">
-      <p className="mb-2 text-sm font-medium text-slate-700 ">
-        {baslik}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {variants.members.map((m) => {
-          const etiket = [m.option1_value, m.option2_value]
-            .filter(Boolean)
-            .join(" / ");
-          const aktif = m.id === currentId;
-          return (
-            <Link
-              key={m.id}
-              to={ROUTES.storeProduct(m.slug)}
-              aria-current={aktif ? "true" : undefined}
-              className={`relative rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
-                aktif
-                  ? "border-indigo-600 text-indigo-600 ring-1 ring-indigo-600 "
-                  : "border-slate-200 text-slate-700 hover:border-slate-300 "
-              } ${!m.in_stock ? "opacity-60" : ""}`}
-            >
-              {etiket || m.title}
-              {!m.in_stock && (
-                <span className="ml-1.5 text-[11px] font-normal text-slate-400">
-                  · Tükendi
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
@@ -759,7 +895,7 @@ function PolicyPanel({ kind }: { kind: ProductKind }) {
         <>
           <p>
             <span className="font-medium text-slate-900 ">Cayma hakkı:</span>{" "}
-            Fiziksel ürünlerde teslim tarihinden itibaren 14 gün içinde, ürünü kullanılmamış ve
+            Fiziksel ürünlerde teslim tarihinden itibaren {CAYMA_HAKKI_GUN} gün içinde, ürünü kullanılmamış ve
             yeniden satılabilir durumda iade ederek siparişinizi iptal edebilirsiniz.
           </p>
           <p>

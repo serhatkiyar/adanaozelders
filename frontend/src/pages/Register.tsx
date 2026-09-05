@@ -2,49 +2,62 @@ import { FormEvent, useState } from "react";
 import { Field } from "@/components/ui/Field";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { register, type RegisterRole } from "@/api/auth";
+import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
 import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
 import { ConsentCheckbox } from "@/components/LegalConsent";
-import { Gender } from "@/types";
 import { currentConsentVersion } from "@/lib/legalContent";
+import { useAuthStore } from "@/store/authStore";
+import { buildWelcome } from "@/lib/greeting";
+import { roleHome } from "@/lib/roles";
+import { toast } from "@/store/toastStore";
+import { useQueryClient } from "@tanstack/react-query";
 
-const GENDERS = [
-  { value: Gender.MALE, label: "Erkek" },
-  { value: Gender.FEMALE, label: "Kadın" },
-  { value: Gender.UNSPECIFIED, label: "Belirtmek istemiyorum" },
-] as const;
+/**
+ * Kayıt formu DÖRT ALANDIR: ad, soyad, e-posta, parola.
+ *
+ * Kullanıcı adı artık SORULMUYOR — sunucu ad-soyaddan üretiyor
+ * (`auth_service._turet_kullanici_adi`); doğum tarihi ve cinsiyet ise zaten
+ * isteğe bağlıydı, `/ayarlar`'dan doldurulabiliyor. Kayıt ekranındaki her
+ * fazladan alan, ilanını oluşturmaya başlamadan vazgeçen aday demek.
+ *
+ * Kayıt başarılıysa OTOMATİK GİRİŞ yapılır: eğitmen doğrudan ilan
+ * sihirbazına düşer. Önceki davranış (giriş sayfasına atıp parolayı tekrar
+ * sordurmak) akışı tam başlangıçta kesiyordu.
+ */
 
 export default function Register() {
   const [role, setRole] = useState<RegisterRole>("client");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [gender, setGender] = useState<Gender | "">("");
   const navigate = useNavigate();
-
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const queryClient = useQueryClient();
+  const setToken = useAuthStore((s) => s.setToken);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      register(role, {
+    mutationFn: async () => {
+      await register(role, {
         email,
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        username: username.trim(),
-        birth_date: birthDate || null,
-        gender: gender || null,
         // KVKK ispat kaydı: onaylanan metinlerin sürümü sunucuya yazılır.
         consent_version: currentConsentVersion(),
-      }),
-    onSuccess: () => {
-      navigate(ROUTES.login, {
+      });
+      const token = await login(email, password);
+      setToken(token.access_token);
+      const user = await fetchMe();
+      setUser(user);
+      queryClient.setQueryData(["me"], user);
+      return user;
+    },
+    onSuccess: (user) => {
+      toast.success(buildWelcome(user.id, user.full_name));
+      navigate(role === "tutor" ? ROUTES.tutorOnboarding : roleHome(user.role_id), {
         replace: true,
-        state: { registered: true },
       });
     },
   });
@@ -115,24 +128,6 @@ export default function Register() {
             </Field>
           </div>
 
-          <Field label="Kullanıcı Adı" required>
-            {(id) => (
-                <input
-                    id={id}
-                  type="text"
-                  required
-                  minLength={3}
-                  maxLength={50}
-                  pattern="[a-zA-Z0-9_]+"
-                  title="Yalnızca harf, rakam ve alt çizgi (_)"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
-                  placeholder="kullanici_adi"
-                />
-            )}
-          </Field>
-
           <Field label="E-posta" required>
             {(id) => (
                 <input
@@ -162,39 +157,6 @@ export default function Register() {
                 />
             )}
           </Field>
-
-          {/* Opsiyonel demografi */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Doğum Tarihi">
-              {(id) => (
-                  <input
-                    id={id}
-                    type="date"
-                    max={todayStr}
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
-                  />
-              )}
-            </Field>
-            <Field label="Cinsiyet">
-              {(id) => (
-                  <select
-                    id={id}
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value as Gender | "")}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
-                  >
-                    <option value="">Seçilmedi</option>
-                    {GENDERS.map((g) => (
-                      <option key={g.value} value={g.value}>
-                        {g.label}
-                      </option>
-                    ))}
-                  </select>
-              )}
-            </Field>
-          </div>
 
           <ConsentCheckbox />
 

@@ -212,6 +212,17 @@ class Settings(BaseSettings):
     #: `GET /store/admin/tax-health` kaç siparişin bu durumda olduğunu sayar.
     SHIPPING_TAX_RATE: float | None = None
 
+    #: İndirim duyurusunda referans alınan geçmiş pencere (GÜN).
+    #:
+    #: Ticari Reklam ve Haksız Ticari Uygulamalar Yönetmeliği'nde üstü çizili
+    #: fiyatın dayanağı uzun süre "son 30 gün"dü; 1 Ağustos 2026'dan itibaren
+    #: **son 10 gün** olarak uygulanıyor. Değer kod sabiti değil AYAR: mevzuat
+    #: yeniden değişirse kod dokunulmadan çevrilebilsin.
+    #:
+    #: Değeri büyütmek indirim iddiasını GÜÇLENDİRMEZ, aksine daha eski ve
+    #: yüksek bir fiyatı referans göstererek dayanaksız bir indirim üretir.
+    PRICE_REFERENCE_WINDOW_DAYS: int = 10
+
     # ── Fatura (e-Arşiv'e HAZIR, hiçbir dış servise BAĞLI DEĞİL) ──
     #: Sunucu taraflı fatura ucunun ana şalteri. Varsayılan KAPALI: metinler
     #: mali müşavir onayından geçene ve satıcı bilgileri kesinleşene kadar

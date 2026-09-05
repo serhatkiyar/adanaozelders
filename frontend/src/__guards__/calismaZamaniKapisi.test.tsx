@@ -110,6 +110,20 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu yuzey (duzenleme yuzeyi) + supplierId",
   },
+  // Ürün galerisi ve varyant matrisi KAYITLI bir ürün üzerinde çalışır
+  // (yükleme/üretim ürün id'si ister); propsuz mount `product.id`de patlar.
+  // Adsız kontrol borçları kendi kabul matrislerinde kapanıyor:
+  // `productMedia.acceptance.test.tsx` her galeri görselinin adlandırılmış bir
+  // alt metin alanı olduğunu, `variantMatrix.acceptance.test.tsx` her tablo
+  // hücresinin `aria-label` taşıdığını GERÇEK DOM üzerinden sınıyor.
+  "src/components/admin/store/ProductMediaManager.tsx": {
+    tur: "props",
+    gerekce: "zorunlu urun (kayitli urun id'si)",
+  },
+  "src/components/admin/store/VariantMatrixPanel.tsx": {
+    tur: "props",
+    gerekce: "zorunlu urun (varyant grubu + kaynak id)",
+  },
   // İP-B2 · liste ailesi: kural fonksiyonu `aksiyonlar` dizisini gezdiği
   // için propsuz mount PATLAR. Borcu, kendi davranış dosyasında ve ürün
   // listesi kabul matrisinde kapanıyor.

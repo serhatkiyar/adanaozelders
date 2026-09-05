@@ -230,11 +230,19 @@ export const OLCUM_TABANI = [
   "src/components/admin/store/EditProductModal.tsx",
   "src/components/admin/store/OrdersPanel.tsx",
   "src/components/admin/store/ProductForm.tsx",
+  // Ürün galerisi yönetimi: çoklu görsel uçları API'de yazılıydı ama hiçbir
+  // yerden çağrılmıyordu; yönetici bir ürüne yalnız tek kapak koyabiliyordu.
+  // Dosya ölçüme SIFIR borç ekler (ham düğme yok, adsız kontrol yok) — iki
+  // tavan da doluydu, eklenemezdi.
+  "src/components/admin/store/ProductMediaManager.tsx",
   "src/components/admin/store/ProductsPanel.tsx",
   "src/components/admin/store/ReturnsPanel.tsx",
   "src/components/admin/store/StoreAttributesManager.tsx",
   // Tedarikci senkronu (Yildirim B2B) — yeni yuzey, dogdugu gun olcume girer.
   "src/components/admin/store/SupplierLinkDialog.tsx",
+  // Varyant matrisi: kardeşler bugüne dek TEK TEK türetiliyordu
+  // (3 renk × 3 ebat = dokuz tur). Ölçüme sıfır borç ekler.
+  "src/components/admin/store/VariantMatrixPanel.tsx",
   "src/components/admin/store/SupplierPanel.tsx",
   "src/components/admin/ui/Badge.tsx",
   "src/components/admin/ui/Button.tsx",

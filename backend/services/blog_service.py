@@ -1,75 +1,23 @@
 """Blog iş kuralları: sanitizasyon, slug/redirect, yaşam döngüsü.
 
-XSS sınırı BURADADIR: `body_html` public tarafta dangerouslySetInnerHTML ile
-basılır; DB'ye sanitize edilmemiş HTML asla yazılmaz. Temizlik okuma anında
-değil KAYDETME anında yapılır — okuma yolu sıcak, yazma yolu nadirdir ve
-temizlik bir kez yapılınca kolondaki veri her tüketici için güvenlidir.
+XSS sınırı `core/html_sanitize.py`dedir ve `sanitize_html` buradan yeniden
+dışa aktarılır (mevcut çağrı yerleri ve testler kırılmasın). Temizlik okuma
+anında değil KAYDETME anında yapılır.
 """
 from __future__ import annotations
 
 import datetime
-import re
 
-import nh3
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.html_sanitize import sanitize_html
 from core.slug import slugify_tr
 from models.blog import BlogPost, BlogPostRedirect
 from schemas.blog import BlogPostWrite
 
-#: TipTap StarterKit çıktısının karşılığı — allowlist DIŞI her şey atılır.
-#: `script`, `iframe`, `style`, on* öznitelikleri ve javascript: şeması nh3'ün
-#: varsayılan davranışıyla zaten temizlenir; burada kapsamı daha da daraltıyoruz.
-_ALLOWED_TAGS = {
-    "p", "br", "hr",
-    "h2", "h3", "h4",
-    "strong", "em", "s", "u", "mark",
-    "a", "ul", "ol", "li",
-    "blockquote", "code", "pre",
-    "img", "figure", "figcaption",
-    "table", "thead", "tbody", "tr", "th", "td",
-}
-_ALLOWED_ATTRIBUTES = {
-    "a": {"href", "title"},
-    "img": {"src", "alt", "title", "width", "height"},
-    "th": {"colspan", "rowspan"},
-    "td": {"colspan", "rowspan"},
-    # `style` yalnız hizalama için: attribute_filter değeri süzer (aşağıda).
-    "p": {"style"},
-    "h2": {"style"},
-    "h3": {"style"},
-    "h4": {"style"},
-}
-_ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
-
-#: TipTap TextAlign'ın ürettiği tek biçim. `style` genel bir CSS kapısı DEĞİL:
-#: bu kalıba uymayan her style özniteliği bütünüyle atılır (color, font, url()
-#: — hepsi). Bkz. test_blog_sanitize.py.
-_HIZA_STILI = re.compile(r"^\s*text-align:\s*(left|center|right|justify)\s*;?\s*$")
-
-
-def _oznitelik_suzgeci(element: str, attribute: str, value: str) -> str | None:
-    if attribute != "style":
-        return value
-    m = _HIZA_STILI.match(value)
-    return f"text-align: {m.group(1)}" if m else None
-
-
-def sanitize_html(raw: str) -> str:
-    """Editör HTML'ini allowlist'e indirger (saf; pytest'li)."""
-    if not raw:
-        return ""
-    return nh3.clean(
-        raw,
-        tags=_ALLOWED_TAGS,
-        attributes=_ALLOWED_ATTRIBUTES,
-        attribute_filter=_oznitelik_suzgeci,
-        url_schemes=_ALLOWED_URL_SCHEMES,
-        link_rel="noopener noreferrer",
-    )
-
+__all__ = ["sanitize_html"]
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)

@@ -67,7 +67,11 @@ export function StockLedgerPanel({
         </Badge>
       </header>
 
-      {dogrulama.data && !dogrulama.data.consistent && (
+      {/* `problems` YOKSA da bu dal açılabiliyordu: sunucu beklenmedik bir
+          gövde döndürdüğünde `undefined.map` tüm düzenleme penceresini —
+          ve onunla birlikte ürün listesini — beyaz ekrana düşürüyordu.
+          Bir doğrulama şeridinin eksikliği bunu hak etmez. */}
+      {dogrulama.data && !dogrulama.data.consistent && dogrulama.data.problems && (
         <ul className="space-y-1 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900 ">
           {dogrulama.data.problems.map((p, i) => (
             <li key={`${p.code}-${i}`}>

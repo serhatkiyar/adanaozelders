@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from core import mail, storage
 from core.config import settings
+from core.html_sanitize import sanitize_html
 from core.stock_policy import (
     karsilanma_kaynagi,
     satilabilir_mi,
@@ -47,11 +48,23 @@ from models.store import (
     StockNotification,
     VariantGroup,
 )
+from models.store_merchandising import (
+    ProductAttributeAssignment,
+    ProductAttributeDefinition,
+    ProductAttributeValue,
+)
 from models.supplier import Supplier, SupplierProduct
 from models.tutor import Tutor
 from schemas.review import RatingDistributionOut
 from schemas.store import (
     DeriveVariantIn,
+    ProductAttributeChipOut,
+    VariantMatrixCellOut,
+    VariantMatrixCreateIn,
+    VariantMatrixCreateOut,
+    VariantMatrixPreviewIn,
+    VariantMatrixPreviewOut,
+    VariantSwatchOut,
     ProductCategoryCreate,
     ProductCategoryOut,
     ProductCategoryUpdate,
@@ -252,6 +265,7 @@ def _to_search_out(
         tax_rate=(Decimal(str(p.tax_rate)) if p.tax_rate is not None else None),
         currency=p.currency,
         cover_url=p.cover_url,
+        brand=p.brand,
         in_stock=(
             in_stock_override
             if in_stock_override is not None
@@ -745,6 +759,141 @@ def parse_variant_filters(items: list[str] | None) -> dict[str, list[str]]:
     return out
 
 
+async def _urun_filtre_kosullari(
+    db: AsyncSession,
+    *,
+    q: str | None,
+    category_id: int | None,
+    tutor_id: int | None,
+    kind: str | None,
+    min_price: Decimal | None,
+    max_price: Decimal | None,
+    min_rating: float | None,
+    publisher: list[str] | None,
+    author: list[str] | None,
+    cover_type: list[str] | None,
+    variant_filters: dict[str, list[str]] | None,
+) -> list:
+    """Müşteri aramasının WHERE koşulları — `search_products` ile kategori
+    facet'leri (`search_category_facets`) AYNI listeden beslenir; iki yüzeyin
+    filtre semantiği birbirinden kayamaz. `in_stock` bilerek dışarıda: grup
+    semantiği taşır ve yalnız arama sorgusunun DIŞ katmanında uygulanır."""
+    kosullar = [
+        Product.status == ProductStatus.ACTIVE.value,
+        Product.deleted_at.is_(None),
+    ]
+    if category_id is not None:
+        kosullar.append(
+            Product.category_id.in_(await _category_and_descendants(db, category_id))
+        )
+    if tutor_id is not None:
+        kosullar.append(Product.tutor_id == tutor_id)
+    if kind:
+        kosullar.append(Product.kind == kind)
+    if min_price is not None:
+        kosullar.append(Product.price >= min_price)
+    if max_price is not None:
+        kosullar.append(Product.price <= max_price)
+    if min_rating is not None:
+        kosullar.append(Product.rating_count > 0)
+        kosullar.append(Product.rating_sum >= min_rating * Product.rating_count)
+    for column, values in (
+        (Product.publisher, publisher),
+        (Product.author, author),
+        (Product.cover_type, cover_type),
+    ):
+        if values:
+            kosullar.append(
+                normalized(column).in_([normalize_tr(v) for v in values])
+            )
+    for eksen, degerler in (variant_filters or {}).items():
+        kosullar.append(
+            select(VariantGroup.id)
+            .where(
+                VariantGroup.id == Product.variant_group_id,
+                VariantGroup.deleted_at.is_(None),
+                or_(
+                    (VariantGroup.option1_name == eksen)
+                    & Product.option1_value.in_(degerler),
+                    (VariantGroup.option2_name == eksen)
+                    & Product.option2_value.in_(degerler),
+                ),
+            )
+            .exists()
+        )
+    if q:
+        kosullar.append(_arama_kolu(q))
+    return kosullar
+
+
+async def search_category_facets(
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    kind: str | None = None,
+    min_price: Decimal | None = None,
+    max_price: Decimal | None = None,
+    min_rating: float | None = None,
+    publisher: list[str] | None = None,
+    author: list[str] | None = None,
+    cover_type: list[str] | None = None,
+    variant_filters: dict[str, list[str]] | None = None,
+) -> list[ProductCategoryOut]:
+    """Aramaya KAPSAMLI kategori sayaçları (Trendyol/Amazon kenar çubuğu):
+    yalnız eşleşme içeren kategoriler, sayılar alt-ağaç toplamıyla (rollup).
+    `category_id` bilerek parametre DEĞİL: facet listesi her zaman tüm ağaca
+    bakar; seçili kategori daraltması arayüzün gezinme hâlidir, kapsamı değil.
+    """
+    kosullar = await _urun_filtre_kosullari(
+        db,
+        q=q,
+        category_id=None,
+        tutor_id=None,
+        kind=kind,
+        min_price=min_price,
+        max_price=max_price,
+        min_rating=min_rating,
+        publisher=publisher,
+        author=author,
+        cover_type=cover_type,
+        variant_filters=variant_filters,
+    )
+    rows = (
+        await db.execute(
+            select(Product.category_id, func.count())
+            .where(*kosullar, Product.category_id.isnot(None))
+            .group_by(Product.category_id)
+        )
+    ).all()
+    cats = (
+        (
+            await db.execute(
+                select(ProductCategory).where(ProductCategory.deleted_at.is_(None))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    parents = {c.id: c.parent_id for c in cats}
+    counts = rollup_category_counts([(cid, n) for cid, n in rows], parents)
+    return [
+        ProductCategoryOut(
+            id=c.id,
+            slug=c.slug,
+            name=c.name,
+            parent_id=c.parent_id,
+            icon_url=c.icon_url,
+            sort_order=c.sort_order,
+            is_active=c.is_active,
+            product_count=int(counts[c.id]),
+            default_tax_rate=None,
+            effective_tax_rate=None,
+        )
+        for c in cats
+        if counts.get(c.id)
+    ]
+
+
 async def search_products(
     db: AsyncSession,
     *,
@@ -774,71 +923,23 @@ async def search_products(
     score = _bayesian_score_expr(prior_mean, confidence)
 
     # ── Filtre koşulları (İÇ sorguya uygulanır) ──
-    kosullar = [
-        Product.status == ProductStatus.ACTIVE.value,
-        Product.deleted_at.is_(None),
-    ]
-    if category_id is not None:
-        # Üst kategori seçilince alt kategorilerdeki ürünler de gelmeli.
-        # Tam eşitlik kullanıldığında ("Sınav Kitapları" gibi) hiçbir üst
-        # kategori ürün göstermiyordu: ürünler yaprak kategorilere atanır
-        # (seed_kitapsec.py) ama gezinme üst kategoriden başlar.
-        kosullar.append(
-            Product.category_id.in_(await _category_and_descendants(db, category_id))
-        )
-    if tutor_id is not None:
-        kosullar.append(Product.tutor_id == tutor_id)
-    if kind:
-        kosullar.append(Product.kind == kind)
-    if min_price is not None:
-        kosullar.append(Product.price >= min_price)
-    if max_price is not None:
-        kosullar.append(Product.price <= max_price)
-    # DİKKAT: `in_stock` burada YOK — grup semantiği taşır ("grubun herhangi
-    # bir varyantı stokta") ve DIŞ sorguda `grp_stok` üzerinden uygulanır.
-    # İçte uygulansaydı tükenen üyeler partition'dan düşer ve temsilci/fiyat
-    # hesapları "stoktakiler" alt kümesine kayardı.
-    if min_rating is not None:
-        # Ham ortalama >= min_rating (bölmesiz): rating_sum >= min_rating * count.
-        kosullar.append(Product.rating_count > 0)
-        kosullar.append(Product.rating_sum >= min_rating * Product.rating_count)
-    # Künye filtreleri normalize edilmiş karşılaştırma yapar: kullanıcı
-    # "palme yayinlari" seçse de kayıt "Palme Yayınları" olarak durur.
-    for column, values in (
-        (Product.publisher, publisher),
-        (Product.author, author),
-        (Product.cover_type, cover_type),
-    ):
-        if values:
-            kosullar.append(
-                normalized(column).in_([normalize_tr(v) for v in values])
-            )
-    # Varyant eksen filtresi: değer, EKSENİ o ada sahip grupların üyelerinde
-    # aranır — birinci ya da ikinci eksen olması fark etmez (facet karışması
-    # çözümünün filtre tarafı; bkz. list_book_facets'teki not).
-    #
-    # KORELE EXISTS, JOIN DEĞİL (P2-6b dersi): Faz 3b refactor'ünde koşullar
-    # WHERE listesine alınıp VariantGroup JOIN'i sorguya SONRADAN eklenince
-    # eşleşme bozuldu ve filtre eksen adını fiilen yok saydı — "Ebat:Sarı"
-    # taşıyan ürün "Renk:Sarı" filtresinde de geliyordu. Eski testler değerleri
-    # eksene özgü ürettiği için bunu yakalayamadı (artık çapraz-eksen fixture'ı
-    # var). EXISTS ürünün KENDİ grubuna bağlanır; ikinci FROM/kartesyen riski
-    # yapısal olarak yoktur.
-    for eksen, degerler in (variant_filters or {}).items():
-        kosullar.append(
-            select(VariantGroup.id)
-            .where(
-                VariantGroup.id == Product.variant_group_id,
-                VariantGroup.deleted_at.is_(None),
-                or_(
-                    (VariantGroup.option1_name == eksen)
-                    & Product.option1_value.in_(degerler),
-                    (VariantGroup.option2_name == eksen)
-                    & Product.option2_value.in_(degerler),
-                ),
-            )
-            .exists()
-        )
+    # Tek kaynak `_urun_filtre_kosullari` (facet'lerle paylaşılır). Buradaki
+    # tarihsel gerekçeler (in_stock DIŞ katman, korele EXISTS/P2-6b, künye
+    # normalizasyonu) o yardımcı fonksiyonun üstünde ve içinde yaşar.
+    kosullar = await _urun_filtre_kosullari(
+        db,
+        q=q,
+        category_id=category_id,
+        tutor_id=tutor_id,
+        kind=kind,
+        min_price=min_price,
+        max_price=max_price,
+        min_rating=min_rating,
+        publisher=publisher,
+        author=author,
+        cover_type=cover_type,
+        variant_filters=variant_filters,
+    )
 
     relevance = literal(0.0)
     if q:
@@ -853,7 +954,7 @@ async def search_products(
         tsquery = search_tsquery(q)
         norm_title = normalized(Product.title)
         norm_q = normalized(q)
-        kosullar.append(_arama_kolu(q))
+        # NOT: _arama_kolu koşulu yardımcıda eklendi; burada yalnız relevance.
         relevance = func.ts_rank(Product.search_vector, tsquery) + func.similarity(
             norm_title, norm_q
         )
@@ -1031,15 +1132,160 @@ async def _variants_block(
                 variant_sort=m.variant_sort or 0,
                 in_stock=_in_stock(m, tedarikci.get(m.id)),
                 price=str(m.price),
+                cover_url=m.cover_url,
+                sku=m.sku,
             )
             for m in uyeler
         ],
+        swatches=await _eksen_swatchleri(db, g, uyeler),
     )
+
+
+async def _eksen_swatchleri(
+    db: AsyncSession, g: VariantGroup, uyeler: list[Product]
+) -> list[VariantSwatchOut]:
+    """Eksen değerlerinin renk örnekleri (yönetilen nitelik sözlüğünden).
+
+    Eşleşme eksen ADI ↔ nitelik tanımı adı, değer ↔ nitelik değeri etiketi
+    üzerinden kurulur ve Türkçe normalleştirmeye tabidir: sözlükte "Kırmızı",
+    üründe "kırmızı" yazıyorsa örnek yine bulunmalıdır.
+
+    Sözlük boşsa boş liste döner ve seçici metin butonuna DÜŞER — bu bir hata
+    değil, sözlük doldurulmadan önceki normal hâldir.
+    """
+    eksen_adlari = [ad for ad in (g.option1_name, g.option2_name) if ad]
+    if not eksen_adlari:
+        return []
+
+    rows = (
+        await db.execute(
+            select(
+                ProductAttributeDefinition.name,
+                ProductAttributeValue.label,
+                ProductAttributeValue.swatch_hex,
+                ProductAttributeValue.swatch_image_url,
+            )
+            .join(
+                ProductAttributeValue,
+                ProductAttributeValue.definition_id == ProductAttributeDefinition.id,
+            )
+            .where(
+                ProductAttributeDefinition.name.in_(eksen_adlari),
+                ProductAttributeDefinition.deleted_at.is_(None),
+                ProductAttributeValue.deleted_at.is_(None),
+                ProductAttributeValue.is_active.is_(True),
+                or_(
+                    ProductAttributeValue.swatch_hex.isnot(None),
+                    ProductAttributeValue.swatch_image_url.isnot(None),
+                ),
+            )
+        )
+    ).all()
+    if not rows:
+        return []
+
+    sozluk = {
+        (variant_service.esdeger_anahtar(ad), variant_service.esdeger_anahtar(etiket)): (
+            hex_,
+            gorsel,
+        )
+        for ad, etiket, hex_, gorsel in rows
+    }
+
+    # Yalnız BU grupta gerçekten kullanılan değerler döner: sözlüğün tamamını
+    # yollamak, on üründe kullanılmayan yüz rengi her ürün detayına eklerdi.
+    sonuc: list[VariantSwatchOut] = []
+    gorulen: set[tuple[str, str]] = set()
+    for m in uyeler:
+        for ad, deger in ((g.option1_name, m.option1_value), (g.option2_name, m.option2_value)):
+            if not ad or not deger or (ad, deger) in gorulen:
+                continue
+            gorulen.add((ad, deger))
+            bulunan = sozluk.get(
+                (variant_service.esdeger_anahtar(ad), variant_service.esdeger_anahtar(deger))
+            )
+            if bulunan is None:
+                continue
+            sonuc.append(
+                VariantSwatchOut(
+                    axis_name=ad, value=deger, hex=bulunan[0], image_url=bulunan[1]
+                )
+            )
+    return sonuc
+
+
+async def _urun_nitelikleri(
+    db: AsyncSession, product_id: int
+) -> list[ProductAttributeChipOut]:
+    """Ürüne atanmış yönetilen nitelikler ("Kağıt Cinsi: 80 gr").
+
+    Admin bunları uzun süredir YAZABİLİYORDU (`ProductManagedAttributes`) ama
+    public detay yanıtına hiç girmiyorlardı: kırtasiye ürününde künye tablosu
+    yalnız kitap alanlarından besleniyor ve boş çıkıyordu.
+
+    Tek sorgu; sıralama tanımın ve değerin kendi sırasından gelir ki künye
+    tablosu her üründe aynı düzende okunsun.
+    """
+    rows = (
+        await db.execute(
+            select(
+                ProductAttributeDefinition.name,
+                ProductAttributeValue.label,
+                ProductAttributeDefinition.sort_order,
+                ProductAttributeValue.sort_order,
+            )
+            .join(
+                ProductAttributeValue,
+                ProductAttributeValue.definition_id == ProductAttributeDefinition.id,
+            )
+            .join(
+                ProductAttributeAssignment,
+                ProductAttributeAssignment.value_id == ProductAttributeValue.id,
+            )
+            .where(
+                ProductAttributeAssignment.product_id == product_id,
+                ProductAttributeAssignment.deleted_at.is_(None),
+                ProductAttributeValue.deleted_at.is_(None),
+                ProductAttributeDefinition.deleted_at.is_(None),
+                ProductAttributeDefinition.is_active.is_(True),
+                ProductAttributeValue.is_active.is_(True),
+            )
+            .order_by(
+                ProductAttributeDefinition.sort_order,
+                ProductAttributeDefinition.name,
+                ProductAttributeValue.sort_order,
+            )
+        )
+    ).all()
+    return [
+        ProductAttributeChipOut(definition_name=ad, label=etiket, sort_order=tanim_sira)
+        for ad, etiket, tanim_sira, _deger_sira in rows
+    ]
+
+
+def _temiz_aciklama(raw: str | None) -> str | None:
+    """Ürün açıklamasını allowlist'e indirger.
+
+    Açıklama artık zengin metin (TipTap) olabiliyor ve vitrinde
+    `dangerouslySetInnerHTML` ile basılıyor. Yüzey blogdan GENİŞTİR: dijital
+    ürün açıklamasını EĞİTMEN de yazabiliyor. Bu yüzden temizlik yazma anında
+    ve tek allowlist'ten (`core/html_sanitize`) yapılır.
+
+    Düz metin girdisi zarar görmez: allowlist'te olmayan bir etiket yoksa
+    metin olduğu gibi kalır.
+    """
+    if raw is None:
+        return None
+    temiz = sanitize_html(raw)
+    return temiz or None
 
 
 async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
     prior_mean = await _compute_global_mean(db)
     tedarikci = await _tedarikci_stogu(db, [p])
+    yasal_referans = legal_compare_price(
+        p.price, await lowest_price_in_window(db, p.id)
+    )
     base = _to_search_out(
         p,
         prior_mean,
@@ -1064,6 +1310,15 @@ async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
         images=[ProductImageOut.model_validate(im) for im in p.images],
         created_at=p.created_at,
         variants=await _variants_block(db, p),
+        # Yasal referans fiyat YALNIZ detay yolunda hesaplanır: liste yolunda
+        # ürün başına bir sorgu daha demek olurdu (30 kartlık sayfada N+1).
+        # Serbest `compare_at_price` artık vitrinde ÜSTÜ ÇİZİLİ GÖSTERİLMEZ;
+        # dayanağı olmayan indirim iddiası ceza konusudur.
+        legal_compare_price=(
+            str(yasal_referans) if yasal_referans is not None else None
+        ),
+        price_reference_days=PRICE_REFERENCE_WINDOW_DAYS,
+        attributes=await _urun_nitelikleri(db, p.id),
     )
 
 
@@ -1140,7 +1395,7 @@ async def create_product(
     p = Product(
         slug=slug,
         title=payload.title,
-        description=payload.description,
+        description=_temiz_aciklama(payload.description),
         kind=payload.kind,
         seller_type=SellerType.PLATFORM.value,
         price=payload.price,
@@ -1154,6 +1409,7 @@ async def create_product(
         # stok yönetimine tabi değildir → NULL (SKU'sunu yine alır).
         stock=0 if payload.kind == ProductKind.PHYSICAL.value else None,
         weight_grams=payload.weight_grams,
+        brand=payload.brand,
         category_id=payload.category_id,
         status=payload.status,
         cover_url=payload.cover_url,
@@ -1231,6 +1487,41 @@ async def derive_variant(
         barcode=payload.barcode,
     )
 
+    yeni = await _varyant_kardesi_olustur(
+        db,
+        admin,
+        kaynak=kaynak,
+        grup=grup,
+        payload=payload,
+    )
+    full = await _load_full(db, yeni.id)
+    return await _to_detail(db, full)
+
+
+async def _varyant_kardesi_olustur(
+    db: AsyncSession,
+    admin: Admin,
+    *,
+    kaynak: Product,
+    grup: VariantGroup,
+    payload: DeriveVariantIn,
+) -> Product:
+    """Kaynak üründen TEK bir varyant kardeşi doğurur (ORM nesnesi döner).
+
+    Detay şeması ÜRETMEZ: toplu matris üretiminde satır başına `_to_detail`
+    çağırmak (global ortalama + tedarikçi stoğu + eğitmen adı + varyant bloğu)
+    200 satırda dört katına çıkan bir N+1 turu demekti. Çağıran ihtiyacı varsa
+    detayı kendisi üretir.
+
+    `derive_variant` (tek tek türetme) ve `create_variant_matrix` (toplu
+    üretim) bu gövdeyi PAYLAŞIR. Ayrı yazılsalardı zamanla ayrışırlardı ve
+    "matristen üretilen varyant, elle türetilenden farklı davranıyor" sınıfı
+    bir hata doğardı: kopyalanan künye alanları, ISBN'in KOPYALANMAMASI,
+    taslak durumu ve açılış stok hareketi tek yerde tanımlı kalmalı.
+
+    Çağıran, kaynağın gruplu olduğunu ve `validate_membership` kapısından
+    geçtiğini garanti eder.
+    """
     if payload.title:
         baslik = payload.title
     else:
@@ -1244,7 +1535,11 @@ async def derive_variant(
     p = Product(
         slug=await _unique_product_slug(db, _slugify(baslik)),
         title=baslik,
-        description=kaynak.description,
+        # Kaynağın açıklaması DB'den geliyor ve yazma anında zaten
+        # temizlenmişti; yine de geçiriyoruz. Maliyeti sıfıra yakın ve
+        # bu turdan ÖNCE yazılmış ya da seed/CSV gibi başka bir yoldan
+        # gelmiş bir satırın ham HTML'ini kardeşe kopyalamayı engelliyor.
+        description=_temiz_aciklama(kaynak.description),
         kind=kaynak.kind,
         seller_type=kaynak.seller_type,
         tutor_id=kaynak.tutor_id,
@@ -1253,6 +1548,7 @@ async def derive_variant(
         tax_rate=kaynak.tax_rate,
         stock=0 if kaynak.kind == ProductKind.PHYSICAL.value else None,
         weight_grams=kaynak.weight_grams,
+        brand=kaynak.brand,
         category_id=kaynak.category_id,
         # Taslak doğar: fiyat/görsel gözden geçirilmeden vitrine çıkmasın.
         status=ProductStatus.DRAFT.value,
@@ -1299,8 +1595,184 @@ async def derive_variant(
             actor_id=admin.id,
         )
     await db.flush()
-    full = await _load_full(db, p.id)
-    return await _to_detail(db, full)
+    return p
+
+
+# ── Varyant matrisi (toplu kardeş üretimi) ───────────────────────────────────
+
+
+async def _matris_baglami(db: AsyncSession, source_id: int):
+    """Matris uçlarının ortak ön hazırlığı: kaynak, grup ve MEVCUT kombinasyonlar.
+
+    İki uç (önizleme ve üretim) aynı bağlamı okumak ZORUNDA: ayrı okusalardı
+    önizlemede "yeni" görünen bir hücre üretimde çakışabilirdi.
+    """
+    kaynak = await _load_full(db, source_id)
+    if kaynak is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    if kaynak.variant_group_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Kaynak ürün bir varyant grubunda değil. Önce grubu oluşturup "
+            "kaynağı gruba bağlayın; matris kardeş ekler.",
+        )
+    grup = await db.get(VariantGroup, kaynak.variant_group_id)
+    if grup is None or grup.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Varyant grubu bulunamadı")
+
+    rows = (
+        await db.execute(
+            select(Product.option1_value, Product.option2_value, Product.id).where(
+                Product.variant_group_id == grup.id,
+                Product.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    mevcut = {(o1, o2): pid for o1, o2, pid in rows}
+    return kaynak, grup, mevcut
+
+
+def _eksen_girdisi_dogrula(grup: VariantGroup, option2_values: list[str] | None) -> None:
+    """Grubun eksen sayısıyla gelen girdinin uyumu.
+
+    DB CHECK'leri son savunmadır; buradaki erken kontrol aynı kuralı admin
+    diline çevirir (opak IntegrityError yerine 400).
+    """
+    ikinci_var = bool([v for v in (option2_values or []) if (v or "").strip()])
+    if grup.option2_name is None and ikinci_var:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Bu grup tek eksenli; 2. eksen değeri gönderilemez.",
+        )
+    if grup.option2_name is not None and not ikinci_var:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"'{grup.option2_name}' ekseni için en az bir değer girin.",
+        )
+
+
+async def preview_variant_matrix(
+    db: AsyncSession, source_id: int, payload: VariantMatrixPreviewIn
+) -> VariantMatrixPreviewOut:
+    """Kuru çalıştırma: ne üretilecek, ne zaten var. HİÇBİR ŞEY YAZMAZ."""
+    kaynak, grup, mevcut = await _matris_baglami(db, source_id)
+    await variant_service.ensure_variants_allowed(db, kaynak.category_id)
+    _eksen_girdisi_dogrula(grup, payload.option2_values)
+
+    hucreler = variant_service.matris_hucreleri(
+        payload.option1_values, payload.option2_values, mevcut
+    )
+    if len(hucreler) > variant_service.MATRIS_UST_SINIRI:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"{len(hucreler)} kombinasyon, tek seferlik "
+            f"{variant_service.MATRIS_UST_SINIRI} sınırını aşıyor. Bir ekseni "
+            "ayrı bir ürüne bölün.",
+        )
+
+    yeni = sum(1 for h in hucreler if h["mevcut_urun_id"] is None)
+    return VariantMatrixPreviewOut(
+        group_id=grup.id,
+        option1_name=grup.option1_name,
+        option2_name=grup.option2_name,
+        cells=[
+            VariantMatrixCellOut(
+                option1_value=h["option1_value"],
+                option2_value=h["option2_value"],
+                existing_product_id=h["mevcut_urun_id"],
+            )
+            for h in hucreler
+        ],
+        new_count=yeni,
+        existing_count=len(hucreler) - yeni,
+        limit=variant_service.MATRIS_UST_SINIRI,
+    )
+
+
+async def create_variant_matrix(
+    db: AsyncSession, admin: Admin, source_id: int, payload: VariantMatrixCreateIn
+) -> VariantMatrixCreateOut:
+    """Verilen satırlardan kardeş varyantlar üretir — hepsi ya da hiçbiri.
+
+    İstek tek transaction'dır (`get_db` istek sonunda commit eder): bir satır
+    patlarsa hiçbiri yazılmaz. Yarım kalmış bir matris, yöneticinin hangi
+    satırların geçtiğini elle ayıklamasını gerektirirdi.
+
+    Zaten var olan kombinasyon SESSİZCE ATLANMAZ, 409 döner: önizlemeden sonra
+    başka biri aynı varyantı eklemişse yönetici bunu bilmelidir.
+    """
+    kaynak, grup, mevcut = await _matris_baglami(db, source_id)
+    await payment_gates.assert_digital_product_creatable(db, kaynak.kind)
+    await variant_service.ensure_variants_allowed(db, kaynak.category_id)
+
+    if len(payload.rows) > variant_service.MATRIS_UST_SINIRI:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"{len(payload.rows)} satır, tek seferlik "
+            f"{variant_service.MATRIS_UST_SINIRI} sınırını aşıyor.",
+        )
+
+    # İstek İÇİNDEKİ tekrarlar: aynı kombinasyon iki satırda gelirse ikincisi
+    # DB'nin unique kısıtına çarpardı; hata mesajı satırı göstermezdi.
+    gorulen: set[tuple[str | None, str | None]] = set()
+    barkodlar: set[str] = set()
+    for r in payload.rows:
+        anahtar = (
+            variant_service.esdeger_anahtar(r.option1_value),
+            variant_service.esdeger_anahtar(r.option2_value),
+        )
+        if anahtar in gorulen:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Aynı kombinasyon iki kez gönderildi: {r.option1_value}"
+                + (f" / {r.option2_value}" if r.option2_value else ""),
+            )
+        gorulen.add(anahtar)
+        if r.barcode in barkodlar:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Aynı barkod iki satırda kullanıldı: {r.barcode}",
+            )
+        barkodlar.add(r.barcode)
+
+    mevcut_ci = {
+        (
+            variant_service.esdeger_anahtar(a),
+            variant_service.esdeger_anahtar(b),
+        )
+        for (a, b) in mevcut
+    }
+    uretilen: list[int] = []
+    for r in payload.rows:
+        anahtar = (
+            variant_service.esdeger_anahtar(r.option1_value),
+            variant_service.esdeger_anahtar(r.option2_value),
+        )
+        if anahtar in mevcut_ci:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Bu kombinasyon zaten var: {r.option1_value}"
+                + (f" / {r.option2_value}" if r.option2_value else "")
+                + ". Önizlemeyi yenileyin.",
+            )
+        variant_service.validate_membership_fields(grup, r.option1_value, r.option2_value)
+        urun = await _varyant_kardesi_olustur(
+            db,
+            admin,
+            kaynak=kaynak,
+            grup=grup,
+            payload=DeriveVariantIn(
+                option1_value=r.option1_value,
+                option2_value=r.option2_value,
+                barcode=r.barcode,
+                price=r.price,
+                stock=r.stock,
+                variant_sort=len(mevcut) + len(uretilen),
+            ),
+        )
+        uretilen.append(urun.id)
+
+    return VariantMatrixCreateOut(created=len(uretilen), product_ids=uretilen)
 
 
 async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict]) -> dict:
@@ -1412,7 +1884,7 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
                 yeni = Product(
                     slug=slug,
                     title=title,
-                    description=_g("description"),
+                    description=_temiz_aciklama(_g("description")),
                     kind=kind,
                     seller_type=SellerType.PLATFORM.value,
                     price=price,
@@ -1662,8 +2134,14 @@ async def update_product(
     if owner_tutor_id is None:
         # Admin: ağırlık/durum + kitap künyesi + varyant üyeliği (stok HARİÇ).
         editable += [
-            "weight_grams", "status", *_BOOK_SPEC_FIELDS, *_VARYANT_ALANLARI,
+            "weight_grams", "brand", "status", *_BOOK_SPEC_FIELDS, *_VARYANT_ALANLARI,
         ]
+    # Açıklama HTML taşıyabilir ve `dangerouslySetInnerHTML` ile basılır: ham
+    # değer DB'ye ASLA girmez. Temizlik `setattr` döngüsünden ÖNCE, çünkü döngü
+    # dinamik bir yazım yoludur ve oraya güvenmek sessiz bir XSS kapısı olurdu.
+    if "description" in data:
+        data = {**data, "description": _temiz_aciklama(data["description"])}
+
     for field in editable:
         if field in data:
             setattr(p, field, data[field])
@@ -1939,7 +2417,7 @@ async def create_seller_product(
     p = Product(
         slug=slug,
         title=payload.title,
-        description=payload.description,
+        description=_temiz_aciklama(payload.description),
         kind=ProductKind.DIGITAL.value,
         seller_type=SellerType.TUTOR.value,
         tutor_id=tutor.id,
@@ -2103,6 +2581,109 @@ async def delete_image(
     return await _to_detail(db, full)
 
 
+def yeni_gorsel_sirasi(
+    mevcut: list[tuple[int, int]], istenen: list[int]
+) -> dict[int, int]:
+    """Galerinin yeni ``{gorsel_id: sort_order}`` eşlemesi. Saf fonksiyon.
+
+    ``mevcut``: ürünün bugünkü ``(id, sort_order)`` çiftleri.
+    ``istenen``: yöneticinin sürükleyerek oluşturduğu sıra.
+
+    İki kural:
+
+    1. ``istenen`` dizisindeki görseller 0'dan başlayarak o sırayla numaralanır.
+    2. Dizide GEÇMEYEN görseller SİLİNMEZ; mevcut göreli sıralarını koruyarak
+       sona eklenir. İki yönetici aynı anda çalışırken biri sürüklerken diğeri
+       yeni görsel yüklediyse, sürükleyenin eski listesi yeni görseli sessizce
+       düşürmemelidir.
+
+    Doğrulama (yabancı/tekrar eden id) çağıranın işidir; burası yalnız sırayı
+    hesaplar.
+    """
+    istenen_kume = set(istenen)
+    sira: dict[int, int] = {}
+    for i, iid in enumerate(istenen):
+        sira[iid] = i
+    sonraki = len(istenen)
+    for gid, _ in sorted(mevcut, key=lambda x: (x[1], x[0])):
+        if gid not in istenen_kume:
+            sira[gid] = sonraki
+            sonraki += 1
+    return sira
+
+
+async def reorder_images(
+    db: AsyncSession,
+    product_id: int,
+    image_ids: list[int],
+    *,
+    owner_tutor_id: int | None = None,
+) -> ProductDetailOut:
+    """Galeri sırasını verilen id dizisine göre yeniden numaralar.
+
+    Yabancı id (başka ürünün ya da hiç olmayan görselin id'si) 400 döndürür:
+    sessizce atlamak, yanlış ürünün galerisini düzenlediğini sanan yöneticiye
+    "oldu" demek olurdu. Sıra hesabı `yeni_gorsel_sirasi`de, testli.
+    """
+    await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
+    imgs = (
+        (
+            await db.execute(
+                select(ProductImage).where(ProductImage.product_id == product_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_id = {im.id: im for im in imgs}
+
+    yabanci = [i for i in image_ids if i not in by_id]
+    if yabanci:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Bu ürüne ait olmayan görsel: {', '.join(map(str, yabanci))}",
+        )
+    if len(set(image_ids)) != len(image_ids):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sırada tekrar eden görsel var")
+
+    sira = yeni_gorsel_sirasi([(im.id, im.sort_order) for im in imgs], image_ids)
+    for im in imgs:
+        im.sort_order = sira[im.id]
+
+    await db.commit()
+    full = await _load_full(db, product_id)
+    return await _to_detail(db, full)
+
+
+async def update_image_meta(
+    db: AsyncSession,
+    product_id: int,
+    image_id: int,
+    *,
+    fields: dict[str, str | None],
+    owner_tutor_id: int | None = None,
+) -> ProductDetailOut:
+    """Görselin alt metnini/başlığını günceller.
+
+    ``fields`` yalnız İSTEKTE GÖNDERİLEN alanları taşır (``exclude_unset``);
+    gönderilmeyen alana dokunulmaz. Boş dize NULL'a çevrilir — "sil" demenin
+    yolu budur, aksi hâlde alan asla temizlenemezdi.
+    """
+    await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
+    img = await db.get(ProductImage, image_id)
+    if img is None or img.product_id != product_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Görsel bulunamadı")
+
+    for alan in ("alt_text", "caption"):
+        if alan in fields:
+            deger = (fields[alan] or "").strip()
+            setattr(img, alan, deger or None)
+
+    await db.commit()
+    full = await _load_full(db, product_id)
+    return await _to_detail(db, full)
+
+
 async def set_digital_asset(
     db: AsyncSession,
     product_id: int,
@@ -2262,7 +2843,11 @@ async def delete_review(db: AsyncSession, client: Client, review_id: int) -> Non
 # ── Fiyat geçmişi (Fiyat Etiketi Yönetmeliği) ────────────────────────────────
 
 #: İndirim duyurusunda referans alınacak geçmiş pencere (gün).
-PRICE_REFERENCE_WINDOW_DAYS = 30
+#:
+#: Tek kaynak `settings.PRICE_REFERENCE_WINDOW_DAYS`; burada yalnız okunur.
+#: Mevzuat 1 Ağustos 2026'da 30 günden 10 güne indi ve bir daha değişebilir —
+#: iki ayrı yerde sabit tutmak, birinin geride kalmasıyla sonuçlanırdı.
+PRICE_REFERENCE_WINDOW_DAYS = settings.PRICE_REFERENCE_WINDOW_DAYS
 
 
 async def lowest_price_in_window(
@@ -2272,7 +2857,8 @@ async def lowest_price_in_window(
 
     İndirim duyurusu yapılırken üzeri çizili gösterilecek referans budur.
     Serbestçe girilen ``compare_at_price`` denetimde kabul edilmez: yönetmelik
-    indirimden önceki 30 gün içindeki en düşük fiyatın esas alınmasını ister.
+    indirimden önceki pencere içindeki EN DÜŞÜK fiyatın esas alınmasını ister
+    (pencere `settings.PRICE_REFERENCE_WINDOW_DAYS`).
 
     Kayıt yoksa None (ürün hiç fiyat değiştirmemiş ve migration öncesi
     oluşmuş olabilir) — çağıran bu durumda indirim rozeti göstermemelidir.
@@ -2294,7 +2880,7 @@ def legal_compare_price(
 ) -> Decimal | None:
     """Gösterilebilir "eski fiyat" (saf; pytest'li).
 
-    Kural: referans, son 30 günün en düşük fiyatıdır ve ancak GÜNCEL fiyattan
+    Kural: referans, pencere içindeki en düşük fiyattır ve ancak GÜNCEL fiyattan
     yüksekse indirim vardır. Aksi halde (fiyat düşmemiş ya da geçmiş yok)
     üzeri çizili fiyat gösterilmez — dayanaksız indirim iddiası ceza konusudur.
     """

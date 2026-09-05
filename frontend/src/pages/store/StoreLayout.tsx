@@ -128,7 +128,7 @@ function ActionItem({
   return (
     <Link
       to={to}
-      className="group flex items-center gap-2 transition-colors hover:text-indigo-600 "
+      className="group flex items-center gap-2 transition-colors hover:text-[#F09A38] "
     >
       <span className="relative">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

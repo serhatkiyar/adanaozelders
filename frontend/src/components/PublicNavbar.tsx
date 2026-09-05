@@ -60,13 +60,25 @@ export function PublicNavbar({
             </div>
           )}
           <div className="flex-1 flex shrink-0 items-center justify-end gap-2">
-            {/* Kayıt bayrağı kapalıyken düğme gizlenir (asıl kilit backend'de). */}
+            {/* ARZ TARAFININ TEK KAPISI — her genişlikte görünür.
+                Sitede eğitmen kaydına giden hiçbir bağlantı yoktu; kayıt
+                ekranındaki "Eğitmen" sekmesini ancak oraya kendi yolunu bulan
+                görüyordu.
+
+                Buraya üçüncü bir düğme sığmıyor: ÖLÇÜLDÜ, varsayılmadı —
+                `node scripts/marka_logo_turu.mjs` üç düğmeyle 768px'te 3px
+                yatay taşma raporladı (navbar üç sütunlu flex; orta sütundaki
+                kategori şeridi 768'de 441px yer kaplıyor). Bu yüzden ayrı
+                "Kayıt Ol" düğmesi KALDIRILDI — giriş modalı zaten "Hesabın yok
+                mu? Kayıt ol" bağlantısını taşıyor, yani öğrenci kaydı tek
+                dokunuş uzakta. Eğitmen kaydının ise başka hiçbir yolu yoktu.
+                Düğme sayısı değişirse taşma yeniden ölçülmelidir. */}
             {kayitAcik && (
               <Link
-                to="?modal=register"
-                className="btn-neon-hover rounded-full px-3 py-2.5 text-sm sm:px-5 font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
+                to="?modal=register&role=tutor"
+                className="btn-neon-hover rounded-full px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 sm:px-5"
               >
-                Kayıt Ol
+                Ders Ver
               </Link>
             )}
             <Link

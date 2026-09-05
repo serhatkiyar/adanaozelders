@@ -122,6 +122,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
 
   // ── secim: aksiyonun öznesi yok ──
   "src/components/admin/packing/PackingLabelSheet.tsx <button> basilacaklar.length === 0": "secim",
+  // Varyant matrisinde "Tümüne fiyat uygula": uygulanacak DEĞER yok.
+  // Aksiyonun öznesi boş; form geçerliliği değil.
+  "src/components/admin/store/VariantMatrixPanel.tsx <Button> !topluFiyat.trim()": "secim",
   "src/pages/admin/delivery/DeliveryBoardPage.tsx <Button> dispatchable === 0": "secim",
   "src/pages/admin/delivery/DeliveryOrdersPage.tsx <Button> addStops.isPending || target == null":
     "secim",
@@ -138,6 +141,14 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   // CMS Faz 1: araç çubuğu düğmesi geri al/yinele YAPILAMAZKEN kapalıdır
   // (editör durumu önkoşulu); gönderim geçerliliğiyle ilgisi yok.
   "src/components/admin/content/BlogBodyEditor.tsx <button> disabled": "onkosul",
+  // Varyant matrisinde "Önizle": eksene hiç değer girilmemiş ya da
+  // kombinasyon sayısı tavanı aşmış. HER İKİ SEBEP DE düğmenin hemen
+  // yanındaki canlı sayaçta yazılı ("her eksene en az bir değer girin" /
+  // "N kombinasyon, X sınırını aşıyor. Bir ekseni ayrı bir ürüne bölün.").
+  // Kullanıcı sebebi ekranda okuyor — kilitli kararın istediği bu.
+  // Üretim düğmesi ("N varyant oluştur") geçerlilikle KAPANMAZ: basılır,
+  // sebep şeritte yazar, odak ilk eksik barkod alanına gider.
+  "src/components/admin/store/VariantMatrixPanel.tsx <Button> beklenenSayi === 0 || tavanAsildi": "onkosul",
   "src/components/ExamSessionsManager.tsx <Button> session.results_published": "onkosul",
   "src/pages/DeliveryDriver.tsx <button> s.status !== \"PENDING\" || run.status !== \"ACTIVE\"":
     "onkosul",

@@ -74,10 +74,20 @@ export function HoverZoomImage({
         aria-label="Görseli büyüt"
         className="absolute inset-0 flex cursor-zoom-in items-center justify-center overflow-hidden rounded-2xl p-6"
       >
+        {/* LCP elemanı: ürün sayfalarında en büyük içerik ögesi neredeyse her
+            zaman bu görseldir. `loading="lazy"` BİLİNÇLİ OLARAK YOK — LCP
+            görselini tembel yüklemek en yaygın performans hatasıdır; onun
+            yerine yüksek öncelikle çekilir. */}
         <img
           ref={imgRef}
           src={src}
           alt={alt}
+          // React 18 camelCase `fetchPriority`yi TANIMAZ: uyarı basar ve
+          // özniteliği DOM'a hiç yazmaz (destek React 19'da geldi). Küçük
+          // harfli hâli geçer; React tipleri henüz taşımadığı için yayılarak
+          // veriliyor. React 19 göçünde `fetchPriority="high"` olabilir.
+          {...{ fetchpriority: "high" }}
+          decoding="async"
           className="h-full w-full object-contain mix-blend-multiply"
         />
       </button>

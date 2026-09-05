@@ -68,7 +68,26 @@ class ProductImageOut(BaseModel):
     id: int
     url: str
     caption: str | None = None
+    alt_text: str | None = None
     sort_order: int = 0
+
+
+class ProductImageReorderIn(BaseModel):
+    """Galeri sırası — id dizisinin SIRASI yeni sort_order'dır.
+
+    Kısmi dizi kabul edilir: dizide olmayan görseller sona, mevcut göreli
+    sıralarını koruyarak eklenir. Böylece iki yönetici aynı anda çalışırken
+    biri yeni görsel yüklemişse o görsel sessizce KAYBOLMAZ.
+    """
+
+    image_ids: list[int] = Field(min_length=1)
+
+
+class ProductImagePatchIn(BaseModel):
+    """Görsel üstverisi. Alan verilmezse dokunulmaz; boş dize NULL'a çevrilir."""
+
+    alt_text: str | None = Field(default=None, max_length=200)
+    caption: str | None = Field(default=None, max_length=200)
 
 
 # `ProductSupplierOut` ileri referans: `schemas/supplier.py` bu modülü import
@@ -116,6 +135,8 @@ class ProductSearchOut(BaseModel):
     #: Stok kalemi kimliği (`FZK-000042`). Yönetim tarafında aranabilir ve
     #: etiket/sayım ekranlarında ürünü teyit etmeye yarar.
     sku: str | None = None
+    #: Marka / üretici. Kitapta `publisher`dan AYRIDIR ve onun yerine geçmez.
+    brand: str | None = None
     # ── Varyant üyeliği (Faz 2) ──
     # Yanıtta dönmek zorunda: admin formu mevcut değerleri buradan okur ve
     # vitrin (Faz 4) kardeş seçiciyi bu alanlarla kurar.
@@ -164,6 +185,24 @@ class ProductVariantMemberPublicOut(BaseModel):
     #: müşteri "bu renk hiç yokmuş" sanırdı; "tükendi" ayrı bir bilgidir.
     in_stock: bool = True
     price: str
+    #: Kardeşin kendi kapağı. Seçici üzerine gelindiğinde/odaklanıldığında
+    #: önizleme ve `ProductGroup.hasVariant` markup'ı bunu ister.
+    cover_url: str | None = None
+    sku: str | None = None
+
+
+class VariantSwatchOut(BaseModel):
+    """Bir eksen DEĞERİNİN renk örneği (yönetilen nitelik sözlüğünden).
+
+    Eşleşme eksen ADI ↔ nitelik tanımı adı, değer ↔ nitelik değeri etiketi
+    üzerinden kurulur. Eşleşme yoksa liste boş kalır ve seçici metin butonuna
+    düşer — sözlük doldurulmadan da bozulmaz.
+    """
+
+    axis_name: str
+    value: str
+    hex: str | None = None
+    image_url: str | None = None
 
 
 class ProductVariantsPublicOut(BaseModel):
@@ -174,6 +213,16 @@ class ProductVariantsPublicOut(BaseModel):
     option1_name: str
     option2_name: str | None = None
     members: list[ProductVariantMemberPublicOut] = []
+    #: Eksen değerlerinin renk örnekleri (yalnız tanımlı olanlar).
+    swatches: list[VariantSwatchOut] = []
+
+
+class ProductAttributeChipOut(BaseModel):
+    """Ürün künyesinde gösterilen tek nitelik ("Kağıt Cinsi: 80 gr")."""
+
+    definition_name: str
+    label: str
+    sort_order: int = 0
 
 
 class ProductDetailOut(ProductSearchOut):
@@ -196,6 +245,20 @@ class ProductDetailOut(ProductSearchOut):
     #: değişimi ek iş İSTEMEZ: seçici kardeşin SAYFASINA gider ve görseller
     #: zaten ürün başınadır).
     variants: ProductVariantsPublicOut | None = None
+    #: Üstü çizili gösterilebilecek YASAL referans fiyat.
+    #:
+    #: `compare_at_price` SERBEST girilen bir alandır ve indirim iddiasının
+    #: dayanağı olamaz. Bu alan fiyat geçmişinden türetilir: pencere içindeki
+    #: en düşük fiyat, ancak güncel fiyattan yüksekse dolar. Vitrin üstü çizili
+    #: fiyatı BUNDAN okur.
+    legal_compare_price: str | None = None
+    #: Referansın hangi pencereden türetildiği (gün) — vitrin "son N günün en
+    #: düşük fiyatı" ibaresini bu sayıdan yazar, kendi sabitini taşımaz.
+    price_reference_days: int | None = None
+    #: Yönetilen ürün nitelikleri (EAV). Admin bunları uzun süredir YAZABİLİYOR
+    #: ama public detay yanıtına hiç girmiyorlardı: kırtasiye ürününde künye
+    #: tablosu yalnız kitap alanlarından besleniyor ve boş çıkıyordu.
+    attributes: list[ProductAttributeChipOut] = []
 
 
 #: KDV oranı alanının ORTAK tanımı — üç yazıcı şema (admin oluşturma/güncelleme
@@ -259,6 +322,8 @@ class ProductCreate(_BookSpecFields, _VariantMemberFields):
     tax_rate: Decimal = Field(**_TAX_RATE_FIELD_ARGS)
     stock: int | None = Field(default=None, ge=0)
     weight_grams: int | None = Field(default=None, ge=0)
+    #: Marka / üretici (kitapta yayınevinden AYRI).
+    brand: str | None = Field(default=None, max_length=120)
     category_id: int | None = None
     status: str = Field(default="DRAFT", pattern="^(ACTIVE|HIDDEN|DRAFT)$")
     cover_url: str | None = Field(default=None, max_length=500)
@@ -296,6 +361,7 @@ class ProductUpdate(_BookSpecFields, _VariantMemberFields):
     #: `stock_reason_code == "DIGER"` ise zorunlu.
     stock_note: str | None = Field(default=None, max_length=500)
     weight_grams: int | None = Field(default=None, ge=0)
+    brand: str | None = Field(default=None, max_length=120)
     category_id: int | None = None
     status: str | None = Field(default=None, pattern="^(ACTIVE|HIDDEN|DRAFT|PENDING)$")
     cover_url: str | None = Field(default=None, max_length=500)
@@ -466,6 +532,61 @@ class DeriveVariantIn(BaseModel):
     )
     variant_sort: int | None = Field(default=None, ge=0)
     stock: int | None = Field(default=None, ge=0)
+
+
+class VariantMatrixPreviewIn(BaseModel):
+    """Eksen değerlerinden üretilecek kombinasyonların KURU ÇALIŞTIRMASI.
+
+    Önizleme yazma yapmaz. Amacı, yöneticinin "oluştur"a basmadan önce kaç
+    satır doğacağını, hangilerinin zaten var olduğunu ve hangi yazım ikizinin
+    elendiğini görmesidir.
+    """
+
+    option1_values: list[str] = Field(min_length=1, max_length=200)
+    option2_values: list[str] | None = Field(default=None, max_length=200)
+
+
+class VariantMatrixCellOut(BaseModel):
+    option1_value: str
+    option2_value: str | None = None
+    #: Doluysa bu kombinasyon grupta ZATEN var; üretimde atlanır.
+    existing_product_id: int | None = None
+
+
+class VariantMatrixPreviewOut(BaseModel):
+    group_id: int
+    option1_name: str
+    option2_name: str | None = None
+    cells: list[VariantMatrixCellOut]
+    new_count: int
+    existing_count: int
+    #: Tek işlemde üretilebilecek tavan; istemci sayacı buna göre kilitler.
+    limit: int
+
+
+class VariantMatrixRowIn(BaseModel):
+    """Üretilecek TEK varyant.
+
+    ``barcode`` zorunludur ve uydurulamaz: gruplu ürün barkodsuz olamaz
+    (`ck_products_variant_barcode`) çünkü rafta iki varyant ancak barkodla
+    ayırt edilir. Sunucunun sahte bir EAN üretmesi, depo ve tedarikçi
+    entegrasyonunu sessizce bozardı.
+    """
+
+    option1_value: str = Field(min_length=1, max_length=60)
+    option2_value: str | None = Field(default=None, min_length=1, max_length=60)
+    barcode: str = Field(min_length=4, max_length=32)
+    price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
+    stock: int | None = Field(default=None, ge=0)
+
+
+class VariantMatrixCreateIn(BaseModel):
+    rows: list[VariantMatrixRowIn] = Field(min_length=1)
+
+
+class VariantMatrixCreateOut(BaseModel):
+    created: int
+    product_ids: list[int]
 
 
 class ProductReviewOut(BaseModel):

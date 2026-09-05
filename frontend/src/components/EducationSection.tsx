@@ -591,7 +591,7 @@ export function EducationSection({
               setEditingId(null);
               setAdding(true);
             }}
-            className="rounded-lg px-2.5 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
+            className="inline-flex min-h-[44px] items-center rounded-lg px-2.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
           >
             + Ekle
           </button>

@@ -6,7 +6,11 @@ import {
 } from "@tanstack/react-query";
 import * as storeApi from "@/api/store";
 import type { ProductSearchParams } from "@/api/store";
-import type { OrderReturnCreate } from "@/types";
+import type {
+  OrderReturnCreate,
+  ProductDetailOut,
+  VariantMatrixRow,
+} from "@/types";
 
 /* ── Public katalog ── */
 
@@ -15,6 +19,19 @@ export function useCategories() {
     queryKey: ["store", "categories"],
     queryFn: storeApi.fetchCategories,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Aramaya kapsamlı kategori sayaçları — yalnız arama modunda çekilir. */
+export function useCategoryFacets(
+  params: Parameters<typeof storeApi.fetchCategoryFacets>[0],
+  enabled: boolean
+) {
+  return useQuery({
+    queryKey: ["store", "category-facets", params],
+    queryFn: () => storeApi.fetchCategoryFacets(params),
+    enabled,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -276,6 +293,82 @@ export function useAdminProduct(id: number | undefined) {
     queryFn: () => storeApi.fetchProductAdmin(id!),
     enabled: id != null,
   });
+}
+
+/**
+ * Ürün galerisi yönetimi (admin): kapak, çoklu yükleme, silme, sıralama,
+ * alt metin.
+ *
+ * Beş uç da tazelenmiş `ProductDetailOut` döndürür; onu doğrudan önbelleğe
+ * yazıyoruz (`setQueryData`) — yeniden çekme turu beklemeden galeri güncellenir.
+ * Vitrin anahtarları ayrıca geçersizleştirilir: aynı ürünün müşteri yüzü
+ * `["store", "product", slug]` altında ve id ile YAZILAMAZ.
+ */
+export function useProductMedia(productId: number | undefined) {
+  const qc = useQueryClient();
+  const onSuccess = (fresh: ProductDetailOut) => {
+    qc.setQueryData(["store", "admin", "product", productId], fresh);
+    qc.invalidateQueries({ queryKey: ["store", "admin", "products"] });
+    qc.invalidateQueries({ queryKey: ["store", "product"] });
+    qc.invalidateQueries({ queryKey: ["store", "products"] });
+  };
+
+  const uploadCover = useMutation({
+    mutationFn: (file: File) => storeApi.uploadProductCover(productId!, file),
+    onSuccess,
+  });
+  const uploadImages = useMutation({
+    mutationFn: (files: File[]) => storeApi.uploadProductImages(productId!, files),
+    onSuccess,
+  });
+  const removeImage = useMutation({
+    mutationFn: (imageId: number) => storeApi.deleteProductImage(productId!, imageId),
+    onSuccess,
+  });
+  const reorder = useMutation({
+    mutationFn: (imageIds: number[]) =>
+      storeApi.reorderProductImages(productId!, imageIds),
+    onSuccess,
+  });
+  const updateMeta = useMutation({
+    mutationFn: ({ imageId, alt_text }: { imageId: number; alt_text: string }) =>
+      storeApi.updateProductImage(productId!, imageId, { alt_text }),
+    onSuccess,
+  });
+
+  return { uploadCover, uploadImages, removeImage, reorder, updateMeta };
+}
+
+/**
+ * Varyant matrisi: kuru çalıştırma (önizleme) + toplu üretim.
+ *
+ * Önizleme bir MUTASYON olarak modellendi, sorgu olarak değil: yazma yapmasa
+ * da girdiyi kullanıcı belirler ve "önizle"ye basılmadan çalışmamalıdır.
+ * `useQuery` olsaydı her tuş vuruşunda anahtar değişir ve sunucuya gereksiz
+ * tur atardı.
+ */
+export function useVariantMatrix(productId: number | undefined) {
+  const qc = useQueryClient();
+
+  const preview = useMutation({
+    mutationFn: (payload: {
+      option1_values: string[];
+      option2_values?: string[] | null;
+    }) => storeApi.previewVariantMatrix(productId!, payload),
+  });
+
+  const create = useMutation({
+    mutationFn: (rows: VariantMatrixRow[]) =>
+      storeApi.createVariantMatrix(productId!, rows),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["store", "admin", "products"] });
+      qc.invalidateQueries({ queryKey: ["store", "admin", "variant-groups"] });
+      qc.invalidateQueries({ queryKey: ["store", "admin", "product", productId] });
+      qc.invalidateQueries({ queryKey: ["store", "products"] });
+    },
+  });
+
+  return { preview, create };
 }
 
 export function useBulkImportProducts() {

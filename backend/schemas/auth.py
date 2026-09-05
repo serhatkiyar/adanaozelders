@@ -25,7 +25,12 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     first_name: str = Field(min_length=1, max_length=75)
     last_name: str = Field(min_length=1, max_length=75)
-    username: str = Field(min_length=3, max_length=50, pattern=USERNAME_PATTERN)
+    # Kullanıcı adı OPSİYONELDİR. Kayıt formu artık sormuyor (e-posta + parola +
+    # ad + soyad ile bitiyor); verilmezse `auth_service._turet_kullanici_adi`
+    # ad-soyaddan üretir. Gönderilirse eski davranış aynen sürer — çakışmada 409.
+    username: str | None = Field(
+        default=None, min_length=3, max_length=50, pattern=USERNAME_PATTERN
+    )
     birth_date: datetime.date | None = None
     gender: Gender | None = None
     # KVKK aydınlatma + kullanım koşulları + gizlilik politikası onayı.

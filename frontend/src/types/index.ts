@@ -79,7 +79,12 @@ export interface RegisterRequest {
   password: string;
   first_name: string;
   last_name: string;
-  username: string;
+  /**
+   * İSTEĞE BAĞLI. Kayıt formu artık sormuyor; gönderilmezse sunucu ad-soyaddan
+   * üretir (`auth_service._turet_kullanici_adi`). Kullanıcı `/ayarlar`'dan
+   * değiştirebilir.
+   */
+  username?: string;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
   /**
@@ -1482,6 +1487,9 @@ export interface ProductImageOut {
   id: number;
   url: string;
   caption?: string | null;
+  /** Ekran okuyucu açıklaması. Boşsa vitrin ürün başlığına düşer — doğru bir
+   *  yedek ama "arka kapak", "iç sayfa" ayrımını taşıyamaz. */
+  alt_text?: string | null;
   sort_order: number;
 }
 
@@ -1520,6 +1528,8 @@ export interface ProductSearchOut {
   isbn?: string | null;
   /** Stok kalemi kimliği (`FZK-000042`); sunucu üretir, aranabilir. */
   sku?: string | null;
+  /** Marka / üretici. Kitapta `publisher`dan AYRIDIR. */
+  brand?: string | null;
   /* ── Varyant üyeliği (Faz 2) — admin formu ve kardeş seçici bunlardan okur. */
   variant_group_id?: number | null;
   option1_value?: string | null;
@@ -1579,6 +1589,51 @@ export interface ProductVariantMember {
   /** Tükenen kardeş listede kalır ama işaretlenir. */
   in_stock: boolean;
   price: string;
+  /** Kardeşin kendi kapağı — seçicide önizleme ve hasVariant markup'ı için. */
+  cover_url?: string | null;
+  sku?: string | null;
+}
+
+/** Bir eksen DEĞERİNİN renk örneği (yönetilen nitelik sözlüğünden). */
+export interface VariantSwatch {
+  axis_name: string;
+  value: string;
+  hex?: string | null;
+  image_url?: string | null;
+}
+
+/* ── Varyant matrisi (toplu kardeş üretimi) ── */
+
+/** Önizlemedeki tek kombinasyon. `existing_product_id` doluysa zaten var. */
+export interface VariantMatrixCell {
+  option1_value: string;
+  option2_value?: string | null;
+  existing_product_id?: number | null;
+}
+
+export interface VariantMatrixPreview {
+  group_id: number;
+  option1_name: string;
+  option2_name?: string | null;
+  cells: VariantMatrixCell[];
+  new_count: number;
+  existing_count: number;
+  /** Tek işlemde üretilebilecek tavan — sunucudan gelir, istemci uydurmaz. */
+  limit: number;
+}
+
+/** Üretilecek tek varyant. Barkod ZORUNLU: gruplu ürün barkodsuz olamaz. */
+export interface VariantMatrixRow {
+  option1_value: string;
+  option2_value?: string | null;
+  barcode: string;
+  price?: string | null;
+  stock?: number | null;
+}
+
+export interface VariantMatrixResult {
+  created: number;
+  product_ids: number[];
 }
 
 /** Detaydaki varyant bloğu — eksen ADLARI gruptan gelir. */
@@ -1588,6 +1643,8 @@ export interface ProductVariants {
   option1_name: string;
   option2_name?: string | null;
   members: ProductVariantMember[];
+  /** Eksen değerlerinin renk örnekleri; yalnız tanımlı olanlar gelir. */
+  swatches?: VariantSwatch[];
 }
 
 export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
@@ -1599,6 +1656,23 @@ export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
   created_at?: string | null;
   /** Varyant grubundaysa kardeş seçici verisi; grupsuzda null. */
   variants?: ProductVariants | null;
+  /**
+   * Üstü çizili gösterilebilecek YASAL referans fiyat (fiyat geçmişinden
+   * türetilir). `compare_at_price` serbest girilir ve indirim iddiasının
+   * dayanağı OLAMAZ — vitrin üstü çizili fiyatı bundan okur.
+   */
+  legal_compare_price?: string | null;
+  /** Referansın türetildiği pencere (gün); ibare bu sayıdan yazılır. */
+  price_reference_days?: number | null;
+  /** Yönetilen ürün nitelikleri ("Kağıt Cinsi: 80 gr"). */
+  attributes?: ProductAttributeChip[];
+}
+
+/** Ürün künyesinde gösterilen tek yönetilen nitelik. */
+export interface ProductAttributeChip {
+  definition_name: string;
+  label: string;
+  sort_order: number;
 }
 
 /* ── Koleksiyon (Listelerim) ── */

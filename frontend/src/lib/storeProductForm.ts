@@ -53,6 +53,7 @@ export interface UrunFormDegerleri {
   stokGerekce: string;
   stokNot: string;
   aciklama: string;
+  marka: string;
   yazar: string;
   yayinevi: string;
   isbn: string;
@@ -91,6 +92,36 @@ const opsiyonelTamsayi = (etiket: string) =>
 
 const opsiyonelMetin = z.string();
 
+/**
+ * Kayıtlı açıklamayı editörün DİLİNE çevirir.
+ *
+ * Ürün açıklamaları bu tura kadar DÜZ METİNDİ; zengin editör onları
+ * `<p>…</p>` olarak normalleştiriyor ve bu normalleştirme bir "değişiklik"
+ * olarak RHF'ye düşüyordu. Sonuç: yönetici bir ürünü açıp hiçbir şeye
+ * dokunmadan kapatmak istediğinde "kaydedilmemiş değişiklik" onayı çıkıyordu
+ * (ve pencere kapanmıyordu).
+ *
+ * Köprü formun BAŞLANGIÇ değerinde kurulur: editörün üreteceği biçim baştan
+ * verilirse normalleştirme bir fark üretmez. Metin kaçışlıdır — kayıtlı bir
+ * açıklamada geçen `<` işareti etiket sanılmamalı.
+ */
+export function aciklamaEditorBicimi(raw: string | null | undefined): string {
+  const metin = (raw ?? "").trim();
+  if (!metin) return "";
+  // Zaten HTML ise dokunma: sunucu onu allowlist'ten geçirmiş.
+  if (/<[a-z][\s\S]*>/i.test(metin)) return metin;
+  const kacisli = metin
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  // Boş satırlar paragrafı böler; tek satır sonu <br> olur (editörün kendi
+  // ürettiği biçimin aynısı).
+  return kacisli
+    .split(/\n{2,}/)
+    .map((par) => `<p>${par.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
 export function urunFormSemasi(baglam: UrunFormBaglami) {
   return z
     .object({
@@ -123,6 +154,7 @@ export function urunFormSemasi(baglam: UrunFormBaglami) {
       stokGerekce: opsiyonelMetin,
       stokNot: opsiyonelMetin,
       aciklama: opsiyonelMetin,
+      marka: opsiyonelMetin,
       yazar: opsiyonelMetin,
       yayinevi: opsiyonelMetin,
       isbn: opsiyonelMetin,
@@ -218,6 +250,7 @@ function ortakAlanlar(d: UrunFormDegerleri) {
     stock: d.tur === "PHYSICAL" && d.stok ? Number(d.stok) : null,
     category_id: d.kategoriId ? Number(d.kategoriId) : null,
     description: bosNull(d.aciklama),
+    brand: bosNull(d.marka),
     author: bosNull(d.yazar),
     publisher: bosNull(d.yayinevi),
     isbn: bosNull(d.isbn),

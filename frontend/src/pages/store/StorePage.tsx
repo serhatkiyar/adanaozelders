@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/store/ProductCard";
 import {
   useBookFacets,
   useCategories,
+  useCategoryFacets,
   useInfiniteProducts,
 } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -25,14 +26,6 @@ const SORT_LABELS: Record<Sort, string> = {
   price_asc: "Fiyat (artan)",
   price_desc: "Fiyat (azalan)",
 };
-
-// "Basılı" DEĞİL: vitrinde kitap dışı fiziksel ürün de var (kalem, defter,
-// fotokopi kâğıdı). Filtre DEĞERLERİ (PHYSICAL/DIGITAL) değişmedi.
-const KIND_LABELS: { value: "" | ProductKind; label: string }[] = [
-  { value: "", label: "Tümü" },
-  { value: "PHYSICAL", label: "Fiziksel ürün" },
-  { value: "DIGITAL", label: "Dijital ürün" },
-];
 
 export default function StorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -87,10 +80,69 @@ export default function StorePage() {
   // Seçenekler kategoriye göre daralır: "Kırtasiye"de yayınevi listesi
   // göstermek kullanıcıyı boş sonuca sürükler.
   const { data: bookFacets } = useBookFacets(categoryId);
-  const topCategories = useMemo(
-    () => (categories ?? []).filter((c) => !c.parent_id),
+
+  // "Eksen:Değer" öğeleri — sunucunun `variant` parametre biçimi.
+  const variantParam = Object.entries(variantSel).flatMap(([eksen, degerler]) =>
+    degerler.map((d) => `${eksen}:${d}`),
+  );
+
+  // ── Kenar çubuğu kategori kaynağı (1 Eyl, Trendyol/Amazon paritesi) ──
+  // ARAMA modunda liste "İlgili kategoriler"dir: sunucudan aramaya kapsamlı
+  // sayaçlar gelir, eşleşmesi olmayan kategori HİÇ görünmez ("soru bankası"
+  // ararken Ev ve Kişisel Bakım listelenmez). Gezinme modunda tüm ağaç,
+  // kırılımlı (seçilinin çocukları + üst kademeye dönüş).
+  const aramaModu = !!debouncedQ;
+  const { data: facetler } = useCategoryFacets(
+    {
+      q: debouncedQ || undefined,
+      kind: kind || undefined,
+      min_price: debMin ? Number(debMin) : undefined,
+      max_price: debMax ? Number(debMax) : undefined,
+      min_rating: minRating,
+      publisher: publishers.length ? publishers : undefined,
+      author: authors.length ? authors : undefined,
+      cover_type: coverTypes.length ? coverTypes : undefined,
+      variant: variantParam.length ? variantParam : undefined,
+    },
+    aramaModu,
+  );
+  const listeKaynak = useMemo(
+    () => (aramaModu ? facetler ?? [] : categories ?? []),
+    [aramaModu, facetler, categories],
+  );
+  const topCategories = useMemo(() => {
+    const t = listeKaynak.filter((c) => !c.parent_id);
+    // Arama modunda en çok eşleşen üstte (Trendyol sıralaması).
+    return aramaModu ? [...t].sort((a, b) => (b.product_count ?? 0) - (a.product_count ?? 0)) : t;
+  }, [listeKaynak, aramaModu]);
+  // Ad/ebeveyn aramaları TAM ağaçtan: seçili kategori aramada 0 eşleşse de
+  // adı ve dönüş yolu doğru kalmalı.
+  const kategoriById = useMemo(
+    () => new Map((categories ?? []).map((c) => [c.id, c])),
     [categories],
   );
+  const cocuklar = useMemo(() => {
+    const m = new Map<number, typeof topCategories>();
+    for (const c of listeKaynak) {
+      if (c.parent_id) {
+        const arr = m.get(c.parent_id) ?? [];
+        arr.push(c);
+        m.set(c.parent_id, arr);
+      }
+    }
+    if (aramaModu)
+      for (const arr of m.values())
+        arr.sort((a, b) => (b.product_count ?? 0) - (a.product_count ?? 0));
+    return m;
+  }, [listeKaynak, aramaModu]);
+  const seciliKategori = categoryId ? kategoriById.get(categoryId) : undefined;
+
+  const kategoriSec = (id: number | undefined) => {
+    setCategoryId(id);
+    if (id === undefined) searchParams.delete("category");
+    else searchParams.set("category", String(id));
+    setSearchParams(searchParams);
+  };
 
   const isFiltering = !!(
     debouncedQ ||
@@ -107,10 +159,6 @@ export default function StorePage() {
     Object.values(variantSel).some((v) => v.length)
   );
 
-  // "Eksen:Değer" öğeleri — sunucunun `variant` parametre biçimi.
-  const variantParam = Object.entries(variantSel).flatMap(([eksen, degerler]) =>
-    degerler.map((d) => `${eksen}:${d}`),
-  );
 
   const searchInput: ProductSearchParams = {
     q: debouncedQ || undefined,
@@ -161,33 +209,78 @@ export default function StorePage() {
           <div className="flex flex-col gap-8 md:flex-row">
             {/* Yan filtre */}
             <aside className="w-full flex-shrink-0 md:w-64">
-              <div className="sticky top-24 rounded-2xl border border-slate-100 bg-white p-5 ">
+              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-slate-100 bg-white p-5 pr-4 ">
                 <h3 className="mb-4 text-base font-semibold text-slate-900 ">
-                  Kategoriler
+                  {aramaModu ? "İlgili kategoriler" : "Kategoriler"}
                 </h3>
                 <div className="flex flex-col gap-1">
-                  <FilterButton
-                    active={categoryId === undefined}
-                    onClick={() => {
-                      setCategoryId(undefined);
-                      searchParams.delete("category");
-                      setSearchParams(searchParams);
-                    }}
-                    label="Tüm Ürünler"
-                  />
-                  {topCategories.map((c) => (
-                    <FilterButton
-                      key={c.id}
-                      active={categoryId === c.id}
-                      onClick={() => {
-                        setCategoryId(c.id);
-                        searchParams.set("category", c.id.toString());
-                        setSearchParams(searchParams);
-                      }}
-                      label={c.name}
-                      count={c.product_count ?? undefined}
-                    />
-                  ))}
+                  {aramaModu ? (
+                    /* ARAMA modu (Baymard/Amazon usulü): kapsamlı ağacın
+                       TAMAMI baştan açık ve girintili — tıklayınca bir şey
+                       "açılmaz", yalnız filtre uygulanır. Veri tek istekte
+                       zaten elde; yükleme hissi yapısal olarak yok. */
+                    <>
+                      <FilterButton
+                        active={categoryId === undefined}
+                        onClick={() => kategoriSec(undefined)}
+                        label="Tüm sonuçlar"
+                      />
+                      {topCategories.map((kok) => (
+                        <FacetDali
+                          key={kok.id}
+                          dugum={kok}
+                          derinlik={0}
+                          cocuklar={cocuklar}
+                          seciliId={categoryId}
+                          onSec={kategoriSec}
+                        />
+                      ))}
+                    </>
+                  ) : seciliKategori ? (
+                    <>
+                      {/* Üst kademeye dönüş */}
+                      <button
+                        type="button"
+                        onClick={() => kategoriSec(seciliKategori.parent_id ?? undefined)}
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+                      >
+                        <span aria-hidden="true">←</span>
+                        {seciliKategori.parent_id
+                          ? kategoriById.get(seciliKategori.parent_id)?.name ?? "Üst kategori"
+                          : "Tüm Ürünler"}
+                      </button>
+                      <FilterButton
+                        active
+                        onClick={() => {}}
+                        label={seciliKategori.name}
+                      />
+                      {(cocuklar.get(seciliKategori.id) ?? []).map((c) => (
+                        <div key={c.id} className="pl-3">
+                          <FilterButton
+                            active={false}
+                            onClick={() => kategoriSec(c.id)}
+                            label={c.name}
+                          />
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <FilterButton
+                        active
+                        onClick={() => kategoriSec(undefined)}
+                        label="Tüm Ürünler"
+                      />
+                      {topCategories.map((c) => (
+                        <FilterButton
+                          key={c.id}
+                          active={false}
+                          onClick={() => kategoriSec(c.id)}
+                          label={c.name}
+                        />
+                      ))}
+                    </>
+                  )}
                 </div>
 
                 <hr className="my-5 border-slate-100 " />
@@ -216,22 +309,10 @@ export default function StorePage() {
                   />
                 </div>
 
-                <hr className="my-5 border-slate-100 " />
-
-                <h3 className="mb-3 text-base font-semibold text-slate-900 ">
-                  Ürün türü
-                </h3>
-                <div className="flex flex-col gap-1">
-                  {KIND_LABELS.map((k) => (
-                    <FilterButton
-                      key={k.value}
-                      active={kind === k.value}
-                      onClick={() => setKind(k.value)}
-                      label={k.label}
-                    />
-                  ))}
-                </div>
-
+                {/* "Ürün türü" (Fiziksel/Dijital) filtresi KALDIRILDI (1 Eyl,
+                    kullanıcı kararı): dijital ürün kolu şu an kullanılmıyor;
+                    müşteriye anlamsız bir teknik ayrım gösteriyordu. Backend
+                    `kind` paramı duruyor — kol açılırsa filtre geri gelir. */}
                 <hr className="my-5 border-slate-100 " />
 
                 <h3 className="mb-3 text-base font-semibold text-slate-900 ">
@@ -312,8 +393,7 @@ export default function StorePage() {
                     {debouncedQ
                       ? `"${debouncedQ}" için sonuçlar`
                       : categoryId
-                        ? (topCategories.find((c) => c.id === categoryId)
-                            ?.name ?? "Ürünler")
+                        ? (seciliKategori?.name ?? "Ürünler")
                         : "Tüm Ürünler"}
                   </h1>
                   {!isLoading && (
@@ -405,12 +485,27 @@ export default function StorePage() {
                     Sonuç bulunamadı
                   </h3>
                   <p className="text-slate-500 ">
-                    Aradığınız kriterlere uygun ürün yok. Filtreleri temizleyip
-                    tekrar deneyin.
+                    {debouncedQ && seciliKategori
+                      ? `"${seciliKategori.name}" içinde eşleşme yok.`
+                      : "Aradığınız kriterlere uygun ürün yok. Filtreleri temizleyip tekrar deneyin."}
                   </p>
+                  {/* Arama + kategori birlikte boş dönerse en olası niyet:
+                      aramayı TÜM mağazada tekrarlamak (1 Eyl). */}
+                  {debouncedQ && seciliKategori && (
+                    <button
+                      onClick={() => kategoriSec(undefined)}
+                      className="mt-6 rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                    >
+                      Tüm kategorilerde ara
+                    </button>
+                  )}
                   <button
                     onClick={resetFilters}
-                    className="mt-6 rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                    className={
+                      debouncedQ && seciliKategori
+                        ? "mt-3 block w-full text-sm font-medium text-slate-500 transition-colors hover:text-slate-800"
+                        : "mt-6 rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                    }
                   >
                     Filtreleri temizle
                   </button>
@@ -432,6 +527,41 @@ export default function StorePage() {
 }
 
 
+/** Arama modunun kategori dalı: düğüm + TÜM alt dalları açık, girintili. */
+function FacetDali({
+  dugum,
+  derinlik,
+  cocuklar,
+  seciliId,
+  onSec,
+}: {
+  dugum: { id: number; name: string; product_count?: number | null };
+  derinlik: number;
+  cocuklar: Map<number, { id: number; name: string; product_count?: number | null }[]>;
+  seciliId: number | undefined;
+  onSec: (id: number | undefined) => void;
+}) {
+  return (
+    <div style={{ paddingLeft: derinlik ? 12 : 0 }} className="flex flex-col gap-1">
+      <FilterButton
+        active={seciliId === dugum.id}
+        onClick={() => onSec(dugum.id)}
+        label={dugum.name}
+      />
+      {(cocuklar.get(dugum.id) ?? []).map((c) => (
+        <FacetDali
+          key={c.id}
+          dugum={c}
+          derinlik={derinlik + 1}
+          cocuklar={cocuklar}
+          seciliId={seciliId}
+          onSec={onSec}
+        />
+      ))}
+    </div>
+  );
+}
+
 function FilterButton({
   active,
   onClick,
@@ -446,10 +576,11 @@ function FilterButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
+      // Seçim Amazon usulü: dolgu hapı değil KALIN koyu metin (1 Eyl planı).
+      className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
         active
-          ? "bg-indigo-50 text-indigo-700 "
-          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 "
+          ? "font-bold text-slate-900 "
+          : "font-medium text-slate-600 hover:text-slate-900 "
       }`}
     >
       <span>{label}</span>

@@ -124,6 +124,9 @@ const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 const DeliveryRunHandover = lazy(() => import("@/pages/DeliveryRunHandover"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
+const IlanSihirbazi = lazy(
+  () => import("@/pages/tutorOnboarding/IlanSihirbazi"),
+);
 const TutorPromotion = lazy(() => import("@/pages/TutorPromotion"));
 const AdminPromotionsPage = lazy(() => import("@/pages/admin/AdminPromotionsPage"));
 const AdminTutorApplicationsPage = lazy(
@@ -488,6 +491,10 @@ function App() {
           {/* ── Yalnızca TUTOR ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.TUTOR} />}>
             <Route path={PATHS.tutorListing} element={<TutorSettings />} />
+            <Route
+              path={PATHS.tutorOnboarding}
+              element={<IlanSihirbazi />}
+            />
             <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
             <Route path={PATHS.studentProfile} element={<StudentProfile />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />

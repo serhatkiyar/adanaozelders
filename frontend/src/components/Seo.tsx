@@ -15,7 +15,7 @@ interface SeoProps {
   canonicalPath?: string;
   /** OG/Twitter görseli (mutlak veya göreli). Varsayılan: /logo.png. */
   image?: string;
-  type?: "website" | "profile" | "article";
+  type?: "website" | "profile" | "article" | "product";
   /** Arama motorlarından gizle (oturum-içi/özel sayfalar). */
   noindex?: boolean;
   /** Ek head düğümleri (örn. <JsonLd />). */

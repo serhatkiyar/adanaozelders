@@ -108,12 +108,14 @@ describe("ders kaynağı tekliği", () => {
   });
 
   it("ders listesini tüketen ekranlar katalog kancasını kullanıyor", () => {
-    // Bu üç yüzey listeyi gösteren yerlerdir; biri sabite dönerse ayrışma
-    // yeniden başlar.
+    // Bu yüzeyler ders listesini gösteren yerlerdir; biri sabite dönerse
+    // ayrışma yeniden başlar. Sihirbazın ders adımı da listeye dahildir: yeni
+    // eğitmenlerin branşını bildirdiği ASIL yer artık orası.
     for (const yol of [
       "pages/TutorSettings.tsx",
       "pages/Demands.tsx",
       "components/HeroSearch.tsx",
+      "pages/tutorOnboarding/adimlar/Dersler.tsx",
     ]) {
       const metin = readFileSync(join(KOK, yol), "utf8");
       expect(metin, yol).toContain("useSubjects");

@@ -1,9 +1,15 @@
 // Faz 3a · Vitrin varyant yüzeyi — UI kabul testleri (gerçek DOM + gerçek istek).
 //
 // Kanıtlanan davranışlar:
-//   S-1 Detayda kardeş seçici: eksen adı GRUPTAN gelir, üyeler buton olur,
-//       aktif üye işaretli, tükenen üye listede + "Tükendi" etiketli ve
-//       kardeşin sayfasına giden GERÇEK bir link taşır.
+//   S-1 Detayda kardeş seçici: eksen adı GRUPTAN gelir, aktif üye işaretli,
+//       tükenen üye listede kalır ve kardeşin sayfasına giden GERÇEK bir link
+//       taşır.
+//
+//       GÜNCELLEME (eksen bazlı seçici): seçici artık kartezyen çarpımı düz
+//       listeleyen bir şerit değil, EKSEN BAŞINA bir ızgaradır. Link semantiği
+//       ve `aria-current` KORUNDU — iddiaların özü aynı; değişen, "Sarı / M"
+//       gibi birleşik etiket yerine eksenin kendi değerinin yazılması ve
+//       durumun (tükendi / bu seçimde yok) ERİŞİLEBİLİR ADDA taşınması.
 //   S-2 Grupsuz üründe seçici çizilmez (mevcut detay birebir).
 //   S-3 Mağaza filtresinde varyant ekseni facet kutusu veriden gelir ve seçim
 //       GERÇEKTEN giden isteğe `variant=Eksen:Değer` olarak yansır.
@@ -198,20 +204,30 @@ describe("S-1 · detayda kardeş seçici", () => {
     detaySunucusu(urunDetayi());
     detayAc();
     await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" }, YUK);
-    // Eksen başlığı: grubun option1_name'i.
-    expect(screen.getByText("Renk")).toBeTruthy();
+    // Eksen ızgarası grubun option1_name'iyle adlandırılır ve SEÇİLİ DEĞERİN
+    // adı başlıkta yazılıdır ("Renk: Sarı") — 40 değerin altına 40 etiket
+    // sığmaz, tek satır hem seçiliyi hem keşfi taşır.
+    const izgara = screen.getByRole("group", { name: /Renk/ });
+    expect(izgara.textContent).toContain("Sarı");
+
+    // Seçim bir GEZİNMEDİR: kardeşin kendi slug'ı, kendi kanonik URL'i var.
     const pembe = screen.getByRole("link", { name: /Pembe/ });
     expect(pembe.getAttribute("href")).toBe("/magaza/urun/fosforlu-pembe");
   });
 
-  it("aktif üye işaretli; tükenen üye listede ve 'Tükendi' etiketli", async () => {
+  it("aktif üye işaretli; tükenen üye listede kalır ve durumu ADINDA taşır", async () => {
     detaySunucusu(urunDetayi());
     detayAc();
     await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" }, YUK);
-    const sari = screen.getByRole("link", { name: /^Sarı$/ });
-    expect(sari.getAttribute("aria-current")).toBe("true");
+
+    const sari = screen.getByRole("link", { name: /Sarı/ });
+    expect(sari.getAttribute("aria-current")).toBe("page");
+
+    // Tükenen kardeş GİZLENMEZ. Durum yalnız üstü çizili stille değil,
+    // erişilebilir adla da taşınır: ekran okuyucu "soluk"u görmez ve renk
+    // tek başına bilgi taşıyamaz (WCAG 1.4.1).
     const pembe = screen.getByRole("link", { name: /Pembe/ });
-    expect(pembe.textContent).toContain("Tükendi");
+    expect(pembe.getAttribute("aria-label")).toContain("tükendi");
     expect(pembe.getAttribute("aria-current")).toBeNull();
   });
 });

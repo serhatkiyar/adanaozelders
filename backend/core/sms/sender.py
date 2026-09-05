@@ -33,8 +33,8 @@ async def _safe_send(message: SmsMessage) -> bool:
 
 async def send_otp_sms(*, to: str, code: str) -> bool:
     text = (
-        f"Adana Özel Ders doğrulama kodun: {code}\n"
-        f"Kodu kimseyle paylaşma. {settings.PHONE_OTP_TTL_MINUTES} dk geçerli."
+        f"Adana Ozel Ders dogrulama kodun: {code}\n"
+        f"Kodu kimseyle paylasma. {settings.PHONE_OTP_TTL_MINUTES} dk gecerli."
     )
     return await _safe_send(SmsMessage(to=to, text=text))
 
@@ -43,10 +43,9 @@ def delivery_otp_sms_text(*, order_id: int, code: str, ttl_minutes: int) -> str:
     """Saf şablon (pytest'li). Son cümle sosyal mühendislik kalkanıdır — sahte
     'kurye' aramalarıyla kod sızdırılmasına karşı her OTP SMS'inde sabit durur."""
     return (
-        f"#{order_id} siparişin teslimat kodun: {code}\n"
-        f"Paketi teslim alırken bu kodu kuryemize söyle. "
-        f"{ttl_minutes} dk geçerli.\n"
-        f"Bu kodu yalnız kapındaki kuryeye söyle — kuryemiz seni arayıp kod istemez."
+        f"#{order_id} siparisin teslimat kodun: {code}\n"
+        f"Kodu yalniz kapindaki kuryeye soyle, {ttl_minutes} dk gecerli.\n"
+        f"Kuryemiz seni arayip asla kod istemez."
     )
 
 
@@ -74,12 +73,14 @@ async def send_tracking_link_sms(
     aynı sipariş için ikinci bir SMS alır ve hangi teslimatın yola çıktığını
     bilmelidir. Tek teslimatta yazılmaz; fazladan karakter fazladan kredidir.
     """
+    # Gövde ASCII: Türkçe karakter SMS'i UCS-2'ye düşürüp kredi maliyetini
+    # ikiye katlıyor (13 → 6 kredi ölçümü). Docstring'ler Türkçe kalır.
     ne = (
-        f"{order_no} siparişin"
+        f"{order_no} siparisin"
         if shipment_no is None
-        else f"{order_no} siparişinin {shipment_no}. teslimatı"
+        else f"{order_no} siparisinin {shipment_no}. teslimati"
     )
-    text = f"{ne} dağıtıma çıktı! Kuryeni canlı takip et:\n{url}"
+    text = f"{ne} dagitima cikti! Kuryeni canli takip et:\n{url}"
     return await _safe_send(SmsMessage(to=to, text=text))
 
 
@@ -88,19 +89,19 @@ async def send_approach_sms(
 ) -> bool:
     """"Kuryen yaklaşıyor" — bir durak sonuçlanınca sıradaki müşterilere gider."""
     lead = (
-        "Sıradaki teslimat sensin!"
+        "Siradaki teslimat sensin!"
         if stops_ahead <= 0
-        else f"Kuryenin gelmesine {stops_ahead} durak kaldı."
+        else f"Kuryenin gelmesine {stops_ahead} durak kaldi."
     )
-    text = f"#{order_id} siparişin yaklaşıyor. {lead} Canlı takip:\n{url}"
+    text = f"#{order_id} siparisin yaklasiyor. {lead} Canli takip:\n{url}"
     return await _safe_send(SmsMessage(to=to, text=text))
 
 
 async def send_failed_sms(*, to: str, order_id: int) -> bool:
     """Teslim edilemedi bilgilendirmesi (kurye ulaşamadı; yeniden planlanacak)."""
     text = (
-        f"#{order_id} siparişini bugün teslim edemedik — adresinde sana ulaşamadık. "
-        f"Teslimat bir sonraki dağıtım gününe planlanacak."
+        f"#{order_id} siparisini bugun teslim edemedik - adresinde sana ulasamadik. "
+        f"Teslimat bir sonraki dagitim gunune planlanacak."
     )
     return await _safe_send(SmsMessage(to=to, text=text))
 
@@ -108,7 +109,7 @@ async def send_failed_sms(*, to: str, order_id: int) -> bool:
 async def send_postponed_sms(*, to: str, order_id: int, new_date: str) -> bool:
     """Müşteri ertelemesi onayı (yeni teslim günüyle)."""
     text = (
-        f"#{order_id} siparişinin teslimatı isteğinle ertelendi. "
-        f"Yeni teslimat günü: {new_date}."
+        f"#{order_id} siparisinin teslimati isteginle ertelendi. "
+        f"Yeni teslimat gunu: {new_date}."
     )
     return await _safe_send(SmsMessage(to=to, text=text))

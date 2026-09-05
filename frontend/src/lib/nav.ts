@@ -46,6 +46,9 @@ export const STUDENT_NAV: NavItem[] = [
 ];
 
 export const TUTOR_NAV: NavItem[] = [
+  // İlan, eğitmenin platformdaki tek ürünü — üst gezinmede yeri olmaması
+  // eğitmeni onu hesap menüsünün altında aramaya zorluyordu.
+  { to: ROUTES.tutorListing, label: "İlanım", icon: "tickets" },
   { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
   { to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" },
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },

@@ -41,6 +41,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/admin/ui";
+import { BlogBodyEditor } from "@/components/admin/content/BlogBodyEditor";
 import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { useYuzeyKirliFormBekcisi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { createProduct, updateProduct } from "@/api/store";
@@ -67,6 +68,7 @@ import {
   type AdminReasonCode,
 } from "@/lib/stockMovements";
 import {
+  aciklamaEditorBicimi,
   urunFormSemasi,
   urunGuncelleGovdesi,
   urunOlusturGovdesi,
@@ -91,6 +93,7 @@ const ALANLAR = [
   "stokGerekce",
   "stokNot",
   "aciklama",
+  "marka",
   "yazar",
   "yayinevi",
   "isbn",
@@ -152,6 +155,7 @@ const GORSEL_SIRA = [
   "stokNot",
   "tedarikciTemin",
   "aciklama",
+  "marka",
   "yazar",
   "yayinevi",
   "isbn",
@@ -210,7 +214,8 @@ function baslangicDegerleri(initial?: ProductDetailOut): UrunFormDegerleri {
     stok: initial?.stock != null ? String(initial.stock) : "",
     stokGerekce: "",
     stokNot: "",
-    aciklama: initial?.description ?? "",
+    aciklama: aciklamaEditorBicimi(initial?.description),
+    marka: initial?.brand ?? "",
     yazar: initial?.author ?? "",
     yayinevi: initial?.publisher ?? "",
     isbn: initial?.isbn ?? "",
@@ -697,6 +702,30 @@ export function ProductForm({
         </div>
       )}
 
+      {/* Marka, kitaptaki YAYINEVİNDEN ayrıdır ve onun yerine geçmez:
+          kırtasiye ve eğitim materyalinde marka ("Faber-Castell", "Palme")
+          satın alma kararının doğrudan girdisi ve bugüne dek yalnız tedarikçi
+          kataloğunda vardı. schema.org `brand` da bu alandan beslenir. */}
+      <Form.Field
+        control={form.control}
+        name="marka"
+        render={({ field }) => (
+          <Form.Item className="block">
+            <Form.Label optional>Marka</Form.Label>
+            <Form.Control>
+              <input className="input" placeholder="ör. Faber-Castell" {...field} />
+            </Form.Control>
+            <Form.Hint>Kitapta yayınevinden ayrıdır.</Form.Hint>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      {/* Açıklama zengin metindir (TipTap). Editör blogla PAYLAŞILIR: ikinci
+          bir editör, ikinci bir allowlist ve ikinci bir XSS yüzeyi demekti.
+          Çıktı HTML'dir ve SUNUCUDA temizlenir
+          (`core/html_sanitize` → `store_service._temiz_aciklama`); istemci
+          temizliği bir güvenlik sınırı sayılmaz. */}
       <Form.Field
         control={form.control}
         name="aciklama"
@@ -704,8 +733,11 @@ export function ProductForm({
           <Form.Item className="block sm:col-span-2">
             <Form.Label optional>Açıklama</Form.Label>
             <Form.Control>
-              <textarea className="input" rows={2} {...field} />
+              <BlogBodyEditor value={field.value} onChange={field.onChange} />
             </Form.Control>
+            <Form.Hint>
+              Başlık, liste ve kalın/eğik kullanabilirsiniz.
+            </Form.Hint>
             <Form.ErrorMessage />
           </Form.Item>
         )}

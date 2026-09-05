@@ -26,6 +26,8 @@ import {
 import { useAdminProduct } from "@/hooks/useStore";
 
 import { ProductForm } from "./ProductForm";
+import { ProductMediaManager } from "./ProductMediaManager";
+import { VariantMatrixPanel } from "./VariantMatrixPanel";
 
 export function EditProductModal({
   yuzey,
@@ -47,6 +49,19 @@ export function EditProductModal({
       ) : (
         <>
           <ProductForm mode="edit" initial={data} onDone={onSaved} />
+          {/* Görseller formun KARDEŞİDİR, içinde değil: yükleme/silme anında
+              sunucuya yazar ve formun "kaydet"ine bağlı değildir. Forma
+              gömülseydi kirli form bekçisi yüklenmiş bir görseli
+              "kaydedilmemiş değişiklik" sanardı. `StockLedgerPanel` aynı
+              gerekçeyle burada duruyor. */}
+          <div className="mt-6 border-t border-slate-200 pt-5 ">
+            <ProductMediaManager product={data} />
+          </div>
+          {data.variants && (
+            <div className="mt-6 border-t border-slate-200 pt-5 ">
+              <VariantMatrixPanel product={data} />
+            </div>
+          )}
           <div className="mt-6 border-t border-slate-200 pt-5 ">
             <StockLedgerPanel productId={data.id} kind={data.kind} />
           </div>

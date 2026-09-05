@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.search_text import normalize_tr
 from models.store import Product, ProductCategory, VariantGroup
 from schemas.store import (
     VariantGroupCreate,
@@ -33,6 +34,90 @@ BOOK_ROOT_SLUGS: frozenset[str] = frozenset(
 #: Zincir çözümünde izin verilen en büyük derinlik. Model bugün iki seviyeli;
 #: tavan, verideki olası bir parent döngüsünün sorguyu sonsuza sürmesini keser.
 _MAX_DEPTH = 10
+
+#: Tek matris işleminde üretilebilecek EN FAZLA kombinasyon.
+#:
+#: Sınır teknik değil operasyoneldir: gruplu her ürün kendi barkodunu taşımak
+#: ZORUNDA (`ck_products_variant_barcode`) ve barkod uydurulamaz — yönetici
+#: her satır için gerçek bir EAN girmek durumundadır. 200'ün üstünde bir
+#: matris, doldurulamayacağı için taslak çöplüğü üretirdi. Aşımda doğru
+#: tavsiye "bir ekseni ayrı ürüne böl"dür (Shopify'ın Combined Listings ile
+#: vardığı yer).
+MATRIS_UST_SINIRI = 200
+
+
+def esdeger_anahtar(deger: str | None) -> str | None:
+    """Eksen değerinin ikiz karşılaştırma anahtarı.
+
+    `normalize_tr` KULLANILIR, `casefold` DEĞİL. Python'un `casefold`'u
+    Türkçeyi bilmez: `"KIRMIZI".casefold()` → `"kirmizi"` ama
+    `"Kırmızı".casefold()` → `"kırmızı"`. İkisi eşleşmez ve yönetici büyük
+    harfle yazdığında var olan varyantın İKİZİ üretilirdi. `normalize_tr`
+    veritabanındaki `tr_normalize()` ile birebir aynı eşlemedir ve arama da
+    onu kullanır — eşdeğerliğin tek kaynağı odur.
+    """
+    if deger is None:
+        return None
+    return normalize_tr(deger)
+
+
+def _tekillestir(degerler: list[str]) -> list[str]:
+    """Boşlukları kırpar, boşları atar, yazım ikizlerini eler.
+
+    "Kırmızı" / "kırmızı" / "KIRMIZI" DB'de üç ayrı varyant olurdu
+    (`uq_products_variant_combo` TAM eşitliğe bakar) ve vitrinde üç ayrı şık
+    görünürdü. İlk yazım korunur; önizleme ne üretileceğini gösterdiği için
+    eleme yöneticiden gizli kalmaz.
+    """
+    goruldu: set[str] = set()
+    sonuc: list[str] = []
+    for ham in degerler:
+        deger = (ham or "").strip()
+        if not deger:
+            continue
+        anahtar = esdeger_anahtar(deger)
+        if anahtar in goruldu:
+            continue
+        goruldu.add(anahtar)
+        sonuc.append(deger)
+    return sonuc
+
+
+def matris_hucreleri(
+    option1_values: list[str],
+    option2_values: list[str] | None,
+    mevcut: dict[tuple[str, str | None], int],
+) -> list[dict]:
+    """Eksen değerlerinin kartezyen çarpımı; her hücre "var mı" bilgisiyle.
+
+    ``mevcut``: grupta HÂLİHAZIRDA olan ``(eksen1, eksen2) -> ürün id``
+    eşlemesi. Eşleşme Türkçe normalleştirme üzerindendir (`esdeger_anahtar`):
+    yönetici "kırmızı" ya da "KIRMIZI" yazdı diye var olan "Kırmızı"
+    varyantının ikizi üretilmemelidir.
+
+    Sıra kullanıcının girdiği sıradır (eksen1 dış, eksen2 iç döngü) — üretilen
+    tablo, yöneticinin chip'leri yazdığı sırayla okunur.
+    """
+    eksen1 = _tekillestir(option1_values)
+    eksen2 = _tekillestir(option2_values or [])
+
+    mevcut_ci = {
+        (esdeger_anahtar(a), esdeger_anahtar(b)): pid
+        for (a, b), pid in mevcut.items()
+    }
+
+    hucreler: list[dict] = []
+    for a in eksen1:
+        for b in eksen2 or [None]:
+            anahtar = (esdeger_anahtar(a), esdeger_anahtar(b))
+            hucreler.append(
+                {
+                    "option1_value": a,
+                    "option2_value": b,
+                    "mevcut_urun_id": mevcut_ci.get(anahtar),
+                }
+            )
+    return hucreler
 
 
 async def category_ancestor_chain(
@@ -309,12 +394,31 @@ async def validate_membership(
     """
     g = await _load_group(db, group_id)
     await ensure_variants_allowed(db, category_id)
+    # Barkod kuralı BURADA kalır: `validate_membership`in çağıranları
+    # (`create_product`/`update_product`) barkodu boş bırakabilir ve kural
+    # "boş olamaz"dır. Eksen kuralları matrisle paylaşıldığı için ayrıldı.
     if not barcode:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "Varyant grubundaki ürün barkod taşımak zorunda — rafta iki "
             "varyant ancak barkodla ayırt edilir.",
         )
+    validate_membership_fields(g, option1_value, option2_value)
+    return g
+
+
+def validate_membership_fields(
+    g: VariantGroup,
+    option1_value: str | None,
+    option2_value: str | None,
+) -> None:
+    """Grup üyeliğinin EKSEN kuralları (DB'ye dokunmaz).
+
+    `validate_membership` (tek üye) ve matris üretimi (satır satır) aynı
+    kuralları paylaşsın diye ayrıldı. Barkod zorunluluğu burada DEĞİL:
+    matriste şema (`VariantMatrixRowIn.barcode`) zaten zorunlu kılar, tekil
+    yolda ise `validate_membership` kontrol eder.
+    """
     if not option1_value:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -330,4 +434,3 @@ async def validate_membership(
             status.HTTP_400_BAD_REQUEST,
             f"'{g.option2_name}' ekseni için bir değer girin.",
         )
-    return g

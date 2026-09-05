@@ -11,14 +11,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
 import { ConsentCheckbox } from "@/components/LegalConsent";
-import { Gender } from "@/types";
 import { currentConsentVersion } from "@/lib/legalContent";
-
-const GENDERS = [
-  { value: Gender.MALE, label: "Erkek" },
-  { value: Gender.FEMALE, label: "Kadın" },
-  { value: Gender.UNSPECIFIED, label: "Belirtmek istemiyorum" },
-] as const;
 
 export function AuthModal() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -95,10 +88,7 @@ export function AuthModal() {
         </button>
 
         <div className="p-8 max-h-[90vh] overflow-y-auto">
-          {modal === "login" ? <LoginForm onSuccess={close} /> : <RegisterForm initialRole={roleParam || "client"} onSuccess={() => {
-            searchParams.set("modal", "login");
-            setSearchParams(searchParams, { replace: true });
-          }} />}
+          {modal === "login" ? <LoginForm onSuccess={close} /> : <RegisterForm initialRole={roleParam || "client"} onSuccess={close} />}
         </div>
     </Modal>
   );
@@ -226,32 +216,43 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+/**
+ * Kayıt formu DÖRT ALANDIR — gerekçesi `pages/Register.tsx` başlığındadır.
+ * Kayıt başarılıysa otomatik giriş yapılır; eğitmen ilan sihirbazına gider.
+ */
 function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, onSuccess: () => void }) {
   const [role, setRole] = useState<RegisterRole>(initialRole);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [gender, setGender] = useState<Gender | "">("");
-
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const setToken = useAuthStore((s) => s.setToken);
+  const setUser = useAuthStore((s) => s.setUser);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      register(role, {
+    mutationFn: async () => {
+      await register(role, {
         email,
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        username: username.trim(),
-        birth_date: birthDate || null,
-        gender: gender || null,
         // KVKK ispat kaydı (bkz. Register.tsx).
         consent_version: currentConsentVersion(),
-      }),
-    onSuccess,
+      });
+      const token = await login(email, password);
+      setToken(token.access_token);
+      const user = await fetchMe();
+      setUser(user);
+      queryClient.setQueryData(["me"], user);
+      return user;
+    },
+    onSuccess: (user) => {
+      onSuccess();
+      toast.success(buildWelcome(user.id, user.full_name));
+      if (role === "tutor") navigate(ROUTES.tutorOnboarding);
+    },
   });
 
   const handleSubmit = (e: FormEvent) => {
@@ -321,24 +322,6 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
           </Field>
         </div>
 
-        <Field label="Kullanıcı Adı" required>
-          {(id) => (
-              <input
-                    id={id}
-                type="text"
-                required
-                minLength={3}
-                maxLength={50}
-                pattern="[a-zA-Z0-9_]+"
-                title="Yalnızca harf, rakam ve alt çizgi (_)"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
-                placeholder="kullanici_adi"
-              />
-          )}
-        </Field>
-
         <Field label="E-posta" required>
           {(id) => (
               <input
@@ -368,39 +351,6 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
               />
           )}
         </Field>
-
-        {/* Opsiyonel demografi */}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Doğum Tarihi">
-            {(id) => (
-                <input
-                    id={id}
-                  type="date"
-                  max={todayStr}
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
-                />
-            )}
-          </Field>
-          <Field label="Cinsiyet">
-            {(id) => (
-                <select
-                    id={id}
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value as Gender | "")}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
-                >
-                  <option value="">Seçilmedi</option>
-                  {GENDERS.map((g) => (
-                    <option key={g.value} value={g.value}>
-                      {g.label}
-                    </option>
-                  ))}
-                </select>
-            )}
-          </Field>
-        </div>
 
         <ConsentCheckbox />
 

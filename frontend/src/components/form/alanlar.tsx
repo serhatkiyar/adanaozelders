@@ -4,9 +4,9 @@ import { Field } from "@/components/ui/Field";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 /**
- * Ön başvuru formunun alan parçaları.
+ * Form alan parçaları — ön başvuru ve ilan sihirbazının ortak tabanı.
  *
- * Neden bu sayfaya özel: public tarafta ortak bir Input/Select primitifi yok
+ * Neden ayrı bir katman: public tarafta ortak bir Input/Select primitifi yok
  * ve bu formun kendine has iki kuralı var — (1) yazı boyu mobilde 16px'in
  * altına inmez, yoksa iOS Safari alana odaklanınca sayfayı yakınlaştırır ve
  * kullanıcı sihirbazın ortasında kaybolur; (2) dokunma hedefi 44px'in altına
@@ -42,6 +42,12 @@ interface MetinProps extends OrtakProps {
   maxLength?: number;
   /** Ad ve e-posta gibi alanlarda otomatik düzeltme/büyütme kapatılır. */
   duzeltmeKapali?: boolean;
+  /**
+   * Sihirbazda adım açılınca ilk alana odaklanmak için. MASAÜSTÜNDE istenir;
+   * mobilde çağıran taraf kapatır — dokunmatikte otomatik odak klavyeyi açıp
+   * adımın yarısını örter.
+   */
+  odakla?: boolean;
 }
 
 export function Metin({
@@ -59,6 +65,7 @@ export function Metin({
   placeholder,
   maxLength,
   duzeltmeKapali,
+  odakla,
 }: MetinProps) {
   return (
     <Field label={etiket} hint={ipucu} error={hata} required={zorunlu}>
@@ -71,6 +78,7 @@ export function Metin({
           autoComplete={autoComplete}
           placeholder={placeholder}
           maxLength={maxLength}
+          autoFocus={odakla}
           autoCapitalize={duzeltmeKapali ? "off" : undefined}
           autoCorrect={duzeltmeKapali ? "off" : undefined}
           spellCheck={duzeltmeKapali ? false : undefined}
@@ -90,6 +98,8 @@ interface CokSatirProps extends OrtakProps {
   satir?: number;
   placeholder?: string;
   maxLength?: number;
+  /** Bkz. `MetinProps.odakla`. */
+  odakla?: boolean;
 }
 
 export function CokSatir({
@@ -104,6 +114,7 @@ export function CokSatir({
   satir = 3,
   placeholder,
   maxLength,
+  odakla,
 }: CokSatirProps) {
   return (
     <Field label={etiket} hint={ipucu} error={hata} required={zorunlu}>
@@ -114,6 +125,7 @@ export function CokSatir({
           rows={satir}
           placeholder={placeholder}
           maxLength={maxLength}
+          autoFocus={odakla}
           value={deger}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onBlur}
@@ -224,7 +236,7 @@ export function OnayKutusu({
 }) {
   return (
     <div>
-      <label className="flex cursor-pointer items-start gap-3 py-1">
+      <label className="flex min-h-[44px] cursor-pointer items-start gap-3 py-2.5">
         <input
           type="checkbox"
           data-alan={ad}
