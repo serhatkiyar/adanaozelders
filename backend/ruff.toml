@@ -93,6 +93,12 @@ ignore = [
 # --apply'ın parti parti created/skipped/errors sayımı aracın çıktısıdır;
 # kullanıcı ilerlemeyi konsoldan izler.
 "scripts/import_ucdortbes.py" = ["T201"]
+# Yıldırım B2B kataloğu içe aktarma aracı: aynı gerekçe, aynı `--uygula` kapısı.
+# Kuru koşuda kaç satır okundu, kaçı fiyatsız diye atlandı, kaçı kategorisiz
+# olduğu için DRAFT'a düştü ve kaç mevcut ürünün SOFT-DELETE edileceği yazılır.
+# Soft-delete sayısı özellikle sessiz kalmamalı: --uygula'dan önce durduran şey
+# tam olarak o satırdır.
+"scripts/yildirim_katalog_import.py" = ["T201"]
 # Stok defteri raporu: konsol tablosu aracın çıktısıdır (CSV opsiyoneldir).
 "scripts/stock_ledger_report.py" = ["T201"]
 # Ders taksonomisi dışa aktarımı: aracın ÇIKTISI rapordur. Kaç ders süzüldü,
@@ -105,6 +111,12 @@ ignore = [
 # hangi eşanlamlı çakıştı, hangi merdiven bağlandı) --uygula'dan ÖNCE gözden
 # geçirilen şeyin ta kendisidir.
 "scripts/dersler_yukle.py" = ["T201"]
+# Kategori taksonomisi yükleyicisi (kategori ağacı + ürün atamaları): aynı
+# gerekçe ve aynı `--uygula` kapısı. Kuru koşuda kaç kategori upsert edileceğini,
+# kaç ürünün barkodla / id ile eşlendiğini ve atamaların yedeğinin nereye
+# yazıldığını basar; yedek dosyasının yolu ekrana yazılmazsa geri dönüş yolu
+# kullanıcıdan gizlenmiş olurdu.
+"scripts/taxonomy_yukle.py" = ["T201"]
 # Branş eşleme aracı: hangi serbest metnin hangi derse bağlandığı ve hangisinin
 # EŞLEŞMEDİĞİ, --uygula'dan önce gözden geçirilen çıktıdır; eşleşmeyenler
 # panelin kuyruğuna düşecek kayıtlardır.
