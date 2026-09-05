@@ -18,6 +18,7 @@ import {
   ADIMLAR,
   BOS_DURUM,
   SON_ADIM,
+  adimIndeksi,
   adimiSinirla,
   eksikler,
   ucretiCoz,
@@ -116,10 +117,14 @@ describe("adım doğrulaması", () => {
     expect(adim.dogrula?.({ ...BOS_DURUM, hourlyRate: "400" }, DIS_TAM)).toBeNull();
   });
 
-  it("belge adımı DIŞ duruma bakar — kendi alanı yok", () => {
-    const { adim } = adimAra("belgeler");
-    expect(adim.dogrula?.(tamDurum(), DIS_BOS)).not.toBeNull();
-    expect(adim.dogrula?.(tamDurum(), DIS_TAM)).toBeNull();
+  // 5 Eyl 2026: müsaitlik ve belge adımları sihirbazdan ÇIKARILDI. Belge artık
+  // yayın kapısı değil, rozet koşulu; müsaitlik ilan yayına girdikten sonra
+  // panelden doldurulur. Bu nöbetçi ikisinin sessizce geri eklenmesini
+  // engeller — geri gelirlerse akış yine 11 adıma çıkar ve karar kaybolur.
+  it("müsaitlik ve belge adımları sihirbazda YOKTUR", () => {
+    const anahtarlar = ADIMLAR.map((a) => a.anahtar);
+    expect(anahtarlar).not.toContain("belgeler");
+    expect(anahtarlar).not.toContain("musaitlik");
   });
 
   it("atlanabilir adımların doğrulaması yoktur", () => {
@@ -130,10 +135,10 @@ describe("adım doğrulaması", () => {
 });
 
 describe("yayın kapısı önizlemesi", () => {
-  it("belge eksikse eksikler listesi BELGE adımını gösterir", () => {
-    const eksik = eksikler(tamDurum(), DIS_BOS);
-    const belgeAdimi = adimAra("belgeler").i;
-    expect(eksik.map((e) => e.adim)).toContain(belgeAdimi);
+  // Belge artık yayın koşulu DEĞİL: belgesiz eğitmenin özet ekranı temiz
+  // olmalı, yoksa kullanıcı düzeltemeyeceği bir eksik görür.
+  it("belge eksik olsa da yayın kapısı temizdir", () => {
+    expect(eksikler(tamDurum(), DIS_BOS)).toEqual([]);
   });
 
   it("her şey tamamsa liste boş", () => {
@@ -173,5 +178,23 @@ describe("adım yamaları", () => {
     });
     expect(yama?.district).toBeNull();
     expect(yama?.location_text).toBeNull();
+  });
+});
+
+describe("adimIndeksi", () => {
+  it("anahtardan doğru sırayı verir", () => {
+    expect(adimIndeksi("dersler")).toBe(0);
+    expect(adimIndeksi("ozet")).toBe(SON_ADIM);
+  });
+
+  // Sessiz kaymanın kapısı: silinmiş bir adıma bağlanan kod 0. adıma düşerse
+  // kullanıcı hata görmeden yanlış ekrana gider. Fırlatmak bunu görünür yapar.
+  it("bilinmeyen anahtarda fırlatır", () => {
+    expect(() => adimIndeksi("yokBoyleAdim")).toThrow(/Bilinmeyen adım/);
+  });
+
+  it("her adımın anahtarı benzersizdir", () => {
+    const anahtarlar = ADIMLAR.map((a) => a.anahtar);
+    expect(new Set(anahtarlar).size).toBe(anahtarlar.length);
   });
 });

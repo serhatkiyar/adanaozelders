@@ -14,7 +14,11 @@ import { formatRate, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { useNavSearch } from "@/hooks/useNavSearch";
-import { TutorTrustBar } from "@/components/TutorTrust";
+import {
+  DocumentedBadge,
+  TutorTrustBar,
+  hasVerifiedEducation,
+} from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { absoluteUrl } from "@/lib/seo";
@@ -161,6 +165,11 @@ export default function PublicTutorProfile() {
                   <h1 className="text-xl font-bold text-slate-900 ">
                     {tutor.full_name}
                   </h1>
+                  {/* Diploma artık YAYIN KAPISI değil, ayrıcalık (5 Eyl 2026):
+                      belgesiz eğitmen de yayında olur, belgesi admin tarafından
+                      e-Devlet üzerinden doğrulanmış olan bu rozeti alır. Rozet
+                      bugüne kadar tanımlıydı ama hiçbir ekrana bağlanmamıştı. */}
+                  {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
                 </div>
 
                 <button

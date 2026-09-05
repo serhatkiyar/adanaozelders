@@ -1,5 +1,5 @@
 import { BASLIK_EN_AZ_KELIME, kelimeSay } from "@/lib/metin";
-import { TeachingMode, type Availability, type TutorProfileUpdate } from "@/types";
+import { TeachingMode, type TutorProfileUpdate } from "@/types";
 
 /**
  * İlan sihirbazının sözleşmesi: adım listesi, adım doğrulaması ve her adımın
@@ -28,7 +28,6 @@ export interface Durum {
   hourlyRate: string;
   firstLessonFree: boolean;
   introVideoUrl: string;
-  availability: Availability[];
 }
 
 /** Sunucudan gelen, sihirbazın kendi yazmadığı ama okuduğu durum. */
@@ -52,7 +51,6 @@ export const BOS_DURUM: Durum = {
   hourlyRate: "",
   firstLessonFree: false,
   introVideoUrl: "",
-  availability: [],
 };
 
 export interface Hata {
@@ -217,14 +215,13 @@ export const ADIMLAR: Adim[] = [
     }),
   },
   {
-    anahtar: "musaitlik",
-    kisaAd: "Müsaitliğin",
-    baslik: "Ne zaman müsaitsin?",
-    altBaslik: "Pencere eklemezsen öğrenciler herhangi bir saati talep edebilir.",
+    anahtar: "telefon",
+    kisaAd: "Telefonun",
+    baslik: "Telefon numaran",
+    altBaslik: "Ders talebi geldiğinde SMS ile haber veriyoruz.",
     ipucu:
-      "Eklediğin saatlerin dışında rezervasyon yapılamaz. Boş bırakmak da bir seçim: talebi sen değerlendirirsin.",
+      "Numaran ilanında görünmez. Rezervasyon ve ödeme adımlarında doğrulanmış numara istenir; şimdi atlarsan o adımda tekrar sorulur.",
     atlanabilir: true,
-    yama: (d) => ({ availability: d.availability }),
   },
   {
     anahtar: "fotograf",
@@ -236,31 +233,6 @@ export const ADIMLAR: Adim[] = [
     atlanabilir: true,
   },
   {
-    anahtar: "belgeler",
-    kisaAd: "Belgelerin",
-    baslik: "Eğitimini belgele",
-    altBaslik:
-      "Diploma, öğrenci belgesi ya da e-Devlet barkodu. Yayına çıkmak için gerekli.",
-    ipucu:
-      "Belgen ilanında görünmez; yalnız yönetici doğrulaması için kullanılır. Bu adım olmadan ilan yayına alınamaz.",
-    dogrula: (_d, dis) =>
-      dis.belgeVar
-        ? null
-        : {
-            mesaj:
-              "Yayına çıkmak için en az bir eğitim kaydı ve belgesi (ya da e-Devlet barkodu) gerekiyor.",
-          },
-  },
-  {
-    anahtar: "telefon",
-    kisaAd: "Telefonun",
-    baslik: "Telefon numaran",
-    altBaslik: "Ders talebi geldiğinde SMS ile haber veriyoruz.",
-    ipucu:
-      "Numaran ilanında görünmez. Rezervasyon ve ödeme adımlarında doğrulanmış numara istenir; şimdi atlarsan o adımda tekrar sorulur.",
-    atlanabilir: true,
-  },
-  {
     anahtar: "ozet",
     kisaAd: "Özet",
     baslik: "İlanın hazır",
@@ -269,6 +241,21 @@ export const ADIMLAR: Adim[] = [
 ];
 
 export const SON_ADIM = ADIMLAR.length - 1;
+
+/**
+ * Anahtardan adım numarası.
+ *
+ * NEDEN VAR: adım numaraları başka dosyalara ELLE yazılıyordu (özet ekranının
+ * "Düzenle" bağlantıları). Sözleşmeye bir adım eklendiğinde ya da sırası
+ * değiştiğinde bu sayılar sessizce yanlış adımı gösteriyordu — hata vermeden,
+ * yalnız kullanıcıyı yanlış ekrana götürerek. Bilinmeyen anahtarda FIRLATIR:
+ * silinmiş bir adıma bağlanan kod, sessizce 0. adıma düşmek yerine kırılsın.
+ */
+export function adimIndeksi(anahtar: string): number {
+  const i = ADIMLAR.findIndex((a) => a.anahtar === anahtar);
+  if (i < 0) throw new Error(`Bilinmeyen adım anahtarı: ${anahtar}`);
+  return i;
+}
 
 /** Adım numarasını her zaman geçerli aralığa çeker. */
 export function adimiSinirla(n: number): number {

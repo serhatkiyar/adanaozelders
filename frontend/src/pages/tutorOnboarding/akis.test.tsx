@@ -20,7 +20,15 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import IlanSihirbazi from "./IlanSihirbazi";
+import { ADIMLAR, adimIndeksi } from "./sozlesme";
 import { TutorStatus } from "@/types";
+
+// Adım SAYISI ve SIRASI sözleşmeden okunur, teste elle yazılmaz. Daha önce
+// "Adım 4 / 11" gibi sabitler vardı; sözleşmeden bir adım çıkarıldığında test
+// kırılıyor ama hata "adım sayısı yanlış" gibi görünüyordu — kırılan üretim
+// değil, testin kendi sabitiydi.
+const N = ADIMLAR.length;
+const gostergeAdi = (adimNo: number) => new RegExp(`^Adım ${adimNo + 1} / ${N}`);
 
 const guncelle = vi.fn();
 const gonder = vi.fn();
@@ -50,7 +58,6 @@ const TASLAK = {
   status: TutorStatus.DRAFT,
   subjects: [],
   subject_levels: {},
-  availability: [],
 };
 
 const KULLANICI = { id: 1, role_id: 2, full_name: "Ayşe Yılmaz" };
@@ -143,7 +150,7 @@ describe("mobil gezinme", () => {
 
   it("adım haritası geriye gitmeyi tek dokunuşa indirir", async () => {
     ekran(3);
-    fireEvent.click(await screen.findByRole("button", { name: /^Adım 4 \/ 11/ }));
+    fireEvent.click(await screen.findByRole("button", { name: gostergeAdi(3) }));
 
     // Ulaşılmış adım açılabilir…
     fireEvent.click(await screen.findByRole("button", { name: /1\s*Derslerin/ }));
@@ -154,26 +161,36 @@ describe("mobil gezinme", () => {
 
   it("harita henüz ulaşılmamış adımı KİLİTLİ gösterir", async () => {
     ekran(1);
-    fireEvent.click(await screen.findByRole("button", { name: /^Adım 2 \/ 11/ }));
-    const ozet = await screen.findByRole("button", { name: /11\s*Özet/ });
+    fireEvent.click(await screen.findByRole("button", { name: gostergeAdi(1) }));
+    const ozet = await screen.findByRole("button", {
+      name: new RegExp(`${N}\s*Özet`),
+    });
     expect((ozet as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
 describe("yayın kapısı", () => {
-  it("özet ekranı eksik belgeyi sunucuya gitmeden gösterir", async () => {
-    ekran(10);
-    expect(
-      await screen.findByText(/en az bir eğitim kaydı ve belgesi/i),
-    ).toBeTruthy();
+  it("özet ekranı eksikleri sunucuya gitmeden gösterir", async () => {
+    ekran(adimIndeksi("ozet"));
+    // Boş taslakta ders seçilmemiş — yayının gerçek önkoşulu bu.
+    expect(await screen.findByText(/En az bir ders seç/i)).toBeTruthy();
     expect(gonder).not.toHaveBeenCalled();
+  });
+
+  // 5 Eyl 2026: belge yayın kapısı olmaktan çıktı. Belgesiz eğitmene
+  // düzeltemeyeceği bir eksik gösterilmemeli — eski metin geri gelirse
+  // kullanıcı akışın sonunda yine duvara toslar.
+  it("belgesiz eğitmene BELGE ENGELİ gösterilmez", async () => {
+    ekran(adimIndeksi("ozet"));
+    await screen.findByText(/En az bir ders seç/i);
+    expect(screen.queryByText(/en az bir eğitim kaydı ve belgesi/i)).toBeNull();
   });
 
   it("sunucu reddederse mesajı adımda gösterir, çöküş olmaz", async () => {
     gonder.mockRejectedValue({
       response: { data: { detail: "Add at least one education document" } },
     });
-    ekran(10);
+    ekran(adimIndeksi("ozet"));
     fireEvent.click(await screen.findByRole("button", { name: "Yayına gönder" }));
     expect(await screen.findByRole("alert")).toBeTruthy();
     // Tebrikler ekranına GEÇİLMEDİ.

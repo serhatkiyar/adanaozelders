@@ -15,7 +15,6 @@ from pydantic import (
 )
 
 from core.slug import tutor_slug
-from core.text import HEADLINE_MIN_WORDS, count_words
 from models.tutor import Gender, TutorStatus
 from schemas.education import EducationOut
 from schemas.user import UserOut
@@ -71,16 +70,16 @@ class TutorProfileUpdate(BaseModel):
     # İlanda "Ders Hakkında" — dersin nasıl işlediği / metodoloji.
     lesson_info: str | None = Field(default=None, max_length=2000)
 
-    @field_validator("headline")
-    @classmethod
-    def _check_headline_words(cls, v: str | None) -> str | None:
-        # Başlık opsiyoneldir (taslak); ama yazıldıysa anlamlı olmalı:
-        # en az HEADLINE_MIN_WORDS sözcük. Zorunluluk yayın (submit) kapısında.
-        if v is not None and v.strip() and count_words(v) < HEADLINE_MIN_WORDS:
-            raise ValueError(
-                f"Başlık en az {HEADLINE_MIN_WORDS} sözcük olmalı."
-            )
-        return v
+    # BAŞLIK UZUNLUĞU BURADA (PATCH) ARTIK ZORLANMIYOR (5 Eyl 2026).
+    #
+    # Eskiden kısa bir başlık Pydantic seviyesinde reddediliyordu. Sihirbaz her
+    # adımda `PATCH /tutors/me` yaptığı için bu, "sayaç uyarır ama engellemez"
+    # kararıyla çakışıyordu: kullanıcı adımı geçemiyor ve bizim yazdığımız açık
+    # mesaj yerine ham şema hatası görüyordu — hem engel hem kötü mesaj.
+    #
+    # Taslak artık serbestçe kaydedilir; eşik TEK yerde, yayın kapısında yaşar
+    # (`services/tutor_service.submit_for_approval`). İstemci tarafında
+    # `lib/metin.ts::kelimeSayaci` aynı sabiti okuyup canlı sayaç gösterir.
     hourly_rate: Decimal | None = Field(
         default=None, ge=0, max_digits=10, decimal_places=2
     )

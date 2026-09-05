@@ -65,10 +65,13 @@ export function ProfileCompleteness({
             Branş seçmeden aramada görünmezsin.
           </span>
         )}
+        {/* 5 Eyl 2026: belge artık yayın kapısı DEĞİL — belgesiz ilan da
+            yayınlanıyor. Bu yüzden cümle "engel" değil "kazanç" anlatır ve
+            rengi uyarı (amber) değil bilgi (slate) tonundadır. */}
         {!belgeVar && (
-          <span className="font-medium text-amber-600 ">
+          <span className="font-medium text-slate-600 ">
             {" "}
-            Belge eklemeden ilanı yayına gönderemezsin.
+            Belgeni doğrulatınca profilinde "Diploması Doğrulandı" rozeti çıkar.
           </span>
         )}
       </p>

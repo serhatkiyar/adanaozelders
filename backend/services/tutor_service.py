@@ -16,7 +16,7 @@ from models.tutor import (
 )
 from schemas.tutor import TutorProfileUpdate
 from core.search_text import normalize_tr
-from services import education_service, notification_service, subject_service
+from services import notification_service, subject_service
 
 _MAX_SUBJECTS = 40
 _MAX_AVAILABILITY = 60
@@ -240,18 +240,19 @@ async def update_profile(
 
 
 async def submit_for_approval(db: AsyncSession, tutor: Tutor) -> Tutor:
-    # Zorunlu kalite kapısı: en az bir eğitim kaydında doğrulama materyali
-    # (yüklenen diploma/belge VEYA e-Devlet barkodu) olmadan onaya gönderilemez.
-    if not await education_service.has_verification_material(db, tutor_id=tutor.id):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            # Konum ADI VERİLMEZ: aynı koşul artık iki yerden karşılanıyor —
-            # ilan sihirbazının "Eğitimini belgele" adımı ve /hesabim → Eğitim.
-            # Tek bir yol adı yazmak, kullanıcıyı bulunduğu ekrandan başka bir
-            # yere göndermeye çalışır ve yanlış olur.
-            "Onaya göndermeden önce eğitim bilgilerinden en az birine diploma "
-            "veya öğrenci belgesi yükle ya da e-Devlet doğrulama barkodunu gir.",
-        )
+    # DİPLOMA ARTIK YAYIN KAPISI DEĞİL (5 Eyl 2026, kullanıcı kararı).
+    #
+    # Eskiden burada "en az bir eğitim kaydında doğrulama materyali yoksa 422"
+    # kapısı vardı. Kaldırıldı: belge istemek, henüz hiçbir öğrenciye ulaşmamış
+    # bir eğitmenden ilanı yayınlanmadan ÖNCE evrak istemek demekti ve arzın
+    # önündeki en büyük engeliydi. Yeni sözleşme: belgesiz ilan da yayınlanır;
+    # belgesi admin tarafından e-Devlet üzerinden doğrulanmış eğitmen profilinde
+    # "Diploması Doğrulandı" rozetini alır. Belge bir BİLET değil, bir AYRICALIK.
+    #
+    # Rozet ve panelin eksikler listesi hâlâ education_service'teki sorguları
+    # okuyor; kaldırılan yalnız bu kapıdır. Nöbetçisi:
+    # tests/test_tutor_yayin_kapisi.py
+    #
     # Zorunlu kalite kapısı: ilan başlığı dolu ve en az HEADLINE_MIN_WORDS sözcük olmalı.
     if count_words(tutor.headline) < HEADLINE_MIN_WORDS:
         raise HTTPException(

@@ -511,7 +511,8 @@ function EducationItem({
 interface EducationSectionProps {
   editable?: boolean;
   educations?: Education[]; // read-only mod için
-  // Eğitmen ise diploma/belge yükleme kontrolünü göster (zorunlu kalite kapısı).
+  // Eğitmen ise diploma/belge yükleme kontrolünü göster (rozet koşulu;
+  // 5 Eyl 2026'dan beri yayın kapısı DEĞİL).
   withDocument?: boolean;
   /** Kendi kart kabuğu olmadan render et (üst kapsayıcı bölümü kendisi sağlar). */
   bare?: boolean;
@@ -649,7 +650,7 @@ export function EducationSection({
             {editable && !adding && list.length === 0 && (
               <p className="text-sm italic text-slate-400 ">
                 {withDocument
-                  ? "Henüz eğitim bilgisi eklemedin. Eğitmen olarak en az bir eğitim ekleyip diploma/belge yüklemen ya da e-Devlet doğrulama barkodunu girmen gerekir; aksi halde ilanını onaya gönderemezsin."
+                  ? "Henüz eğitim bilgisi eklemedin. İlanını belgesiz de yayına gönderebilirsin; diploma/belge yükler ya da e-Devlet doğrulama barkodunu girersen doğrulandıktan sonra profilinde \"Diploması Doğrulandı\" rozeti görünür."
                   : "Henüz eğitim bilgisi eklemedin. İstersen okul, derece ve yıl bilgilerini ekleyebilirsin (zorunlu değil)."}
               </p>
             )}

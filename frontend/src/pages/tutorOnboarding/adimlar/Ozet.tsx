@@ -1,7 +1,7 @@
 import { PlainButton } from "@/components/ui/PlainButton";
 import { TeachingMode } from "@/types";
 
-import { ADIMLAR, eksikler } from "../sozlesme";
+import { ADIMLAR, adimIndeksi, eksikler } from "../sozlesme";
 import type { AdimProps } from "./ortak";
 
 const SEKIL_ADI: Record<TeachingMode, string> = {
@@ -90,10 +90,15 @@ export function AdimOzet({ d, dis, gitAdim }: AdimProps) {
         <Satir
           etiket="Dersler"
           deger={d.subjects.join(", ")}
-          adim={0}
+          adim={adimIndeksi("dersler")}
           gitAdim={gitAdim}
         />
-        <Satir etiket="Başlık" deger={d.headline} adim={1} gitAdim={gitAdim} />
+        <Satir
+          etiket="Başlık"
+          deger={d.headline}
+          adim={adimIndeksi("baslik")}
+          gitAdim={gitAdim}
+        />
         <Satir
           etiket="Ders şekli"
           deger={
@@ -101,7 +106,7 @@ export function AdimOzet({ d, dis, gitAdim }: AdimProps) {
               ? [SEKIL_ADI[d.teachingMode], d.district].filter(Boolean).join(" · ")
               : ""
           }
-          adim={4}
+          adim={adimIndeksi("yer")}
           gitAdim={gitAdim}
         />
         <Satir
@@ -111,29 +116,19 @@ export function AdimOzet({ d, dis, gitAdim }: AdimProps) {
               ? `${d.hourlyRate} ₺${d.firstLessonFree ? " · ilk ders ücretsiz" : ""}`
               : ""
           }
-          adim={5}
-          gitAdim={gitAdim}
-        />
-        <Satir
-          etiket="Müsaitlik"
-          deger={
-            d.availability.length
-              ? `${d.availability.length} zaman aralığı`
-              : "Belirtilmedi"
-          }
-          adim={6}
+          adim={adimIndeksi("ucret")}
           gitAdim={gitAdim}
         />
         <Satir
           etiket="Fotoğraf"
           deger={dis.avatarUrl ? "Eklendi" : "Eklenmedi"}
-          adim={7}
+          adim={adimIndeksi("fotograf")}
           gitAdim={gitAdim}
         />
         <Satir
           etiket="Telefon"
           deger={dis.telefonDogrulandi ? "Doğrulandı" : "Doğrulanmadı"}
-          adim={9}
+          adim={adimIndeksi("telefon")}
           gitAdim={gitAdim}
         />
       </div>

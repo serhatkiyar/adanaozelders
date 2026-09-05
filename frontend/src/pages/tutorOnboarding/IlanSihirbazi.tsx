@@ -16,10 +16,8 @@ import { ROUTES } from "@/lib/routes";
 import { TutorStatus, type TutorOut } from "@/types";
 
 import { AdimDersler } from "./adimlar/Dersler";
-import { AdimBelgeler } from "./adimlar/Belgeler";
 import { AdimFotograf } from "./adimlar/Fotograf";
 import { AdimBaslik, AdimHakkinda, AdimYontem } from "./adimlar/Metinler";
-import { AdimMusaitlik } from "./adimlar/Musaitlik";
 import { AdimOzet } from "./adimlar/Ozet";
 import { AdimTelefon } from "./adimlar/Telefon";
 import { AdimUcret } from "./adimlar/Ucret";
@@ -64,9 +62,7 @@ const ADIM_BILESENI: Record<string, (p: AdimProps) => JSX.Element> = {
   hakkinda: AdimHakkinda,
   yer: AdimYer,
   ucret: AdimUcret,
-  musaitlik: AdimMusaitlik,
   fotograf: AdimFotograf,
-  belgeler: () => <AdimBelgeler />,
   telefon: AdimTelefon,
   ozet: AdimOzet,
 };
@@ -92,7 +88,6 @@ function sunucudanDurum(t: TutorOut): Durum {
     hourlyRate: t.hourly_rate ?? "",
     firstLessonFree: !!t.first_lesson_free,
     introVideoUrl: t.intro_video_url ?? "",
-    availability: t.availability ?? [],
   };
 }
 
