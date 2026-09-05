@@ -162,7 +162,6 @@ const BEKLEYEN = {
   first_name: "Aday",
   last_name: "Ogretmen",
   full_name: "Aday Ogretmen",
-  username: "adayogretmen",
   role_id: 2,
   status: "PENDING_APPROVAL",
   headline: "Matematik öğretmeni",
@@ -178,7 +177,6 @@ const YAYINDA = {
   ...BEKLEYEN,
   id: 42,
   full_name: "Yayinda Ogretmen",
-  username: "yayindaogretmen",
   status: "APPROVED",
 };
 

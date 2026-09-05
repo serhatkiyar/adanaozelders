@@ -157,7 +157,7 @@ export default function Profile() {
                     )}
                   </div>
                   <p className="mt-1 truncate text-sm text-slate-500 ">
-                    @{user.username} · {user.email}
+                    {user.email}
                   </p>
                   {(metaLine || !isAdmin) && (
                     <p className="mt-1 text-sm text-slate-500 ">

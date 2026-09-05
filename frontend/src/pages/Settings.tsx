@@ -323,27 +323,20 @@ function PersonalSection() {
   // Satır formları
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [username, setUsername] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState<Gender | "">("");
   // İkinci+ değişiklik için zorunlu gerekçe.
   const [nameReason, setNameReason] = useState("");
-  const [usernameReason, setUsernameReason] = useState("");
 
   // Bir sonraki değişimin onay gerektirip gerektirmediğini backend bildirir
   // (role/duruma göre: onaylı eğitmen + operatör her zaman onaya; diğerleri ilk
   // değişim serbest). Eski sayaç sezgisi yerine bu bayrağı kullanırız.
   const nameLocked = user?.name_change_locked ?? (user?.name_change_count ?? 0) >= 1;
-  const usernameLocked =
-    user?.username_change_locked ?? (user?.username_change_count ?? 0) >= 1;
   // "Ücretsiz hakkını kullandın" mesajı yalnız sayaç-tabanlı kilitte doğru; onaylı
   // eğitmen/operatör hiç serbest hak almadı, onlara farklı metin gösteririz.
   const nameLockByCount = (user?.name_change_count ?? 0) >= 1;
   const pendingName = nameRequests?.find(
     (r) => r.kind === "NAME" && r.status === "PENDING"
-  );
-  const pendingUsername = nameRequests?.find(
-    (r) => r.kind === "USERNAME" && r.status === "PENDING"
   );
 
   const resend = useMutation({
@@ -358,11 +351,9 @@ function PersonalSection() {
   const openRow = (key: string) => {
     setFirstName(user.first_name);
     setLastName(user.last_name);
-    setUsername(user.username);
     setBirthDate(user.birth_date ?? "");
     setGender(user.gender ?? "");
     setNameReason("");
-    setUsernameReason("");
     setOpen((o) => (o === key ? null : key));
   };
 
@@ -370,7 +361,7 @@ function PersonalSection() {
     updateProfile.mutate(payload, {
       onSuccess: (updated) => {
         // Onaya gönderildiyse farklı mesaj göster (alan henüz değişmedi).
-        if (updated.pending_name_change || updated.pending_username_change) {
+        if (updated.pending_name_change) {
           toast.success("Talebin admin onayına gönderildi.");
         } else {
           toast.success("Bilgilerin güncellendi.");
@@ -478,73 +469,6 @@ function PersonalSection() {
           </form>
         </SettingRow>
 
-        {/* Kullanıcı adı */}
-        <SettingRow
-          title="Kullanıcı adı"
-          value={`@${user.username}`}
-          isOpen={open === "username"}
-          onToggle={() => openRow("username")}
-        >
-          <form
-            onSubmit={(e: FormEvent) => {
-              e.preventDefault();
-              if (username.trim().length < 3) {
-                toast.error("Kullanıcı adı en az 3 karakter olmalı.");
-                return;
-              }
-              if (usernameLocked && !usernameReason.trim()) {
-                toast.error("Lütfen değişiklik için bir gerekçe yaz.");
-                return;
-              }
-              save({
-                username: username.trim(),
-                reason: usernameLocked ? usernameReason.trim() : undefined,
-              });
-            }}
-          >
-            {pendingUsername ? (
-              <PendingChangeNote>
-                Yeni kullanıcı adın (@{pendingUsername.new_username}) admin onayı
-                bekliyor.
-              </PendingChangeNote>
-            ) : (
-              usernameLocked && (
-                <LockedChangeNote>
-                  Ücretsiz kullanıcı adı değişikliği hakkını kullandın. Bu değişiklik
-                  admin onayından sonra geçerli olacak; lütfen bir gerekçe yaz.
-                </LockedChangeNote>
-              )
-            )}
-            <label htmlFor={`${uid}-kullanici-adi`} className={fieldLabelCls}>Kullanıcı adı</label>
-            <input id={`${uid}-kullanici-adi`}
-              className={inputCls}
-              value={username}
-              minLength={3}
-              maxLength={50}
-              pattern="[a-zA-Z0-9_]+"
-              title="Yalnızca harf, rakam ve alt çizgi (_)"
-              autoFocus
-              disabled={!!pendingUsername}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-            {usernameLocked && !pendingUsername && (
-              <div className="mt-3">
-                <label htmlFor={`${uid}-degisiklik-gerekcesi-2`} className={fieldLabelCls}>Değişiklik gerekçesi</label>
-                <textarea id={`${uid}-degisiklik-gerekcesi-2`}
-                  className={inputCls}
-                  rows={2}
-                  maxLength={500}
-                  value={usernameReason}
-                  placeholder="Kullanıcı adını neden değiştirmek istiyorsun?"
-                  onChange={(e) => setUsernameReason(e.target.value)}
-                />
-              </div>
-            )}
-            {!pendingUsername && (
-              <EditActions saving={updateProfile.isPending} onCancel={() => setOpen(null)} />
-            )}
-          </form>
-        </SettingRow>
 
         {/* E-posta (salt-okunur + doğrulama) */}
         <SettingRow

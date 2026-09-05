@@ -26,9 +26,6 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
           <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-indigo-700 ">
             {client.full_name}
           </h3>
-          <p className="mt-0.5 truncate text-sm text-slate-500 ">
-            @{client.username}
-          </p>
         </div>
       </div>
 

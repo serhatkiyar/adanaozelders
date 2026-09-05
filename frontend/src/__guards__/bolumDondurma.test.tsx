@@ -33,6 +33,9 @@ import App from "@/App";
 import "@/pages/NotFound";
 import "@/pages/Yakinda";
 
+import { readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+
 import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { TUTOR_NAV } from "@/lib/nav";
@@ -59,6 +62,11 @@ afterEach(() => {
   cleanup();
   window.history.pushState({}, "", "/");
 });
+
+const SRC_KOK = resolve(
+  dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")),
+  "..",
+);
 
 describe("ÖN KOŞUL — bayrak değerleri", () => {
   it("KUTUPHANELER_ACIK=true, DENEMELER_ACIK=false", () => {
@@ -265,5 +273,32 @@ describe("E — Pomodoro kartı her sayfadan kalktı", () => {
       (a.getAttribute("href") ?? "").includes("/ogren")
     );
     expect(olu.map((a) => a.getAttribute("href"))).toEqual([]);
+  });
+});
+
+describe("E — 'Görünüm ve tercihler' sekmesi SİLİNMEDİ, bayrağa bağlandı", () => {
+  // Sekme listesi bileşenin içinde kuruluyor ve dışa verilmiyor; render etmek
+  // oturum + profil verisi ister. Bu yüzden düğüm bir KAYNAK sözleşmesidir ve
+  // sınırını açıkça söyler: "sekme ekranda yok" demez, "sekme bayrağa bağlı"
+  // der. Ekrandaki karşılığı elle tur listesindedir.
+  //
+  // Değeri şu: biri sekmeyi bayrağa bağlamak yerine SİLERSE burası kırılır —
+  // dondurma ile silmeyi ayıran şey tam olarak bu.
+  const kaynak = readFileSync(
+    join(SRC_KOK, "pages", "Settings.tsx"),
+    "utf8",
+  );
+
+  it("sekme tanımı ve içeriği KISISELLESTIRME_ACIK ile korunuyor", () => {
+    expect(kaynak).toContain("KISISELLESTIRME_ACIK");
+    // İki yerde birden: sekme listesi ve içerik dalı. Yalnız birine bağlamak,
+    // seçili sekme olarak açık kalan bir bölüm bırakırdı.
+    const gecis = kaynak.split("KISISELLESTIRME_ACIK").length - 1;
+    expect(gecis, "bayrak yalnız tek yerde okunuyor").toBeGreaterThanOrEqual(3);
+  });
+
+  it("DOLULUK: panel bileşeni ve etiket hâlâ kodda (silinmedi)", () => {
+    expect(kaynak).toContain("PersonalizePanel");
+    expect(kaynak).toContain("Görünüm ve tercihler");
   });
 });

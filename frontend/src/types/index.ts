@@ -79,12 +79,6 @@ export interface RegisterRequest {
   password: string;
   first_name: string;
   last_name: string;
-  /**
-   * İSTEĞE BAĞLI. Kayıt formu artık sormuyor; gönderilmezse sunucu ad-soyaddan
-   * üretir (`auth_service._turet_kullanici_adi`). Kullanıcı `/ayarlar`'dan
-   * değiştirebilir.
-   */
-  username?: string;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
   /**
@@ -102,7 +96,6 @@ export interface UserOut {
   email: string;
   first_name: string;
   last_name: string;
-  username: string;
   full_name: string; // first_name + last_name (backend hybrid)
   is_active: boolean;
   email_verified: boolean;
@@ -115,16 +108,13 @@ export interface UserOut {
   gender?: Gender | null;
   created_at: string;
   last_seen_at?: string | null;
-  // Ad-soyad / kullanıcı adı kaç kez değiştirildi (ilk değişiklik serbest).
+  // Ad-soyad kaç kez değiştirildi (ilk değişiklik serbest).
   name_change_count?: number;
-  username_change_count?: number;
   // Bir sonraki değişimin admin onayı gerektirip gerektirmediği (role/duruma göre;
   // örn. onaylı eğitmen ve kütüphane operatörü her zaman onaya gider).
   name_change_locked?: boolean;
-  username_change_locked?: boolean;
   // update_me yanıtında ilgili alanın admin onayına gönderildiğini bildirir.
   pending_name_change?: boolean;
-  pending_username_change?: boolean;
   admin_role_code?: string | null;
   admin_permissions?: string[];
 }
@@ -132,7 +122,6 @@ export interface UserOut {
 export interface UserUpdate {
   first_name?: string | null;
   last_name?: string | null;
-  username?: string | null;
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
@@ -140,7 +129,8 @@ export interface UserUpdate {
   reason?: string | null;
 }
 
-export type NameChangeKind = "NAME" | "USERNAME";
+// Kullanıcı adı dalı 5 Eyl 2026'da kaldırıldı; tek tür kaldı.
+export type NameChangeKind = "NAME";
 export type NameChangeStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface NameChangeRequest {
@@ -150,7 +140,6 @@ export interface NameChangeRequest {
   kind: NameChangeKind;
   new_first_name?: string | null;
   new_last_name?: string | null;
-  new_username?: string | null;
   reason: string;
   status: NameChangeStatus;
   review_note?: string | null;
@@ -390,7 +379,6 @@ export interface TaskFilterCreate {
 export interface ClientPublicOut {
   id: number;
   full_name: string;
-  username: string;
   avatar_url?: string | null;
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD" — yalnız admin yanıtında dolu (KVKK)
@@ -442,7 +430,6 @@ export type SavedAddressUpdate = Partial<SavedAddressCreate>;
 export interface ClientSearchOut {
   id: number;
   full_name: string;
-  username: string;
   avatar_url?: string | null;
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD"
@@ -1083,7 +1070,6 @@ export interface AdminUserOut {
   id: number;
   first_name: string;
   last_name: string;
-  username: string;
   full_name: string;
   email: string;
   role: AdminUserRole;

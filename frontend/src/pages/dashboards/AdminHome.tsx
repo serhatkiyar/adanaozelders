@@ -115,7 +115,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
             </p>
           )}
           <p className="mt-0.5 text-xs text-slate-400 ">
-            {formatRate(tutor.hourly_rate)} · @{tutor.username}
+            {formatRate(tutor.hourly_rate)}
           </p>
         </div>
       </div>
@@ -532,10 +532,9 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
   const isPending = canManage && req.status === "PENDING";
   const busy = approve.isPending || reject.isPending;
 
-  const target =
-    req.kind === "NAME"
-      ? `${req.new_first_name ?? ""} ${req.new_last_name ?? ""}`.trim()
-      : `@${req.new_username ?? ""}`;
+  // Kullanıcı adı dalı 5 Eyl 2026'da kaldırıldı; geriye yalnız ad değişikliği
+  // talebi kaldı (`kind === "NAME"`).
+  const target = `${req.new_first_name ?? ""} ${req.new_last_name ?? ""}`.trim();
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">

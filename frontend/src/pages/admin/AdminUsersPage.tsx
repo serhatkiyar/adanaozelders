@@ -77,7 +77,6 @@ export default function AdminUsersPage() {
             <Avatar name={row.original.full_name} size="sm" />
             <div className="min-w-0">
               <p className="truncate font-semibold text-slate-950 ">{row.original.full_name}</p>
-              <p className="truncate text-xs text-slate-500 ">@{row.original.username}</p>
             </div>
           </div>
         ),
@@ -134,7 +133,7 @@ export default function AdminUsersPage() {
               value={search}
               maxLength={100}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Ad, kullanıcı adı veya e-posta ara"
+              placeholder="Ad veya e-posta ara"
               className="input"
             />
           </label>

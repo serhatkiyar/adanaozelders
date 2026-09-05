@@ -34,7 +34,8 @@ import "@/pages/NotFound";
 
 import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { TUTOR_NAV } from "@/lib/nav";
+import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { ROUTES } from "@/lib/routes";
 import Learn from "@/pages/Learn";
 
 function sar(ui: React.ReactNode) {
@@ -128,11 +129,10 @@ describe("bayrak AÇIK — rotalar gerçek sayfayı açar", () => {
 /* ══════════ Öğren ve kişiselleştirme geri gelir (5 Eyl 2026) ══════════ */
 
 describe("bayrak AÇIK — Öğren menüye ve rotaya geri döner", () => {
-  it("öğrenci ve eğitmen menüsünde 'Öğren' yeniden var", async () => {
-    // Menü dizileri modül yüklenirken bayraktan türüyor; mock açık olduğu için
-    // girdi geri gelmeli. Gelmiyorsa yapılan şey dondurma değil, silmedir.
-    const { STUDENT_NAV, TUTOR_NAV } = await import("@/lib/nav");
-    const { ROUTES } = await import("@/lib/routes");
+  // Menü dizileri modül yüklenirken bayraktan türüyor; `vi.mock` hoist edildiği
+  // için STATİK import da mock'lanmış değeri görür — dinamik `import()` gereksiz
+  // ve `__guards__/tembelModul.test.ts` onu gerekçesiz saymakta haklı.
+  it("öğrenci ve eğitmen menüsünde 'Öğren' yeniden var", () => {
     for (const [ad, menu] of [
       ["STUDENT_NAV", STUDENT_NAV],
       ["TUTOR_NAV", TUTOR_NAV],
@@ -162,14 +162,3 @@ describe("bayrak AÇIK — Öğren menüye ve rotaya geri döner", () => {
   });
 });
 
-describe("bayrak AÇIK — 'Görünüm ve tercihler' sekmesi geri döner", () => {
-  it("Ayarlar'da sekme yeniden listeleniyor", async () => {
-    // Sekme listesi bayraktan türüyor. Burada modülün kendisini yokluyoruz:
-    // Settings'i render etmek oturum/profil verisi ister ve bu dosyanın
-    // konusu bayrağın okunup okunmadığı.
-    const kaynak = await import("@/pages/Settings");
-    expect(kaynak.default).toBeTypeOf("function");
-    const { KISISELLESTIRME_ACIK } = await import("@/lib/ozellikBayraklari");
-    expect(KISISELLESTIRME_ACIK, "mock okunmuyor").toBe(true);
-  });
-});

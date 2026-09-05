@@ -73,9 +73,6 @@ export default function StudentProfile() {
               <h1 className="text-xl font-bold text-slate-900 ">
                 {student.full_name}
               </h1>
-              <p className="mt-0.5 text-sm text-slate-500 ">
-                @{student.username}
-              </p>
               {(age !== null || genderLabel) && (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {age !== null && (

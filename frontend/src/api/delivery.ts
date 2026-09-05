@@ -87,7 +87,6 @@ export interface CourierWorkspace {
   account: {
     id: number;
     email: string;
-    username: string;
     first_name: string;
     last_name: string;
     is_active: boolean;
@@ -109,7 +108,6 @@ export async function fetchCourierWorkspace(): Promise<CourierWorkspace> {
 export interface CourierAccountInfo {
   id: number;
   email: string;
-  username: string;
   first_name: string;
   last_name: string;
   is_active: boolean;

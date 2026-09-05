@@ -54,7 +54,6 @@ export default function AdminUserDetailPage() {
                 <h2 className="truncate text-xl font-bold text-slate-950 ">{user.full_name}</h2>
                 <Badge tone={user.is_active ? "success" : "neutral"}>{user.is_active ? "Aktif" : "Pasif"}</Badge>
               </div>
-              <p className="mt-1 text-sm text-slate-500 ">@{user.username}</p>
               <p className="mt-1 break-all text-sm text-slate-600 ">{user.email}</p>
             </div>
           </div>
