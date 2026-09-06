@@ -57,6 +57,10 @@ export const UYE_NAV: NavItem[] = [
 ];
 
 export const TUTOR_NAV: NavItem[] = [
+  // Favoriler eğitmene de açık (ÜK-6 · docs/urun-kararlari.md): eğitmen ders
+  // verdiği kütüphaneyi ve meslektaşını işaretleyebilir. Üst bardaki TEK
+  // kısayol da budur (ÜK-2) — üyeyle aynı davranış.
+  { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   // İlan, eğitmenin platformdaki tek ürünü — üst gezinmede yeri olmaması
   // eğitmeni onu hesap menüsünün altında aramaya zorluyordu.
   { to: ROUTES.tutorListing, label: "İlanım", icon: "tickets" },

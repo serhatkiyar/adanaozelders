@@ -28,7 +28,7 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 | **ÜK-3** | Öğrenci ders talepleri donduruldu | uygulandı | `__guards__/bolumDondurma*.test.tsx` |
 | **ÜK-4** | "Öğrenci" rol adı değildir → **"Üye"** | uygulandı | `__guards__/rolEtiketi.test.ts` |
 | **ÜK-5** | Bir e-posta = bir hesap (çapraz tablo) | uygulandı | `tests/integration/test_ayni_eposta_iki_tablo_pg.py` |
-| **ÜK-6** | Eğitmen de eğitmen/kütüphane favorileyebilir | **açık** | — |
+| **ÜK-6** | Eğitmen de eğitmen/kütüphane favorileyebilir | uygulandı | `__guards__/favoriRolKapisi.test.tsx`, `test_tutor_shopper_pg.py` K-22..K-25 |
 
 ---
 
@@ -160,11 +160,11 @@ güncellendi.
 
 ---
 
-## ÜK-6 — Eğitmen de favorileyebilir *(açık)*
+## ÜK-6 — Eğitmen de favorileyebilir
 
 **Karar.** Eğitmen hesabı da eğitmen ve kütüphane favorileyebilir.
 
-**Bugünkü durum — kaza değil, beş katmanlı ve testli engel:**
+**Önceki durum — kaza değil, beş katmanlı ve testli engeldi:**
 
 | Katman | Yer |
 |---|---|
@@ -189,7 +189,7 @@ Tutarsızlık ölçülü: eğitmen **mağazada ürün favorileyebiliyor**
 (`store.py:1411`, `get_shopping_client`) ama ders verdiği kütüphaneyi
 favorileyemiyor.
 
-**Yapılacak.** Altı uçta `require_roles(RoleType.CLIENT)` →
+**Yapıldı (6 Eyl 2026).** Altı uçta `require_roles(RoleType.CLIENT)` →
 `get_shopping_client`; eğitmen **kendi ilanını** favorileyemez (self-dealing
 kuralının favori karşılığı); arayüzde rol kapıları kalkar, `/favoriler` rotası
 CLIENT+TUTOR olur ve `TUTOR_NAV`'a "Favorilerim" girer — **üçü birlikte**,

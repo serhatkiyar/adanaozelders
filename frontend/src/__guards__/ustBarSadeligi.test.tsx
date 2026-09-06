@@ -8,8 +8,9 @@
  * ZATEN duruyordu — yani üst bar, menünün eksiksiz bir KOPYASIYDI ve tek
  * ürettiği şey kalabalıktı.
  *
- * Artık üst barda **en fazla tek kısayol** var (Favorilerim, yalnız o rolde);
- * geri kalan her şey hesap menüsünden açılır.
+ * Artık üst barda **en fazla tek kısayol** var (Favorilerim); geri kalan her
+ * şey hesap menüsünden açılır. 6 Eyl 2026'dan beri o kısayol eğitmende de
+ * görünür — favori eğitmene açıldı (ÜK-6), kural değişmedi.
  *
  * ## Bu nöbetçinin ASIL iddiası
  *
@@ -88,12 +89,27 @@ describe("üst bar · en fazla TEK kısayol", () => {
     expect(ustBardakiHedefler()).toEqual([ROUTES.favorites]);
   });
 
-  it("eğitmende HİÇ kısayol yok (Favoriler onun menüsünde değil)", () => {
+  it("eğitmende de yalnız Favorilerim kalır", () => {
+    // 6 Eyl 2026'da DEĞİŞTİ. Önce "eğitmende HİÇ kısayol yok" iddia
+    // ediliyordu, sebebi favorilerin eğitmene kapalı olmasıydı — kararın
+    // kendisi değil, o günkü kısıtın yansımasıydı. ÜK-6 favoriyi eğitmene
+    // açtı; ÜK-2'nin ASIL kuralı ("en fazla TEK kısayol, o da Favorilerim")
+    // bozulmadı, iki rolde de aynı tek kısayol var.
     useAuthStore.setState({
       user: { id: 2, role_id: ROLE_IDS.TUTOR, full_name: "Eğitmen", email: "e@example.com" },
     } as never);
     sar(TUTOR_NAV);
-    expect(ustBardakiHedefler()).toEqual([]);
+    expect(ustBardakiHedefler()).toEqual([ROUTES.favorites]);
+  });
+
+  it("üst bara TEK kısayol sızabilir — ikinci ikon eklenirse kırılır", () => {
+    // ÜK-2'nin sayısal çıpası. Yukarıdaki iki iddia rol menüsüne bakıyor;
+    // bu düğüm "menüde ne varsa üst bara basılmasın" kuralını tutar.
+    for (const nav of [UYE_NAV, TUTOR_NAV, OPERATOR_NAV]) {
+      cleanup();
+      sar(nav);
+      expect(ustBardakiHedefler().length).toBeLessThanOrEqual(1);
+    }
   });
 
   it("DOLULUK: rol menüsü gerçekten kalabalık — kısayollar boş listeden gelmiyor", () => {
@@ -101,7 +117,10 @@ describe("üst bar · en fazla TEK kısayol", () => {
     expect(UYE_NAV.length).toBeGreaterThanOrEqual(4);
     expect(TUTOR_NAV.length).toBeGreaterThanOrEqual(4);
     expect(UYE_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
-    expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(false);
+    // ÜK-6: eğitmen menüsünde de var (eskiden `false` çıpalıydı).
+    expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
+    // Kapsam: operatörde YOK — favori alıcı yüzeyidir, operatör alıcı değil.
+    expect(OPERATOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(false);
   });
 });
 

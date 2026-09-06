@@ -3,12 +3,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { addBookmark } from "@/api/bookmarks";
 import { addLibraryBookmark } from "@/api/libraryBookmarks";
 import { takePendingFavorite } from "@/lib/pendingFavorite";
+import { alisverisYapabilir } from "@/lib/roles";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
-import { ROLE_IDS } from "@/types";
 
 /** Anonim tıklanan kalbin niyetini giriş tamamlanınca uygular (App'te mount).
- * Yalnız CLIENT'ta çalışır; eğitmen/admin girişinde niyet sessizce düşer.
+ *
+ * Alışveriş rollerinde (üye + eğitmen) çalışır — ÜK-6. Eğitmen kapısı
+ * unutulursa kusur SESSİZ olur: niyet `takePendingFavorite` ile zaten
+ * tüketilmiştir, kalp dolmaz ve kullanıcı neden olmadığını göremez.
+ * Admin/operatör/kuryede niyet düşer (sunucu 403 dönerdi).
+ *
  * PUT uçları idempotent — zaten favorideyse sorun çıkmaz. */
 export function PendingFavoriteApplier() {
   const user = useAuthStore((s) => s.user);
@@ -17,7 +22,7 @@ export function PendingFavoriteApplier() {
   useEffect(() => {
     if (!user) return;
     const pending = takePendingFavorite(); // tek kullanımlık — burada tüketilir
-    if (!pending || user.role_id !== ROLE_IDS.CLIENT) return;
+    if (!pending || !alisverisYapabilir(user.role_id)) return;
 
     void (async () => {
       try {

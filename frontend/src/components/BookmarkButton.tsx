@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useBookmarks, useToggleBookmark } from "@/hooks/useBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { setPendingFavorite } from "@/lib/pendingFavorite";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 
 interface BookmarkButtonProps {
   tutorId: number;
@@ -26,9 +26,11 @@ export function BookmarkButton({
   const toggle = useToggleBookmark();
   const bookmarked = !!bookmarks?.some((t) => t.id === tutorId);
 
-  // Yalnız öğrenciler favorileyebilir; eğitmen/admin'e gösterme.
+  // Favorileyebilen roller: üye VE eğitmen (ÜK-6 · docs/urun-kararlari.md).
+  // Eğitmenin isteği sunucuda gölge `Client`e çevrilir; admin/operatör/kurye
+  // 403 alacağı için düğme onlara HÂLÂ gösterilmez.
   // Anonim ziyaretçiye gösterilir → tıklayınca giriş modalı açılır.
-  if (user && user.role_id !== ROLE_IDS.CLIENT) return null;
+  if (user && !alisverisYapabilir(user.role_id)) return null;
 
   const icon =
     size === "lg" ? "h-8 w-8" : size === "md" ? "h-7 w-7" : "h-6 w-6";

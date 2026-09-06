@@ -509,9 +509,15 @@ function App() {
             />
           </Route>
 
+          {/* ── Favoriler: öğrenci + eğitmen (ÜK-6) ──
+              Eğitmen de eğitmen/kütüphane favoriler; sunucu tarafında gölge
+              `Client`e çevrilir (docs/urun-kararlari.md). */}
+          <Route element={<ProtectedRoute allowedRoleIds={[...ALISVERIS_ROLLERI]} />}>
+            <Route path={PATHS.favorites} element={<Favorites />} />
+          </Route>
+
           {/* ── Yalnızca CLIENT ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
-            <Route path={PATHS.favorites} element={<Favorites />} />
             {DENEMELER_ACIK && <Route path={PATHS.exams} element={<Exams />} />}
           </Route>
 

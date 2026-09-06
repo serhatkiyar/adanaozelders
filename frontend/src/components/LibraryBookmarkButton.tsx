@@ -5,7 +5,7 @@ import {
 } from "@/hooks/useLibraryBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { setPendingFavorite } from "@/lib/pendingFavorite";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 
 interface LibraryBookmarkButtonProps {
   libraryId: number;
@@ -24,9 +24,11 @@ export function LibraryBookmarkButton({
   const { data: bookmarks } = useLibraryBookmarks();
   const toggle = useToggleLibraryBookmark();
 
-  // Yalnız öğrenciler favorileyebilir; eğitmen/admin'e gösterme.
+  // Favorileyebilen roller: üye VE eğitmen (ÜK-6 · docs/urun-kararlari.md).
+  // Eğitmenin isteği sunucuda gölge `Client`e çevrilir; admin/operatör/kurye
+  // 403 alacağı için düğme onlara HÂLÂ gösterilmez.
   // Anonim ziyaretçiye gösterilir → tıklayınca giriş modalı açılır.
-  if (user && user.role_id !== ROLE_IDS.CLIENT) return null;
+  if (user && !alisverisYapabilir(user.role_id)) return null;
 
   const bookmarked = !!bookmarks?.some((l) => l.id === libraryId);
 

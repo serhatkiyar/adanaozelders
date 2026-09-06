@@ -1,11 +1,12 @@
 import { ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { UYE_NAV } from "@/lib/nav";
+import { navForRole } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useLibraryBookmarks } from "@/hooks/useLibraryBookmarks";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { useUiPrefsStore } from "@/store/uiPrefsStore";
@@ -16,6 +17,9 @@ type View = "index" | "tutors" | "libraries" | "recent";
 type Tile = { img?: string | null; label?: string | null };
 
 export default function Favorites() {
+  // Sayfa artık iki rolde açılıyor (ÜK-6); yan menü sabit `UYE_NAV` kalsaydı
+  // eğitmen kendi menüsü yerine üye menüsünü görürdü.
+  const { data: user } = useCurrentUser();
   const [view, setView] = useState<View>("index");
   const { data: tutors, isLoading: tutorsLoading } = useBookmarks();
   const { data: libraries, isLoading: librariesLoading } = useLibraryBookmarks();
@@ -35,7 +39,7 @@ export default function Favorites() {
   const backToIndex = () => setView("index");
 
   return (
-    <DashboardShell title="Favoriler" navItems={UYE_NAV}>
+    <DashboardShell title="Favoriler" navItems={navForRole(user?.role_id)}>
       <div className="mx-auto max-w-[1050px]">
         {view === "index" && (
           <>
