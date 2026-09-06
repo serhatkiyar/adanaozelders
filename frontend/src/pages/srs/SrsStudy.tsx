@@ -55,11 +55,11 @@ function ClozeText({
         s.kind === "plain" ? (
           <span key={i}>{s.text}</span>
         ) : s.kind === "blank" ? (
-          <span key={i} className="font-semibold text-marka ">
+          <span key={i} className="font-semibold text-marka-metin ">
             {s.text}
           </span>
         ) : (
-          <span key={i} className="rounded bg-marka-line px-1 font-semibold text-marka-hover ">
+          <span key={i} className="rounded bg-marka-line px-1 font-semibold text-marka-metin-hover ">
             {s.text}
           </span>
         )
@@ -276,7 +276,7 @@ export default function SrsStudy() {
         <div className="flex items-center justify-between">
           <Link
             to={ROUTES.srs}
-            className="text-sm font-medium text-marka hover:text-marka-hover "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             ← Desteler
           </Link>
@@ -327,7 +327,7 @@ export default function SrsStudy() {
               action={
                 <Link
                   to={ROUTES.srs}
-                  className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
+                  className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                 >
                   Destelere dön
                 </Link>
@@ -351,7 +351,7 @@ export default function SrsStudy() {
                   {!flipped ? (
                     <button
                       onClick={flip}
-                      className="w-full rounded-xl bg-marka px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-marka-hover"
+                      className="w-full rounded-xl bg-marka px-4 py-3.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                     >
                       Cevabı Göster
                       <span className="ml-2 hidden text-marka-fg sm:inline">

@@ -134,11 +134,11 @@ export default function AccountHub() {
             to={c.to}
             className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-marka-mid hover:bg-marka-soft/40 "
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-marka-soft text-marka ">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-marka-soft text-marka-soft-fg ">
               {c.icon}
             </span>
             <span>
-              <span className="block font-semibold text-slate-900 group-hover:text-marka-hover ">
+              <span className="block font-semibold text-slate-900 group-hover:text-marka-metin-hover ">
                 {c.title}
               </span>
               <span className="mt-0.5 block text-sm text-slate-500 ">{c.desc}</span>

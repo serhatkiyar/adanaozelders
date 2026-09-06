@@ -66,7 +66,7 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
             <div
               className={`max-w-[80%] rounded-2xl px-3.5 py-2 ${
                 mine
-                  ? "bg-marka text-white"
+                  ? "bg-marka text-marka-fg"
                   : "bg-slate-100 text-slate-700 "
               }`}
             >
@@ -99,7 +99,7 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
           <button
             type="submit"
             disabled={post.isPending}
-            className="shrink-0 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
+            className="shrink-0 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
           >
             {post.isPending ? "…" : "Gönder"}
           </button>

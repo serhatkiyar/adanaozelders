@@ -162,7 +162,7 @@ export function MiniCartDrawer({
           <div className="mt-4 space-y-2">
             <Link
               to={ROUTES.storeCheckout}
-              className="flex h-11 items-center justify-center rounded-lg bg-marka px-6 text-sm font-semibold text-white transition-colors hover:bg-marka-hover"
+              className="flex h-11 items-center justify-center rounded-lg bg-marka px-6 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
             >
               Ödemeye geç
             </Link>

@@ -319,7 +319,7 @@ export default function Marketplace() {
         <FilterIconSvg />
         Filtreler
         {hasModalFilters && (
-          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-marka text-[9px] font-bold text-white ">
+          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-marka text-[9px] font-bold text-marka-fg ">
             ✓
           </span>
         )}
@@ -423,7 +423,7 @@ export default function Marketplace() {
         <button
           key={s}
           onClick={() => removeSubject(s)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-hover transition hover:bg-marka-line "
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
         >
           {s}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
@@ -472,7 +472,7 @@ export default function Marketplace() {
               {hasFilters && (
                 <button
                   onClick={clearAll}
-                  className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
+                  className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                 >
                   Tüm filtreleri temizle
                 </button>
@@ -501,7 +501,7 @@ export default function Marketplace() {
                     type="button"
                     onClick={() => setLimit((l) => l + 20)}
                     disabled={isFetching}
-                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft active:scale-95 disabled:opacity-60 "
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft active:scale-95 disabled:opacity-60 "
                   >
                     {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                   </button>
@@ -563,7 +563,7 @@ export default function Marketplace() {
                     </svg>
                   </span>
                 </div>
-                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-marka">Konum alınıyor…</p>}
+                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>}
                 {nearMe && !geoLoading && <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>}
               </div>
 
@@ -592,7 +592,7 @@ export default function Marketplace() {
                         onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
                         className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                           gender === opt.value
-                            ? "bg-marka text-white shadow-sm ring-1 ring-marka-focus"
+                            ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"
                             : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
                         }`}
                       >
@@ -631,7 +631,7 @@ export default function Marketplace() {
               </button>
               <button
                 onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
+                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
               >
                 Sonuçları Göster
               </button>

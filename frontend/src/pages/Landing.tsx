@@ -423,7 +423,7 @@ export function AnnouncementBanner() {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
   return (
-    <div className="relative bg-marka px-4 py-2.5 text-center text-xs font-semibold text-white sm:text-sm">
+    <div className="relative bg-marka px-4 py-2.5 text-center text-xs font-semibold text-marka-fg sm:text-sm">
       <span>
         🎓 YKS 2025 hazırlığına başla - uzman eğitmenlerle ilk dersin{" "}
         <Link to={ROUTES.tutors} className="underline underline-offset-2 hover:text-marka-fg">

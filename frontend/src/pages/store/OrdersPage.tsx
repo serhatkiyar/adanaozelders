@@ -108,7 +108,7 @@ export default function OrdersPage() {
             <p className="text-slate-500 ">Henüz siparişin yok.</p>
             <Link
               to={ROUTES.store}
-              className="mt-4 inline-block rounded-lg bg-marka px-4 py-2 text-sm font-medium text-white hover:bg-marka-hover"
+              className="mt-4 inline-block rounded-lg bg-marka px-4 py-2 text-sm font-medium text-marka-fg hover:bg-marka-hover"
             >
               Alışverişe başla
             </Link>
@@ -138,7 +138,7 @@ export default function OrdersPage() {
                       onClick={() => setTab(t.key)}
                       className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
                         tab === t.key
-                          ? "bg-marka text-white"
+                          ? "bg-marka text-marka-fg"
                           : "text-slate-500 hover:bg-slate-100 "
                       }`}
                     >
@@ -203,14 +203,14 @@ function OrderCard({ order }: { order: OrderOut }) {
                   order.status === "DELIVERED") && (
                   <Link
                     to={ROUTES.cargoTracking(order.track_token)}
-                    className="font-semibold text-marka hover:underline "
+                    className="font-semibold text-marka-metin hover:underline "
                   >
                     Kargo takibi
                   </Link>
                 )}
               <Link
                 to={ROUTES.orderDetail(order.id)}
-                className="font-medium text-marka hover:underline "
+                className="font-medium text-marka-metin hover:underline "
               >
                 Sipariş ayrıntıları
               </Link>
@@ -253,7 +253,7 @@ function OrderCard({ order }: { order: OrderOut }) {
                 onError: () => toast.error("Ödeme başlatılamadı"),
               })
             }
-            className="mt-4 w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50 sm:w-auto sm:px-8"
+            className="mt-4 w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50 sm:w-auto sm:px-8"
           >
             Ödemeyi tamamla
           </button>
@@ -295,7 +295,7 @@ export function OrderItemRow({
 
       <div className="flex flex-1 flex-col">
         {productLink ? (
-          <Link to={productLink} className="line-clamp-2 text-sm font-medium text-slate-800 transition-colors hover:text-marka ">
+          <Link to={productLink} className="line-clamp-2 text-sm font-medium text-slate-800 transition-colors hover:text-marka-metin ">
             {item.title}
           </Link>
         ) : (
@@ -311,7 +311,7 @@ export function OrderItemRow({
               href={item.download_url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-full border border-marka-line px-3 py-1 text-xs font-semibold text-marka transition-colors hover:bg-marka-soft "
+              className="rounded-full border border-marka-line px-3 py-1 text-xs font-semibold text-marka-soft-fg transition-colors hover:bg-marka-soft "
             >
               İndir
             </a>
@@ -320,7 +320,7 @@ export function OrderItemRow({
             <button
               type="button"
               onClick={onReorder}
-              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka "
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka-metin "
             >
               Tekrar al
             </button>
@@ -328,7 +328,7 @@ export function OrderItemRow({
           {productLink && (
             <Link
               to={productLink}
-              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka "
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka-metin "
             >
               Ürünü gör
             </Link>

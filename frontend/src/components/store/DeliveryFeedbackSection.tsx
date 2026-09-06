@@ -103,7 +103,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
               className={[
                 "rounded-full px-4 py-2 text-sm font-medium ring-1 transition-colors",
                 selected
-                  ? "bg-marka-soft text-marka-hover ring-marka-focus "
+                  ? "bg-marka-soft text-marka-metin-hover ring-marka-focus "
                   : "text-slate-600 ring-slate-200 hover:text-slate-900 ",
               ].join(" ")}
             >
@@ -130,7 +130,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
                   className={[
                     "rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition-colors",
                     selected
-                      ? "bg-marka-soft text-marka-hover ring-2 ring-marka-focus "
+                      ? "bg-marka-soft text-marka-metin-hover ring-2 ring-marka-focus "
                       : "text-slate-600 ring-slate-200 hover:ring-slate-300 ",
                   ].join(" ")}
                 >
@@ -160,7 +160,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
         <button
           type="submit"
           disabled={!valid || submitFeedback.isPending}
-          className="mt-4 rounded-full bg-marka px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-40 "
+          className="mt-4 rounded-full bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-40 "
         >
           {submitFeedback.isPending ? "Gönderiliyor…" : "Gönder"}
         </button>

@@ -237,7 +237,7 @@ export default function PublicMarketplace() {
         <button
           key={s}
           onClick={() => removeSubject(s)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-hover transition hover:bg-marka-line "
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
         >
           {s}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
@@ -261,7 +261,7 @@ export default function PublicMarketplace() {
       )}
       <div className="mx-auto max-w-[1050px] space-y-4 pt-4">
         {/* Login CTA banner */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-marka to-marka-hover px-5 py-3.5 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-marka to-marka-hover px-5 py-3.5 text-marka-fg">
           <p className="text-sm font-medium">
             Eğitmenleri keşfet. Ders talebi ve mesaj için ücretsiz hesap aç.
           </p>
@@ -274,7 +274,7 @@ export default function PublicMarketplace() {
             </Link>
             <Link
               to={ROUTES.register}
-              className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-marka-hover transition hover:bg-marka-soft"
+              className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-marka-metin-hover transition hover:bg-marka-soft"
             >
               Kayıt Ol
             </Link>
@@ -331,7 +331,7 @@ export default function PublicMarketplace() {
                       yeni sekmede açabilsin. Tıklama SPA içinde kalır. */}
                   <Link
                     to={nextPageSearch(searchParams, page)}
-                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft active:scale-95 disabled:opacity-60 "
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft active:scale-95 disabled:opacity-60 "
                   >
                     {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                   </Link>
@@ -363,12 +363,12 @@ export default function PublicMarketplace() {
               {/* Daha fazla filtre için kayıt CTA */}
               <div className="rounded-2xl border border-marka-line bg-marka-soft/50 p-4 ">
                 <h3 className="text-sm font-semibold text-marka-soft-fg ">Daha fazla filtre mi arıyorsunuz?</h3>
-                <p className="mt-1 text-xs text-marka-hover ">
+                <p className="mt-1 text-xs text-marka-metin-hover ">
                   Konum, cinsiyet, fiyat aralığı ve daha fazlası için ücretsiz hesap oluşturun.
                 </p>
                 <Link
                   to="?modal=register"
-                  className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-marka-hover"
+                  className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-xs font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover"
                   onClick={() => setShowFilters(false)}
                 >
                   Kayıt Ol
@@ -385,7 +385,7 @@ export default function PublicMarketplace() {
               </button>
               <button
                 onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
+                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
               >
                 Sonuçları Göster
               </button>

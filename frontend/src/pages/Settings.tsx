@@ -306,7 +306,7 @@ function LockedChangeNote({ children }: { children: React.ReactNode }) {
 
 function PendingChangeNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3 rounded-xl bg-marka-soft px-3 py-2 text-xs leading-relaxed text-marka-hover ">
+    <div className="mb-3 rounded-xl bg-marka-soft px-3 py-2 text-xs leading-relaxed text-marka-metin-hover ">
       {children}
     </div>
   );

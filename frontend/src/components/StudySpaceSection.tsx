@@ -93,13 +93,13 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
     <div className="space-y-5">
       {/* Fiyat + bilgilendirme */}
       <div className="flex items-center justify-between gap-3 rounded-2xl bg-marka-soft px-4 py-3 ">
-        <p className="text-xs leading-relaxed text-marka-hover ">
+        <p className="text-xs leading-relaxed text-marka-metin-hover ">
           Tarih ve saat aralığı seç, online öde; kütüphanede QR kodunu okutarak giriş yap.
           {library.capacity ? ` ${library.capacity} kişilik kapasite.` : ""}
         </p>
-        <span className="shrink-0 text-sm font-bold text-marka-hover ">
+        <span className="shrink-0 text-sm font-bold text-marka-metin-hover ">
           {formatTRY(library.study_hourly_price)}
-          <span className="font-medium text-marka ">/saat</span>
+          <span className="font-medium text-marka-metin ">/saat</span>
         </span>
       </div>
 
@@ -132,7 +132,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
               onClick={() => setDuration(d.value)}
               className={`rounded-xl px-3.5 py-2 text-sm font-medium transition active:scale-95 ${
                 duration === d.value
-                  ? "bg-marka text-white shadow-sm"
+                  ? "bg-marka text-marka-fg shadow-sm"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
               }`}
             >
@@ -173,7 +173,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
         {!token ? (
           <Link
             to={ROUTES.login}
-            className="rounded-xl bg-marka px-4 py-2 text-center text-sm font-semibold text-white hover:bg-marka-hover"
+            className="rounded-xl bg-marka px-4 py-2 text-center text-sm font-semibold text-marka-fg hover:bg-marka-hover"
           >
             Giriş yap & rezerve et
           </Link>
@@ -189,7 +189,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           <button
             onClick={doReserveAndPay}
             disabled={!canReserve}
-            className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "İşleniyor…" : "Rezerve et & Öde"}
           </button>

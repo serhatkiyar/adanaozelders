@@ -70,7 +70,7 @@ export default function ContactPage() {
             Sorunun cevabı{" "}
             <Link
               to={ROUTES.faq}
-              className="font-medium text-marka underline-offset-2 hover:underline "
+              className="font-medium text-marka-metin underline-offset-2 hover:underline "
             >
               sıkça sorulan sorularda
             </Link>{" "}
@@ -165,7 +165,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {mutation.isPending ? "Gönderiliyor…" : "Mesajı gönder"}
               </button>
@@ -190,7 +190,7 @@ export default function ContactPage() {
                 <dd>
                   <a
                     href={`mailto:${OPERATOR.email}`}
-                    className="text-marka underline-offset-2 hover:underline "
+                    className="text-marka-metin underline-offset-2 hover:underline "
                   >
                     {OPERATOR.email}
                   </a>
@@ -202,7 +202,7 @@ export default function ContactPage() {
                 <dd>
                   <a
                     href={`tel:${OPERATOR.phoneHref}`}
-                    className="text-marka underline-offset-2 hover:underline "
+                    className="text-marka-metin underline-offset-2 hover:underline "
                   >
                     {OPERATOR.phone}
                   </a>

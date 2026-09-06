@@ -60,7 +60,7 @@ export function AuthModal() {
             searchParams.delete("role");
             setSearchParams(searchParams, { replace: true });
           }}
-          className="mt-5 w-full rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover"
+          className="mt-5 w-full rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
         >
           Giriş Yap
         </button>
@@ -169,7 +169,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-2 focus:ring-marka/20 accent-marka"
+              className="h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-2 focus:ring-marka/20 accent-marka"
             />
             Beni hatırla
           </label>
@@ -179,7 +179,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
               // Not implementing forgot password modal for now, just navigate to it.
               navigate(ROUTES.forgotPassword);
             }}
-            className="text-sm font-medium text-marka hover:text-marka-hover "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             Şifremi unuttum?
           </button>
@@ -194,7 +194,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {mutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
         </button>
@@ -207,7 +207,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
             searchParams.set("modal", "register");
             setSearchParams(searchParams, { replace: true });
           }}
-          className="font-semibold text-marka hover:text-marka-hover "
+          className="font-semibold text-marka-metin hover:text-marka-metin-hover "
         >
           Kayıt ol
         </button>
@@ -266,7 +266,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
       onClick={() => setRole(value)}
       className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
         role === value
-          ? "bg-marka text-white"
+          ? "bg-marka text-marka-fg"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
       }`}
     >
@@ -363,7 +363,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {mutation.isPending ? "Kaydediliyor..." : "Kayıt Ol"}
         </button>
@@ -376,7 +376,7 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
             searchParams.set("modal", "login");
             setSearchParams(searchParams, { replace: true });
           }}
-          className="font-semibold text-marka hover:text-marka-hover "
+          className="font-semibold text-marka-metin hover:text-marka-metin-hover "
         >
           Giriş yap
         </button>

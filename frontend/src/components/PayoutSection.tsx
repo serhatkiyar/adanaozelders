@@ -116,7 +116,7 @@ export function PayoutSection() {
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="mt-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-marka transition hover:bg-marka-soft "
+                className="mt-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-marka-soft-fg transition hover:bg-marka-soft "
               >
                 {isActive ? "IBAN'ı değiştir" : "Bilgileri güncelle"}
               </button>
@@ -173,7 +173,7 @@ export function PayoutSection() {
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
                 />
                 <span>
                   IBAN ve TCKN bilgimin, ödeme aracılığı ve kimlik doğrulama amacıyla
@@ -195,7 +195,7 @@ export function PayoutSection() {
                 <button
                   type="submit"
                   disabled={submit.isPending}
-                  className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:opacity-50"
+                  className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:opacity-50"
                 >
                   {submit.isPending ? "Gönderiliyor…" : "Kaydet & Doğrula"}
                 </button>

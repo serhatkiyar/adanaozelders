@@ -11,7 +11,7 @@ const fieldLabelCls =
   "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 const saveBtn =
-  "rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
 
 const cancelBtn =
   "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ";
@@ -183,7 +183,7 @@ export function AddressForm({
           <button
             type="button"
             onClick={() => setShowMap(true)}
-            className="text-xs font-semibold text-marka hover:text-marka-hover "
+            className="text-xs font-semibold text-marka-metin hover:text-marka-metin-hover "
           >
             {lat != null ? "Değiştir" : "Haritadan Seç"}
           </button>
@@ -281,7 +281,7 @@ export function AddressForm({
             type="checkbox"
             checked={isDefault}
             onChange={(e) => setIsDefault(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
+            className="h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
           />
           Varsayılan adresim yap
         </label>

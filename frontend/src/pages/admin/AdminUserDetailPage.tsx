@@ -41,7 +41,7 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 pb-12">
-      <Link to={backUrl} className="inline-flex items-center gap-2 text-sm font-semibold text-panel-accent transition hover:opacity-80">
+      <Link to={backUrl} className="inline-flex items-center gap-2 text-sm font-semibold text-panel-accent-text transition hover:opacity-80">
         <span aria-hidden="true">←</span> Kullanıcılara dön
       </Link>
 

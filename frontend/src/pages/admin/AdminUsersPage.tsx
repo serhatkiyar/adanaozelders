@@ -165,7 +165,7 @@ export default function AdminUsersPage() {
         <ErrorState description={getErrorMessage(query.error, "Kullanıcılar yüklenemedi.")} onRetry={() => query.refetch()} />
       ) : (
         <div className="relative">
-          {query.isFetching && query.data && <div className="absolute right-4 top-[-2.25rem] text-xs font-medium text-panel-accent">Güncelleniyor…</div>}
+          {query.isFetching && query.data && <div className="absolute right-4 top-[-2.25rem] text-xs font-medium text-panel-accent-text">Güncelleniyor…</div>}
           <DataTable
             columns={columns}
             data={query.data?.items ?? []}

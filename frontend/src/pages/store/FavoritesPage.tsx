@@ -71,7 +71,7 @@ export default function FavoritesPage() {
               onClick={() =>
                 alisverisAcik ? setNameModal({ mode: "create" }) : navigate("?modal=login")
               }
-              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-marka transition-colors hover:text-marka-hover "
+              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-marka-metin transition-colors hover:text-marka-metin-hover "
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
@@ -108,7 +108,7 @@ export default function FavoritesPage() {
             {!alisverisAcik && (
               <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 ">
                 Kendi listelerini oluşturmak için{" "}
-                <Link to="?modal=login" className="font-semibold text-marka hover:underline ">
+                <Link to="?modal=login" className="font-semibold text-marka-metin hover:underline ">
                   giriş yap
                 </Link>
                 .
@@ -240,7 +240,7 @@ function FavoritesPane({ alisverisAcik }: { alisverisAcik: boolean }) {
             title="Henüz favorin yok"
             desc="Beğendiğin ürünleri kalbe dokunarak buraya ekleyebilirsin."
             cta={
-              <Link to={ROUTES.store} className="mt-6 inline-block rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marka-hover">
+              <Link to={ROUTES.store} className="mt-6 inline-block rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover">
                 Mağazaya dön
               </Link>
             }
@@ -320,7 +320,7 @@ function CollectionPane({
           <button
             type="button"
             onClick={onAddProducts}
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka "
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka-metin "
           >
             Ürün ekle
           </button>
@@ -328,7 +328,7 @@ function CollectionPane({
             type="button"
             aria-label="Paylaş"
             onClick={share}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-marka-mid hover:text-marka "
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-marka-mid hover:text-marka-metin "
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3" />
@@ -434,7 +434,7 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
                 <span className="text-slate-800 ">{c.name}</span>
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded border ${
-                    inList ? "border-marka bg-marka text-white " : "border-slate-300 "
+                    inList ? "border-marka bg-marka text-marka-fg " : "border-slate-300 "
                   }`}
                 >
                   {inList && (
@@ -463,7 +463,7 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
           type="button"
           disabled={!newName.trim() || createCol.isPending}
           onClick={createAndAdd}
-          className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
         >
           Oluştur
         </button>
@@ -503,7 +503,7 @@ function CollectionNameModal({
           type="button"
           disabled={!name.trim()}
           onClick={() => onSubmit(name.trim())}
-          className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
+          className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
         >
           Kaydet
         </button>
@@ -552,7 +552,7 @@ function AddProductsToCollectionModal({ collection, onClose }: { collection: Col
                 <span className="line-clamp-2 flex-1 text-sm text-slate-800 ">{p.title}</span>
                 <span
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                    inList ? "border-marka bg-marka text-white " : "border-slate-300 "
+                    inList ? "border-marka bg-marka text-marka-fg " : "border-slate-300 "
                   }`}
                 >
                   {inList && (
@@ -567,7 +567,7 @@ function AddProductsToCollectionModal({ collection, onClose }: { collection: Col
         </div>
       )}
       <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onClose} className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover">
+        <button type="button" onClick={onClose} className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover">
           Bitti
         </button>
       </div>

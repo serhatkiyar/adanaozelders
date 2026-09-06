@@ -201,7 +201,7 @@ export function ImageCropModal({
             type="button"
             onClick={handleCrop}
             disabled={isUploading}
-            className="inline-flex items-center gap-2 rounded-lg bg-marka px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-marka px-5 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading ? (
               <>

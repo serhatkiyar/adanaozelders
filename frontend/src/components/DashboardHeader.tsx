@@ -18,14 +18,14 @@ import type { NavItem } from "@/lib/nav";
 const navIconClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg p-2 transition ${
     isActive
-      ? "bg-marka text-white"
+      ? "bg-marka text-marka-fg"
       : "text-slate-600 hover:bg-slate-100 "
   }`;
 
 const menuItemClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
     isActive
-      ? "bg-marka-soft text-marka-hover "
+      ? "bg-marka-soft text-marka-metin-hover "
       : "text-slate-700 hover:bg-slate-50 "
   }`;
 

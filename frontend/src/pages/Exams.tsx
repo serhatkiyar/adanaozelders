@@ -88,7 +88,7 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
               {exam.title}
             </span>
             {exam.exam_type && (
-              <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-medium text-marka ">
+              <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-medium text-marka-soft-fg ">
                 {exam.exam_type}
               </span>
             )}
@@ -285,7 +285,7 @@ export default function Exams() {
                 key={e.name}
                 className="flex shrink-0 flex-col items-center rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-slate-100 "
               >
-                <span className="text-2xl font-bold leading-none text-marka ">
+                <span className="text-2xl font-bold leading-none text-marka-metin ">
                   {e.days}
                 </span>
                 <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
@@ -471,7 +471,7 @@ export default function Exams() {
             <button
               type="button"
               onClick={addRow}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-marka transition hover:bg-marka-soft "
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-marka-soft-fg transition hover:bg-marka-soft "
             >
               + Ders ekle
             </button>
@@ -494,7 +494,7 @@ export default function Exams() {
           <button
             type="submit"
             disabled={createExam.isPending}
-            className="w-full rounded-xl bg-marka py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-marka py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {createExam.isPending ? "Kaydediliyor…" : "Denemeyi Kaydet"}
           </button>

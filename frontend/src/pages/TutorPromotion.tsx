@@ -130,7 +130,7 @@ export default function TutorPromotion() {
             </p>
             <Link
               to={ROUTES.tutorListing}
-              className="mt-3 inline-block text-sm font-semibold text-marka underline-offset-2 hover:underline"
+              className="mt-3 inline-block text-sm font-semibold text-marka-metin underline-offset-2 hover:underline"
             >
               İlan ayarlarına git
             </Link>
@@ -177,7 +177,7 @@ export default function TutorPromotion() {
                 type="checkbox"
                 checked={onay}
                 onChange={(e) => setOnay(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
               />
               <span>
                 Hizmetin ödeme onaylandığı anda başladığını, bu nedenle cayma
@@ -202,7 +202,7 @@ export default function TutorPromotion() {
                   satinAl.mutate({ days: seciliGun, terms_accepted: onay });
                 }
               }}
-              className="mt-6 rounded-xl bg-marka px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+              className="mt-6 rounded-xl bg-marka px-5 py-3 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
             >
               {satinAl.isPending ? "Yönlendiriliyor…" : "Öne çıkar"}
             </button>

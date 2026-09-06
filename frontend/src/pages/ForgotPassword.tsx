@@ -39,7 +39,7 @@ export default function ForgotPassword() {
             </div>
             <Link
               to={ROUTES.login}
-              className="inline-block text-sm font-semibold text-marka hover:text-marka-hover "
+              className="inline-block text-sm font-semibold text-marka-metin hover:text-marka-metin-hover "
             >
               ← Giriş ekranına dön
             </Link>
@@ -69,7 +69,7 @@ export default function ForgotPassword() {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {mutation.isPending ? "Gönderiliyor..." : "Sıfırlama bağlantısı gönder"}
             </button>
@@ -80,7 +80,7 @@ export default function ForgotPassword() {
           Şifreni hatırladın mı?{" "}
           <Link
             to={ROUTES.login}
-            className="font-semibold text-marka hover:text-marka-hover "
+            className="font-semibold text-marka-metin hover:text-marka-metin-hover "
           >
             Giriş yap
           </Link>

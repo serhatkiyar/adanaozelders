@@ -121,7 +121,7 @@ export function NotificationsPanel() {
               type="button"
               onClick={() => markAll.mutate()}
               disabled={markAll.isPending}
-              className="inline-flex items-center gap-2 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg
                 viewBox="0 0 20 20"

@@ -69,7 +69,7 @@ function OwnerReplyAction({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="mt-3 text-sm font-medium text-marka transition hover:text-marka-hover "
+        className="mt-3 text-sm font-medium text-marka-metin transition hover:text-marka-metin-hover "
       >
         Yanıtla
       </button>
@@ -102,7 +102,7 @@ function OwnerReplyAction({
           type="button"
           onClick={submitReply}
           disabled={replyMutation.isPending}
-          className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
+          className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
         >
           {replyMutation.isPending ? "Gönderiliyor…" : "Yanıtla"}
         </button>
@@ -160,7 +160,7 @@ export default function TutorProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-marka hover:text-marka-hover"
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover"
           >
             ← Geri dön
           </button>
@@ -208,7 +208,7 @@ export default function TutorProfile() {
       <div className="mx-auto max-w-[76rem] pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-marka hover:text-marka-hover "
+          className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
         >
           ← Geri dön
         </button>
@@ -259,7 +259,7 @@ export default function TutorProfile() {
                   className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-marka hover:text-marka-hover ">
+                  <span className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover ">
                     {tutor.rating_count > 0
                       ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
                       : "Değerlendirme yok"}
@@ -267,7 +267,7 @@ export default function TutorProfile() {
                 </button>
 
                 {modeLabel && (
-                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-hover ">
+                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-metin-hover ">
                     {modeLabel}
                   </span>
                 )}
@@ -293,7 +293,7 @@ export default function TutorProfile() {
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+                  className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
                   Ders Talep Et
                 </button>
@@ -331,7 +331,7 @@ export default function TutorProfile() {
                   {tutor.subjects.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-marka-soft px-3 py-1 text-sm font-medium text-marka-hover "
+                      className="rounded-full bg-marka-soft px-3 py-1 text-sm font-medium text-marka-metin-hover "
                     >
                       {s}
                     </span>

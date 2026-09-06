@@ -39,7 +39,7 @@ export default function SrsStats() {
           <div>
             <Link
               to={ROUTES.srs}
-              className="text-sm font-medium text-marka hover:text-marka-hover "
+              className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
             >
               ← Aralıklı Tekrar
             </Link>
@@ -81,7 +81,7 @@ export default function SrsStats() {
               action={
                 <Link
                   to={ROUTES.srs}
-                  className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
+                  className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                 >
                   Çalışmaya başla
                 </Link>

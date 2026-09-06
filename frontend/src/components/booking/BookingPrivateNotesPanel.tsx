@@ -100,7 +100,7 @@ export function BookingPrivateNotesPanel({
           <button
             type="submit"
             disabled={addPrivateNote.isPending || !privateNoteBody.trim()}
-            className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             Kaydet
           </button>

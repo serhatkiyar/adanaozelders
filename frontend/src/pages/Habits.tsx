@@ -161,7 +161,7 @@ function HabitModal({
                   onClick={() => setPeriod(p)}
                   className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
                     period === p
-                      ? "bg-marka text-white"
+                      ? "bg-marka text-marka-fg"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                   }`}
                 >
@@ -207,7 +207,7 @@ function HabitModal({
             <button
               type="submit"
               disabled={pending}
-              className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
+              className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
             >
               {pending ? "Kaydediliyor…" : editing ? "Kaydet" : "Oluştur"}
             </button>
@@ -387,7 +387,7 @@ export default function Habits() {
           <div>
             <Link
               to={ROUTES.learn}
-              className="text-sm font-medium text-marka hover:text-marka-hover "
+              className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
             >
               ← Öğren
             </Link>
@@ -402,7 +402,7 @@ export default function Habits() {
           </div>
           <button
             onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+            className="flex items-center gap-1.5 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -429,7 +429,7 @@ export default function Habits() {
             </p>
             <button
               onClick={() => setCreating(true)}
-              className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
+              className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               İlk Alışkanlığını Ekle
             </button>

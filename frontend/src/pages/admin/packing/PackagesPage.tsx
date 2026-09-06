@@ -240,7 +240,7 @@ export default function PackagesPage() {
             <div className="min-w-0">
               <Link
                 to={ROUTES.adminPackingPackage(row.original.id)}
-                className="text-sm font-semibold text-panel-accent hover:underline"
+                className="text-sm font-semibold text-panel-accent-text hover:underline"
               >
                 {row.original.code}
               </Link>
@@ -328,7 +328,7 @@ export default function PackagesPage() {
           <button
             type="button"
             onClick={() => url.ayarla({ siparis: 0 })}
-            className="min-h-9 rounded-lg bg-panel-accent-soft px-3 text-xs font-semibold text-panel-accent transition hover:bg-panel-accent-soft/70"
+            className="min-h-9 rounded-lg bg-panel-accent-soft px-3 text-xs font-semibold text-panel-accent-text transition hover:bg-panel-accent-soft/70"
           >
             Sipariş #{siparis} süzgecini kaldır ×
           </button>

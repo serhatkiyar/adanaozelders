@@ -51,7 +51,7 @@ export function ProfileCompleteness({
         <h3 className="text-sm font-semibold text-slate-900 ">
           Profilini tamamla
         </h3>
-        <span className="text-sm font-bold text-marka ">
+        <span className="text-sm font-bold text-marka-metin ">
           %{pct}
         </span>
       </div>
@@ -82,7 +82,7 @@ export function ProfileCompleteness({
       {showLink && (
         <Link
           to={ROUTES.tutorListing}
-          className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95"
+          className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
         >
           İlan Ayarları'na git →
         </Link>

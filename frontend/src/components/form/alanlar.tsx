@@ -281,7 +281,7 @@ export function OnayKutusu({
           checked={isaretli}
           onChange={(e) => onChange(e.target.checked)}
           aria-invalid={hata ? true : undefined}
-          className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
         />
         <span className="text-sm leading-relaxed text-slate-600">{children}</span>
       </label>
@@ -311,7 +311,7 @@ export function AnaDugme({
       type={tip}
       onClick={onClick}
       disabled={bekliyor}
-      className="w-full rounded-xl bg-marka px-5 py-3.5 text-[15px] font-semibold text-white transition hover:bg-marka-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-xl bg-marka px-5 py-3.5 text-[15px] font-semibold text-marka-fg transition hover:bg-marka-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka disabled:cursor-not-allowed disabled:opacity-60"
     >
       {children}
     </button>

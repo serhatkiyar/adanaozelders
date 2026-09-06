@@ -69,7 +69,7 @@ export function QuestionModal({
         <p className="mt-1 text-sm text-slate-500 ">
           {tutorName} eğitmenine bu dersle ilgili soru yöneltebilirsin.
           {typeof remaining === "number" && (
-            <span className="font-medium text-marka ">
+            <span className="font-medium text-marka-metin ">
               {" "}
               Kalan hakkın: {remaining}
             </span>
@@ -114,7 +114,7 @@ export function QuestionModal({
             <button
               type="submit"
               disabled={ask.isPending}
-              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
             >
               {ask.isPending ? "Gönderiliyor…" : "Gönder"}
             </button>

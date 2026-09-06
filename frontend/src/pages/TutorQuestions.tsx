@@ -33,7 +33,7 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
         >
           <Avatar name={clientName} avatar_url={thread.client_avatar_url} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-800 hover:text-marka ">
+            <p className="truncate text-sm font-semibold text-slate-800 hover:text-marka-metin ">
               {clientName}
             </p>
             <p className="truncate text-xs text-slate-400 ">

@@ -54,7 +54,7 @@ export default function ResetPassword() {
             </div>
             <Link
               to={ROUTES.forgotPassword}
-              className="inline-block text-sm font-semibold text-marka hover:text-marka-hover "
+              className="inline-block text-sm font-semibold text-marka-metin hover:text-marka-metin-hover "
             >
               ← Sıfırlama bağlantısı iste
             </Link>
@@ -67,7 +67,7 @@ export default function ResetPassword() {
             </div>
             <Link
               to={ROUTES.login}
-              className="inline-block text-sm font-semibold text-marka hover:text-marka-hover "
+              className="inline-block text-sm font-semibold text-marka-metin hover:text-marka-metin-hover "
             >
               Hemen giriş yap →
             </Link>
@@ -115,7 +115,7 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {mutation.isPending ? "Güncelleniyor..." : "Şifreyi güncelle"}
             </button>

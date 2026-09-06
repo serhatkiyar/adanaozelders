@@ -229,7 +229,7 @@ function GalleryAddButton({
         type="button"
         onClick={() => ref.current?.click()}
         disabled={busy}
-        className="rounded-lg bg-marka-soft px-3 py-1.5 text-sm font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-60 "
+        className="rounded-lg bg-marka-soft px-3 py-1.5 text-sm font-semibold text-marka-metin-hover transition hover:bg-marka-line disabled:opacity-60 "
       >
         {busy ? "Yükleniyor…" : "+ Fotoğraf"}
       </button>

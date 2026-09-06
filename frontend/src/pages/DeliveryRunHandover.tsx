@@ -257,7 +257,7 @@ export default function DeliveryRunHandover() {
             <button
               type="submit"
               disabled={!kod.trim() || scan.isPending}
-              className="shrink-0 rounded-xl bg-marka px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="shrink-0 rounded-xl bg-marka px-5 py-2.5 text-sm font-bold text-marka-fg disabled:opacity-50"
             >
               {scan.isPending ? "Okunuyor…" : "Zimmetle"}
             </button>

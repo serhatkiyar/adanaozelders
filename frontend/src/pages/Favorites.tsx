@@ -279,7 +279,7 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-marka ">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-marka-metin ">
         {icon}
       </div>
       <p className="mt-4 text-sm font-medium text-slate-700 ">
@@ -288,7 +288,7 @@ function EmptyState({
       <p className="mt-1 text-xs text-slate-400 ">{hint}</p>
       <Link
         to={ctaTo}
-        className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
+        className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
       >
         {ctaLabel}
       </Link>
@@ -330,7 +330,7 @@ function TutorsTab({
 // Favorilerde olduğunu net belli eden rozet (kart sol-üstünde).
 function SavedBadge() {
   return (
-    <span className="pointer-events-none absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-marka shadow-sm ring-1 ring-black/5 ">
+    <span className="pointer-events-none absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-marka-metin shadow-sm ring-1 ring-black/5 ">
       <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
         <path d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
       </svg>

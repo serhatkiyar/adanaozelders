@@ -119,7 +119,7 @@ function NavbarWidgetSection() {
                 <span
                   className={`block text-sm font-semibold ${
                     active
-                      ? "text-marka-hover "
+                      ? "text-marka-metin-hover "
                       : "text-slate-800 "
                   }`}
                 >
@@ -515,7 +515,7 @@ export function PersonalizeModal({
         aria-current={isActive}
         className={`${base} ${
           isActive
-            ? "bg-marka-soft text-marka-hover "
+            ? "bg-marka-soft text-marka-metin-hover "
             : "text-slate-600 hover:bg-slate-100 "
         }`}
       >

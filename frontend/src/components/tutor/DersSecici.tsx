@@ -90,7 +90,7 @@ export function DersSecici({
                             aria-pressed={acik}
                             className={`inline-flex min-h-[44px] items-center rounded-full px-3 text-xs transition disabled:opacity-50 ${
                               acik
-                                ? "bg-marka font-medium text-white"
+                                ? "bg-marka font-medium text-marka-fg"
                                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                           >
@@ -146,7 +146,7 @@ export function DersSecici({
                         aria-pressed={acik}
                         className={`inline-flex min-h-[44px] items-center rounded-full px-3.5 text-sm font-medium transition active:scale-95 disabled:opacity-50 ${
                           acik
-                            ? "bg-marka text-white"
+                            ? "bg-marka text-marka-fg"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                         }`}
                       >

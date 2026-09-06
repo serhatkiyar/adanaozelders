@@ -77,7 +77,7 @@ function OdemeSeridi({ item, kaynak }: { item: ReservationItem; kaynak: Kutuphan
           type="button"
           onClick={odemeyiBaslat}
           disabled={!payOpen || ode.isPending}
-          className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-50"
+          className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50"
         >
           {!payOpen ? "Ödeme kapalı" : ode.isPending ? "…" : "Ödemeyi tamamla"}
         </button>

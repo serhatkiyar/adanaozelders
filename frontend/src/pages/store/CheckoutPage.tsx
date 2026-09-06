@@ -153,7 +153,7 @@ export default function CheckoutPage() {
               <Section title="Teslimat Adresi">
                 <div className="space-y-3">
                   <div className="rounded-xl border-2 border-marka-mid p-3 ">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-marka-hover ">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-marka-metin-hover ">
                       <span className="flex h-4 w-4 items-center justify-center rounded-full border-[5px] border-marka " />
                       Adrese teslim edilsin
                     </div>
@@ -189,7 +189,7 @@ export default function CheckoutPage() {
                           ))}
                           <Link
                             to={ROUTES.addresses}
-                            className="inline-block pt-1 text-xs font-medium text-marka hover:underline "
+                            className="inline-block pt-1 text-xs font-medium text-marka-metin hover:underline "
                           >
                             Adreslerimi yönet →
                           </Link>
@@ -208,7 +208,7 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={() => setPickupInfo(true)}
-                        className="text-xs text-marka underline-offset-2 hover:underline "
+                        className="text-xs text-marka-metin underline-offset-2 hover:underline "
                       >
                         Nedir?
                       </button>
@@ -234,7 +234,7 @@ export default function CheckoutPage() {
                   <Link
                     to={ROUTES.distanceSales}
                     target="_blank"
-                    className="mt-2 inline-block text-xs font-medium text-marka hover:underline "
+                    className="mt-2 inline-block text-xs font-medium text-marka-metin hover:underline "
                   >
                     Tümünü oku →
                   </Link>
@@ -287,7 +287,7 @@ export default function CheckoutPage() {
                     )}
                     <div className="flex items-center justify-between border-t border-slate-200 pt-3 ">
                       <span className="font-semibold text-slate-700 ">Toplam</span>
-                      <span className="text-xl font-semibold text-marka ">
+                      <span className="text-xl font-semibold text-marka-metin ">
                         {formatTL(validation.total)}
                       </span>
                     </div>
@@ -322,14 +322,14 @@ export default function CheckoutPage() {
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
                 />
                 <span>
-                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-marka hover:underline ">
+                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-marka-metin hover:underline ">
                     Ön Bilgilendirme Koşulları
                   </Link>
                   'nı ve{" "}
-                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-marka hover:underline ">
+                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-marka-metin hover:underline ">
                     Mesafeli Satış Sözleşmesi
                   </Link>
                   'ni okudum, onaylıyorum.
@@ -350,7 +350,7 @@ export default function CheckoutPage() {
                   !!couponError ||
                   blockedBranches.length > 0
                 }
-                className="mt-4 w-full rounded-xl bg-marka py-3 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 "
+                className="mt-4 w-full rounded-xl bg-marka py-3 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 "
               >
                 {createOrder.isPending ? "İşleniyor…" : "Ödeme Yap"}
               </button>
@@ -380,7 +380,7 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={() => setPickupInfo(false)}
-              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
             >
               Anladım
             </button>
@@ -599,7 +599,7 @@ function PreInfoForm({
       </dl>
       <p className="mt-2 text-[11px] text-slate-400">
         İade ve şikayet için{" "}
-        <Link to={ROUTES.refundPolicy} target="_blank" className="text-marka hover:underline ">
+        <Link to={ROUTES.refundPolicy} target="_blank" className="text-marka-metin hover:underline ">
           İptal ve İade Politikası
         </Link>{" "}
         · {OPERATOR.email}
@@ -672,7 +672,7 @@ function CouponBox({
               type="button"
               disabled={!couponInput.trim()}
               onClick={onApply}
-              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
             >
               Uygula
             </button>
@@ -683,7 +683,7 @@ function CouponBox({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="text-sm font-medium text-marka hover:underline "
+          className="text-sm font-medium text-marka-metin hover:underline "
         >
           İndirim kodu kullan
         </button>

@@ -91,7 +91,7 @@ export default function LessonDetail() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-marka hover:text-marka-hover "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             ← Geri dön
           </button>
@@ -174,7 +174,7 @@ export default function LessonDetail() {
       <div className="mx-auto max-w-6xl pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="mb-5 inline-block text-sm font-medium text-marka hover:text-marka-hover "
+          className="mb-5 inline-block text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
         >
           ← Geri dön
         </button>
@@ -386,7 +386,7 @@ export default function LessonDetail() {
               <button
                 disabled={busy}
                 onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
+                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
               >
                 Tamamla
               </button>
@@ -411,7 +411,7 @@ export default function LessonDetail() {
             {isClient && isCompleted && !alreadyReviewed && (
               <button
                 onClick={() => setShowReview(true)}
-                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95"
+                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
               >
                 Değerlendir
               </button>
@@ -435,7 +435,7 @@ export default function LessonDetail() {
             )}
             {review.tutor_reply && (
               <div className="mt-3 rounded-xl border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3 ">
-                <p className="text-xs font-semibold text-marka-hover ">
+                <p className="text-xs font-semibold text-marka-metin-hover ">
                   Eğitmen yanıtı
                 </p>
                 <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
@@ -458,7 +458,7 @@ export default function LessonDetail() {
                   Süre doldu
                 </span>
               ) : (
-                <span className="rounded-full bg-marka-soft px-2.5 py-1 text-xs font-semibold text-marka-hover ">
+                <span className="rounded-full bg-marka-soft px-2.5 py-1 text-xs font-semibold text-marka-metin-hover ">
                   {qaGroup.remaining}/{qaGroup.quota} hak · {qaGroup.days_left} gün
                 </span>
               )}
@@ -538,7 +538,7 @@ export default function LessonDetail() {
                         <div
                           className={`relative rounded-2xl px-4 py-2 text-sm ${
                             isMine
-                              ? "bg-marka text-white"
+                              ? "bg-marka text-marka-fg"
                               : "bg-slate-100 text-slate-800 "
                           }`}
                         >
@@ -577,7 +577,7 @@ export default function LessonDetail() {
                 <button
                   type="submit"
                   disabled={addComment.isPending || !commentBody.trim()}
-                  className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Gönder
                 </button>

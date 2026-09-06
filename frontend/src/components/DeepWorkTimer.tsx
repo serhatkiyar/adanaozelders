@@ -6,7 +6,7 @@ import { formatClock, MODE_LABEL, type TimerMode } from "@/lib/deepwork";
 import { playChime, notify } from "@/lib/timerSound";
 
 const ACCENT: Record<TimerMode, { dot: string; text: string }> = {
-  focus: { dot: "bg-marka-mid", text: "text-marka " },
+  focus: { dot: "bg-marka-mid", text: "text-marka-metin " },
   short: { dot: "bg-emerald-500", text: "text-emerald-600 " },
   long: { dot: "bg-amber-500", text: "text-amber-600 " },
 };

@@ -42,7 +42,7 @@ const TYPE_CLS: Record<ToastType, { border: string; icon: string; bar: string }>
   },
   info: {
     border: "border-l-marka-mid",
-    icon: "bg-marka-soft text-marka ",
+    icon: "bg-marka-soft text-marka-soft-fg ",
     bar:    "bg-marka-mid",
   },
 };

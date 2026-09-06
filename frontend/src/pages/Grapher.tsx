@@ -393,7 +393,7 @@ export default function Grapher() {
               </div>
               <button
                 onClick={addFn}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-semibold text-slate-500 transition hover:border-marka-mid hover:text-marka "
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-semibold text-slate-500 transition hover:border-marka-mid hover:text-marka-metin "
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
@@ -421,7 +421,7 @@ export default function Grapher() {
                 </button>
                 <button
                   onClick={downloadPng}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-marka py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-marka py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />

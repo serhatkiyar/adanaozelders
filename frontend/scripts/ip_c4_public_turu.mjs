@@ -191,18 +191,41 @@ const indigoTara = (INDIGO) => {
   return bulgular.slice(0, 25);
 };
 
-/** Aksanın gerçekten sayfada olduğunun DOLULUK kanıtı. */
+/**
+ * Markanın gerçekten sayfada olduğunun DOLULUK kanıtı.
+ *
+ * AİLENİN TAMAMINA bakar, tek bir token'a değil. Sebebi ölçüldü: dolgu parlak
+ * + yazı koyu kuralına geçilince marka YAZISI `--marka`dan `--marka-metin`e
+ * taşındı ve yalnız `--marka`yı sayan eski sürüm 66'dan 8'e düşüp "site boş"
+ * sandı. Kusur sitede değil ARAÇTAYDI; eşiği düşürmek yerine ölçüt düzeltildi.
+ */
 const markaTara = () => {
   const kok = getComputedStyle(document.documentElement);
-  const marka = kok.getPropertyValue("--marka").trim();
+  const oku = (ad) => {
+    const v = kok.getPropertyValue(ad).trim();
+    return v ? `rgb(${v.replace(/\s+/g, ",")})` : null;
+  };
+  const aile = {
+    dolgu: oku("--marka"),
+    metin: oku("--marka-metin"),
+    "metin-hover": oku("--marka-metin-hover"),
+    soft: oku("--marka-soft"),
+  };
+  const bulunan = {};
   let sayac = 0;
   for (const el of document.querySelectorAll("*")) {
     const s = getComputedStyle(el);
-    for (const o of ["color", "backgroundColor", "borderTopColor"]) {
-      if ((s[o] ?? "").replace(/\s/g, "") === `rgb(${marka.replace(/\s+/g, ",")})`) sayac++;
+    for (const o of ["color", "backgroundColor", "borderTopColor", "borderLeftColor"]) {
+      const d = (s[o] ?? "").replace(/\s/g, "");
+      for (const [ad, deger] of Object.entries(aile)) {
+        if (deger && d === deger.replace(/\s/g, "")) {
+          bulunan[ad] = (bulunan[ad] ?? 0) + 1;
+          sayac++;
+        }
+      }
     }
   }
-  return { marka, sayac };
+  return { marka: aile.dolgu, sayac, bulunan };
 };
 
 async function main() {

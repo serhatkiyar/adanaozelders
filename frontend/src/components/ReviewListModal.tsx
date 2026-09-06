@@ -80,7 +80,7 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
                         )}
                         {review.tutor_reply && (
                           <div className="mt-3 rounded-xl border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3 ">
-                            <p className="text-xs font-semibold text-marka-hover ">
+                            <p className="text-xs font-semibold text-marka-metin-hover ">
                               Eğitmen yanıtı
                             </p>
                             <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">

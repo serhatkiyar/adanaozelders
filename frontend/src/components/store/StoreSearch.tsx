@@ -181,7 +181,7 @@ export function StoreSearch() {
               <button
                 type="button"
                 onClick={searchAll}
-                className="w-full border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-marka transition-colors hover:bg-slate-50 "
+                className="w-full border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-marka-metin transition-colors hover:bg-slate-50 "
               >
                 "{q.trim()}" için tüm sonuçlar →
               </button>

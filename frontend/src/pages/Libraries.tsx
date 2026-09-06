@@ -231,7 +231,7 @@ export default function Libraries() {
         <FilterIconSvg />
         Filtreler
         {amenities.length > 0 && (
-          <span className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[9px] font-bold text-white ">
+          <span className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[9px] font-bold text-marka-fg ">
             {amenities.length}
           </span>
         )}
@@ -259,7 +259,7 @@ export default function Libraries() {
         <button
           key={d}
           onClick={() => setDistrict((prev) => prev.filter((x) => x !== d))}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-hover transition hover:bg-marka-line "
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
         >
           {d}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
@@ -271,7 +271,7 @@ export default function Libraries() {
         <button
           key={a}
           onClick={() => toggleAmenity(a)}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-hover transition hover:bg-marka-line "
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
         >
           {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
           {amenityLabel(a)}
@@ -309,7 +309,7 @@ export default function Libraries() {
                 onClick={() => setView(m)}
                 className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
                   view === m
-                    ? "bg-white text-marka shadow-sm "
+                    ? "bg-white text-marka-metin shadow-sm "
                     : "text-slate-500 hover:text-slate-700 "
                 }`}
               >
@@ -320,7 +320,7 @@ export default function Libraries() {
         </div>
 
         {geoLoading && (
-          <p className="text-xs font-medium text-marka animate-pulse">Konum bilgin alınıyor…</p>
+          <p className="text-xs font-medium text-marka-metin animate-pulse">Konum bilgin alınıyor…</p>
         )}
 
         {/* ── Sonuçlar ── */}
@@ -367,7 +367,7 @@ export default function Libraries() {
                     sekmede açabilsin. Tıklama SPA içinde kalır. */}
                 <Link
                   to={nextPageSearch(searchParams, page)}
-                  className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft disabled:opacity-60 "
+                  className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft disabled:opacity-60 "
                 >
                   {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                 </Link>
@@ -407,7 +407,7 @@ export default function Libraries() {
                         onClick={() => toggleAmenity(a)}
                         className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition ${
                           active
-                            ? "bg-marka text-white shadow-sm ring-1 ring-marka-focus"
+                            ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"
                             : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
                         }`}
                       >
@@ -428,7 +428,7 @@ export default function Libraries() {
                 </button>
                 <button
                   onClick={() => setShowFilters(false)}
-                  className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+                  className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
                   Sonuçları Göster
                 </button>

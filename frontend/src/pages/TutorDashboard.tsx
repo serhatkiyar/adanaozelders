@@ -29,7 +29,7 @@ type Tone = "amber" | "marka" | "emerald" | "slate";
 
 const TONE: Record<Tone, { num: string; bg: string; ring: string }> = {
   amber:   { num: "text-amber-600",   bg: "bg-amber-50",   ring: "ring-amber-100"   },
-  marka:   { num: "text-marka",  bg: "bg-marka-soft",  ring: "ring-marka/20"  },
+  marka:   { num: "text-marka-soft-fg",  bg: "bg-marka-soft",  ring: "ring-marka/20"  },
   emerald: { num: "text-emerald-600", bg: "bg-emerald-50", ring: "ring-emerald-100" },
   slate:   { num: "text-slate-700",   bg: "bg-slate-50",   ring: "ring-slate-100"   },
 };
@@ -98,7 +98,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       >
         <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 hover:text-marka ">
+          <p className="truncate text-sm font-semibold text-slate-900 hover:text-marka-metin ">
             {clientName}
           </p>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -116,7 +116,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       <div className="flex shrink-0 items-center gap-2">
         <Link
           to={ROUTES.lesson(booking.id)}
-          className="text-xs font-semibold text-marka transition hover:text-marka-hover "
+          className="text-xs font-semibold text-marka-metin transition hover:text-marka-metin-hover "
         >
           Detay →
         </Link>
@@ -159,7 +159,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
             <button
               disabled={busy}
               onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {complete.isPending ? "…" : "Tamamla"}
             </button>
@@ -286,12 +286,12 @@ export default function TutorDashboard() {
               <p className="text-sm font-semibold text-marka-soft-fg">
                 İlanın henüz yayında değil
               </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-marka-hover">
+              <p className="mt-0.5 text-xs leading-relaxed text-marka-metin-hover">
                 Kaldığın yerden devam et; tamamlayınca öğrenciler seni aramada
                 bulmaya başlar.
               </p>
             </div>
-            <span className="shrink-0 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white">
+            <span className="shrink-0 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg">
               Devam et
             </span>
           </Link>
@@ -385,7 +385,7 @@ export default function TutorDashboard() {
                 <p className="text-sm font-medium text-marka-soft-fg ">
                   💳 Ödemeleri alabilmek için <strong>ödeme bilgilerini</strong> ekle (IBAN + kimlik).
                 </p>
-                <span className="shrink-0 text-sm font-bold text-marka ">
+                <span className="shrink-0 text-sm font-bold text-marka-metin ">
                   Ekle →
                 </span>
               </Link>

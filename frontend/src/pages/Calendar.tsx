@@ -144,7 +144,7 @@ export default function Calendar() {
             {isStudent && (
               <button
                 onClick={() => openPicker(null)}
-                className="mr-1 flex items-center gap-1.5 rounded-xl bg-marka px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+                className="mr-1 flex items-center gap-1.5 rounded-xl bg-marka px-3 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -160,7 +160,7 @@ export default function Calendar() {
             </button>
             <button
               onClick={() => setWeekOffset(0)}
-              className="rounded-xl bg-marka px-3 py-2 text-sm font-medium text-white transition hover:bg-marka-hover"
+              className="rounded-xl bg-marka px-3 py-2 text-sm font-medium text-marka-fg transition hover:bg-marka-hover"
             >
               Bu hafta
             </button>
@@ -195,7 +195,7 @@ export default function Calendar() {
                   <span
                     className={`text-sm font-bold ${
                       isToday
-                        ? "text-marka "
+                        ? "text-marka-metin "
                         : "text-slate-700 "
                     }`}
                   >
@@ -241,7 +241,7 @@ export default function Calendar() {
                 {isStudent && !isPast && (
                   <button
                     onClick={() => openPicker(localDateStr(day))}
-                    className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-1.5 text-[11px] font-semibold text-slate-400 transition hover:border-marka-mid hover:bg-marka-soft/40 hover:text-marka "
+                    className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-1.5 text-[11px] font-semibold text-slate-400 transition hover:border-marka-mid hover:bg-marka-soft/40 hover:text-marka-soft-fg "
                   >
                     + Ekle
                   </button>

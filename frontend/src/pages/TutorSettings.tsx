@@ -334,7 +334,7 @@ export default function TutorSettings() {
                         runAction(submitAction, "İlanın onaya gönderildi.")
                       }
                       disabled={actionBusy}
-                      className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {data.status === TutorStatus.REJECTED
                         ? "Yeniden Gönder"
@@ -442,7 +442,7 @@ export default function TutorSettings() {
                           }
                           className={`rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
                             selected
-                              ? "bg-marka text-white shadow-sm shadow-marka/10 "
+                              ? "bg-marka text-marka-fg shadow-sm shadow-marka/10 "
                               : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                           }`}
                         >
@@ -599,7 +599,7 @@ export default function TutorSettings() {
                       <button
                         type="button"
                         onClick={addWindow}
-                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-marka transition hover:bg-marka-soft "
+                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-marka-soft-fg transition hover:bg-marka-soft "
                       >
                         + Pencere ekle
                       </button>
@@ -612,7 +612,7 @@ export default function TutorSettings() {
                   Yaş ve cinsiyet bilgini{" "}
                   <Link
                     to={ROUTES.profile}
-                    className="font-semibold text-marka hover:underline "
+                    className="font-semibold text-marka-metin hover:underline "
                   >
                     Profil
                   </Link>{" "}
@@ -689,7 +689,7 @@ export default function TutorSettings() {
                   <button
                     type="submit"
                     disabled={!editable || updateProfile.isPending}
-                    className="rounded-xl bg-marka px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {updateProfile.isPending ? "Kaydediliyor…" : "Kaydet"}
                   </button>

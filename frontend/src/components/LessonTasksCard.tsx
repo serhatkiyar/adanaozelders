@@ -49,7 +49,7 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
         </h3>
         <Link
           to={ROUTES.tasks}
-          className="text-xs font-medium text-marka hover:text-marka-hover "
+          className="text-xs font-medium text-marka-metin hover:text-marka-metin-hover "
         >
           Görevlerim →
         </Link>
@@ -106,7 +106,7 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
         <button
           type="submit"
           disabled={createTask.isPending}
-          className="flex-none rounded-xl bg-marka px-4 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
+          className="flex-none rounded-xl bg-marka px-4 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
         >
           Ekle
         </button>

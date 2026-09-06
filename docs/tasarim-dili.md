@@ -83,13 +83,18 @@ saydamlık varyantı sessizce kırılırdı.
 | `--panel-fg` | Birincil metin | slate-900 | slate-50 |
 | `--panel-fg-muted` | İkincil metin, açıklama | slate-600 | slate-400 |
 | `--panel-fg-subtle` | Üçüncül metin, ikon, etiket | slate-500 | slate-500 |
-| `--panel-accent` | Aksiyon rengi (etkin gezinme, birincil düğme) | **#1A365D** (marka lacivert) | **#8AB0DE** |
-| `--panel-accent-fg` | Aksiyon üstündeki metin | beyaz | slate-950 |
-| `--panel-accent-soft` | Aksiyonun sakin hâli (etkin satır zemini) | **#EAF0F7** | **#152944** |
-| `--panel-focus` | Odak halkası | **#1A365D** | **#8AB0DE** |
-| `--panel-attention` | **Dikkat** rengi — düz hâl (şerit, nokta) | #F6AD55 | #F6AD55 |
-| `--panel-attention-soft` | Dikkat rozetinin zemini | #FDF1E1 | #422006 |
-| `--panel-attention-fg` | Dikkat rozetinin metni | #7C2D12 | #F6AD55 |
+| `--panel-accent` | Aksiyon DOLGUSU (birincil düğme) — metin olarak kullanılmaz | `var(--marka)` → **#E37200** | (tarihçe: #1A365D / #8AB0DE) |
+| `--panel-accent-fg` | Dolgu üstündeki metin (KOYU) | `var(--marka-fg)` → **#2B1000** | slate-950 |
+| `--panel-accent-soft` | Aksiyonun sakin hâli (etkin satır zemini) | `var(--marka-soft)` → **#FFF4E9** | (tarihçe: #EAF0F7) |
+| `--panel-accent-text` | Panelde marka YAZISI (etkin gezinme, tablo bağlantısı) | `var(--marka-metin)` → **#96430A** |
+| `--panel-focus` | Odak halkası | `var(--marka-focus)` → **#C2570C** | (tarihçe: #1A365D) |
+| `--panel-attention` | **Dikkat** rengi — düz hâl (şerit, nokta) | `var(--dikkat)` → **#F59E0B** | (tarihçe: #F6AD55) |
+| `--panel-attention-soft` | Dikkat rozetinin zemini | `var(--dikkat-soft)` → **#FEF3C7** | (tarihçe: #FDF1E1) |
+| `--panel-attention-fg` | Dikkat rozetinin metni | `var(--dikkat-fg)` → **#78350F** | (tarihçe: #7C2D12) |
+
+> **Panel ailesi Ç-4'ten beri kendi değerini TUTMAZ**, `--marka-*` / `--dikkat-*`
+> ailelerine takma addır (bkz. §1.4). Bu sayede panel ağacındaki 244 sınıf hiç
+> değişmeden turuncuya geçti. Koyu tema sütunu tarihçedir; site tek temadır.
 
 **Koyu temada aksan neden farklı bir değer:** `#1A365D` slate-900 yüzeyin
 üstünde **1,3** kontrast verir — düğme zeminden ayırt edilemez. Aksan aynı
@@ -130,9 +135,40 @@ Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullan
 
 ### 1.4 Marka aksanı: **TURUNCU — KARAR (Ç-4, kullanıcı)**
 
-Aksan `#C2410C`dir. Zemin, kenarlık ve gövde metni **nötr** kalır; marka aksan
-olarak girer (etkin gezinme öğesi, birincil düğme, odak halkası) ve sıcak zemin
-`#FFF7ED` ile sınırlıdır: hover, seçili satır/sekme, yumuşak bilgi kartı.
+Marka rengi **`#E37200`**tır (tam doygun turuncu, ton 30°) ve **dolgu** olarak
+kullanılır; üstündeki yazı **koyudur** (`#2B1000`). Açık zeminlerdeki marka
+yazısı ayrı ve daha koyu bir adımdır (`#96430A`).
+
+**DOLGU PARLAK, YAZI KOYU — kural bilerek bu yönde.** İlk sürüm tersiydi (koyu
+dolgu + beyaz yazı) ve iki tur denendi:
+
+| Deneme | Dolgu | Sonuç |
+|---|---|---|
+| 1 | `#C2410C` + beyaz | kullanıcı "fazla koyu" buldu |
+| 2 | `#BD580C` + beyaz | ton 26°ye kaydırıldı, yine yanık/kahve okundu |
+| **3** | **`#E37200` + koyu yazı** | **canlı turuncu** |
+
+Sebep aritmetiktir: beyaz yazıyı taşımak için turuncunun kontrastı 4,5'e
+çıkmalı, bu da onu **parlaklık 0,18** bandına hapsediyor — turuncunun canlı
+olduğu bant 0,28+. Yani "beyaz yazı" ısrarı, rengin kahveleşmesini zorunlu
+kılıyordu. Turuncu markaların hiçbiri bunu yapmaz: Amazon (`#FF9900`) ve
+Trendyol (`#F27A1A`) düğmelerinde **koyu yazı** kullanır.
+
+**Bedeli ölçüldü ve karşılandı:** parlak dolgu beyaz sayfada sınırını
+kaybedebilir. Trendyol'un ham tonu `#F27A1A` beyaza karşı **2,77** verir ve
+SC 1.4.11'in 3:1 eşiğinin altında kalır. `#E37200` aynı ailenin **3,15** veren
+hâlidir — sınır görünür, canlılık korunur.
+
+**Dolgu METİN OLARAK KULLANILMAZ.** Beyaz zeminde 3,15 verir; gövde metni
+eşiği 4,5'tir. Bu yüzden `--marka-metin` ayrı bir adımdır (Tailwind ve Radix
+ölçekleri de tam olarak bunu yapar). Nöbetçi `text-marka` yazımını
+`toEqual([])` ile yasaklar — sınıf geçerli göründüğü için ne tip kontrolü ne
+build yakalayabilir, yalnız metin soluk kalır.
+
+**Aksan ile uyarı artık DEĞERle değil DOYGUNLUKLA ayrılır.** İkisi de turuncu
+ailesinden; ayrım dolgunun doygun (parlaklık 0,28), uyarı çipinin soluk
+(0,89) olmasıdır. Nöbetçi bu farkı ölçer. Eski 3:1 ölçütü düşürülmedi,
+**değiştirildi** — sayıyı teste uydurmak sözleşmeyi sessizce zayıflatmak olurdu.
 
 **Bu karar §1.4'ün eski hâlini (Ç-3) bilerek TERSİNE ÇEVİRİR.** Ç-3 "turuncu
 aksan değil, dikkat rengidir" diyordu ve gerekçesi aşağıda tarihçe olarak
@@ -140,23 +176,27 @@ duruyor. Gerekçe kullanıcıya iletildi, karar tekrarlandı. Dayanağı bir öl
 düzeltmesi değil **ürün yargısıdır**; burada böyle yazılmasının sebebi, ileride
 "acaba kontrast mı gerektirdi" diye okunmamasıdır.
 
-**Ölçülen bedel — kabul edildi.** Aksan `indigo-600` iken beyaz metinle **6,29**
-veriyordu; `#C2410C` **5,18** verir. AA (4,5) korunur, pay daralır.
+**Ölçülen bedel — kabul edildi.** Birincil düğmenin metin kontrastı
+`indigo-600` + beyaz iken **6,29**di; şimdi `#E37200` + koyu yazı ile
+**5,67**. AA (4,5) korunur.
 
 | Rol | Değer | Ölçülen |
 |---|---|---|
-| Aksan dolgu | `#C2410C` | beyaz metin **5,18** (AA) |
-| Hover / aktif | `#9A3412` | beyaz metin **7,31** (AAA) |
-| Sıcak zemin | `#FFF7ED` | üstünde `#9A3412` = **6,88** |
-| Kenarlık | `#FED7AA` | **yalnız kenarlık** — metin olarak 1,35 |
-| Ara ton (kenarlık/halka) | `#EA580C` | beyaza karşı **3,56** — SC 1.4.11'i geçer, **AA metni GEÇMEZ** |
-| Odak halkası | `#C2410C` | beyaza karşı **5,18** (eşik 3) |
+| Dolgu | `#E37200` | üstünde koyu yazı **5,67** · beyaz sayfada sınır **3,15** |
+| Dolgu üstündeki yazı | `#2B1000` | — |
+| Dolgu hover | `#C96500` | koyu yazı **5,17** |
+| **Marka yazısı** (açık zemin) | `#96430A` | beyazda **6,77** · soft'ta **6,24** · line'da **5,08** |
+| Marka yazısı hover | `#7C3708` | beyazda **8,72** |
+| Sıcak zemin | `#FFF4E9` | — |
+| Kenarlık | `#FDD9B5` | **yalnız kenarlık** |
+| Ara ton (kenarlık/halka) | `#D9660F` | beyaza karşı **3,58** — SC 1.4.11'i geçer, **AA metni GEÇMEZ** |
+| Odak halkası | `#C2570C` | beyaza karşı **4,50** (eşik 3) — dolgunun kendisi DEĞİL |
 | Dikkat düz | `#F59E0B` | beyaza karşı 2,15 — **metin taşımaz** |
 | Dikkat çipi | `#FEF3C7` zemin / `#78350F` metin | **8,15** |
 
 **Marka turuncusu `#F6AD55` birincil dolgu OLAMAZ:** üstünde beyaz metin
-**1,90** verir. Beyaz metni taşıyabilen en açık turuncu `#C2410C`dir. Bu, "sarı
-turuncu" isteğinin düğmede değil **zeminlerde** karşılanmasının sebebidir.
+**1,90** verir. Bu, "sarı turuncu" isteğinin düğmenin PARLAKLIĞINDA değil
+**tonunda ve zeminlerde** karşılanmasının sebebidir.
 
 **Aksan ile dikkat DEĞER ve BİÇİMle ayrılır, hue ile değil.** Ç-3'ün endişesi
 ("aynı ekranda hem 'yap' hem 'dikkat et'") ortadan kalkmadı; çözüm değişti:

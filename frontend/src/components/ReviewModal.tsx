@@ -113,7 +113,7 @@ export function ReviewModal({
             <button
               type="submit"
               disabled={createReview.isPending}
-              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
             >
               {createReview.isPending ? "Kaydediliyor..." : "Gönder"}
             </button>

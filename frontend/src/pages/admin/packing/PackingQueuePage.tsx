@@ -131,7 +131,7 @@ function SatirAksiyonu({
     return (
       <Link
         to={ROUTES.adminPackingPackage(paketId)}
-        className="text-xs font-semibold text-panel-accent hover:underline"
+        className="text-xs font-semibold text-panel-accent-text hover:underline"
       >
         Paketi gör →
       </Link>

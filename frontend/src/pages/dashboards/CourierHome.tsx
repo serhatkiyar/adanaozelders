@@ -38,7 +38,7 @@ export default function CourierHome() {
               className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-200 "
             />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-marka-line text-sm font-bold text-marka-hover ">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-marka-line text-sm font-bold text-marka-metin-hover ">
               {(ws?.account.first_name?.[0] ?? "K").toLocaleUpperCase("tr-TR")}
             </div>
           )}

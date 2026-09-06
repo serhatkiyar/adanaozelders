@@ -364,7 +364,7 @@ export function MapPicker({
       {/* ── Center Marker Overlay ── */}
       {!readonly && (
         <div className={`map-picker-center-marker ${isMapDragging ? "dragging" : ""}`}>
-          <svg viewBox="0 0 24 24" fill="currentColor" stroke="white" strokeWidth="1" className="h-10 w-10 text-marka drop-shadow-md">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="white" strokeWidth="1" className="h-10 w-10 text-marka-metin drop-shadow-md">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0Z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0Z" />
           </svg>

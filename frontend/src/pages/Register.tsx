@@ -73,7 +73,7 @@ export default function Register() {
       onClick={() => setRole(value)}
       className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
         role === value
-          ? "bg-marka text-white"
+          ? "bg-marka text-marka-fg"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
       }`}
     >
@@ -169,7 +169,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mutation.isPending ? "Kaydediliyor..." : "Kayıt Ol"}
           </button>
@@ -179,7 +179,7 @@ export default function Register() {
           Zaten hesabın var mı?{" "}
           <Link
             to={ROUTES.login}
-            className="font-semibold text-marka hover:text-marka-hover "
+            className="font-semibold text-marka-metin hover:text-marka-metin-hover "
           >
             Giriş yap
           </Link>

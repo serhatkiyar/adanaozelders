@@ -41,7 +41,7 @@ function TutorRow({
         {name}
       </span>
       {badge && (
-        <span className="shrink-0 rounded-full bg-marka-soft px-2 py-0.5 text-[10px] font-bold text-marka ">
+        <span className="shrink-0 rounded-full bg-marka-soft px-2 py-0.5 text-[10px] font-bold text-marka-soft-fg ">
           {badge}
         </span>
       )}
@@ -185,7 +185,7 @@ export function NewLessonRequestModal({
           <button
             type="button"
             onClick={goSearch}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-marka px-4 py-3 text-sm font-bold text-white transition hover:bg-marka-hover active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-marka px-4 py-3 text-sm font-bold text-marka-fg transition hover:bg-marka-hover active:scale-95"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />

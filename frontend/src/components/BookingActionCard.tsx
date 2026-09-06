@@ -175,7 +175,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
               type="button"
               onClick={handleAccept}
               disabled={accept.isPending || reject.isPending}
-              className="flex-1 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+              className="flex-1 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             >
               Onayla
             </button>
@@ -215,7 +215,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
         <button
           type="button"
           onClick={() => navigate(ROUTES.lesson(meta.booking_id))}
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium text-marka transition hover:bg-marka-soft "
+          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium text-marka-soft-fg transition hover:bg-marka-soft "
         >
           Detayları gör
           <svg

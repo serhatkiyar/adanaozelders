@@ -632,7 +632,7 @@ export function ProductForm({
                     checked={field.value}
                     onBlur={field.onBlur}
                     onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus accent-marka"
+                    className="h-4 w-4 rounded border-slate-300 text-panel-accent-text focus:ring-panel-focus accent-marka"
                   />
                 </Form.Control>
                 <Form.Label className="text-sm font-semibold text-slate-700 ">
@@ -1007,7 +1007,7 @@ function KatlanirBaslik({
       type="button"
       aria-expanded={acik}
       onClick={onDegis}
-      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent "
+      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent-text "
     >
       <svg
         width="14"
@@ -1275,7 +1275,7 @@ function VariantMembershipFields({
                     .join(" / ")}
                   <span className="text-slate-400"> · {m.title}</span>
                   {m.id === currentProductId && (
-                    <span className="ml-1.5 text-xs text-panel-accent">
+                    <span className="ml-1.5 text-xs text-panel-accent-text">
                       (bu ürün)
                     </span>
                   )}

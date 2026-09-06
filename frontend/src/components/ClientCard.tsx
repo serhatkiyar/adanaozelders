@@ -20,7 +20,7 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
       <div className="flex items-start gap-3">
         <Avatar name={client.full_name} avatar_url={client.avatar_url} />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-marka-hover ">
+          <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-marka-metin-hover ">
             {client.full_name}
           </h3>
         </div>

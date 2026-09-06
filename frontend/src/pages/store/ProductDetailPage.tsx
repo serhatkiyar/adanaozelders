@@ -61,7 +61,7 @@ const ACIKLAMA_SINIFI = [
   "[&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-slate-900",
   "[&_h3]:mt-5 [&_h3]:font-semibold [&_h3]:text-slate-900",
   "[&_h4]:mt-4 [&_h4]:font-semibold [&_h4]:text-slate-900",
-  "[&_a]:font-medium [&_a]:text-marka [&_a]:underline [&_a]:underline-offset-2",
+  "[&_a]:font-medium [&_a]:text-marka-metin [&_a]:underline [&_a]:underline-offset-2",
   "[&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mt-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1",
   "[&_blockquote]:mt-4 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-4 [&_blockquote]:italic",
   "[&_hr]:my-6 [&_hr]:border-slate-200",
@@ -341,13 +341,13 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-[76rem] px-4 py-6 md:px-0">
         {/* Breadcrumb — kategori zinciri */}
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500 ">
-          <Link to={ROUTES.store} className="hover:text-marka ">
+          <Link to={ROUTES.store} className="hover:text-marka-metin ">
             Mağaza
           </Link>
           {categoryTrail.map((c) => (
             <span key={c.id} className="flex items-center gap-1.5">
               <span className="text-slate-300 ">/</span>
-              <Link to={categoryChipHref(c.id)} className="hover:text-marka ">
+              <Link to={categoryChipHref(c.id)} className="hover:text-marka-metin ">
                 {c.name}
               </Link>
             </span>
@@ -417,8 +417,8 @@ export default function ProductDetailPage() {
                     }}
                     className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition-colors ${
                       isFav
-                        ? "text-marka "
-                        : "text-slate-400 hover:text-marka "
+                        ? "text-marka-metin "
+                        : "text-slate-400 hover:text-marka-metin "
                     }`}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill={isFav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
@@ -432,7 +432,7 @@ export default function ProductDetailPage() {
                       e.stopPropagation();
                       shareProduct();
                     }}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-marka "
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-marka-metin "
                   >
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="18" cy="5" r="3" />
@@ -506,7 +506,7 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={openReviews}
-                  className="text-sm text-slate-500 hover:text-marka hover:underline "
+                  className="text-sm text-slate-500 hover:text-marka-metin hover:underline "
                 >
                   {product.rating_count} değerlendirme
                 </button>
@@ -552,7 +552,7 @@ export default function ProductDetailPage() {
                 type="button"
                 disabled={soldOut}
                 onClick={buyNow}
-                className="flex h-12 flex-1 items-center justify-center rounded-lg bg-marka px-8 text-base font-semibold text-white transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 "
+                className="flex h-12 flex-1 items-center justify-center rounded-lg bg-marka px-8 text-base font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 "
               >
                 {soldOut ? "Tükendi" : "Şimdi Al"}
               </button>
@@ -561,7 +561,7 @@ export default function ProductDetailPage() {
                 type="button"
                 disabled={soldOut}
                 onClick={addToCart}
-                className="flex h-12 flex-1 items-center justify-center rounded-lg border border-marka px-8 text-base font-semibold text-marka transition-colors hover:bg-marka-soft disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 "
+                className="flex h-12 flex-1 items-center justify-center rounded-lg border border-marka px-8 text-base font-semibold text-marka-soft-fg transition-colors hover:bg-marka-soft disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 "
               >
                 Sepete Ekle
               </button>
@@ -638,7 +638,7 @@ export default function ProductDetailPage() {
                     Satıcı:{" "}
                     <Link
                       to={ROUTES.storeSeller(product.tutor_id!)}
-                      className="font-medium text-marka hover:underline "
+                      className="font-medium text-marka-metin hover:underline "
                     >
                       {product.tutor_name}
                     </Link>
@@ -797,7 +797,7 @@ export default function ProductDetailPage() {
                 <Link
                   key={c.id}
                   to={categoryChipHref(c.id)}
-                  className="rounded-full border border-slate-200 px-3.5 py-1.5 text-sm text-slate-600 transition-colors hover:border-marka-mid hover:text-marka "
+                  className="rounded-full border border-slate-200 px-3.5 py-1.5 text-sm text-slate-600 transition-colors hover:border-marka-mid hover:text-marka-metin "
                 >
                   {c.name}
                 </Link>
@@ -913,11 +913,11 @@ function PolicyPanel({ kind }: { kind: ProductKind }) {
       )}
       <p className="text-slate-500 ">
         Ayrıntılar için{" "}
-        <Link to={ROUTES.refundPolicy} className="font-medium text-marka hover:underline ">
+        <Link to={ROUTES.refundPolicy} className="font-medium text-marka-metin hover:underline ">
           İptal ve İade Politikası
         </Link>{" "}
         ve{" "}
-        <Link to={ROUTES.terms} className="font-medium text-marka hover:underline ">
+        <Link to={ROUTES.terms} className="font-medium text-marka-metin hover:underline ">
           Kullanım Koşulları
         </Link>{" "}
         sayfalarını inceleyebilirsiniz.
@@ -974,7 +974,7 @@ function BackInStockForm({ productId }: { productId: number }) {
         <button
           type="submit"
           disabled={notify.isPending}
-          className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
         >
           Haber ver
         </button>
@@ -1034,7 +1034,7 @@ function ReviewForm({ productId }: { productId: number }) {
       <button
         type="submit"
         disabled={create.isPending}
-        className="mt-2 rounded-lg bg-marka px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
+        className="mt-2 rounded-lg bg-marka px-4 py-1.5 text-sm font-medium text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
       >
         Gönder
       </button>

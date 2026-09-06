@@ -85,7 +85,7 @@ export function NotificationsBell() {
               <button
                 type="button"
                 onClick={() => markAll.mutate()}
-                className="text-xs font-medium text-marka transition hover:text-marka-hover "
+                className="text-xs font-medium text-marka-metin transition hover:text-marka-metin-hover "
               >
                 Tümünü okundu işaretle
               </button>
@@ -147,7 +147,7 @@ export function NotificationsBell() {
             <Link
               to={ROUTES.notifications}
               onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-marka transition hover:bg-slate-50 "
+              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-marka-metin transition hover:bg-slate-50 "
             >
               Tüm bildirimleri gör
               <svg

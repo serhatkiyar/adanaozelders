@@ -32,6 +32,8 @@ export default {
           hover: "rgb(var(--marka-hover) / <alpha-value>)",
           fg: "rgb(var(--marka-fg) / <alpha-value>)",
           soft: "rgb(var(--marka-soft) / <alpha-value>)",
+          metin: "rgb(var(--marka-metin) / <alpha-value>)",
+          "metin-hover": "rgb(var(--marka-metin-hover) / <alpha-value>)",
           "soft-fg": "rgb(var(--marka-soft-fg) / <alpha-value>)",
           line: "rgb(var(--marka-line) / <alpha-value>)",
           mid: "rgb(var(--marka-mid) / <alpha-value>)",
@@ -57,6 +59,8 @@ export default {
           accent: "rgb(var(--panel-accent) / <alpha-value>)",
           "accent-fg": "rgb(var(--panel-accent-fg) / <alpha-value>)",
           "accent-soft": "rgb(var(--panel-accent-soft) / <alpha-value>)",
+          "accent-soft-fg": "rgb(var(--panel-accent-soft-fg) / <alpha-value>)",
+          "accent-text": "rgb(var(--panel-accent-text) / <alpha-value>)",
           focus: "rgb(var(--panel-focus) / <alpha-value>)",
           // Dikkat rengi (#F6AD55) AKSAN DEĞİLDİR — yalnız uyarı ve bekleyen
           // iş durumları. Ayrı bir isim altında durmasının sebebi tam olarak

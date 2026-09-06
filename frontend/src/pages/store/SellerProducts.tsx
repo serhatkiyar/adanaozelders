@@ -109,7 +109,7 @@ function EarningStat({
   return (
     <div className="rounded-xl border border-slate-100 p-3 ">
       <p className="text-xs text-slate-500 ">{label}</p>
-      <p className={`mt-1 text-lg font-semibold ${accent ? "text-marka " : "text-slate-900 "}`}>
+      <p className={`mt-1 text-lg font-semibold ${accent ? "text-marka-metin " : "text-slate-900 "}`}>
         {value}
       </p>
     </div>
@@ -246,7 +246,7 @@ function SellerRow({
         {stat && stat.units_sold > 0 && (
           <p className="mt-1.5 text-xs text-slate-500 ">
             {stat.units_sold} adet satıldı ·{" "}
-            <span className="font-medium text-marka ">
+            <span className="font-medium text-marka-metin ">
               {formatTL(stat.earnings)}
             </span>{" "}
             kazanç

@@ -281,7 +281,7 @@ export function DeliveryPrefControls({
           <button
             onClick={() => setPostponeOpen(true)}
             disabled={postponePending}
-            className="font-semibold text-marka hover:underline disabled:opacity-50 "
+            className="font-semibold text-marka-metin hover:underline disabled:opacity-50 "
           >
             Yarına ertele
           </button>

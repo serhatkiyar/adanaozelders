@@ -275,7 +275,7 @@ export default function SrsBrowser() {
         <div>
           <Link
             to={ROUTES.srs}
-            className="text-sm font-medium text-marka hover:text-marka-hover "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             ← Aralıklı Tekrar
           </Link>
@@ -373,7 +373,7 @@ export default function SrsBrowser() {
         {selected.size > 0 && (
           <div className="sticky top-16 z-30 -mx-1 mt-4 bg-slate-50 px-1 py-1 ">
           <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-marka-line bg-marka-soft px-4 py-3 text-sm ">
-            <span className="font-semibold text-marka-hover ">
+            <span className="font-semibold text-marka-metin-hover ">
               {selected.size} kart seçili
             </span>
             <span className="mx-1 hidden h-4 w-px bg-marka-line sm:block" />
@@ -389,7 +389,7 @@ export default function SrsBrowser() {
                 key={action}
                 onClick={() => (action === "suspend" ? askSuspend() : runBulk(action))}
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-metin-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 {label}
               </button>
@@ -411,7 +411,7 @@ export default function SrsBrowser() {
               <button
                 onClick={askMove}
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-metin-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 Taşı
               </button>
@@ -431,7 +431,7 @@ export default function SrsBrowser() {
                     : toast.error("Etiket yaz.")
                 }
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-metin-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 Etiket ekle
               </button>
@@ -442,7 +442,7 @@ export default function SrsBrowser() {
                     : toast.error("Etiket yaz.")
                 }
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-metin-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 Etiket çıkar
               </button>
@@ -464,7 +464,7 @@ export default function SrsBrowser() {
             <button
               type="button"
               onClick={toggleAll}
-              className="rounded-xl px-3 py-2 text-sm font-semibold text-marka transition hover:bg-marka-soft "
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-marka-soft-fg transition hover:bg-marka-soft "
             >
               {allOnPageSelected
                 ? `Sayfa seçimini kaldır (${items.length})`

@@ -179,7 +179,7 @@ export function LibrariesMap({
                   <div className="mt-2 flex items-center gap-1.5">
                     <Link
                       to={ROUTES.library(lib.slug)}
-                      className="inline-block rounded-lg bg-marka px-3 py-1 text-xs font-semibold !text-white hover:bg-marka-hover hover:!text-white"
+                      className="inline-block rounded-lg bg-marka px-3 py-1 text-xs font-semibold !text-marka-fg hover:bg-marka-hover hover:!text-marka-fg"
                     >
                       Profili gör →
                     </Link>

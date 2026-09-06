@@ -36,7 +36,7 @@ function Board({
               <span className="min-w-0 flex-1 truncate text-sm text-slate-700 ">
                 {e.name}
               </span>
-              <span className="shrink-0 text-sm font-semibold text-marka ">
+              <span className="shrink-0 text-sm font-semibold text-marka-metin ">
                 {fmt(e.value)}
               </span>
             </li>

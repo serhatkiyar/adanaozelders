@@ -94,13 +94,13 @@ export default function Login() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-2 focus:ring-marka/20 accent-marka"
+                className="h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-2 focus:ring-marka/20 accent-marka"
               />
               Beni hatırla
             </label>
             <Link
               to={ROUTES.forgotPassword}
-              className="text-sm font-medium text-marka hover:text-marka-hover "
+              className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
             >
               Şifremi unuttum?
             </Link>
@@ -118,7 +118,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
           </button>
@@ -128,7 +128,7 @@ export default function Login() {
           Hesabın yok mu?{" "}
           <Link
             to={ROUTES.register}
-            className="font-semibold text-marka hover:text-marka-hover "
+            className="font-semibold text-marka-metin hover:text-marka-metin-hover "
           >
             Kayıt ol
           </Link>

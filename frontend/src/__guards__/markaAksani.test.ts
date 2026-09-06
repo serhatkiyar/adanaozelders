@@ -3,9 +3,9 @@
  *
  * ## Karar
  *
- * Aksan turuncudur (`#C2410C`). Zemin, kenarlık ve gövde metni NÖTR kalır
+ * Aksan turuncudur (`#BD580C` — ton 26°, altın turuncu). Zemin, kenarlık ve gövde metni NÖTR kalır
  * (slate ailesi); marka aksan olarak girer — etkin gezinme öğesi, birincil
- * düğme, odak halkası — ve sıcak zemin `--marka-soft` (#FFF7ED) ile
+ * düğme, odak halkası — ve sıcak zemin `--marka-soft` (#FFF4E6) ile
  * sınırlıdır: hover, seçili satır, yumuşak bilgi kartı.
  *
  * ## TARİHÇE — bu dosya iki kez karar değiştirdi
@@ -25,7 +25,7 @@
  * Ç-3'ün endişesi ortadan kalkmadı, ÇÖZÜM DEĞİŞTİ: aksan ile dikkat artık
  * HUE ile değil DEĞER ve BİÇİM ile ayrılır.
  *
- *     aksan  = KOYU dolgu + AÇIK metin      (#C2410C / beyaz — 5,18)
+ *     aksan  = KOYU dolgu + AÇIK metin      (#BD580C / beyaz — 4,60)
  *     dikkat = AÇIK zemin + KOYU metin      (#FEF3C7 / #78350F — 8,15)
  *
  * Uyarı asla dolgulu düğme olmaz. Aşağıdaki dört düğüm bu cümlenin makinece
@@ -227,22 +227,20 @@ describe("Ç-4 · sitede indigo kalmadı", () => {
 /* ── 2. Değer: kararın TA KENDİSİ ─────────────────────────────────────── */
 
 describe("Ç-4 · token değerleri kararın TA KENDİSİ", () => {
-  it("aksan `#C2410C` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
-    // Değer testte yazılı olmasaydı aksanın sessizce kaymasını hiçbir şey
-    // tutmazdı: "token kullanılıyor" iddiası rengin ne olduğunu söylemez.
-    expect(token("marka")).toBe("194 65 12");
-    // Panel kendi değerini TUTMAMALI. `token()` çözer; `ham()` çözmez —
-    // ikisini birlikte iddia etmek "panel gerçekten takma ad" demektir.
+  it("dolgu `#E37200` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
+    expect(token("marka")).toBe("227 114 0");
     expect(ham("panel-accent")).toBe("var(--marka)");
     expect(token("panel-accent")).toBe(token("marka"));
     expect(ham("panel-accent-fg")).toBe("var(--marka-fg)");
     expect(ham("panel-accent-soft")).toBe("var(--marka-soft)");
+    expect(ham("panel-accent-text")).toBe("var(--marka-metin)");
   });
 
-  it("odak halkası tanımlı, markaya bağlı ve eşiği geçiyor", () => {
+  it("odak halkası tanımlı, markadan AYRI ve eşiği geçiyor", () => {
     expect(ham("panel-focus")).toBe("var(--marka-focus)");
-    // SC 1.4.11 metin dışı eşiği 3. Bilerek `--marka-mid` DEĞİL: mid beyaza
-    // karşı 3,56 verir ve B-11 denetimi tam bu eksende 2,98 ile yanmıştı.
+    // Odak halkası dolgunun kendisi OLAMAZ: dolgu beyaza karşı 3,15 verir ve
+    // ince bir halka olarak zayıf kalır. Ayrı, daha koyu bir adım kullanılır.
+    expect(token("marka-focus")).not.toBe(token("marka"));
     expect(kontrast(token("marka-focus"), BEYAZ)).toBeGreaterThanOrEqual(3);
   });
 
@@ -254,58 +252,79 @@ describe("Ç-4 · token değerleri kararın TA KENDİSİ", () => {
   });
 
   it("değerler BOŞLUKLU RGB üçlüsü — hex yazılırsa saydamlık sessizce kırılır", () => {
-    // `rgb(var(--x) / <alpha-value>)` köprüsü ancak bu biçimde çalışır.
-    // Hex yazılsaydı `bg-marka/20` HİÇBİR ŞEY üretmezdi ve build yeşil geçerdi.
     for (const ad of [
-      "marka", "marka-hover", "marka-fg", "marka-soft", "marka-soft-fg",
-      "marka-line", "marka-mid", "marka-focus",
+      "marka", "marka-hover", "marka-fg", "marka-metin", "marka-metin-hover",
+      "marka-soft", "marka-line", "marka-mid", "marka-focus",
       "dikkat", "dikkat-soft", "dikkat-fg",
     ]) {
       expect(ham(ad), `--${ad} RGB üçlüsü değil`).toMatch(/^\d{1,3} \d{1,3} \d{1,3}$/);
     }
+    // Bu ikisi bilerek takma ad: metin adımı tek yerde durur.
+    expect(ham("marka-soft-fg")).toBe("var(--marka-metin)");
   });
 });
 
-/* ── 3. K5: aksan ile dikkat DEĞER ve BİÇİMle ayrılır ─────────────────── */
+/* ── 3. BİÇİM: dolgu PARLAK + yazı KOYU (Ç-4 ikinci sürüm) ────────────── */
 
-describe("Ç-4 · aksan ≠ dikkat (hue ile değil, DEĞER ve BİÇİMle)", () => {
-  it("iki yüzey birbirinden ayırt edilebilir", () => {
-    // Ç-3'ün `attention !== accent` düğümünün yerini alan iddia. `!==` artık
-    // hiçbir şey kanıtlamaz: ikisi de turuncu ailesindendir.
-    expect(kontrast(token("marka"), token("dikkat-soft"))).toBeGreaterThanOrEqual(3);
-  });
-
-  it("aksan KOYU dolgu + AÇIK metin; dikkat AÇIK zemin + KOYU metin", () => {
-    // Karar cümlesinin makinece okunabilir hâli. Biri ters çevrilirse birincil
-    // düğme ile "bekleyen iş" rozeti aynı biçimi taşır ve renk anlamını yitirir.
-    expect(parlaklik(token("marka-fg"))).toBeGreaterThan(0.5);
-    expect(parlaklik(token("marka"))).toBeLessThan(0.2);
-    expect(parlaklik(token("dikkat-soft"))).toBeGreaterThan(0.5);
-    expect(parlaklik(token("dikkat-fg"))).toBeLessThan(0.2);
+describe("Ç-4 · dolgu PARLAK, üstündeki yazı KOYU", () => {
+  it("kural TERSİNE çevrildi ve değerler onu doğruluyor", () => {
+    // İlk sürüm "koyu dolgu + beyaz yazı"ydı. Beyaz yazıyı taşıyabilmek için
+    // turuncuyu 4,6 kontrasta kadar koyulaştırmak gerekiyordu ve o noktada
+    // renk kahveye/yanığa kayıyordu — kullanıcı "bok rengi" dedi, haklıydı.
+    // Turuncu markaların hepsi (Amazon, Trendyol) koyu yazı kullanır.
+    expect(parlaklik(token("marka"))).toBeGreaterThan(0.25); // dolgu PARLAK
+    expect(parlaklik(token("marka-fg"))).toBeLessThan(0.1); // yazı KOYU
   });
 
   it("AA sözü kaynakta çıpalı (yavaş tarayıcı turundan ÖNCE kırılır)", () => {
     expect(kontrast(token("marka-fg"), token("marka"))).toBeGreaterThanOrEqual(4.5);
     expect(kontrast(token("marka-fg"), token("marka-hover"))).toBeGreaterThanOrEqual(4.5);
+    // Açık zeminde marka YAZISI ayrı bir adımdır ve her üç zeminde de okunur.
+    expect(kontrast(token("marka-metin"), BEYAZ)).toBeGreaterThanOrEqual(4.5);
+    expect(kontrast(token("marka-metin"), token("marka-soft"))).toBeGreaterThanOrEqual(4.5);
+    expect(kontrast(token("marka-metin"), token("marka-line"))).toBeGreaterThanOrEqual(4.5);
+    expect(kontrast(token("marka-metin-hover"), BEYAZ)).toBeGreaterThanOrEqual(4.5);
     expect(kontrast(token("dikkat-fg"), token("dikkat-soft"))).toBeGreaterThanOrEqual(4.5);
-    expect(kontrast(token("marka-soft-fg"), token("marka-soft"))).toBeGreaterThanOrEqual(4.5);
-    // Aksan metin olarak beyaz zeminde de okunabilir olmalı (`text-marka`,
-    // sitede en çok geçen tek sınıf: 200 çağrı yeri).
-    expect(kontrast(token("marka"), BEYAZ)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("DÜĞMENİN SINIRI beyaz sayfada görünür (SC 1.4.11)", () => {
+    // Parlak dolgunun bedeli budur ve ölçülür: Trendyol'un `#F27A1A` tonu
+    // 2,77'de kalıyor ve düğme beyaz sayfada sınırsız görünüyordu.
+    expect(kontrast(token("marka"), BEYAZ)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("DOLGU METİN OLARAK KULLANILAMAZ — bu sürümün asıl kusur sınıfı", () => {
+    // `--marka` beyaz zeminde 3,15 verir; gövde metni eşiği 4,5'tir. Kural
+    // tersine çevrilirken 169 `text-marka` çağrı yeri `text-marka-metin`e
+    // taşındı. Biri geri yazarsa metin okunmaz olur ve BUNU hiçbir tip
+    // kontrolü, hiçbir build yakalayamaz — sınıf geçerlidir, sadece soluktur.
+    expect(
+      satirTara((l) => /(?<![\w-])text-marka(?![\w-])/.test(l)),
+      "`text-marka` beyaz zeminde 3,15 — metin için `text-marka-metin` var"
+    ).toEqual([]);
+    expect(
+      satirTara((l) => /(?<![\w-])text-panel-accent(?![\w-])/.test(l)),
+      "panelde de aynı: metin için `text-panel-accent-text` var"
+    ).toEqual([]);
   });
 
   it("`--marka-mid` ve `--dikkat` METİN TAŞIYAMAZ — sınır yazılı", () => {
-    // Bu ikisi bilerek AA'yı geçmez; rolleri kenarlık/halka ve düz şerit.
-    // Sınırın kendisi çıpalanmazsa, ileride biri "metin de olsun" der ve
-    // hiçbir şey itiraz etmez.
     expect(kontrast(token("marka-mid"), BEYAZ)).toBeGreaterThanOrEqual(3);
     expect(kontrast(token("marka-mid"), BEYAZ)).toBeLessThan(4.5);
     expect(kontrast(token("dikkat"), BEYAZ)).toBeLessThan(4.5);
   });
 
+  it("aksan ile uyarı DOYGUNLUK ve PARLAKLIK farkıyla ayrılır", () => {
+    // İlk sürümde ayrım DEĞERdeydi (koyu dolgu ↔ açık çip) ve 3:1 kontrastla
+    // ölçülüyordu. Dolgu parlaklaşınca o ölçüt anlamını yitirdi: ikisi de artık
+    // açık turuncu ailesinden. Ayrım ŞİMDİ dolgunun DOYGUN, çipin SOLUK
+    // olmasıdır — parlaklık farkı bunu ölçer. Eşiği düşürmek yerine ölçütü
+    // değiştirdim; sayıyı teste uydurmak, sözleşmeyi sessizce zayıflatmaktır.
+    const fark = parlaklik(token("dikkat-soft")) - parlaklik(token("marka"));
+    expect(fark, "uyarı çipi dolgudan belirgin biçimde SOLUK olmalı").toBeGreaterThan(0.4);
+  });
+
   it("uyarı ASLA dolgulu düğme değil (biçim kuralı)", () => {
-    // §1.3 madde 2. Dolgulu dikkat + beyaz metin hem kontrastı düşürür
-    // (amber-500 / beyaz = 2,15) hem de uyarıyı birincil aksiyon gibi gösterir.
     expect(
       satirTara((s) => /bg-[a-z-]*dikkat/.test(s) && /text-white(?![\w-])/.test(s)),
       "dolgulu dikkat + beyaz metin: hem 2,15 kontrast hem yanlış anlam"

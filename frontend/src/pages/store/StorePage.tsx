@@ -341,7 +341,7 @@ export default function StorePage() {
                     type="checkbox"
                     checked={inStock}
                     onChange={(e) => setInStock(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
+                    className="h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
                   />
                   Sadece stoktakiler
                 </label>
@@ -456,7 +456,7 @@ export default function StorePage() {
                       <button
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
-                        className="rounded-full border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka disabled:opacity-50 "
+                        className="rounded-full border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka-metin disabled:opacity-50 "
                       >
                         {isFetchingNextPage
                           ? "Yükleniyor…"
@@ -494,7 +494,7 @@ export default function StorePage() {
                   {debouncedQ && seciliKategori && (
                     <button
                       onClick={() => kategoriSec(undefined)}
-                      className="mt-6 rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marka-hover"
+                      className="mt-6 rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
                     >
                       Tüm kategorilerde ara
                     </button>
@@ -504,7 +504,7 @@ export default function StorePage() {
                     className={
                       debouncedQ && seciliKategori
                         ? "mt-3 block w-full text-sm font-medium text-slate-500 transition-colors hover:text-slate-800"
-                        : "mt-6 rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marka-hover"
+                        : "mt-6 rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
                     }
                   >
                     Filtreleri temizle
@@ -633,7 +633,7 @@ function FacetGroup({
               type="checkbox"
               checked={selected.includes(option.value)}
               onChange={() => toggle(option.value)}
-              className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
+              className="h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
             />
             <span className="min-w-0 flex-1 truncate">{option.value}</span>
             <span className="shrink-0 text-xs text-slate-400">
@@ -646,7 +646,7 @@ function FacetGroup({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 text-xs font-semibold text-marka transition hover:text-marka-hover "
+          className="mt-2 text-xs font-semibold text-marka-metin transition hover:text-marka-metin-hover "
         >
           {expanded ? "Daha az göster" : `Tümünü göster (${options.length})`}
         </button>

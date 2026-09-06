@@ -7,7 +7,7 @@ interface AvatarProps {
 
 // İsme göre deterministik renk paleti (rastgele/sahte değil).
 const PALETTE = [
-  "bg-marka-line text-marka-hover",
+  "bg-marka-line text-marka-metin-hover",
   "bg-emerald-100 text-emerald-700",
   "bg-amber-100 text-amber-700",
   "bg-rose-100 text-rose-700",

@@ -107,7 +107,7 @@ export function BookingResourcesPanel({
                       href={res.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="truncate text-sm font-semibold text-marka hover:underline "
+                      className="truncate text-sm font-semibold text-marka-metin hover:underline "
                     >
                       {res.title}
                     </a>
@@ -141,14 +141,14 @@ export function BookingResourcesPanel({
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
             <button
               onClick={() => setShowAddResource(true)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka "
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka-soft-fg "
             >
               <span aria-hidden>🔗</span> Link Ekle
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadRes.isPending}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka disabled:opacity-60 "
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka-soft-fg disabled:opacity-60 "
             >
               <span aria-hidden>📎</span>
               {uploadRes.isPending ? "Yükleniyor…" : "Dosya Yükle"}
@@ -196,7 +196,7 @@ export function BookingResourcesPanel({
               <button
                 type="submit"
                 disabled={addRes.isPending || !resTitle.trim() || !resUrl.trim()}
-                className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Kaydet
               </button>

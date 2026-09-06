@@ -79,7 +79,7 @@ export default function ReminderEditor({ reminders, due, onChange }: {
       ))}
 
       <div className="relative">
-        <button type="button" onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-marka transition hover:bg-marka-soft ">
+        <button type="button" onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-marka-soft-fg transition hover:bg-marka-soft ">
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
           Hatırlatıcı ekle
         </button>

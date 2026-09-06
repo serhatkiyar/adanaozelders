@@ -34,7 +34,7 @@ export function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClos
         {hasSummary && (
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-marka-soft p-4 text-center ">
-              <div className="text-2xl font-extrabold text-marka ">
+              <div className="text-2xl font-extrabold text-marka-metin ">
                 {reg.result_net ?? "—"}
               </div>
               <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ">
@@ -42,7 +42,7 @@ export function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClos
               </div>
             </div>
             <div className="rounded-2xl bg-marka-soft p-4 text-center ">
-              <div className="text-2xl font-extrabold text-marka ">
+              <div className="text-2xl font-extrabold text-marka-metin ">
                 {reg.result_rank ?? "—"}
               </div>
               <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ">
@@ -58,7 +58,7 @@ export function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClos
               href={karne}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-white transition hover:bg-marka-hover"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               📄 Karneyi aç
             </a>

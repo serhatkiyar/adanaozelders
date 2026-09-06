@@ -91,7 +91,7 @@ export default function InventoryOverviewPage() {
           </div>
           <Link
             to={ROUTES.adminInventoryDamage}
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-panel-accent transition hover:bg-panel-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-panel-accent-text transition hover:bg-panel-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
           >
             Tümü
           </Link>

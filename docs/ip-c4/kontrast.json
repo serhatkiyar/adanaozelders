@@ -5,11 +5,11 @@
     "dugmeler": [
       {
         "ad": "dugme:primary",
-        "onPlan": "rgb(255, 255, 255)",
-        "zemin": "rgb(194, 65, 12)",
+        "onPlan": "rgb(43, 16, 0)",
+        "zemin": "rgb(227, 114, 0)",
         "fontPx": 14,
         "kalin": false,
-        "kontrast": 5.18,
+        "kontrast": 5.67,
         "esik": 4.5,
         "gecti": true
       },
@@ -67,11 +67,11 @@
       },
       {
         "ad": "rozet:info",
-        "onPlan": "rgb(194, 65, 12)",
-        "zemin": "rgb(255, 247, 237)",
+        "onPlan": "rgb(150, 67, 10)",
+        "zemin": "rgb(255, 244, 233)",
         "fontPx": 12,
         "kalin": false,
-        "kontrast": 4.88,
+        "kontrast": 6.24,
         "esik": 4.5,
         "gecti": true
       },
@@ -131,9 +131,9 @@
     "odak": {
       "odaklandiMi": true,
       "focusVisible": true,
-      "kenarlik": "rgb(194, 65, 12)",
-      "kenarlikKontrast": 4.95,
-      "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgba(194, 65, 12, 0.2) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+      "kenarlik": "rgb(194, 87, 12)",
+      "kenarlikKontrast": 4.3,
+      "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgba(227, 114, 0, 0.2) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
     }
   },
   "koyu": {
@@ -142,11 +142,11 @@
     "dugmeler": [
       {
         "ad": "dugme:primary",
-        "onPlan": "rgb(255, 255, 255)",
-        "zemin": "rgb(194, 65, 12)",
+        "onPlan": "rgb(43, 16, 0)",
+        "zemin": "rgb(227, 114, 0)",
         "fontPx": 14,
         "kalin": false,
-        "kontrast": 5.18,
+        "kontrast": 5.67,
         "esik": 4.5,
         "gecti": true
       },
@@ -204,11 +204,11 @@
       },
       {
         "ad": "rozet:info",
-        "onPlan": "rgb(194, 65, 12)",
-        "zemin": "rgb(255, 247, 237)",
+        "onPlan": "rgb(150, 67, 10)",
+        "zemin": "rgb(255, 244, 233)",
         "fontPx": 12,
         "kalin": false,
-        "kontrast": 4.88,
+        "kontrast": 6.24,
         "esik": 4.5,
         "gecti": true
       },
@@ -268,9 +268,9 @@
     "odak": {
       "odaklandiMi": true,
       "focusVisible": true,
-      "kenarlik": "rgb(194, 65, 12)",
-      "kenarlikKontrast": 4.95,
-      "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgba(194, 65, 12, 0.2) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+      "kenarlik": "rgb(194, 87, 12)",
+      "kenarlikKontrast": 4.3,
+      "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgba(227, 114, 0, 0.2) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
     }
   }
 }

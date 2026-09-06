@@ -98,7 +98,7 @@ export default function VerifyEmail() {
             </p>
             <Link
               to={authToken ? roleHome(user?.role_id) : ROUTES.login}
-              className="mt-6 inline-block rounded-lg bg-marka px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover"
+              className="mt-6 inline-block rounded-lg bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               {authToken ? "Panele git" : "Giriş yap"}
             </Link>
@@ -134,7 +134,7 @@ export default function VerifyEmail() {
             </p>
             <Link
               to={authToken ? roleHome(user?.role_id) : ROUTES.login}
-              className="mt-6 inline-block rounded-lg bg-marka px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover"
+              className="mt-6 inline-block rounded-lg bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               {authToken ? "Panele dön" : "Giriş yap"}
             </Link>

@@ -1,5 +1,5 @@
 {
-  "tarih": "2026-09-06T10:33:55.324Z",
+  "tarih": "2026-09-06T13:57:54.160Z",
   "FRONTEND": "http://127.0.0.1:5199",
   "rapor": [
     {
@@ -8,15 +8,15 @@
       "genislik": 1280,
       "indigo": [],
       "markaBoyali": 0,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "egitmenler",
       "yol": "/egitmenler",
       "genislik": 1280,
       "indigo": [],
-      "markaBoyali": 0,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 1,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "magaza",
@@ -24,7 +24,7 @@
       "genislik": 1280,
       "indigo": [],
       "markaBoyali": 2,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "kutuphaneler",
@@ -32,39 +32,39 @@
       "genislik": 1280,
       "indigo": [],
       "markaBoyali": 2,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "giris",
       "yol": "/giris",
       "genislik": 1280,
       "indigo": [],
-      "markaBoyali": 5,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 6,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "kayit",
       "yol": "/kayit",
       "genislik": 1280,
       "indigo": [],
-      "markaBoyali": 8,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 9,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "on-basvuru",
       "yol": "/egitmen-on-basvuru",
       "genislik": 1280,
       "indigo": [],
-      "markaBoyali": 3,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 6,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "sihirbaz",
       "yol": "/ilanini-olustur",
       "genislik": 1280,
       "indigo": [],
-      "markaBoyali": 5,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 6,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "siralama-kriterleri",
@@ -72,7 +72,7 @@
       "genislik": 1280,
       "indigo": [],
       "markaBoyali": 7,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "sss",
@@ -80,7 +80,7 @@
       "genislik": 1280,
       "indigo": [],
       "markaBoyali": 1,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "anasayfa",
@@ -88,15 +88,15 @@
       "genislik": 380,
       "indigo": [],
       "markaBoyali": 0,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "egitmenler",
       "yol": "/egitmenler",
       "genislik": 380,
       "indigo": [],
-      "markaBoyali": 0,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 1,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "magaza",
@@ -104,7 +104,7 @@
       "genislik": 380,
       "indigo": [],
       "markaBoyali": 2,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "kutuphaneler",
@@ -112,39 +112,39 @@
       "genislik": 380,
       "indigo": [],
       "markaBoyali": 2,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "giris",
       "yol": "/giris",
       "genislik": 380,
       "indigo": [],
-      "markaBoyali": 5,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 6,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "kayit",
       "yol": "/kayit",
       "genislik": 380,
       "indigo": [],
-      "markaBoyali": 8,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 9,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "on-basvuru",
       "yol": "/egitmen-on-basvuru",
       "genislik": 380,
       "indigo": [],
-      "markaBoyali": 3,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 6,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "sihirbaz",
       "yol": "/ilanini-olustur",
       "genislik": 380,
       "indigo": [],
-      "markaBoyali": 5,
-      "markaTokeni": "194 65 12"
+      "markaBoyali": 6,
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "siralama-kriterleri",
@@ -152,7 +152,7 @@
       "genislik": 380,
       "indigo": [],
       "markaBoyali": 7,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     },
     {
       "ad": "sss",
@@ -160,7 +160,7 @@
       "genislik": 380,
       "indigo": [],
       "markaBoyali": 1,
-      "markaTokeni": "194 65 12"
+      "markaTokeni": "rgb(227,114,0)"
     }
   ]
 }

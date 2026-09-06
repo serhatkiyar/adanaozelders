@@ -66,7 +66,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
                   to={LEGAL_ROUTES[d.id]}
                   className={`rounded-xl px-3.5 py-2 text-sm font-medium transition ${
                     d.id === doc.id
-                      ? "bg-marka text-white shadow-sm"
+                      ? "bg-marka text-marka-fg shadow-sm"
                       : "text-slate-600 hover:bg-slate-100 "
                   }`}
                 >
@@ -97,7 +97,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
                   <li key={s.id}>
                     <a
                       href={`#${s.id}`}
-                      className="text-sm text-marka transition hover:text-marka-hover "
+                      className="text-sm text-marka-metin transition hover:text-marka-metin-hover "
                     >
                       {s.heading}
                     </a>
@@ -123,7 +123,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
               Sorularınız için bize{" "}
               <a
                 href={`mailto:${OPERATOR.email}`}
-                className="font-semibold text-marka hover:text-marka-hover "
+                className="font-semibold text-marka-metin hover:text-marka-metin-hover "
               >
                 {OPERATOR.email}
               </a>{" "}

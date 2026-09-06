@@ -126,7 +126,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
             <button
               type="submit"
               disabled={reschedule.isPending}
-              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
             >
               {reschedule.isPending ? "Taşınıyor…" : "Ertele"}
             </button>

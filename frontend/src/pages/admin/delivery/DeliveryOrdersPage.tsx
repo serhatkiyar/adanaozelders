@@ -135,7 +135,7 @@ function PrepQueue() {
             </p>
             <Link
               to={ROUTES.adminPacking}
-              className="shrink-0 text-xs font-semibold text-panel-accent hover:underline"
+              className="shrink-0 text-xs font-semibold text-panel-accent-text hover:underline"
             >
               Paketleme istasyonunu aç →
             </Link>
@@ -227,7 +227,7 @@ function ReadyQueue() {
               ) : (
                 <p className="text-xs text-slate-500 ">
                   Bugün açık tur yok —{" "}
-                  <Link to={ROUTES.adminDelivery} className="font-semibold text-panel-accent hover:underline">
+                  <Link to={ROUTES.adminDelivery} className="font-semibold text-panel-accent-text hover:underline">
                     Bugün sekmesinden
                   </Link>{" "}
                   tur oluştur.
@@ -309,7 +309,7 @@ function OutsourcedQueue() {
               ) : (
                 <Link
                   to={ROUTES.adminStoreOrders}
-                  className="text-xs font-semibold text-panel-accent hover:underline"
+                  className="text-xs font-semibold text-panel-accent-text hover:underline"
                 >
                   Mağaza siparişlerinde aç →
                 </Link>

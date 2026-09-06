@@ -91,7 +91,7 @@ export function SubjectCarousel() {
                   }}
                 />
               </div>
-              <span className="whitespace-nowrap text-[13.5px] font-medium text-slate-700 transition-colors duration-300 group-hover:font-bold group-hover:text-marka ">
+              <span className="whitespace-nowrap text-[13.5px] font-medium text-slate-700 transition-colors duration-300 group-hover:font-bold group-hover:text-marka-metin ">
                 {s.name}
               </span>
             </Link>

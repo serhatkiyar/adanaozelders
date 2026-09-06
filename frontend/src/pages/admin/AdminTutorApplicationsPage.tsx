@@ -119,7 +119,7 @@ function DetaySatiri({ basvuru }: { basvuru: AdminTutorPreApplication }) {
                   href={basvuru.intro_video_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block text-sm font-medium text-panel-accent underline-offset-2 hover:underline"
+                  className="inline-block text-sm font-medium text-panel-accent-text underline-offset-2 hover:underline"
                 >
                   Tanıtım videosunu aç
                 </a>
@@ -226,7 +226,7 @@ export default function AdminTutorApplicationsPage() {
                     </div>
                     <a
                       href={`tel:${b.phone}`}
-                      className="font-medium text-panel-accent underline-offset-2 hover:underline"
+                      className="font-medium text-panel-accent-text underline-offset-2 hover:underline"
                     >
                       {b.phone}
                     </a>
@@ -234,7 +234,7 @@ export default function AdminTutorApplicationsPage() {
                       <div>
                         <a
                           href={`mailto:${b.email}`}
-                          className="text-xs text-panel-accent underline-offset-2 hover:underline"
+                          className="text-xs text-panel-accent-text underline-offset-2 hover:underline"
                         >
                           {b.email}
                         </a>

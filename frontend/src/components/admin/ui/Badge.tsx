@@ -29,7 +29,7 @@ type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger";
  */
 const TONES: Record<BadgeTone, string> = {
   neutral: "bg-slate-100 text-slate-700 ",
-  info: "bg-panel-accent-soft text-panel-accent",
+  info: "bg-panel-accent-soft text-panel-accent-soft-fg",
   success: "bg-emerald-50 text-emerald-700 ",
   warning: "bg-panel-attention-soft text-panel-attention-fg",
   danger: "bg-rose-50 text-rose-700 ",

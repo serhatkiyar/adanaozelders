@@ -88,7 +88,7 @@ function RunCourier({ run }: { run: DeliveryRun }) {
     return (
       <Link
         to={ROUTES.adminDeliveryCouriers}
-        className="text-xs font-semibold text-panel-accent hover:underline"
+        className="text-xs font-semibold text-panel-accent-text hover:underline"
       >
         Kurye ekle →
       </Link>
@@ -163,7 +163,7 @@ function StopRow({
           )}
           {coLocated.length > 0 && (
             <span
-              className="ml-2 inline-flex items-center rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-medium text-panel-accent"
+              className="ml-2 inline-flex items-center rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-medium text-panel-accent-text"
               title={`Aynı adrese ${coLocated.length} paket daha var — birlikte teslim edilir`}
             >
               +{coLocated.length} paket
@@ -412,7 +412,7 @@ export default function DeliveryRunDetailPage() {
             {run.status === "ACTIVE" && (
               <Link
                 to={ROUTES.deliveryRun(run.id)}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-panel-accent ring-1 ring-panel-accent/30 transition hover:bg-panel-accent-soft/40 "
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-panel-accent-text ring-1 ring-panel-accent/30 transition hover:bg-panel-accent-soft/40 "
               >
                 Saha Ekranı →
               </Link>
@@ -479,7 +479,7 @@ export default function DeliveryRunDetailPage() {
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                 run.optimize_provider === "vroom"
-                  ? "bg-panel-accent-soft text-panel-accent"
+                  ? "bg-panel-accent-soft text-panel-accent-text"
                   : "bg-amber-50 text-amber-700 "
               }`}
               title={
@@ -493,7 +493,7 @@ export default function DeliveryRunDetailPage() {
             <Button
               size="sm"
               variant="ghost"
-              className="ml-auto px-1 font-semibold text-panel-accent hover:underline"
+              className="ml-auto px-1 font-semibold text-panel-accent-text hover:underline"
               aria-expanded={showMap}
               onClick={() => setShowMap((v) => !v)}
             >
@@ -581,7 +581,7 @@ export default function DeliveryRunDetailPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="px-1 text-xs font-semibold text-panel-accent hover:underline"
+                  className="px-1 text-xs font-semibold text-panel-accent-text hover:underline"
                   isPending={addStops.isPending}
                   onClick={() =>
                     addStops.mutate(
@@ -604,7 +604,7 @@ export default function DeliveryRunDetailPage() {
             ) : eligible.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-400 ">
                 Tura hazır sipariş yok —{" "}
-                <Link to={ROUTES.adminDeliveryOrders} className="font-semibold text-panel-accent hover:underline">
+                <Link to={ROUTES.adminDeliveryOrders} className="font-semibold text-panel-accent-text hover:underline">
                   Siparişler
                 </Link>{" "}
                 sekmesinden paket hazırlayın.

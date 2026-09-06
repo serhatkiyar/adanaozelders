@@ -378,7 +378,7 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
           </p>
         </div>
         {edu.document_type && (
-          <span className="shrink-0 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-semibold text-marka-hover ">
+          <span className="shrink-0 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-semibold text-marka-metin-hover ">
             {DOC_TYPE_LABEL[edu.document_type]}
           </span>
         )}
@@ -662,7 +662,7 @@ function NameChangesSection() {
             onClick={() => setFilter(f.value)}
             className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
               filter === (f.value ?? "TUMU")
-                ? "bg-marka text-white"
+                ? "bg-marka text-marka-fg"
                 : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 "
             }`}
           >

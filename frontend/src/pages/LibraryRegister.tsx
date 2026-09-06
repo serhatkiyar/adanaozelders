@@ -176,14 +176,14 @@ export default function LibraryRegister() {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="w-full rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mutation.isPending ? "Gönderiliyor…" : "Başvuruyu gönder"}
           </button>
 
           <p className="text-center text-xs text-slate-400 ">
             Zaten hesabın var mı?{" "}
-            <Link to={ROUTES.login} className="font-semibold text-marka hover:underline ">
+            <Link to={ROUTES.login} className="font-semibold text-marka-metin hover:underline ">
               Giriş yap
             </Link>
           </p>

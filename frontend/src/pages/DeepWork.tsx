@@ -21,7 +21,7 @@ const RING: Record<TimerMode, string> = {
   long: "stroke-amber-500",
 };
 const TAB_ACTIVE: Record<TimerMode, string> = {
-  focus: "bg-marka text-white",
+  focus: "bg-marka text-marka-fg",
   short: "bg-emerald-600 text-white",
   long: "bg-amber-500 text-white",
 };

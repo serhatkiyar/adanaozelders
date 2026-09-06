@@ -144,29 +144,52 @@
      * biçimi sınar (`__guards__/markaAksani.test.ts`).
      *
      * ── ÖLÇÜLEN BEDEL ──
-     * Aksan `indigo-600` iken beyaz metinle 6,29 veriyordu; `#C2410C` 5,18
+     * Aksan `indigo-600` iken beyaz metinle 6,29 veriyordu; `#BD580C` 4,60
      * verir. AA (4,5) korunur ama pay daralır. Bu, kararın bilinen ve kabul
      * edilen bedelidir — `docs/tasarim-dili.md` §1.4.
      *
+     * TON, PARLAKLIKTAN ÖNCE GELİR. İlk sürüm `#C2410C`ti (ton 17°, kiremit)
+     * ve "fazla koyu" bulundu. Beyaz metni koruyarak çıkılabilecek en yüksek
+     * parlaklık 0,17 civarı — o eksende oynama payı YOK. Asıl kazanç TONDA:
+     * 17° → 26° kayması rengi kiremitten altın turuncuya çeviriyor ve
+     * parlaklık 0,153 → 0,178'e çıkıyor. "Daha açık görünüyor" hissinin
+     * ölçülebilir karşılığı budur.
+     *
      * Marka turuncusu `#F6AD55` birincil dolgu OLAMAZ: üstünde beyaz metin
-     * 1,90 verir. Beyaz metni taşıyabilen en açık turuncu `#C2410C`dir.
+     * 1,90 verir.
      */
-    --marka: 194 65 12;                 /* #C2410C — beyaz metinle 5,18 (AA) */
-    --marka-hover: 154 52 18;           /* #9A3412 — beyaz metinle 7,31 (AAA) */
-    --marka-fg: 255 255 255;            /* dolgu üstündeki metin */
-    --marka-soft: 255 247 237;          /* #FFF7ED — sıcak zemin */
-    --marka-soft-fg: 154 52 18;         /* #9A3412 — soft üstünde 6,88 */
-    --marka-line: 254 215 170;          /* #FED7AA — YALNIZ kenarlık; metin olarak
-                                         * 1,35 verir, kullanılamaz. */
-    --marka-mid: 234 88 12;             /* #EA580C — YALNIZ kenarlık/halka.
-                                         * Beyaza karşı 3,56: SC 1.4.11'in metin
-                                         * dışı eşiğini (3) geçer, AA metin eşiğini
-                                         * (4,5) GEÇMEZ. Metin ya da beyaz metin
-                                         * taşıyan dolgu olamaz; nöbetçi sınar. */
-    --marka-focus: 194 65 12;           /* odak halkası — beyaza karşı 5,18
-                                         * (SC 1.4.11 eşiği 3). Bilerek `mid`
-                                         * DEĞİL: B-11 denetimi tam bu eksende
-                                         * 2,98 ile yanmıştı, dar pay istenmiyor. */
+    /* ── DOLGU (parlak) ──
+     * Kural Ç-4'ün ilk sürümüne göre TERSİNE çevrildi (kullanıcı kararı):
+     * dolgu PARLAK, üstündeki yazı KOYU. Sebebi ölçüldü — turuncunun üstüne
+     * beyaz yazı koymak, rengi 4,6 kontrasta inecek kadar koyulaştırmayı
+     * zorunlu kılıyordu ve o noktada turuncu kahveye/yanığa kayıyordu.
+     * Amazon ve Trendyol dahil turuncu markaların hepsi koyu yazı kullanır.
+     *
+     * `#E37200`: tam doygun, ton 30°. Beyaz sayfaya karşı 3,15 — yani düğmenin
+     * SINIRI görünür (SC 1.4.11 eşiği 3). Trendyol'un `#F27A1A` tonu 2,77'de
+     * kalıyordu ve sınırı kayboluyordu; bu, o tonun sınırı görünen hâli.
+     */
+    --marka: 227 114 0;                 /* #E37200 — PARLAK dolgu. METİN OLARAK
+                                         * KULLANILMAZ: beyaz zeminde 3,15 verir,
+                                         * gövde metni eşiği 4,5'tir. Metin için
+                                         * `--marka-metin` vardır. */
+    --marka-hover: 201 101 0;           /* #C96500 — dolgu hover */
+    --marka-fg: 43 16 0;                /* #2B1000 — dolgu ÜSTÜNDEKİ yazı (5,67) */
+
+    /* ── AÇIK ZEMİNDE MARKA YAZISI ──
+     * Dolgu parlak olduğu için bağlantı/etiket rengi ayrı bir adımdır. Tailwind
+     * ve Radix gibi ölçekler de tam olarak bunu yapar: dolgu için bir adım,
+     * metin için daha koyu bir adım.
+     */
+    --marka-metin: 150 67 10;           /* #96430A — beyazda 6,77 · soft'ta 6,24 */
+    --marka-metin-hover: 124 55 8;      /* #7C3708 — beyazda 8,72 */
+
+    --marka-soft: 255 244 233;          /* #FFF4E9 — sıcak zemin */
+    --marka-soft-fg: var(--marka-metin);
+    --marka-line: 253 217 181;          /* #FDD9B5 — YALNIZ kenarlık */
+    --marka-mid: 217 102 15;            /* #D9660F — kenarlık/halka, beyazda 3,58.
+                                         * METİN TAŞIMAZ (4,5'in altında). */
+    --marka-focus: 194 87 12;           /* #C2570C — odak halkası, beyazda 4,50 */
 
     /* ══ DİKKAT AİLESİ — aksan DEĞİL ══
      *
@@ -205,6 +228,13 @@
     --panel-accent: var(--marka);
     --panel-accent-fg: var(--marka-fg);
     --panel-accent-soft: var(--marka-soft);
+    /* Tonlu zemin üstündeki metin AKSANIN KENDİSİ olamaz: aksan beyaza karşı
+     * 4,60 verir ve tonlu bir zemine düştüğü anda 4,24'e iner. Gerçek Chrome
+     * turu bunu `rozet:info`da yakaladı; kaynak nöbetçisi görememişti. */
+    --panel-accent-soft-fg: var(--marka-soft-fg);
+    /* Panelde aksanı METİN olarak kullanan 44 yer var (etkin gezinme, tablo
+     * bağlantısı, rozet). Dolgu parlak olduğu için onlar bu adımı kullanır. */
+    --panel-accent-text: var(--marka-metin);
     --panel-focus: var(--marka-focus);
 
     /* ── PANEL DİKKAT RENGİ: DİKKAT AİLESİNE TAKMA AD ──

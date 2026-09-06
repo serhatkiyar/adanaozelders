@@ -58,7 +58,7 @@ export default function FaqPage() {
             Aradığını bulamazsan{" "}
             <Link
               to={ROUTES.contact}
-              className="font-medium text-marka underline-offset-2 hover:underline "
+              className="font-medium text-marka-metin underline-offset-2 hover:underline "
             >
               bize yazabilirsin
             </Link>
@@ -82,7 +82,7 @@ export default function FaqPage() {
             “{query}” için sonuç bulunamadı.{" "}
             <Link
               to={ROUTES.contact}
-              className="font-medium text-marka hover:underline "
+              className="font-medium text-marka-metin hover:underline "
             >
               Sorunu bize yaz
             </Link>

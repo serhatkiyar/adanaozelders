@@ -33,7 +33,7 @@ export default function StudentProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-marka hover:text-marka-hover "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             ← Geri dön
           </button>
@@ -57,7 +57,7 @@ export default function StudentProfile() {
       <div className="mx-auto max-w-2xl space-y-5 pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-marka hover:text-marka-hover "
+          className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
         >
           ← Geri dön
         </button>
@@ -111,7 +111,7 @@ export default function StudentProfile() {
                   onClick={() =>
                     navigate(ROUTES.messageWith(student.id, student.full_name))
                   }
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-marka px-3 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-marka px-3 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />

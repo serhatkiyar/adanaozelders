@@ -83,7 +83,7 @@ function Pop({ open, onClose, children }: { open: boolean; onClose: () => void; 
 }
 
 const chipCls = "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 ";
-const chipActiveCls = "border-marka-mid bg-marka-soft text-marka-hover ";
+const chipActiveCls = "border-marka-mid bg-marka-soft text-marka-metin-hover ";
 
 function Flag({ p }: { p: TaskPriority }) {
   return (
@@ -320,7 +320,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
 
         <div className="flex items-center gap-2">
           <button type="button" onClick={onCancel} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 ">İptal</button>
-          <button type="submit" disabled={pending || !title.trim()} className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50">Görev ekle</button>
+          <button type="submit" disabled={pending || !title.trim()} className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50">Görev ekle</button>
         </div>
       </div>
     </form>

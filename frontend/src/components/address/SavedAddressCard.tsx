@@ -84,7 +84,7 @@ export function SavedAddressCard({
 
   const body = (
     <>
-      <span className="mt-0.5 shrink-0 rounded-lg bg-marka-line p-2 text-marka ">
+      <span className="mt-0.5 shrink-0 rounded-lg bg-marka-line p-2 text-marka-soft-fg ">
         {PinIcon}
       </span>
       <span className="min-w-0">
