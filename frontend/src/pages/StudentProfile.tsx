@@ -29,7 +29,7 @@ export default function StudentProfile() {
 
   if (isError || !student) {
     return (
-      <DashboardShell title="Öğrenci" navItems={TUTOR_NAV}>
+      <DashboardShell title="Üye" navItems={TUTOR_NAV}>
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
@@ -38,7 +38,7 @@ export default function StudentProfile() {
             ← Geri dön
           </button>
           <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
-            <p className="text-sm text-slate-500">Öğrenci bulunamadı.</p>
+            <p className="text-sm text-slate-500">Üye bulunamadı.</p>
           </div>
         </div>
       </DashboardShell>
@@ -53,7 +53,7 @@ export default function StudentProfile() {
   const genderLabel = gorunurCinsiyet(student.gender);
 
   return (
-    <DashboardShell title="Öğrenci Profili" navItems={TUTOR_NAV}>
+    <DashboardShell title="Üye Profili" navItems={TUTOR_NAV}>
       <div className="mx-auto max-w-2xl space-y-5 pb-12">
         <button
           onClick={() => navigate(-1)}

@@ -32,6 +32,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { BookingStatus, ROLE_IDS } from "@/types";
+import { rolEtiketi } from "@/lib/roles";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 function durationLabel(startIso: string, endIso: string): string {
   const min = Math.round(
@@ -108,7 +110,7 @@ export default function LessonDetail() {
   const isClient = role === "CLIENT";
   const counterpartName = isClient
     ? booking.tutor_name ?? "Eğitmen"
-    : booking.client_name ?? "Öğrenci";
+    : booking.client_name ?? ADSIZ_UYE;
   const counterpartLink = isClient
     ? `/student/tutors/${booking.tutor_id}`
     : `/tutor/students/${booking.client_id}`;
@@ -194,7 +196,7 @@ export default function LessonDetail() {
                   {counterpartName}
                 </p>
                 <p className="text-xs text-slate-400 ">
-                  {isClient ? "Eğitmen" : "Öğrenci"} · profili gör →
+                  {rolEtiketi(isClient ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)} · profili gör →
                 </p>
               </div>
             </Link>
@@ -240,7 +242,7 @@ export default function LessonDetail() {
                     bookingId,
                     booking.meeting_room!,
                     booking.tutor_name || "Eğitmen",
-                    booking.client_name || "Öğrenci"
+                    booking.client_name || ADSIZ_UYE
                   )
                 }
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
@@ -529,7 +531,7 @@ export default function LessonDetail() {
                       <div className="flex max-w-[85%] flex-col gap-1">
                         <div className="flex items-baseline gap-2">
                           <span className="text-xs font-semibold text-slate-700 ">
-                            {isMine ? "Sen" : (comment.sender_role === "TUTOR" ? "Eğitmen" : "Öğrenci")}
+                            {isMine ? "Sen" : rolEtiketi(comment.sender_role === "TUTOR" ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)}
                           </span>
                           <span className="text-[10px] text-slate-400">
                             {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

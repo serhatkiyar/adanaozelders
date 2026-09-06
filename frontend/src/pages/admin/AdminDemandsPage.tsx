@@ -88,7 +88,7 @@ export default function AdminDemandsPage() {
     },
     {
       id: "client",
-      header: "Öğrenci",
+      header: "Üye",
       enableSorting: false,
       cell: ({ row }) => (
         <Link className="font-medium text-panel-accent-text hover:underline" to={ROUTES.adminUser("client", row.original.client_id)}>
@@ -142,7 +142,7 @@ export default function AdminDemandsPage() {
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
         <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem_auto]">
           <input
-            aria-label="Öğrenci talebi ara"
+            aria-label="Ders talebi ara"
             value={search}
             maxLength={100}
             onChange={(event) => setSearch(event.target.value)}
@@ -166,14 +166,14 @@ export default function AdminDemandsPage() {
       </form>
 
       {query.isError ? (
-        <ErrorState description={getErrorMessage(query.error, "Öğrenci talepleri yüklenemedi.")} onRetry={() => query.refetch()} />
+        <ErrorState description={getErrorMessage(query.error, "Ders talepleri yüklenemedi.")} onRetry={() => query.refetch()} />
       ) : (
         <DataTable
           columns={columns}
           data={query.data?.items ?? []}
           getRowId={(row) => String(row.id)}
           isLoading={query.isLoading}
-          emptyTitle="Öğrenci talebi bulunamadı"
+          emptyTitle="Ders talebi bulunamadı"
           emptyDescription="Arama veya durum filtresini değiştirerek tekrar deneyin."
           sorting={sorting}
           onSortingChange={changeSorting}
@@ -205,7 +205,7 @@ export default function AdminDemandsPage() {
 
       <ReasonDialog
         open={iptal.acik}
-        title="Öğrenci talebini iptal et"
+        title="Ders talebini iptal et"
         description={cancelling ? `“${cancelling.title}” talebi kapatılacak; işlem denetim kaydına yazılacak.` : ""}
         label="İptal gerekçesi"
         placeholder="İptal gerekçesini açıkça yazın"
@@ -222,7 +222,7 @@ export default function AdminDemandsPage() {
             { id: cancelling.id, reason },
             {
               onSuccess: () => {
-                toast.success("Öğrenci talebi iptal edildi.");
+                toast.success("Ders talebi iptal edildi.");
                 iptal.kapat();
               },
               onError: (error) => toast.error(getErrorMessage(error, "Talep iptal edilemedi.")),

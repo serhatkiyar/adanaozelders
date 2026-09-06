@@ -22,6 +22,7 @@ import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus"
 import { isLessonJoinable } from "@/lib/lesson";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 /* ─── stat box ───────────────────────────────────────── */
 
@@ -406,15 +407,15 @@ export default function TutorDashboard() {
               hint="Yanıtını bekleyen yeni talepler."
               bookings={groups.pending}
               alert
-              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
+              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)}
             />
             <BookingSection
               title="Onaylı Dersler"
               hint="Yaklaşan dersler, bittiğinde tamamlandı olarak işaretle."
               bookings={groups.accepted}
-              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
+              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)}
             />
-            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")} />
+            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)} />
           </>
         )}
       </div>

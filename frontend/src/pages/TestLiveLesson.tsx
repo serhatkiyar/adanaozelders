@@ -51,7 +51,7 @@ export default function TestLiveLesson() {
             <Field label="Eğitmen adı">
               <input className="input" value={tutor} onChange={(e) => setTutor(e.target.value)} />
             </Field>
-            <Field label="Öğrenci adı">
+            <Field label="Üye adı">
               <input className="input" value={client} onChange={(e) => setClient(e.target.value)} />
             </Field>
           </div>

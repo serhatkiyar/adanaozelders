@@ -31,6 +31,7 @@ import { BookingStatus, PaymentStatus } from "@/types";
 import { BookingRow, PAY_CLOSED_NOTICE_ID } from "@/components/reservation/LessonRow";
 import type { ReservationItem } from "@/lib/reservationModel";
 import type { BookingOut, RegistrationOut, StudyReservationOut } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 export default function Reservations() {
   useCheckoutResultToast(); // iyzico dönüşü: ?odeme=basarili|basarisiz
@@ -191,7 +192,7 @@ function SatirIcerigi({
             bk.id,
             bk.meeting_room!,
             bk.tutor_name || "Eğitmen",
-            bk.client_name || "Öğrenci",
+            bk.client_name || ADSIZ_UYE,
           )
         }
       />

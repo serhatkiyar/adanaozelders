@@ -4,6 +4,7 @@ import { formatTRY } from "@/lib/money";
 import { Avatar } from "./Avatar";
 import { BookingStatus, ROLE_IDS } from "@/types";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { rolEtiketi } from "@/lib/roles";
 
 const STATUS_CONFIG: Record<
   BookingStatus,
@@ -77,7 +78,7 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
             {counterpartyName}
           </p>
           <p className="text-xs text-slate-500 ">
-            {isTutor ? "Öğrenci" : "Eğitmen"}
+            {rolEtiketi(isTutor ? ROLE_IDS.CLIENT : ROLE_IDS.TUTOR)}
           </p>
         </div>
       </div>

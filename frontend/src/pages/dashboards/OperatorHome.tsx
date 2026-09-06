@@ -27,6 +27,7 @@ import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type { LibraryDetailOut, OperatorOut } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 export default function OperatorHome() {
   const { data: op, isLoading } = useOperatorMe();
@@ -266,7 +267,7 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
       startsAt: r.starts_at,
       endsAt: r.ends_at,
       status: r.status,
-      ad: r.client_name ?? "Öğrenci",
+      ad: r.client_name ?? ADSIZ_UYE,
     })),
     simdi
   );

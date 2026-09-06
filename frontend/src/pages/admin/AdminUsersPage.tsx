@@ -10,11 +10,20 @@ import { getErrorMessage } from "@/lib/errors";
 import { parseAdminUserQuery, setQueryValue, type AdminUserSort } from "@/lib/adminUserQuery";
 import { ROUTES } from "@/lib/routes";
 import type { AdminUserOut, AdminUserRole, AdminUserRolePath } from "@/types";
+import { rolEtiketi } from "@/lib/roles";
+import { ROLE_IDS } from "@/types";
 
+// Etiketler `lib/roles.ts` TEK KAYNAĞINDAN gelir; buradaki eşleme yalnız
+// API'nin rol ADINI (`"CLIENT"`) rol KİMLİĞİNE (3) çeviriyor.
+const ROLE_ID: Record<AdminUserRole, number> = {
+  ADMIN: ROLE_IDS.ADMIN,
+  TUTOR: ROLE_IDS.TUTOR,
+  CLIENT: ROLE_IDS.CLIENT,
+};
 const ROLE_LABEL: Record<AdminUserRole, string> = {
-  ADMIN: "Yönetici",
-  TUTOR: "Eğitmen",
-  CLIENT: "Öğrenci",
+  ADMIN: rolEtiketi(ROLE_ID.ADMIN),
+  TUTOR: rolEtiketi(ROLE_ID.TUTOR),
+  CLIENT: rolEtiketi(ROLE_ID.CLIENT),
 };
 
 const ROLE_TONE: Record<AdminUserRole, "info" | "warning" | "success"> = {
@@ -141,9 +150,9 @@ export default function AdminUsersPage() {
             <span className="sr-only">Rol filtresi</span>
             <select value={state.role ?? ""} onChange={(event) => update({ role: event.target.value || undefined, page: 1 })} className="input">
               <option value="">Tüm roller</option>
-              <option value="ADMIN">Yönetici</option>
-              <option value="TUTOR">Eğitmen</option>
-              <option value="CLIENT">Öğrenci</option>
+              <option value="ADMIN">{ROLE_LABEL.ADMIN}</option>
+              <option value="TUTOR">{ROLE_LABEL.TUTOR}</option>
+              <option value="CLIENT">{ROLE_LABEL.CLIENT}</option>
             </select>
           </label>
           <label>

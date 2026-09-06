@@ -20,6 +20,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS, type DemandOut } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 // Ders listesi artık koda gömülü DEĞİL, katalogdan gelir. Talep formu
 // öğrenci yüzeyidir: vitrin kapsamı (arkasında eğitmen olan dersler).
@@ -457,7 +458,7 @@ function BrowseDemandCard({ demand }: { demand: DemandOut }) {
       <div className="mt-3">
         {demand.responded ? (
           <Link
-            to={ROUTES.messageWith(demand.client_id, demand.client_name ?? "Öğrenci")}
+            to={ROUTES.messageWith(demand.client_id, demand.client_name ?? ADSIZ_UYE)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-marka-line px-4 py-2 text-sm font-semibold text-marka-soft-fg transition hover:bg-marka-soft "
           >
             Sohbete git →

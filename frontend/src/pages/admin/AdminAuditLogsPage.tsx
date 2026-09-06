@@ -43,14 +43,11 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { parseAdminAuditQuery, type AdminAuditSort } from "@/lib/adminOperationsQuery";
 import type { AuditLogOut } from "@/types";
+import { ROL_ETIKETI } from "@/lib/roles";
 
-const ACTOR_ROLE_LABEL: Record<number, string> = {
-  1: "Admin",
-  2: "Eğitmen",
-  3: "Öğrenci",
-  4: "Operatör",
-  5: "Kurye",
-};
+// (Tarihçe: burada rol 1 "Admin" yazıyordu, diğer iki ekranda "Yönetici" —
+//  merkezî kaynak bu tutarsızlığı da kapattı.)
+const ACTOR_ROLE_LABEL = ROL_ETIKETI;
 
 /** Adres varsayılanları — anahtar ADLARI eski sürümle birebir aynıdır. */
 const VARSAYILAN = {

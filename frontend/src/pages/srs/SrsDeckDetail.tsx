@@ -317,15 +317,15 @@ function AssignmentSection({ deckId }: { deckId: number }) {
             aria-expanded={open && matches.length > 0}
             aria-controls={listId}
             aria-autocomplete="list"
-            placeholder="Öğrenci adı yaz…"
-            aria-label="Öğrenci ara"
+            placeholder="Üye adı yaz…"
+            aria-label="Üye ara"
             className="input w-64"
           />
           {open && matches.length > 0 && (
             <div
               id={listId}
               role="listbox"
-              aria-label="Öğrenci sonuçları"
+              aria-label="Üye sonuçları"
               className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg "
             >
               {matches.map((s) => (

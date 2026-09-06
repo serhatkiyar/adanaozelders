@@ -33,6 +33,7 @@ import { ROUTES } from "@/lib/routes";
 import { regionLabel } from "@/lib/region";
 import { PinIcon } from "@/components/PinIcon";
 import { ROLE_IDS } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 import type {
   LibraryDetailOut,
   LibraryImageOut,
@@ -624,7 +625,7 @@ function ReviewsModal({
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-slate-800 ">
-                        {r.client_name ?? "Öğrenci"}
+                        {r.client_name ?? ADSIZ_UYE}
                       </span>
                       {r.verified && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 ">

@@ -557,7 +557,7 @@ function ResultsPanel({
           <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
-                <th className="py-1.5 pr-2 font-semibold">Öğrenci</th>
+                <th className="py-1.5 pr-2 font-semibold">Üye</th>
                 <th className="px-1 py-1.5 font-semibold">Karne</th>
                 <th className="px-1 py-1.5 font-semibold">Net</th>
                 <th className="px-1 py-1.5 font-semibold">Sıra</th>
