@@ -244,3 +244,71 @@ describe("cinsiyet — İSTEĞE BAĞLI arama faseti", () => {
     ).toBe(Gender.UNSPECIFIED);
   });
 });
+
+describe("tanıtım videosu — ekranda gösterilen alan KAYDEDİLİR", () => {
+  const fotograf = ADIMLAR.find((a) => a.anahtar === "fotograf")!;
+
+  it("dolu URL `intro_video_url` olarak gönderilir", () => {
+    // Hata buydu: `TanitimVideosu` Fotoğraf adımında basılıyor ve yerel
+    // duruma yazıyor, ama adımın `yama`'sı alanı sunucuya HİÇ göndermiyordu.
+    // Eğitmen linki yazıyor, alan doluyor, "İleri"ye basıyor — link kayboluyor.
+    // Ekranda değer durduğu için hata görünmüyor; kayıp ancak sayfa
+    // yenilenince fark ediliyor.
+    const yama = fotograf.yama?.({
+      ...BOS_DURUM,
+      introVideoUrl: "https://www.youtube.com/watch?v=abc123",
+    });
+    expect(yama?.intro_video_url).toBe("https://www.youtube.com/watch?v=abc123");
+  });
+
+  it("boş değer `null` gönderir — video SİLİNEBİLMELİ", () => {
+    // Sunucu boş string'i de temizleme sayar; burada çıpalanan şey İSTEMCİNİN
+    // sözleşmesi: "alanı temizle" niyeti `null` ile ifade edilir. Ne
+    // gönderildiğinin belirsiz kalması, ileride sunucu davranışı değişirse
+    // sessiz bir kusur doğururdu.
+    expect(fotograf.yama?.({ ...BOS_DURUM, introVideoUrl: "" })?.intro_video_url).toBeNull();
+    expect(fotograf.yama?.({ ...BOS_DURUM, introVideoUrl: "   " })?.intro_video_url).toBeNull();
+  });
+
+  it("SÖZLEŞME: durumdaki her alanın bir adımda yaması VAR", () => {
+    // Asıl düğüm bu. Yukarıdaki ikisi tek alanı korur; bu düğüm aynı hatanın
+    // BAŞKA bir alanda tekrarlanmasını yakalar: `Durum`a alan eklenip
+    // hiçbir `yama`ya bağlanmazsa ekran onu toplar ve sessizce düşürür.
+    const yamalananlar = new Set<string>();
+    for (const adim of ADIMLAR) {
+      if (!adim.yama) continue;
+      for (const k of Object.keys(adim.yama(BOS_DURUM))) yamalananlar.add(k);
+    }
+    // DOLULUK: tarama gerçekten yama topladı.
+    expect(yamalananlar.size).toBeGreaterThan(8);
+
+    // `Durum` alanı → gönderdiği sunucu alanı. Sunucuya GİTMEYENLER isimle
+    // muaf tutulur ki muafiyet sessizce genişlemesin.
+    const MUAF = new Set([
+      "subjectLevels", // `subjects` yamasıyla birlikte gider
+      "locationLat", // `yer` yamasında location_lat olarak
+      "locationLng",
+      "locationText",
+      "district",
+      "firstLessonFree", // `ucret` yamasında
+    ]);
+    const ESLEME: Record<string, string> = {
+      headline: "headline",
+      lessonInfo: "lesson_info",
+      bio: "bio",
+      teachingMode: "teaching_mode",
+      hourlyRate: "hourly_rate",
+      subjects: "subjects",
+      gender: "gender",
+      introVideoUrl: "intro_video_url",
+    };
+    const eksik = Object.entries(ESLEME)
+      .filter(([durumAlani]) => !MUAF.has(durumAlani))
+      .filter(([, sunucuAlani]) => !yamalananlar.has(sunucuAlani))
+      .map(([d, s]) => `${d} → ${s}`);
+    expect(
+      eksik,
+      "ekranda toplanıyor ama hiçbir adım sunucuya göndermiyor: sessiz veri kaybı"
+    ).toEqual([]);
+  });
+});

@@ -302,7 +302,19 @@ export const ADIMLAR: Adim[] = [
     // söylenmesi, alanın eklenmesinin koşuludur.
     hatirlatma:
       "Fotoğrafın tüm ilanlarında kullanılır. Cinsiyetini yazarsan ilanında görünür ve öğrenciler ona göre filtreleyebilir.",
-    yama: (d) => ({ gender: d.gender || null }),
+    yama: (d) => ({
+      gender: d.gender || null,
+      intro_video_url: d.introVideoUrl.trim() || null,
+      // Tanıtım videosu bu adımda gösteriliyor (`TanitimVideosu`) ama uzun
+      // süre yamada YOKTU: eğitmen linki yazıyor, alan doluyor, "İleri"ye
+      // basıyor ve link sunucuya HİÇ gitmiyordu. Ekranda değer durduğu için
+      // hata görünmüyordu; kayıp ancak sayfa yenilenince fark ediliyordu.
+      //
+      // `|| null`: sunucu boş string'i de temizleme sayıyor
+      // (`schemas/tutor.py::_check_intro_video` strip'leyip None döndürür),
+      // yani ikisi de çalışır. `null` seçildi çünkü istemci tipi
+      // `string | null` ve "alanı temizle" niyeti okunur olsun.
+    }),
   },
   {
     anahtar: "ozet",
