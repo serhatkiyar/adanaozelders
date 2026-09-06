@@ -125,6 +125,54 @@
    * gerekçe: `docs/tasarim-dili.md` §1.4.
    */
   :root {
+    /* ══ SİTE MARKA AKSANI — TEK KAYNAK ══
+     *
+     * Bu blok sitenin TAMAMININ aksan rengidir; panel ailesi (aşağıda) buna
+     * takma ad olur. İki ayrı doğruluk kaynağı tutulmamasının sebebi ölçülmüş
+     * bir borç: public site 151 dosyada 1.124 HAM `indigo-` sınıfı taşıyordu,
+     * panel ise token kullanıyordu — yani "yarı X yarı Y kalmaz" ilkesi
+     * panelde uygulanıp sitenin geneline uygulanmamıştı.
+     *
+     * ── ROL tabanlıdır, TON tabanlı DEĞİL ──
+     * `text-indigo-600`ün naif ton karşılığı `text-orange-600` beyaz üstünde
+     * 3,56 verir ve AA'yı (4,5) kırar. Bu yüzden eşleme dosya dosya role göre
+     * yapılır ve doğru değer tek yerde durur.
+     *
+     * ── BİÇİM: boşluklu RGB üçlüsü, hex DEĞİL ──
+     * Köprü `rgb(var(--x) / <alpha-value>)` biçimini kullanır; hex yazılırsa
+     * `bg-marka/20` gibi saydamlık varyantları SESSİZCE kırılır. Nöbetçi bu
+     * biçimi sınar (`__guards__/markaAksani.test.ts`).
+     *
+     * ── ŞU AN: DEĞERLER HÂLÂ ESKİ (indigo) ──
+     * Bilerek. Token katmanı ve 1.124 sınıflık süpürme, RENK DEĞİŞİMİNDEN
+     * ayrı iniyor: süpürmenin görsel etkisi ölçülebilir biçimde nötr olmalı ki
+     * mekanik bir eşleme hatası, renk değişiminin gürültüsünde kaybolmasın.
+     * Turuncuya çeviren commit yalnız aşağıdaki değerlere dokunur.
+     */
+    --marka: 79 70 229;                 /* indigo-600 — C3'te #C2410C olacak */
+    --marka-hover: 67 56 202;           /* indigo-700 */
+    --marka-fg: 255 255 255;            /* dolgu üstündeki metin */
+    --marka-soft: 238 242 255;          /* indigo-50  — sakin zemin */
+    --marka-soft-fg: 55 48 163;         /* indigo-800 — soft zemin üstü metin */
+    --marka-line: 199 210 254;          /* indigo-200 — YALNIZ kenarlık, metin taşımaz */
+    --marka-mid: 99 102 241;            /* indigo-500 — YALNIZ kenarlık/halka.
+                                         * C3'te #EA580C olur: beyaza karşı 3,56 —
+                                         * SC 1.4.11'in metin dışı eşiğini (3) geçer
+                                         * ama AA metin eşiğini (4,5) GEÇMEZ. Metin
+                                         * ya da beyaz metin taşıyan dolgu olarak
+                                         * kullanılamaz; nöbetçi bunu sınar. */
+    --marka-focus: 79 70 229;           /* odak halkası (WCAG SC 1.4.11 · eşik 3) */
+
+    /* ══ DİKKAT AİLESİ — aksan DEĞİL ══
+     *
+     * Aksandan HUE ile değil DEĞER ve BİÇİM ile ayrılır: aksan = koyu dolgu +
+     * açık metin; dikkat = açık zemin + koyu metin. Uyarı asla dolgulu düğme
+     * olmaz. Bu kural nöbetçide ölçülür, yorumda kalmaz.
+     */
+    --dikkat: 245 158 11;               /* amber-500 — düz şerit/nokta, METİN TAŞIMAZ */
+    --dikkat-soft: 254 243 199;         /* amber-100 — çip zemini */
+    --dikkat-fg: 120 53 15;             /* amber-900 — çip metni (soft üstünde 8,15) */
+
     --panel-bg: 248 250 252;            /* slate-50  */
     --panel-surface: 255 255 255;       /* beyaz     */
     --panel-surface-subtle: 248 250 252;/* slate-50  */

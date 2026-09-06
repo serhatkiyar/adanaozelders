@@ -22,6 +22,28 @@ export default {
       // saydamlık varyantlarını (`bg-panel-surface/60`) çalışır kılar —
       // değerler bu yüzden hex değil boşluklu RGB üçlüsü olarak yazılır.
       colors: {
+        // ── Site marka köprüsü (docs/tasarim-dili.md §1.4) ──
+        //
+        // Anahtar bilerek `accent` DEĞİL: Tailwind'in kendi `accent-<renk>`
+        // yardımcısı (CSS `accent-color`) var ve `accent-accent` gibi sınıflar
+        // doğardı. Depo dili zaten Türkçe (nöbetçiler, scriptler, dokümanlar).
+        marka: {
+          DEFAULT: "rgb(var(--marka) / <alpha-value>)",
+          hover: "rgb(var(--marka-hover) / <alpha-value>)",
+          fg: "rgb(var(--marka-fg) / <alpha-value>)",
+          soft: "rgb(var(--marka-soft) / <alpha-value>)",
+          "soft-fg": "rgb(var(--marka-soft-fg) / <alpha-value>)",
+          line: "rgb(var(--marka-line) / <alpha-value>)",
+          mid: "rgb(var(--marka-mid) / <alpha-value>)",
+          focus: "rgb(var(--marka-focus) / <alpha-value>)",
+        },
+        // Dikkat AKSAN DEĞİLDİR (§1.3 madde 2). Ayrı isim altında durmasının
+        // sebebi budur: `marka` yazan biri yanlışlıkla uyarı rengine ulaşamaz.
+        dikkat: {
+          DEFAULT: "rgb(var(--dikkat) / <alpha-value>)",
+          soft: "rgb(var(--dikkat-soft) / <alpha-value>)",
+          fg: "rgb(var(--dikkat-fg) / <alpha-value>)",
+        },
         panel: {
           bg: "rgb(var(--panel-bg) / <alpha-value>)",
           surface: "rgb(var(--panel-surface) / <alpha-value>)",
