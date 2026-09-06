@@ -1,5 +1,5 @@
 import { ROUTES } from "@/lib/routes";
-import { KUTUPHANELER_ACIK, OGREN_ACIK } from "@/lib/ozellikBayraklari";
+import { KUTUPHANELER_ACIK, OGREN_ACIK, TALEPLER_ACIK } from "@/lib/ozellikBayraklari";
 
 export type NavIcon =
   | "favorites"
@@ -46,7 +46,9 @@ export interface NavItem {
 export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
-  { to: ROUTES.demands, label: "Taleplerim", icon: "demand" },
+  ...(TALEPLER_ACIK
+    ? [{ to: ROUTES.demands, label: "Taleplerim", icon: "demand" } as NavItem]
+    : []),
   ...(OGREN_ACIK
     ? [{ to: ROUTES.learn, label: "Öğren", icon: "learn" } as NavItem]
     : []),
@@ -59,7 +61,9 @@ export const TUTOR_NAV: NavItem[] = [
   // eğitmeni onu hesap menüsünün altında aramaya zorluyordu.
   { to: ROUTES.tutorListing, label: "İlanım", icon: "tickets" },
   { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
-  { to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" },
+  ...(TALEPLER_ACIK
+    ? [{ to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" } as NavItem]
+    : []),
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   // Eğitmen de "Öğren" hub'ını görür (aralıklı tekrar, pomodoro,

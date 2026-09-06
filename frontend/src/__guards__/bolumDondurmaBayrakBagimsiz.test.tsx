@@ -33,6 +33,7 @@ vi.mock("@/lib/ozellikBayraklari", () => ({
   // üretim değeriyle (kapalı) bırakılır ki karışık durum bozulmasın.
   OGREN_ACIK: false,
   KISISELLESTIRME_ACIK: false,
+  TALEPLER_ACIK: false,
 }));
 
 import { CategoryBar } from "@/components/CategoryBar";

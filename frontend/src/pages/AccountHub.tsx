@@ -5,6 +5,7 @@ import { CompactSearch } from "@/components/HeroSearch";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { STUDENT_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
+import { TALEPLER_ACIK } from "@/lib/ozellikBayraklari";
 import { useSurfaceStore } from "@/store/surfaceStore";
 
 interface AccountCard {
@@ -30,7 +31,11 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.bookings,    title: "Rezervasyonlarım",
-    desc: "Derslerin, kütüphane rezervasyonların ve talep durumların.",
+    // "talep durumların" ibaresi TALEPLER_ACIK ile birlikte kalkar: donmuş
+    // bir bölümü kopyada vaat etmek kullanıcıya boş bir söz vermektir.
+    desc: TALEPLER_ACIK
+      ? "Derslerin, kütüphane rezervasyonların ve talep durumların."
+      : "Derslerin ve kütüphane rezervasyonların.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" />

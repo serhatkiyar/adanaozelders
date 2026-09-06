@@ -14,6 +14,7 @@ import {
   DENEMELER_ACIK,
   KUTUPHANELER_ACIK,
   OGREN_ACIK,
+  TALEPLER_ACIK,
 } from "@/lib/ozellikBayraklari";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -389,6 +390,14 @@ function App() {
             <Route path={PATHS.exams} element={<Yakinda />} />
           )}
 
+          {/* Öğrenci talepleri donduruldu (bkz. lib/ozellikBayraklari.ts).
+              Denemeler/Öğren ile AYNI sözleşme: rota korumanın DIŞINDA, çünkü
+              doğrudan URL yazan kullanıcı giriş ekranı ya da 404 yerine
+              "Yakında" görmeli. Bayrak açılınca korumalı bloktaki yerini alır. */}
+          {!TALEPLER_ACIK && (
+            <Route path={PATHS.demands} element={<Yakinda />} />
+          )}
+
           {/* Öğren hub'ı donduruldu (bkz. lib/ozellikBayraklari.ts). Rotalar
               KORUMANIN DIŞINDA: doğrudan URL yazan kullanıcı giriş ekranı ya
               da 404 yerine "Yakında" görsün — Denemeler'le aynı sözleşme.
@@ -482,7 +491,9 @@ function App() {
             {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
             <Route path={PATHS.balance} element={<Balance />} />
             {/* Talepler — rol delegasyonu sayfa içinde (CLIENT açar, TUTOR yanıtlar) */}
-            <Route path={PATHS.demands} element={<Demands />} />
+            {TALEPLER_ACIK && (
+              <Route path={PATHS.demands} element={<Demands />} />
+            )}
             <Route path={PATHS.leaderboard} element={<Leaderboard />} />
             <Route path={PATHS.notifications} element={<Notifications />} />
             <Route path={PATHS.profile} element={<AccountDispatcher />} />

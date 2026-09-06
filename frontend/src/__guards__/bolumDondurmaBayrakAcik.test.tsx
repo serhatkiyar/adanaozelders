@@ -27,6 +27,8 @@ vi.mock("@/lib/ozellikBayraklari", () => ({
   // yeterlidir" sözleşmesi yeni donmuş bölümler için de geçerli olmalı.
   OGREN_ACIK: true,
   KISISELLESTIRME_ACIK: true,
+  // 6 Eyl: öğrenci talepleri. Aynı sözleşme yeni bayrak için de geçerli.
+  TALEPLER_ACIK: true,
 }));
 
 import App from "@/App";
@@ -105,6 +107,29 @@ describe("bayrak AÇIK — menü girdileri ve hub kartı eski hâline döner", (
   });
 });
 
+describe("bayrak AÇIK — öğrenci talepleri geri gelir (6 Eyl)", () => {
+  it("İKİ UÇ da menüde yeniden var", () => {
+    // Dondurmayı "gizlenmiş silme"den ayıran düğüm: bayrağı `true` yapmak
+    // TEK BAŞINA yeterli olmalı, başka hiçbir dosyaya dokunmadan.
+    expect(STUDENT_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
+    expect(TUTOR_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
+  });
+
+  it("eğitmen menüsünde /talepler yeniden GERÇEK bağlantı", () => {
+    sar(<DashboardHeader navItems={TUTOR_NAV} />);
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
+      (a) => a.getAttribute("href")
+    );
+    expect(hedefler).toContain("/talepler");
+    // Donuk kalıntı yok: `aria-disabled` taşıyan bir Talepler öğesi kalmadı.
+    const donuk = Array.from(
+      document.body.querySelectorAll("[aria-disabled='true']")
+    ).filter((el) => (el.textContent ?? "").includes("Talep"));
+    expect(donuk).toEqual([]);
+  });
+});
+
 describe("bayrak AÇIK — rotalar gerçek sayfayı açar", () => {
   const yoluBas = async (yol: string) => {
     window.history.pushState({}, "", yol);
@@ -121,6 +146,11 @@ describe("bayrak AÇIK — rotalar gerçek sayfayı açar", () => {
     });
     return sonuc;
   };
+
+  it("/talepler artık 'Yakında' DEĞİL (gerçek rota geri döndü)", async () => {
+    await yoluBas("/talepler");
+    expect(screen.queryByText(/Yakında/i)).toBeNull();
+  });
 
   it.each(["/kutuphaneler", "/kutuphane-kayit"])(
     "%s artık 'Yakında' DEĞİL",
