@@ -92,12 +92,14 @@ export function LibraryBookmarkButton({
       className="shrink-0 transition active:scale-90 hover:scale-110 disabled:opacity-50"
     >
       {/* Airbnb tarzı kalp: dolgu (pasif: yarı saydam siyah / aktif: rose) +
-          beyaz kenar + görsel üzerinde okunurluk için gölge. */}
+          beyaz kenar + görsel üzerinde okunurluk için gölge.
+          `BookmarkButton` ile AYNI değerler — ikisi de aynı kart yüzeyinde
+          yan yana çıkıyor, ayrışırlarsa göze çarpar. */}
       <svg
         viewBox="0 0 24 24"
-        strokeWidth={2}
+        strokeWidth={1.5}
         className={`${glyph} stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] transition-colors ${
-          bookmarked ? "fill-rose-500" : "fill-black/50"
+          bookmarked ? "fill-rose-500" : "fill-black/30"
         }`}
       >
         <path

@@ -36,13 +36,18 @@ export function BookmarkButton({
     size === "lg" ? "h-8 w-8" : size === "md" ? "h-7 w-7" : "h-6 w-6";
 
   // Airbnb tarzı kalp: dolgu (pasif/aktif) + okunurluk için kenar/gölge.
+  //
+  // Pasif dolgu `black/30` (eskiden `/50`) ve kenar 1,5px (eskiden 2px):
+  // kullanıcı kararı — kalp fotoğrafın önünde bir leke gibi duruyordu.
+  // Okunurluğu artık ağırlıklı olarak `drop-shadow` taşıyor; onu inceltmek
+  // açık renkli fotoğraflarda kalbi kaybederdi, bu yüzden gölge DEĞİŞMEDİ.
   const fillCls = onSolid
     ? bookmarked
       ? "fill-rose-500 stroke-rose-500"
       : "fill-slate-300 stroke-slate-300 "
     : bookmarked
       ? "fill-rose-500 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
-      : "fill-black/50 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]";
+      : "fill-black/30 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]";
 
   return (
     <button
@@ -66,7 +71,7 @@ export function BookmarkButton({
     >
       <svg
         viewBox="0 0 24 24"
-        strokeWidth={2}
+        strokeWidth={1.5}
         className={`${icon} transition-colors ${fillCls}`}
       >
         <path
