@@ -7,8 +7,8 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { useClientDetail } from "@/hooks/useClientProfile";
 import { useBookings } from "@/hooks/useBookings";
 import { formatLastSeen } from "@/lib/datetime";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
-import { BookingStatus, Gender } from "@/types";
+import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
+import { BookingStatus } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
 export default function StudentProfile() {
@@ -50,10 +50,7 @@ export default function StudentProfile() {
     Date.now() - new Date(student.last_seen_at).getTime() < 120_000;
   // Backend eğitmene tam doğum tarihi döndürmez (KVKK); sunucu hesaplı yaş gelir.
   const age = student.age ?? ageFromBirthDate(student.birth_date);
-  const genderLabel =
-    student.gender && student.gender !== Gender.UNSPECIFIED
-      ? GENDER_LABEL[student.gender]
-      : null;
+  const genderLabel = gorunurCinsiyet(student.gender);
 
   return (
     <DashboardShell title="Öğrenci Profili" navItems={TUTOR_NAV}>

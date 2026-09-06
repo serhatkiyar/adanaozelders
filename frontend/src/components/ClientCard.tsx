@@ -1,16 +1,13 @@
 import { Link } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { formatLastSeen } from "@/lib/datetime";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
-import { Gender, type ClientSearchOut } from "@/types";
+import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
+import { type ClientSearchOut } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
 export function ClientCard({ client }: { client: ClientSearchOut }) {
   const age = ageFromBirthDate(client.birth_date);
-  const genderLabel =
-    client.gender && client.gender !== Gender.UNSPECIFIED
-      ? GENDER_LABEL[client.gender]
-      : null;
+  const genderLabel = gorunurCinsiyet(client.gender);
   const isOnline =
     !!client.last_seen_at &&
     Date.now() - new Date(client.last_seen_at).getTime() < 120_000;

@@ -1,3 +1,4 @@
+import { gorunurCinsiyet } from "@/lib/demographics";
 import { Link } from "react-router-dom";
 import type { TutorSearchOut } from "@/types";
 import { BookmarkButton } from "@/components/BookmarkButton";
@@ -31,6 +32,14 @@ export function TutorCard({
       ? "Uzaktan"
       : tutor.district || "Yüzyüze & Uzaktan";
     
+  // Cinsiyet AYRI BİR ROZET değil, mevcut meta satırının bir parçası: ayrı
+  // rozet, demografik bir özniteliğe "ilk ders ücretsiz" gibi TİCARİ bir
+  // sinyalle aynı görsel ağırlığı verirdi. Belirtilmemişse hiçbir şey yazılmaz
+  // (bkz. `gorunurCinsiyet` — "Belirtilmemiş" yazmak yokluğu ilan etmektir).
+  const metaSatiri = [locationText, gorunurCinsiyet(tutor.gender)]
+    .filter(Boolean)
+    .join(" · ");
+
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
   // Superprof usually only shows first name
   const firstName = tutor.full_name.split(" ")[0];
@@ -43,7 +52,7 @@ export function TutorCard({
       {/* ── Picture Area ── */}
       <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 ">
         <img 
-          src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=c7d2fe&color=3730a3&size=400"} 
+          src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=fed7aa&color=9a3412&size=400"} 
           alt={tutor.full_name} 
           className="h-full w-full object-cover"
           loading="lazy"
@@ -74,7 +83,7 @@ export function TutorCard({
             {firstName}
           </p>
           <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">
-            <span>{locationText}</span>
+            <span>{metaSatiri}</span>
           </div>
         </div>
       </div>

@@ -9,10 +9,10 @@ import { useMyStats, useUpdateProfile } from "@/hooks/useProfile";
 import { useMyEducations } from "@/hooks/useEducations";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 import { ImageCropModal } from "@/components/ImageCropModal";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
+import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import { Gender, ROLE_IDS } from "@/types";
+import { ROLE_IDS } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
 const ROLE_META: Record<number, { label: string }> = {
@@ -65,10 +65,7 @@ export default function Profile() {
 
   const role = user ? ROLE_META[user.role_id] : undefined;
   const age = user ? ageFromBirthDate(user.birth_date) : null;
-  const genderLabel =
-    user?.gender && user.gender !== Gender.UNSPECIFIED
-      ? GENDER_LABEL[user.gender]
-      : null;
+  const genderLabel = gorunurCinsiyet(user?.gender);
   const metaLine = [age !== null ? `${age} yaşında` : null, genderLabel]
     .filter(Boolean)
     .join(" · ");

@@ -1,3 +1,4 @@
+import { gorunurCinsiyet } from "@/lib/demographics";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { PublicShell } from "@/components/PublicShell";
 import { Avatar } from "@/components/Avatar";
@@ -189,6 +190,17 @@ export default function PublicTutorProfile() {
                   <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-hover ">
                     {modeLabel}
                   </span>
+                )}
+
+                {/* Cinsiyet: API bunu ta baştan taşıyordu ama hiçbir ekran
+                    basmıyordu. Öğrenci "Kadın" filtreliyor, sonuçlar geliyor,
+                    ama neye göre geldiğini göremiyordu. Rozet DEĞİL sade meta
+                    satırı — demografik bir öznitelik, ticari bir sinyal değil.
+                    Belirtilmemişse kalem tümüyle atlanır. */}
+                {gorunurCinsiyet(tutor.gender) && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {gorunurCinsiyet(tutor.gender)}
+                  </p>
                 )}
               </div>
 

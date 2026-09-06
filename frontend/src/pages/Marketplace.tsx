@@ -99,6 +99,14 @@ export default function Marketplace() {
     if (JSON.stringify(districtParams) !== JSON.stringify(district))
       setDistrict(districtParams);
     if (examParam !== exam) setExam(examParam);
+    // Elle yazılmış `?gender=abc` API'ye ULAŞMAMALI: enum üyesi değilse boşa
+    // düşer. (Sihirbazın `?adim=` için öğrendiği ders — doğrulanmamış bir URL
+    // parametresi doğrudan sunucuya geçirilmez.)
+    const genderParam = searchParams.get("gender") ?? "";
+    const gecerliGender = (Object.values(Gender) as string[]).includes(genderParam)
+      ? (genderParam as Gender)
+      : "";
+    if (gecerliGender !== gender) setGender(gecerliGender);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -155,8 +163,9 @@ export default function Marketplace() {
     district.forEach((d) => next.append("district", d));
     modes.forEach((m) => next.append("mode", m));
     if (exam.trim()) next.set("exam", exam.trim());
+    if (gender) next.set("gender", gender);
     setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, modes, exam, setSearchParams]);
+  }, [debouncedQ, subjects, district, modes, exam, gender, setSearchParams]);
 
   const debouncedMin = useDebounce(minRate);
   const debouncedMax = useDebounce(maxRate);

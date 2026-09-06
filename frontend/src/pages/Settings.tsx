@@ -19,7 +19,7 @@ import {
 } from "@/hooks/useProfile";
 import { useOperatorMe } from "@/hooks/useLibraryExams";
 import { resendEmailVerification } from "@/api/auth";
-import { GENDER_LABEL } from "@/lib/demographics";
+import { gorunurCinsiyet } from "@/lib/demographics";
 import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -374,8 +374,10 @@ function PersonalSection() {
   };
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const genderLabel =
-    user.gender && user.gender !== Gender.UNSPECIFIED ? GENDER_LABEL[user.gender] : null;
+  // KENDİ ayar ekranı: boş durumda "Belirtilmemiş" YAZILIR — burada yokluk
+  // eyleme dönüştürülebilir bir bilgidir (yanındaki alandan doldurulabilir).
+  // Başkasına gösterilen yüzeylerde tam tersi geçerlidir (bkz. gorunurCinsiyet).
+  const genderLabel = gorunurCinsiyet(user.gender) ?? "Belirtilmemiş";
 
   return (
     <section>
