@@ -21,6 +21,7 @@ from core.database import AsyncSessionLocal
 from core.security import decode_access_token, hash_password_async
 from models.admin import Admin
 from models.client import Client
+from models.library import Library, LibraryStatus
 from models.store import Product
 from models.tutor import Tutor, TutorStatus
 from schemas.admin_access import AdminRoleCreate
@@ -72,6 +73,7 @@ class AliciFabrikasi:
         self.product_ids: list[int] = []
         self.order_ids: list[int] = []
         self.flag_keys: list[str] = []
+        self.library_ids: list[int] = []
 
     async def egitmen(self, *, telefon_dogrulu: bool = True) -> Egitmen:
         ek = _uniq()
@@ -202,6 +204,24 @@ class AliciFabrikasi:
                 )
                 await s.commit()
         return pid
+
+    async def kutuphane(self) -> int:
+        """Gerçek ACTIVE kütüphane satırı — favori kapısı `status`a bakıyor."""
+        ek = _uniq()
+        async with AsyncSessionLocal() as s:
+            lib = Library(
+                name=f"Alici Kutuphane {ek}",
+                slug=f"alici-kutuphane-{ek}",
+                city="Adana",
+                district="Seyhan",
+                status=LibraryStatus.ACTIVE.value,
+            )
+            s.add(lib)
+            await s.flush()
+            lid = lib.id
+            await s.commit()
+        self.library_ids.append(lid)
+        return lid
 
     async def adres_ekle(self, http, headers: dict, *, beklenen: int = 201) -> int | None:
         """GERÇEK ``POST /me/addresses`` — rol kapısı üretim yolundan geçer."""
@@ -386,6 +406,13 @@ class AliciFabrikasi:
                 await s.execute(
                     text("DELETE FROM tutors WHERE id = ANY(:t)"),
                     {"t": self.tutor_ids},
+                )
+            if self.library_ids:
+                # `library_bookmarks` kütüphaneye CASCADE bağlı; kütüphane
+                # düşünce favori satırı da düşer.
+                await s.execute(
+                    text("DELETE FROM libraries WHERE id = ANY(:l)"),
+                    {"l": self.library_ids},
                 )
             if self.flag_keys:
                 # Bayrak DB'de yaşar: açık bırakılan satır sonraki testlere ve
@@ -837,12 +864,22 @@ async def test_K17_egitmen_silinince_golge_anonimlesir(fabA, http):
 # ── K-20 · K-21 — kapsam sınırı ─────────────────────────────────────────────
 
 
+#: K-20'nin kapsamı 6 Eyl 2026'da DARALDI: `/bookmarks` listeden ÇIKTI.
+#:
+#: Gerekçe (ÜK-6 · docs/urun-kararlari.md). §2'nin kapsam dışı bırakma
+#: gerekçesi *"'eğitmen eğitmenden ders alır' gibi çözülmemiş ürün sorularını
+#: ve `_assert_party` gibi görmediği tarafları doğurur"* idi. Bu gerekçe
+#: favoriye UYMUYOR: favori özel bir listedir — taraf ilişkisi kurmaz, para
+#: yolu yoktur, mesajlaşma açmaz. Ölçüt sessizce değil, yazılı gerekçeyle
+#: değişti.
+#:
+#: Listede KALANLAR bilinçli ve bu testin asıl işi artık onları tutmak:
+#: ders rezervasyonu ve talep taraf ilişkisi kurar, para ve mesaj yolu açar.
 @pytest.mark.parametrize(
     "yol,govde",
     [
         ("/api/v1/bookings", {"tutor_id": 1, "start_at": "2030-01-01T10:00:00Z"}),
         ("/api/v1/demands", {"subject": "Matematik", "description": "x"}),
-        ("/api/v1/bookmarks/1", None),
     ],
 )
 async def test_K20_kapsam_disi_uclar_egitmene_kapali(fabA, http, yol, govde):
@@ -859,3 +896,84 @@ async def test_K21_admin_alici_yuzeyine_giremez(fabA, http):
     _aid, admin_h = await fabA.admin()
     r = await http.get("/api/v1/me/addresses", headers=admin_h)
     assert r.status_code == 403, "ADMIN alıcı olamaz (fail-closed)"
+
+
+# ── K-22 · K-25 — favoriler (ÜK-6) ──────────────────────────────────────────
+#
+# Sözleşme: eğitmen de eğitmen ve kütüphane favorileyebilir. Favori GÖLGEYE
+# yazılır (`get_shopping_client`), yani aşağı akış — tablo, sorgu, listeleme —
+# hiç değişmez; değişen tek şey alıcı kimliğinin nereden geldiği.
+
+
+async def test_K22_egitmen_egitmen_favoriler_ve_listede_gorur(fabA, http):
+    e = await fabA.egitmen()
+    hedef = await fabA.egitmen()
+
+    r = await http.put(f"/api/v1/bookmarks/{hedef.tutor_id}", headers=e.headers)
+    assert r.status_code == 204, f"{r.status_code}: {r.text}"
+
+    r = await http.get("/api/v1/bookmarks", headers=e.headers)
+    assert r.status_code == 200, r.text
+    assert [t["id"] for t in r.json()] == [hedef.tutor_id]
+
+    # Ölü uç kapısı: eklenen kayıt SİLİNEBİLMELİ de.
+    r = await http.delete(f"/api/v1/bookmarks/{hedef.tutor_id}", headers=e.headers)
+    assert r.status_code == 204
+    assert (await http.get("/api/v1/bookmarks", headers=e.headers)).json() == []
+
+
+async def test_K23_egitmen_kutuphane_favoriler_ve_listede_gorur(fabA, http):
+    e = await fabA.egitmen()
+    lid = await fabA.kutuphane()
+
+    r = await http.put(f"/api/v1/library-bookmarks/{lid}", headers=e.headers)
+    assert r.status_code == 204, f"{r.status_code}: {r.text}"
+
+    r = await http.get("/api/v1/library-bookmarks", headers=e.headers)
+    assert r.status_code == 200, r.text
+    assert [k["id"] for k in r.json()] == [lid]
+
+
+async def test_K24_egitmen_KENDI_ilanini_favorileyemez(fabA, http):
+    """Self-dealing kuralının favori karşılığı.
+
+    Favori arama sıralamasına ve "kaç kişi favoriledi" sayısına dokunan bir
+    sinyaldir; eğitmenin kendi ilanını favorilemesi o sinyali kendi lehine
+    şişirir. Gölgenin `shadow_of_tutor_id` alanı kimliği zaten taşıyor —
+    ek sorgu gerekmiyor.
+    """
+    e = await fabA.egitmen()
+
+    r = await http.put(f"/api/v1/bookmarks/{e.tutor_id}", headers=e.headers)
+    assert r.status_code == 400, f"kendi ilanı favorilenebildi: {r.status_code}"
+
+    # DOLULUK: reddin sebebi "hiçbir şey yazılmıyor" değil — başkasını
+    # favorileyebiliyor. Bu iddia olmadan yukarıdaki 400 bedava geçerdi.
+    baskasi = await fabA.egitmen()
+    assert (
+        await http.put(f"/api/v1/bookmarks/{baskasi.tutor_id}", headers=e.headers)
+    ).status_code == 204
+    assert [t["id"] for t in (await http.get("/api/v1/bookmarks", headers=e.headers)).json()] == [
+        baskasi.tutor_id
+    ]
+
+
+async def test_K25_egitmenin_favorisi_gercek_musteriye_karismaz(fabA, http):
+    """İzolasyon: gölge ayrı bir `clients.id`; listeler karışmaz."""
+    e = await fabA.egitmen()
+    hedef = await fabA.egitmen()
+    _cid, musteri_h = await fabA.musteri()
+
+    assert (
+        await http.put(f"/api/v1/bookmarks/{hedef.tutor_id}", headers=e.headers)
+    ).status_code == 204
+
+    assert (await http.get("/api/v1/bookmarks", headers=musteri_h)).json() == []
+
+    # DOLULUK: müşteri yolu ÇALIŞIYOR (boş liste, kırık uçtan gelmiyor).
+    assert (
+        await http.put(f"/api/v1/bookmarks/{hedef.tutor_id}", headers=musteri_h)
+    ).status_code == 204
+    assert [t["id"] for t in (await http.get("/api/v1/bookmarks", headers=musteri_h)).json()] == [
+        hedef.tutor_id
+    ]
