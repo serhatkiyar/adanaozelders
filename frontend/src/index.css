@@ -121,7 +121,7 @@
    * saydamlık sessizce kırılırdı.
    *
    * Panel aksanı kendi değerini TUTMAZ: aşağıda `--marka`ya takma addır.
-   * (Tarihçe: önce `indigo-600`, sonra marka lacivert #1A365D idi; Ç-4 ile
+   * (Tarihçe: önce `indigo-600`, sonra marka lacivert #1A365D idi; ÜK-1 ile
    * turuncuya geçildi. Gerekçe ve ölçülen bedel: `docs/tasarim-dili.md` §1.4.)
    */
   :root {
@@ -159,7 +159,7 @@
      * 1,90 verir.
      */
     /* ── DOLGU (parlak) ──
-     * Kural Ç-4'ün ilk sürümüne göre TERSİNE çevrildi (kullanıcı kararı):
+     * Kural ÜK-1'ün ilk sürümüne göre TERSİNE çevrildi (kullanıcı kararı):
      * dolgu PARLAK, üstündeki yazı KOYU. Sebebi ölçüldü — turuncunun üstüne
      * beyaz yazı koymak, rengi 4,6 kontrasta inecek kadar koyulaştırmayı
      * zorunlu kılıyordu ve o noktada turuncu kahveye/yanığa kayıyordu.

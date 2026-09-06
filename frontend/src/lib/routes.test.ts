@@ -38,7 +38,7 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(LEGACY_STATIC.map(([from]) => from)).toContain("/biletlerim");
     // Tutor yüzeyi
     expect(PATHS.tutorListing).toBe("/ilan-ayarlari");
-    // Ç-5: yol `/ogrenciler` değil `/uyeler`. Hesap sahibi öğrenci olmak
+    // ÜK-4: yol `/ogrenciler` değil `/uyeler`. Hesap sahibi öğrenci olmak
     // zorunda değil; eski yol `App.tsx`te yönlendirmeye bağlandı.
     expect(PATHS.uyeProfili).toBe("/uyeler/:id");
     // Client yüzeyi

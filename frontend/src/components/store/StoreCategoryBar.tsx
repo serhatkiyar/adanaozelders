@@ -78,7 +78,7 @@ export function StoreCategoryBar() {
             to={ROUTES.home}
             onMouseEnter={() => setOpenId(null)}
             // Marka aksanıyla dolgulu buton — şeritteki tek renkli aksiyon.
-            // (Tarihçe: logo lacivertiydi (#1a365d) ve ELLE yazılmıştı; Ç-4'te
+            // (Tarihçe: logo lacivertiydi (#1a365d) ve ELLE yazılmıştı; ÜK-1'te
             //  token'a bağlandı — sitede tek başına kalmış bir lacivert olamazdı.)
             className="shrink-0 self-center whitespace-nowrap rounded-full bg-marka px-3.5 py-1 text-sm font-medium text-marka-fg transition-colors hover:bg-marka-hover"
           >

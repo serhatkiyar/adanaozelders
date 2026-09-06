@@ -91,7 +91,7 @@ async def anonymize_account(db: AsyncSession, user) -> list[str]:
     user.is_active = False
     user.deleted_at = _now()
 
-    # `gender` bu listeye Ç-4 turunda eklendi: `birth_date` temizleniyordu ama
+    # `gender` bu listeye ÜK-1 turunda eklendi: `birth_date` temizleniyordu ama
     # cinsiyet KALIYORDU. İkisi de aydınlatma metninin aynı kaleminde ("kimlik
     # bilgileri") işlenen demografik veridir; birini silip diğerini bırakmak
     # bilinçli bir ayrım değil, unutulmuş bir alandı.

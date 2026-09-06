@@ -10,6 +10,9 @@ düzeltildi (tanıtım videosu — aşağıda §7).
 
 Bu dosyanın amacı, bir dahaki turda aynı keşfi yeniden yapmayı gereksiz kılmak.
 
+İlgili ürün kararları: `docs/urun-kararlari.md` (**ÜK-3** talepler donduruldu,
+**ÜK-4** rol adı "Üye").
+
 ---
 
 ## 1. Bugün İKİ paralel editör var ve aynı 11 alanı yazıyorlar

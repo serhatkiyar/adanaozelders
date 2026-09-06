@@ -1,4 +1,4 @@
-// Ç-4 · turuncu aksan — gerçek Chrome rota turu (ham CDP).
+// ÜK-1 · turuncu aksan — gerçek Chrome rota turu (ham CDP).
 //
 // Ölçülen iki şey:
 //

@@ -1,5 +1,5 @@
 /**
- * Ç-4 — SİTE marka aksanı nöbetçisi.
+ * ÜK-1 — SİTE marka aksanı nöbetçisi.
  *
  * ## Karar
  *
@@ -18,7 +18,7 @@
  * engellemek içindi.
  *
  * Karar, gerekçesi kullanıcıya iletildikten SONRA kullanıcı tarafından
- * bilerek tersine çevrildi (Ç-4). Bu bir ölçüm düzeltmesi değil ÜRÜN
+ * bilerek tersine çevrildi (ÜK-1). Bu bir ölçüm düzeltmesi değil ÜRÜN
  * YARGISIdır ve `docs/tasarim-dili.md` §1.4 böyle yazar. Eski karar metni
  * silinmedi, tarihçe olarak orada durur.
  *
@@ -36,7 +36,7 @@
  *
  * Ç-3 kapsamı bilerek panelle sınırlamıştı; public site 151 dosyada 1.124 ham
  * `indigo-` sınıfı taşıyordu ve o turda ölçülmemiş bir tasarım değişikliğini
- * kaçak yolcu olarak taşımak istenmiyordu. Ç-4 turunda o borç kapatıldı:
+ * kaçak yolcu olarak taşımak istenmiyordu. ÜK-1 turunda o borç kapatıldı:
  * sınıfların tamamı token'a süpürüldü, panel de `--marka`ya takma ad oldu.
  * Eşik bu yüzden `toEqual([])` ve TABAN'dır: sitede yeni bir `indigo-` doğduğu
  * gün CI kırılır ve hangi dosyada doğduğu isimle görünür.
@@ -157,17 +157,17 @@ function satirTara(kural: (satir: string) => boolean): string[] {
 
 /* ── 1. Kapsam: sitede indigo kalmadı ─────────────────────────────────── */
 
-describe("Ç-4 · sitede indigo kalmadı", () => {
+describe("ÜK-1 · sitede indigo kalmadı", () => {
   it("`src/**` içinde `indigo-` sınıfı SIFIR (tavan değil TABAN)", () => {
     expect(
       satirTara((s) => /indigo-\d/.test(s)),
-      "site yarı turuncu yarı indigo — Ç-4'ün açıkça yasakladığı hâl"
+      "site yarı turuncu yarı indigo — ÜK-1'ün açıkça yasakladığı hâl"
     ).toEqual([]);
   });
 
   it("ELLE YAZILMIŞ marka rengi yok (token atlatılamaz)", () => {
     // Bu düğüm, yukarıdaki sınıf taramasının GÖREMEDİĞİ kusur sınıfı için var.
-    // Ç-4 turunda gerçekten yaşandı: `indigo-` sınıfları süpürüldükten sonra
+    // ÜK-1 turunda gerçekten yaşandı: `indigo-` sınıfları süpürüldükten sonra
     // sitede hâlâ elle yazılmış marka renkleri kalmıştı —
     //   `StoreCategoryBar`  `bg-[#1a365d]`  (ESKİ LACİVERT, tek başına kalmıştı)
     //   `StoreSearch`       `bg-[#f8c27d]`  (ikinci bir turuncu arama düğmesi)
@@ -226,7 +226,7 @@ describe("Ç-4 · sitede indigo kalmadı", () => {
 
 /* ── 2. Değer: kararın TA KENDİSİ ─────────────────────────────────────── */
 
-describe("Ç-4 · token değerleri kararın TA KENDİSİ", () => {
+describe("ÜK-1 · token değerleri kararın TA KENDİSİ", () => {
   it("dolgu `#E37200` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
     expect(token("marka")).toBe("227 114 0");
     expect(ham("panel-accent")).toBe("var(--marka)");
@@ -264,9 +264,9 @@ describe("Ç-4 · token değerleri kararın TA KENDİSİ", () => {
   });
 });
 
-/* ── 3. BİÇİM: dolgu PARLAK + yazı KOYU (Ç-4 ikinci sürüm) ────────────── */
+/* ── 3. BİÇİM: dolgu PARLAK + yazı KOYU (ÜK-1 ikinci sürüm) ────────────── */
 
-describe("Ç-4 · dolgu PARLAK, üstündeki yazı KOYU", () => {
+describe("ÜK-1 · dolgu PARLAK, üstündeki yazı KOYU", () => {
   it("kural TERSİNE çevrildi ve değerler onu doğruluyor", () => {
     // İlk sürüm "koyu dolgu + beyaz yazı"ydı. Beyaz yazıyı taşıyabilmek için
     // turuncuyu 4,6 kontrasta kadar koyulaştırmak gerekiyordu ve o noktada
@@ -334,7 +334,7 @@ describe("Ç-4 · dolgu PARLAK, üstündeki yazı KOYU", () => {
 
 /* ── 4. Köprü ─────────────────────────────────────────────────────────── */
 
-describe("Ç-4 · Tailwind köprüsü", () => {
+describe("ÜK-1 · Tailwind köprüsü", () => {
   const cfg = readFileSync(join(KOK, "tailwind.config.js"), "utf8");
 
   it("her marka/dikkat token'ı sınıfa çevriliyor", () => {

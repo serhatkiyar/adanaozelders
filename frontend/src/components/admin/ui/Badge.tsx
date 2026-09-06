@@ -7,7 +7,7 @@ type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger";
  *
  * `info` marka aksanını taşır (`--panel-accent-soft` / `--panel-accent`);
  * `warning` ise **dikkat rengini** (`--dikkat`, bugün `amber-500`) taşır.
- * (Tarihçe: Ç-3'te `#F6AD55`ti; Ç-4'te aksan turuncuya geçince dikkat ailesi
+ * (Tarihçe: Ç-3'te `#F6AD55`ti; ÜK-1'te aksan turuncuya geçince dikkat ailesi
  *  amber'a çekildi — iki turuncu birbirine fazla yakındı.) İkisinin de `dark:`
  * ikizi SİLİNDİ — token zaten temaya duyarlı ve ikinci yazım her seferinde
  * unutulabilecek bir borçtu (`AdminStore.tsx:1958` bir kez unutulmuştu).
@@ -18,7 +18,7 @@ type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger";
  * aksiyon"dur; durum renkleri rozete kilitlidir ve o kilit burasıdır.
  *
  * Ç-3'ün endişesi ("birincil düğme turuncu olsaydı aynı ekranda hem 'yap' hem
- * 'dikkat et' anlamına gelirdi") Ç-4'te ORTADAN KALKMADI — çözüm değişti:
+ * 'dikkat et' anlamına gelirdi") ÜK-1'te ORTADAN KALKMADI — çözüm değişti:
  * aksan da uyarı da turuncu ailesinden, ama BİÇİMLERİ zıt. Aksan koyu dolgu +
  * açık metin taşır; bu rozet açık zemin + koyu metin taşır ve ASLA dolgulu
  * düğme olmaz. Nöbetçi: `__guards__/markaAksani.test.ts`.

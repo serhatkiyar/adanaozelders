@@ -5,6 +5,9 @@ alışveriş yapabilsin" isteğinin doğru davranışını tek yerde sabitlemek 
 maddenin karşılığında gerçek HTTP + gerçek PostgreSQL testi bulunmasını
 zorunlu kılmak.
 
+Ürün kararı bağlamı: **ÜK-5** (bir e-posta = bir hesap) ve **ÜK-6**
+(eğitmen de favorileyebilir) — `docs/urun-kararlari.md`.
+
 ---
 
 ## 0. Ölçülen başlangıç durumu

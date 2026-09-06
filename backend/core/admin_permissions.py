@@ -29,7 +29,7 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("tutors.manage", "Eğitmen yönetimi", "Eğitim"),
     ("bookings.view", "Rezervasyon görüntüleme", "Eğitim"),
     ("bookings.manage", "Rezervasyon yönetimi", "Eğitim"),
-    # Ç-5: "Öğrenci talebi" -> "Ders talebi". Talebi açan hesap sahibi öğrenci
+    # ÜK-4: "Öğrenci talebi" -> "Ders talebi". Talebi açan hesap sahibi öğrenci
     # olmak zorunda değil (veli de olabilir); talebin konusu DERStir.
     # İzin ANAHTARLARI (`demands.view` / `demands.manage`) DEĞİŞMEDİ —
     # yetki kontrolü onlara bakar, rol atamaları onlara bağlıdır.

@@ -1,6 +1,6 @@
 """Admin izin etiketi: "Öğrenci talebi" -> "Ders talebi".
 
-Ç-5 (6 Eyl 2026) — "öğrenci" bir ROL ADI olmaktan çıktı. Talebi açan hesap
+ÜK-4 (6 Eyl 2026) — "öğrenci" bir ROL ADI olmaktan çıktı. Talebi açan hesap
 sahibi öğrenci olmak zorunda değil (veli de olabilir; `core/flags.py`
 `FLAG_MINOR_BOOKINGS_LIVE` 18 yaş altını Veli modeli yazılana kadar zaten
 kapatıyor). Talebin konusu DERStir.

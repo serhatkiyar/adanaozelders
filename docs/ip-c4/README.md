@@ -1,4 +1,4 @@
-# Ç-4 — turuncu aksan geçişi · kanıt
+# ÜK-1 — turuncu aksan geçişi · kanıt
 
 Karar ve gerekçe: `docs/tasarim-dili.md` §1.4.
 Nöbetçiler: `frontend/src/__guards__/markaAksani.test.ts`,
@@ -36,7 +36,7 @@ Bu tur, kaynak taramasının göremediğini ölçer: her öğenin *hesaplanan*
 `color` / `background-color` / `border-color` / `fill` / `stroke` değerine
 bakar. Sınıf adı taraması `bg-[#1a365d]`, ayrı bir CSS dosyasındaki `#4f46e5`
 ya da JS içinde satır içi stil dizesiyle enjekte edilen bir rengi göremez —
-Ç-4 turunda bunların **dördü de gerçekten vardı** (bkz. aşağıdaki bulgu).
+ÜK-1 turunda bunların **dördü de gerçekten vardı** (bkz. aşağıdaki bulgu).
 
 Doluluk kapısı: 66 öğe gerçekten marka rengiyle boyalı. Bu olmadan "0 indigo"
 bedava geçerdi — boş bir sayfa da 0 indigo verir.
@@ -69,7 +69,7 @@ turuncuya geçince göze battı. 26 kontrole `accent-marka` eklendi.
    Sonda hâlâ iki temayı ölçüyor ama site tek temadır (dark mode CMS turunda
    söküldü, nöbetçisi `tekTema.test.ts`). Ölçülen çift `slate-600` / `slate-900`
    ve içinde hiçbir marka token'ı yok; `dark:` sınıfları söküldüğünde bozulmuş,
-   Ç-4'ten önce de böyleydi. Sondanın koyu turu **var olmayan bir temayı**
+   ÜK-1'ten önce de böyleydi. Sondanın koyu turu **var olmayan bir temayı**
    ölçüyor ve kalıcı bir yalancı kırmızı üretiyor — ayrı bir temizlik kalemi.
 
 2. **Sihirbazın mercanı bu turda GÖRSEL olarak kanıtlanmadı.**
