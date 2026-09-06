@@ -38,7 +38,7 @@ import { dirname, join, resolve } from "node:path";
 
 import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV, type NavItem } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import Learn from "@/pages/Learn";
 import {
@@ -188,33 +188,59 @@ describe("C — Öğren hub'ındaki 'Denemelerim' kartı (gerçek DOM)", () => {
   });
 });
 
-describe("D — eğitmen menüsündeki 'Kütüphaneler' girdisi (gerçek DOM)", () => {
-  /** Yan menü (avatar açılırı) gerçek tıklamayla açılır — girdi orada METİNLE görünür. */
-  function menuyuAc() {
-    sar(<DashboardHeader navItems={TUTOR_NAV} />);
+describe("D — hesap menüsünde DONMUŞ girdi mekanizması (gerçek DOM)", () => {
+  /** Yan menü (avatar açılırı) gerçek tıklamayla açılır. */
+  function menuyuAc(nav: NavItem[]) {
+    sar(<DashboardHeader navItems={nav} />);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
   }
 
-  it("NÖBETÇİ: menü render oluyor ve diğer girdiler hâlâ bağlantı", () => {
-    menuyuAc();
-    // Üst bar artık rol kısayollarını basmıyor (bkz. ustBarSadeligi.test.tsx),
-    // yani bu hedefe tek bağlantı kalıyor: yan menüdeki. Eşik yine `>0`
-    // çünkü buradaki iddia SAYI değil, girdinin bağlantı OLMASI.
-    const mesajlar = screen.getAllByRole("link", { name: /Mesajlar/ });
-    expect(mesajlar.length).toBeGreaterThan(0);
-    for (const a of mesajlar) expect(a.getAttribute("href")).toBe("/mesajlar");
+  /* Bu bölüm 7 Eyl 2026'da TUTOR_NAV'dan KOPARILDI.
+     Önce "eğitmen menüsündeki Kütüphaneler girdisi" deniyordu; Kütüphaneler ve
+     Mağaza o gün yan panelden çıktı (kullanıcı kararı) ve iddia öznesiz kaldı.
+     Dahası: `yakinda` bayrağını taşıyan TEK ürün girdisi oydu, yani düğüm
+     silinseydi dondurma mekanizması hiç nöbetsiz kalacaktı.
+
+     Çözüm: düğüm artık ÜRÜN listesine değil MEKANİZMAYA bakıyor — sentetik
+     bir nav öğesiyle. Böylece hangi bölümün donduğu değişse de "donmuş girdi
+     bağlantı DEĞİLDİR" sözleşmesi çıpalı kalır. */
+
+  const CANLI: NavItem = { to: "/mesajlar", label: "Mesajlar", icon: "messages" };
+  const DONMUS: NavItem = { to: "/deneme-bolum", label: "Deneme Bölüm", yakinda: true };
+
+  it("DONMUŞ girdi bağlantı DEĞİL ve klavyeyle odaklanamaz", () => {
+    menuyuAc([CANLI, DONMUS]);
+    expect(screen.queryByRole("link", { name: /Deneme Bölüm/ })).toBeNull();
+    const donuk = screen.getByText("Deneme Bölüm").closest("[aria-disabled='true']");
+    expect(donuk, "donmuş girdi aria-disabled taşımıyor").toBeTruthy();
+    expect(donuk?.getAttribute("tabindex")).toBe("-1");
+    // Not: "Yakında" ROZETİ bu yüzeyde basılmıyor — `NavItem.yakinda`
+    // açıklaması rozeti vaat ediyor ama `DashboardHeader` yalnız soluklaştırıp
+    // devre dışı bırakıyor. İddia gerçeğe göre yazıldı; rozet istenirse ayrı
+    // bir kalem (bugün donmuş girdi zaten yok — aşağıdaki KAPSAM düğümü).
+    // Anchor'a hiç dönüşmemeli: `href` taşıyan bir öğe tıklamayı yutar.
+    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map((a) =>
+      a.getAttribute("href")
+    );
+    expect(hedefler).not.toContain("/deneme-bolum");
   });
 
-  it("'Kütüphaneler' yeniden GERÇEK bağlantı (/kutuphaneler)", () => {
-    menuyuAc();
-    const linkler = screen.getAllByRole("link", { name: /Kütüphaneler/ });
+  it("DOLULUK: aynı menüdeki CANLI girdi gerçek bağlantı", () => {
+    // Bu olmadan yukarıdaki üç olumsuz iddia, menü hiç render olmadığında da
+    // yeşil kalırdı.
+    menuyuAc([CANLI, DONMUS]);
+    const linkler = screen.getAllByRole("link", { name: /Mesajlar/ });
     expect(linkler.length).toBeGreaterThan(0);
-    for (const a of linkler) expect(a.getAttribute("href")).toBe("/kutuphaneler");
-    // Donuk kalıntı yok: aria-disabled taşıyan Kütüphaneler öğesi kalmadı.
-    const donuk = Array.from(document.body.querySelectorAll("[aria-disabled='true']")).filter(
-      (el) => (el.textContent ?? "").includes("Kütüphaneler")
-    );
-    expect(donuk).toEqual([]);
+    for (const a of linkler) expect(a.getAttribute("href")).toBe("/mesajlar");
+  });
+
+  it("KAPSAM: bugün hiçbir rol menüsünde donmuş girdi YOK", () => {
+    // Mekanizma yaşıyor ama ürün tarafında taşıyıcısı kalmadı. Bu düğüm o
+    // durumu YAZILI tutar: biri yeniden bir bölümü dondurursa burası kırılır
+    // ve dondurmanın bilinçli olduğu görülür.
+    for (const nav of [UYE_NAV, TUTOR_NAV]) {
+      expect(nav.some((i) => i.yakinda)).toBe(false);
+    }
   });
 });
 

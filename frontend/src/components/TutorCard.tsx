@@ -1,4 +1,3 @@
-import { gorunurCinsiyet } from "@/lib/demographics";
 import { Link } from "react-router-dom";
 import type { TutorSearchOut } from "@/types";
 import { BookmarkButton } from "@/components/BookmarkButton";
@@ -32,13 +31,11 @@ export function TutorCard({
       ? "Uzaktan"
       : tutor.district || "Yüzyüze & Uzaktan";
     
-  // Cinsiyet AYRI BİR ROZET değil, mevcut meta satırının bir parçası: ayrı
-  // rozet, demografik bir özniteliğe "ilk ders ücretsiz" gibi TİCARİ bir
-  // sinyalle aynı görsel ağırlığı verirdi. Belirtilmemişse hiçbir şey yazılmaz
-  // (bkz. `gorunurCinsiyet` — "Belirtilmemiş" yazmak yokluğu ilan etmektir).
-  const metaSatiri = [locationText, gorunurCinsiyet(tutor.gender)]
-    .filter(Boolean)
-    .join(" · ");
+  // Cinsiyet listede YAZILMAZ (kullanıcı kararı, 7 Eyl 2026). Bir süre meta
+  // satırının parçasıydı; kartta demografik bir öznitelik taşımanın karşılığı
+  // yok. Arama tarafı DEĞİŞMEDİ: cinsiyet filtresi ve faset sayıları yerinde,
+  // değer eğitmen profilinde (`PublicTutorProfile`) görünmeye devam ediyor.
+  const metaSatiri = locationText;
 
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
   // Superprof usually only shows first name

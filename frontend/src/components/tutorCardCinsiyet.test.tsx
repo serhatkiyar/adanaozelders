@@ -1,22 +1,29 @@
 /**
- * Eğitmen kartında cinsiyet — asıl önemli olan OLUMSUZ iddia.
+ * Eğitmen kartında cinsiyet — **artık yazılmıyor** (kullanıcı kararı, 7 Eyl 2026).
  *
- * ## Sözleşme
+ * ## Değişen kabul ölçütü
  *
- * `gender` API'de ta baştan vardı ve arama filtresi olarak ÇALIŞIYORDU, ama
- * hiçbir ekran onu basmıyordu: öğrenci "Kadın" filtreliyor, sonuçlar geliyor,
- * ama sonuçların neye göre geldiğini göremiyordu.
+ * Bu dosya önce TERSİNİ çıpalıyordu: cinsiyet meta satırının içinde
+ * görünmeli, "Belirtilmemiş" ise hiçbir şey yazılmamalı. Gerekçesi şuydu:
+ * *"öğrenci 'Kadın' filtreliyor, sonuçlar geliyor, ama sonuçların neye göre
+ * geldiğini göremiyordu."*
  *
- * Gösterimin kendisi kolay; kolay olmayan, BELİRTİLMEMİŞ durumda hiçbir şey
- * yazmamaktır. "Belirtilmemiş" basmak yokluğu ilan etmektir ve bugün
- * satırların çoğu boştur — kart yarısı "Belirtilmemiş" yazan bir listeye
- * dönerdi. Bu yüzden buradaki üç düğümün ikisi olumsuz.
+ * Kullanıcı kararıyla ölçüt değişti: **listede cinsiyet yazılmaz.** Ölçüt
+ * sessizce değil, gerekçesiyle değişiyor — eski iddia bu dosyada silinip
+ * yerine yenisi geçtiği için, ileride "eskiden görünüyordu, neden kalktı"
+ * sorusunun cevabı burada duruyor.
  *
- * ## İki yönlü
+ * ## Kaldırılmayan şey — kapsam
  *
- * Yalnız "yazmıyor" iddiası yazılsaydı, kart tümüyle bozulup HİÇBİR ŞEY
- * basmadığında da yeşil kalırdı. Doluluk düğümü (`Kadın` gerçekten görünüyor)
- * o kaçışı kapatır.
+ * Karar YALNIZ karttır. Arama tarafı olduğu gibi duruyor: cinsiyet filtresi
+ * çalışıyor ve faset sayıları görünüyor (sessiz eleme hâlâ görünür). Değer
+ * eğitmenin kendi profilinde (`PublicTutorProfile`) basılmaya devam ediyor.
+ *
+ * ## Bu dosyanın ASIL iddiası
+ *
+ * "Cinsiyet yazılmıyor" tek başına yazılsaydı, kart tümüyle bozulup HİÇBİR
+ * ŞEY basmadığında da yeşil kalırdı. Doluluk düğümü (konum ve ad gerçekten
+ * görünüyor) o kaçışı kapatır.
  */
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -46,27 +53,35 @@ const ciz = (g: Gender | null | undefined) =>
     </MemoryRouter>
   );
 
-describe("TutorCard · cinsiyet", () => {
-  it("değer varsa görünür (DOLULUK — olumsuz düğümlerin kaçış kapısı)", () => {
+describe("TutorCard · cinsiyet listede yazılmaz", () => {
+  it("DOLULUK: kart gerçekten çiziliyor ve konum satırı basılıyor", () => {
+    // Olumsuz düğümlerin kaçış kapısı. Bu olmadan "Kadın yok" iddiası,
+    // kart hiç render olmadığında da yeşil kalırdı.
     ciz(Gender.FEMALE);
-    expect(screen.getByText(/Kadın/)).toBeTruthy();
-    // Kart gerçekten çizildi mi: cinsiyet metni tek başına yanıltıcı olmasın.
     expect(screen.getByText("Ayşe")).toBeTruthy();
+    expect(screen.getByText("Uzaktan")).toBeTruthy();
   });
 
-  it("cinsiyet, konum meta satırının İÇİNDE — ayrı rozet DEĞİL", () => {
+  it.each([
+    ["kadın", Gender.FEMALE],
+    ["erkek", Gender.MALE],
+  ])("%s eğitmende cinsiyet METNİ YOK", (_ad, g) => {
+    ciz(g);
+    expect(screen.queryByText(/Kadın/)).toBeNull();
+    expect(screen.queryByText(/Erkek/)).toBeNull();
+  });
+
+  it("meta satırı sarkan ayırıcı bırakmıyor", () => {
+    // Kalem kaldırılırken `" · "` birleştirmesi de kalktı; kalsaydı
+    // "Uzaktan · " gibi sonu boş bir satır doğardı.
     ciz(Gender.MALE);
-    // Ayrı rozet, demografik bir özniteliğe "ilk ders ücretsiz" gibi TİCARİ
-    // bir sinyalle aynı görsel ağırlığı verirdi. Aynı düğümde geçmesi şart.
-    expect(screen.getByText("Uzaktan · Erkek")).toBeTruthy();
+    expect(screen.queryByText(/·\s*$/)).toBeNull();
   });
 
-  it("BELİRTİLMEMİŞ durumda 'Belirtilmemiş' YAZMAZ", () => {
+  it("BELİRTİLMEMİŞ durumda da değişen bir şey yok", () => {
     for (const bos of [null, undefined, Gender.UNSPECIFIED]) {
       const { unmount } = ciz(bos);
       expect(screen.queryByText(/Belirtilmemiş/)).toBeNull();
-      // Kalem tümüyle atlanır: meta satırında yalnız konum kalır, sondaki
-      // ayırıcı da düşer ("Uzaktan · " gibi sarkan bir nokta kalmamalı).
       expect(screen.getByText("Uzaktan")).toBeTruthy();
       unmount();
     }

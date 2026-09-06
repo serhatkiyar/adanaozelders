@@ -83,19 +83,16 @@ describe("bayrak AÇIK — kategori çubuğu eski hâline döner", () => {
 });
 
 describe("bayrak AÇIK — menü girdileri ve hub kartı eski hâline döner", () => {
-  it("eğitmen menüsündeki 'Kütüphaneler' yeniden /kutuphaneler'e gidiyor", () => {
-    sar(<DashboardHeader navItems={TUTOR_NAV} />);
-    // Girdi hesap menüsünde yaşıyor: üst bar 6 Eyl'de rol kısayollarını
-    // bırakti (bkz. __guards__/ustBarSadeligi.test.tsx). Buradaki iddia
-    // DEĞİŞMEDİ — bayrak açıkken girdi donmuş bir `span` değil GERÇEK bir
-    // bağlantı olmalı; yalnız nereye bakıldığı değişti.
-    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
-    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
-      (a) => a.getAttribute("href")
-    );
-    expect(hedefler).toContain("/kutuphaneler");
-    expect(screen.queryByText("Yakında")).toBeNull();
-  });
+  /* KALDIRILDI (7 Eyl 2026) — "eğitmen menüsündeki 'Kütüphaneler' yeniden
+     /kutuphaneler'e gidiyor".
+
+     Kütüphaneler ve Mağaza o gün özel dersin yan panelinden çıktı (kullanıcı
+     kararı, bkz. `lib/nav.ts`). İddianın öznesi olan menü girdisi artık YOK;
+     düğüm bırakılsaydı bayrak açıkken de kapalıyken de aynı sonucu verir,
+     yani hiçbir şeyi kanıtlamayan bir yeşil olurdu.
+
+     KUTUPHANELER_ACIK bayrağının kanıtı kaybolmadı: aynı dosyadaki kategori
+     çubuğu düğümü ve rota düğümü bayrağı okumaya devam ediyor. */
 
   it("Öğren hub'ındaki 'Denemelerim' yeniden /denemeler'e gidiyor", () => {
     sar(<Learn />);

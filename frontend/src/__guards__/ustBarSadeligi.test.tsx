@@ -114,7 +114,11 @@ describe("üst bar · en fazla TEK kısayol", () => {
 
   it("DOLULUK: rol menüsü gerçekten kalabalık — kısayollar boş listeden gelmiyor", () => {
     // Bu olmadan yukarıdaki iki iddia, `nav.ts` boşalsa da yeşil kalırdı.
-    expect(UYE_NAV.length).toBeGreaterThanOrEqual(4);
+    // Eşik 4'ten 3'e indi (7 Eyl 2026): Kütüphaneler ve Mağaza özel dersin
+    // yan panelinden çıktı (kullanıcı kararı, bkz. `lib/nav.ts`). Bu düğümün
+    // işi menünün DOLU olduğunu kanıtlamaktır, kaç kalem olduğunu dondurmak
+    // değil — eşik kararla birlikte gerekçesiyle indi.
+    expect(UYE_NAV.length).toBeGreaterThanOrEqual(3);
     expect(TUTOR_NAV.length).toBeGreaterThanOrEqual(4);
     expect(UYE_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
     // ÜK-6: eğitmen menüsünde de var (eskiden `false` çıpalıydı).
