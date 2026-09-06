@@ -292,9 +292,12 @@ function CategoryContent({ active }: { active: CategoryKey }) {
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
   // yanında gri dairesel ok butonu — tamamına o götürür.
+  //
+  // 7 Eyl 2026: bu blok artık `HScroll`un `baslik` yuvasına giriyor; kaydırma
+  // okları aynı satırın SAĞ ucunda duruyor. Alt boşluk (`mb-4`) oraya taşındı.
   return (
-    <div className="mb-4 flex items-center gap-2.5">
-      <h2 className="text-xl font-bold tracking-tight text-slate-900 ">
+    <div className="flex min-w-0 items-center gap-2.5">
+      <h2 className="truncate text-xl font-bold tracking-tight text-slate-900 ">
         {heading}
       </h2>
       <Link
@@ -330,18 +333,23 @@ function FeaturedTutorRow() {
 
   return (
     <section aria-label="Reklam" className="mx-auto max-w-[1216px] px-6">
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold tracking-wide text-slate-500">
-          Reklam
-        </h2>
-        <Link
-          to={ROUTES.rankingCriteria}
-          className="text-xs text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
-        >
-          Sıralama nasıl belirleniyor?
-        </Link>
-      </div>
-      <HScroll className="gap-5 pb-2">
+      <HScroll
+        className="gap-5 pb-2"
+        etiket="Reklam"
+        baslik={
+          <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+            <h2 className="text-sm font-semibold tracking-wide text-slate-500">
+              Reklam
+            </h2>
+            <Link
+              to={ROUTES.rankingCriteria}
+              className="shrink-0 text-xs text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
+            >
+              Sıralama nasıl belirleniyor?
+            </Link>
+          </div>
+        }
+      >
         {tutors.map((tutor) => (
           <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
             <TutorCard tutor={tutor} featured />
@@ -372,11 +380,19 @@ function TutorRow({
 
   return (
     <section className="mx-auto max-w-[1216px] px-6">
-      <RowHeader heading={heading} href={href} />
       {isLoading ? (
-        <RowSkeleton />
+        <>
+          <div className="mb-4">
+            <RowHeader heading={heading} href={href} />
+          </div>
+          <RowSkeleton />
+        </>
       ) : (
-        <HScroll className="gap-5 pb-2">
+        <HScroll
+          className="gap-5 pb-2"
+          etiket={heading}
+          baslik={<RowHeader heading={heading} href={href} />}
+        >
           {data!.map((tutor) => (
             <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
               <TutorCard tutor={tutor} />
@@ -405,11 +421,19 @@ function LibraryRow({
 
   return (
     <section className="mx-auto max-w-[1216px] px-6">
-      <RowHeader heading={heading} href={href} />
       {isLoading ? (
-        <RowSkeleton />
+        <>
+          <div className="mb-4">
+            <RowHeader heading={heading} href={href} />
+          </div>
+          <RowSkeleton />
+        </>
       ) : (
-        <HScroll className="gap-5 pb-2">
+        <HScroll
+          className="gap-5 pb-2"
+          etiket={heading}
+          baslik={<RowHeader heading={heading} href={href} />}
+        >
           {data!.map((lib) => (
             <div key={lib.id} className="w-[190px] shrink-0 sm:w-[210px]">
               <LibraryCard library={lib} />
