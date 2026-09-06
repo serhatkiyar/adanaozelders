@@ -34,14 +34,14 @@ function TutorRow({
     <button
       type="button"
       onClick={() => onPick(id)}
-      className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-left transition hover:border-indigo-200 hover:bg-indigo-50/50 active:scale-[0.99] "
+      className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-left transition hover:border-marka-line hover:bg-marka-soft/50 active:scale-[0.99] "
     >
       <Avatar name={name} avatar_url={avatar} size="sm" />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 ">
         {name}
       </span>
       {badge && (
-        <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-600 ">
+        <span className="shrink-0 rounded-full bg-marka-soft px-2 py-0.5 text-[10px] font-bold text-marka ">
           {badge}
         </span>
       )}
@@ -185,7 +185,7 @@ export function NewLessonRequestModal({
           <button
             type="button"
             onClick={goSearch}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-marka px-4 py-3 text-sm font-bold text-white transition hover:bg-marka-hover active:scale-95"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />

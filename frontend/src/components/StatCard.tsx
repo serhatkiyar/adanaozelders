@@ -8,7 +8,7 @@ interface StatCardProps {
 }
 
 const TONES: Record<Tone, string> = {
-  indigo: "text-indigo-600",
+  indigo: "text-marka",
   amber: "text-amber-600",
   emerald: "text-emerald-600",
   slate: "text-slate-900",

@@ -12,7 +12,7 @@ import { useSubjects } from "@/hooks/useSubjects";
    • CompactSearch → daralmış navbar'da bir buton; tıklanınca geniş hali açılır. */
 
 const PinIconSvg = () => (
-  <svg className="h-5 w-5 shrink-0 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+  <svg className="h-5 w-5 shrink-0 text-marka" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
   </svg>
@@ -66,7 +66,7 @@ export function BigSearch({
         onSubmit={onSubmit}
         // focus-within halkası: `outline-none` verilen girdide klavye
         // kullanıcısına "buradasın" işareti kalmıyordu; halka forma taşındı.
-        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-indigo-400 focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-indigo-500/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
+        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
       >
         <div className="flex shrink-0 items-center gap-2 rounded-full py-2.5 pl-4 pr-3 transition hover:bg-slate-50 ">
           <PinIconSvg />
@@ -185,7 +185,7 @@ export function DersArama({
       <form
         ref={formRef}
         onSubmit={onSubmit}
-        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-indigo-400 focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-indigo-500/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
+        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
       >
         <input
           type="text"

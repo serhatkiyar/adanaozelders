@@ -127,13 +127,13 @@ export default function AccountHub() {
           <Link
             key={c.to + c.title}
             to={c.to}
-            className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 "
+            className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-marka-mid hover:bg-marka-soft/40 "
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-marka-soft text-marka ">
               {c.icon}
             </span>
             <span>
-              <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 ">
+              <span className="block font-semibold text-slate-900 group-hover:text-marka-hover ">
                 {c.title}
               </span>
               <span className="mt-0.5 block text-sm text-slate-500 ">{c.desc}</span>

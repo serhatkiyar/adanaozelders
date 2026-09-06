@@ -271,13 +271,18 @@
 
 @layer components {
   /* Ortak form girdisi (admin kütüphane editörü vb.) */
-  /* Odak kenarlığı açık temada `indigo-400` idi ve göstergenin kontrastı
-     **2,98:1**di — WCAG 2.1 SC 1.4.11 eşiği 3:1 (bağımsız denetim #3 · B-11;
-     halka `indigo-100` zaten 1,23 ve tek başına gösterge sayılamaz). Koyu
-     temada kenarlık 4,0 ile geçiyordu, açık temada geçmiyordu.
-     `indigo-500` gerçek Chrome'da **4,47:1**. */
+  /* Odak GÖSTERGESİ kenarlıktır, halka değil: halka `indigo-100` 1,23'te
+     kalıyordu ve tek başına gösterge sayılamaz (bağımsız denetim #3 · B-11).
+     Kenarlık `indigo-400` iken **2,98:1**di — WCAG 2.1 SC 1.4.11 eşiği 3:1;
+     zar zor kaçırılıyordu. `indigo-500` ile 4,47'ye çıkmıştı.
+
+     Token'a geçerken bilerek `--marka-mid` DEĞİL `--marka-focus` seçildi:
+     mid, turuncuya dönünce beyaza karşı 3,56 verir — eşiği geçer ama B-11'in
+     tam olarak yandığı dar payı geri getirirdi. `--marka-focus` 5,18 verir.
+     C2'deki ölçülen yan etki: kenarlık indigo-500 → indigo-600, yani
+     4,47 → 6,29. Bu bir gerileme değil, B-11'in eksenindeki iyileşmedir. */
   .input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-marka-focus focus:ring-2 focus:ring-marka/20;
   }
 }
 

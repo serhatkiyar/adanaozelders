@@ -130,7 +130,7 @@ export default function TutorPromotion() {
             </p>
             <Link
               to={ROUTES.tutorListing}
-              className="mt-3 inline-block text-sm font-semibold text-indigo-600 underline-offset-2 hover:underline"
+              className="mt-3 inline-block text-sm font-semibold text-marka underline-offset-2 hover:underline"
             >
               İlan ayarlarına git
             </Link>
@@ -177,7 +177,7 @@ export default function TutorPromotion() {
                 type="checkbox"
                 checked={onay}
                 onChange={(e) => setOnay(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus"
               />
               <span>
                 Hizmetin ödeme onaylandığı anda başladığını, bu nedenle cayma
@@ -202,7 +202,7 @@ export default function TutorPromotion() {
                   satinAl.mutate({ days: seciliGun, terms_accepted: onay });
                 }
               }}
-              className="mt-6 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+              className="mt-6 rounded-xl bg-marka px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
             >
               {satinAl.isPending ? "Yönlendiriliyor…" : "Öne çıkar"}
             </button>
@@ -267,7 +267,7 @@ function PaketSatiri({
         <span className="flex items-center gap-3">
           <span
             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
-              secili ? "border-indigo-600 bg-indigo-600" : "border-slate-300"
+              secili ? "border-marka bg-marka" : "border-slate-300"
             }`}
           >
             {secili && (

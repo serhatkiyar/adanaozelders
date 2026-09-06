@@ -139,7 +139,7 @@ function Countdown({
     );
   return (
     <Pill>
-      <TargetIcon className="h-5 w-5 text-indigo-500" />
+      <TargetIcon className="h-5 w-5 text-marka" />
       <Stacked top={top} bottom={label} />
     </Pill>
   );
@@ -193,7 +193,7 @@ function ClockWidget() {
   }, []);
   return (
     <Pill>
-      <ClockIcon className="h-5 w-5 text-indigo-500" />
+      <ClockIcon className="h-5 w-5 text-marka" />
       <Stacked top={timeFmt.format(now)} bottom={dateFmt.format(now)} />
     </Pill>
   );

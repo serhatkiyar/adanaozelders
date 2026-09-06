@@ -720,7 +720,7 @@ function EditorIcerik({
                   onClick={() => olanakDegistir(a)}
                   className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     secili
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-marka text-white"
                       : "bg-slate-100 text-slate-600 "
                   }`}
                 >

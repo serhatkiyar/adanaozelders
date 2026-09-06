@@ -66,7 +66,7 @@ export function BolumProfil({
           <div className="mt-2 flex flex-wrap gap-3">
             <PlainButton
               onClick={() => dosyaRef.current?.click()}
-              className="text-sm font-medium text-indigo-700 hover:text-indigo-900"
+              className="text-sm font-medium text-marka-hover hover:text-marka-soft-fg"
             >
               {degerler.fotoOnizleme ? "Değiştir" : "Fotoğraf ekle"}
             </PlainButton>

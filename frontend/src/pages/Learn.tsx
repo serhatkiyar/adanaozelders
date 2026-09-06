@@ -180,7 +180,7 @@ export default function Learn() {
           {DENEMELER_ACIK ? (
           <Link
             to={ROUTES.exams}
-            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white shadow-lg shadow-marka/20 transition hover:-translate-y-0.5 hover:shadow-xl"
           >
             <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
             <div className="relative">
@@ -190,7 +190,7 @@ export default function Learn() {
                 </svg>
               </span>
               <h2 className="mt-4 text-lg font-bold">Denemelerim</h2>
-              <p className="mt-1 text-sm text-indigo-50">
+              <p className="mt-1 text-sm text-marka-fg">
                 Girdiğin deneme sınavlarını kaydet, netlerini ve ilerlemeni analiz et.
               </p>
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">

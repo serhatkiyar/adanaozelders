@@ -197,7 +197,7 @@ export default function SrsBrowser() {
             aria-label="Sayfadaki tüm kartları seç"
             checked={allOnPageSelected}
             onChange={toggleAll}
-            className="h-4 w-4 accent-indigo-600"
+            className="h-4 w-4 accent-marka"
           />
         ),
         cell: ({ row }) => (
@@ -207,7 +207,7 @@ export default function SrsBrowser() {
             checked={selected.has(row.original.id)}
             onChange={() => toggle(row.original.id)}
             onClick={(e) => e.stopPropagation()}
-            className="h-4 w-4 accent-indigo-600"
+            className="h-4 w-4 accent-marka"
           />
         ),
         enableSorting: false,
@@ -275,7 +275,7 @@ export default function SrsBrowser() {
         <div>
           <Link
             to={ROUTES.srs}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+            className="text-sm font-medium text-marka hover:text-marka-hover "
           >
             ← Aralıklı Tekrar
           </Link>
@@ -372,11 +372,11 @@ export default function SrsBrowser() {
             geçmesin diye sayfa zeminini taşıyan bir kılıfın içinde durur. */}
         {selected.size > 0 && (
           <div className="sticky top-16 z-30 -mx-1 mt-4 bg-slate-50 px-1 py-1 ">
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm ">
-            <span className="font-semibold text-indigo-700 ">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-marka-line bg-marka-soft px-4 py-3 text-sm ">
+            <span className="font-semibold text-marka-hover ">
               {selected.size} kart seçili
             </span>
-            <span className="mx-1 hidden h-4 w-px bg-indigo-200 sm:block" />
+            <span className="mx-1 hidden h-4 w-px bg-marka-line sm:block" />
             {(
               [
                 ["suspend", "Askıya al"],
@@ -389,7 +389,7 @@ export default function SrsBrowser() {
                 key={action}
                 onClick={() => (action === "suspend" ? askSuspend() : runBulk(action))}
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 {label}
               </button>
@@ -411,7 +411,7 @@ export default function SrsBrowser() {
               <button
                 onClick={askMove}
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 Taşı
               </button>
@@ -431,7 +431,7 @@ export default function SrsBrowser() {
                     : toast.error("Etiket yaz.")
                 }
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 Etiket ekle
               </button>
@@ -442,7 +442,7 @@ export default function SrsBrowser() {
                     : toast.error("Etiket yaz.")
                 }
                 disabled={bulk.isPending}
-                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 "
+                className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-50 "
               >
                 Etiket çıkar
               </button>
@@ -464,7 +464,7 @@ export default function SrsBrowser() {
             <button
               type="button"
               onClick={toggleAll}
-              className="rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 "
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-marka transition hover:bg-marka-soft "
             >
               {allOnPageSelected
                 ? `Sayfa seçimini kaldır (${items.length})`
@@ -503,7 +503,7 @@ export default function SrsBrowser() {
                     checked={selected.has(row.id)}
                     onChange={() => toggle(row.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="mt-1 h-4 w-4 accent-indigo-600"
+                    className="mt-1 h-4 w-4 accent-marka"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-slate-800 ">

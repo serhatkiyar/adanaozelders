@@ -22,7 +22,7 @@ const ROLE_META: Record<number, { label: string }> = {
 };
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 export default function Profile() {
   const { data: user, isLoading } = useCurrentUser();

@@ -96,7 +96,7 @@ export function HoverZoomImage({
       {zoom && (
         <div
           aria-hidden
-          className="pointer-events-none absolute z-10 hidden rounded-sm border border-indigo-300/80 bg-indigo-500/10 md:block"
+          className="pointer-events-none absolute z-10 hidden rounded-sm border border-marka-mid/80 bg-marka-mid/10 md:block"
           style={{
             left: zoom.lensLeft,
             top: zoom.lensTop,

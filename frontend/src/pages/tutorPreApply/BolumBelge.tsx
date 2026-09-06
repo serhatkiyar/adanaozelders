@@ -102,7 +102,7 @@ export function BolumBelge({
         {degerler.belgeler.length < MAX_BELGE && (
           <PlainButton
             onClick={() => dosyaRef.current?.click()}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-3.5 text-sm font-medium text-slate-600 transition hover:border-indigo-400 hover:text-indigo-700"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-3 py-3.5 text-sm font-medium text-slate-600 transition hover:border-marka-mid hover:text-marka-hover"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
               <path d="M10 4a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H5a1 1 0 1 1 0-2h4V5a1 1 0 0 1 1-1Z" />

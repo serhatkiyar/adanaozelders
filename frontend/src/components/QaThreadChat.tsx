@@ -66,7 +66,7 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
             <div
               className={`max-w-[80%] rounded-2xl px-3.5 py-2 ${
                 mine
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-marka text-white"
                   : "bg-slate-100 text-slate-700 "
               }`}
             >
@@ -76,7 +76,7 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
               <p
                 className={`mt-1 text-[10px] ${
                   mine
-                    ? "text-indigo-200"
+                    ? "text-marka-fg"
                     : "text-slate-400 "
                 }`}
               >
@@ -94,12 +94,12 @@ export function QaThreadChat({ thread, role, canReply }: QaThreadChatProps) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Mesaj yaz…"
-            className="min-h-[42px] flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+            className="min-h-[42px] flex-1 resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
           />
           <button
             type="submit"
             disabled={post.isPending}
-            className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-60"
+            className="shrink-0 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
           >
             {post.isPending ? "…" : "Gönder"}
           </button>

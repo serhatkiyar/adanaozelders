@@ -206,7 +206,7 @@ export default function PublicMarketplace() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as TutorSort)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-indigo-500/20 ${
+          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
             sort !== TutorSort.RELEVANCE
               ? "border-slate-900 bg-slate-900 text-white "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
@@ -237,7 +237,7 @@ export default function PublicMarketplace() {
         <button
           key={s}
           onClick={() => removeSubject(s)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 "
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-hover transition hover:bg-marka-line "
         >
           {s}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
@@ -274,7 +274,7 @@ export default function PublicMarketplace() {
             </Link>
             <Link
               to={ROUTES.register}
-              className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+              className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-marka-hover transition hover:bg-marka-soft"
             >
               Kayıt Ol
             </Link>
@@ -314,7 +314,7 @@ export default function PublicMarketplace() {
                 <span>{organicTutors.length} eğitmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-marka-mid" />
                     Güncelleniyor
                   </span>
                 )}
@@ -331,7 +331,7 @@ export default function PublicMarketplace() {
                       yeni sekmede açabilsin. Tıklama SPA içinde kalır. */}
                   <Link
                     to={nextPageSearch(searchParams, page)}
-                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 active:scale-95 disabled:opacity-60 "
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft active:scale-95 disabled:opacity-60 "
                   >
                     {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                   </Link>
@@ -361,14 +361,14 @@ export default function PublicMarketplace() {
 
             <div className="flex-1 space-y-8 overflow-y-auto p-6">
               {/* Daha fazla filtre için kayıt CTA */}
-              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 ">
-                <h3 className="text-sm font-semibold text-indigo-900 ">Daha fazla filtre mi arıyorsunuz?</h3>
-                <p className="mt-1 text-xs text-indigo-700 ">
+              <div className="rounded-2xl border border-marka-line bg-marka-soft/50 p-4 ">
+                <h3 className="text-sm font-semibold text-marka-soft-fg ">Daha fazla filtre mi arıyorsunuz?</h3>
+                <p className="mt-1 text-xs text-marka-hover ">
                   Konum, cinsiyet, fiyat aralığı ve daha fazlası için ücretsiz hesap oluşturun.
                 </p>
                 <Link
                   to="?modal=register"
-                  className="mt-3 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                  className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-marka-hover"
                   onClick={() => setShowFilters(false)}
                 >
                   Kayıt Ol
@@ -385,7 +385,7 @@ export default function PublicMarketplace() {
               </button>
               <button
                 onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition hover:bg-indigo-700 active:scale-95"
+                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
               >
                 Sonuçları Göster
               </button>

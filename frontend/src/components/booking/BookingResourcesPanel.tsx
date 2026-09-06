@@ -107,7 +107,7 @@ export function BookingResourcesPanel({
                       href={res.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="truncate text-sm font-semibold text-indigo-600 hover:underline "
+                      className="truncate text-sm font-semibold text-marka hover:underline "
                     >
                       {res.title}
                     </a>
@@ -141,14 +141,14 @@ export function BookingResourcesPanel({
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
             <button
               onClick={() => setShowAddResource(true)}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 "
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka "
             >
               <span aria-hidden>🔗</span> Link Ekle
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadRes.isPending}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-60 "
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka disabled:opacity-60 "
             >
               <span aria-hidden>📎</span>
               {uploadRes.isPending ? "Yükleniyor…" : "Dosya Yükle"}
@@ -172,14 +172,14 @@ export function BookingResourcesPanel({
               placeholder="Başlık giriniz"
               value={resTitle}
               onChange={(e) => setResTitle(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
             />
             <input
               type="url"
               placeholder="Kaynak Linki (https://…)"
               value={resUrl}
               onChange={(e) => setResUrl(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
             />
             <div className="flex justify-end gap-2">
               <button
@@ -196,7 +196,7 @@ export function BookingResourcesPanel({
               <button
                 type="submit"
                 disabled={addRes.isPending || !resTitle.trim() || !resUrl.trim()}
-                className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Kaydet
               </button>

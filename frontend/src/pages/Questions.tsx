@@ -33,7 +33,7 @@ export default function Questions() {
                   <button
                     key={t.id}
                     onClick={() => setSelectedThreadId(t.id)}
-                    className={`text-left p-3 rounded-xl border transition ${selectedThreadId === t.id ? 'border-indigo-500 bg-indigo-50/50 ' : 'border-slate-200 hover:bg-slate-50 '}`}
+                    className={`text-left p-3 rounded-xl border transition ${selectedThreadId === t.id ? 'border-marka-mid bg-marka-soft/50 ' : 'border-slate-200 hover:bg-slate-50 '}`}
                   >
                     <div className="flex justify-between items-start mb-1">
                       <span className="text-xs font-medium text-slate-500 truncate max-w-[120px]">{t.tutor_name}</span>

@@ -126,7 +126,7 @@ export default function LibraryDetail() {
           </div>
           <Link
             to={ROUTES.libraries}
-            className="mt-4 inline-block text-sm font-semibold text-indigo-600 hover:underline"
+            className="mt-4 inline-block text-sm font-semibold text-marka hover:underline"
           >
             ← Tüm kütüphaneler
           </Link>
@@ -152,7 +152,7 @@ export default function LibraryDetail() {
 
           <Link
             to={ROUTES.libraries}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline "
+            className="inline-flex items-center gap-1 text-sm font-semibold text-marka hover:underline "
           >
             ← Tüm kütüphaneler
           </Link>
@@ -204,7 +204,7 @@ export default function LibraryDetail() {
                 <span className="text-sm font-semibold text-slate-700 ">
                   {avgLabel}
                 </span>
-                <span className="text-xs text-slate-400 underline-offset-2 group-hover:text-indigo-600 group-hover:underline ">
+                <span className="text-xs text-slate-400 underline-offset-2 group-hover:text-marka group-hover:underline ">
                   ({lib.rating_count} değerlendirme)
                 </span>
               </button>
@@ -219,7 +219,7 @@ export default function LibraryDetail() {
                 <button
                   type="button"
                   onClick={() => setShowReserve(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105"
+                  className="inline-flex items-center gap-2 rounded-full bg-marka px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-marka-hover focus:outline-none focus:ring-2 focus:ring-marka-focus focus:ring-offset-2 transition-transform hover:scale-105"
                 >
                   Rezervasyon Yap
                 </button>
@@ -287,7 +287,7 @@ export default function LibraryDetail() {
                   {lib.phone && (
                     <a
                       href={`tel:${lib.phone}`}
-                      className="flex items-center gap-3 text-sm text-indigo-600 transition hover:text-indigo-700 "
+                      className="flex items-center gap-3 text-sm text-marka transition hover:text-marka-hover "
                     >
                       <span className="text-slate-400 ">
                         <PhoneIcon />
@@ -333,7 +333,7 @@ export default function LibraryDetail() {
                         key={h.weekday}
                         className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
                           isToday
-                            ? "bg-indigo-50 font-semibold text-indigo-700 "
+                            ? "bg-marka-soft font-semibold text-marka-hover "
                             : "text-slate-600 "
                         }`}
                       >
@@ -619,7 +619,7 @@ function ReviewsModal({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 ">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-marka-line text-sm font-bold text-marka ">
                       {(r.client_name ?? "?").charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
@@ -713,7 +713,7 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
         rows={2}
         maxLength={2000}
         placeholder="Deneyimini paylaş (opsiyonel)…"
-        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-400 "
+        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid "
       />
       <button
         onClick={submit}

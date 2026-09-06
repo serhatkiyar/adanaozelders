@@ -24,7 +24,7 @@ export function QuestionModal({
   const ask = useAskQuestion();
 
   const inputCls =
-    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -69,7 +69,7 @@ export function QuestionModal({
         <p className="mt-1 text-sm text-slate-500 ">
           {tutorName} eğitmenine bu dersle ilgili soru yöneltebilirsin.
           {typeof remaining === "number" && (
-            <span className="font-medium text-indigo-600 ">
+            <span className="font-medium text-marka ">
               {" "}
               Kalan hakkın: {remaining}
             </span>
@@ -114,7 +114,7 @@ export function QuestionModal({
             <button
               type="submit"
               disabled={ask.isPending}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
             >
               {ask.isPending ? "Gönderiliyor…" : "Gönder"}
             </button>

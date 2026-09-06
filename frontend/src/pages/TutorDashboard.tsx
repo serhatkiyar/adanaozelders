@@ -29,7 +29,7 @@ type Tone = "amber" | "indigo" | "emerald" | "slate";
 
 const TONE: Record<Tone, { num: string; bg: string; ring: string }> = {
   amber:   { num: "text-amber-600",   bg: "bg-amber-50",   ring: "ring-amber-100"   },
-  indigo:  { num: "text-indigo-600",  bg: "bg-indigo-50",  ring: "ring-indigo-100"  },
+  indigo:  { num: "text-marka",  bg: "bg-marka-soft",  ring: "ring-marka/20"  },
   emerald: { num: "text-emerald-600", bg: "bg-emerald-50", ring: "ring-emerald-100" },
   slate:   { num: "text-slate-700",   bg: "bg-slate-50",   ring: "ring-slate-100"   },
 };
@@ -88,7 +88,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
         isPending
           ? "ring-amber-200 "
           : isAccepted
-          ? "ring-indigo-100 "
+          ? "ring-marka/20 "
           : "ring-slate-100 "
       }`}
     >
@@ -98,7 +98,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       >
         <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 hover:text-indigo-600 ">
+          <p className="truncate text-sm font-semibold text-slate-900 hover:text-marka ">
             {clientName}
           </p>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -116,7 +116,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       <div className="flex shrink-0 items-center gap-2">
         <Link
           to={ROUTES.lesson(booking.id)}
-          className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 "
+          className="text-xs font-semibold text-marka transition hover:text-marka-hover "
         >
           Detay →
         </Link>
@@ -159,7 +159,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
             <button
               disabled={busy}
               onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {complete.isPending ? "…" : "Tamamla"}
             </button>
@@ -280,18 +280,18 @@ export default function TutorDashboard() {
         {ilan?.status === TutorStatus.DRAFT && (
           <Link
             to={ROUTES.tutorOnboarding}
-            className="flex items-center justify-between gap-4 rounded-2xl bg-indigo-50 px-5 py-4 ring-1 ring-indigo-100 transition hover:bg-indigo-100/70"
+            className="flex items-center justify-between gap-4 rounded-2xl bg-marka-soft px-5 py-4 ring-1 ring-marka/20 transition hover:bg-marka-line/70"
           >
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-indigo-900">
+              <p className="text-sm font-semibold text-marka-soft-fg">
                 İlanın henüz yayında değil
               </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-indigo-700">
+              <p className="mt-0.5 text-xs leading-relaxed text-marka-hover">
                 Kaldığın yerden devam et; tamamlayınca öğrenciler seni aramada
                 bulmaya başlar.
               </p>
             </div>
-            <span className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white">
+            <span className="shrink-0 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white">
               Devam et
             </span>
           </Link>
@@ -380,12 +380,12 @@ export default function TutorDashboard() {
             ) : payout ? (
               <Link
                 to={ROUTES.profile}
-                className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-5 py-3.5 ring-1 ring-indigo-100 transition hover:bg-indigo-100 "
+                className="flex items-center justify-between gap-3 rounded-2xl bg-marka-soft px-5 py-3.5 ring-1 ring-marka/20 transition hover:bg-marka-line "
               >
-                <p className="text-sm font-medium text-indigo-800 ">
+                <p className="text-sm font-medium text-marka-soft-fg ">
                   💳 Ödemeleri alabilmek için <strong>ödeme bilgilerini</strong> ekle (IBAN + kimlik).
                 </p>
-                <span className="shrink-0 text-sm font-bold text-indigo-600 ">
+                <span className="shrink-0 text-sm font-bold text-marka ">
                   Ekle →
                 </span>
               </Link>

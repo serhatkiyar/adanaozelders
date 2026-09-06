@@ -74,7 +74,7 @@ function DeckRow({
     >
       <Link
         to={ROUTES.srsDeck(deck.id)}
-        className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 transition hover:text-indigo-600 "
+        className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 transition hover:text-marka "
       >
         {deck.name}
       </Link>
@@ -84,7 +84,7 @@ function DeckRow({
           to={ROUTES.srsStudy(deck.id)}
           className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
             due > 0
-              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              ? "bg-marka text-white hover:bg-marka-hover"
               : "text-slate-500 hover:bg-slate-100 "
           }`}
         >
@@ -221,7 +221,7 @@ function CreateDeckModal({
           <button
             type="submit"
             disabled={createDeck.isPending}
-            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+            className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
           >
             {createDeck.isPending ? "Oluşturuluyor…" : "Oluştur"}
           </button>
@@ -267,7 +267,7 @@ export default function SrsDecks() {
           <div>
             <Link
               to={ROUTES.learn}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+              className="text-sm font-medium text-marka hover:text-marka-hover "
             >
               ← Öğren
             </Link>
@@ -293,7 +293,7 @@ export default function SrsDecks() {
             </Link>
             <button
               onClick={() => setCreating(true)}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
             >
               Yeni Deste
             </button>
@@ -334,7 +334,7 @@ export default function SrsDecks() {
                     action={
                       <button
                         onClick={() => setCreating(true)}
-                        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                        className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
                       >
                         Deste Oluştur
                       </button>
@@ -368,7 +368,7 @@ export default function SrsDecks() {
                       </button>
                       <Link
                         to={ROUTES.srsStudy(deck.id)}
-                        className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700"
+                        className="rounded-xl bg-marka px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-marka-hover"
                       >
                         Çalış
                       </Link>
@@ -427,7 +427,7 @@ export default function SrsDecks() {
                       </button>
                       <Link
                         to={ROUTES.srsStudy(deck.id)}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 "
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-marka transition hover:bg-marka-soft "
                       >
                         Çalış
                       </Link>

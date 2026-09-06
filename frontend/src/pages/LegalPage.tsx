@@ -17,7 +17,7 @@ function Block({ block }: { block: LegalBlock }) {
       <ul className="mt-3 space-y-2">
         {block.items.map((item, i) => (
           <li key={i} className="flex gap-3 text-sm leading-relaxed text-slate-600 ">
-            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400 " />
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-marka-mid " />
             <span>{item}</span>
           </li>
         ))}
@@ -66,7 +66,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
                   to={LEGAL_ROUTES[d.id]}
                   className={`rounded-xl px-3.5 py-2 text-sm font-medium transition ${
                     d.id === doc.id
-                      ? "bg-indigo-600 text-white shadow-sm"
+                      ? "bg-marka text-white shadow-sm"
                       : "text-slate-600 hover:bg-slate-100 "
                   }`}
                 >
@@ -97,7 +97,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
                   <li key={s.id}>
                     <a
                       href={`#${s.id}`}
-                      className="text-sm text-indigo-600 transition hover:text-indigo-700 "
+                      className="text-sm text-marka transition hover:text-marka-hover "
                     >
                       {s.heading}
                     </a>
@@ -119,11 +119,11 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
               ))}
             </div>
 
-            <footer className="mt-4 rounded-2xl bg-indigo-50/60 p-5 text-sm text-slate-600 ring-1 ring-indigo-100 ">
+            <footer className="mt-4 rounded-2xl bg-marka-soft/60 p-5 text-sm text-slate-600 ring-1 ring-marka/20 ">
               Sorularınız için bize{" "}
               <a
                 href={`mailto:${OPERATOR.email}`}
-                className="font-semibold text-indigo-600 hover:text-indigo-700 "
+                className="font-semibold text-marka hover:text-marka-hover "
               >
                 {OPERATOR.email}
               </a>{" "}

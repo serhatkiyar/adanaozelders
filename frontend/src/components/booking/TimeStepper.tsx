@@ -31,7 +31,7 @@ export function TimeStepper({
   };
 
   const arrowBtn =
-    "rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:text-indigo-600 hover:ring-indigo-200 ";
+    "rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft hover:text-marka hover:ring-marka/20 ";
 
   return (
     <div className="flex items-center justify-center gap-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-4 ">

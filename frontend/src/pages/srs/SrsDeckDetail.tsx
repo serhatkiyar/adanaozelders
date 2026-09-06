@@ -198,7 +198,7 @@ function NoteForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
         >
           {pending ? "Kaydediliyor…" : initial ? "Kaydet" : "Not Ekle"}
         </button>
@@ -351,7 +351,7 @@ function AssignmentSection({ deckId }: { deckId: number }) {
         <button
           type="submit"
           disabled={assign.isPending || !picked}
-          className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60"
         >
           Ata
         </button>
@@ -538,7 +538,7 @@ export default function SrsDeckDetail() {
             action={
               <Link
                 to={ROUTES.srs}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
               >
                 Destelere dön
               </Link>
@@ -556,7 +556,7 @@ export default function SrsDeckDetail() {
           <div className="min-w-0">
             <Link
               to={ROUTES.srs}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+              className="text-sm font-medium text-marka hover:text-marka-hover "
             >
               ← Aralıklı Tekrar
             </Link>
@@ -571,7 +571,7 @@ export default function SrsDeckDetail() {
           </div>
           <Link
             to={ROUTES.srsStudy(deck.id)}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+            className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
           >
             Çalış
           </Link>
@@ -613,7 +613,7 @@ export default function SrsDeckDetail() {
               <button
                 onClick={saveLimits}
                 disabled={updateDeck.isPending}
-                className="mb-5 rounded-xl px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 "
+                className="mb-5 rounded-xl px-4 py-2 text-sm font-semibold text-marka transition hover:bg-marka-soft disabled:opacity-50 "
               >
                 Kaydet
               </button>
@@ -638,7 +638,7 @@ export default function SrsDeckDetail() {
             {isOwn && !adding && (
               <button
                 onClick={() => setAdding(true)}
-                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 "
+                className="text-sm font-semibold text-marka hover:text-marka-hover "
               >
                 + Not Ekle
               </button>
@@ -651,7 +651,7 @@ export default function SrsDeckDetail() {
               {cardsQuery.data?.items.length} tanesi listeleniyor.{" "}
               <Link
                 to={`${ROUTES.srsBrowser}?deste=${deckId}`}
-                className="font-semibold text-indigo-600 hover:text-indigo-700 "
+                className="font-semibold text-marka hover:text-marka-hover "
               >
                 Tümünü tarayıcıda aç
               </Link>

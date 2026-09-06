@@ -49,8 +49,8 @@ export function SavedAddressCard({
 
   const cardCls = `group flex items-start gap-3 rounded-xl border p-3 transition ${
     selected
-      ? "border-indigo-500 bg-indigo-50/80 shadow-sm "
-      : "border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/40 "
+      ? "border-marka-mid bg-marka-soft/80 shadow-sm "
+      : "border-slate-200 bg-white hover:border-marka-mid hover:bg-marka-soft/40 "
   }`;
 
   if (confirming) {
@@ -84,7 +84,7 @@ export function SavedAddressCard({
 
   const body = (
     <>
-      <span className="mt-0.5 shrink-0 rounded-lg bg-indigo-100 p-2 text-indigo-600 ">
+      <span className="mt-0.5 shrink-0 rounded-lg bg-marka-line p-2 text-marka ">
         {PinIcon}
       </span>
       <span className="min-w-0">

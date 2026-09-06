@@ -70,7 +70,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
         {/* Başlık + Durum */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-base ">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-marka-line text-base ">
               📚
             </span>
             <div>
@@ -175,7 +175,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
               type="button"
               onClick={handleAccept}
               disabled={accept.isPending || reject.isPending}
-              className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+              className="flex-1 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:pointer-events-none disabled:opacity-50"
             >
               Onayla
             </button>
@@ -215,7 +215,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
         <button
           type="button"
           onClick={() => navigate(ROUTES.lesson(meta.booking_id))}
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
+          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium text-marka transition hover:bg-marka-soft "
         >
           Detayları gör
           <svg

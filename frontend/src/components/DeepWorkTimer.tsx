@@ -6,7 +6,7 @@ import { formatClock, MODE_LABEL, type TimerMode } from "@/lib/deepwork";
 import { playChime, notify } from "@/lib/timerSound";
 
 const ACCENT: Record<TimerMode, { dot: string; text: string }> = {
-  focus: { dot: "bg-indigo-500", text: "text-indigo-600 " },
+  focus: { dot: "bg-marka-mid", text: "text-marka " },
   short: { dot: "bg-emerald-500", text: "text-emerald-600 " },
   long: { dot: "bg-amber-500", text: "text-amber-600 " },
 };
@@ -89,7 +89,7 @@ export function DeepWorkTimer() {
         <button
           onClick={running ? pause : start}
           className={`flex h-10 w-10 items-center justify-center rounded-full text-white shadow transition active:scale-95 ${
-            running ? "bg-slate-700 hover:bg-slate-600" : "bg-indigo-600 hover:bg-indigo-700"
+            running ? "bg-slate-700 hover:bg-slate-600" : "bg-marka hover:bg-marka-hover"
           }`}
           title={running ? "Duraklat" : "Başlat"}
         >

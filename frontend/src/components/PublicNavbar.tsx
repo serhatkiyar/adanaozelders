@@ -76,14 +76,14 @@ export function PublicNavbar({
             {kayitAcik && (
               <Link
                 to="?modal=register&role=tutor"
-                className="btn-neon-hover rounded-full px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 sm:px-5"
+                className="btn-neon-hover rounded-full px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-marka-hover active:scale-95 sm:px-5"
               >
                 Ders Ver
               </Link>
             )}
             <Link
               to="?modal=login"
-              className="btn-neon-hover rounded-full px-3 py-2.5 text-sm sm:px-5 font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 "
+              className="btn-neon-hover rounded-full px-3 py-2.5 text-sm sm:px-5 font-semibold text-slate-700 transition hover:text-marka-hover active:scale-95 "
             >
               Giriş Yap
             </Link>

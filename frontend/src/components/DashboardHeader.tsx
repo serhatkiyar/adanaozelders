@@ -18,14 +18,14 @@ import type { NavItem } from "@/lib/nav";
 const navIconClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg p-2 transition ${
     isActive
-      ? "bg-indigo-600 text-white"
+      ? "bg-marka text-white"
       : "text-slate-600 hover:bg-slate-100 "
   }`;
 
 const menuItemClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
     isActive
-      ? "bg-indigo-50 text-indigo-700 "
+      ? "bg-marka-soft text-marka-hover "
       : "text-slate-700 hover:bg-slate-50 "
   }`;
 
@@ -244,7 +244,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
                 className={({ isActive }) =>
                   `rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                     isActive
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-marka text-white"
                       : "text-slate-600 hover:bg-slate-100 "
                   }`
                 }
@@ -262,7 +262,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               aria-label="Hesap menüsü"
               aria-expanded={accountOpen}
               onClick={() => setAccountOpen((o) => !o)}
-              className="rounded-full ring-2 ring-transparent transition hover:ring-indigo-200 "
+              className="rounded-full ring-2 ring-transparent transition hover:ring-marka/20 "
             >
               <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="sm" />
             </button>

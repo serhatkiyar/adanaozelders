@@ -103,7 +103,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
               className={[
                 "rounded-full px-4 py-2 text-sm font-medium ring-1 transition-colors",
                 selected
-                  ? "bg-indigo-50 text-indigo-700 ring-indigo-500 "
+                  ? "bg-marka-soft text-marka-hover ring-marka-focus "
                   : "text-slate-600 ring-slate-200 hover:text-slate-900 ",
               ].join(" ")}
             >
@@ -130,7 +130,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
                   className={[
                     "rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition-colors",
                     selected
-                      ? "bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500 "
+                      ? "bg-marka-soft text-marka-hover ring-2 ring-marka-focus "
                       : "text-slate-600 ring-slate-200 hover:ring-slate-300 ",
                   ].join(" ")}
                 >
@@ -147,7 +147,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
               maxLength={500}
               rows={3}
               placeholder="Teslimatla ilgili ayrıntıyı yazabilirsin."
-              className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-transparent px-3 py-2 text-sm font-normal text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+              className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-transparent px-3 py-2 text-sm font-normal text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
             />
           </label>
           <p className="mt-1 text-right text-xs tabular-nums text-slate-400 ">
@@ -160,7 +160,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
         <button
           type="submit"
           disabled={!valid || submitFeedback.isPending}
-          className="mt-4 rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 "
+          className="mt-4 rounded-full bg-marka px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-40 "
         >
           {submitFeedback.isPending ? "Gönderiliyor…" : "Gönder"}
         </button>

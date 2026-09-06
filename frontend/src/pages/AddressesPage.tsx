@@ -26,7 +26,7 @@ export default function AddressesPage() {
     <DashboardShell title="Adreslerim" navItems={STUDENT_NAV}>
       <div className="mx-auto max-w-4xl">
         <nav className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 ">
-          <Link to={ROUTES.profile} className="hover:text-indigo-600 ">
+          <Link to={ROUTES.profile} className="hover:text-marka ">
             Hesabım
           </Link>
           <span className="text-slate-300 ">/</span>
@@ -38,7 +38,7 @@ export default function AddressesPage() {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
               <path d="M12 5v14M5 12h14" />
@@ -62,7 +62,7 @@ export default function AddressesPage() {
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="font-semibold text-slate-900 ">{a.title}</h2>
                   {a.is_default && (
-                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 ">
+                    <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-medium text-marka ">
                       Varsayılan
                     </span>
                   )}
@@ -86,7 +86,7 @@ export default function AddressesPage() {
                   <button
                     type="button"
                     onClick={() => setEditing(a)}
-                    className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
+                    className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-marka-mid hover:text-marka "
                   >
                     Düzenle
                   </button>
@@ -99,7 +99,7 @@ export default function AddressesPage() {
                           { onSuccess: () => toast.success("Varsayılan adres güncellendi") }
                         )
                       }
-                      className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
+                      className="rounded-full border border-slate-200 px-3 py-1 text-slate-700 transition-colors hover:border-marka-mid hover:text-marka "
                     >
                       Varsayılan yap
                     </button>

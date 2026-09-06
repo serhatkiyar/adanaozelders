@@ -44,7 +44,7 @@ export function KebabMenu({
           e.stopPropagation();
           setOpen((o) => !o);
         }}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-indigo-600 "
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-marka "
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="12" cy="5" r="1.6" />

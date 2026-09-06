@@ -52,7 +52,7 @@ export default function OperatorHome() {
             <div className="text-right">
               <Link
                 to={ROUTES.balance}
-                className="text-xs font-semibold text-indigo-600 hover:underline "
+                className="text-xs font-semibold text-marka hover:underline "
               >
                 Bakiye & işlem dökümü →
               </Link>
@@ -113,7 +113,7 @@ function OperatorHero({
 
       <div className="px-5 pb-5">
         <div className="-mt-10 flex items-end gap-4">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-md ring-4 ring-white ">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-marka text-2xl font-bold text-white shadow-md ring-4 ring-white ">
             {lib?.logo_url ? (
               <img src={lib.logo_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -140,7 +140,7 @@ function OperatorHero({
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Link
             to={ROUTES.operatorLibrary}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
@@ -309,7 +309,7 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
         <h2 className="text-base font-bold text-slate-900 ">Bugün</h2>
         <Link
           to={ROUTES.operatorSessions}
-          className="text-xs font-semibold text-indigo-600 hover:underline "
+          className="text-xs font-semibold text-marka hover:underline "
         >
           Oturumlar →
         </Link>
@@ -364,7 +364,7 @@ function OperationsTeaser({ libraryId: _libraryId }: { libraryId: number }) {
   return (
     <Link
       to={ROUTES.operatorSessions}
-      className="flex items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-indigo-300 "
+      className="flex items-center justify-between gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-marka-focus "
     >
       <div className="min-w-0">
         <h2 className="text-base font-bold text-slate-900 ">Oturumlar</h2>

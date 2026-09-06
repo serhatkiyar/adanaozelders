@@ -85,7 +85,7 @@ export function NotificationsBell() {
               <button
                 type="button"
                 onClick={() => markAll.mutate()}
-                className="text-xs font-medium text-indigo-600 transition hover:text-indigo-700 "
+                className="text-xs font-medium text-marka transition hover:text-marka-hover "
               >
                 Tümünü okundu işaretle
               </button>
@@ -119,12 +119,12 @@ export function NotificationsBell() {
                       type="button"
                       onClick={() => handleItem(n)}
                       className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${
-                        n.is_read ? "" : "bg-indigo-50/50 "
+                        n.is_read ? "" : "bg-marka-soft/50 "
                       }`}
                     >
                       <span
                         className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                          n.is_read ? "bg-transparent" : "bg-indigo-500"
+                          n.is_read ? "bg-transparent" : "bg-marka-mid"
                         }`}
                       />
                       <span className="min-w-0 flex-1">
@@ -147,7 +147,7 @@ export function NotificationsBell() {
             <Link
               to={ROUTES.notifications}
               onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-indigo-600 transition hover:bg-slate-50 "
+              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-marka transition hover:bg-slate-50 "
             >
               Tüm bildirimleri gör
               <svg

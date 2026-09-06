@@ -18,12 +18,12 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
   return (
     <Link
       to={ROUTES.studentProfile(client.id)}
-      className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-indigo-200 "
+      className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-marka/20 "
     >
       <div className="flex items-start gap-3">
         <Avatar name={client.full_name} avatar_url={client.avatar_url} />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-indigo-700 ">
+          <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-marka-hover ">
             {client.full_name}
           </h3>
         </div>

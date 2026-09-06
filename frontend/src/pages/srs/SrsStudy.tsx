@@ -55,11 +55,11 @@ function ClozeText({
         s.kind === "plain" ? (
           <span key={i}>{s.text}</span>
         ) : s.kind === "blank" ? (
-          <span key={i} className="font-semibold text-indigo-600 ">
+          <span key={i} className="font-semibold text-marka ">
             {s.text}
           </span>
         ) : (
-          <span key={i} className="rounded bg-indigo-100 px-1 font-semibold text-indigo-700 ">
+          <span key={i} className="rounded bg-marka-line px-1 font-semibold text-marka-hover ">
             {s.text}
           </span>
         )
@@ -276,7 +276,7 @@ export default function SrsStudy() {
         <div className="flex items-center justify-between">
           <Link
             to={ROUTES.srs}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+            className="text-sm font-medium text-marka hover:text-marka-hover "
           >
             ← Desteler
           </Link>
@@ -327,7 +327,7 @@ export default function SrsStudy() {
               action={
                 <Link
                   to={ROUTES.srs}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
                 >
                   Destelere dön
                 </Link>
@@ -351,10 +351,10 @@ export default function SrsStudy() {
                   {!flipped ? (
                     <button
                       onClick={flip}
-                      className="w-full rounded-xl bg-indigo-600 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                      className="w-full rounded-xl bg-marka px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-marka-hover"
                     >
                       Cevabı Göster
-                      <span className="ml-2 hidden text-indigo-200 sm:inline">
+                      <span className="ml-2 hidden text-marka-fg sm:inline">
                         boşluk
                       </span>
                     </button>

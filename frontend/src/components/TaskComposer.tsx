@@ -83,7 +83,7 @@ function Pop({ open, onClose, children }: { open: boolean; onClose: () => void; 
 }
 
 const chipCls = "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 ";
-const chipActiveCls = "border-indigo-300 bg-indigo-50 text-indigo-700 ";
+const chipActiveCls = "border-marka-mid bg-marka-soft text-marka-hover ";
 
 function Flag({ p }: { p: TaskPriority }) {
   return (
@@ -216,7 +216,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
               <button type="button" onClick={() => { setDueIso(offsetIso(1)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 ">Yarın</button>
               <button type="button" onClick={() => { setDueIso(offsetIso(7)); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 ">Gelecek hafta</button>
               <input type="datetime-local" value={isoToLocalInput(dueIso)} onChange={(e) => setDueIso(e.target.value ? localInputToIso(e.target.value) : null)}
-                className="mt-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 " />
+                className="mt-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 outline-none focus:border-marka-mid " />
               {dueIso && <button type="button" onClick={() => { setDueIso(null); setMenu(null); }} className="rounded-lg px-2 py-1.5 text-left text-xs font-medium text-red-500 hover:bg-red-50 ">Tarihi kaldır</button>}
             </div>
           </Pop>
@@ -252,7 +252,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
                 const on = labelIds.includes(l.id);
                 return (
                   <button key={l.id} type="button" onClick={() => toggleLabel(l.id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium hover:bg-slate-100 ">
-                    <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${on ? "border-indigo-500 bg-indigo-500 text-white" : "border-slate-300 "}`}>
+                    <span className={`flex h-3.5 w-3.5 items-center justify-center rounded border ${on ? "border-marka-mid bg-marka-mid text-white" : "border-slate-300 "}`}>
                       {on && <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                     </span>
                     <span style={{ color: l.color || LABEL_COLOR }}>@{l.name}</span>
@@ -263,7 +263,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
             <div className="mt-1 flex gap-1 border-t border-slate-100 pt-1.5 ">
               <input value={newLabel} maxLength={60} onChange={(e) => setNewLabel(e.target.value)} placeholder="Yeni etiket…"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewLabel(); } }}
-                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-indigo-400 " />
+                className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-marka-mid " />
               <button type="button" onClick={addNewLabel} className="rounded-lg bg-slate-100 px-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 ">Ekle</button>
             </div>
           </Pop>
@@ -320,7 +320,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
 
         <div className="flex items-center gap-2">
           <button type="button" onClick={onCancel} className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 ">İptal</button>
-          <button type="submit" disabled={pending || !title.trim()} className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">Görev ekle</button>
+          <button type="submit" disabled={pending || !title.trim()} className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50">Görev ekle</button>
         </div>
       </div>
     </form>

@@ -266,7 +266,7 @@ function PanelAction({
       <span
         className={`flex h-11 w-11 items-center justify-center rounded-full text-lg transition ${
           primary
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
+            ? "bg-marka text-white hover:bg-marka-hover"
             : "bg-slate-100 text-slate-700 hover:bg-slate-200 "
         }`}
       >

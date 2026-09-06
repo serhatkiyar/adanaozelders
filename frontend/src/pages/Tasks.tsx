@@ -108,12 +108,12 @@ const SORT_OPTS: { value: TaskSort; label: string }[] = [
 const DUE_CLS: Record<DueGroup, string> = {
   overdue: "bg-red-50 text-red-600 ",
   today: "bg-amber-50 text-amber-600 ",
-  upcoming: "bg-indigo-50 text-indigo-600 ",
+  upcoming: "bg-marka-soft text-marka ",
   none: "",
 };
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 const hhmm = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const shortDate = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" });
@@ -228,7 +228,7 @@ function ListModal({ list, onClose, onCreated }: { list?: TaskList | null; onClo
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ">İptal</button>
-            <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60">
+            <button type="submit" disabled={pending} className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60">
               {pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Oluştur"}
             </button>
           </div>
@@ -281,7 +281,7 @@ function LabelModal({ label, onClose }: { label?: TaskLabel | null; onClose: () 
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 ">İptal</button>
-            <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Oluştur"}</button>
+            <button type="submit" disabled={pending} className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white hover:bg-marka-hover disabled:opacity-60">{pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Oluştur"}</button>
           </div>
         </form>
       </div>
@@ -396,7 +396,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
                     type="button"
                     onClick={() => setPriority(p)}
                     className={`flex flex-1 items-center justify-center gap-1 rounded-lg border py-2 text-xs font-semibold transition ${
-                      priority === p ? "border-indigo-400 bg-indigo-50 " : "border-slate-200 "
+                      priority === p ? "border-marka-mid bg-marka-soft " : "border-slate-200 "
                     }`}
                   >
                     <PriorityFlag p={p} className="h-3.5 w-3.5" />
@@ -493,7 +493,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
             <div className="space-y-1.5">
               {subtasks.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 ">
-                  <input type="checkbox" checked={s.is_done} onChange={() => updateSub.mutate({ id: s.id, payload: { is_done: !s.is_done } })} className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                  <input type="checkbox" checked={s.is_done} onChange={() => updateSub.mutate({ id: s.id, payload: { is_done: !s.is_done } })} className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus" />
                   <span className={`flex-1 text-sm ${s.is_done ? "text-slate-400 line-through" : "text-slate-700 "}`}>{s.title}</span>
                   <button onClick={() => deleteSub.mutate(s.id)} aria-label="Sil" className="rounded p-1 text-slate-400 hover:text-red-500">
                     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
@@ -512,7 +512,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
           <button onClick={() => del.mutate(task.id, { onSuccess: () => { toast.success("Görev silindi."); onClose(); }, onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")) })} disabled={del.isPending} className="rounded-xl px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 ">Sil</button>
           <div className="flex gap-2">
             <button onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 ">Kapat</button>
-            <button onClick={save} disabled={update.isPending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{update.isPending ? "Kaydediliyor…" : "Kaydet"}</button>
+            <button onClick={save} disabled={update.isPending} className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white hover:bg-marka-hover disabled:opacity-60">{update.isPending ? "Kaydediliyor…" : "Kaydet"}</button>
           </div>
         </div>
       </div>
@@ -554,12 +554,12 @@ function TaskRow({
       style={{ marginLeft: depth * 26 }}
       className={`group relative flex items-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 transition-colors ${
         dropMode === "child"
-          ? "border-transparent ring-2 ring-inset ring-indigo-400"
+          ? "border-transparent ring-2 ring-inset ring-marka-focus"
           : "border-slate-100 hover:bg-slate-50 "
       }`}
     >
       {/* Kardeş bırakma çizgisi (layout shift yok) */}
-      {dropMode === "sibling" && <span className="pointer-events-none absolute -top-1 left-0 right-0 h-0.5 rounded bg-indigo-400" />}
+      {dropMode === "sibling" && <span className="pointer-events-none absolute -top-1 left-0 right-0 h-0.5 rounded bg-marka-mid" />}
 
       {/* Tutma tutamacı — rezerve gutter, hover'da görünür */}
       <span className={`flex w-4 flex-none justify-center text-slate-300 ${draggable ? "cursor-grab opacity-0 group-hover:opacity-100" : "opacity-0"}`} aria-hidden>
@@ -596,7 +596,7 @@ function TaskRow({
           {!done && <DueChip iso={task.due_at} recurrence={task.recurrence} />}
           {task.labels.map((l) => (<LabelChip key={l.id} label={l} />))}
           {childCount > 0 && (
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600 ">⊟ {childCount} alt görev</span>
+            <span className="rounded-full bg-marka-soft px-2 py-0.5 text-[11px] font-medium text-marka ">⊟ {childCount} alt görev</span>
           )}
           {task.subtasks.length > 0 && (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 ">☑ {subDone}/{task.subtasks.length}</span>
@@ -609,7 +609,7 @@ function TaskRow({
 
       {/* Düzenleme ikonları — hover'da, layout shift yok */}
       <div className="flex flex-none items-center gap-0.5 text-slate-400 opacity-0 transition group-hover:opacity-100">
-        <button onClick={onOpen} aria-label="Düzenle" className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-indigo-600 ">
+        <button onClick={onOpen} aria-label="Düzenle" className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-marka ">
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
         </button>
         <button onClick={() => { if (!window.confirm(`"${task.title}" görevi${childCount > 0 ? " ve alt görevleri" : ""} silinsin mi?`)) return; del.mutate(task.id, { onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")) }); }} aria-label="Sil" className="rounded-lg p-1.5 hover:bg-slate-100 hover:text-red-500 ">
@@ -797,7 +797,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
 
         <form onSubmit={submit} className="mt-4 space-y-4">
           {/* Filtre Yardımcısı (doğal dil → kriter) */}
-          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3 ">
+          <div className="rounded-2xl border border-marka-line bg-marka-soft/60 p-3 ">
             <div className="flex items-center gap-2">
               <span className="text-base">✨</span>
               <span className="text-sm font-semibold text-slate-800 ">Filtre Yardımcısı</span>
@@ -807,7 +807,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
               <input value={assist} onChange={(e) => setAssist(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runAssist(); } }}
                 placeholder="Filtreyi tarif et…" className={inputCls} />
-              <button type="button" onClick={runAssist} className="flex-none rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-700">Dene</button>
+              <button type="button" onClick={runAssist} className="flex-none rounded-xl bg-marka px-4 text-sm font-semibold text-white transition hover:bg-marka-hover">Dene</button>
             </div>
           </div>
 
@@ -831,7 +831,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
               </div>
             </div>
             <button type="button" onClick={() => setIsFavorite((v) => !v)} className="flex items-center gap-2 pb-1">
-              <span className={`relative h-5 w-9 flex-none rounded-full transition ${isFavorite ? "bg-indigo-600" : "bg-slate-300 "}`}>
+              <span className={`relative h-5 w-9 flex-none rounded-full transition ${isFavorite ? "bg-marka" : "bg-slate-300 "}`}>
                 <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${isFavorite ? "left-[18px]" : "left-0.5"}`} />
               </span>
               <span className="text-sm font-medium text-slate-600 ">Favorilere ekle</span>
@@ -852,7 +852,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
                 const on = criteria.priorities.includes(p);
                 return (
                   <button key={p} type="button" onClick={() => togglePriority(p)}
-                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 "}`}>
+                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-marka-mid bg-marka-soft text-marka-hover " : "border-slate-200 text-slate-500 "}`}>
                     <PriorityFlag p={p} className="h-3.5 w-3.5" />{PRIO[p].label}
                   </button>
                 );
@@ -864,7 +864,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
                 const on = criteria.due.includes(d.key);
                 return (
                   <button key={d.key} type="button" onClick={() => toggleDue(d.key)}
-                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 "}`}>{d.label}</button>
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-marka-mid bg-marka-soft text-marka-hover " : "border-slate-200 text-slate-500 "}`}>{d.label}</button>
                 );
               })}
             </div>
@@ -884,7 +884,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
             <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 ">
               <span className="w-16 flex-none text-xs font-semibold text-slate-400">Sırala</span>
               <select value={criteria.sort} onChange={(e) => setCriteria((c) => ({ ...c, sort: e.target.value as TaskSort }))}
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-indigo-400 ">
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-marka-mid ">
                 {SORT_OPTS.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
               </select>
             </div>
@@ -894,7 +894,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-xs font-medium text-slate-500 ">Önizleme</span>
-              <span className="text-xs font-semibold text-indigo-600 ">{preview.length} görev</span>
+              <span className="text-xs font-semibold text-marka ">{preview.length} görev</span>
             </div>
             <div className="space-y-1 rounded-xl border border-slate-200 bg-white p-2 ">
               {preview.length === 0 ? (
@@ -913,7 +913,7 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
 
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ">İptal</button>
-            <button type="submit" disabled={pending} className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60">{pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Ekle"}</button>
+            <button type="submit" disabled={pending} className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60">{pending ? "Kaydediliyor…" : isEdit ? "Kaydet" : "Ekle"}</button>
           </div>
         </form>
       </div>
@@ -951,7 +951,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
           const on = criteria.priorities.includes(p);
           return (
             <button key={p} type="button" onClick={() => togglePriority(p)}
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 hover:border-slate-300 "}`}>
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${on ? "border-marka-mid bg-marka-soft text-marka-hover " : "border-slate-200 text-slate-500 hover:border-slate-300 "}`}>
               <PriorityFlag p={p} className="h-3.5 w-3.5" />
               {PRIO[p].label}
             </button>
@@ -966,7 +966,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
           const on = criteria.due.includes(d.key);
           return (
             <button key={d.key} type="button" onClick={() => toggleDue(d.key)}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-indigo-400 bg-indigo-50 text-indigo-700 " : "border-slate-200 text-slate-500 hover:border-slate-300 "}`}>
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${on ? "border-marka-mid bg-marka-soft text-marka-hover " : "border-slate-200 text-slate-500 hover:border-slate-300 "}`}>
               {d.label}
             </button>
           );
@@ -994,7 +994,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
       <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 ">
         <span className="w-16 flex-none text-xs font-semibold text-slate-400">Sırala</span>
         <select value={criteria.sort} onChange={(e) => setCriteria({ ...criteria, sort: e.target.value as TaskSort })}
-          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-indigo-400 ">
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 outline-none focus:border-marka-mid ">
           {SORT_OPTS.map((s) => (<option key={s.value} value={s.value}>{s.label}</option>))}
         </select>
 
@@ -1010,7 +1010,7 @@ function FilterBar({ criteria, setCriteria, labels, dirty, activeFilterId, saveP
             </button>
           )}
           {facets > 0 && (
-            <button type="button" onClick={onSaveNew} disabled={savePending} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60">
+            <button type="button" onClick={onSaveNew} disabled={savePending} className="rounded-lg bg-marka px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-marka-hover disabled:opacity-60">
               {activeFilterId !== null ? "Farklı kaydet" : "Filtreyi kaydet"}
             </button>
           )}
@@ -1047,7 +1047,7 @@ function FiltersAndLabelsPanel({
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
   );
   const AddBtn = ({ onClick, label }: { onClick: () => void; label: string }) => (
-    <button onClick={onClick} aria-label={label} className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 ">
+    <button onClick={onClick} aria-label={label} className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-marka ">
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
     </button>
   );
@@ -1074,7 +1074,7 @@ function FiltersAndLabelsPanel({
                 </button>
                 <div className="flex flex-none items-center gap-0.5 text-slate-400 opacity-0 transition group-hover:opacity-100">
                   <FavStar on={f.is_favorite} onClick={() => onToggleFilterFav(f)} />
-                  <button onClick={() => onEditFilter(f)} aria-label="Düzenle" className="rounded p-1 hover:text-indigo-600"><Pencil /></button>
+                  <button onClick={() => onEditFilter(f)} aria-label="Düzenle" className="rounded p-1 hover:text-marka"><Pencil /></button>
                   <button onClick={() => onDeleteFilter(f)} aria-label="Sil" className="rounded p-1 hover:text-red-500"><Trash /></button>
                 </div>
               </div>
@@ -1106,7 +1106,7 @@ function FiltersAndLabelsPanel({
                   {count > 0 && <span className="flex-none text-xs font-semibold text-slate-400 group-hover:hidden">{count}</span>}
                   <div className="flex flex-none items-center gap-0.5 text-slate-400 opacity-0 transition group-hover:opacity-100">
                     <FavStar on={l.is_favorite} onClick={() => onToggleLabelFav(l)} />
-                    <button onClick={() => onEditLabel(l)} aria-label="Düzenle" className="rounded p-1 hover:text-indigo-600"><Pencil /></button>
+                    <button onClick={() => onEditLabel(l)} aria-label="Düzenle" className="rounded p-1 hover:text-marka"><Pencil /></button>
                     <button onClick={() => onDeleteLabel(l)} aria-label="Sil" className="rounded p-1 hover:text-red-500"><Trash /></button>
                   </div>
                 </div>
@@ -1359,8 +1359,8 @@ export default function Tasks() {
         {/* Kenar çubuğu */}
         <aside className="lg:w-64 lg:flex-none">
           {/* Görev Ekle (Todoist tarzı: renkli artı + metin, dolu arka plan yok) */}
-          <button onClick={() => setComposerOpen(true)} className="group mb-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-slate-100 ">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white transition group-hover:bg-indigo-700">
+          <button onClick={() => setComposerOpen(true)} className="group mb-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-marka transition hover:bg-slate-100 ">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-marka text-white transition group-hover:bg-marka-hover">
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
             </span>
             Görev Ekle
@@ -1379,7 +1379,7 @@ export default function Tasks() {
               const active = !filterMode && selection.kind === "list" && selection.id === inbox.id;
               return (
                 <button onClick={() => selectNav({ kind: "list", id: inbox.id })}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-marka text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
                   <svg className="h-4 w-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M2 13h4l2 4h8l2-4h4M5 5h14l3 8v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6L5 5Z" /></svg>
                   <span className="flex-1 text-left">Gelen Kutusu</span>
                   {inbox.active_count > 0 && (
@@ -1393,7 +1393,7 @@ export default function Tasks() {
               const badge = v.view === "today" ? todayCount : v.view === "upcoming" ? upcomingCount : 0;
               return (
                 <button key={v.view} onClick={() => selectNav({ kind: "view", view: v.view })}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${active ? "bg-marka text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
                   <svg className="h-4 w-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d={v.icon} /></svg>
                   <span className="flex-1 text-left">{v.label}</span>
                   {badge > 0 && (
@@ -1404,7 +1404,7 @@ export default function Tasks() {
             })}
             {/* Filtreler ve Etiketler — yönetim sayfasını açar */}
             <button onClick={() => selectNav({ kind: "manage" })}
-              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${!filterMode && selection.kind === "manage" ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
+              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${!filterMode && selection.kind === "manage" ? "bg-marka text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 "}`}>
               <svg className="h-4 w-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 6a1 1 0 0 0-1 1v1.5a1 1 0 0 0 .3.7l5.4 5.3a1 1 0 0 1 .3.7V20l4-2.5v-3.6a1 1 0 0 1 .3-.7l5.4-5.3a1 1 0 0 0 .3-.7V7a1 1 0 0 0-1-1" /></svg>
               <span className="flex-1 text-left">Filtreler ve Etiketler</span>
             </button>
@@ -1468,7 +1468,7 @@ export default function Tasks() {
                 <svg className={`h-3 w-3 transition ${projOpen ? "rotate-90" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                 Projelerim
               </button>
-              <button onClick={() => setCreatingList(true)} aria-label="Yeni proje" className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-indigo-600 ">
+              <button onClick={() => setCreatingList(true)} aria-label="Yeni proje" className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-marka ">
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               </button>
             </div>
@@ -1496,7 +1496,7 @@ export default function Tasks() {
                       </button>
                       <div className="flex flex-none items-center opacity-0 transition group-hover:opacity-100">
                         <FavStar on={l.is_favorite} onClick={() => toggleListFav(l)} />
-                        <button onClick={() => setEditingList(l)} aria-label="Düzenle" className="rounded p-1 text-slate-400 hover:text-indigo-600">
+                        <button onClick={() => setEditingList(l)} aria-label="Düzenle" className="rounded p-1 text-slate-400 hover:text-marka">
                           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
                         </button>
                         <button onClick={() => { if (!window.confirm(`"${l.name}" projesi ve görevleri silinsin mi?`)) return; deleteList.mutate(l.id, { onSuccess: () => { toast.success("Proje silindi."); if (active) selectNav({ kind: "view", view: "today" }); }, onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")) }); }} aria-label="Sil" className="rounded p-1 text-slate-400 hover:text-red-500">
@@ -1517,7 +1517,7 @@ export default function Tasks() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900 ">{headerTitle}</h1>
             {filterMode && (
-              <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600 ">
+              <span className="rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-semibold text-marka ">
                 {filteredTasks.length} sonuç
               </span>
             )}
@@ -1579,7 +1579,7 @@ export default function Tasks() {
               <div className="space-y-2.5">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="h-16 animate-pulse rounded-2xl bg-slate-100 " />))}</div>
             ) : visibleTasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-2xl ">✓</div>
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-marka-soft text-2xl ">✓</div>
                 <p className="mt-4 text-sm font-medium text-slate-700 ">
                   {selection.kind === "view" && selection.view === "completed" ? "Henüz tamamlanan görev yok." : "Görev yok, harika!"}
                 </p>
@@ -1609,8 +1609,8 @@ export default function Tasks() {
           {/* Görev ekleme tetikleyicisi — composer ayrı pencerede (modal) açılır */}
           {!filterMode && selection.kind !== "manage" && !(selection.kind === "view" && selection.view === "completed") && (
             <div className="mt-4">
-              <button onClick={() => setComposerOpen(true)} className="group flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-slate-400 transition hover:text-indigo-600">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full text-indigo-500 transition group-hover:bg-indigo-600 group-hover:text-white">
+              <button onClick={() => setComposerOpen(true)} className="group flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-slate-400 transition hover:text-marka">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full text-marka transition group-hover:bg-marka group-hover:text-white">
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
                 </span>
                 Görev ekle

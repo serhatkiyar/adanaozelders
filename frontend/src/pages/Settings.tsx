@@ -31,7 +31,7 @@ type CategoryKey = "personal" | "security" | "payments" | "appearance" | "addres
 import { PhoneEditor } from "@/components/PhoneEditor";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 const fieldLabelCls =
   "mb-1.5 block text-xs font-medium text-slate-500 ";
@@ -306,7 +306,7 @@ function LockedChangeNote({ children }: { children: React.ReactNode }) {
 
 function PendingChangeNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3 rounded-xl bg-indigo-50 px-3 py-2 text-xs leading-relaxed text-indigo-700 ">
+    <div className="mb-3 rounded-xl bg-marka-soft px-3 py-2 text-xs leading-relaxed text-marka-hover ">
       {children}
     </div>
   );

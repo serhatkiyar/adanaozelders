@@ -70,7 +70,7 @@ export default function ContactPage() {
             Sorunun cevabı{" "}
             <Link
               to={ROUTES.faq}
-              className="font-medium text-indigo-600 underline-offset-2 hover:underline "
+              className="font-medium text-marka underline-offset-2 hover:underline "
             >
               sıkça sorulan sorularda
             </Link>{" "}
@@ -112,7 +112,7 @@ export default function ContactPage() {
                     maxLength={100}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   />
                 </label>
                 <label className="block">
@@ -124,7 +124,7 @@ export default function ContactPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   />
                 </label>
               </div>
@@ -140,7 +140,7 @@ export default function ContactPage() {
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="Örn. 1024 numaralı siparişim hakkında"
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 />
               </label>
 
@@ -155,7 +155,7 @@ export default function ContactPage() {
                   rows={6}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                  className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 />
                 <span className="mt-1 block text-xs text-slate-400 ">
                   {message.length}/4000
@@ -165,7 +165,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={mutation.isPending}
-                className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {mutation.isPending ? "Gönderiliyor…" : "Mesajı gönder"}
               </button>
@@ -190,7 +190,7 @@ export default function ContactPage() {
                 <dd>
                   <a
                     href={`mailto:${OPERATOR.email}`}
-                    className="text-indigo-600 underline-offset-2 hover:underline "
+                    className="text-marka underline-offset-2 hover:underline "
                   >
                     {OPERATOR.email}
                   </a>
@@ -202,7 +202,7 @@ export default function ContactPage() {
                 <dd>
                   <a
                     href={`tel:${OPERATOR.phoneHref}`}
-                    className="text-indigo-600 underline-offset-2 hover:underline "
+                    className="text-marka underline-offset-2 hover:underline "
                   >
                     {OPERATOR.phone}
                   </a>

@@ -85,7 +85,7 @@ function RouteErrorFallback() {
       </p>
       <button
         onClick={() => navigate(-1)}
-        className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+        className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
       >
         Geri dön
       </button>

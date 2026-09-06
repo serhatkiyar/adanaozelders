@@ -302,7 +302,7 @@ export default function Marketplace() {
         <FilterIconSvg />
         Filtreler
         {hasModalFilters && (
-          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white ">
+          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-marka text-[9px] font-bold text-white ">
             ✓
           </span>
         )}
@@ -315,7 +315,7 @@ export default function Marketplace() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as TutorSort)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-indigo-500/20 ${
+          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
             sort !== TutorSort.RELEVANCE
               ? "border-slate-900 bg-slate-900 text-white "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
@@ -375,7 +375,7 @@ export default function Marketplace() {
         <select
           value={modeSegment}
           onChange={(e) => selectMode(e.target.value as any)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-indigo-500/20 ${
+          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
             !isAllMode
               ? "border-slate-900 bg-slate-900 text-white "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
@@ -406,7 +406,7 @@ export default function Marketplace() {
         <button
           key={s}
           onClick={() => removeSubject(s)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 "
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-hover transition hover:bg-marka-line "
         >
           {s}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
@@ -455,7 +455,7 @@ export default function Marketplace() {
               {hasFilters && (
                 <button
                   onClick={clearAll}
-                  className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
                 >
                   Tüm filtreleri temizle
                 </button>
@@ -468,7 +468,7 @@ export default function Marketplace() {
                 <span>{organicTutors.length} eğitmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-marka-mid" />
                     Güncelleniyor
                   </span>
                 )}
@@ -484,7 +484,7 @@ export default function Marketplace() {
                     type="button"
                     onClick={() => setLimit((l) => l + 20)}
                     disabled={isFetching}
-                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 active:scale-95 disabled:opacity-60 "
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft active:scale-95 disabled:opacity-60 "
                   >
                     {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                   </button>
@@ -531,7 +531,7 @@ export default function Marketplace() {
                       setRadiusKm(Number(val));
                       if (!nearMe) requestNearMe();
                     }}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   >
                     <option value="">Farketmez (Her Yer)</option>
                     <option value="5">En fazla 5 km</option>
@@ -546,7 +546,7 @@ export default function Marketplace() {
                     </svg>
                   </span>
                 </div>
-                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-indigo-600">Konum alınıyor…</p>}
+                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-marka">Konum alınıyor…</p>}
                 {nearMe && !geoLoading && <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>}
               </div>
 
@@ -573,7 +573,7 @@ export default function Marketplace() {
                       onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
                       className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                         gender === opt.value
-                          ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
+                          ? "bg-marka text-white shadow-sm ring-1 ring-marka-focus"
                           : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
                       }`}
                     >
@@ -593,7 +593,7 @@ export default function Marketplace() {
               </button>
               <button
                 onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition hover:bg-indigo-700 active:scale-95"
+                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
               >
                 Sonuçları Göster
               </button>

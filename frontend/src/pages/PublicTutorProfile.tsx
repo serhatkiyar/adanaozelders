@@ -58,7 +58,7 @@ export default function PublicTutorProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+            className="text-sm font-medium text-marka hover:text-marka-hover "
           >
             ← Geri dön
           </button>
@@ -145,7 +145,7 @@ export default function PublicTutorProfile() {
       <div className="mx-auto max-w-[76rem] pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+          className="text-sm font-medium text-marka hover:text-marka-hover "
         >
           ← Geri dön
         </button>
@@ -178,7 +178,7 @@ export default function PublicTutorProfile() {
                   className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 ">
+                  <span className="text-sm font-medium text-marka hover:text-marka-hover ">
                     {hasRatings
                       ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
                       : "Değerlendirme yok"}
@@ -186,7 +186,7 @@ export default function PublicTutorProfile() {
                 </button>
 
                 {modeLabel && (
-                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ">
+                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-hover ">
                     {modeLabel}
                   </span>
                 )}
@@ -211,7 +211,7 @@ export default function PublicTutorProfile() {
               </div>
               <Link
                 to="?modal=login"
-                className="mt-4 block w-full rounded-full bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
                 Ders Talep Et
               </Link>
@@ -227,7 +227,7 @@ export default function PublicTutorProfile() {
                   {tutor.subjects.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 "
+                      className="rounded-full bg-marka-soft px-3 py-1 text-sm font-medium text-marka-hover "
                     >
                       {s}
                     </span>

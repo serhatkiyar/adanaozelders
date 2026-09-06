@@ -240,7 +240,7 @@ export function OrderInvoiceModal({
             type="button"
             disabled={fatura.isLoading}
             onClick={() => window.print()}
-            className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-full bg-marka px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
           >
             Yazdır / PDF olarak kaydet
           </button>

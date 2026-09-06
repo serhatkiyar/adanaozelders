@@ -109,7 +109,7 @@ export function StoreSearch() {
           e.preventDefault();
           searchAll();
         }}
-        className="flex items-stretch overflow-hidden rounded-full border border-slate-200 bg-slate-50 transition focus-within:border-indigo-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100"
+        className="flex items-stretch overflow-hidden rounded-full border border-slate-200 bg-slate-50 transition focus-within:border-marka-mid focus-within:bg-white focus-within:ring-2 focus-within:ring-marka/20"
       >
         <select
           value={catId}
@@ -181,7 +181,7 @@ export function StoreSearch() {
               <button
                 type="button"
                 onClick={searchAll}
-                className="w-full border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-indigo-600 transition-colors hover:bg-slate-50 "
+                className="w-full border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-marka transition-colors hover:bg-slate-50 "
               >
                 "{q.trim()}" için tüm sonuçlar →
               </button>

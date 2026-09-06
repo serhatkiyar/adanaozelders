@@ -71,7 +71,7 @@ export default function FavoritesPage() {
               onClick={() =>
                 alisverisAcik ? setNameModal({ mode: "create" }) : navigate("?modal=login")
               }
-              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-700 "
+              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-marka transition-colors hover:text-marka-hover "
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
@@ -108,7 +108,7 @@ export default function FavoritesPage() {
             {!alisverisAcik && (
               <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 ">
                 Kendi listelerini oluşturmak için{" "}
-                <Link to="?modal=login" className="font-semibold text-indigo-600 hover:underline ">
+                <Link to="?modal=login" className="font-semibold text-marka hover:underline ">
                   giriş yap
                 </Link>
                 .
@@ -190,7 +190,7 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition-colors focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+        className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition-colors focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
       />
     </div>
   );
@@ -240,7 +240,7 @@ function FavoritesPane({ alisverisAcik }: { alisverisAcik: boolean }) {
             title="Henüz favorin yok"
             desc="Beğendiğin ürünleri kalbe dokunarak buraya ekleyebilirsin."
             cta={
-              <Link to={ROUTES.store} className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+              <Link to={ROUTES.store} className="mt-6 inline-block rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marka-hover">
                 Mağazaya dön
               </Link>
             }
@@ -320,7 +320,7 @@ function CollectionPane({
           <button
             type="button"
             onClick={onAddProducts}
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka "
           >
             Ürün ekle
           </button>
@@ -328,7 +328,7 @@ function CollectionPane({
             type="button"
             aria-label="Paylaş"
             onClick={share}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-marka-mid hover:text-marka "
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3" />
@@ -434,7 +434,7 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
                 <span className="text-slate-800 ">{c.name}</span>
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded border ${
-                    inList ? "border-indigo-600 bg-indigo-600 text-white " : "border-slate-300 "
+                    inList ? "border-marka bg-marka text-white " : "border-slate-300 "
                   }`}
                 >
                   {inList && (
@@ -457,13 +457,13 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && createAndAdd()}
           placeholder="Yeni liste oluştur"
-          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 "
+          className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-marka-mid "
         />
         <button
           type="button"
           disabled={!newName.trim() || createCol.isPending}
           onClick={createAndAdd}
-          className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
         >
           Oluştur
         </button>
@@ -493,7 +493,7 @@ function CollectionNameModal({
         onKeyDown={(e) => e.key === "Enter" && name.trim() && onSubmit(name.trim())}
         maxLength={120}
         placeholder="Liste adı (ör. Sınava Hazırlık)"
-        className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+        className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
       />
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 ">
@@ -503,7 +503,7 @@ function CollectionNameModal({
           type="button"
           disabled={!name.trim()}
           onClick={() => onSubmit(name.trim())}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:opacity-50"
         >
           Kaydet
         </button>
@@ -552,7 +552,7 @@ function AddProductsToCollectionModal({ collection, onClose }: { collection: Col
                 <span className="line-clamp-2 flex-1 text-sm text-slate-800 ">{p.title}</span>
                 <span
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                    inList ? "border-indigo-600 bg-indigo-600 text-white " : "border-slate-300 "
+                    inList ? "border-marka bg-marka text-white " : "border-slate-300 "
                   }`}
                 >
                   {inList && (
@@ -567,7 +567,7 @@ function AddProductsToCollectionModal({ collection, onClose }: { collection: Col
         </div>
       )}
       <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onClose} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+        <button type="button" onClick={onClose} className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover">
           Bitti
         </button>
       </div>

@@ -192,7 +192,7 @@ export function DistrictMapModal({ open, value, onApply, onClose }: Props) {
           {/* Sabit bilgi kutusu (HUD): zoom ne olursa olsun hangi ilçede olduğunu gösterir */}
           <div className="pointer-events-none absolute right-3 top-3 z-[1000] max-w-[70%]">
             <div className="flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 shadow-md ring-1 ring-slate-200 backdrop-blur-sm ">
-              <svg className="h-4 w-4 shrink-0 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <svg className="h-4 w-4 shrink-0 text-marka" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z" />
                 <circle cx="12" cy="10" r="2.5" />
               </svg>
@@ -272,7 +272,7 @@ export function DistrictMapModal({ open, value, onApply, onClose }: Props) {
               onApply(draft);
               onClose();
             }}
-            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition hover:bg-indigo-700 active:scale-95"
+            className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
           >
             {draft.length ? `${draft.length} ilçeyi uygula` : "Tüm ilçeler"}
           </button>

@@ -184,7 +184,7 @@ function SingleImageField({
         type="button"
         onClick={() => ref.current?.click()}
         disabled={busy}
-        className={`group relative w-full overflow-hidden ${aspect} ${rounded} bg-slate-100 ring-1 ring-slate-200 transition hover:ring-indigo-400 disabled:opacity-60 `}
+        className={`group relative w-full overflow-hidden ${aspect} ${rounded} bg-slate-100 ring-1 ring-slate-200 transition hover:ring-marka-focus disabled:opacity-60 `}
       >
         {url ? (
           <img src={url} alt={label} className="h-full w-full object-cover" />
@@ -229,7 +229,7 @@ function GalleryAddButton({
         type="button"
         onClick={() => ref.current?.click()}
         disabled={busy}
-        className="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-60 "
+        className="rounded-lg bg-marka-soft px-3 py-1.5 text-sm font-semibold text-marka-hover transition hover:bg-marka-line disabled:opacity-60 "
       >
         {busy ? "Yükleniyor…" : "+ Fotoğraf"}
       </button>

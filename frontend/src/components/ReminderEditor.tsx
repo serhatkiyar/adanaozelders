@@ -64,7 +64,7 @@ export default function ReminderEditor({ reminders, due, onChange }: {
               type="datetime-local"
               value={isoToLocalInput(r.remind_at)}
               onChange={(e) => setAt(i, e.target.value ? localInputToIso(e.target.value) : null)}
-              className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-700 outline-none focus:border-indigo-400 "
+              className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-700 outline-none focus:border-marka-mid "
             />
           )}
           {r.type === "relative" && due && (
@@ -79,7 +79,7 @@ export default function ReminderEditor({ reminders, due, onChange }: {
       ))}
 
       <div className="relative">
-        <button type="button" onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 ">
+        <button type="button" onClick={() => setAdding((a) => !a)} className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-marka transition hover:bg-marka-soft ">
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
           Hatırlatıcı ekle
         </button>

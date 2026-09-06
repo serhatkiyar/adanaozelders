@@ -15,7 +15,7 @@ import { toast } from "@/store/toastStore";
 
 // min-h-[44px]: dokunma hedefi eşiği. Ölçüldü — `py-2.5` 42px veriyordu.
 const inputCls =
-  "min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "min-h-[44px] w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 const fieldLabelCls = "mb-1.5 block text-xs font-medium text-slate-500 ";
 

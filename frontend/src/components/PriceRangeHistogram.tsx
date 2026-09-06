@@ -127,7 +127,7 @@ export function PriceRangeHistogram({
             <div className="pointer-events-none absolute inset-x-0.5 bottom-0 h-[2px] rounded-full bg-slate-200 " />
             {/* seçili aralıktaki taban çizgisi (vurgulu) */}
             <div
-              className="pointer-events-none absolute bottom-0 h-[2px] rounded-full bg-indigo-500 "
+              className="pointer-events-none absolute bottom-0 h-[2px] rounded-full bg-marka-mid "
               style={{ left: `${pctMin}%`, right: `${100 - pctMax}%` }}
             />
             {bins.map((count, i) => {
@@ -144,7 +144,7 @@ export function PriceRangeHistogram({
                   key={i}
                   className={`relative z-10 flex-1 rounded-t-[3px] ${
                     active
-                      ? "bg-indigo-500 "
+                      ? "bg-marka-mid "
                       : "bg-slate-200 "
                   }`}
                   style={{ height: `${6 + (count / maxCount) * 58}%` }}

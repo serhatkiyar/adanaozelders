@@ -95,12 +95,12 @@ export function BookingPrivateNotesPanel({
             placeholder="Notunuz"
             value={privateNoteBody}
             onChange={(e) => setPrivateNoteBody(e.target.value)}
-            className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
+            className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
           />
           <button
             type="submit"
             disabled={addPrivateNote.isPending || !privateNoteBody.trim()}
-            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             Kaydet
           </button>

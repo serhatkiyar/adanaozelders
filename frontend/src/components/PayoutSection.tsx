@@ -6,7 +6,7 @@ import { toast } from "@/store/toastStore";
 import type { PayoutStatus } from "@/types";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 const labelCls = "mb-1.5 block text-xs font-medium text-slate-500 ";
 const sectionLabelCls =
   "text-xs font-semibold uppercase tracking-wide text-slate-400 ";
@@ -116,7 +116,7 @@ export function PayoutSection() {
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="mt-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 "
+                className="mt-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-marka transition hover:bg-marka-soft "
               >
                 {isActive ? "IBAN'ı değiştir" : "Bilgileri güncelle"}
               </button>
@@ -173,7 +173,7 @@ export function PayoutSection() {
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus"
                 />
                 <span>
                   IBAN ve TCKN bilgimin, ödeme aracılığı ve kimlik doğrulama amacıyla
@@ -195,7 +195,7 @@ export function PayoutSection() {
                 <button
                   type="submit"
                   disabled={submit.isPending}
-                  className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+                  className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:opacity-50"
                 >
                   {submit.isPending ? "Gönderiliyor…" : "Kaydet & Doğrula"}
                 </button>

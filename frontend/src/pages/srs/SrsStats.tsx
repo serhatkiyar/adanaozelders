@@ -39,7 +39,7 @@ export default function SrsStats() {
           <div>
             <Link
               to={ROUTES.srs}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+              className="text-sm font-medium text-marka hover:text-marka-hover "
             >
               ← Aralıklı Tekrar
             </Link>
@@ -81,7 +81,7 @@ export default function SrsStats() {
               action={
                 <Link
                   to={ROUTES.srs}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-white transition hover:bg-marka-hover"
                 >
                   Çalışmaya başla
                 </Link>
@@ -148,7 +148,7 @@ export default function SrsStats() {
                         </span>
                         <div className="h-4 flex-1 overflow-hidden rounded bg-slate-100 ">
                           <div
-                            className="h-full rounded bg-indigo-500/80 "
+                            className="h-full rounded bg-marka-mid/80 "
                             style={{ width: `${(d.due / maxDue) * 100}%` }}
                           />
                         </div>

@@ -76,7 +76,7 @@ export function AddressSection() {
               setEditingId(null);
               setAdding(true);
             }}
-            className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
+            className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium text-marka transition hover:bg-marka-soft "
           >
             + Ekle
           </button>

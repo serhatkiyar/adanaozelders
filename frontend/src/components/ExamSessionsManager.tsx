@@ -232,7 +232,7 @@ function SessionRow({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 ">
+            <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-bold text-marka-hover ">
               {session.exam_type}
             </span>
             <span className="text-sm font-semibold text-slate-900 ">
@@ -613,7 +613,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
   };
 
   const numCls =
-    "w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:border-indigo-400 ";
+    "w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:border-marka-mid ";
 
   return (
     <tr>

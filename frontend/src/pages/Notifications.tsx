@@ -121,7 +121,7 @@ export function NotificationsPanel() {
               type="button"
               onClick={() => markAll.mutate()}
               disabled={markAll.isPending}
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg
                 viewBox="0 0 20 20"
@@ -172,7 +172,7 @@ export function NotificationsPanel() {
                 className={`group flex w-full items-start gap-4 rounded-2xl p-4 text-left transition-all hover:shadow-md ${
                   n.is_read
                     ? "bg-white ring-1 ring-slate-100 hover:bg-slate-50 "
-                    : "bg-indigo-50 ring-1 ring-indigo-100 hover:bg-indigo-100/70 "
+                    : "bg-marka-soft ring-1 ring-marka/20 hover:bg-marka-line/70 "
                 }`}
               >
                 {/* İkon */}
@@ -180,7 +180,7 @@ export function NotificationsPanel() {
                   className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${
                     n.is_read
                       ? "bg-slate-100 "
-                      : "bg-indigo-100 "
+                      : "bg-marka-line "
                   }`}
                 >
                   {resolveIcon(n.message)}
@@ -216,7 +216,7 @@ export function NotificationsPanel() {
 
                 {/* Okunmamış göstergesi */}
                 {!n.is_read && (
-                  <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500 ring-2 ring-indigo-200 " />
+                  <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-marka-mid ring-2 ring-marka/20 " />
                 )}
 
                 {/* Ok ikonu (link varsa) */}
@@ -242,7 +242,7 @@ export function NotificationsPanel() {
 
             {isFetchingNextPage && (
               <div className="flex items-center justify-center py-6">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-marka border-t-transparent" />
                 <span className="ml-3 text-sm text-slate-500 ">
                   Yükleniyor…
                 </span>

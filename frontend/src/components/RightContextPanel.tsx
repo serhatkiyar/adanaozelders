@@ -31,7 +31,7 @@ const STATUS_CONFIG: Record<
   },
   [BookingStatus.COMPLETED]: {
     label: "Tamamlandı",
-    color: "bg-indigo-100 text-indigo-800 ",
+    color: "bg-marka-line text-marka-soft-fg ",
     icon: "🎓",
   },
 };
@@ -141,7 +141,7 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
           {booking.price && (
             <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-sm font-semibold ">
               <span className="text-slate-900 ">Toplam</span>
-              <span className="text-indigo-600 ">
+              <span className="text-marka ">
                 {formatTRY(booking.price)}
               </span>
             </div>
@@ -154,7 +154,7 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 ">
             Öğrenci Notu
           </p>
-          <div className="mt-2 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-900 ">
+          <div className="mt-2 rounded-xl bg-marka-soft p-3 text-sm text-marka-soft-fg ">
             <p className="italic">&ldquo;{booking.notes}&rdquo;</p>
           </div>
         </div>

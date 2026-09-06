@@ -69,7 +69,7 @@ function OwnerReplyAction({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="mt-3 text-sm font-medium text-indigo-600 transition hover:text-indigo-700 "
+        className="mt-3 text-sm font-medium text-marka transition hover:text-marka-hover "
       >
         Yanıtla
       </button>
@@ -85,7 +85,7 @@ function OwnerReplyAction({
         onChange={(e) => setText(e.target.value)}
         autoFocus
         placeholder="Değerlendirmeye yanıtını yaz…"
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
       />
       <div className="flex justify-end gap-2">
         <button
@@ -102,7 +102,7 @@ function OwnerReplyAction({
           type="button"
           onClick={submitReply}
           disabled={replyMutation.isPending}
-          className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-60"
+          className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
         >
           {replyMutation.isPending ? "Gönderiliyor…" : "Yanıtla"}
         </button>
@@ -160,7 +160,7 @@ export default function TutorProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            className="text-sm font-medium text-marka hover:text-marka-hover"
           >
             ← Geri dön
           </button>
@@ -208,7 +208,7 @@ export default function TutorProfile() {
       <div className="mx-auto max-w-[76rem] pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+          className="text-sm font-medium text-marka hover:text-marka-hover "
         >
           ← Geri dön
         </button>
@@ -259,7 +259,7 @@ export default function TutorProfile() {
                   className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 ">
+                  <span className="text-sm font-medium text-marka hover:text-marka-hover ">
                     {tutor.rating_count > 0
                       ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
                       : "Değerlendirme yok"}
@@ -267,7 +267,7 @@ export default function TutorProfile() {
                 </button>
 
                 {modeLabel && (
-                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ">
+                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-hover ">
                     {modeLabel}
                   </span>
                 )}
@@ -293,7 +293,7 @@ export default function TutorProfile() {
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="mt-4 block w-full rounded-full bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                  className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
                   Ders Talep Et
                 </button>
@@ -331,7 +331,7 @@ export default function TutorProfile() {
                   {tutor.subjects.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 "
+                      className="rounded-full bg-marka-soft px-3 py-1 text-sm font-medium text-marka-hover "
                     >
                       {s}
                     </span>

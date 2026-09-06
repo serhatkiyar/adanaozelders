@@ -138,7 +138,7 @@ export default function TaskCommandPalette(props: Props) {
       title: "Ara",
       items: [{
         key: "search-all",
-        icon: <svg className="h-5 w-5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" /></svg>,
+        icon: <svg className="h-5 w-5 text-marka" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" /></svg>,
         label: `“${q}” için tüm görevlerde ara`,
         run: () => props.onSearchAll(q),
       }],
@@ -235,7 +235,7 @@ export default function TaskCommandPalette(props: Props) {
                       ref={isActive ? activeRef : undefined}
                       onMouseMove={() => setActive(myIdx)}
                       onClick={() => run(item)}
-                      className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition ${isActive ? "bg-indigo-50 " : ""}`}
+                      className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm transition ${isActive ? "bg-marka-soft " : ""}`}
                     >
                       <span className="flex-none">{item.icon}</span>
                       <span className="min-w-0 flex-1 truncate font-medium text-slate-800 ">{item.label}</span>

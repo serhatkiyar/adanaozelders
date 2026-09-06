@@ -60,7 +60,7 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline "
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-marka hover:underline "
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="15" height="15">
           <path

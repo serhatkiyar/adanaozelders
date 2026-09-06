@@ -75,7 +75,7 @@ export default function CartPage() {
             <p className="text-slate-500 ">Sepetin boş.</p>
             <Link
               to={ROUTES.store}
-              className="mt-4 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="mt-4 inline-block rounded-lg bg-marka px-4 py-2 text-sm font-medium text-white hover:bg-marka-hover"
             >
               Ürünlere göz at
             </Link>
@@ -134,7 +134,7 @@ export default function CartPage() {
                 type="button"
                 onClick={goCheckout}
                 disabled={selectedCount === 0}
-                className="mt-5 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 "
+                className="mt-5 w-full rounded-xl bg-marka py-3 text-sm font-semibold text-white transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 "
               >
                 Sepeti Onayla
               </button>
@@ -143,9 +143,9 @@ export default function CartPage() {
               <button
                 type="button"
                 onClick={() => setPickupOpen(true)}
-                className="mt-3 flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-indigo-300 "
+                className="mt-3 flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-marka-mid "
               >
-                <svg className="shrink-0 text-indigo-600 " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="shrink-0 text-marka " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
@@ -258,7 +258,7 @@ function CartLine({
       <div className="flex flex-1 flex-col pr-16">
         <Link
           to={ROUTES.storeProduct(item.slug)}
-          className="text-sm font-medium leading-snug text-slate-800 transition-colors hover:text-indigo-600 "
+          className="text-sm font-medium leading-snug text-slate-800 transition-colors hover:text-marka "
         >
           {item.title}
         </Link>
@@ -303,8 +303,8 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
       onClick={onChange}
       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
         checked
-          ? "border-indigo-600 bg-indigo-600 text-white "
-          : "border-slate-300 bg-white hover:border-indigo-400 "
+          ? "border-marka bg-marka text-white "
+          : "border-slate-300 bg-white hover:border-marka-mid "
       }`}
     >
       {checked && (
@@ -369,14 +369,14 @@ function PickupModal({ onClose }: { onClose: () => void }) {
         <div className="mt-5 flex items-center justify-between">
           <Link
             to={ROUTES.libraries}
-            className="text-sm font-medium text-indigo-600 hover:underline "
+            className="text-sm font-medium text-marka hover:underline "
           >
             Noktaları gör →
           </Link>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-marka-hover"
           >
             Anladım
           </button>
