@@ -590,6 +590,7 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
                 <label className="flex items-center gap-1 text-xs text-slate-500 ">
                   <input
                     type="checkbox"
+                    className="accent-marka"
                     checked={!h.is_closed}
                     onChange={(e) =>
                       setHour(h.weekday, {

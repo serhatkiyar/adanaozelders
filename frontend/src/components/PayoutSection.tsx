@@ -173,7 +173,7 @@ export function PayoutSection() {
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
                 />
                 <span>
                   IBAN ve TCKN bilgimin, ödeme aracılığı ve kimlik doğrulama amacıyla

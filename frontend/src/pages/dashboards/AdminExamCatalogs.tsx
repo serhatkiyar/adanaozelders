@@ -491,6 +491,7 @@ function CatalogEditorIcerik({
               <Form.Control>
                 <input
                   type="checkbox"
+                  className="accent-marka"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   onBlur={field.onBlur}
@@ -510,6 +511,7 @@ function CatalogEditorIcerik({
               <Form.Control>
                 <input
                   type="checkbox"
+                  className="accent-marka"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   onBlur={field.onBlur}

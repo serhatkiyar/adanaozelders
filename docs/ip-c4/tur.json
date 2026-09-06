@@ -1,0 +1,166 @@
+{
+  "tarih": "2026-09-06T10:33:55.324Z",
+  "FRONTEND": "http://127.0.0.1:5199",
+  "rapor": [
+    {
+      "ad": "anasayfa",
+      "yol": "/",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 0,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "egitmenler",
+      "yol": "/egitmenler",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 0,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "magaza",
+      "yol": "/magaza",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 2,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "kutuphaneler",
+      "yol": "/kutuphaneler",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 2,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "giris",
+      "yol": "/giris",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 5,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "kayit",
+      "yol": "/kayit",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 8,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "on-basvuru",
+      "yol": "/egitmen-on-basvuru",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 3,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "sihirbaz",
+      "yol": "/ilanini-olustur",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 5,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "siralama-kriterleri",
+      "yol": "/siralama-kriterleri",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 7,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "sss",
+      "yol": "/sss",
+      "genislik": 1280,
+      "indigo": [],
+      "markaBoyali": 1,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "anasayfa",
+      "yol": "/",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 0,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "egitmenler",
+      "yol": "/egitmenler",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 0,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "magaza",
+      "yol": "/magaza",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 2,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "kutuphaneler",
+      "yol": "/kutuphaneler",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 2,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "giris",
+      "yol": "/giris",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 5,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "kayit",
+      "yol": "/kayit",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 8,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "on-basvuru",
+      "yol": "/egitmen-on-basvuru",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 3,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "sihirbaz",
+      "yol": "/ilanini-olustur",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 5,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "siralama-kriterleri",
+      "yol": "/siralama-kriterleri",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 7,
+      "markaTokeni": "194 65 12"
+    },
+    {
+      "ad": "sss",
+      "yol": "/sss",
+      "genislik": 380,
+      "indigo": [],
+      "markaBoyali": 1,
+      "markaTokeni": "194 65 12"
+    }
+  ]
+}

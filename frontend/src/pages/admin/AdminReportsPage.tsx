@@ -306,7 +306,7 @@ function KararIcerik({
                   onBlur={field.onBlur}
                   ref={field.ref}
                   name={field.name}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 "
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-marka"
                 />
                 <span>
                   <span className="font-semibold">Yorumu yayından kaldır</span>

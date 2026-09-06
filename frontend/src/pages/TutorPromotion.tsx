@@ -177,7 +177,7 @@ export default function TutorPromotion() {
                 type="checkbox"
                 checked={onay}
                 onChange={(e) => setOnay(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
               />
               <span>
                 Hizmetin ödeme onaylandığı anda başladığını, bu nedenle cayma

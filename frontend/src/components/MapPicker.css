@@ -70,13 +70,13 @@
 }
 
 .map-picker-layer-btn--active {
-  color: #4f46e5;
+  color: rgb(var(--marka));
   background: #eef2ff;
 }
 
 .map-picker-layer-btn--active:hover {
   background: #e0e7ff;
-  color: #4338ca;
+  color: rgb(var(--marka-hover));
 }
 
 .map-picker-layer-icon {
@@ -131,7 +131,7 @@
   flex-shrink: 0;
   padding: 0.4rem 1rem;
   border-radius: 0.5rem;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  background: linear-gradient(135deg, rgb(var(--marka-mid)), rgb(var(--marka)));
   color: white;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -141,7 +141,7 @@
 }
 
 .map-picker-search-btn:hover {
-  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  background: linear-gradient(135deg, rgb(var(--marka)), rgb(var(--marka-hover)));
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgb(79 70 229 / 0.35);
 }
@@ -218,7 +218,7 @@
   height: 1rem;
   flex-shrink: 0;
   margin-top: 0.125rem;
-  color: #6366f1;
+  color: rgb(var(--marka-mid));
 }
 
 .map-picker-suggestion-text {
@@ -259,18 +259,18 @@
 
 .map-picker-control-btn:hover {
   background: #f8fafc;
-  color: #4f46e5;
+  color: rgb(var(--marka));
   transform: scale(1.08);
 }
 
 .map-picker-control-btn--active {
   background: #eef2ff;
-  color: #4f46e5;
+  color: rgb(var(--marka));
   animation: map-picker-pulse 1.5s ease-in-out infinite;
 }
 
 .map-picker-geolocate--active {
-  color: #4f46e5;
+  color: rgb(var(--marka));
   animation: map-picker-pulse 1.5s ease-in-out infinite;
 }
 
@@ -314,7 +314,7 @@
 .map-picker-helper-pin {
   width: 0.875rem;
   height: 0.875rem;
-  color: #6366f1;
+  color: rgb(var(--marka-mid));
   animation: map-picker-bounce 1.5s ease-in-out infinite;
 }
 
@@ -357,7 +357,7 @@
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
-  color: #4f46e5;
+  color: rgb(var(--marka));
 }
 
 .map-picker-address-text {
@@ -442,7 +442,7 @@
 }
 
 .map-picker-streetview-external:hover {
-  color: #4f46e5;
+  color: rgb(var(--marka));
   background: #eef2ff;
 }
 
@@ -548,7 +548,7 @@
 .map-picker-streetview-fallback a {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #4f46e5;
+  color: rgb(var(--marka));
   text-decoration: none;
 }
 

@@ -165,6 +165,53 @@ describe("Ç-4 · sitede indigo kalmadı", () => {
     ).toEqual([]);
   });
 
+  it("ELLE YAZILMIŞ marka rengi yok (token atlatılamaz)", () => {
+    // Bu düğüm, yukarıdaki sınıf taramasının GÖREMEDİĞİ kusur sınıfı için var.
+    // Ç-4 turunda gerçekten yaşandı: `indigo-` sınıfları süpürüldükten sonra
+    // sitede hâlâ elle yazılmış marka renkleri kalmıştı —
+    //   `StoreCategoryBar`  `bg-[#1a365d]`  (ESKİ LACİVERT, tek başına kalmıştı)
+    //   `StoreSearch`       `bg-[#f8c27d]`  (ikinci bir turuncu arama düğmesi)
+    //   `MapPicker.css`     `#4f46e5` ×14   (ayrı CSS dosyası, sınıf değil)
+    //   harita işaretçileri `#6366f1`       (JS içinde satır içi stil dizesi)
+    // Hiçbiri `indigo-\d` taramasına takılmıyordu ve build de yeşil geçiyordu.
+    const ESKI: Record<string, string> = {
+      "#4f46e5": "indigo-600", "#6366f1": "indigo-500", "#4338ca": "indigo-700",
+      "#1a365d": "eski marka lacivert", "#eaf0f7": "eski lacivert-soft",
+      "#f6ad55": "Ç-3 dikkat turuncusu", "#f8c27d": "eski mağaza turuncusu",
+    };
+    // Kullanıcının SEÇEBİLDİĞİ renk paletleri veri kalemidir, marka değil:
+    // alışkanlık rengi, etiket rengi, grafik serisi. İsimle muaf tutulur ki
+    // muafiyet sessizce genişlemesin.
+    const MUAF = new Set([
+      "src/pages/Grapher.tsx", "src/pages/Habits.tsx", "src/pages/Tasks.tsx",
+    ]);
+    const bulgular: string[] = [];
+    const yuru = (dizin: string) => {
+      for (const ad of readdirSync(dizin).sort()) {
+        const tam = join(dizin, ad);
+        if (statSync(tam).isDirectory()) {
+          if (ad !== "node_modules") yuru(tam);
+          continue;
+        }
+        if (!/\.(tsx?|css)$/.test(ad) || /\.test\.tsx?$/.test(ad)) continue;
+        const kisa = kisaAd(tam);
+        if (MUAF.has(kisa)) continue;
+        readFileSync(tam, "utf8")
+          .split(/\r?\n/)
+          .forEach((satir, i) => {
+            if (yorumMu(satir)) return;
+            for (const [hex, etiket] of Object.entries(ESKI)) {
+              if (satir.toLowerCase().includes(hex)) {
+                bulgular.push(`${kisa}:${i + 1} → ${hex} (${etiket})`);
+              }
+            }
+          });
+      }
+    };
+    yuru(join(KOK, "src"));
+    expect(bulgular, "elle yazılmış marka rengi token katmanını atlatır").toEqual([]);
+  });
+
   it("tarama gerçekten siteye bakıyor (yalancı yeşil kapısı)", () => {
     // Boş bir dosya listesi de `[]` bulgu üretirdi. Kapsam hem SAYIYLA hem
     // KİMLİKLE çıpalanır; üçü de aksanın en yoğun geçtiği ağaçlardan seçildi.

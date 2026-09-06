@@ -1,0 +1,276 @@
+{
+  "acik": {
+    "tema": "acik",
+    "kokColorScheme": "light",
+    "dugmeler": [
+      {
+        "ad": "dugme:primary",
+        "onPlan": "rgb(255, 255, 255)",
+        "zemin": "rgb(194, 65, 12)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 5.18,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:secondary",
+        "onPlan": "rgb(51, 65, 85)",
+        "zemin": "rgb(255, 255, 255)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 10.35,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:success",
+        "onPlan": "rgb(255, 255, 255)",
+        "zemin": "rgb(4, 120, 87)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 5.48,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:danger",
+        "onPlan": "rgb(255, 255, 255)",
+        "zemin": "rgb(225, 29, 72)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 4.7,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:ghost",
+        "onPlan": "rgb(71, 85, 105)",
+        "zemin": "rgb(248, 250, 252)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 7.24,
+        "esik": 4.5,
+        "gecti": true
+      }
+    ],
+    "rozetler": [
+      {
+        "ad": "rozet:neutral",
+        "onPlan": "rgb(51, 65, 85)",
+        "zemin": "rgb(241, 245, 249)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 9.45,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:info",
+        "onPlan": "rgb(194, 65, 12)",
+        "zemin": "rgb(255, 247, 237)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 4.88,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:success",
+        "onPlan": "rgb(4, 120, 87)",
+        "zemin": "rgb(236, 253, 245)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 5.21,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:warning",
+        "onPlan": "rgb(120, 53, 15)",
+        "zemin": "rgb(254, 243, 199)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 8.15,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:danger",
+        "onPlan": "rgb(190, 18, 60)",
+        "zemin": "rgb(255, 241, 242)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 5.72,
+        "esik": 4.5,
+        "gecti": true
+      }
+    ],
+    "widgetlar": [
+      {
+        "ad": "date-input",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "number-input",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "time-ciplak",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "dtl-ciplak",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "select-ciplak",
+        "colorScheme": "light"
+      }
+    ],
+    "odak": {
+      "odaklandiMi": true,
+      "focusVisible": true,
+      "kenarlik": "rgb(194, 65, 12)",
+      "kenarlikKontrast": 4.95,
+      "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgba(194, 65, 12, 0.2) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    }
+  },
+  "koyu": {
+    "tema": "koyu",
+    "kokColorScheme": "light",
+    "dugmeler": [
+      {
+        "ad": "dugme:primary",
+        "onPlan": "rgb(255, 255, 255)",
+        "zemin": "rgb(194, 65, 12)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 5.18,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:secondary",
+        "onPlan": "rgb(51, 65, 85)",
+        "zemin": "rgb(255, 255, 255)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 10.35,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:success",
+        "onPlan": "rgb(255, 255, 255)",
+        "zemin": "rgb(4, 120, 87)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 5.48,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:danger",
+        "onPlan": "rgb(255, 255, 255)",
+        "zemin": "rgb(225, 29, 72)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 4.7,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "dugme:ghost",
+        "onPlan": "rgb(71, 85, 105)",
+        "zemin": "rgb(15, 23, 42)",
+        "fontPx": 14,
+        "kalin": false,
+        "kontrast": 2.36,
+        "esik": 4.5,
+        "gecti": false
+      }
+    ],
+    "rozetler": [
+      {
+        "ad": "rozet:neutral",
+        "onPlan": "rgb(51, 65, 85)",
+        "zemin": "rgb(241, 245, 249)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 9.45,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:info",
+        "onPlan": "rgb(194, 65, 12)",
+        "zemin": "rgb(255, 247, 237)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 4.88,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:success",
+        "onPlan": "rgb(4, 120, 87)",
+        "zemin": "rgb(236, 253, 245)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 5.21,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:warning",
+        "onPlan": "rgb(120, 53, 15)",
+        "zemin": "rgb(254, 243, 199)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 8.15,
+        "esik": 4.5,
+        "gecti": true
+      },
+      {
+        "ad": "rozet:danger",
+        "onPlan": "rgb(190, 18, 60)",
+        "zemin": "rgb(255, 241, 242)",
+        "fontPx": 12,
+        "kalin": false,
+        "kontrast": 5.72,
+        "esik": 4.5,
+        "gecti": true
+      }
+    ],
+    "widgetlar": [
+      {
+        "ad": "date-input",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "number-input",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "time-ciplak",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "dtl-ciplak",
+        "colorScheme": "light"
+      },
+      {
+        "ad": "select-ciplak",
+        "colorScheme": "light"
+      }
+    ],
+    "odak": {
+      "odaklandiMi": true,
+      "focusVisible": true,
+      "kenarlik": "rgb(194, 65, 12)",
+      "kenarlikKontrast": 4.95,
+      "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgba(194, 65, 12, 0.2) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    }
+  }
+}

@@ -84,7 +84,7 @@ export function ReturnsPanel() {
           type="checkbox"
           checked={onlyPending}
           onChange={(e) => setOnlyPending(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus"
+          className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus accent-marka"
         />
         Yalnız bekleyenler
       </label>

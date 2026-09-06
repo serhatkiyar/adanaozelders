@@ -413,7 +413,7 @@ export function DamageDialog({ yuzey, isPending, error, onSubmit }: DamageDialog
               <input
                 ref={onayRef}
                 type="checkbox"
-                className="mt-0.5 h-4 w-4"
+                className="mt-0.5 h-4 w-4 accent-marka"
                 aria-invalid={onayHatasi || undefined}
                 checked={onaylandi}
                 onChange={(e) => {

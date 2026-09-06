@@ -17,7 +17,7 @@ export function ConsentCheckbox() {
       <input
         type="checkbox"
         required
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus "
+        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
       />
       <span>
         <Link to={ROUTES.kvkk} target="_blank" className={linkCls}>

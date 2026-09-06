@@ -493,7 +493,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
             <div className="space-y-1.5">
               {subtasks.map((s) => (
                 <div key={s.id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-1.5 ">
-                  <input type="checkbox" checked={s.is_done} onChange={() => updateSub.mutate({ id: s.id, payload: { is_done: !s.is_done } })} className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus" />
+                  <input type="checkbox" checked={s.is_done} onChange={() => updateSub.mutate({ id: s.id, payload: { is_done: !s.is_done } })} className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka" />
                   <span className={`flex-1 text-sm ${s.is_done ? "text-slate-400 line-through" : "text-slate-700 "}`}>{s.title}</span>
                   <button onClick={() => deleteSub.mutate(s.id)} aria-label="Sil" className="rounded p-1 text-slate-400 hover:text-red-500">
                     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>

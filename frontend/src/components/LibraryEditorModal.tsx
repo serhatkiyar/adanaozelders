@@ -746,6 +746,7 @@ function EditorIcerik({
                 <label className="mt-2 flex items-center gap-1 text-xs text-slate-500">
                   <input
                     type="checkbox"
+                    className="accent-marka"
                     aria-label={`${WEEKDAY_LABELS[g.weekday]} açık`}
                     checked={!g.is_closed}
                     onChange={(e) => gunuAc(i, e.target.checked)}

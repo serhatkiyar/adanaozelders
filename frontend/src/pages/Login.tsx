@@ -94,7 +94,7 @@ export default function Login() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-2 focus:ring-marka/20 "
+                className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-2 focus:ring-marka/20 accent-marka"
               />
               Beni hatırla
             </label>

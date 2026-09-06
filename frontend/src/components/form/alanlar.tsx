@@ -281,7 +281,7 @@ export function OnayKutusu({
           checked={isaretli}
           onChange={(e) => onChange(e.target.checked)}
           aria-invalid={hata ? true : undefined}
-          className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
         />
         <span className="text-sm leading-relaxed text-slate-600">{children}</span>
       </label>

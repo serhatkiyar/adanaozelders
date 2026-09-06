@@ -215,7 +215,7 @@ export default function PackagesPage() {
     canPrintLabel(paket.status) ? (
       <input
         type="checkbox"
-        className="h-4 w-4 shrink-0"
+        className="h-4 w-4 shrink-0 accent-marka"
         aria-label={`${paket.code} etiketini seç`}
         checked={secili.includes(paket.id)}
         onChange={() => secimDegistir(paket.id)}
@@ -351,7 +351,7 @@ export default function PackagesPage() {
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 ">
                 <input
                   type="checkbox"
-                  className="h-4 w-4"
+                  className="h-4 w-4 accent-marka"
                   checked={seciliGorunen.length === basilabilirler.length}
                   onChange={(e) =>
                     setSecili(e.target.checked ? basilabilirler.map((p) => p.id) : [])

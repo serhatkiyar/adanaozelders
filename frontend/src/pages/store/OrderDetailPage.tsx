@@ -551,7 +551,7 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
                   value={opt.value}
                   checked={type === opt.value}
                   onChange={() => setType(opt.value)}
-                  className="mt-0.5"
+                  className="mt-0.5 accent-marka"
                 />
                 <span>
                   <span className="font-medium text-slate-800 ">

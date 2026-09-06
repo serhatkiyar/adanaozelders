@@ -281,7 +281,7 @@ export function AddressForm({
             type="checkbox"
             checked={isDefault}
             onChange={(e) => setIsDefault(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus "
+            className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
           />
           Varsayılan adresim yap
         </label>

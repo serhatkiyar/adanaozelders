@@ -322,7 +322,7 @@ export default function CheckoutPage() {
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus "
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
                 />
                 <span>
                   <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-marka hover:underline ">

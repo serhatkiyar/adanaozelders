@@ -593,7 +593,7 @@ export function BookingModal({
                     type="checkbox"
                     checked={freeLesson}
                     onChange={(e) => setFreeLesson(e.target.checked)}
-                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-marka"
                   />
                   <span className="text-sm">
                     <span className="font-semibold text-emerald-800 ">

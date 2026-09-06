@@ -632,7 +632,7 @@ export function ProductForm({
                     checked={field.value}
                     onBlur={field.onBlur}
                     onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus "
+                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus accent-marka"
                   />
                 </Form.Control>
                 <Form.Label className="text-sm font-semibold text-slate-700 ">
@@ -927,7 +927,7 @@ function ProductManagedAttributes({ productId }: { productId: number }) {
                   >
                     <input
                       type="checkbox"
-                      className="mr-1.5"
+                      className="mr-1.5 accent-marka"
                       checked={selected.includes(value.id)}
                       onChange={() =>
                         setSelected((current) =>

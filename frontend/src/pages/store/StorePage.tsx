@@ -341,7 +341,7 @@ export default function StorePage() {
                     type="checkbox"
                     checked={inStock}
                     onChange={(e) => setInStock(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus "
+                    className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
                   />
                   Sadece stoktakiler
                 </label>
@@ -633,7 +633,7 @@ function FacetGroup({
               type="checkbox"
               checked={selected.includes(option.value)}
               onChange={() => toggle(option.value)}
-              className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus "
+              className="h-4 w-4 rounded border-slate-300 text-marka focus:ring-marka-focus accent-marka"
             />
             <span className="min-w-0 flex-1 truncate">{option.value}</span>
             <span className="shrink-0 text-xs text-slate-400">
