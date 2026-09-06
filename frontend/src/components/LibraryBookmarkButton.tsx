@@ -99,7 +99,7 @@ export function LibraryBookmarkButton({
         viewBox="0 0 24 24"
         strokeWidth={1.5}
         className={`${glyph} stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] transition-colors ${
-          bookmarked ? "fill-rose-500" : "fill-black/30"
+          bookmarked ? "fill-rose-500" : "fill-black/40"
         }`}
       >
         <path

@@ -37,7 +37,7 @@ export function BookmarkButton({
 
   // Airbnb tarzı kalp: dolgu (pasif/aktif) + okunurluk için kenar/gölge.
   //
-  // Pasif dolgu `black/30` (eskiden `/50`) ve kenar 1,5px (eskiden 2px):
+  // Pasif dolgu `black/40` (once /50 idi, /30'a inip /40'ta durdu) ve kenar 1,5px (eskiden 2px):
   // kullanıcı kararı — kalp fotoğrafın önünde bir leke gibi duruyordu.
   // Okunurluğu artık ağırlıklı olarak `drop-shadow` taşıyor; onu inceltmek
   // açık renkli fotoğraflarda kalbi kaybederdi, bu yüzden gölge DEĞİŞMEDİ.
@@ -47,7 +47,7 @@ export function BookmarkButton({
       : "fill-slate-300 stroke-slate-300 "
     : bookmarked
       ? "fill-rose-500 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
-      : "fill-black/30 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]";
+      : "fill-black/40 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]";
 
   return (
     <button
