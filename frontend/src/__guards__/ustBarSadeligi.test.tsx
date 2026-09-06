@@ -135,3 +135,41 @@ describe("üst bar · KALDIRILAN kısayolların hedefi hâlâ erişilebilir", ()
     ).toEqual([]);
   });
 });
+
+describe("üst bar · bildirim zili kalktı ama BİLDİRİMLER erişilebilir", () => {
+  const menuyuAc = () =>
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+
+  it("`/bildirimler` HİÇBİR rol nav listesinde YOK", () => {
+    // Menü girdisinin ZORUNLU olmasının sebebi bu. Biri "nav zaten taşıyor"
+    // diye girdiyi silerse, aşağıdaki düğüm değil BU düğüm önce konuşur:
+    // varsayım yazılı olduğu için sessizce yanlışlanamaz.
+    for (const nav of [STUDENT_NAV, TUTOR_NAV, OPERATOR_NAV]) {
+      expect(nav.some((i) => i.to === ROUTES.notifications)).toBe(false);
+    }
+  });
+
+  it("üst barda bildirim DÜĞMESİ yok", () => {
+    sar(STUDENT_NAV);
+    expect(screen.queryByRole("button", { name: "Bildirimler" })).toBeNull();
+  });
+
+  it.each([
+    ["öğrenci", ROLE_IDS.CLIENT, STUDENT_NAV],
+    ["eğitmen", ROLE_IDS.TUTOR, TUTOR_NAV],
+    ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
+  ])("%s: hesap menüsünde `/bildirimler` bağlantısı VAR", (_ad, rol, nav) => {
+    useAuthStore.setState({
+      user: { id: 4, role_id: rol, full_name: "K", email: "k@example.com" },
+    } as never);
+    sar(nav as NavItem[]);
+    menuyuAc();
+    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
+      (a) => a.getAttribute("href")
+    );
+    expect(
+      hedefler,
+      "zil kaldırıldı ve menüde de yok: bildirimlere artık hiçbir yerden gidilemiyor"
+    ).toContain(ROUTES.notifications);
+  });
+});

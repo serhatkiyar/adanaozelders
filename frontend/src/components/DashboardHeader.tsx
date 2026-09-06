@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
-import { NotificationsBell } from "@/components/NotificationsBell";
 import { NavbarWidget } from "@/components/NavbarWidget";
 import { PersonalizeModal } from "@/components/PersonalizeModal";
 import { Icon } from "@/components/AppIcon";
@@ -9,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useNavPrefsStore } from "@/store/navPrefsStore";
 import { useLogout } from "@/hooks/useLogout";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
+import { useUnreadCount } from "@/hooks/useNotifications";
 import { roleHome } from "@/lib/roles";
 import { resolveSurface } from "@/lib/navPrefs";
 import { ROUTES } from "@/lib/routes";
@@ -49,6 +49,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   const home = roleHome(user?.role_id);
   const { data: msgUnreadCounts } = useMessagesUnreadCount();
   const msgUnread = msgUnreadCounts?.inbox ?? 0;
+  const { data: bildirimOkunmamis = 0 } = useUnreadCount();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -155,6 +156,20 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           )
         )}
 
+        {/* BİLDİRİMLER — üst bardaki zil kalkınca buraya taşındı.
+            Zil, `/bildirimler` sayfasına giden TEK yoldu: rota hiçbir rol nav
+            listesinde yok. Kaldırıp menüye koymasaydık ekran erişilemez
+            kalırdı (nöbetçi: `__guards__/ustBarSadeligi.test.tsx`). */}
+        <NavLink to={ROUTES.notifications} onClick={onClick} className={menuItemClass}>
+          <Icon name="notifications" className="h-5 w-5" />
+          Bildirimler
+          {bildirimOkunmamis > 0 && (
+            <span className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
+              {bildirimOkunmamis > 9 ? "9+" : bildirimOkunmamis}
+            </span>
+          )}
+        </NavLink>
+
         <NavLink to={ROUTES.settings} onClick={onClick} className={menuItemClass}>
           <Icon name="settings" className="h-5 w-5" />
           Ayarlar
@@ -225,7 +240,6 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
             </NavLink>
           )}
 
-          <NotificationsBell />
 
           <div ref={accountRef} className="relative ml-1">
             <button
@@ -271,7 +285,6 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               </span>
             </NavLink>
           )}
-          <NotificationsBell />
           <button
             type="button"
             aria-label="Menüyü aç/kapat"
