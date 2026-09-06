@@ -196,7 +196,9 @@ describe("D — eğitmen menüsündeki 'Kütüphaneler' girdisi (gerçek DOM)", 
 
   it("NÖBETÇİ: menü render oluyor ve diğer girdiler hâlâ bağlantı", () => {
     menuyuAc();
-    // Üst bar kısayolu + yan menü girdisi: aynı hedefe iki bağlantı normaldir.
+    // Üst bar artık rol kısayollarını basmıyor (bkz. ustBarSadeligi.test.tsx),
+    // yani bu hedefe tek bağlantı kalıyor: yan menüdeki. Eşik yine `>0`
+    // çünkü buradaki iddia SAYI değil, girdinin bağlantı OLMASI.
     const mesajlar = screen.getAllByRole("link", { name: /Mesajlar/ });
     expect(mesajlar.length).toBeGreaterThan(0);
     for (const a of mesajlar) expect(a.getAttribute("href")).toBe("/mesajlar");

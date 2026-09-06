@@ -78,12 +78,26 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   const navPrefs = useNavPrefsStore((s) =>
     roleId != null ? s.byRole[roleId] : undefined
   );
-  const navbarItems = useMemo(
-    () =>
-      resolveSurface(navItems ?? [], navPrefs?.navbar, "navbar").filter(
-        (i) => i.visible
-      ),
-    [navItems, navPrefs]
+  /**
+   * ÜST BARDA TEK KISAYOL: Favorilerim.
+   *
+   * Buraya eskiden rol menüsünün tamamı ikon olarak basılıyordu (öğrencide
+   * beş, eğitmende altı ikon) ve aynı bağlantılar avatar açılırında zaten
+   * duruyordu — yani üst bar, menünün eksiksiz bir KOPYASIYDI. Kullanıcı
+   * kararı (6 Eyl): kalabalık kalksın, her şey menüden açılsın.
+   *
+   * Hiçbir şey erişilemez olmuyor: yan menüde varsayılan görünürlük
+   * `defaultVisible("sidebar", …)` her öğe için `true`, yani açılır menü
+   * kaldırılan ikonların ÜST KÜMESİ.
+   *
+   * Rolden değil `navItems`ten türetilir: rol kontrolü (`role_id === CLIENT`)
+   * iki yüzeyde ayrı ayrı yazılıydı ve mobil tarafta bir kez zaten yanlış
+   * yazılmıştı — eğitmenin ve operatörün üst barında kendilerine ait olmayan,
+   * boş açılan bir Favoriler ikonu duruyordu. Tek türev, iki yüzey.
+   */
+  const favoriKisayolu = useMemo(
+    () => (navItems ?? []).find((i) => i.to === ROUTES.favorites && !i.yakinda),
+    [navItems]
   );
   const sidebarItems = useMemo(
     () =>
@@ -200,58 +214,15 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
 
         {/* Masaüstü: nav ikonları + avatar dropdown */}
         <div className="hidden flex-1 shrink-0 items-center justify-end gap-1 sm:flex">
-          {navbarItems.map((l) =>
-            l.yakinda ? (
-              // Üst bar kısayolu ikon-only; rozet sığmaz, `title`/`aria-label`
-              // "Yakında"yı taşır ki ekran okuyucu da durumu duysun.
-              <span
-                key={l.to}
-                aria-disabled="true"
-                tabIndex={-1}
-                title={`${l.label}, Yakında`}
-                aria-label={`${l.label}, Yakında`}
-                className={`${navIconClass} cursor-default opacity-40`}
-              >
-                {l.icon ? (
-                  <Icon name={l.icon} className="h-5 w-5" />
-                ) : (
-                  <span className="text-sm font-medium">{l.label}</span>
-                )}
-              </span>
-            ) : l.icon ? (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.end}
-                title={l.label}
-                aria-label={l.label}
-                className={navIconClass}
-              >
-                <span className="relative">
-                  <Icon name={l.icon} className="h-5 w-5" />
-                  {l.to === ROUTES.messages && msgUnread > 0 && (
-                    <span className="absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white ring-2 ring-white ">
-                      {msgUnread > 9 ? "9+" : msgUnread}
-                    </span>
-                  )}
-                </span>
-              </NavLink>
-            ) : (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.end}
-                className={({ isActive }) =>
-                  `rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                    isActive
-                      ? "bg-marka text-white"
-                      : "text-slate-600 hover:bg-slate-100 "
-                  }`
-                }
-              >
-                {l.label}
-              </NavLink>
-            )
+          {favoriKisayolu && (
+            <NavLink
+              to={favoriKisayolu.to}
+              title={favoriKisayolu.label}
+              aria-label={favoriKisayolu.label}
+              className={navIconClass}
+            >
+              <Icon name={favoriKisayolu.icon ?? "favorites"} className="h-5 w-5" />
+            </NavLink>
           )}
 
           <NotificationsBell />
@@ -281,20 +252,22 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
 
         {/* Mobil: bildirim + hamburger */}
         <div className="flex flex-1 items-center justify-end gap-1 sm:hidden">
-          {/* Favoriler ÖĞRENCİYE aittir (`STUDENT_NAV`). Bu kısayol role
-              bakmadan basılıyordu: eğitmenin ve kütüphane operatörünün mobil
-              üst barında, kendilerine ait olmayan ve boş açılan bir ekrana
-              giden ikon duruyordu. Operatörün işi fiziksel olarak mobildir
-              (QR kapıda okutulur), yani yanlış ikonu en çok o görüyordu. */}
-          {user?.role_id === ROLE_IDS.CLIENT && (
+          {/* Masaüstüyle AYNI türev (`favoriKisayolu`). Burada eskiden ayrı
+              bir rol kontrolü yazılıydı ve bir kez zaten yanlış yazılmıştı:
+              kısayol role bakmadan basılınca eğitmenin ve kütüphane
+              operatörünün mobil üst barında, kendilerine ait olmayan ve boş
+              açılan bir ekrana giden ikon duruyordu. Operatörün işi fiziksel
+              olarak mobildir (QR kapıda okutulur), yani yanlış ikonu en çok o
+              görüyordu. Tek türev, iki yüzey — bir daha ayrışamaz. */}
+          {favoriKisayolu && (
             <NavLink
-              to={ROUTES.favorites}
-              title="Favorilerim"
-              aria-label="Favorilerim"
+              to={favoriKisayolu.to}
+              title={favoriKisayolu.label}
+              aria-label={favoriKisayolu.label}
               className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 "
             >
               <span className="relative">
-                <Icon name="favorites" className="h-6 w-6" />
+                <Icon name={favoriKisayolu.icon ?? "favorites"} className="h-6 w-6" />
               </span>
             </NavLink>
           )}

@@ -83,6 +83,11 @@ describe("bayrak AÇIK — kategori çubuğu eski hâline döner", () => {
 describe("bayrak AÇIK — menü girdileri ve hub kartı eski hâline döner", () => {
   it("eğitmen menüsündeki 'Kütüphaneler' yeniden /kutuphaneler'e gidiyor", () => {
     sar(<DashboardHeader navItems={TUTOR_NAV} />);
+    // Girdi hesap menüsünde yaşıyor: üst bar 6 Eyl'de rol kısayollarını
+    // bırakti (bkz. __guards__/ustBarSadeligi.test.tsx). Buradaki iddia
+    // DEĞİŞMEDİ — bayrak açıkken girdi donmuş bir `span` değil GERÇEK bir
+    // bağlantı olmalı; yalnız nereye bakıldığı değişti.
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
     const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
       (a) => a.getAttribute("href")
     );

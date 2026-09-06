@@ -802,6 +802,14 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
 
       await sar(modul, yol);
 
+      // ÜST BAR ARTIK ROL KISAYOLLARINI BASMIYOR (kullanıcı kararı, 6 Eyl):
+      // rol menüsünün tamamı ikon olarak basılıyordu ve aynı bağlantılar hesap
+      // açılırında zaten duruyordu. Bu testin KABUL ÖLÇÜTÜ değişmedi —
+      // "operatör panelden kopmuyor, kendi nav'ını görüyor, öğrenci nav'ını
+      // GÖRMÜYOR" — değişen tek şey girdilerin bir tık ötede olması.
+      // Erişilebilirliğin kendisi ayrıca çıpalı: __guards__/ustBarSadeligi.
+      fireEvent.click(await screen.findByRole("button", { name: "Hesap menüsü" }));
+
       // N-1/N-2: operatörün kendi girişleri görünür.
       const kutuphanem = await screen.findAllByRole("link", { name: /Kütüphanem/i });
       expect(kutuphanem.length).toBeGreaterThan(0);
