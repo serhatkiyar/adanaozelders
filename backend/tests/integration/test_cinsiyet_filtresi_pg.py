@@ -45,7 +45,7 @@ from tests.integration.ip3_factory import PAROLA, yetki_basligi
 from tests.integration.conftest import _uniq
 
 
-async def _egitmen(cinsiyet: Gender | None, ucret: str) -> Tutor:
+async def _egitmen(cinsiyet: Gender | None, ucret: str, ilce: str = "CinsiyetIlce") -> Tutor:
     """Onaylı, ücretli, aranabilir bir eğitmen. Tek değişken: cinsiyet."""
     from core.security import hash_password_async
     from models.role import ROLE_IDS, RoleType
@@ -61,6 +61,7 @@ async def _egitmen(cinsiyet: Gender | None, ucret: str) -> Tutor:
             status=TutorStatus.APPROVED,
             hourly_rate=Decimal(ucret),
             gender=cinsiyet,
+            district=ilce,
         )
         s.add(t)
         await s.commit()
@@ -76,17 +77,21 @@ async def dortlu(pg):
     `UNSPECIFIED` ve `NULL` AYRI satırlardır: testin asıl konusu ikisinin de
     elenmesi ve bunun bilinçli olması.
     """
+    # Benzersiz ilçe: faset sayıları YALNIZ bu dört satırı ölçsün. Global
+    # sayımla çalışılsaydı aynı DB'deki başka tohumlar sayıya karışırdı.
+    ilce = f"CinsiyetIlce{_uniq()[:6]}"
     return {
-        "kadin": await _egitmen(Gender.FEMALE, "401"),
-        "erkek": await _egitmen(Gender.MALE, "402"),
-        "belirtmedi": await _egitmen(Gender.UNSPECIFIED, "403"),
-        "hic_sorulmadi": await _egitmen(None, "404"),
+        "ilce": ilce,
+        "kadin": await _egitmen(Gender.FEMALE, "401", ilce),
+        "erkek": await _egitmen(Gender.MALE, "402", ilce),
+        "belirtmedi": await _egitmen(Gender.UNSPECIFIED, "403", ilce),
+        "hic_sorulmadi": await _egitmen(None, "404", ilce),
     }
 
 
 async def _kimlikler(cinsiyet: Gender | None, dortlu) -> set[int]:
     """Aramanın döndürdüğü, YALNIZ bu testin tohumladığı eğitmen kimlikleri."""
-    bizimkiler = {t.id for t in dortlu.values()}
+    bizimkiler = {t.id for k, t in dortlu.items() if k != 'ilce'}
     async with AsyncSessionLocal() as db:
         sonuc = await search_service.search_tutors(db, gender=cinsiyet, limit=200)
     return {r.id for r in sonuc} & bizimkiler
@@ -99,11 +104,11 @@ async def test_fikstur_gercekten_dort_satir_uretti(dortlu):
     Fikstür sessizce boş dönseydi "filtre doğru eliyor" testleri de yeşil
     kalırdı: eleme iddiaları BOŞ kümede her zaman doğrudur.
     """
-    assert len(dortlu) == 4
-    assert len({t.id for t in dortlu.values()}) == 4
+    assert len(dortlu) == 5  # dört eğitmen + ilçe adı
+    assert len({t.id for k, t in dortlu.items() if k != 'ilce'}) == 4
     async with AsyncSessionLocal() as db:
         hepsi = await search_service.search_tutors(db, limit=200)
-    bulunan = {t.id for t in dortlu.values()} & {r.id for r in hepsi}
+    bulunan = {t.id for k, t in dortlu.items() if k != 'ilce'} & {r.id for r in hepsi}
     assert len(bulunan) == 4, (
         "Filtresiz arama dördünü de görmeli; görmüyorsa aşağıdaki eleme "
         f"iddiaları anlamsız. Bulunan: {len(bulunan)}"
@@ -146,7 +151,7 @@ async def test_uc_listeleme_yolu_AYNI_kumeyi_eler(dortlu):
     listedeki eğitmenlere ait olmayan bir dağılım gösterirse kullanıcı yanlış
     fiyat aralığı seçer. Aynı risk cinsiyet için de geçerli.
     """
-    bizimkiler = {t.id for t in dortlu.values()}
+    bizimkiler = {t.id for k, t in dortlu.items() if k != 'ilce'}
     async with AsyncSessionLocal() as db:
         arama = await search_service.search_tutors(db, gender=Gender.FEMALE, limit=200)
         one_cikan = await search_service.featured_tutors(db, gender=Gender.FEMALE)
@@ -254,3 +259,56 @@ async def test_gecersiz_cinsiyet_422(ip3, http):
         json={"gender": "KADIN"},
     )
     assert r.status_code == 422, r.text
+
+
+@pytest.mark.asyncio
+async def test_faset_sayilari_SESSIZ_ELEMEYI_gorunur_kilar(dortlu):
+    """Bu uç noktanın var oluş sebebi: kaç eğitmenin sessizce elendiğini söylemek."""
+    async with AsyncSessionLocal() as db:
+        f = await search_service.gender_facets(db, districts=[dortlu["ilce"]])
+
+    assert f[Gender.FEMALE.value] == 1
+    assert f[Gender.MALE.value] == 1
+    assert f[Gender.UNSPECIFIED.value] == 1
+    assert f["belirtilmemis"] == 1, "NULL satır ayrı sayılmalı"
+    # Kullanıcıya sunulan tek sayı: cinsiyet filtresi seçilince kaybolanlar.
+    assert f["gorunmeyen"] == 2, (
+        "UNSPECIFIED + NULL birlikte 'görünmeyen'dir — arayüzdeki "
+        "'X eğitmen bu filtreyle görünmüyor' satırının kaynağı"
+    )
+
+
+@pytest.mark.asyncio
+async def test_faset_KENDI_eksenini_saymaz(dortlu):
+    """`price_histogram`in fiyat filtresini atlamasıyla AYNI desen.
+
+    Faset kendi filtresini uygulasaydı, kullanıcı "Kadın"ı seçtiği anda
+    "Erkek 0" görünürdü ve sayılar seçim yapmayı imkânsız kılardı.
+    """
+    import inspect
+
+    imza = inspect.signature(search_service.gender_facets)
+    assert "gender" not in imza.parameters, (
+        "faset kendi eksenini parametre olarak ALMAMALI"
+    )
+    # Davranış kanıtı: aynı çağrı, hangi cinsiyet seçili olursa olsun aynı
+    # sayıları verir — çünkü seçim zaten buraya geçmez.
+    async with AsyncSessionLocal() as db:
+        a = await search_service.gender_facets(db, districts=[dortlu["ilce"]])
+        b = await search_service.gender_facets(db, districts=[dortlu["ilce"]])
+    assert a == b
+    assert sum(a[g.value] for g in Gender) + a["belirtilmemis"] == 4
+
+
+@pytest.mark.asyncio
+async def test_faset_ucu_SATIR_DEGIL_SAYI_dondurur(dortlu, http):
+    """Demografik toplam sızar ama kimlik sızmaz — bilinçli kabul edilen sınır."""
+    r = await http.get(f"/api/v1/tutors/gender-facets?district={dortlu['ilce']}")
+    assert r.status_code == 200, r.text
+    govde = r.json()
+    assert all(isinstance(v, int) for v in govde.values())
+    assert govde["gorunmeyen"] == 2
+    # Hiçbir kimlik, e-posta ya da ad dönmemeli.
+    ham = r.text
+    for gizli in ("@cinsiyettest.example.com", "Cinsiyet Test"):
+        assert gizli not in ham

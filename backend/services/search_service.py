@@ -370,6 +370,69 @@ async def price_histogram(
     return [float(r) for r in rates if r is not None]
 
 
+async def gender_facets(
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    modes: list[str] | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+    subjects: list[str] | None = None,
+    districts: list[str] | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float | None = None,
+) -> dict[str, int]:
+    """Cinsiyet filtresinin her seçeneğinin kaç eğitmene denk geldiği.
+
+    **`gender` filtresini KASITLI olarak uygulamaz** — `price_histogram`in
+    fiyat filtresini atlamasıyla aynı desen ve aynı gerekçe: faset sayıları,
+    kullanıcı bir seçenek seçtikten SONRA da diğer seçeneklerin ne getireceğini
+    göstermelidir. Kendi filtresini uygulasaydı seçili olmayan seçenekler
+    her zaman 0 görünürdü.
+
+    Neden var: `Tutor.gender == FEMALE` karşılaştırması hem `NULL` hem
+    `UNSPECIFIED` satırları eler. Yani cinsiyet filtreleyen bir öğrenci,
+    belirtmemiş HER eğitmeni sessizce kaybediyordu ve bunu göremiyordu.
+    Üçüncü sayı (`belirtilmemis`) tam olarak o sessizliği görünür kılar.
+
+    Dönen anahtarlar `Gender` üyeleri + `belirtilmemis`.
+    """
+    subjects = await subject_service.resolve_filter_terms(db, subjects or []) or None
+    geo = lat is not None and lng is not None
+    distance_expr = _haversine_km(lat, lng) if geo else None
+
+    # `func.count` yerine gruplama: tek turda üç sayı. `NULL` ile
+    # `UNSPECIFIED` DB'de ayrı satırlardır ve ayrı sayılır; tek kovaya
+    # indirmek "hiç sorulmadı" ile "söylemek istemedi" ayrımını yok ederdi.
+    stmt = select(Tutor.gender, func.count()).group_by(Tutor.gender)
+    stmt, _ = _apply_tutor_filters(
+        stmt,
+        q=q,
+        modes=modes,
+        gender=None,  # ← kasıtlı: kendi ekseni sayılmaz
+        min_age=min_age,
+        max_age=max_age,
+        subjects=subjects,
+        districts=districts,
+        distance_expr=distance_expr,
+        radius_km=radius_km,
+    )
+
+    sayilar: dict[str, int] = {g.value: 0 for g in Gender}
+    sayilar["belirtilmemis"] = 0
+    for deger, adet in (await db.execute(stmt)).all():
+        if deger is None:
+            sayilar["belirtilmemis"] += adet
+        else:
+            anahtar = deger.value if hasattr(deger, "value") else str(deger)
+            sayilar[anahtar] = sayilar.get(anahtar, 0) + adet
+    # `UNSPECIFIED` de filtreden düşer: kullanıcıya "görünmeyen" olarak
+    # ikisi BİRLİKTE sunulur, ama veri katmanında ayrı kalır (yukarı bkz.).
+    sayilar["gorunmeyen"] = sayilar["belirtilmemis"] + sayilar[Gender.UNSPECIFIED.value]
+    return sayilar
+
+
 async def featured_tutors(
     db: AsyncSession,
     *,

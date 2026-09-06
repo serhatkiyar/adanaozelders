@@ -6,7 +6,7 @@ import { TutorCard } from "@/components/TutorCard";
 import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
 import { SegmentedControl } from "@/components/SegmentedControl";
-import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
+import { useTutorSearch, useTutorPriceHistogram, useTutorGenderFacets } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
@@ -231,6 +231,14 @@ export default function Marketplace() {
   }, [debouncedQ, subjects, district, modes, gender, debouncedMinAge, debouncedMaxAge, nearMe, radiusKm]);
 
   const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(histParams, showFilters);
+
+  // Faset KENDİ eksenini saymaz: `gender` çıkarılır. Kalsaydı "Kadın" seçili
+  // iken "Erkek 0" görünür ve sayılar seçim yapmayı imkânsız kılardı.
+  const fasetParams = useMemo(() => {
+    const { gender: _atlandi, ...kalan } = histParams;
+    return kalan;
+  }, [histParams]);
+  const { data: fasetler } = useTutorGenderFacets(fasetParams, showFilters);
 
   const hasModalFilters =
     !!minRate || !!maxRate || !!gender || !!minAge || !!maxAge || !!nearMe;
@@ -576,20 +584,41 @@ export default function Marketplace() {
               <div>
                 <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Cinsiyet</h3>
                 <div className="flex flex-wrap gap-2">
-                  {GENDER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                        gender === opt.value
-                          ? "bg-marka text-white shadow-sm ring-1 ring-marka-focus"
-                          : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  {GENDER_OPTIONS.map((opt) => {
+                    const adet = fasetler?.[opt.value];
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
+                        className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                          gender === opt.value
+                            ? "bg-marka text-white shadow-sm ring-1 ring-marka-focus"
+                            : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
+                        }`}
+                      >
+                        {opt.label}
+                        {/* Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar —
+                            asıl düzeltme budur. */}
+                        {adet !== undefined && (
+                          <span className={gender === opt.value ? "ml-1.5 opacity-80" : "ml-1.5 text-slate-400"}>
+                            {adet}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+                {/* SESSİZ ELEME artık sessiz değil.
+                    `Tutor.gender == FEMALE` karşılaştırması hem NULL hem
+                    UNSPECIFIED satırları eler; öğrenci bugüne kadar bunu
+                    göremiyordu. Yalnız filtre ETKİNKEN gösterilir: filtre
+                    kapalıyken kimse elenmiyor. */}
+                {gender && !!fasetler?.gorunmeyen && (
+                  <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
+                    Cinsiyetini belirtmemiş {fasetler.gorunmeyen} eğitmen bu
+                    filtreyle görünmüyor.
+                  </p>
+                )}
               </div>
             </div>
 

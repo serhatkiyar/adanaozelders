@@ -20,12 +20,16 @@
  * için öğrendiği dersin aynısı: doğrulanmamış bir URL parametresi doğrudan
  * API çağrısına geçirilmez.
  */
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Marketplace from "@/pages/Marketplace";
-import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
+import {
+  useTutorSearch,
+  useTutorPriceHistogram,
+  useTutorGenderFacets,
+} from "@/hooks/useTutorSearch";
 import { Gender } from "@/types";
 
 // `vi.mock` hoist edilir; DİNAMİK `import()` kullanılmaz (tembelModul nöbetçisi).
@@ -33,6 +37,9 @@ vi.mock("@/hooks/useTutorSearch", () => ({
   useTutorSearch: vi.fn(() => ({ data: [], isLoading: false, error: null })),
   useTutorPriceHistogram: vi.fn(() => ({ data: [], isLoading: false })),
   useFeaturedTutors: vi.fn(() => ({ data: [], isLoading: false })),
+  useTutorGenderFacets: vi.fn(() => ({
+    data: { FEMALE: 42, MALE: 61, UNSPECIFIED: 12, belirtilmemis: 75, gorunmeyen: 87 },
+  })),
 }));
 vi.mock("@/hooks/useCurrentUser", () => ({
   useCurrentUser: () => ({ data: null, isLoading: false }),
@@ -40,8 +47,25 @@ vi.mock("@/hooks/useCurrentUser", () => ({
 vi.mock("@/components/FeaturedTutorBlock", () => ({
   FeaturedTutorBlock: () => null,
 }));
+// `bottom` ve `center` DE çizilmeli: filtre çubuğu (ve "Filtreler" düğmesi)
+// kabuğun `bottom` prop'unda geliyor. Yalnız `children` çizen bir sahte kabuk
+// onu sessizce düşürür ve test "düğme yok" der.
 vi.mock("@/components/DashboardShell", () => ({
-  DashboardShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DashboardShell: ({
+    children,
+    center,
+    bottom,
+  }: {
+    children: React.ReactNode;
+    center?: React.ReactNode;
+    bottom?: React.ReactNode;
+  }) => (
+    <div>
+      {center}
+      {bottom}
+      {children}
+    </div>
+  ),
 }));
 
 /** `useTutorSearch`e giden SON parametre nesnesi. */
@@ -70,6 +94,7 @@ function ciz(adres: string) {
 beforeEach(() => {
   vi.mocked(useTutorSearch).mockClear();
   vi.mocked(useTutorPriceHistogram).mockClear();
+  vi.mocked(useTutorGenderFacets).mockClear();
 });
 
 describe("pazaryeri · cinsiyet ↔ URL", () => {
@@ -118,5 +143,65 @@ describe("pazaryeri · cinsiyet ↔ URL", () => {
     expect(hist?.gender, "histogram başka bir küme ölçerse fiyat aralığı yanlış olur").toBe(
       Gender.FEMALE
     );
+  });
+});
+
+describe("pazaryeri · faset sayıları KENDİ eksenini saymaz", () => {
+  it("faset çağrısına `gender` GEÇMEZ", async () => {
+    // Geçseydi kullanıcı "Kadın"ı seçtiği anda "Erkek 0" görünürdü ve
+    // sayılar seçim yapmayı imkânsız kılardı. Aynı desen histogramda da var
+    // (o da fiyat filtresini bilerek atlar).
+    ciz(`/egitmenler?gender=${Gender.FEMALE}`);
+    await waitFor(() => {
+      expect(sonAramaParametreleri()?.gender).toBe(Gender.FEMALE);
+    });
+    const faset = vi.mocked(useTutorGenderFacets).mock.calls.at(-1)?.[0];
+    expect(faset).toBeTruthy();
+    expect(faset).not.toHaveProperty("gender");
+  });
+
+  it("diğer filtreler fasete GEÇER (doluluk — boş nesne göndermiyor)", async () => {
+    // `gender`ı çıkarırken yanlışlıkla her şeyi çıkarmak, sayıları tüm
+    // havuzun sayısına çevirirdi ve sayı yanıltıcı olurdu.
+    ciz(`/egitmenler?q=matematik&gender=${Gender.MALE}`);
+    await waitFor(() => {
+      const faset = vi.mocked(useTutorGenderFacets).mock.calls.at(-1)?.[0];
+      expect(faset?.q).toBe("matematik");
+    });
+  });
+});
+
+describe("pazaryeri · SESSİZ ELEME görünür kılındı", () => {
+  const cekmeceyiAc = () => {
+    // Çekmece açılmadan faset sorgusu da yapılmaz (maliyet deseni).
+    // Duyarlı düzen aynı düğmeyi iki kez çizebiliyor (mobil + geniş);
+    // ikisi de aynı state'i açar, ilki yeterli.
+    fireEvent.click(screen.getAllByRole("button", { name: /Filtreler/i })[0]);
+  };
+
+  it("filtre ETKİNKEN kaç eğitmenin elendiğini SÖYLER", async () => {
+    // Asıl ürün kusurunun düzeltmesi: `Tutor.gender == FEMALE` hem NULL hem
+    // UNSPECIFIED satırları eliyordu ve öğrenci bunu göremiyordu.
+    ciz(`/egitmenler?gender=${Gender.FEMALE}`);
+    cekmeceyiAc();
+    await waitFor(() => {
+      expect(screen.getByText(/87 eğitmen bu\s+filtreyle görünmüyor/)).toBeTruthy();
+    });
+  });
+
+  it("filtre KAPALIYKEN uyarı YOK — kimse elenmiyor", () => {
+    ciz("/egitmenler");
+    cekmeceyiAc();
+    expect(screen.queryByText(/görünmüyor/)).toBeNull();
+    // DOLULUK: çekmece gerçekten açıldı mı; açılmasaydı yukarıdaki `queryBy`
+    // her koşulda null dönerdi ve iddia bedava geçerdi.
+    expect(screen.getByText("Cinsiyet")).toBeTruthy();
+  });
+
+  it("çip başına sayı, filtre TIKLANMADAN ÖNCE görünür", () => {
+    ciz("/egitmenler");
+    cekmeceyiAc();
+    expect(screen.getByText("42")).toBeTruthy();
+    expect(screen.getByText("61")).toBeTruthy();
   });
 });
