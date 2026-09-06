@@ -73,17 +73,14 @@ function kaynakDosyalari(): string[] {
 const kisaAd = (d: string) => relative(KOK, d).split(sep).join("/");
 
 /**
- * Etiketin TEK KAYNAĞI ve bilinçli istisnalar.
+ * Etiketin TEK KAYNAĞI. Muafiyet listesi TEK ÖĞEYE indi.
  *
- * `roles.ts` kaynağın kendisi. Kayıt ekranları (`Register`, `AuthModal`) rol
- * SEÇTİRDİĞİ için ayrı: o sekmeler Paket 2'de tümüyle kalkacak; şimdi muaf
- * tutulmaları o işin yapılmadığını görünür kılıyor, gizlemiyor.
+ * (Tarihçe: kayıt ekranları `Register` ve `AuthModal` rol SEÇTİRDİĞİ için
+ * muaftı. Artık kimlik değil NİYET soruyorlar — "Ders almak" / "Ders vermek" —
+ * ve muafiyete ihtiyaçları kalmadı. Muafiyetin daralması kapsamın
+ * genişlemesidir: o iki ekran da artık taranıyor.)
  */
-const MUAF = new Set([
-  "src/lib/roles.ts",
-  "src/pages/Register.tsx",
-  "src/components/AuthModal.tsx",
-]);
+const MUAF = new Set(["src/lib/roles.ts"]);
 
 /** Etiket BİÇİMİNDE kullanım: dize sabiti ya da etiket özniteliği. */
 const ETIKET_BICIMI = [

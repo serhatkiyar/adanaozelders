@@ -280,12 +280,12 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
     <>
       <h2 className="text-2xl font-bold text-slate-900 ">Kayıt Ol</h2>
       <p className="mt-1 text-sm text-slate-500 ">
-        Hesap türünü seçerek başla.
+        Ne yapmak istiyorsun?
       </p>
 
       <div className="mt-6 flex gap-2">
-        {roleTab("client", "Öğrenci")}
-        {roleTab("tutor", "Eğitmen")}
+        {roleTab("client", "Ders almak")}
+        {roleTab("tutor", "Ders vermek")}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">

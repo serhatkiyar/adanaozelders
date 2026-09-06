@@ -150,7 +150,21 @@ Her satır, üretim kodu değişmeden **kırmızı** olmalı.
 | K-11 | Gölge e-postası + herhangi bir şifre ile giriş | 401 |
 | K-12 | Şifre sıfırlama eğitmen satırına gider, gölgeye değil | doğru |
 | ~~K-13~~ | ~~Gölge kullanıcı adı global tekillikte yer tutmaz~~ | **DÜŞTÜ (5 Eyl 2026):** `username` alanı şemadan kaldırıldı, madde konusuz kaldı. Testi de silindi. |
-| K-14 | Eğitmenin e-postasıyla ayrı bir öğrenci hesabı açılabilir (bugünkü davranış) | 201 — gölge bunu kırmaz |
+| K-14 | **DEĞİŞTİ (6 Eyl 2026):** bir e-posta = bir hesap. Eğitmenin e-postasıyla ayrı bir üye hesabı AÇILAMAZ | 409 — engel eğitmenin KENDİ satırı |
+| K-14b | Gölge tekillik alanını hâlâ tüketmez — 409 gölge yokken de aynı | sebep izole edilir |
+
+> **K-14 neden tersine döndü.** Madde zaten *"(bugünkü davranış)"* diye
+> kaydedilmişti: ürün kuralı değil, mevcut davranışın karakterizasyonuydu.
+> Asıl şart hep ikinci sütundaydı — *gölge bunu kırmaz* — ve o şart korunuyor.
+>
+> Gerçek Postgres'te ölçülen tehlike: aynı e-posta iki tabloda birden
+> olabildiğinde, kişi iki hesapta AYNI parolayı kullanırsa (ki "üyeyim, bir de
+> eğitmen olayım" diyen herkes bunu yapar) `authenticate`
+> `_LOGIN_PRECEDENCE`te TUTOR'ı önce görür, giriş eğitmeni açar ve ÜYE
+> HESABINA — siparişleri, rezervasyonları, favorileri, mesajlarıyla —
+> hiçbir parolayla ULAŞILAMAZ. Sessiz hesap kaybı.
+>
+> Nöbetçi: `tests/integration/test_ayni_eposta_iki_tablo_pg.py`.
 | K-15 | Eğitmen adını değiştirir → sonraki alışverişte gölge adı güncel | drift yok |
 | K-16 | Admin kullanıcı dizini ve `total_clients` gölgeyi saymaz | doğru |
 | K-17 | Eğitmen hesabını kapatır → gölge de anonimleşir | doğru |

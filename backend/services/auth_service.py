@@ -50,11 +50,37 @@ def _exclude_shadow(stmt, model: type):
 
 
 async def _email_taken(db: AsyncSession, model: type, email: str) -> bool:
-    stmt = _exclude_shadow(
-        select(model.id).where(model.email == email, model.deleted_at.is_(None)),
-        model,
-    )
-    return (await db.execute(stmt)).first() is not None
+    """Bu e-posta HERHANGİ bir kullanıcı tablosunda kullanılıyor mu.
+
+    `model` argümanı artık yalnız çağıranın niyetini belgeler; tarama BEŞ
+    tablonun tamamında yapılır. Eskiden yalnız kendi tablosuna bakıyordu ve
+    bu ÖLÇÜLMÜŞ bir tehlike üretiyordu:
+
+      1. Aynı e-posta hem `clients` hem `tutors` satırına yazılabiliyordu
+         (`register_tutor` yalnız `Tutor`a, `register_client` yalnız
+         `Client`a bakıyordu).
+      2. `authenticate` `_LOGIN_PRECEDENCE` sırasını gezip parolası da
+         doğrulanan İLK satırı döndürüyor. Kişi iki hesapta AYNI parolayı
+         kullanırsa — ki "üyeyim, bir de eğitmen olayım" diyen herkes bunu
+         yapar — TUTOR önce geldiği için giriş eğitmeni açıyor ve üye
+         hesabına (siparişleri, rezervasyonları, favorileri, mesajları)
+         hiçbir parolayla ULAŞILAMIYORDU. Sessiz hesap kaybı.
+
+    Gölge `Client` satırları hariç tutulur: onlar giriş öznesi değildir ve
+    eğitmenin kendi e-postasını taşırlar (docs/egitmen-alici-sozlesme.md §1.2).
+    Hariç tutulmasaydı hiçbir eğitmen mağazaya girdikten sonra e-postasını
+    kullanamazdı.
+
+    Nöbetçi: tests/integration/test_ayni_eposta_iki_tablo_pg.py
+    """
+    for _rol, tablo in _LOGIN_PRECEDENCE:
+        stmt = _exclude_shadow(
+            select(tablo.id).where(tablo.email == email, tablo.deleted_at.is_(None)),
+            tablo,
+        )
+        if (await db.execute(stmt)).first() is not None:
+            return True
+    return False
 
 
 # `_username_taken`, `_ensure_unique` ve `_turet_kullanici_adi` 5 Eyl 2026'da

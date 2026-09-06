@@ -680,24 +680,69 @@ async def test_K12_sifre_sifirlama_golgeyi_bulmaz(fabA, http):
     assert isinstance(bulunan, Tutor) and bulunan.id == e.tutor_id
 
 
-async def test_K13_K14_golge_tekillik_alanini_tuketmez(fabA, http):
-    e = await fabA.egitmen()
-    await fabA.adres_ekle(http, e.headers)
-    golge = await fabA.golge(e.tutor_id)
-
-    # K-14: eğitmenin e-postasıyla ayrı bir öğrenci hesabı hâlâ açılabilir.
-    r = await http.post(
+async def _uye_kaydet(http, eposta: str):
+    return await http.post(
         "/api/v1/auth/register/client",
         json={
-            "email": e.email,
+            "email": eposta,
             "password": TEST_PAROLA,
             "first_name": "Ayri",
-            "last_name": "Ogrenci",
+            "last_name": "Uye",
             "consent_version": "2026-01-01",
         },
     )
-    assert r.status_code == 201, f"gölge e-posta tekilliğini kilitledi: {r.text}"
-    fabA.client_ids.append(r.json()["id"])
+
+
+async def test_K14_golge_tekillik_alanini_tuketmez(fabA, http):
+    """K-14 GÜNCELLENDİ (6 Eyl 2026) — ölçülmüş bir tehlike yüzünden.
+
+    ## Eski hâli ve neden değişti
+
+    Bu test "eğitmenin e-postasıyla ayrı bir öğrenci hesabı AÇILABİLİR" diye
+    201 bekliyordu. Sözleşme belgesi (`docs/egitmen-alici-sozlesme.md:153`) o
+    maddeyi zaten **"(bugünkü davranış)"** diye kaydetmişti — yani bir ürün
+    kuralı değil, mevcut davranışın karakterizasyonuydu. Maddenin ASIL şartı
+    ikinci sütunda: *"gölge bunu kırmaz"*.
+
+    Gerçek Postgres'te ölçülen tehlike: aynı e-posta iki tabloda birden
+    olabildiğinde, kişi iki hesapta AYNI parolayı kullanırsa —
+    ki "üyeyim, bir de eğitmen olayım" diyen herkes bunu yapar —
+    `authenticate` `_LOGIN_PRECEDENCE`te TUTOR'ı önce gördüğü için giriş
+    eğitmeni açıyor ve ÜYE HESABINA (siparişleri, rezervasyonları,
+    favorileri, mesajları) hiçbir parolayla ULAŞILAMIYORDU. Sessiz hesap
+    kaybı.
+
+    Bu yüzden kural değişti: **bir e-posta = bir hesap.** Engel eğitmenin
+    KENDİ satırıdır; gölge hâlâ hiçbir şeyi tüketmez ve aşağıdaki ikinci
+    düğüm bunu izole ederek kanıtlar.
+    """
+    e = await fabA.egitmen()
+    await fabA.adres_ekle(http, e.headers)
+    golge = await fabA.golge(e.tutor_id)
+    assert golge is not None, "gölge kurulmadı — senaryo eksik"
+
+    r = await _uye_kaydet(http, e.email)
+    assert r.status_code == 409, f"bir e-posta = bir hesap kuralı delindi: {r.text}"
+
+    # DOLULUK: kapı yalnız BU e-postaya kapalı; kayıt yolu çalışıyor.
+    r2 = await _uye_kaydet(http, f"bagimsiz-{_uniq()}@example.com")
+    assert r2.status_code == 201, r2.text
+    fabA.client_ids.append(r2.json()["id"])
+
+
+async def test_K14b_engel_GOLGE_DEGIL_egitmenin_kendi_satiri(fabA, http):
+    """Gölge hâlâ tekillik alanını tüketmiyor — sebep izole ediliyor.
+
+    Yukarıdaki 409, gölge YOKKEN de birebir aynı. Yani reddi üreten şey
+    eğitmenin gerçek satırıdır. Bu düğüm olmasaydı "gölge artık kilitliyor"
+    ile "eğitmen satırı kilitliyor" hâlleri ayırt edilemezdi ve K-14'ün asıl
+    şartı sessizce kaybolurdu.
+    """
+    e = await fabA.egitmen()  # adres YOK → gölge de YOK
+    assert await fabA.golge(e.tutor_id) is None, "gölge oluşmamalıydı"
+
+    r = await _uye_kaydet(http, e.email)
+    assert r.status_code == 409, r.text
 
 
 

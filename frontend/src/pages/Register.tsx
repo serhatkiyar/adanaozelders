@@ -86,12 +86,12 @@ export default function Register() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-100 ">
         <h1 className="text-2xl font-bold text-slate-900 ">Kayıt Ol</h1>
         <p className="mt-1 text-sm text-slate-500 ">
-          Hesap türünü seçerek başla.
+          Ne yapmak istiyorsun?
         </p>
 
         <div className="mt-6 flex gap-2">
-          {roleTab("client", "Öğrenci")}
-          {roleTab("tutor", "Eğitmen")}
+          {roleTab("client", "Ders almak")}
+          {roleTab("tutor", "Ders vermek")}
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
