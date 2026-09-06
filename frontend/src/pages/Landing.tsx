@@ -17,7 +17,7 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
-import { BigSearch, DersArama, CompactSearch } from "@/components/HeroSearch";
+import { DersArama, KutuphaneArama, CompactSearch } from "@/components/HeroSearch";
 import type { MekanDegeri } from "@/components/MekanSelect";
 import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
@@ -118,17 +118,21 @@ export default function Landing() {
   // (bottom slot artık justify-center içermiyor — her sayfa kendi hizalar).
   // Arama hapı SEKMEYE bakar (30 Ağu): eğitmenlerde ders+mekân, kütüphanelerde
   // ad/semt yazısı + ilçe (uzaktan seçeneği yok — fiziksel mekân).
+  //
+  // 7 Eyl 2026: iki hap TASARIM OLARAK ikizlendi (kullanıcı kararı). Önce
+  // kütüphane sekmesi `BigSearch` basıyordu — pin + açılır ilçe menüsü +
+  // serbest metin; sekme değişince çubuğun kendisi değişiyordu. Artık ikisi de
+  // aynı kabuk, aynı sıralama, aynı eşit bölmeler; fark yalnız sağ bölmenin
+  // seçicisinde. Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`.
   const bottom = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
       {active === "kutuphaneler" ? (
-        <BigSearch
+        <KutuphaneArama
           q={kutQ}
           setQ={setKutQ}
           district={kutDistrict}
           setDistrict={setKutDistrict}
-          showRemoteOption={false}
           onSubmit={kutSubmit}
-          placeholder={HERO_PLACEHOLDER.kutuphaneler}
         />
       ) : (
         <DersArama

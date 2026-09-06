@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { DistrictSelect } from "@/components/DistrictSelect";
-import { MekanSelect, type MekanDegeri } from "@/components/MekanSelect";
+import { IlceSelect, MekanSelect, type MekanDegeri } from "@/components/MekanSelect";
 import { categoryMeta, type CategoryKey } from "@/components/CategoryBar";
 import { dersAra } from "@/lib/dersArama";
 import { useSubjects } from "@/hooks/useSubjects";
@@ -259,6 +259,74 @@ export function DersArama({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── KutuphaneArama: `DersArama`nın kütüphane ikizi (kullanıcı kararı, 7 Eyl) ──
+   Ana sayfada iki sekme iki AYRI arama tasarımı gösteriyordu: eğitmende
+   yazılabilir iki bölme, kütüphanede pin + açılır ilçe menüsü + serbest metin.
+   Aynı çubuğun iki farklı hâli olmasının bir gerekçesi yoktu.
+
+   Sıralama ve görünüm artık birebir aynı: solda yazılan alan, ayraç, sağda
+   mekân alanı, sağ uçta Ara. TEK fark sağ bölmenin içeriği — eğitmende
+   "Online / Yüz yüze / İkisi de olur" satırları var, kütüphanede yok
+   (fiziksel mekân). Kabuk sınıfları `DersArama` ile ortak; biri değişirse
+   diğeri de değişmeli — nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`. */
+
+export function KutuphaneArama({
+  q,
+  setQ,
+  district,
+  setDistrict,
+  onSubmit,
+  placeholder = "Kütüphane adı",
+}: {
+  q: string;
+  setQ: (v: string) => void;
+  district: string[];
+  setDistrict: (v: string[]) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  placeholder?: string;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+
+  return (
+    <div className="relative w-full max-w-2xl">
+      <form
+        ref={formRef}
+        onSubmit={onSubmit}
+        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
+      >
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          // İki bölme EŞİT genişlikte (flex-1 basis-0) — `DersArama` ile aynı.
+          className="min-w-0 flex-1 basis-0 bg-transparent py-2.5 pl-5 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 "
+        />
+
+        <div className="h-7 w-px shrink-0 bg-slate-200 " />
+
+        <div className="flex min-w-0 flex-1 basis-0 items-center py-2.5 pl-3 pr-2">
+          <IlceSelect
+            value={district}
+            onChange={setDistrict}
+            hizaRef={formRef}
+            triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
+          />
+        </div>
+
+        <button
+          type="submit"
+          aria-label="Ara"
+          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95"
+        >
+          <SearchIconSvg />
+        </button>
+      </form>
     </div>
   );
 }
