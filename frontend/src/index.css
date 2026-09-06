@@ -120,9 +120,9 @@
    * `bg-panel-surface/60` gibi saydamlık varyantları çalışır. Hex yazılsaydı
    * saydamlık sessizce kırılırdı.
    *
-   * Aksan (`--panel-accent`) bugün `indigo-600`dur. Marka lacivertine
-   * (#1A365D) geçiş KARAR BEKLİYOR ve tek satırlık bir değişikliktir;
-   * gerekçe: `docs/tasarim-dili.md` §1.4.
+   * Panel aksanı kendi değerini TUTMAZ: aşağıda `--marka`ya takma addır.
+   * (Tarihçe: önce `indigo-600`, sonra marka lacivert #1A365D idi; Ç-4 ile
+   * turuncuya geçildi. Gerekçe ve ölçülen bedel: `docs/tasarim-dili.md` §1.4.)
    */
   :root {
     /* ══ SİTE MARKA AKSANI — TEK KAYNAK ══
@@ -143,25 +143,30 @@
      * `bg-marka/20` gibi saydamlık varyantları SESSİZCE kırılır. Nöbetçi bu
      * biçimi sınar (`__guards__/markaAksani.test.ts`).
      *
-     * ── ŞU AN: DEĞERLER HÂLÂ ESKİ (indigo) ──
-     * Bilerek. Token katmanı ve 1.124 sınıflık süpürme, RENK DEĞİŞİMİNDEN
-     * ayrı iniyor: süpürmenin görsel etkisi ölçülebilir biçimde nötr olmalı ki
-     * mekanik bir eşleme hatası, renk değişiminin gürültüsünde kaybolmasın.
-     * Turuncuya çeviren commit yalnız aşağıdaki değerlere dokunur.
+     * ── ÖLÇÜLEN BEDEL ──
+     * Aksan `indigo-600` iken beyaz metinle 6,29 veriyordu; `#C2410C` 5,18
+     * verir. AA (4,5) korunur ama pay daralır. Bu, kararın bilinen ve kabul
+     * edilen bedelidir — `docs/tasarim-dili.md` §1.4.
+     *
+     * Marka turuncusu `#F6AD55` birincil dolgu OLAMAZ: üstünde beyaz metin
+     * 1,90 verir. Beyaz metni taşıyabilen en açık turuncu `#C2410C`dir.
      */
-    --marka: 79 70 229;                 /* indigo-600 — C3'te #C2410C olacak */
-    --marka-hover: 67 56 202;           /* indigo-700 */
+    --marka: 194 65 12;                 /* #C2410C — beyaz metinle 5,18 (AA) */
+    --marka-hover: 154 52 18;           /* #9A3412 — beyaz metinle 7,31 (AAA) */
     --marka-fg: 255 255 255;            /* dolgu üstündeki metin */
-    --marka-soft: 238 242 255;          /* indigo-50  — sakin zemin */
-    --marka-soft-fg: 55 48 163;         /* indigo-800 — soft zemin üstü metin */
-    --marka-line: 199 210 254;          /* indigo-200 — YALNIZ kenarlık, metin taşımaz */
-    --marka-mid: 99 102 241;            /* indigo-500 — YALNIZ kenarlık/halka.
-                                         * C3'te #EA580C olur: beyaza karşı 3,56 —
-                                         * SC 1.4.11'in metin dışı eşiğini (3) geçer
-                                         * ama AA metin eşiğini (4,5) GEÇMEZ. Metin
-                                         * ya da beyaz metin taşıyan dolgu olarak
-                                         * kullanılamaz; nöbetçi bunu sınar. */
-    --marka-focus: 79 70 229;           /* odak halkası (WCAG SC 1.4.11 · eşik 3) */
+    --marka-soft: 255 247 237;          /* #FFF7ED — sıcak zemin */
+    --marka-soft-fg: 154 52 18;         /* #9A3412 — soft üstünde 6,88 */
+    --marka-line: 254 215 170;          /* #FED7AA — YALNIZ kenarlık; metin olarak
+                                         * 1,35 verir, kullanılamaz. */
+    --marka-mid: 234 88 12;             /* #EA580C — YALNIZ kenarlık/halka.
+                                         * Beyaza karşı 3,56: SC 1.4.11'in metin
+                                         * dışı eşiğini (3) geçer, AA metin eşiğini
+                                         * (4,5) GEÇMEZ. Metin ya da beyaz metin
+                                         * taşıyan dolgu olamaz; nöbetçi sınar. */
+    --marka-focus: 194 65 12;           /* odak halkası — beyaza karşı 5,18
+                                         * (SC 1.4.11 eşiği 3). Bilerek `mid`
+                                         * DEĞİL: B-11 denetimi tam bu eksende
+                                         * 2,98 ile yanmıştı, dar pay istenmiyor. */
 
     /* ══ DİKKAT AİLESİ — aksan DEĞİL ══
      *
@@ -169,9 +174,11 @@
      * açık metin; dikkat = açık zemin + koyu metin. Uyarı asla dolgulu düğme
      * olmaz. Bu kural nöbetçide ölçülür, yorumda kalmaz.
      */
-    --dikkat: 245 158 11;               /* amber-500 — düz şerit/nokta, METİN TAŞIMAZ */
+    --dikkat: 245 158 11;               /* amber-500 — düz şerit/nokta.
+                                         * Beyaza karşı 2,15: METİN TAŞIMAZ ve
+                                         * beyaz metinli dolgu OLAMAZ. */
     --dikkat-soft: 254 243 199;         /* amber-100 — çip zemini */
-    --dikkat-fg: 120 53 15;             /* amber-900 — çip metni (soft üstünde 8,15) */
+    --dikkat-fg: 120 53 15;             /* amber-900 — çip metni, soft üstünde 8,15 */
 
     --panel-bg: 248 250 252;            /* slate-50  */
     --panel-surface: 255 255 255;       /* beyaz     */
@@ -182,43 +189,37 @@
     --panel-fg: 15 23 42;               /* slate-900 */
     --panel-fg-muted: 71 85 105;        /* slate-600 */
     --panel-fg-subtle: 100 116 139;     /* slate-500 */
-    /* ── MARKA AKSANI: LACİVERT (İP-B2 · Ç-3 kararı) ──
+    /* ── PANEL AKSANI: MARKAYA TAKMA AD ──
      *
-     * İP-B1 burada `indigo-600` bırakmıştı ve gerekçesi yazılıydı: aksanı
-     * yalnız kabukta çevirmek paneli yarı lacivert yarı indigo bırakırdı.
-     * Ç-3 kararlaştı ve değişiklik kabuk + ekranlar + ortak bileşenler
-     * birlikte yapıldı (nöbetçi: `__guards__/panelAksani.test.ts` — panel
-     * ağacında `indigo-` sınıfı SIFIR).
+     * Buraya ikinci bir doğruluk kaynağı YAZILMAZ. Panel bir zamanlar kendi
+     * lacivertini (#1A365D) taşıyordu; site turuncuya geçerken panele ayrı bir
+     * değer bırakılsaydı tam olarak Ç-3'ün yasakladığı hâl doğardı: yarısı bir
+     * renk, yarısı başka renk. Takma ad sayesinde panel ağacındaki 244
+     * `*-panel-*` sınıfının HİÇBİRİ değişmeden turuncuya geçti.
      *
-     * Zemin lacivert DEĞİL: yüzeyler, kenarlıklar ve metin nötr (slate)
-     * kalır. Marka yalnız üç yerde görünür — etkin gezinme öğesi, birincil
-     * düğme, odak halkası. Gerekçe `docs/tasarim-dili.md` §1.3/§1.4: panel
-     * günde saatlerce bakılan bir çalışma aletidir; marka rengine boyanmış
-     * bir zemin durumu ve uyarıyı bastırır.
-     *
-     * Ölçülen kontrastlar (gerçek Chrome · docs/ip-b2/kontrast.json):
-     *   beyaz metin / #1A365D  = 12,14   (AA 4,5 · AAA 7)
-     *   #1A365D / #EAF0F7      = 10,58   (etkin satır zemini)
-     *   odak halkası / beyaz   = 12,14   (SC 1.4.11 eşiği 3)
+     * Zemin turuncu DEĞİL: yüzeyler, kenarlıklar ve gövde metni nötr (slate)
+     * kalır. Marka aksan olarak girer — etkin gezinme öğesi, birincil düğme,
+     * odak halkası — ve sıcak zemin `--marka-soft` ile sınırlıdır (hover,
+     * seçili satır, yumuşak bilgi kartı).
      */
-    --panel-accent: 26 54 93;           /* #1A365D — marka lacivert */
-    --panel-accent-fg: 255 255 255;
-    --panel-accent-soft: 234 240 247;   /* #EAF0F7 — lacivertin sakin hâli */
-    --panel-focus: 26 54 93;
+    --panel-accent: var(--marka);
+    --panel-accent-fg: var(--marka-fg);
+    --panel-accent-soft: var(--marka-soft);
+    --panel-focus: var(--marka-focus);
 
-    /* ── DİKKAT RENGİ: #F6AD55 — AKSAN DEĞİL (Ç-3) ──
+    /* ── PANEL DİKKAT RENGİ: DİKKAT AİLESİNE TAKMA AD ──
      *
-     * Marka turuncusu birincil düğmeye verilseydi aynı ekranda hem "yap" hem
-     * "dikkat et" anlamına gelirdi. Rolü tek: bekleyen iş ve uyarı durumları
-     * (bekleyen ödeme, rotayı bozan durak, kontenjan dolmak üzere). Kehribar
-     * (`amber-*`) rozetlerin yerini alır ve renk paletinde başka hiçbir yerde
-     * geçmez.
+     * Aksan turuncu olunca "aksan ≠ dikkat" kuralı HUE ile korunamaz hâle
+     * geldi; ayrım artık DEĞER ve BİÇİMdedir: aksan = koyu dolgu + AÇIK metin,
+     * dikkat = açık zemin + KOYU metin. Uyarı asla dolgulu düğme olmaz.
      *
-     * Ölçülen: #7C2D12 metin / #FDF1E1 zemin = 8,41.
+     * Eski `#F6AD55` bırakıldı: turuncuya fazla yakındı ve depoda gerçek
+     * kullanımı tek dosyadaydı; `amber` ailesi ise zaten 258 yerde anlam
+     * taşıyordu, yani token'a süpürmek görsel olarak no-op oldu.
      */
-    --panel-attention: 246 173 85;      /* #F6AD55 — düz hâl (şerit, nokta) */
-    --panel-attention-soft: 253 241 225;/* rozet zemini */
-    --panel-attention-fg: 124 45 18;    /* rozet metni */
+    --panel-attention: var(--dikkat);
+    --panel-attention-soft: var(--dikkat-soft);
+    --panel-attention-fg: var(--dikkat-fg);
   }
   html {
     scroll-behavior: smooth;
@@ -418,7 +419,7 @@ path.district-poly {
   left: 50%;
   width: 250%;
   aspect-ratio: 1;
-  background: conic-gradient(from 0deg, transparent 0%, theme("colors.violet.500") 10%, theme("colors.fuchsia.400") 30%, theme("colors.indigo.400") 50%, transparent 60%);
+  background: conic-gradient(from 0deg, transparent 0%, rgb(var(--marka)) 10%, rgb(var(--dikkat)) 30%, rgb(var(--marka-mid)) 50%, transparent 60%);
   transform: translate(-50%, -50%) rotate(0deg);
   z-index: -2;
   opacity: 0;

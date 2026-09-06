@@ -180,7 +180,7 @@ export default function Learn() {
           {DENEMELER_ACIK ? (
           <Link
             to={ROUTES.exams}
-            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white shadow-lg shadow-marka/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-marka to-marka-hover p-6 text-white shadow-lg shadow-marka/20 transition hover:-translate-y-0.5 hover:shadow-xl"
           >
             <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
             <div className="relative">
@@ -206,7 +206,7 @@ export default function Learn() {
           {/* Takvim */}
           <Link
             to={ROUTES.calendar}
-            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-blue-600 p-6 text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500 to-blue-600 p-6 text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
           >
             <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
             <div className="relative">

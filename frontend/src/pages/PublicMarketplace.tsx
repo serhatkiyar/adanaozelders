@@ -261,7 +261,7 @@ export default function PublicMarketplace() {
       )}
       <div className="mx-auto max-w-[1050px] space-y-4 pt-4">
         {/* Login CTA banner */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3.5 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-marka to-marka-hover px-5 py-3.5 text-white">
           <p className="text-sm font-medium">
             Eğitmenleri keşfet. Ders talebi ve mesaj için ücretsiz hesap aç.
           </p>

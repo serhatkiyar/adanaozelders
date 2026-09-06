@@ -81,7 +81,7 @@ export function AdimYer({ d, guncelle }: AdimProps) {
             ) : (
               <PlainButton
                 onClick={() => setHaritaAcik(true)}
-                className="text-[14px] font-medium text-indigo-600 underline underline-offset-4 transition hover:text-indigo-700"
+                className="text-[14px] font-medium text-[#F2695E] underline underline-offset-4 transition hover:text-[#B33A2E]"
               >
                 Haritada işaretle (isteğe bağlı)
               </PlainButton>

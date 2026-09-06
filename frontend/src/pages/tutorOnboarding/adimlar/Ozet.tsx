@@ -31,7 +31,7 @@ function Satir({
       </div>
       <PlainButton
         onClick={() => gitAdim(adim)}
-        className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-[13px] font-medium text-indigo-600 underline underline-offset-4 transition hover:text-indigo-700"
+        className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-[13px] font-medium text-[#F2695E] underline underline-offset-4 transition hover:text-[#B33A2E]"
       >
         Düzenle
       </PlainButton>

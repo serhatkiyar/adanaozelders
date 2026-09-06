@@ -79,7 +79,7 @@ export function LibraryMapPanel({
       {/* ── İçerik — banner dahil hepsi birlikte kaydırılır ── */}
       <div className="flex-1 overflow-y-auto">
         {/* Banner */}
-        <div className="relative h-36 bg-gradient-to-br from-indigo-100 to-violet-100 ">
+        <div className="relative h-36 bg-gradient-to-br from-marka-soft to-marka-line ">
           {banner ? (
             <img src={banner} alt="" className="h-full w-full object-cover" />
           ) : (

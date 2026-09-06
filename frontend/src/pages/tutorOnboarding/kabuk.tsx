@@ -126,14 +126,14 @@ export function AdimHaritasi({
                     acilabilir
                       ? "text-slate-800 hover:bg-slate-50"
                       : "cursor-not-allowed text-slate-300"
-                  } ${suAn ? "font-semibold text-indigo-700" : ""}`}
+                  } ${suAn ? "font-semibold text-[#B33A2E]" : ""}`}
                 >
                   <span className="w-5 shrink-0 text-center text-[13px] tabular-nums text-slate-400">
                     {i + 1}
                   </span>
                   <span className="flex-1 truncate">{a.kisaAd}</span>
                   {suAn && (
-                    <span className="shrink-0 text-[12px] font-medium text-indigo-600">
+                    <span className="shrink-0 text-[12px] font-medium text-[#F2695E]">
                       buradasın
                     </span>
                   )}

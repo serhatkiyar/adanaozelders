@@ -112,6 +112,13 @@ Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullan
    `Badge`/`StatusBadge` içinde geçer, düz metinde değil. Gerekçe: aynı yeşil
    hem "başarılı" hem "aktif" hem de dekoratif olarak kullanılırsa anlamını
    kaybeder.
+   **Uyarı çipi = açık zemin + KOYU metin; asla dolgulu düğme değildir.**
+   Aksan turuncu olduktan sonra (Ç-4) uyarıyı aksandan ayıran şey hue değil
+   BİÇİMdir: aksan koyu dolgu + açık metin taşır, uyarı tam tersini. Dolgulu
+   bir uyarı düğmesi hem yanlış anlam verir hem kontrastı düşürür
+   (`amber-500` üstünde beyaz metin = **2,15**). Nöbetçi:
+   `__guards__/markaAksani.test.ts` — `bg-*dikkat*` ile `text-white` aynı
+   sınıf dizesinde `toEqual([])`.
 3. **Odak halkası her etkileşimli öğede zorunludur** ve `ring-panel-focus` +
    `ring-2` + `ring-offset-2`'dir. Kontrast eşiği 3:1'dir (WCAG 2.1 SC 1.4.11).
    Gerekçe: bağımsız denetim #3 (B-11) açık temada `indigo-400` halkanın
@@ -121,7 +128,59 @@ Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullan
    B-9 — dokuz yerel widget koyu temada beyaz blok çiziyordu; tek tek yamamak
    onuncusunu davet ederdi.
 
-### 1.4 Marka: navy + turuncu — **KARAR VERİLDİ (İP-B2 · Ç-3)**
+### 1.4 Marka aksanı: **TURUNCU — KARAR (Ç-4, kullanıcı)**
+
+Aksan `#C2410C`dir. Zemin, kenarlık ve gövde metni **nötr** kalır; marka aksan
+olarak girer (etkin gezinme öğesi, birincil düğme, odak halkası) ve sıcak zemin
+`#FFF7ED` ile sınırlıdır: hover, seçili satır/sekme, yumuşak bilgi kartı.
+
+**Bu karar §1.4'ün eski hâlini (Ç-3) bilerek TERSİNE ÇEVİRİR.** Ç-3 "turuncu
+aksan değil, dikkat rengidir" diyordu ve gerekçesi aşağıda tarihçe olarak
+duruyor. Gerekçe kullanıcıya iletildi, karar tekrarlandı. Dayanağı bir ölçüm
+düzeltmesi değil **ürün yargısıdır**; burada böyle yazılmasının sebebi, ileride
+"acaba kontrast mı gerektirdi" diye okunmamasıdır.
+
+**Ölçülen bedel — kabul edildi.** Aksan `indigo-600` iken beyaz metinle **6,29**
+veriyordu; `#C2410C` **5,18** verir. AA (4,5) korunur, pay daralır.
+
+| Rol | Değer | Ölçülen |
+|---|---|---|
+| Aksan dolgu | `#C2410C` | beyaz metin **5,18** (AA) |
+| Hover / aktif | `#9A3412` | beyaz metin **7,31** (AAA) |
+| Sıcak zemin | `#FFF7ED` | üstünde `#9A3412` = **6,88** |
+| Kenarlık | `#FED7AA` | **yalnız kenarlık** — metin olarak 1,35 |
+| Ara ton (kenarlık/halka) | `#EA580C` | beyaza karşı **3,56** — SC 1.4.11'i geçer, **AA metni GEÇMEZ** |
+| Odak halkası | `#C2410C` | beyaza karşı **5,18** (eşik 3) |
+| Dikkat düz | `#F59E0B` | beyaza karşı 2,15 — **metin taşımaz** |
+| Dikkat çipi | `#FEF3C7` zemin / `#78350F` metin | **8,15** |
+
+**Marka turuncusu `#F6AD55` birincil dolgu OLAMAZ:** üstünde beyaz metin
+**1,90** verir. Beyaz metni taşıyabilen en açık turuncu `#C2410C`dir. Bu, "sarı
+turuncu" isteğinin düğmede değil **zeminlerde** karşılanmasının sebebidir.
+
+**Aksan ile dikkat DEĞER ve BİÇİMle ayrılır, hue ile değil.** Ç-3'ün endişesi
+("aynı ekranda hem 'yap' hem 'dikkat et'") ortadan kalkmadı; çözüm değişti:
+aksan = koyu dolgu + AÇIK metin, dikkat = açık zemin + KOYU metin. Yeni bir hue
+ailesi icat edilmez. Nöbetçi bunu parlaklık ve kontrastla ölçer
+(`__guards__/markaAksani.test.ts`).
+
+**Uygulama token katmanındadır.** `--marka-*` / `--dikkat-*` `index.css`
+`:root` içinde tek kaynaktır; panel ailesi (`--panel-accent` vb.) ona **takma
+ad**dır, yani panel ağacındaki 244 sınıf hiç değişmeden turuncuya geçti. Public
+sitedeki 1.086 ham `indigo-` sınıfı token'a süpürüldü; nöbetçi eşiği `src/**`
+için `toEqual([])`.
+
+**Kalan risk — kabul edildi.** Sitede turuncu/kehribar zaten **alan rengi**
+olarak kullanılıyor: yıldız puanı, kargo firması rengi, görev önceliği ölçeği.
+Aksan turuncu olunca bunlar marka gibi okunabilir. Azaltıcı, aksanın her zaman
+koyu dolgu, alan renklerinin açık/orta ton olması. Tümüyle çözülemez.
+
+---
+
+### 1.4 (tarihçe) Marka: navy + turuncu — Ç-3, **GEÇERSİZ**
+
+> Aşağıdaki bölüm **yürürlükte değildir**; Ç-4 ile yukarıdaki karar geçerlidir.
+> Silinmemesinin sebebi, o günkü gerekçenin ve ölçümlerin okunabilir kalmasıdır.
 
 `#1A365D` navy, `#F6AD55` turuncu ve `Figtree` yazı tipi **bugün kod tabanında
 hiç geçmiyor** (arama: sıfır sonuç, `frontend/` ağacının tamamında). Panel
@@ -147,7 +206,8 @@ Tavsiye — **Medusa'nın dili + bizim kimliğimiz**, klon değil:
 **İP-B2'de uygulandı.** Değişiklik yalnız token'da kalmadı: panel ağacındaki
 (`components/admin/**`, `pages/admin/**`) **55 `indigo-` sınıfı** token'lara
 süpürüldü ve nöbetçi eşiği `toEqual([])` yapıldı
-(`__guards__/panelAksani.test.ts`) — yani panelde yeni bir `indigo-` doğduğu
+(o gün `__guards__/panelAksani.test.ts`; Ç-4'te `markaAksani.test.ts` adıyla
+kapsamı `src/**`e genişletildi) — yani panelde yeni bir `indigo-` doğduğu
 gün CI kırılır. "Panel yarı lacivert yarı indigo kalmaz" bir niyet değil,
 ölçülen bir sözleşmedir.
 
@@ -570,7 +630,10 @@ Bu dil aşağıdakileri **bozamaz**. Bozuyorsa tasarım kararı yanlıştır:
 | Erişilebilir adı olmayan form kontrolü | `≤ 7` (kaynak) / `0` (çalışma zamanı) | `uiBaseline` + `calismaZamaniKapisi` |
 | Ham `<button>` | artamaz | `uiBaseline.test.ts` |
 | `ui2/` dışında `@medusajs/ui` importu | `toEqual([])` | `uiBaseline.test.ts` |
-| **Panel ağacında `indigo-` sınıfı** | `toEqual([])` | `panelAksani.test.ts` (İP-B2) |
+| **`src/**` içinde `indigo-` sınıfı** | `toEqual([])` | `markaAksani.test.ts` (Ç-4) |
+| **Aksan/hover/çip AA kontrastı** | `≥ 4,5` (kaynaktan hesaplanır) | `markaAksani.test.ts` (Ç-4) |
+| **Dolgulu uyarı düğmesi** (`bg-*dikkat*` + `text-white`) | `toEqual([])` | `markaAksani.test.ts` (Ç-4) |
+| **Köprüde karşılığı olmayan marka sınıfı** | `toEqual([])` | `gecerliMarkaSinifi.test.ts` (Ç-4) |
 | **Dış yazı tipi konağına atıf** | `toEqual([])` | `disFont.test.ts` (İP-B2 · KVKK) |
 | **Satır başına açık düğme** | `≤ 2`, hiçbiri yıkıcı değil | `satirAksiyonlari.tsx` (çalışma zamanı) |
 

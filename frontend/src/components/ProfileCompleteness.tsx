@@ -57,7 +57,7 @@ export function ProfileCompleteness({
       </div>
       <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100 ">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-marka to-marka-hover transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>

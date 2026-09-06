@@ -318,7 +318,7 @@ export default function Exams() {
               {trend.map((n, i) => (
                 <div
                   key={i}
-                  className="flex-1 rounded-t bg-gradient-to-t from-indigo-500 to-violet-500"
+                  className="flex-1 rounded-t bg-gradient-to-t from-marka to-marka-hover"
                   style={{ height: `${Math.max(4, (Math.max(0, n) / trendMax) * 100)}%` }}
                   title={fmtNet(n)}
                 />

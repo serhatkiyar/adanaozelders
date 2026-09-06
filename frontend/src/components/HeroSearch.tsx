@@ -98,7 +98,7 @@ export function BigSearch({
         <button
           type="submit"
           aria-label="Ara"
-          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:from-indigo-700 hover:to-violet-700 active:scale-95"
+          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-white transition hover:from-marka-hover hover:to-marka-hover active:scale-95"
         >
           <SearchIconSvg />
         </button>
@@ -219,7 +219,7 @@ export function DersArama({
         <button
           type="submit"
           aria-label="Ara"
-          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:from-indigo-700 hover:to-violet-700 active:scale-95"
+          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-white transition hover:from-marka-hover hover:to-marka-hover active:scale-95"
         >
           <SearchIconSvg />
         </button>
@@ -314,7 +314,7 @@ export function CompactSearch({
       </span>
 
       {/* Arama butonu */}
-      <span className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white">
+      <span className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-white">
         <SearchIconSvg className="h-4 w-4" />
       </span>
     </button>

@@ -38,9 +38,9 @@ const UNSELECTED_STYLE: L.PathOptions = {
 // Hover vurgusu: seçilmemişte indigo (="seç"), seçilide koyu yeşil (="kaldır").
 const UNSELECTED_HOVER: L.PathOptions = {
   className: "district-poly",
-  color: "#4f46e5", // indigo-600
+  color: "#C2410C", // --marka
   weight: 3,
-  fillColor: "#6366f1", // indigo-500
+  fillColor: "#EA580C", // --marka-mid
   fillOpacity: 0.4,
 };
 const SELECTED_HOVER: L.PathOptions = {

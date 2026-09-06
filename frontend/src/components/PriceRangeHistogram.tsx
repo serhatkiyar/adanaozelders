@@ -121,7 +121,7 @@ export function PriceRangeHistogram({
         <>
           {/* Histogram + slider — tutamaklar taban çizgisi (y=0 ekseni) üstünde durur;
               gri/renkli kısmın birleştiği noktada. Taban çizgisi aynı zamanda
-              slider'ın rayıdır (seçili aralıkta indigo, dışında gri). */}
+              slider'ın rayıdır (seçili aralıkta marka, dışında gri). */}
           <div className="relative mb-4 flex h-[88px] items-end gap-[2px] px-0.5">
             {/* sürekli düz taban çizgisi (nötr) */}
             <div className="pointer-events-none absolute inset-x-0.5 bottom-0 h-[2px] rounded-full bg-slate-200 " />

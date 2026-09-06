@@ -25,11 +25,11 @@ import { toast } from "@/store/toastStore";
 
 /* ─── stat box ───────────────────────────────────────── */
 
-type Tone = "amber" | "indigo" | "emerald" | "slate";
+type Tone = "amber" | "marka" | "emerald" | "slate";
 
 const TONE: Record<Tone, { num: string; bg: string; ring: string }> = {
   amber:   { num: "text-amber-600",   bg: "bg-amber-50",   ring: "ring-amber-100"   },
-  indigo:  { num: "text-marka",  bg: "bg-marka-soft",  ring: "ring-marka/20"  },
+  marka:   { num: "text-marka",  bg: "bg-marka-soft",  ring: "ring-marka/20"  },
   emerald: { num: "text-emerald-600", bg: "bg-emerald-50", ring: "ring-emerald-100" },
   slate:   { num: "text-slate-700",   bg: "bg-slate-50",   ring: "ring-slate-100"   },
 };
@@ -335,7 +335,7 @@ export default function TutorDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
               <StatBox label="Bekleyen" value={groups.pending.length} tone="amber" icon="⏳" />
-              <StatBox label="Onaylı" value={groups.accepted.length} tone="indigo" icon="✅" />
+              <StatBox label="Onaylı" value={groups.accepted.length} tone="marka" icon="✅" />
               <StatBox label="Tamamlanan" value={completedCount} tone="emerald" icon="🎓" />
             </div>
 

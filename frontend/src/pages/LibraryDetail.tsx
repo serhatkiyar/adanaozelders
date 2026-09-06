@@ -159,7 +159,7 @@ export default function LibraryDetail() {
 
           {/* ── Hero (orijinal tasarım — dokunulmadı) ── */}
           <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ">
-            <div className="relative h-48 w-full bg-gradient-to-br from-indigo-100 to-violet-100 sm:h-60 ">
+            <div className="relative h-48 w-full bg-gradient-to-br from-marka-soft to-marka-line sm:h-60 ">
               {lib.cover_url ? (
                 <img src={lib.cover_url} alt={lib.name} className="h-full w-full object-cover" />
               ) : (

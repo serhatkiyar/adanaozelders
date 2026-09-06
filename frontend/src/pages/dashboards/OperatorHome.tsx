@@ -97,7 +97,7 @@ function OperatorHero({
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ">
       {/* Kapak */}
-      <div className="relative h-36 w-full bg-gradient-to-br from-indigo-500 to-violet-600">
+      <div className="relative h-36 w-full bg-gradient-to-br from-marka to-marka-hover">
         {lib?.cover_url && (
           <img src={lib.cover_url} alt="" className="h-full w-full object-cover" />
         )}

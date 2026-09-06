@@ -23,7 +23,7 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
       className="group mx-auto flex w-full max-w-[310px] flex-col transition duration-300"
     >
       {/* ── Görsel alanı ── */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-100 to-violet-100 ">
+      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-marka-soft to-marka-line ">
         {library.cover_url ? (
           <img
             src={library.cover_url}

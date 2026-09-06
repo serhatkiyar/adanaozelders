@@ -64,7 +64,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
   return (
     <div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-slate-100 ">
       {/* Üst bant: gradient */}
-      <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+      <div className="h-1.5 bg-gradient-to-r from-marka via-dikkat to-marka-hover" />
 
       <div className="p-4">
         {/* Başlık + Durum */}
