@@ -38,11 +38,24 @@ KAPSAM_DISI_DOSYALARI = (
     "api/routers/bookings.py",
     "api/routers/payments.py",
     "api/routers/demands.py",
-    "api/routers/bookmarks.py",
     "api/routers/library_exams.py",
     "api/routers/study_reservations.py",
     "api/routers/libraries.py",
     "api/routers/exams.py",
+)
+
+#: Favori yüzeyi — 6 Eyl 2026'da kapsam DIŞINDAN kapsam İÇİNE taşındı (ÜK-6 ·
+#: docs/urun-kararlari.md). `bookmarks.py` bu listeye geldi, `library_bookmarks.py`
+#: ise HİÇBİR listede yoktu: kapsam envanteri onu görmüyordu, yani kütüphane
+#: favorisi sessizce değiştirilebilirdi. İkisi de artık çıpalı.
+#:
+#: Gerekçe: §2'nin kapsam dışı bırakma sebebi "çözülmemiş ürün soruları ve
+#: görülmemiş taraflar"dı. Favori taraf ilişkisi kurmaz, para yolu yoktur,
+#: mesajlaşma açmaz — o sebep favoriye uymuyor. Ders rezervasyonu, talep,
+#: koltuk ve bilet yüzeyleri kapsam DIŞINDA kaldı.
+FAVORI_DOSYALARI = (
+    "api/routers/bookmarks.py",
+    "api/routers/library_bookmarks.py",
 )
 
 ALICI_BAGIMLILIGI = "get_shopping_client"
@@ -126,6 +139,20 @@ def test_alici_ucu_golge_bagimliligini_kullanir(rel: str, fn_adi: str):
         f"{rel}::{fn_adi} `Client`'ı {bagimlilik} ile alıyor — eğitmen bu uçta "
         f"403 alır. Alıcı yüzeyinde tek geçerli bağımlılık {ALICI_BAGIMLILIGI}."
     )
+
+
+@pytest.mark.parametrize("rel", FAVORI_DOSYALARI)
+def test_favori_uclari_golge_bagimliligini_kullanir(rel: str):
+    """ÜK-6: eğitmen de favorileyebilir — favori uçlarında rol kapısı KALMAZ."""
+    fonksiyonlar = _rota_fonksiyonlari(rel)
+    # DOLULUK: AST çözümlemesi bozulursa boş liste de "hiç ihlal yok" derdi.
+    assert len(fonksiyonlar) >= 3, f"{rel} içinde rota bulunamadı"
+    for fn in fonksiyonlar:
+        bagimlilik = _client_bagimliligi(fn)
+        assert bagimlilik == ALICI_BAGIMLILIGI, (
+            f"{rel}::{fn.name} `Client`'ı {bagimlilik} ile alıyor — eğitmen bu "
+            "uçta 403 alır (ÜK-6)."
+        )
 
 
 @pytest.mark.parametrize("rel", KAPSAM_DISI_DOSYALARI)
