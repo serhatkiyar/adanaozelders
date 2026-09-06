@@ -550,6 +550,8 @@ export interface TutorProfileUpdate {
   first_lesson_free?: boolean | null;
   hourly_rate?: number | null;
   teaching_mode?: TeachingMode | null;
+  /** Arama faseti; ilanda GORUNUR. Isteğe bağlı — boş bırakılabilir. */
+  gender?: Gender | null;
   location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;

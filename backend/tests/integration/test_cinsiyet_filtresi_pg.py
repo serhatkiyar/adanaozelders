@@ -41,7 +41,7 @@ import pytest
 from core.database import AsyncSessionLocal
 from models.tutor import Gender, Tutor, TutorStatus
 from services import account_deletion_service, search_service
-from tests.integration.ip3_factory import PAROLA
+from tests.integration.ip3_factory import PAROLA, yetki_basligi
 from tests.integration.conftest import _uniq
 
 
@@ -211,3 +211,46 @@ async def test_veri_dokumu_cinsiyeti_verir(dortlu):
         "anahtar var ama tohumlanan değeri taşımıyor — yalnız anahtar "
         "varlığını sınamak boş bir iddiadır"
     )
+
+
+@pytest.mark.asyncio
+async def test_sihirbaz_cinsiyeti_ILANIN_ucuna_yazabilir(ip3, http):
+    """`PATCH /tutors/me` cinsiyeti kabul eder ve kalıcı yazar.
+
+    Karar: cinsiyet İLANIN alanıdır, hesabın değil — `Tutor` satırında durur
+    ve aramanın sert filtresidir. Avatar için verilen TERS karar ("hesabın
+    alanı, ilanın değil") bilinçli olarak simetriktir. Bu yüzden sihirbaz
+    `PATCH /users/me` yerine buraya yazar: ikinci bir mutasyon ve ayrı bir
+    hata yolu açmaya gerek kalmaz.
+    """
+    from models.tutor import TutorStatus
+
+    egitmen = await ip3.tutor(status=TutorStatus.DRAFT)
+    basliklar = yetki_basligi(egitmen)
+
+    # DOLULUK: başlangıçta boş olduğu çıpalanır, yoksa "yazıldı" iddiası
+    # zaten dolu bir satırda bedava geçerdi.
+    async with AsyncSessionLocal() as s:
+        assert (await s.get(Tutor, egitmen.id)).gender is None
+
+    r = await http.patch(
+        "/api/v1/tutors/me", headers=basliklar, json={"gender": Gender.FEMALE.value}
+    )
+    assert r.status_code == 200, r.text
+
+    async with AsyncSessionLocal() as s:
+        assert (await s.get(Tutor, egitmen.id)).gender is Gender.FEMALE
+
+
+@pytest.mark.asyncio
+async def test_gecersiz_cinsiyet_422(ip3, http):
+    """Uydurma bir değer şemadan geçemez."""
+    from models.tutor import TutorStatus
+
+    egitmen = await ip3.tutor(status=TutorStatus.DRAFT)
+    r = await http.patch(
+        "/api/v1/tutors/me",
+        headers=yetki_basligi(egitmen),
+        json={"gender": "KADIN"},
+    )
+    assert r.status_code == 422, r.text

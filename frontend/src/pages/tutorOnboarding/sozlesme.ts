@@ -1,5 +1,5 @@
 import { BASLIK_EN_AZ_KELIME, kelimeSay } from "@/lib/metin";
-import { TeachingMode, type TutorProfileUpdate } from "@/types";
+import { Gender, TeachingMode, type TutorProfileUpdate } from "@/types";
 
 /**
  * İlan sihirbazının sözleşmesi: adım listesi, adım doğrulaması ve her adımın
@@ -28,6 +28,8 @@ export interface Durum {
   hourlyRate: string;
   firstLessonFree: boolean;
   introVideoUrl: string;
+  /** Arama faseti. İSTEĞE BAĞLI — boş bırakılabilir. */
+  gender: Gender | "";
 }
 
 /** Sunucudan gelen, sihirbazın kendi yazmadığı ama okuduğu durum. */
@@ -51,6 +53,7 @@ export const BOS_DURUM: Durum = {
   hourlyRate: "",
   firstLessonFree: false,
   introVideoUrl: "",
+  gender: "",
 };
 
 export interface Hata {
@@ -294,8 +297,12 @@ export const ADIMLAR: Adim[] = [
     ipucu:
       "Yüzün net görünsün, tek başına ol ve karşıya bak. Fotoğrafı olan ilanlar belirgin biçimde daha çok tıklanıyor.",
     atlanabilir: true,
+    // Telefon adımının "Numaran ilanında görünmez" uyarısının SİMETRİĞİ.
+    // Cinsiyet bir arama faseti ve ilanda GÖRÜNÜR; sorulduğu anda bunun
+    // söylenmesi, alanın eklenmesinin koşuludur.
     hatirlatma:
-      "Fotoğrafın tüm ilanlarında kullanılır.",
+      "Fotoğrafın tüm ilanlarında kullanılır. Cinsiyetini yazarsan ilanında görünür ve öğrenciler ona göre filtreleyebilir.",
+    yama: (d) => ({ gender: d.gender || null }),
   },
   {
     anahtar: "ozet",

@@ -12,7 +12,7 @@
 import { describe, expect, it } from "vitest";
 
 import { BASLIK_EN_AZ_KELIME } from "@/lib/metin";
-import { TeachingMode } from "@/types";
+import { Gender, TeachingMode } from "@/types";
 
 import {
   ADIMLAR,
@@ -205,5 +205,42 @@ describe("adimIndeksi", () => {
   it("her adımın anahtarı benzersizdir", () => {
     const anahtarlar = ADIMLAR.map((a) => a.anahtar);
     expect(new Set(anahtarlar).size).toBe(anahtarlar.length);
+  });
+});
+
+describe("cinsiyet — İSTEĞE BAĞLI arama faseti", () => {
+  const fotograf = ADIMLAR.find((a) => a.anahtar === "fotograf")!;
+
+  it("fotoğraf adımı gerçekten var (doluluk kapısı)", () => {
+    // Adım anahtarı değişirse aşağıdaki üç düğüm sessizce ölürdü.
+    expect(fotograf).toBeTruthy();
+    expect(fotograf.atlanabilir).toBe(true);
+  });
+
+  it("yama `gender` üretir; boş durumda `null` gönderir", () => {
+    // `null` gönderilmesi ÖNEMLİ: kullanıcı önce seçip sonra vazgeçerse
+    // alanın temizlenebilmesi gerekir. `undefined` gönderilseydi
+    // `exclude_unset` yüzünden sunucu eski değeri korurdu.
+    expect(fotograf.yama?.({ ...BOS_DURUM, gender: Gender.FEMALE })?.gender).toBe(
+      Gender.FEMALE
+    );
+    expect(fotograf.yama?.({ ...BOS_DURUM, gender: "" })?.gender).toBeNull();
+  });
+
+  it("`eksikler()` cinsiyeti LİSTELEMEZ — isteğe bağlı", () => {
+    // Yasal metin "cinsiyet (isteğe bağlı)" diyor. Özet ekranında eksik
+    // olarak görünseydi, kullanıcı zorunlu sanır ve söylemek istemediği
+    // şeyi söylemeye itilirdi.
+    const bosDis = { avatarUrl: null, belgeVar: false, telefonDogrulandi: true };
+    const mesajlar = eksikler({ ...BOS_DURUM, gender: "" }, bosDis).map((e) => e.mesaj);
+    expect(mesajlar.join(" | ")).not.toMatch(/[Cc]insiyet/);
+  });
+
+  it("kullanıcının söylemek istememesi de KAYDEDİLİR", () => {
+    // `UNSPECIFIED` bir kaçış değil geçerli bir cevaptır: "hiç sorulmadı"dan
+    // ayırt edilebilmesi, ileride tekrar sorup sormamaya karar vermeyi sağlar.
+    expect(
+      fotograf.yama?.({ ...BOS_DURUM, gender: Gender.UNSPECIFIED })?.gender
+    ).toBe(Gender.UNSPECIFIED);
   });
 });

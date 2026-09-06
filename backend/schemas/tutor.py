@@ -84,6 +84,12 @@ class TutorProfileUpdate(BaseModel):
         default=None, ge=0, max_digits=10, decimal_places=2
     )
     teaching_mode: TeachingMode | None = None
+    # Cinsiyet İLANIN alanıdır, hesabın değil: `Tutor` satırında durur ve
+    # aramanın sert filtresidir. Bu yüzden `PATCH /users/me` yerine buraya
+    # yazılır — avatar için verilen ters karar ("hesabın alanı, ilanın değil")
+    # bilinçli olarak simetriktir. Kolon zaten var, migration gerekmez.
+    # İSTEĞE BAĞLI kalır: yasal metin "cinsiyet (isteğe bağlı)" diyor.
+    gender: Gender | None = None
     # Tanıtım videosu (YouTube/Vimeo). Boş string → temizle (None'a çevrilir).
     intro_video_url: str | None = Field(default=None, max_length=500)
     # İlk ders ücretsiz mi (opt-in/opt-out).

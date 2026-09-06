@@ -222,7 +222,7 @@ export function SegmentSecim({
   onChange: (deger: string) => void;
   secenekler: readonly { deger: string; etiket: string }[];
   /**
-   * Seçili seçeneğin sınıfları. Verilmezse varsayılan indigo kullanılır.
+   * Seçili seçeneğin sınıfları. Verilmezse marka aksanı kullanılır.
    *
    * RENK BURADA YAZILMAZ: ilan sihirbazı mercan aksan kullanıyor ve o hex'in
    * bu dosyaya girmesi `__guards__/sihirbazMercani.test.ts` tarafından
