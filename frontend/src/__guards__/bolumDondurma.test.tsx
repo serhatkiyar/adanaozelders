@@ -38,7 +38,7 @@ import { dirname, join, resolve } from "node:path";
 
 import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import Learn from "@/pages/Learn";
 import {
@@ -285,12 +285,12 @@ describe("F — öğrenci talepleri donduruldu (6 Eyl · gerçek App + gerçek D
   it("İKİ UÇ birden kalktı: öğrencinin 'Taleplerim'i ve eğitmenin 'Gelen Talepler'i", () => {
     // Tek uç kapatılsaydı eğitmen, hiç dolmayacak bir gelen kutusuna bakmaya
     // devam ederdi — akışın iki ucu aynı bayrağa bağlı olmak ZORUNDA.
-    expect(STUDENT_NAV.some((i) => i.to === ROUTES.demands)).toBe(false);
+    expect(UYE_NAV.some((i) => i.to === ROUTES.demands)).toBe(false);
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.demands)).toBe(false);
   });
 
   it("menüde ölü bağlantı kalmadı (gerçek DOM, iki rol)", () => {
-    for (const nav of [STUDENT_NAV, TUTOR_NAV]) {
+    for (const nav of [UYE_NAV, TUTOR_NAV]) {
       const { unmount } = sar(<DashboardHeader navItems={nav} />);
       fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
       const olu = Array.from(document.body.querySelectorAll("a[href]")).filter(
@@ -302,7 +302,7 @@ describe("F — öğrenci talepleri donduruldu (6 Eyl · gerçek App + gerçek D
   });
 
   it("DOLULUK: menü gerçekten doldu — 'bağlantı yok' iddiası boş DOM'dan gelmiyor", () => {
-    sar(<DashboardHeader navItems={STUDENT_NAV} />);
+    sar(<DashboardHeader navItems={UYE_NAV} />);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
     expect(
       Array.from(document.body.querySelectorAll("a[href]")).length

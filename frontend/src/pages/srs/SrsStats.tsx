@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useSrsDecks, useSrsStats } from "@/hooks/useSrs";
 import { getErrorMessage } from "@/lib/errors";
@@ -16,7 +16,7 @@ const dayFmt = new Intl.DateTimeFormat("tr-TR", {
 
 export default function SrsStats() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
 
   const decksQuery = useSrsDecks();
   const [deckId, setDeckId] = useState("");

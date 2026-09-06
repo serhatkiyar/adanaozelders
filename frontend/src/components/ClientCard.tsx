@@ -14,7 +14,7 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
 
   return (
     <Link
-      to={ROUTES.studentProfile(client.id)}
+      to={ROUTES.uyeProfili(client.id)}
       className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-marka/20 "
     >
       <div className="flex items-start gap-3">

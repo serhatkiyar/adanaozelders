@@ -11,7 +11,7 @@ import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
 import { BookingStatus } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
-export default function StudentProfile() {
+export default function UyeProfili() {
   const { id } = useParams();
   const clientId = Number(id);
   const navigate = useNavigate();

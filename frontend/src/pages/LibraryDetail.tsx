@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { StaticLocationMap } from "@/components/StaticLocationMap";
 import { ExamSessionsSection } from "@/components/ExamSessionsSection";
 import { LibraryReservationModal } from "@/components/LibraryReservationModal";
@@ -98,7 +98,7 @@ export default function LibraryDetail() {
   const isTutor = currentUser?.role_id === ROLE_IDS.TUTOR;
   // Öğrenci ve eğitmen kütüphaneyle mesajlaşabilir (açık).
   const canMessage = isClient || isTutor;
-  const navItems = isTutor ? TUTOR_NAV : isClient ? STUDENT_NAV : undefined;
+  const navItems = isTutor ? TUTOR_NAV : isClient ? UYE_NAV : undefined;
 
   const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
     useNavSearch("kutuphaneler");

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { useCreateExam, useExams } from "@/hooks/useExams";
 import { EXAM_TEMPLATES } from "@/lib/examTemplates";
 import { upcomingExams } from "@/lib/examDates";
@@ -275,7 +275,7 @@ export default function Exams() {
     "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
   return (
-    <DashboardShell title="Denemelerim" navItems={STUDENT_NAV}>
+    <DashboardShell title="Denemelerim" navItems={UYE_NAV}>
       <div className="mx-auto max-w-4xl space-y-6">
         {/* ── Sınav geri sayımı ── */}
         {examCountdown.length > 0 && (

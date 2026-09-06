@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROLE_IDS } from "@/types";
 import { compile, type CompiledFn } from "@/lib/mathParse";
@@ -58,7 +58,7 @@ const LIGHT: Theme = { bg: "#ffffff", grid: "#eef2f7", axis: "#94a3b8", tick: "#
 
 export default function Grapher() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
 
   const initial = useRef(loadPersisted());
   const [functions, setFunctions] = useState<FnRow[]>(initial.current.functions);

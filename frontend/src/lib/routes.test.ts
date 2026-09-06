@@ -38,7 +38,9 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(LEGACY_STATIC.map(([from]) => from)).toContain("/biletlerim");
     // Tutor yüzeyi
     expect(PATHS.tutorListing).toBe("/ilan-ayarlari");
-    expect(PATHS.studentProfile).toBe("/ogrenciler/:id");
+    // Ç-5: yol `/ogrenciler` değil `/uyeler`. Hesap sahibi öğrenci olmak
+    // zorunda değil; eski yol `App.tsx`te yönlendirmeye bağlandı.
+    expect(PATHS.uyeProfili).toBe("/uyeler/:id");
     // Client yüzeyi
     expect(PATHS.favorites).toBe("/favoriler");
     expect(PATHS.exams).toBe("/denemeler");
@@ -73,14 +75,14 @@ describe("ROUTES — tek kaynak tutarlılığı", () => {
     expect(ROUTES.tutor(42)).toBe("/egitmenler/42");
     expect(ROUTES.lesson(7)).toBe("/ders-talepleri/7");
     expect(ROUTES.srsDeck(3)).toBe("/ogren/tekrar/deste/3");
-    expect(ROUTES.studentProfile(9)).toBe("/ogrenciler/9");
+    expect(ROUTES.uyeProfili(9)).toBe("/uyeler/9");
   });
 
   it("param üreticileri, PATHS desenindeki `:param`'ı doldurur", () => {
     // Üreticinin çıktısı, deseni `:param` → değer ile değiştirmekle aynı olmalı.
     expect(ROUTES.lesson(7)).toBe(PATHS.lesson.replace(":id", "7"));
     expect(ROUTES.srsDeck(3)).toBe(PATHS.srsDeck.replace(":id", "3"));
-    expect(ROUTES.studentProfile(9)).toBe(PATHS.studentProfile.replace(":id", "9"));
+    expect(ROUTES.uyeProfili(9)).toBe(PATHS.uyeProfili.replace(":id", "9"));
     expect(ROUTES.tutor("x-1")).toBe(PATHS.tutor.replace(":slug", "x-1"));
   });
 

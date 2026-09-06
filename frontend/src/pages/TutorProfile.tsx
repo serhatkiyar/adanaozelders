@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
@@ -125,7 +125,7 @@ export default function TutorProfile() {
     currentUser?.role_id === ROLE_IDS.TUTOR
       ? TUTOR_NAV
       : currentUser?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
+        ? UYE_NAV
         : undefined;
 
   const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);

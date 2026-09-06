@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { QuestionRights } from "@/components/QuestionRights";
 import { QaThreadChat } from "@/components/QaThreadChat";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { useThreads } from "@/hooks/useQa";
 import { formatDateTime } from "@/lib/datetime";
 import { Avatar } from "@/components/Avatar";
@@ -14,7 +14,7 @@ export default function Questions() {
   const selectedThread = threads?.find(t => t.id === selectedThreadId);
 
   return (
-    <DashboardShell title="Sorularım" navItems={STUDENT_NAV}>
+    <DashboardShell title="Sorularım" navItems={UYE_NAV}>
       <div className="mx-auto max-w-5xl pb-12 flex flex-col md:flex-row gap-6">
         <div className="md:w-1/3 flex flex-col gap-6">
           <QuestionRights />

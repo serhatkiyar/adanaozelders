@@ -31,7 +31,7 @@ import { ReservationStatusBadge } from "@/components/reservation/ReservationStat
 import { ReservationTimeBlock } from "@/components/reservation/ReservationTimeBlock";
 import { useCancelRegistration, useMyRegistrations } from "@/hooks/useLibraryExams";
 import { useCancelStudy, useMyStudyReservations } from "@/hooks/useStudy";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { getErrorMessage } from "@/lib/errors";
 import { formatTRY } from "@/lib/money";
 import { rezervasyonIcs, icsIndir } from "@/lib/reservationIcs";
@@ -59,7 +59,7 @@ export default function LibraryReservationDetail() {
 
   if (yukleniyor) {
     return (
-      <DashboardShell title="Rezervasyon" navItems={STUDENT_NAV}>
+      <DashboardShell title="Rezervasyon" navItems={UYE_NAV}>
         <div className="mx-auto max-w-2xl">
           <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />
         </div>
@@ -69,7 +69,7 @@ export default function LibraryReservationDetail() {
 
   if (!kayit) {
     return (
-      <DashboardShell title="Rezervasyon" navItems={STUDENT_NAV}>
+      <DashboardShell title="Rezervasyon" navItems={UYE_NAV}>
         <div className="mx-auto max-w-2xl py-16 text-center">
           <p className="text-sm text-slate-600">Rezervasyon bulunamadı.</p>
           <Link to={ROUTES.bookings} className="mt-3 inline-block text-sm font-medium underline">
@@ -109,7 +109,7 @@ export default function LibraryReservationDetail() {
   };
 
   return (
-    <DashboardShell title="Rezervasyon" navItems={STUDENT_NAV}>
+    <DashboardShell title="Rezervasyon" navItems={UYE_NAV}>
       <Seo title="Rezervasyon, Adana Özel Ders" noindex />
       <div className="mx-auto max-w-2xl space-y-6">
         <nav className="flex items-center gap-1.5 text-sm text-slate-500">

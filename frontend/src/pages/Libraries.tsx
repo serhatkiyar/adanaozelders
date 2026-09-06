@@ -8,7 +8,7 @@ import {
 } from "@/lib/pagination";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
 import { useLibrarySearch } from "@/hooks/useLibraries";
@@ -54,7 +54,7 @@ export default function Libraries() {
     currentUser?.role_id === ROLE_IDS.TUTOR
       ? TUTOR_NAV
       : currentUser?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
+        ? UYE_NAV
         : undefined;
 
   const [searchParams, setSearchParams] = useSearchParams();

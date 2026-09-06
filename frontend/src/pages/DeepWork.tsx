@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROLE_IDS } from "@/types";
 import { useTimerStore, remainingMsOf } from "@/store/timerStore";
@@ -31,7 +31,7 @@ const CIRC = 2 * Math.PI * RADIUS;
 
 export default function DeepWork() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
 
   const {
     settings,

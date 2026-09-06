@@ -5,7 +5,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Avatar } from "@/components/Avatar";
 import { BookingActionCard } from "@/components/BookingActionCard";
 import { RightContextPanel } from "@/components/RightContextPanel";
-import { STUDENT_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useArchiveConversation,
@@ -44,7 +44,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     role === "TUTOR"
       ? TUTOR_NAV
       : role === "CLIENT"
-        ? STUDENT_NAV
+        ? UYE_NAV
         : role === "LIBRARY"
           ? OPERATOR_NAV
           : undefined;
@@ -187,7 +187,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
         : activeCounterpartyRole === "TUTOR"
           ? ROUTES.tutor(activeCounterpartyId)
           : activeCounterpartyRole === "CLIENT"
-            ? ROUTES.studentProfile(activeCounterpartyId)
+            ? ROUTES.uyeProfili(activeCounterpartyId)
             : null;
 
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedId);

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
 import Messages from "@/pages/Messages";
 import { NotificationsPanel } from "@/pages/Notifications";
-import { STUDENT_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
 import { useUnreadCount } from "@/hooks/useNotifications";
@@ -18,7 +18,7 @@ export default function MessageCenter() {
     user?.role_id === ROLE_IDS.TUTOR
       ? TUTOR_NAV
       : user?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
+        ? UYE_NAV
         : user?.role_id === ROLE_IDS.LIBRARY_OPERATOR
           ? OPERATOR_NAV
           : undefined;

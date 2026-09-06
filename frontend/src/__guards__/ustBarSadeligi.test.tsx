@@ -36,7 +36,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { OPERATOR_NAV, STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { OPERATOR_NAV, UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { ROLE_IDS, type NavItem } from "@/types";
@@ -84,7 +84,7 @@ function ustBardakiHedefler(): string[] {
 
 describe("üst bar · en fazla TEK kısayol", () => {
   it("öğrencide yalnız Favorilerim kalır", () => {
-    sar(STUDENT_NAV);
+    sar(UYE_NAV);
     expect(ustBardakiHedefler()).toEqual([ROUTES.favorites]);
   });
 
@@ -98,9 +98,9 @@ describe("üst bar · en fazla TEK kısayol", () => {
 
   it("DOLULUK: rol menüsü gerçekten kalabalık — kısayollar boş listeden gelmiyor", () => {
     // Bu olmadan yukarıdaki iki iddia, `nav.ts` boşalsa da yeşil kalırdı.
-    expect(STUDENT_NAV.length).toBeGreaterThanOrEqual(4);
+    expect(UYE_NAV.length).toBeGreaterThanOrEqual(4);
     expect(TUTOR_NAV.length).toBeGreaterThanOrEqual(4);
-    expect(STUDENT_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
+    expect(UYE_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(false);
   });
 });
@@ -110,7 +110,7 @@ describe("üst bar · KALDIRILAN kısayolların hedefi hâlâ erişilebilir", ()
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
 
   it.each([
-    ["öğrenci", ROLE_IDS.CLIENT, STUDENT_NAV],
+    ["öğrenci", ROLE_IDS.CLIENT, UYE_NAV],
     ["eğitmen", ROLE_IDS.TUTOR, TUTOR_NAV],
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: rol menüsündeki HER hedef hesap menüsünde bağlantı", (_ad, rol, nav) => {
@@ -144,18 +144,18 @@ describe("üst bar · bildirim zili kalktı ama BİLDİRİMLER erişilebilir", (
     // Menü girdisinin ZORUNLU olmasının sebebi bu. Biri "nav zaten taşıyor"
     // diye girdiyi silerse, aşağıdaki düğüm değil BU düğüm önce konuşur:
     // varsayım yazılı olduğu için sessizce yanlışlanamaz.
-    for (const nav of [STUDENT_NAV, TUTOR_NAV, OPERATOR_NAV]) {
+    for (const nav of [UYE_NAV, TUTOR_NAV, OPERATOR_NAV]) {
       expect(nav.some((i) => i.to === ROUTES.notifications)).toBe(false);
     }
   });
 
   it("üst barda bildirim DÜĞMESİ yok", () => {
-    sar(STUDENT_NAV);
+    sar(UYE_NAV);
     expect(screen.queryByRole("button", { name: "Bildirimler" })).toBeNull();
   });
 
   it.each([
-    ["öğrenci", ROLE_IDS.CLIENT, STUDENT_NAV],
+    ["öğrenci", ROLE_IDS.CLIENT, UYE_NAV],
     ["eğitmen", ROLE_IDS.TUTOR, TUTOR_NAV],
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: hesap menüsünde `/bildirimler` bağlantısı VAR", (_ad, rol, nav) => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { ModalShell } from "@/components/store/ModalShell";
 import { AddressForm } from "@/components/address/AddressForm";
@@ -23,7 +23,7 @@ export default function AddressesPage() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <DashboardShell title="Adreslerim" navItems={STUDENT_NAV}>
+    <DashboardShell title="Adreslerim" navItems={UYE_NAV}>
       <div className="mx-auto max-w-4xl">
         <nav className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 ">
           <Link to={ROUTES.profile} className="hover:text-marka-metin ">

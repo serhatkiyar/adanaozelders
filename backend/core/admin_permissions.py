@@ -29,8 +29,12 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("tutors.manage", "Eğitmen yönetimi", "Eğitim"),
     ("bookings.view", "Rezervasyon görüntüleme", "Eğitim"),
     ("bookings.manage", "Rezervasyon yönetimi", "Eğitim"),
-    ("demands.view", "Öğrenci talebi görüntüleme", "Eğitim"),
-    ("demands.manage", "Öğrenci talebi yönetimi", "Eğitim"),
+    # Ç-5: "Öğrenci talebi" -> "Ders talebi". Talebi açan hesap sahibi öğrenci
+    # olmak zorunda değil (veli de olabilir); talebin konusu DERStir.
+    # İzin ANAHTARLARI (`demands.view` / `demands.manage`) DEĞİŞMEDİ —
+    # yetki kontrolü onlara bakar, rol atamaları onlara bağlıdır.
+    ("demands.view", "Ders talebi görüntüleme", "Eğitim"),
+    ("demands.manage", "Ders talebi yönetimi", "Eğitim"),
     # İP-16 aralıklı tekrar: platform destesi küratörlüğü (sözleşme §7.1 D-12).
     # DİKKAT: bu izinler yalnız platform DESTE İÇERİĞİNİ kapsar — hiçbir admin
     # izni kullanıcı ilerlemesi (srs_progress/srs_review_logs) OKUTMAZ (D-7/K-6).

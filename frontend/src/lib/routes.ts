@@ -141,7 +141,7 @@ export const PATHS = {
   deliveryRun: "/dagitim/:id",
   /** Zimmet ekranı — paketleri araca alma (ADMIN + KURYE, F30 §3.4). */
   deliveryRunHandover: "/dagitim/:id/zimmet",
-  studentProfile: "/ogrenciler/:id",
+  uyeProfili: "/uyeler/:id",
   /** Operatörün kendi kütüphane profili (gör + bölüm bölüm düzenle). */
   operatorLibrary: "/kutuphanem",
   /** Operatör operasyon ekranı: QR doğrula + deneme oturumları + çalışma rez. */
@@ -306,7 +306,7 @@ export const ROUTES = {
   tutorPromotion: PATHS.tutorPromotion,
   deliveryRun: (id: string | number) => `/dagitim/${id}`,
   deliveryRunHandover: (id: string | number) => `/dagitim/${id}/zimmet`,
-  studentProfile: (id: string | number) => `/ogrenciler/${id}`,
+  uyeProfili: (id: string | number) => `/uyeler/${id}`,
   operatorLibrary: PATHS.operatorLibrary,
   operatorSessions: PATHS.operatorSessions,
   admin: PATHS.admin,

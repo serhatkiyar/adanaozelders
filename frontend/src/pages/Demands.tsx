@@ -12,7 +12,7 @@ import {
   useMyDemands,
   useRespondDemand,
 } from "@/hooks/useDemands";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useSubjects } from "@/hooks/useSubjects";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
@@ -54,7 +54,7 @@ function StudentDemands() {
   const { data: demands, isLoading } = useMyDemands();
 
   return (
-    <DashboardShell title="Taleplerim" navItems={STUDENT_NAV}>
+    <DashboardShell title="Taleplerim" navItems={UYE_NAV}>
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 ">

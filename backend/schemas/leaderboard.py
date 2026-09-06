@@ -12,5 +12,5 @@ class LeaderboardEntry(BaseModel):
 class LeaderboardOut(BaseModel):
     tutors_by_lessons: list[LeaderboardEntry]
     tutors_by_rating: list[LeaderboardEntry]
-    students_by_lessons: list[LeaderboardEntry]
-    students_by_net: list[LeaderboardEntry]
+    uyeler_ders_sayisi: list[LeaderboardEntry]
+    uyeler_net: list[LeaderboardEntry]

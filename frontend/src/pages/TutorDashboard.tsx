@@ -94,7 +94,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       }`}
     >
       <Link
-        to={ROUTES.studentProfile(booking.client_id)}
+        to={ROUTES.uyeProfili(booking.client_id)}
         className="flex min-w-0 items-start gap-3 transition hover:opacity-80"
       >
         <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />

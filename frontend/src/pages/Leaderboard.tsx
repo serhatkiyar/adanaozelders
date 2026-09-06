@@ -81,13 +81,13 @@ export default function Leaderboard() {
             <Board
               title="En çok ders alan öğrenciler"
               icon="📚"
-              entries={data.students_by_lessons}
+              entries={data.uyeler_ders_sayisi}
               fmt={(v) => `${v} ders`}
             />
             <Board
               title="En yüksek net yapan öğrenciler"
               icon="📈"
-              entries={data.students_by_net}
+              entries={data.uyeler_net}
               fmt={(v) => `${v.toFixed(1)} net`}
             />
           </div>

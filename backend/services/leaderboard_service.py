@@ -49,7 +49,7 @@ async def get_leaderboard(db: AsyncSession) -> dict:
     )
 
     student_lessons = func.count(Booking.id)
-    students_by_lessons = await _entries(
+    uyeler_ders_sayisi = await _entries(
         db,
         select(Client.id, Client.full_name, student_lessons)
         .join(Booking, Booking.client_id == Client.id)
@@ -64,7 +64,7 @@ async def get_leaderboard(db: AsyncSession) -> dict:
     )
 
     best_net = func.max(PracticeExam.net_score)
-    students_by_net = await _entries(
+    uyeler_net = await _entries(
         db,
         select(Client.id, Client.full_name, best_net)
         .join(PracticeExam, PracticeExam.client_id == Client.id)
@@ -81,6 +81,6 @@ async def get_leaderboard(db: AsyncSession) -> dict:
     return {
         "tutors_by_lessons": tutors_by_lessons,
         "tutors_by_rating": tutors_by_rating,
-        "students_by_lessons": students_by_lessons,
-        "students_by_net": students_by_net,
+        "uyeler_ders_sayisi": uyeler_ders_sayisi,
+        "uyeler_net": uyeler_net,
     }

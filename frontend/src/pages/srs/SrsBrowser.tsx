@@ -10,7 +10,7 @@ import {
   SrsSuspendedSummary,
 } from "@/components/srs/SrsCardFlags";
 import { SrsDueLabel } from "@/components/srs/SrsDueLabel";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useBulkSrsCards, useSrsCards, useSrsDecks, useSrsTags } from "@/hooks/useSrs";
@@ -53,7 +53,7 @@ const STATE_LABELS: Record<SrsCardState, string> = {
 
 export default function SrsBrowser() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
 
   const decksQuery = useSrsDecks();
   const tagsQuery = useSrsTags();

@@ -5,7 +5,7 @@ import { useSurfaceStore } from "@/store/surfaceStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS, TeachingMode } from "@/types";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_NAME, siteUrl, absoluteUrl } from "@/lib/seo";
@@ -206,7 +206,7 @@ function Navbar({
       user.role_id === ROLE_IDS.TUTOR
         ? TUTOR_NAV
         : user.role_id === ROLE_IDS.CLIENT
-          ? STUDENT_NAV
+          ? UYE_NAV
           : undefined;
     return (
       <DashboardHeader

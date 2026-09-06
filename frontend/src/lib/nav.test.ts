@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { OPERATOR_NAV, STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { OPERATOR_NAV, UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { resolveSurface } from "@/lib/navPrefs";
 import { ROUTES } from "@/lib/routes";
 
@@ -29,7 +29,7 @@ describe("Öğren hub'ı — donduruldu", () => {
   // `__guards__/bolumDondurmaBayrakAcik.test.tsx`.
   it("donmuşken HİÇBİR menüde /ogren linki yok", () => {
     for (const [ad, menu] of [
-      ["STUDENT_NAV", STUDENT_NAV],
+      ["UYE_NAV", UYE_NAV],
       ["TUTOR_NAV", TUTOR_NAV],
       ["OPERATOR_NAV", OPERATOR_NAV],
     ] as const) {
@@ -44,7 +44,7 @@ describe("Öğren hub'ı — donduruldu", () => {
   // yukarıdaki "yok" iddiası bedava geçerdi.
   it("menüler dolu ve çözümlenen yüzey çalışıyor", () => {
     expect(TUTOR_NAV.length).toBeGreaterThan(3);
-    expect(STUDENT_NAV.some((i) => i.to === ROUTES.messages)).toBe(true);
+    expect(UYE_NAV.some((i) => i.to === ROUTES.messages)).toBe(true);
     const cozulen = resolveSurface(TUTOR_NAV, undefined, "navbar");
     const mesajlar = cozulen.find((i) => i.to === ROUTES.messages);
     expect(mesajlar?.visible, "navbar: Mesajlar görünür değil").toBe(true);
@@ -55,7 +55,7 @@ describe("Öğren hub'ı — donduruldu", () => {
   // enflasyonu başlatır. Erişim hub üzerinden iki tıkla sağlanır.
   it("SRS doğrudan menüye eklenmez (hub deseni korunur)", () => {
     for (const [ad, menu] of [
-      ["STUDENT_NAV", STUDENT_NAV],
+      ["UYE_NAV", UYE_NAV],
       ["TUTOR_NAV", TUTOR_NAV],
       ["OPERATOR_NAV", OPERATOR_NAV],
     ] as const) {

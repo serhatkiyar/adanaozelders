@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { FullScreenSpinner } from "@/components/Spinner";
@@ -57,7 +57,7 @@ export default function LessonDetail() {
       : user?.role_id === ROLE_IDS.CLIENT
         ? "CLIENT"
         : null;
-  const navItems = role === "TUTOR" ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = role === "TUTOR" ? TUTOR_NAV : UYE_NAV;
 
   const { data: booking, isLoading, isError } = useBooking(bookingId);
   const { data: review } = useReviewByBooking(bookingId);

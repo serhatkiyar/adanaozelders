@@ -36,7 +36,7 @@ import "@/pages/NotFound";
 
 import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import Learn from "@/pages/Learn";
 
@@ -111,7 +111,7 @@ describe("bayrak AÇIK — öğrenci talepleri geri gelir (6 Eyl)", () => {
   it("İKİ UÇ da menüde yeniden var", () => {
     // Dondurmayı "gizlenmiş silme"den ayıran düğüm: bayrağı `true` yapmak
     // TEK BAŞINA yeterli olmalı, başka hiçbir dosyaya dokunmadan.
-    expect(STUDENT_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
+    expect(UYE_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
   });
 
@@ -169,7 +169,7 @@ describe("bayrak AÇIK — Öğren menüye ve rotaya geri döner", () => {
   // ve `__guards__/tembelModul.test.ts` onu gerekçesiz saymakta haklı.
   it("öğrenci ve eğitmen menüsünde 'Öğren' yeniden var", () => {
     for (const [ad, menu] of [
-      ["STUDENT_NAV", STUDENT_NAV],
+      ["UYE_NAV", UYE_NAV],
       ["TUTOR_NAV", TUTOR_NAV],
     ] as const) {
       const girdi = menu.find((i) => i.to === ROUTES.learn);

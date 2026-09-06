@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
@@ -35,7 +35,7 @@ export default function Favorites() {
   const backToIndex = () => setView("index");
 
   return (
-    <DashboardShell title="Favoriler" navItems={STUDENT_NAV}>
+    <DashboardShell title="Favoriler" navItems={UYE_NAV}>
       <div className="mx-auto max-w-[1050px]">
         {view === "index" && (
           <>

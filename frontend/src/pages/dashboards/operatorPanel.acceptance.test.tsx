@@ -793,8 +793,8 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
         data: {
           tutors_by_lessons: [],
           tutors_by_rating: [],
-          students_by_lessons: [],
-          students_by_net: [],
+          uyeler_ders_sayisi: [],
+          uyeler_net: [],
         },
       });
       sunucu("/bookings", { data: [] });

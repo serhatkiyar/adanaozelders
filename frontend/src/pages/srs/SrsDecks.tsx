@@ -4,7 +4,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useCopySrsDeck,
@@ -241,7 +241,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export default function SrsDecks() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
   const navigate = useNavigate();
   const decksQuery = useSrsDecks();
   const platformQuery = useSrsPlatformDecks();

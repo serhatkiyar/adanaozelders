@@ -43,7 +43,7 @@ export interface NavItem {
  * rozet bir vaat. Öğren ise lansman hikâyesinin dışına alındı — vaat etmediğimiz
  * bir şeyi menüde tutmak kullanıcıya boş bir söz verir.
  */
-export const STUDENT_NAV: NavItem[] = [
+export const UYE_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   ...(TALEPLER_ACIK
@@ -107,7 +107,7 @@ export function navForRole(roleId: number | undefined | null): NavItem[] | undef
     case 2:
       return TUTOR_NAV;
     case 3:
-      return STUDENT_NAV;
+      return UYE_NAV;
     case 4:
       return OPERATOR_NAV;
     default:

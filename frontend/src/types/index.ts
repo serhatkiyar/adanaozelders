@@ -1059,8 +1059,8 @@ export interface LeaderboardEntry {
 export interface LeaderboardOut {
   tutors_by_lessons: LeaderboardEntry[];
   tutors_by_rating: LeaderboardEntry[];
-  students_by_lessons: LeaderboardEntry[];
-  students_by_net: LeaderboardEntry[];
+  uyeler_ders_sayisi: LeaderboardEntry[];
+  uyeler_net: LeaderboardEntry[];
 }
 
 /* ============================ ADMIN ============================ */

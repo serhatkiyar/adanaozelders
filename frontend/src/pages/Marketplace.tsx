@@ -1,7 +1,7 @@
 import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
@@ -54,7 +54,7 @@ export default function Marketplace() {
     currentUser?.role_id === ROLE_IDS.TUTOR
       ? TUTOR_NAV
       : currentUser?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
+        ? UYE_NAV
         : undefined;
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");

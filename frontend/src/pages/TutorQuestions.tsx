@@ -28,7 +28,7 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex items-center justify-between gap-3">
         <Link
-          to={ROUTES.studentProfile(thread.client_id)}
+          to={ROUTES.uyeProfili(thread.client_id)}
           className="flex min-w-0 items-center gap-2.5 rounded-lg transition hover:opacity-80"
         >
           <Avatar name={clientName} avatar_url={thread.client_avatar_url} size="sm" />

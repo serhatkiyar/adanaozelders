@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { CompactSearch } from "@/components/HeroSearch";
 import { StoreLayout } from "@/pages/store/StoreLayout";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { TALEPLER_ACIK } from "@/lib/ozellikBayraklari";
 import { useSurfaceStore } from "@/store/surfaceStore";
@@ -162,7 +162,7 @@ export default function AccountHub() {
   return (
     <DashboardShell
       title="Hesabım"
-      navItems={STUDENT_NAV}
+      navItems={UYE_NAV}
       center={
         <div className="flex w-full justify-center">
           <CompactSearch

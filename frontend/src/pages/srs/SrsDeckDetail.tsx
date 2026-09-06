@@ -4,7 +4,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/admin/ui/ConfirmDialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
@@ -430,7 +430,7 @@ export default function SrsDeckDetail() {
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
   const isTutor = user?.role_id === ROLE_IDS.TUTOR;
-  const navItems = isTutor ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = isTutor ? TUTOR_NAV : UYE_NAV;
 
   const decksQuery = useSrsDecks();
   const deck =

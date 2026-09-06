@@ -139,7 +139,7 @@ const AdminTutorApplicationsPage = lazy(
 );
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
-const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
+const UyeProfili = lazy(() => import("@/pages/UyeProfili"));
 const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
@@ -533,7 +533,7 @@ function App() {
               element={<IlanSihirbazi />}
             />
             <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
-            <Route path={PATHS.studentProfile} element={<StudentProfile />} />
+            <Route path={PATHS.uyeProfili} element={<UyeProfili />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
 
@@ -642,7 +642,7 @@ function App() {
           />
           <Route
             path="/tutor/students/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
+            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
           />
           <Route
             path="/panel/rezervasyonlar/:id"
@@ -650,7 +650,14 @@ function App() {
           />
           <Route
             path="/panel/ogrenciler/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
+            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
+          />
+          {/* /ogrenciler -> /uyeler. Oturum içi ve eğitmen-özel bir yol,
+              SEO'ya girmez; yine de paylaşılmış bir link kırılmasın diye
+              yönlendirme bırakıldı (aynı desen: `/panel/ogrenciler`). */}
+          <Route
+            path="/ogrenciler/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
           />
 
           <Route path="*" element={<NotFound />} />
