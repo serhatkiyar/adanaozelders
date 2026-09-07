@@ -9,6 +9,10 @@ import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
+import {
+  GirisAyirici,
+  GoogleGirisDugmesi,
+} from "@/components/GoogleGirisDugmesi";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -123,6 +127,12 @@ export default function Login() {
             {mutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
           </button>
         </form>
+
+        <GirisAyirici />
+        {/* "Beni hatırla" tercihi Google akışına da taşınır: refresh çerezinin
+            ömrünü sunucu, access token'ın nerede duracağını yerel bayrak
+            belirliyor ve ikisi de düğmeye basıldığı anda sabitleniyor. */}
+        <GoogleGirisDugmesi mod="giris" hatirla={rememberMe} />
 
         <p className="mt-6 text-center text-sm text-slate-500 ">
           Hesabın yok mu?{" "}

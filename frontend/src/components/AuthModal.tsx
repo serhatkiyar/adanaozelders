@@ -12,17 +12,30 @@ import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
 import { ConsentCheckbox } from "@/components/LegalConsent";
 import { currentConsentVersion } from "@/lib/legalContent";
+import {
+  GirisAyirici,
+  GoogleGirisDugmesi,
+} from "@/components/GoogleGirisDugmesi";
+import { googleHataMetni } from "@/lib/googleHata";
 
 export function AuthModal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const modal = searchParams.get("modal"); // "login" | "register"
   const roleParam = searchParams.get("role") as RegisterRole | null;
+  // Google akışı hata ile döndüğünde kullanıcıyı çıktığı pencereye geri
+  // gönderiyor; toast kaybolabildiği için mesaj pencerenin içinde de
+  // durmalı (tam sayfa gezinme yaşandı, bağlam kayboldu).
+  const googleHatasi = googleHataMetni(searchParams.get("hata"));
   const kayitAcik = useKayitAcik();
   const isOpen = modal === "login" || modal === "register";
 
   const close = () => {
     searchParams.delete("modal");
     searchParams.delete("role");
+    // Google akışından hata ile dönüldüğünde `hata` parametresi eklenir;
+    // temizlenmezse pencere kapatılıp yeniden açıldığında eski hata mesajı
+    // hâlâ orada durur.
+    searchParams.delete("hata");
     setSearchParams(searchParams, { replace: true });
   };
 
@@ -88,13 +101,13 @@ export function AuthModal() {
         </button>
 
         <div className="p-8 max-h-[90vh] overflow-y-auto">
-          {modal === "login" ? <LoginForm onSuccess={close} /> : <RegisterForm initialRole={roleParam || "client"} onSuccess={close} />}
+          {modal === "login" ? <LoginForm onSuccess={close} googleHatasi={googleHatasi} /> : <RegisterForm initialRole={roleParam || "client"} onSuccess={close} googleHatasi={googleHatasi} />}
         </div>
     </Modal>
   );
 }
 
-function LoginForm({ onSuccess }: { onSuccess: () => void }) {
+function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleHatasi?: string | null }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -185,9 +198,11 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           </button>
         </div>
 
-        {mutation.isError && (
+        {(mutation.isError || googleHatasi) && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
-            {getErrorMessage(mutation.error, "E-posta veya parola hatalı.")}
+            {mutation.isError
+              ? getErrorMessage(mutation.error, "E-posta veya parola hatalı.")
+              : googleHatasi}
           </div>
         )}
 
@@ -199,6 +214,9 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           {mutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
         </button>
       </form>
+
+      <GirisAyirici />
+      <GoogleGirisDugmesi mod="giris" hatirla={rememberMe} />
 
       <p className="mt-6 text-center text-sm text-slate-500 ">
         Hesabın yok mu?{" "}
@@ -220,12 +238,15 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
  * Kayıt formu DÖRT ALANDIR — gerekçesi `pages/Register.tsx` başlığındadır.
  * Kayıt başarılıysa otomatik giriş yapılır; eğitmen ilan sihirbazına gider.
  */
-function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, onSuccess: () => void }) {
+function RegisterForm({ initialRole, onSuccess, googleHatasi }: { initialRole: RegisterRole, onSuccess: () => void, googleHatasi?: string | null }) {
   const [role, setRole] = useState<RegisterRole>(initialRole);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Google akışı formu göndermez; tarayıcının `required` kontrolü orada
+  // devreye girmez. Onay durumu bu yüzden state'te (bkz. LegalConsent).
+  const [onayVerildi, setOnayVerildi] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setToken = useAuthStore((s) => s.setToken);
@@ -352,11 +373,13 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
           )}
         </Field>
 
-        <ConsentCheckbox />
+        <ConsentCheckbox checked={onayVerildi} onChange={setOnayVerildi} />
 
-        {mutation.isError && (
+        {(mutation.isError || googleHatasi) && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
-            {getErrorMessage(mutation.error, "Kayıt başarısız.")}
+            {mutation.isError
+              ? getErrorMessage(mutation.error, "Kayıt başarısız.")
+              : googleHatasi}
           </div>
         )}
 
@@ -368,6 +391,19 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
           {mutation.isPending ? "Kaydediliyor..." : "Kayıt Ol"}
         </button>
       </form>
+
+      <GirisAyirici />
+      <GoogleGirisDugmesi
+        mod="kayit"
+        rol={role}
+        onaySurumu={currentConsentVersion()}
+        devreDisi={!onayVerildi}
+      />
+      {!onayVerildi && (
+        <p className="mt-2 text-center text-xs text-slate-400">
+          Devam etmek için yukarıdaki onay kutusunu işaretle.
+        </p>
+      )}
 
       <p className="mt-6 text-center text-sm text-slate-500 ">
         Zaten hesabın var mı?{" "}

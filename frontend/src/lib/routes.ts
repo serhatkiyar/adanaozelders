@@ -78,6 +78,8 @@ export const PATHS = {
   forgotPassword: "/sifremi-unuttum",
   resetPassword: "/sifre-yenile",
   verifyEmail: "/e-posta-dogrula",
+  /** Google girişinden dönüş. Sunucu buraya `?durum=...&git=...` ile yollar. */
+  googleReturn: "/google-donus",
 
   // ── Oturum-içi (DÜZ, role-adaptive) ──
   /** Rezervasyonlar (ders + kütüphane) (CLIENT). Eğitmen için sadece dersler. */
@@ -259,6 +261,7 @@ export const ROUTES = {
   forgotPassword: PATHS.forgotPassword,
   resetPassword: PATHS.resetPassword,
   verifyEmail: PATHS.verifyEmail,
+  googleReturn: PATHS.googleReturn,
 
   // ── Oturum-içi ──
   bookings: PATHS.bookings,

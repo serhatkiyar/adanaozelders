@@ -8,15 +8,34 @@ const linkCls =
   "font-semibold text-marka-metin underline-offset-2 hover:underline ";
 
 /**
- * Kayıt formlarındaki zorunlu KVKK/koşul onayı. `required` checkbox olduğundan
- * tarayıcı, işaretlenmeden formun gönderilmesini engeller; ayrıca state gerekmez.
+ * Kayıt formlarındaki zorunlu KVKK/koşul onayı.
+ *
+ * DURUM DIŞARIDAN VERİLEBİLİR ve bu bir zorunluluk oldu. Önceki sürüm state
+ * tutmuyordu; işaretlenmeden gönderimi tarayıcının `required` özniteliği
+ * engelliyordu ve form akışı için bu yeterliydi. Google ile kayıt akışı ise
+ * formu GÖNDERMEZ, tam sayfa gezinme yapar — `required` orada hiç devreye
+ * girmez. Kontrolsüz bırakılsaydı onaysız hesap açılır ve KVKK ispat zinciri
+ * (`consent_service.record_signup_consents`) sessizce kopardı.
+ *
+ * `checked` verilmezse bileşen eski davranışına döner (kontrolsüz + `required`),
+ * böylece onu yalnız form gönderimi için kullanan yüzeyler etkilenmez.
  */
-export function ConsentCheckbox() {
+export function ConsentCheckbox({
+  checked,
+  onChange,
+}: {
+  checked?: boolean;
+  onChange?: (deger: boolean) => void;
+} = {}) {
+  const kontrollu = checked !== undefined;
   return (
     <label className="flex items-start gap-2.5 text-xs leading-relaxed text-slate-500 ">
       <input
         type="checkbox"
         required
+        {...(kontrollu
+          ? { checked, onChange: (e) => onChange?.(e.target.checked) }
+          : {})}
         className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
       />
       <span>

@@ -99,6 +99,9 @@ export interface UserOut {
   full_name: string; // first_name + last_name (backend hybrid)
   is_active: boolean;
   email_verified: boolean;
+  /** Hesabın parolası var mı. Google ile açılan hesapta `false`; arayüz
+   *  "Şifre değiştir" yerine "Şifre belirle" yolunu gösterir. */
+  has_password?: boolean;
   phone?: string | null;
   phone_verified?: boolean;
   role_id: number;

@@ -99,3 +99,56 @@ export async function confirmPasswordReset(
   );
   return data;
 }
+
+
+// ── Google ile giriş ─────────────────────────────────────────────────────────
+
+export type OAuthMod = "giris" | "kayit";
+
+/**
+ * Google akışını başlatan TAM SAYFA adresi. Axios ile ÇAĞRILMAZ.
+ *
+ * Akış sunucu tarafı yönlendirmedir: tarayıcı `/auth/google/start`a gider,
+ * sunucu `state` çerezini yazıp Google'a 303 verir. XHR ile çağrılsaydı
+ * yönlendirme takip edilir ama çerez ve Google'ın onay ekranı devreye girmezdi.
+ *
+ * Google'ın tarayıcı kütüphanesi (GSI) bilerek kullanılmıyor: o script sayfa
+ * açılır açılmaz Google'a istek atar, yani kullanıcı hiçbir onay vermeden
+ * üçüncü tarafa veri gider (KVKK) ve CSP'deki `script-src 'self'` delinirdi.
+ */
+export function oauthStartUrl(secenekler: {
+  mod: OAuthMod;
+  rol?: RegisterRole;
+  donus?: string;
+  onaySurumu?: string;
+  hatirla?: boolean;
+}): string {
+  const q = new URLSearchParams({ mod: secenekler.mod });
+  if (secenekler.rol) q.set("rol", secenekler.rol);
+  if (secenekler.donus) q.set("donus", secenekler.donus);
+  if (secenekler.onaySurumu) q.set("onay_surumu", secenekler.onaySurumu);
+  q.set("hatirla", secenekler.hatirla === false ? "false" : "true");
+
+  const kok = (apiClient.defaults.baseURL ?? "").replace(/\/$/, "");
+  return `${kok}/auth/google/start?${q.toString()}`;
+}
+
+/**
+ * Access token'ı refresh çerezinden alır.
+ *
+ * Google callback'i access token ÜRETMEZ ve URL'de taşımaz (tarayıcı geçmişine,
+ * `Referer`a ve ara sunucu loglarına yazılırdı); yalnız refresh çerezini yazar.
+ * Dönüş sayfası oturumu buradan tamamlar. `axios.ts` içindeki 401 interceptor'ı
+ * DEĞİŞMEZ; bu onun paralel bir kopyası değil, açık bir çağrıdır.
+ */
+export async function refreshSession(): Promise<Token> {
+  const { data } = await apiClient.post<Token>("/auth/refresh", null, {
+    withCredentials: true,
+  });
+  return data;
+}
+
+export async function fetchOAuthProviders(): Promise<{ google: boolean }> {
+  const { data } = await apiClient.get<{ google: boolean }>("/auth/oauth/providers");
+  return data;
+}

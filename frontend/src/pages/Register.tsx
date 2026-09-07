@@ -12,6 +12,10 @@ import { buildWelcome } from "@/lib/greeting";
 import { roleHome } from "@/lib/roles";
 import { toast } from "@/store/toastStore";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  GirisAyirici,
+  GoogleGirisDugmesi,
+} from "@/components/GoogleGirisDugmesi";
 
 /**
  * Kayıt formu DÖRT ALANDIR: ad, soyad, e-posta, parola.
@@ -32,6 +36,10 @@ export default function Register() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Onay kutusu artik STATE tutuyor: Google akisi formu gondermez ve
+  // tarayicinin `required` kontrolu orada devreye girmez. Kontrolsuz
+  // birakilsaydi onaysiz hesap acilir, KVKK ispat zinciri kopardi.
+  const [onayVerildi, setOnayVerildi] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const setToken = useAuthStore((s) => s.setToken);
@@ -158,7 +166,7 @@ export default function Register() {
             )}
           </Field>
 
-          <ConsentCheckbox />
+          <ConsentCheckbox checked={onayVerildi} onChange={setOnayVerildi} />
 
           {mutation.isError && (
             <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
@@ -174,6 +182,23 @@ export default function Register() {
             {mutation.isPending ? "Kaydediliyor..." : "Kayıt Ol"}
           </button>
         </form>
+
+        <GirisAyirici />
+        {/* Rol sekmesi ve onay kutusu zaten burada: `rol` state'ten, onay
+            surumu ise imzali `state` cerezinde tasinir. Boylece Google ile
+            kayit da ayni KVKK ispat kaydini uretir ve ek bir "tamamlama"
+            ekrani gerekmez. */}
+        <GoogleGirisDugmesi
+          mod="kayit"
+          rol={role}
+          onaySurumu={currentConsentVersion()}
+          devreDisi={!onayVerildi}
+        />
+        {!onayVerildi && (
+          <p className="mt-2 text-center text-xs text-slate-400">
+            Devam etmek için yukarıdaki onay kutusunu işaretle.
+          </p>
+        )}
 
         <p className="mt-6 text-center text-sm text-slate-500 ">
           Zaten hesabın var mı?{" "}

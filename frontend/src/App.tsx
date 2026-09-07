@@ -82,6 +82,7 @@ const Register = lazy(() => import("@/pages/Register"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const GoogleDonus = lazy(() => import("@/pages/GoogleDonus"));
 const AdminLayout = lazy(() => import("@/components/admin/layout/AdminLayout"));
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
@@ -468,6 +469,10 @@ function App() {
           <Route path={PATHS.forgotPassword} element={<ForgotPassword />} />
           <Route path={PATHS.resetPassword} element={<ResetPassword />} />
           <Route path={PATHS.verifyEmail} element={<VerifyEmail />} />
+          {/* Google donusu: `PublicRoute` ile SARILMAZ -- sayfa tam da
+              oturumu acarken calisir, oturumlu kullaniciyi disari atan
+              bir guard akisi tam ortasinda keserdi. */}
+          <Route path={PATHS.googleReturn} element={<GoogleDonus />} />
 
           {/* ── Oturum-içi (DÜZ). Yalnızca kimlik gerektiren ortak uçlar ── */}
           <Route element={<ProtectedRoute />}>
