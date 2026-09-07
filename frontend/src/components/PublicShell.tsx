@@ -1,4 +1,10 @@
-import { type ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { SiteFooter } from "@/components/SiteFooter";
 
@@ -21,11 +27,36 @@ export function PublicShell({
   /** Navbar'ın alt satırına yerleşen içerik (ör. filtre çubuğu). */
   bottom?: ReactNode;
 }) {
+  /* Yapışkan üst boşluk — `DashboardShell` ile AYNI sözleşme. Yapışkan yan
+   * kartlar (ör. eğitmen ilanı) üst boşluklarını sabit bir sayı yerine bu
+   * değişkenden alır; ölçülmemiş bir varsayım yerine gerçek başlık yüksekliği
+   * kullanılır. Ayrıntı ve kusur öyküsü: `DashboardShell`. */
+  const yiginRef = useRef<HTMLDivElement>(null);
+  const [yapiskanUst, setYapiskanUst] = useState(0);
+  useLayoutEffect(() => {
+    const el = yiginRef.current;
+    if (!el) return;
+    const olc = () => setYapiskanUst(Math.round(el.getBoundingClientRect().height));
+    olc();
+    const gozlemci = new ResizeObserver(olc);
+    gozlemci.observe(el);
+    window.addEventListener("resize", olc);
+    return () => {
+      gozlemci.disconnect();
+      window.removeEventListener("resize", olc);
+    };
+  }, []);
+
   return (
     // flex kolon: içerik kısa olsa da SiteFooter'ın `mt-auto`'su onu sayfanın
     // altına iter (yasal sayfalar kısa olabiliyor).
-    <div className="flex min-h-screen flex-col bg-slate-50 ">
-      <PublicNavbar center={center} bottom={bottom} expanded />
+    <div
+      className="flex min-h-screen flex-col bg-slate-50 "
+      style={{ "--yapiskan-ust": `${yapiskanUst}px` } as CSSProperties}
+    >
+      <div ref={yiginRef} className="sticky top-0 z-40">
+        <PublicNavbar center={center} bottom={bottom} expanded />
+      </div>
       <main className="flex-1 p-4 sm:p-6">{children}</main>
       <SiteFooter />
     </div>

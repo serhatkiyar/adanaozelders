@@ -155,7 +155,7 @@ export default function PublicTutorProfile() {
               tamamını görmek için SAYFAYI en aşağı kaydırmak zorunda kalıyordu.
               Artık yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar;
               kısa kaldığında hiçbir şey değişmez. */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
             <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyon: favori + paylaş (kartın yukarısında) */}
               <div className="mb-2 flex items-center justify-end gap-2">

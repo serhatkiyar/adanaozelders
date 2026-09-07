@@ -129,15 +129,40 @@ describe("ilan sayfası · sabit kart", () => {
     }
   );
 
-  it.each(KABUKLAR)("%s: üst boşluk ile yükseklik sınırı TUTARLI", (ad) => {
-    // `top-24` (6rem) ile başlayan kart `100vh - 7rem` ile sınırlıysa altta
-    // 1rem pay kalır. Sınır üst boşluktan KÜÇÜK olursa kart yine taşar.
+  it.each(KABUKLAR)("%s: üst boşluk ÖLÇÜLEN değerden gelir, sabit sayıdan değil", (ad) => {
+    // 7 Eyl 2026'da sözleşme değişti. Önce `top-24` gibi SABİT bir sayı
+    // vardı ve doğrulama şeridi açıkken yanlış oluyordu: kart 60 piksel
+    // sürüklenip ancak ondan sonra sabitleniyordu. Artık kabuk (`--yapiskan-ust`)
+    // başlık+şerit yığınının GERÇEK yüksekliğini ölçüp yayınlıyor.
+    //
+    // İkisi de AYNI değişkenden beslenmeli: biri sabit sayıya dönerse hiza
+    // sessizce bozulur ve kusur geri gelir.
     const sinif = asideSinifi(oku(ad));
-    const ust = sinif.match(/lg:top-(\d+)/);
-    const sinir = sinif.match(/lg:max-h-\[calc\(100vh-(\d+)rem\)\]/);
-    expect(ust, "üst boşluk okunamadı").toBeTruthy();
-    expect(sinir, "yükseklik sınırı okunamadı").toBeTruthy();
-    expect(Number(sinir![1])).toBeGreaterThan(Number(ust![1]) / 4);
+    const UST = "lg:top-[calc(var(--yapiskan-ust,6rem)+";
+    const SINIR = "lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-";
+    expect(sinif, "üst boşluk ölçülen değere bağlı değil").toContain(UST);
+    expect(sinif, "yükseklik sınırı ölçülen değere bağlı değil").toContain(SINIR);
+
+    // Alt pay, üst boşluktan BÜYÜK olmalı: aksi hâlde kart ekranın dibine
+    // yapışır ve son satırı kırpılır.
+    const ustPay = Number(sinif.split(UST)[1].split("rem")[0]);
+    const altPay = Number(sinif.split(SINIR)[1].split("rem")[0]);
+    expect(altPay, "alt pay üst boşluktan küçük").toBeGreaterThan(ustPay);
+  });
+
+  it("kabuklar `--yapiskan-ust` değerini GERÇEKTEN yayınlıyor", () => {
+    // Değişken yayınlanmazsa yedek değer (6rem) devreye girer ve şerit açıkken
+    // hiza yine bozulur. İki kabuk da ölçüp yayınlamak ZORUNDA.
+    for (const kabuk of ["DashboardShell.tsx", "PublicShell.tsx"]) {
+      const kaynak = readFileSync(
+        join(KOK, "src", "components", kabuk),
+        "utf8"
+      );
+      expect(kaynak, `${kabuk} değişkeni yayınlamıyor`).toContain(
+        '"--yapiskan-ust"'
+      );
+      expect(kaynak, `${kabuk} ölçüm yapmıyor`).toContain("ResizeObserver");
+    }
   });
 
   it.each(KABUKLAR)("%s: kart Superprof deseninde KOMPAKT kalır", (ad) => {
