@@ -4,7 +4,7 @@
 export const SITE_NAME = "Adana Özel Ders";
 
 export const DEFAULT_DESCRIPTION =
-  "Adana Özel Ders — alanında uzman eğitmenlerle TYT, AYT, LGS, KPSS ve daha fazlası için online veya yüz yüze özel ders al.";
+  "Adana Özel Ders'te alanında uzman eğitmenlerle TYT, AYT, LGS, KPSS ve daha fazlası için online veya yüz yüze özel ders al.";
 
 /** Site kök URL'i (sonunda `/` olmadan). */
 export function siteUrl(): string {

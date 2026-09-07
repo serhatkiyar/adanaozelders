@@ -185,7 +185,7 @@ export const ADIMLAR: Adim[] = [
       kelimeSay(d.lessonInfo) < YONTEM_EN_AZ_KELIME
         ? {
             alan: "yontem",
-            mesaj: `Biraz daha anlat — en az ${YONTEM_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.lessonInfo)}.`,
+            mesaj: `Biraz daha anlat: en az ${YONTEM_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.lessonInfo)}.`,
           }
         : null,
     yama: (d) => ({ lesson_info: d.lessonInfo.trim() }),
@@ -209,7 +209,7 @@ export const ADIMLAR: Adim[] = [
       kelimeSay(d.bio) < HAKKINDA_EN_AZ_KELIME
         ? {
             alan: "hakkinda",
-            mesaj: `Biraz daha anlat — en az ${HAKKINDA_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.bio)}.`,
+            mesaj: `Biraz daha anlat: en az ${HAKKINDA_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.bio)}.`,
           }
         : null,
     yama: (d) => ({ bio: d.bio.trim() }),
@@ -235,7 +235,7 @@ export const ADIMLAR: Adim[] = [
       if (d.teachingMode !== TeachingMode.ONLINE && !d.district)
         return {
           alan: "ilce",
-          mesaj: "Yüz yüze ders için ilçeni seç — öğrenciler ilçeye göre arıyor.",
+          mesaj: "Yüz yüze ders için ilçeni seç: öğrenciler ilçeye göre arıyor.",
         };
       return null;
     },

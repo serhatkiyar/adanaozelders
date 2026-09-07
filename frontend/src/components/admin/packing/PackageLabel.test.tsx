@@ -305,14 +305,18 @@ describe("PackageLabel baskı sözleşmesi", () => {
     expect(text).toContain("Adana");
   });
 
-  it("adres NULL ise '—' ile birlikte EKSİK VERİ uyarısı basılır", async () => {
-    // Sunucu yer tutucu üretmez (`""` yerine `null` döner): "—" gerçekten
+  it("adres NULL ise '-' ile birlikte EKSİK VERİ uyarısı basılır", async () => {
+    // Sunucu yer tutucu üretmez (`""` yerine `null` döner): "-" gerçekten
     // "veri yok" demektir. Yalnız tire basmak, F26'daki boş etiketin daha
     // kibar hâli olurdu — kimse fark etmezdi.
+    //
+    // 7 Eyl 2026: gösterge uzun tireden (—) düz tireye (-) döndü. Kullanıcı
+    // kararı: uzun tire arayüzde "yapay zeka yazmış" izlenimi bırakıyor.
+    // İddianın ANLAMI değişmedi, yalnız karakteri.
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket({ recipient: null, address: null })} onClose={() => {}} />);
     const text = document.querySelector(".package-label")?.textContent ?? "";
-    expect(text).toContain("—");
+    expect(text).toContain("-");
     expect(text).toMatch(/eksik/i);
   });
 

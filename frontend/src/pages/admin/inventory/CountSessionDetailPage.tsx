@@ -81,7 +81,7 @@ const sayimSemasi = z.object({
 });
 
 function zaman(iso: string | null): string {
-  return iso ? ZAMAN.format(new Date(iso)) : "—";
+  return iso ? ZAMAN.format(new Date(iso)) : "-";
 }
 
 /* ── Oturum üst özeti ── */
@@ -95,13 +95,13 @@ function Ozet({ oturum }: { oturum: CountSessionDetailOut }) {
       "İncelemeye gönderen",
       oturum.reviewed_by_admin_id
         ? `#${oturum.reviewed_by_admin_id} · ${zaman(oturum.reviewed_at)}`
-        : "—",
+        : "-",
     ],
     [
       "Uygulayan",
       oturum.applied_by_admin_id
         ? `#${oturum.applied_by_admin_id} · ${zaman(oturum.applied_at)}`
-        : "—",
+        : "-",
     ],
   ];
   return (
@@ -227,7 +227,7 @@ function SatirGorunumu({
                       min="0"
                       step="1"
                       className="input w-24 text-right"
-                      aria-label={`Sayılan miktar — ${kova} (ürün #${satir.product_id})`}
+                      aria-label={`Sayılan miktar: ${kova} (ürün #${satir.product_id})`}
                       {...field}
                     />
                   </Form.Control>
@@ -268,7 +268,7 @@ function SatirGorunumu({
         )}
       </td>
       <td className="px-3 py-2.5 text-xs text-slate-500 ">
-        {satir.counted_by_admin_id ? `#${satir.counted_by_admin_id}` : "—"}
+        {satir.counted_by_admin_id ? `#${satir.counted_by_admin_id}` : "-"}
         <span className="block tabular-nums">{zaman(satir.counted_at)}</span>
       </td>
       <td className="px-3 py-2.5 text-right">
@@ -318,7 +318,7 @@ function UygulaPenceresi({
       <div className="space-y-4">
         {etkiler.length === 0 ? (
           <p className="text-sm text-slate-600 ">
-            Fark yok — hiçbir stok hareketi yazılmayacak, oturum yalnız kapanacak.
+            Fark yok: hiçbir stok hareketi yazılmayacak, oturum yalnız kapanacak.
           </p>
         ) : (
           <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 ">

@@ -67,7 +67,7 @@ export function VariantSelector({ axes }: { axes: Eksen[] }) {
           >
             {eksen.name}:{" "}
             <span className="font-medium text-slate-900">
-              {eksen.secili ?? "—"}
+              {eksen.secili ?? "-"}
             </span>
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">

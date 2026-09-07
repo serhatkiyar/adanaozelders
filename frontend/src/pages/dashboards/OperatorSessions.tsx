@@ -165,7 +165,7 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
         </h2>
         <div data-testid="rez-hata">
           <ErrorState
-            description="Rezervasyon listesi yüklenemedi. Bu bir bağlantı/yetki hatasıdır — listenin boş olduğu anlamına GELMEZ."
+            description="Rezervasyon listesi yüklenemedi. Bu bir bağlantı/yetki hatasıdır: listenin boş olduğu anlamına GELMEZ."
             onRetry={() => void refetch()}
           />
         </div>

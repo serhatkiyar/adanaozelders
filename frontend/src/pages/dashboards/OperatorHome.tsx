@@ -191,7 +191,7 @@ function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
         <p className="mt-1 text-sm text-amber-700/90 ">
           Admin onayından sonra kütüphanen yayına girer ve öğrencilere görünür olur.
           Bu sırada <Link to={ROUTES.operatorLibrary} className="font-semibold underline">profilini tamamlayabilirsin</Link>{" "}
-          (saatler, görseller, olanaklar, konum) — onaylanır onaylanmaz hazır olsun.
+          (saatler, görseller, olanaklar, konum): onaylanır onaylanmaz hazır olsun.
         </p>
       </div>
     );

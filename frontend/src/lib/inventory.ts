@@ -266,12 +266,12 @@ export function applyBlockers(lines: CountLineLike[]): string[] {
 
   if (stale > 0) {
     sebepler.push(
-      `${stale} satırda sayımdan sonra fiziksel etki oluştu — uygulamadan önce yeniden sayılmalı.`
+      `${stale} satırda sayımdan sonra fiziksel etki oluştu: uygulamadan önce yeniden sayılmalı.`
     );
   }
   if (resolved > 0) {
     sebepler.push(
-      `${resolved} satıra açıklama yazıldı ama yeniden sayılmadı — açıklama tek başına yeterli değil.`
+      `${resolved} satıra açıklama yazıldı ama yeniden sayılmadı: açıklama tek başına yeterli değil.`
     );
   }
   if (sayilmamis > 0) {
@@ -348,7 +348,7 @@ export function damageEffect(
   sourceBucket: Bucket | null = null
 ): DamageEffect {
   const adet = Number.isFinite(qty) && qty > 0 ? qty : 0;
-  const sayi = adet > 0 ? String(adet) : "—";
+  const sayi = adet > 0 ? String(adet) : "-";
 
   switch (kind) {
     case "TRANSFER":
@@ -399,7 +399,7 @@ export const DAMAGE_REASON_OPTIONS: { value: DamageReason; label: string }[] = [
   { value: "KIRIK", label: "Kırık" },
   { value: "ISLAK", label: "Islak / nem" },
   { value: "BASKI_HATASI", label: "Baskı hatası" },
-  { value: "MUSTERI_IADESI_HASARLI", label: "Müşteri iadesi — hasarlı geldi" },
+  { value: "MUSTERI_IADESI_HASARLI", label: "Müşteri iadesi: hasarlı geldi" },
   { value: "DIGER", label: "Diğer" },
 ];
 
@@ -606,7 +606,7 @@ export function inventoryErrorMessage(error: unknown, fallback = "İşlem tamaml
     // Arayüz otomatik onarım İDDİA ETMEZ: servis bilinçli olarak onarmıyor.
     return (
       "Defter bütünlüğü bozuk: bu olayın beklenen defter kayıtları eşleşmiyor. " +
-      "Hiçbir şey yazılmadı ve kendiliğinden düzelmez — envanter sorumlusuna bildirin."
+      "Hiçbir şey yazılmadı ve kendiliğinden düzelmez: envanter sorumlusuna bildirin."
     );
   }
   if (status === 409 && detail) {

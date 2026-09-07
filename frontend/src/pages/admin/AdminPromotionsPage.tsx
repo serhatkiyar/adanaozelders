@@ -21,7 +21,7 @@ const TR = new Intl.DateTimeFormat("tr-TR", {
 });
 
 function tarih(iso: string | null): string {
-  return iso ? TR.format(new Date(iso)) : "—";
+  return iso ? TR.format(new Date(iso)) : "-";
 }
 
 /**
@@ -137,7 +137,7 @@ export default function AdminPromotionsPage() {
                   <td className="py-3 pr-4 text-slate-600">
                     {p.starts_at
                       ? `${tarih(p.starts_at)} – ${tarih(p.ends_at)}`
-                      : "—"}
+                      : "-"}
                   </td>
                   <td className="py-3 pr-4 text-slate-600">
                     {formatTRY(parseMoney(p.price) ?? 0)}
@@ -164,7 +164,7 @@ export default function AdminPromotionsPage() {
         open={iptalHedefi !== null}
         title={
           iptalHedefi
-            ? `${iptalHedefi.tutor_name ?? `#${iptalHedefi.tutor_id}`} — öne çıkarmayı iptal et`
+            ? `${iptalHedefi.tutor_name ?? `#${iptalHedefi.tutor_id}`}: öne çıkarmayı iptal et`
             : ""
         }
         description="Kayıt anında yayından düşer ve ödenmiş tutar iade sürecine girer. Gerekçe denetim kaydına yazılır."

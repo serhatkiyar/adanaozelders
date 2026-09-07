@@ -179,7 +179,7 @@ function BaglaIcerik({
         <div>
           <dt className="text-slate-500 ">Barkod</dt>
           <dd className="mt-0.5 font-medium text-slate-800 ">
-            {satir.barcode || "—"}
+            {satir.barcode || "-"}
             {satir.barcode && !satir.barcode_valid && (
               <span className="ml-1 font-normal text-amber-700 ">
                 (geçersiz)
@@ -190,13 +190,13 @@ function BaglaIcerik({
         <div>
           <dt className="text-slate-500 ">Birim</dt>
           <dd className="mt-0.5 font-medium text-slate-800 ">
-            {satir.unit_name || "—"}
+            {satir.unit_name || "-"}
           </dd>
         </div>
         <div>
           <dt className="text-slate-500 ">Marka</dt>
           <dd className="mt-0.5 font-medium text-slate-800 ">
-            {satir.brand || "—"}
+            {satir.brand || "-"}
           </dd>
         </div>
       </dl>

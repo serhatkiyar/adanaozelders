@@ -304,8 +304,8 @@ export function ListeAracCubugu({
                       ipucu={
                         secili
                           ? suankiYon === "asc"
-                            ? "Artan — tıkla, azalana çevir"
-                            : "Azalan — tıkla, artana çevir"
+                            ? "Artan: tıkla, azalana çevir"
+                            : "Azalan: tıkla, artana çevir"
                           : undefined
                       }
                       onSec={() => {

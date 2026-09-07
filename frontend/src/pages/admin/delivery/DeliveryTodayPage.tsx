@@ -42,7 +42,7 @@ function RoutingHealthStrip() {
       </svg>
       <span>
         <span className="font-semibold">Rota optimizasyonu yaklaşık modda.</span>{" "}
-        Yol ağı servisi (VROOM/OSRM) erişilemiyor — durak sıraları ve ETA'lar kuş
+        Yol ağı servisi (VROOM/OSRM) erişilemiyor: durak sıraları ve ETA'lar kuş
         uçuşu tahminle hesaplanır.
       </span>
     </div>
@@ -79,7 +79,7 @@ function ExceptionQueue() {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
           <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
         </svg>
-        İstisna yok — karar bekleyen sipariş bulunmuyor.
+        İstisna yok: karar bekleyen sipariş bulunmuyor.
       </p>
     );
   }
@@ -90,7 +90,7 @@ function ExceptionQueue() {
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">İstisna Kuyruğu</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
-            Birkaç kez teslim edilemeyen siparişler — karar bekliyor (yeniden dene / iade).
+            Birkaç kez teslim edilemeyen siparişler: karar bekliyor (yeniden dene / iade).
           </p>
         </div>
         <Badge tone="danger">{orders.length}</Badge>
@@ -100,7 +100,7 @@ function ExceptionQueue() {
           <li key={o.order_id} className="flex flex-wrap items-center gap-3 py-3">
             <div className="min-w-0 flex-1 basis-48">
               <p className="truncate text-sm font-medium text-slate-900 ">
-                {o.recipient ?? "—"}
+                {o.recipient ?? "-"}
                 <span className="ml-2 text-xs font-normal text-slate-400">#{o.order_id}</span>
               </p>
               <p className="truncate text-xs text-slate-500 ">
@@ -223,7 +223,7 @@ export default function DeliveryTodayPage() {
 
   const create = () => {
     if (selectedVehicleId == null) {
-      toast.error("Önce bir araç tanımlayın — Araçlar sekmesinden eklenir.");
+      toast.error("Önce bir araç tanımlayın: Araçlar sekmesinden eklenir.");
       return;
     }
     createRun.mutate(
@@ -248,7 +248,7 @@ export default function DeliveryTodayPage() {
           <div className="mr-auto">
             <h2 className="text-base font-bold text-slate-900 ">Günün Turları</h2>
             <p className="mt-0.5 text-xs text-slate-500 ">
-              Turu planla, etiketleri bas, sahaya çık — detay için tura tıkla.
+              Turu planla, etiketleri bas, sahaya çık: detay için tura tıkla.
             </p>
           </div>
           <input
@@ -293,7 +293,7 @@ export default function DeliveryTodayPage() {
                 isPending={dispatchDay.isPending}
                 title={
                   dispatchable === 0
-                    ? "Dağıtılacak konumlu sipariş yok — önce Siparişler sekmesinden hazırla"
+                    ? "Dağıtılacak konumlu sipariş yok: önce Siparişler sekmesinden hazırla"
                     : `${dispatchable} sipariş araçlara bölüştürülür`
                 }
               >

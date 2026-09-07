@@ -68,7 +68,7 @@ export function qrScanDiagnosis(env: QrEnvironment): { title: string; hint: stri
       title: `Kamera bu bağlantıda kullanılamıyor${host}.`,
       hint:
         "Tarayıcılar kamerayı yalnızca HTTPS bağlantılarda açar; düz http:// " +
-        "üzerinden QR okuma devre dışı kalır. Telefonun tarayıcısı sorunsuz — " +
+        "üzerinden QR okuma devre dışı kalır. Telefonun tarayıcısı sorunsuz " +
         "adrese HTTPS ile bağlanıldığında kamera çalışır. Şimdilik kodu elle " +
         "girebilirsiniz.",
     };

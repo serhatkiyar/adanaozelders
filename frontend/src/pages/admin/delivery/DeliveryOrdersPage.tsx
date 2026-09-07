@@ -51,7 +51,7 @@ function OrderRow({
     <li className="flex flex-wrap items-center gap-3 py-3">
       <div className="min-w-0 flex-1 basis-52">
         <p className="truncate text-sm font-medium text-slate-900 ">
-          {order.recipient ?? "—"}
+          {order.recipient ?? "-"}
           <span className="ml-2 text-xs font-normal text-slate-400">#{order.order_id}</span>
           {order.lat == null && (
             <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ">
@@ -226,7 +226,7 @@ function ReadyQueue() {
                 </>
               ) : (
                 <p className="text-xs text-slate-500 ">
-                  Bugün açık tur yok —{" "}
+                  Bugün açık tur yok: {" "}
                   <Link to={ROUTES.adminDelivery} className="font-semibold text-panel-accent-text hover:underline">
                     Bugün sekmesinden
                   </Link>{" "}

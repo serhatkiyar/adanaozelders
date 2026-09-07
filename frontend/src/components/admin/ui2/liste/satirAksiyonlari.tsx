@@ -107,7 +107,7 @@ export function aksiyonKuralIhlali(aksiyonlar: SatirAksiyonu[]): string | null {
       `Ç-2 ihlali: yıkıcı aksiyon açıkta olamaz (${acikYikici
         .map((a) => `"${a.etiket}"`)
         .join(", ")}). Yıkıcı aksiyonlar her zaman üç nokta menüsünde ve ` +
-      "onay adımlıdır — yanlış satıra dokunmak geri alınamaz bir sonuç üretmemeli."
+      "onay adımlıdır: yanlış satıra dokunmak geri alınamaz bir sonuç üretmemeli."
     );
   }
 

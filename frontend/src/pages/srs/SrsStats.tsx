@@ -106,7 +106,7 @@ export default function SrsStats() {
                   <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900 ">
                     {stats.data?.retention_rate != null
                       ? `%${Math.round(stats.data.retention_rate * 100)}`
-                      : "—"}
+                      : "-"}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-400 ">
                     Tekrar kartlarında "Tekrar" dışı cevap payı

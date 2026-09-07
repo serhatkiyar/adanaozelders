@@ -43,7 +43,9 @@ describe("SrsDueLabel", () => {
 
   it("vadesi olmayan kartta tire basılır", () => {
     const { container } = render(<SrsDueLabel state="NEW" dueAt={null} />);
-    expect(container.textContent).toBe("—");
+        // 7 Eyl 2026 (ÜK-7): gösterge uzun tireden (—) düz tireye döndü.
+    // İddianın anlamı aynı, yalnız beklenen karakter değişti.
+    expect(container.textContent).toBe("-");
   });
 
   it("aynı güne düşen iki REVIEW kartı AYNI metni gösterir", () => {

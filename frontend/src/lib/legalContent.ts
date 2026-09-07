@@ -110,7 +110,7 @@ const KVKK: LegalDoc = {
       heading: "1. Veri Sorumlusu",
       blocks: [
         p(
-          `Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca, ${OPERATOR.name} platformunu (\"Platform\") işleten ${OPERATOR.entity} (\"İşletme\") tarafından veri sorumlusu sıfatıyla hazırlanmıştır. İletişim: ${OPERATOR.email} — ${OPERATOR.address}.`
+          `Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca, ${OPERATOR.name} platformunu (\"Platform\") işleten ${OPERATOR.entity} (\"İşletme\") tarafından veri sorumlusu sıfatıyla hazırlanmıştır. İletişim: ${OPERATOR.email}: ${OPERATOR.address}.`
         ),
       ],
     },
@@ -165,7 +165,7 @@ const KVKK: LegalDoc = {
       blocks: [
         p("Kişisel verileriniz, yalnızca hizmetin gerektirdiği ölçüde aşağıdaki alıcı gruplarına aktarılabilir:"),
         list(
-          "Ödeme kuruluşu: iyzico Ödeme Hizmetleri A.Ş. — ödeme işlemleri ve 6493 sayılı Kanun kapsamındaki yükümlülükler için; ayrıca ödeme alan eğitmen/kütüphane için alt üye işyeri (sub-merchant) kurulumu amacıyla ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi aktarılır. Kimlik doğrulaması (MERNIS/IBAN kontrolü) mevzuat gereği ödeme kuruluşunca yapılır.",
+          "Ödeme kuruluşu: iyzico Ödeme Hizmetleri A.Ş.: ödeme işlemleri ve 6493 sayılı Kanun kapsamındaki yükümlülükler için; ayrıca ödeme alan eğitmen/kütüphane için alt üye işyeri (sub-merchant) kurulumu amacıyla ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi aktarılır. Kimlik doğrulaması (MERNIS/IBAN kontrolü) mevzuat gereği ödeme kuruluşunca yapılır.",
           "Barındırma ve bulut altyapı sağlayıcıları (sunucu, veritabanı, dosya depolama).",
           "E-posta gönderim altyapısı (doğrulama ve bilgilendirme e-postaları).",
           "Hizmetin doğası gereği diğer kullanıcılar: eğitmen profiliniz öğrencilere; rezervasyon yaptığınızda ad-soyadınız ilgili eğitmene/kütüphaneye gösterilir.",
@@ -397,7 +397,7 @@ const TERMS: LegalDoc = {
       heading: "9. Sorumluluğun Sınırlandırılması",
       blocks: [
         p(
-          "Platform \"olduğu gibi\" sunulur; kesintisiz veya hatasız çalışacağı garanti edilmez. Platform; eğitmen veya kurumların sunduğu hizmetin kalitesinden, ders sonuçlarından ve kullanıcılar arasındaki uyuşmazlıklardan — aracı hizmet sağlayıcı sıfatının gerektirdiği sınırlar içinde — sorumlu değildir. Zorunlu tüketici mevzuatı hükümleri saklıdır."
+          "Platform \"olduğu gibi\" sunulur; kesintisiz veya hatasız çalışacağı garanti edilmez. Platform; eğitmen veya kurumların sunduğu hizmetin kalitesinden, ders sonuçlarından ve kullanıcılar arasındaki uyuşmazlıklardan: aracı hizmet sağlayıcı sıfatının gerektirdiği sınırlar içinde: sorumlu değildir. Zorunlu tüketici mevzuatı hükümleri saklıdır."
         ),
       ],
     },
@@ -549,7 +549,7 @@ const DISTANCE_SALES: LegalDoc = {
           "Teslim edilen ürün ayıplı (hasarlı, baskı hatalı, eksik sayfalı), eksik veya sipariş ettiğinizden farklı ise 6502 sayılı Tüketicinin Korunması Hakkında Kanun'un ayıplı mala ilişkin hükümleri uygulanır. Bu durumda ALICI; sözleşmeden dönme, ürünün ayıpsız misliyle değiştirilmesi, ücretsiz onarım veya bedelde indirim seçimlik haklarından birini kullanabilir."
         ),
         list(
-          "Bu hak, ambalajın açılmış olmasından etkilenmez — ambalaj istisnası yalnız gerekçesiz CAYMA hakkı için geçerlidir.",
+          "Bu hak, ambalajın açılmış olmasından etkilenmez: ambalaj istisnası yalnız gerekçesiz CAYMA hakkı için geçerlidir.",
           `Bildirimi ${OPERATOR.email} adresine veya sipariş detayındaki iade talebi ekranından yapabilirsiniz; ürün fotoğrafı eklemeniz incelemeyi hızlandırır.`,
           "Ayıplı/eksik/yanlış üründe kargo ve iade masrafları ALICI'dan talep edilmez; değişim veya iade gönderimi SATICI tarafından karşılanır."
         ),
@@ -601,7 +601,7 @@ const REFUND: LegalDoc = {
       // burada ödeme modelleri hiç tarif edilmiyor; kapalı bir akışın modelini
       // anlatmak, açıldığında güncellenmesi unutulacak bir taahhüt olurdu.
       id: "genel",
-      heading: "1. Genel Esaslar — Ödeme ve İade Modeli",
+      heading: "1. Genel Esaslar: Ödeme ve İade Modeli",
       blocks: [
         p(
           "Mağazadan yapılan ürün satışlarında satıcı doğrudan işletmemizdir; ödeme doğrudan işletmemize yapılır, emanet uygulanmaz. İade hakkının doğduğu hâllerde tutar, ödemeyi aldığımız işletme hesabından doğrudan ödeme yaptığınız karta geri gönderilir."
@@ -650,7 +650,7 @@ const REFUND: LegalDoc = {
     },
     {
       id: "fiziksel-urunler",
-      heading: "5. Mağaza Ürünleri — Basılı Kitap Teslimatı ve İadesi",
+      heading: "5. Mağaza Ürünleri: Basılı Kitap Teslimatı ve İadesi",
       blocks: [
         p(
           "Mağazadan satın alınan basılı kitaplarda satıcı doğrudan işletmemizdir; ödeme işletmemize yapılır ve emanet modeli uygulanmaz (bkz. 1. bölüm)."
@@ -847,7 +847,7 @@ const PRELIMINARY_INFO: LegalDoc = {
         list(
           "Koruyucu ambalajı, bandı veya mührü AÇILMIŞ basılı kitaplar (Yönetmelik m.15/1-e). İade etmeyi düşünüyorsanız ambalajı açmayın.",
           "Belirli bir tarih veya dönemde yapılması gereken, boş zamanın değerlendirilmesine ilişkin hizmetler; deneme sınavı oturumu ve çalışma alanı rezervasyonları bu kapsamdadır (Yönetmelik m.15/1-g). Buna rağmen ticari politikamız gereği, başlangıca 24 saatten fazla varsa iptal ve tam iade imkânı tanınır.",
-          "Cayma süresi dolmadan, onayınızla ifasına başlanan ve tamamlanan hizmetler (Yönetmelik m.15/1-h) — tamamlanmış özel ders bu kapsamdadır."
+          "Cayma süresi dolmadan, onayınızla ifasına başlanan ve tamamlanan hizmetler (Yönetmelik m.15/1-h): tamamlanmış özel ders bu kapsamdadır."
         ),
       ],
     },

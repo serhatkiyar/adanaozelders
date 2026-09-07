@@ -93,7 +93,7 @@ function DetaySatiri({ basvuru }: { basvuru: AdminTutorPreApplication }) {
     <td colSpan={6} className="bg-slate-50/70 px-4 py-4">
       {bosMu ? (
         <p className="text-sm text-slate-500">
-          Aday isteğe bağlı bölümleri doldurmadı — bu bilgileri aramada sorabilirsiniz.
+          Aday isteğe bağlı bölümleri doldurmadı: bu bilgileri aramada sorabilirsiniz.
         </p>
       ) : (
         <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
@@ -281,7 +281,7 @@ export default function AdminTutorApplicationsPage() {
                       {(b.unmatched_subjects ?? []).map((u) => (
                         <span
                           key={u}
-                          title="Katalogda karşılığı yok — eşanlamlı eklenebilir"
+                          title="Katalogda karşılığı yok: eşanlamlı eklenebilir"
                           className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800"
                         >
                           {u} <span aria-hidden>·</span> eşleşmedi
@@ -294,7 +294,7 @@ export default function AdminTutorApplicationsPage() {
                       )}
                   </td>
                   <td className="py-3 pr-4 text-slate-600">
-                    {b.district ?? "—"}
+                    {b.district ?? "-"}
                     <div className="text-xs text-slate-400">
                       {b.experience
                         ? EXPERIENCE_LABELS[b.experience] ?? b.experience

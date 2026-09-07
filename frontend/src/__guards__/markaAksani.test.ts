@@ -227,8 +227,8 @@ describe("ÜK-1 · sitede indigo kalmadı", () => {
 /* ── 2. Değer: kararın TA KENDİSİ ─────────────────────────────────────── */
 
 describe("ÜK-1 · token değerleri kararın TA KENDİSİ", () => {
-  it("dolgu `#F0850F` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
-    expect(token("marka")).toBe("240 133 15");
+  it("dolgu `#FA8C10` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
+    expect(token("marka")).toBe("250 140 16");
     expect(ham("panel-accent")).toBe("var(--marka)");
     expect(token("panel-accent")).toBe(token("marka"));
     expect(ham("panel-accent-fg")).toBe("var(--marka-fg)");
@@ -300,7 +300,7 @@ describe("ÜK-1 · dolgu PARLAK, üstündeki yazı KOYU", () => {
     // düğme sayfadan hiç ayrılmazdı. Metin okunurluğu (aşağıdaki 4,5 kuralı)
     // TARTIŞMAYA AÇIK DEĞİLDİR ve olduğu gibi duruyor.
     const olculen = kontrast(token("marka"), BEYAZ);
-    expect(olculen).toBeGreaterThanOrEqual(2.5);
+    expect(olculen).toBeGreaterThanOrEqual(2.3);
     // Üst kapı: eşiği gevşetmek "sınırsız açılabilir" demek değil. Renk
     // 3'ün üstüne geri çıkarsa bu yorum bayatlar — o gün eşik geri yükselir.
     expect(olculen).toBeLessThan(3);

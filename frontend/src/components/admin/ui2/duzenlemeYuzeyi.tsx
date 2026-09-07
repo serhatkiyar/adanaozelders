@@ -341,7 +341,7 @@ export function useYuzeyKirliFormBekcisi<TFieldValues extends FieldValues>(
         "`pencereSiz` beyanı yok. Bu hâliyle bekçi pencereye hiç bildirilmez: " +
         "×/ESC/dış tıklama kirli formu SORMADAN kapatır ve kullanıcının " +
         "yazdığı veri gider (İP-A7d1 · SK-3). İki doğru yazımdan birini seç: " +
-        "(1) kancayı pencerenin İÇİNDEKİ içerik bileşenine taşı — " +
+        "(1) kancayı pencerenin İÇİNDEKİ içerik bileşenine taşı " +
         "<DuzenlemePenceresi><Icerik/></DuzenlemePenceresi> ve çağrı " +
         "<Icerik> içinde olsun; (2) form gerçekten satır içiyse (pencere yok) " +
         "seçeneklere `pencereSiz: true` yaz."

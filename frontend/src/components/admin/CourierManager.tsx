@@ -154,7 +154,7 @@ function CourierAccountPanel({ c }: { c: Courier }) {
             if (!hedef) return;
             closeAccount.mutate(hedef.id, {
               onSuccess: () => {
-                toast.success("Hesap kapatıldı — oturumları sonlandırıldı.");
+                toast.success("Hesap kapatıldı: oturumları sonlandırıldı.");
                 kapatma.kapat();
               },
               onError: (e: any) =>
@@ -169,7 +169,7 @@ function CourierAccountPanel({ c }: { c: Courier }) {
   return (
     <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 ">
       <p className="text-xs text-slate-500 ">
-        Giriş hesabı yok — kurye saha ekranına kendi hesabıyla girsin diye oluşturun.
+        Giriş hesabı yok: kurye saha ekranına kendi hesabıyla girsin diye oluşturun.
       </p>
       <HesapOlusturmaFormu
         c={c}
@@ -560,7 +560,7 @@ function CourierRow({ c }: { c: Courier }) {
                 </span>
               )}
             </p>
-            <p className="text-xs text-slate-500 ">{c.phone || "—"}</p>
+            <p className="text-xs text-slate-500 ">{c.phone || "-"}</p>
           </div>
           {/* Aksiyon şeridi ARTIK HOVER'A BAĞLI DEĞİL (İP-A7d2).
               Eskiden `opacity-0 … group-hover:opacity-100` idi: dokunmatik
@@ -644,7 +644,7 @@ export function CourierManager() {
           </div>
         ) : couriers.length === 0 && !adding ? (
           <p className="py-6 text-center text-sm text-slate-400 ">
-            Henüz kurye yok — takip sayfasında kimlik göstermek için ekleyin.
+            Henüz kurye yok: takip sayfasında kimlik göstermek için ekleyin.
           </p>
         ) : !canManage ? (
           // Salt-okunur rol: kimlik listesi görünür, düzenleme/hesap yüzeyi açılmaz.

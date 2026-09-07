@@ -660,7 +660,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           step="0.01"
           value={net}
           aria-label={`${row.client_name}, toplam net`}
-          placeholder="—"
+          placeholder="-"
           onChange={(e) => setNet(e.target.value)}
           className={numCls}
         />
@@ -671,7 +671,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           min={1}
           value={rank}
           aria-label={`${row.client_name}, sıra`}
-          placeholder="—"
+          placeholder="-"
           onChange={(e) => setRank(e.target.value)}
           className={numCls}
         />

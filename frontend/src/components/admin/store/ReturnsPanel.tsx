@@ -110,7 +110,7 @@ export function ReturnsPanel() {
               {r.order?.ship_recipient && (
                 <p className="mt-1 text-xs text-slate-500">
                   {r.order.ship_recipient}
-                  {r.order.ship_address ? ` — ${r.order.ship_address}` : ""}
+                  {r.order.ship_address ? `: ${r.order.ship_address}` : ""}
                 </p>
               )}
               {r.admin_note && (

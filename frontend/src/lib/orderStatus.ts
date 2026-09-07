@@ -34,7 +34,7 @@ const ORDER_STATUS_TONES: Record<string, Tone> = {
 
 /** Bilinmeyen durumda ham değeri döndürür (sessiz kaybolmaktansa görünür olsun). */
 export function orderStatusLabel(status: string | null | undefined): string {
-  if (!status) return "—";
+  if (!status) return "-";
   return ORDER_STATUS_LABELS[status] ?? status;
 }
 

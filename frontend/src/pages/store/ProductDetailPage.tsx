@@ -377,7 +377,7 @@ export default function ProductDetailPage() {
                           setActiveImg(g.url);
                           setLightboxOpen(true);
                         }}
-                        aria-label={`${g.alt} — büyüt`}
+                        aria-label={`${g.alt}: büyüt`}
                         className="block aspect-square w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-6"
                       >
                         <img
@@ -835,7 +835,7 @@ export default function ProductDetailPage() {
               ref={lightboxPanelRef}
               role="dialog"
               aria-modal="true"
-              aria-label={`${product.title} — görsel önizleme`}
+              aria-label={`${product.title}: görsel önizleme`}
               className="relative flex h-full w-full items-center justify-center"
             >
             <button

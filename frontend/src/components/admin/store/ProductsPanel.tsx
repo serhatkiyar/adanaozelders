@@ -450,7 +450,7 @@ function tedarikciStogu(deger: string): string {
 function MaliyetHucresi({ product }: { product: ProductSearchOut }) {
   const tedarikci = product.supplier;
   if (!tedarikci || !tedarikci.cost_gross) {
-    return <span className="text-slate-400">—</span>;
+    return <span className="text-slate-400">-</span>;
   }
   const marj = tedarikci.margin_percent;
   const marjSayi = marj == null ? null : Number(marj);

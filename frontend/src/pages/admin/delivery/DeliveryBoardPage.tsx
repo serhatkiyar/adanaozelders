@@ -180,7 +180,7 @@ function RunLane({
           </svg>
           <span>
             <span className="font-semibold">Kapasite uyarısı:</span> {label} için sınır{" "}
-            {max ?? "—"} durak. Ekleme engellenmedi — karar operatörün; gerekirse
+            {max ?? "-"} durak. Ekleme engellenmedi: karar operatörün; gerekirse
             durağı başka araca taşıyın.
           </span>
         </p>
@@ -188,7 +188,7 @@ function RunLane({
 
       {stops.length === 0 ? (
         <p className="mt-3 pl-12 text-xs text-slate-400 ">
-          Durak yok — havuzdan bir sipariş sürükleyip bırakın.
+          Durak yok: havuzdan bir sipariş sürükleyip bırakın.
         </p>
       ) : (
         <ol className="mt-3 space-y-1.5 pl-12">
@@ -268,7 +268,7 @@ export default function DeliveryBoardPage() {
             Gün Tahtası
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
-            Havuzdaki siparişi bir turun üzerine sürükleyip bırakın — ya da günü
+            Havuzdaki siparişi bir turun üzerine sürükleyip bırakın ya da günü
             tek tuşla araçlara bölüştürün.
           </p>
         </div>
@@ -316,7 +316,7 @@ export default function DeliveryBoardPage() {
             </div>
             {pool.length === 0 ? (
               <p className="px-5 py-6 text-xs text-slate-400 ">
-                Havuz boş — dağıtım bekleyen atanmamış sipariş yok.
+                Havuz boş: dağıtım bekleyen atanmamış sipariş yok.
               </p>
             ) : (
               <ul className="divide-y divide-slate-100 ">

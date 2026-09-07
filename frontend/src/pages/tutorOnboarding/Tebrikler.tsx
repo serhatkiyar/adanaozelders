@@ -67,7 +67,7 @@ export function Tebrikler({
             </p>
             <Link
               to={ROUTES.tutorListing}
-              className="w-full max-w-xs rounded-xl bg-[#F2695E] px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#E05548]"
+              className="w-full max-w-xs rounded-xl bg-marka px-6 py-3.5 text-[15px] font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               İlan ayarlarına git
             </Link>
@@ -76,7 +76,7 @@ export function Tebrikler({
           <>
             <PlainButton
               onClick={() => setPaylasAcik(true)}
-              className="w-full max-w-xs rounded-xl bg-[#F2695E] px-6 py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#E05548]"
+              className="w-full max-w-xs rounded-xl bg-marka px-6 py-3.5 text-[15px] font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               İlanını paylaş
             </PlainButton>

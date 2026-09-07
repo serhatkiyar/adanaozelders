@@ -197,7 +197,7 @@ function Section({
           variant="ghost"
           className="shrink-0 text-marka-soft-fg hover:bg-marka-soft "
           aria-expanded={editing}
-          aria-label={`${title} — ${editing ? "düzenlemeyi kapat" : "düzenle"}`}
+          aria-label={`${title}: ${editing ? "düzenlemeyi kapat" : "düzenle"}`}
           onClick={onToggle}
         >
           {editing ? "Kapat" : "Düzenle"}
@@ -283,7 +283,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
           )}
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ">
-              Kapasite: {lib.capacity != null ? `${lib.capacity} koltuk` : "—"}
+              Kapasite: {lib.capacity != null ? `${lib.capacity} koltuk` : "-"}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ">
               Çalışma ücreti:{" "}
@@ -319,7 +319,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
             </label>
             <label className="block">
               <span className="mb-1 block text-sm font-semibold text-slate-700 ">
-                Çalışma ücreti (TL/saat — boş ise kapalı)
+                Çalışma ücreti (TL/saat: boş ise kapalı)
               </span>
               <input
                 type="number"

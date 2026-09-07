@@ -63,7 +63,7 @@ export default function CourierHome() {
         {isError ? (
           <div className="text-center">
             <p className="text-sm text-slate-500 ">
-              Bilgiler alınamadı — bağlantını kontrol edip yeniden dene.
+              Bilgiler alınamadı: bağlantını kontrol edip yeniden dene.
             </p>
             <button
               onClick={() => refetch()}
@@ -79,7 +79,7 @@ export default function CourierHome() {
               Bugünün turu hazırlanıyor
             </p>
             <p className="mt-2 max-w-xs text-sm text-slate-500 ">
-              {ws.run.stops.length} duraklık tur planlandı — yönetici başlatınca
+              {ws.run.stops.length} duraklık tur planlandı: yönetici başlatınca
               bu ekran kendiliğinden açılacak.
             </p>
           </div>
@@ -89,7 +89,7 @@ export default function CourierHome() {
               Bugün için atanmış bir turun yok
             </p>
             <p className="mt-2 max-w-xs text-sm text-slate-500 ">
-              Tur atandığında burada görünecek — sayfa kendini yeniler.
+              Tur atandığında burada görünecek: sayfa kendini yeniler.
             </p>
           </div>
         )}

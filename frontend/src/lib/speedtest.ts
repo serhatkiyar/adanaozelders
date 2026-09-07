@@ -14,11 +14,11 @@ export function clampMbps(value: number): number {
 
 /** Mbps'i okunabilir metne çevirir (ör. "94.2 Mbps"). null → "—". */
 export function formatMbps(value: number | null | undefined): string {
-  if (value == null) return "—";
+  if (value == null) return "-";
   return `${value.toFixed(value >= 100 ? 0 : 1)} Mbps`;
 }
 
 export function formatPing(ms: number | null | undefined): string {
-  if (ms == null) return "—";
+  if (ms == null) return "-";
   return `${Math.round(ms)} ms`;
 }

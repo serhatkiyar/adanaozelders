@@ -13,7 +13,7 @@ export function parseMoney(
 // (₺ sembolü değil): tüketici tarafında daha okunur/tanıdık (Trendyol/Hepsiburada deseni).
 export function formatTRY(
   value: string | number | null | undefined,
-  fallback = "—"
+  fallback = "-"
 ): string {
   const n = parseMoney(value);
   if (n === null) return fallback;

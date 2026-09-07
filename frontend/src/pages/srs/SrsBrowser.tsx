@@ -263,7 +263,7 @@ export default function SrsBrowser() {
               {row.original.tags.join(", ")}
             </span>
           ) : (
-            "—"
+            "-"
           ),
         enableSorting: false,
       },

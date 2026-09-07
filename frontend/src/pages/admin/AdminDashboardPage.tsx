@@ -199,7 +199,7 @@ function MoneySection({
           Para
         </h2>
         <p className="text-sm text-slate-500">
-          İşlem hacmi ve platform geliri — {periodLabel}.
+          İşlem hacmi ve platform geliri: {periodLabel}.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

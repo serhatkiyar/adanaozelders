@@ -220,7 +220,7 @@ function CurrentStopCard({
       </p>
       <p className="mt-2 text-xs text-slate-500 ">
         Sipariş #{stop.order_id} ·{" "}
-        {stop.items.map((it) => `${it.title} ×${it.quantity}`).join(", ") || "—"}
+        {stop.items.map((it) => `${it.title} ×${it.quantity}`).join(", ") || "-"}
         {stop.eta && (
           <span className="ml-2 font-semibold text-marka-metin ">
             tahmini ~{formatEta(stop.eta)}

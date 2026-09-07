@@ -79,7 +79,7 @@ export default function DeliveryRunsPage() {
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">Turlar</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
-            Geçmiş ve planlı dağıtım turları — detay için satıra tıkla.
+            Geçmiş ve planlı dağıtım turları: detay için satıra tıkla.
           </p>
         </div>
         <input

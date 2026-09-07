@@ -928,7 +928,7 @@ describe("İP-A7d3 · operatör paneli göçü", () => {
     const { container } = await sar("./OperatorLibrary.tsx");
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /Adres & Konum — düzenle/ }),
+      await screen.findByRole("button", { name: /Adres & Konum: düzenle/ }),
     );
     expect(await screen.findByLabelText("İl")).toBeTruthy();
     expect(screen.getByLabelText("İlçe")).toBeTruthy();
@@ -944,7 +944,7 @@ describe("İP-A7d3 · operatör paneli göçü", () => {
     const { container } = await sar("./OperatorLibrary.tsx");
 
     fireEvent.click(
-      await screen.findByRole("button", { name: /Çalışma Saatleri — düzenle/ }),
+      await screen.findByRole("button", { name: /Çalışma Saatleri: düzenle/ }),
     );
     // Gün varsayılan olarak KAPALI gelir (fixture `hours: []`); saat kutuları
     // ancak gün açıkken basılır.
@@ -963,7 +963,7 @@ describe("İP-A7d3 · operatör paneli göçü", () => {
     operatorOturumu();
     temelUclar();
     const { container } = await sar("./OperatorLibrary.tsx");
-    await screen.findByRole("button", { name: /Adres & Konum — düzenle/ });
+    await screen.findByRole("button", { name: /Adres & Konum: düzenle/ });
     expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
   });
 
@@ -972,7 +972,7 @@ describe("İP-A7d3 · operatör paneli göçü", () => {
     temelUclar({ kutuphane: KUTUPHANE({ amenities: ["wifi"] }) });
     await sar("./OperatorLibrary.tsx");
 
-    fireEvent.click(await screen.findByRole("button", { name: /Olanaklar — düzenle/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /Olanaklar: düzenle/ }));
     const secili = await screen.findAllByRole("button", { pressed: true });
     expect(secili.length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { pressed: false }).length).toBeGreaterThan(0);

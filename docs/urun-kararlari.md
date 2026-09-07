@@ -29,12 +29,14 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 | **ÜK-4** | "Öğrenci" rol adı değildir → **"Üye"** | uygulandı | `__guards__/rolEtiketi.test.ts` |
 | **ÜK-5** | Bir e-posta = bir hesap (çapraz tablo) | uygulandı | `tests/integration/test_ayni_eposta_iki_tablo_pg.py` |
 | **ÜK-6** | Eğitmen de eğitmen/kütüphane favorileyebilir | uygulandı | `__guards__/favoriRolKapisi.test.tsx`, `test_tutor_shopper_pg.py` K-22..K-25 |
+| **ÜK-7** | Arayüzde uzun tire (—) kullanılmaz | uygulandı | (kabul ölçütleri dört testte) |
 
 ---
 
 ## ÜK-1 — Aksan rengi turuncu; dolgu parlak, yazı koyu
 
-**Karar.** Marka aksanı `#F0850F` (7 Eyl 2026'da `#E37200`'den açıldı).
+**Karar.** Marka aksanı `#FA8C10` (7 Eyl 2026'da `#E37200` → `#F0850F` →
+`#FA8C10` olarak iki adımda açıldı).
 Turuncu **dolgu** olarak parlak kullanılır,
 **yazı** olarak asla; açık zeminde marka yazısı ayrı bir token taşır
 (`--marka-metin`, `#96430A`).
@@ -45,11 +47,11 @@ gerekiyor; o noktada turuncu kahverengi okunuyor. Kullanıcının tarifi: *"bok
 rengi gibi"*. Renk seçimi elle hex denemekle değil, adlandırılmış paletlerin
 (Tailwind orange/amber, Radix, Material) görsel karşılaştırmasıyla yapıldı.
 
-**Ölçülen bedel.** Dolgu üstündeki yazı 6,85 · marka yazısı 6,77 · bilgi
+**Ölçülen bedel.** Dolgu üstündeki yazı 7,50 · marka yazısı 6,77 · bilgi
 rozeti 6,24 · uyarı çipi 8,15 · odak halkası 4,50 · kenarlık 3,58.
 
 **7 Eyl 2026 · açıkça kabul edilen bedel.** Kullanıcı rengi daha açık istedi.
-Dolgunun beyaz zemine karşı kontrastı 3,15 → **2,60**; yani SC 1.4.11'in
+Dolgunun beyaz zemine karşı kontrastı 3,15 → **2,38**; yani SC 1.4.11'in
 "kontrol sınırı görünür olsun" eşiği (3,0) bilerek terk edildi ve düğme beyaz
 zeminde kenarını yitirdi. Alternatifler ölçülüp tükendi: bir adım açmak zaten
 2,95, ton kaydırmak (28°-44° tarandı) eşiği koruyan daha parlak bir renk
@@ -169,6 +171,31 @@ ayrı bir client hesabı **açılabildiğini** (201) çıpalıyordu. Artık 409.
 gerekçesiyle yeniden yazıldı ve engelin **gölge satır değil eğitmenin kendi
 satırı** olduğunu ayıran K-14b eklendi. `docs/egitmen-alici-sozlesme.md`
 güncellendi.
+
+---
+
+## ÜK-7 — Arayüzde uzun tire (—) kullanılmaz
+
+**Karar.** Kullanıcıya görünen hiçbir metinde uzun tire (em dash, `—`)
+geçmez. Cümle içindeki açıklayıcı tire iki noktaya, boş değer göstergesi düz
+tireye (`-`) döndü. Kod yorumları ve iç belgeler kapsam DIŞINDA — onları
+kullanıcı görmez.
+
+**Gerekçe (kullanıcı, 7 Eyl 2026).** *"Şu yapay zekanın kullandığı tire gibi
+bir işaret var, her yerden kaldır. Yapay zeka yapmış falan deyip
+güvenmemezlik yapacaklar sonra."* Karakterin kendisi yanlış değil; sorun
+okuyanda bıraktığı izlenim. Güven, bir eğitim pazaryerinde ürünün kendisi
+kadar önemli.
+
+**Kapsam ve sayı.** 213 geçiş değişti: 80'i boş değer göstergesi
+(`"—"` → `"-"`), 133'ü cümle içi bağlaç. Dört kabul ölçütü de gerekçesiyle
+güncellendi (paket etiketi, sayım oturumu adı, operasyon metrikleri,
+operatör paneli düzenleme düğmeleri).
+
+**Tuzak.** İlk toplu değiştirme, JSDoc ve JSX yorumlarını regex sanıp
+bozdu (`bileşen — value` → `bileşen : value`). Yorumlar `git show HEAD`
+karşılaştırmasıyla geri alındı; ders: kullanıcıya görünen metin ile kod
+yorumunu ayıran tarama, blok yorumları da tanımak zorunda.
 
 ---
 

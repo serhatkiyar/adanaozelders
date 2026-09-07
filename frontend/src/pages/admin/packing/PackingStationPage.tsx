@@ -375,7 +375,7 @@ export default function PackingStationPage() {
           <ul className="mt-1 list-disc pl-5">
             {fazlaSatirlar.map((s) => (
               <li key={s.order_item_id}>
-                “{s.title}” — beklenen {s.expected_qty}, okutulan {s.scanned_qty}
+                “{s.title}”: beklenen {s.expected_qty}, okutulan {s.scanned_qty}
               </li>
             ))}
           </ul>

@@ -90,7 +90,7 @@ function kalanSure(iso?: string | null): number | null {
 function goreliZaman(iso?: string | null): string {
   if (!iso) return "Henüz yapılmadı";
   const damga = new Date(iso).getTime();
-  if (!Number.isFinite(damga)) return "—";
+  if (!Number.isFinite(damga)) return "-";
   const fark = Date.now() - damga;
   if (fark < 0) return formatDateTime(iso);
   if (fark < DAKIKA) return "az önce";
@@ -108,7 +108,7 @@ function tamZaman(iso?: string | null): string | undefined {
 
 /** Kesirli stok: `"12.500"` → `"12,5"`. Sayı değilse ham dizgi korunur. */
 function stokBicimle(deger?: string | null): string {
-  if (deger == null || deger === "") return "—";
+  if (deger == null || deger === "") return "-";
   const sayi = Number(deger);
   if (!Number.isFinite(sayi)) return deger;
   return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 3 }).format(sayi);
@@ -264,15 +264,15 @@ function DurumSeridi({
 }) {
   const senkron = useSyncSupplier(tedarikci.id);
   const bekleyenDakika = kalanDakika(tedarikci.cooldown_until);
-  const bekleyenBaslik = `Devre kesici açık — ${bekleyenDakika} dk beklemede`;
+  const bekleyenBaslik = `Devre kesici açık: ${bekleyenDakika} dk beklemede`;
 
   function calistir(scope: "stock" | "price") {
     senkron.mutate(scope, {
       onSuccess: (rapor) =>
         toast.success(
           scope === "stock"
-            ? `Stok senkronu bitti — ${rapor.updated} satır güncellendi`
-            : `Fiyat senkronu bitti — ${rapor.priced} satır fiyatlandı`,
+            ? `Stok senkronu bitti: ${rapor.updated} satır güncellendi`
+            : `Fiyat senkronu bitti: ${rapor.priced} satır fiyatlandı`,
         ),
       onError: (hata: unknown) =>
         toast.error(getErrorDetail(hata, "Senkron başlatılamadı")),
@@ -384,7 +384,7 @@ function DurumSeridi({
             data-testid="devre-kesici"
             className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 "
           >
-            <span className="font-semibold">Devre kesici açık</span> — {bekleyenDakika} dk
+            <span className="font-semibold">Devre kesici açık</span>: {bekleyenDakika} dk
             beklemede ({tedarikci.consecutive_failures} ardışık hata). Bu süre
             dolmadan yeni istek gönderilmez.
           </p>
@@ -404,17 +404,17 @@ function TokenDurumu({ tedarikci }: { tedarikci: SupplierOut }) {
   let metin: string;
   let uyari = false;
   if (!tedarikci.has_token) {
-    metin = "API token girilmemiş — senkron çalışamaz.";
+    metin = "API token girilmemiş: senkron çalışamaz.";
     uyari = true;
   } else if (kalan === null || gun === null) {
     metin = "API token girili; vade bilgisi yok.";
   } else if (kalan <= 0) {
-    metin = "API token süresi doldu — yenisini yapıştırın.";
+    metin = "API token süresi doldu: yenisini yapıştırın.";
     uyari = true;
   } else if (kalan < GUN) {
     // 20 saat kalan token "1 gün sonra dolar" DEMEZ: iyimser yuvarlama
     // "yarın hallederim" dedirtir ve senkron gece ölür.
-    metin = "API token BUGÜN doluyor — yenisini yapıştırın.";
+    metin = "API token BUGÜN doluyor: yenisini yapıştırın.";
     uyari = true;
   } else if (gun < 7) {
     // 7 gün eşiği sözleşmeden gelir (§5: vade < 7 gün → yenileme döngüsü).
@@ -903,7 +903,7 @@ function TedarikciUrunleri({
 /** Karantina bayrakları — bilinmeyen kod HAM basılır (sessizce gizlenmez). */
 function Bayraklar({ kodlar }: { kodlar?: string[] | null }) {
   if (!kodlar || kodlar.length === 0) {
-    return <span className="text-slate-400 ">—</span>;
+    return <span className="text-slate-400 ">-</span>;
   }
   return (
     <div className="flex flex-wrap gap-1">
@@ -942,14 +942,14 @@ function eslesmemisKolonlari(
     {
       id: "marka",
       header: "Marka",
-      cell: ({ row }) => row.original.brand || <span className="text-slate-400 ">—</span>,
+      cell: ({ row }) => row.original.brand || <span className="text-slate-400 ">-</span>,
     },
     {
       id: "barkod",
       header: "Barkod",
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          <span className="font-mono text-xs">{row.original.barcode || "—"}</span>
+          <span className="font-mono text-xs">{row.original.barcode || "-"}</span>
           {row.original.barcode && !row.original.barcode_valid && (
             <Badge tone="warning" className="ml-2">
               Geçersiz
@@ -961,7 +961,7 @@ function eslesmemisKolonlari(
     {
       id: "birim",
       header: "Birim",
-      cell: ({ row }) => row.original.unit_name || <span className="text-slate-400 ">—</span>,
+      cell: ({ row }) => row.original.unit_name || <span className="text-slate-400 ">-</span>,
     },
     {
       id: "stok",
@@ -981,7 +981,7 @@ function eslesmemisKolonlari(
             {formatTL(row.original.cost_gross)}
           </span>
         ) : (
-          <span className="text-slate-400 ">—</span>
+          <span className="text-slate-400 ">-</span>
         ),
     },
     {
@@ -1037,7 +1037,7 @@ function bagliKolonlari(
           // Nötr rozet: "AUTO" bir uyarı değil, bir köken bilgisi.
           <Badge>{row.original.link_source === "AUTO" ? "Otomatik" : "Elle"}</Badge>
         ) : (
-          <span className="text-slate-400 ">—</span>
+          <span className="text-slate-400 ">-</span>
         ),
     },
     {
@@ -1063,7 +1063,7 @@ function bagliKolonlari(
             {formatTL(row.original.cost_gross)}
           </span>
         ) : (
-          <span className="text-slate-400 ">—</span>
+          <span className="text-slate-400 ">-</span>
         ),
     },
     {

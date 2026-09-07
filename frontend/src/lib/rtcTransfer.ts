@@ -112,7 +112,7 @@ class RtcTransferManager {
       sdp: offer,
       file: { name: file.name, size: file.size, type: file.type || "application/octet-stream" },
     });
-    if (!ok) this.fail("Bağlantı yok — sinyal gönderilemedi.");
+    if (!ok) this.fail("Bağlantı yok: sinyal gönderilemedi.");
   }
 
   private async streamFile() {
@@ -235,7 +235,7 @@ class RtcTransferManager {
     const currentBooking = useMeetingStore.getState().bookingId;
     if (currentBooking == null || currentBooking !== bookingId) {
       log(
-        "sinyal YOK SAYILDI — bu sekme derste değil/farklı ders.",
+        "sinyal YOK SAYILDI: bu sekme derste değil/farklı ders.",
         { kind: signal.kind, geleningBooking: bookingId, aktifBooking: currentBooking },
         "→ karşı sekmenin de 'Canlı Derse Katıl' ile derse girmesi gerekir."
       );

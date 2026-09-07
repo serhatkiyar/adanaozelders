@@ -206,7 +206,7 @@ export default function AdminAuditLogsPage() {
       enableSorting: false,
       cell: ({ row }) => {
         const text = row.original.reason || row.original.details;
-        return <span className="block max-w-md truncate text-xs text-slate-500" title={text ?? undefined}>{text || "—"}</span>;
+        return <span className="block max-w-md truncate text-xs text-slate-500" title={text ?? undefined}>{text || "-"}</span>;
       },
     },
     {
@@ -270,7 +270,7 @@ export default function AdminAuditLogsPage() {
             ) : undefined
           }
           onRowClick={(row) => yuzey.ac(row)}
-          satirAdi={(row) => `${row.action} — denetim kaydı ayrıntısı`}
+          satirAdi={(row) => `${row.action}: denetim kaydı ayrıntısı`}
           renderMobileRow={(log) => (
             <div>
               <div className="flex items-center justify-between gap-2"><Badge tone="info">{log.action}</Badge><span className="text-xs text-slate-400">{formatDateTime(log.created_at)}</span></div>

@@ -79,7 +79,7 @@ export function StockLedgerPanel({
               {p.expected != null && p.actual != null && (
                 <>
                   {" "}
-                  — beklenen <b>{p.expected}</b>, görülen <b>{p.actual}</b>
+: beklenen <b>{p.expected}</b>, görülen <b>{p.actual}</b>
                 </>
               )}
               {p.movement_id != null && <> (hareket #{p.movement_id})</>}

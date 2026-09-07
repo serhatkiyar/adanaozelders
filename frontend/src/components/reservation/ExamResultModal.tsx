@@ -35,7 +35,7 @@ export function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClos
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-marka-soft p-4 text-center ">
               <div className="text-2xl font-extrabold text-marka-metin ">
-                {reg.result_net ?? "—"}
+                {reg.result_net ?? "-"}
               </div>
               <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ">
                 Net
@@ -43,7 +43,7 @@ export function ExamResultModal({ reg, onClose }: { reg: RegistrationOut; onClos
             </div>
             <div className="rounded-2xl bg-marka-soft p-4 text-center ">
               <div className="text-2xl font-extrabold text-marka-metin ">
-                {reg.result_rank ?? "—"}
+                {reg.result_rank ?? "-"}
               </div>
               <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ">
                 Sıra

@@ -197,7 +197,7 @@ export function BlogBodyEditor({
         <ToolbarButton editor={editor} title="Numaralı liste" label="1—" aktif={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
         <ToolbarButton editor={editor} title="Alıntı" label="❝" aktif={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()} />
         <ToolbarButton editor={editor} title="Kod bloğu" label="</>" aktif={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()} />
-        <ToolbarButton editor={editor} title="Yatay çizgi" label="—" onClick={() => editor.chain().focus().setHorizontalRule().run()} />
+        <ToolbarButton editor={editor} title="Yatay çizgi" label="-" onClick={() => editor.chain().focus().setHorizontalRule().run()} />
         <span className="mx-1 h-5 w-px bg-slate-200 " aria-hidden />
         {linkAcik ? (
           <LinkAlani editor={editor} onKapat={() => setLinkAcik(false)} />

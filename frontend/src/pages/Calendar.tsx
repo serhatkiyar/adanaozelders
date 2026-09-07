@@ -220,7 +220,7 @@ export default function Calendar() {
                           {timeFmt.format(new Date(b.start_at))}
                         </div>
                         <div className="truncate text-slate-500 ">
-                          {counterparty ?? "—"}
+                          {counterparty ?? "-"}
                         </div>
                         <span
                           className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${style}`}
@@ -233,7 +233,7 @@ export default function Calendar() {
                   })}
                   {!isLoading && list.length === 0 && (
                     <p className="pt-2 text-center text-[11px] text-slate-300 ">
-                      —
+ 
                     </p>
                   )}
                 </div>

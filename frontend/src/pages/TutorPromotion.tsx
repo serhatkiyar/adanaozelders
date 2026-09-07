@@ -22,7 +22,7 @@ const TR_TARIH = new Intl.DateTimeFormat("tr-TR", {
 });
 
 function tarih(iso: string | null): string {
-  return iso ? TR_TARIH.format(new Date(iso)) : "—";
+  return iso ? TR_TARIH.format(new Date(iso)) : "-";
 }
 
 function kalanGun(bitis: string): number {

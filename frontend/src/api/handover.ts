@@ -88,7 +88,7 @@ export async function handoverScan(payload: string): Promise<Package> {
  * fark bir bilgidir).
  */
 export const ETIKET_TANINMADI =
-  "Bu etiket tanınmadı — paket bu turda değil ya da kod yanlış okundu. " +
+  "Bu etiket tanınmadı: paket bu turda değil ya da kod yanlış okundu. " +
   "Kutunun üstündeki kodu kontrol et.";
 
 interface AxiosBenzeriHata {
@@ -122,23 +122,23 @@ export function scanErrorMessage(e: unknown, fallback: string): string {
     // Kurye için üçünün de eylemi aynı değildir (biri beklemeyi, diğeri
     // tekrar denemeyi gerektirir), bu yüzden ayrı cümlelerle söylenir.
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      return "İnternet yok — bağlantı gelince tekrar okut. Okutma kaydedilmedi.";
+      return "İnternet yok: bağlantı gelince tekrar okut. Okutma kaydedilmedi.";
     }
     if (hata?.code === "ECONNABORTED" || /timeout/i.test(hata?.message ?? "")) {
-      return "Sunucu yanıt vermedi (zaman aşımı). Tekrar okut — çift kayıt oluşmaz.";
+      return "Sunucu yanıt vermedi (zaman aşımı). Tekrar okut: çift kayıt oluşmaz.";
     }
     return "Sunucuya ulaşılamadı. Bağlantını kontrol edip tekrar okut.";
   }
 
-  if (durum === 401) return "Oturumun düşmüş — çıkış yapıp yeniden giriş yap.";
-  if (durum === 403) return "Bu işlem için yetkin yok — yöneticini ara.";
+  if (durum === 401) return "Oturumun düşmüş: çıkış yapıp yeniden giriş yap.";
+  if (durum === 403) return "Bu işlem için yetkin yok: yöneticini ara.";
   if (durum === 404) return ETIKET_TANINMADI;
   if (durum === 409) return detayMetni(hata?.response?.data?.detail) ?? fallback;
   if (durum === 422) {
-    return "Okunan kod geçersiz biçimde — etiketi yeniden okut ya da kodu elle gir.";
+    return "Okunan kod geçersiz biçimde: etiketi yeniden okut ya da kodu elle gir.";
   }
   if (durum >= 500) {
-    return "Sunucu hatası — birkaç saniye sonra tekrar okut. Sorun sürerse yöneticini ara.";
+    return "Sunucu hatası: birkaç saniye sonra tekrar okut. Sorun sürerse yöneticini ara.";
   }
   return detayMetni(hata?.response?.data?.detail) ?? fallback;
 }
@@ -159,7 +159,7 @@ export function scanErrorMessage(e: unknown, fallback: string): string {
 export function manifestErrorMessage(e: unknown): string {
   const durum = (e as AxiosBenzeriHata | null)?.response?.status;
   if (durum === 404) {
-    return "Bu tur açılamadı — sana atanmış değil ya da kaldırılmış. Yöneticini ara.";
+    return "Bu tur açılamadı: sana atanmış değil ya da kaldırılmış. Yöneticini ara.";
   }
   return scanErrorMessage(e, "Zimmet listesi alınamadı.");
 }

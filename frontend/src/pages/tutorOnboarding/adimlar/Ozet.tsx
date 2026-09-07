@@ -26,12 +26,12 @@ function Satir({
       <div className="min-w-0">
         <span className="block text-[13px] text-slate-400">{etiket}</span>
         <span className="mt-0.5 block truncate text-[15px] text-slate-800">
-          {deger || "—"}
+          {deger || "-"}
         </span>
       </div>
       <PlainButton
         onClick={() => gitAdim(adim)}
-        className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-[13px] font-medium text-[#F2695E] underline underline-offset-4 transition hover:text-[#B33A2E]"
+        className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-[13px] font-medium text-marka-metin underline underline-offset-4 transition hover:text-marka-metin-hover"
       >
         Düzenle
       </PlainButton>

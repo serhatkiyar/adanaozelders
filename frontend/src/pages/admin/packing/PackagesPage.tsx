@@ -399,7 +399,7 @@ export default function PackagesPage() {
                  Kolondaki `<a>`, aksiyon `<button>`ları ve seçim `<input>`u —
                  üçü de satırı açmamalı. */
               onRowClick={(p) => navigate(ROUTES.adminPackingPackage(p.id))}
-              satirAdi={(p) => `${p.code} — paket detayı`}
+              satirAdi={(p) => `${p.code}: paket detayı`}
               renderMobileRow={(paket) => {
                 const damga = zamanDamgasi(paket);
                 return (

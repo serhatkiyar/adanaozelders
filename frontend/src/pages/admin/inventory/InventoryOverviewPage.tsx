@@ -47,7 +47,7 @@ function Sayac({
         className="mt-1 text-2xl font-bold tabular-nums text-slate-900 "
         aria-busy={yukleniyor || undefined}
       >
-        {yukleniyor ? "…" : (sayi ?? "—")}
+        {yukleniyor ? "…" : (sayi ?? "-")}
       </p>
       <p className="mt-1 text-xs text-slate-500 ">{aciklama}</p>
     </Link>

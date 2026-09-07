@@ -178,7 +178,7 @@ export default function DeliveryRunHandover() {
             Zimmet · Tur #{runId}
           </h1>
           <span className="shrink-0 text-xs font-medium text-slate-500 ">
-            {manifest ? (RUN_STATUS_LABEL[manifest.run_status] ?? manifest.run_status) : "—"}
+            {manifest ? (RUN_STATUS_LABEL[manifest.run_status] ?? manifest.run_status) : "-"}
           </span>
         </div>
       </header>

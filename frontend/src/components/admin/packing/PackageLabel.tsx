@@ -212,13 +212,13 @@ export function PackageLabelCard({ package: paket }: { package: PackageLabelData
           <p className="mt-0.5 text-sm font-semibold">Sipariş #{paket.order_id}</p>
           {/* Baskıda kırpma YOK — `truncate`/`line-clamp` yasak: kesilen bir
               adres kuryeyi yanlış kapıya götürür, kesildiğini de göstermez. */}
-          <p className="mt-1 break-words font-semibold">{paket.recipient ?? "—"}</p>
-          <p className="whitespace-pre-line break-words">{paket.address ?? "—"}</p>
+          <p className="mt-1 break-words font-semibold">{paket.recipient ?? "-"}</p>
+          <p className="whitespace-pre-line break-words">{paket.address ?? "-"}</p>
           {ilIlce ? <p className="break-words">{ilIlce}</p> : null}
           {/* Sunucu yer tutucu üretmez; boş değerler `null`'a indirgenir. Yani
-              "—" GERÇEKTEN veri yok demektir ve kâğıt bunu saklamamalı. */}
+              "-" GERÇEKTEN veri yok demektir ve kâğıt bunu saklamamalı. */}
           {paket.recipient == null || paket.address == null ? (
-            <p className="mt-1 font-bold">⚠ Adres bilgisi eksik — siparişi açıp kontrol edin</p>
+            <p className="mt-1 font-bold">⚠ Adres bilgisi eksik: siparişi açıp kontrol edin</p>
           ) : null}
         </div>
       </div>
@@ -287,7 +287,7 @@ export function PackageLabel({
       }</style>
 
       <div className="package-label-noprint mx-auto mb-4 flex max-w-md items-center justify-between">
-        <p className="text-sm font-semibold">Paket etiketi — {paket.code}</p>
+        <p className="text-sm font-semibold">Paket etiketi: {paket.code}</p>
         <div className="flex gap-2">
           <button
             type="button"
@@ -383,7 +383,7 @@ export function PackageLabelDialog({
   onClose: () => void;
 }) {
   const sorgu = usePackageLabel(packageId);
-  const baslik = `Paket etiketi — ${code ?? `#${packageId}`}`;
+  const baslik = `Paket etiketi: ${code ?? `#${packageId}`}`;
 
   if (sorgu.isError) {
     return (

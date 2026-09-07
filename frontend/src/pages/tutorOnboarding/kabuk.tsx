@@ -4,7 +4,7 @@ import { Modal } from "@/components/ui/Modal";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { ADIMLAR } from "./sozlesme";
-import { BILGI, MERCAN } from "./tema";
+import { BILGI, DOLGU_YAZI, MERCAN } from "./tema";
 
 /**
  * Sihirbazın çerçeve parçaları: adım göstergesi, bilgi kartı, adım gövdesi ve
@@ -126,14 +126,14 @@ export function AdimHaritasi({
                     acilabilir
                       ? "text-slate-800 hover:bg-slate-50"
                       : "cursor-not-allowed text-slate-300"
-                  } ${suAn ? "font-semibold text-[#B33A2E]" : ""}`}
+                  } ${suAn ? "font-semibold text-marka-metin" : ""}`}
                 >
                   <span className="w-5 shrink-0 text-center text-[13px] tabular-nums text-slate-400">
                     {i + 1}
                   </span>
                   <span className="flex-1 truncate">{a.kisaAd}</span>
                   {suAn && (
-                    <span className="shrink-0 text-[12px] font-medium text-[#F2695E]">
+                    <span className="shrink-0 text-[12px] font-medium text-marka-metin">
                       buradasın
                     </span>
                   )}
@@ -440,7 +440,7 @@ export function AksiyonCubugu({
             type="button"
             onClick={ileri}
             disabled={bekliyor}
-            className={`h-14 flex-1 truncate rounded-full ${MERCAN.zemin} ${MERCAN.zeminHover} px-6 text-[16px] font-semibold text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F2695E] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:text-[15px]`}
+            className={`h-14 flex-1 truncate rounded-full ${MERCAN.zemin} ${MERCAN.zeminHover} px-6 text-[16px] font-semibold ${DOLGU_YAZI} transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-focus disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:text-[15px]`}
           >
             {bekliyor ? "Kaydediliyor…" : ileriEtiket}
           </button>

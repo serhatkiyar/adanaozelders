@@ -43,7 +43,7 @@ export default function InventoryLayout() {
       </nav>
       {!canCount && !canApply && (
         <p className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 ">
-          Salt okunur görünüm — rolünüzde sayım ve hasar işlemi izni tanımlı değil.
+          Salt okunur görünüm: rolünüzde sayım ve hasar işlemi izni tanımlı değil.
         </p>
       )}
       <Outlet />

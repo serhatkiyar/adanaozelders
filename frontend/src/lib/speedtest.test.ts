@@ -28,10 +28,10 @@ describe("format", () => {
   it("formatMbps: >=100 tam, <100 tek ondalık, null → —", () => {
     expect(formatMbps(150)).toBe("150 Mbps");
     expect(formatMbps(12.34)).toBe("12.3 Mbps");
-    expect(formatMbps(null)).toBe("—");
+    expect(formatMbps(null)).toBe("-");
   });
   it("formatPing: yuvarlar, null → —", () => {
     expect(formatPing(23.6)).toBe("24 ms");
-    expect(formatPing(null)).toBe("—");
+    expect(formatPing(null)).toBe("-");
   });
 });

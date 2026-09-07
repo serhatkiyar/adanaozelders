@@ -123,7 +123,7 @@ export function DeliveryRouteMap({
             {/* Harita salt dekor değil: pin'e gelen operatör durağı tanır. */}
             <Tooltip direction="top" offset={[0, -12]}>
               <span className="text-xs font-semibold">
-                #{s.sequence} {s.recipient ?? "—"}
+                #{s.sequence} {s.recipient ?? "-"}
               </span>
               <br />
               <span className="text-[11px]">

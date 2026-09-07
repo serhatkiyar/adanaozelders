@@ -47,7 +47,7 @@ export function OrderInvoiceModal({
 
   const statusLabel = STATUS_LABELS[order.status]?.label ?? order.status;
   const buyerName =
-    belge?.buyer.name || order.ship_recipient || buyerFallbackName || "—";
+    belge?.buyer.name || order.ship_recipient || buyerFallbackName || "-";
   const cityLine = [
     belge?.buyer.district ?? order.ship_district,
     belge?.buyer.city ?? order.ship_city,
@@ -172,7 +172,7 @@ export function OrderInvoiceModal({
                       </td>
                       {belge && (
                         <td className="py-2 text-center align-top text-slate-600 ">
-                          {faturaSatiri ? oranEtiketi(faturaSatiri.tax_rate) : "—"}
+                          {faturaSatiri ? oranEtiketi(faturaSatiri.tax_rate) : "-"}
                         </td>
                       )}
                       <td className="py-2 text-right align-top text-slate-600 ">
