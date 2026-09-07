@@ -217,7 +217,7 @@ export default function TutorProfile() {
               ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
               yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100/70 ">
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
               <div className="mb-2 flex items-center justify-end gap-2">
                 {!isOwnerTutor && hasActiveBooking && (
