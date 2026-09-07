@@ -20,7 +20,15 @@ export function useGoogleGirisiAcik(): boolean {
     queryKey: ["auth", "oauth-providers"],
     queryFn: fetchOAuthProviders,
     staleTime: 5 * 60_000,
-    retry: false,
+    // Bir deneme YETMEZ. `retry: false` ile yazılmıştı ve ölçüldü: backend bir
+    // an erişilemezken açılan sayfa "kapalı" cevabını alıp düğmeyi gizliyor,
+    // sunucu geri geldiğinde de o sekme kendini toparlamıyordu. Fail-closed
+    // olmak "ilk hıçkırıkta pes et" demek değil.
+    retry: 2,
+    retryDelay: (deneme) => Math.min(1000 * 2 ** deneme, 5000),
+    // Sekmeye geri dönüldüğünde tazele: kullanıcı sunucu düzeldikten sonra
+    // sekmesine dönerse düğme kendiliğinden gelsin.
+    refetchOnWindowFocus: true,
   });
   return data?.google ?? false;
 }
