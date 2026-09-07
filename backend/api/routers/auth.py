@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import datetime
 import logging
+import re
+import secrets
+from urllib.parse import urlencode
 
 import jwt
 from fastapi import (
@@ -15,7 +18,7 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,12 +37,13 @@ from core.cookies import (
 from core.database import get_db
 from core.config import settings
 from core import flags
-from core.ratelimit import client_ip, rate_limit
+from core.ratelimit import client_ip, enforce, rate_limit
 from core.security import (
     create_access_token,
     decode_access_token,
     verify_password_async,
 )
+from core import google_oidc
 from core.token_denylist import revoke
 from core.storage import upload_avatar, delete_avatar, delete_file
 
@@ -51,6 +55,11 @@ _login_limit = rate_limit(
 _register_limit = rate_limit(
     key="register",
     limit=settings.RATE_LIMIT_REGISTER,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+_oauth_limit = rate_limit(
+    key="oauth",
+    limit=settings.RATE_LIMIT_LOGIN,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 # E-posta tetikleyen endpoint'ler (doğrulama yeniden gönder, şifre sıfırlama talebi).
@@ -87,6 +96,7 @@ from services import (
     auth_service,
     booking_service,
     consent_service,
+    google_oauth_service,
     name_change_service,
     phone_service,
     refresh_token_service,
@@ -106,6 +116,12 @@ _sms_limit = user_rate_limit(
 _MODEL_BY_ROLE_ID: dict[int, type] = auth_service.MODEL_BY_ROLE_ID
 
 logger = logging.getLogger("adana.auth")
+
+#: Onay sürümü biçimi — `schemas/auth.py::RegisterRequest.consent_version`
+#: ile AYNI kural. Google kolunda gövde şeması yok (parametreler query
+#: string'de geldiği için Pydantic doğrulaması devreye girmez), o yüzden
+#: aynı denetim burada elle yapılır.
+_ONAY_SURUM_BICIMI = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -310,6 +326,215 @@ async def logout(
     if raw:
         await refresh_token_service.revoke(db, raw_token=raw)
     clear_refresh_cookie(response)
+
+
+# ── Google ile giriş ─────────────────────────────────────────────────────────
+#
+# Uçlar AYRI BİR ROUTER'a taşınmadı: `_kayit_kapisi`, `_record_signup_consents`
+# ve rate-limit tanımları bu dosyada yaşıyor; hepsini taşımak tek kullanımlık
+# bir soyutlama üretirdi (backend/CLAUDE.md). `api/router.py` bu yüzden
+# değişmiyor — uçlar mevcut `auth.router` (prefix `/auth`) altında.
+
+
+def _google_acik_mi() -> None:
+    """Yapılandırılmamışsa 404.
+
+    403 DEĞİL: 403 "burada bir uç var ama izin yok" der ve özelliğin varlığını
+    sızdırır. Kapalıyken uç hiç yokmuş gibi davranır.
+    """
+    if not settings.GOOGLE_OAUTH_ENABLED:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not Found")
+
+
+def _google_donus(kod: str, *, git: str | None, mod: str | None) -> RedirectResponse:
+    """Kullanıcıyı frontend'in dönüş sayfasına gönderir.
+
+    Hata da başarı da AYNI sayfaya döner ve yalnız bir KOD taşınır; kullanıcıya
+    gösterilecek metni frontend seçer. Hangi denetimin düştüğünü ayrıntısıyla
+    söylemek saldırgana geri bildirim verirdi.
+
+    Hedef her zaman `FRONTEND_BASE_URL` + göreli yol olarak kurulur; `git`
+    değeri imzalı çerezden gelir ve çereze yazılmadan önce doğrulanmıştır
+    (`google_oauth_service.guvenli_donus_yolu`).
+    """
+    parametreler = {"durum": kod}
+    if git:
+        parametreler["git"] = git
+    if mod:
+        parametreler["mod"] = mod
+    hedef = (
+        f"{settings.FRONTEND_BASE_URL.rstrip('/')}"
+        f"/google-donus?{urlencode(parametreler)}"
+    )
+    # 303: tarayıcı hedefe GET ile gitsin.
+    return RedirectResponse(hedef, status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/oauth/providers")
+async def oauth_saglayicilari() -> dict[str, bool]:
+    """Public: hangi sosyal giriş açık? Frontend düğmeyi buna göre çizer.
+
+    Frontend tarafı bilinçli olarak FAIL-CLOSED okur (`useKayitAcik`in
+    fail-open'ının tersi): yapılandırılmamış bir sağlayıcının düğmesi
+    kullanıcıyı 404'e götürürdü.
+    """
+    return {"google": settings.GOOGLE_OAUTH_ENABLED}
+
+
+@router.get("/google/start", dependencies=[Depends(_oauth_limit)])
+async def google_start(
+    mod: str = "giris",
+    rol: str | None = None,
+    donus: str | None = None,
+    onay_surumu: str | None = None,
+    hatirla: bool = True,
+    db: AsyncSession = Depends(get_db),
+):
+    """Google'ın onay ekranına yönlendirir; `state` çerezini yazar."""
+    _google_acik_mi()
+
+    if mod == "kayit":
+        # Kapı burada VE callback'te denetlenir. Buradaki denetim kullanıcıyı
+        # boşuna Google'a göndermemek için; asıl kilit callback'tekidir, çünkü
+        # aradaki pencere kullanıcının Google ekranında geçirdiği süre kadar
+        # geniştir ve admin o sırada kaydı kapatmış olabilir.
+        await _kayit_kapisi(db)
+        # Onay sürümü kayıt uçlarıyla AYNI biçimde doğrulanır (RegisterRequest).
+        # Gevşek bırakmak KVKK ispat kaydına çöp yazardı.
+        if not onay_surumu or not _ONAY_SURUM_BICIMI.match(onay_surumu):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, "Onay sürümü geçersiz."
+            )
+
+    tasiyici = Response()
+    try:
+        hedef = google_oauth_service.yetkilendirme_baslat(
+            tasiyici,
+            mod=mod,
+            rol=rol,
+            donus=donus,
+            onay_surumu=onay_surumu,
+            hatirla=hatirla,
+        )
+    except google_oauth_service.OAuthAkisHatasi as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Geçersiz istek"
+        ) from exc
+
+    yonlendirme = RedirectResponse(hedef, status_code=status.HTTP_303_SEE_OTHER)
+    # `state` çerezi `tasiyici` üzerine yazıldı; başlığı yönlendirmeye taşı.
+    for anahtar, deger in tasiyici.raw_headers:
+        yonlendirme.raw_headers.append((anahtar, deger))
+    return yonlendirme
+
+
+@router.get("/google/callback", dependencies=[Depends(_oauth_limit)])
+async def google_callback(
+    request: Request,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Google'dan dönüşü karşılar, oturumu açar ve frontend'e yönlendirir.
+
+    `create_access_token` BURADA ÇAĞRILMAZ, bilinçli: yanıt bir yönlendirmedir
+    ve access token'ı URL'de taşımak onu tarayıcı geçmişine, `Referer` başlığına
+    ve ara sunucu loglarına yazardı. Yalnız refresh çerezi yazılır; frontend
+    dönüş sayfasında mevcut `POST /auth/refresh` ile access token'ını alır.
+
+    Yan etkisi de doğru yönde: yeni bir token üretim yolu doğmadığı için
+    `tests/test_auth_version_token_contract.py` envanteri büyümüyor ve
+    `auth_version` sözleşmesine yeni bir çağrı yeri eklenmiyor.
+    """
+    _google_acik_mi()
+
+    try:
+        durum = google_oauth_service._state_oku(request)
+    except google_oauth_service.OAuthAkisHatasi as exc:
+        yanit = _google_donus(exc.kod, git=None, mod=None)
+        google_oauth_service.state_sil(yanit)
+        return yanit
+
+    git = durum.get("donus")
+    mod = durum.get("mod")
+
+    def _bitir(kod: str) -> RedirectResponse:
+        yanit = _google_donus(kod, git=git, mod=mod)
+        # Çerez HER durumda silinir: tek kullanımlıktır ve aynı `state` ile
+        # ikinci bir callback yeniden oynatma (replay) olurdu.
+        google_oauth_service.state_sil(yanit)
+        return yanit
+
+    if error or not code or not state:
+        # Kullanıcı Google ekranında vazgeçti ya da yanıt eksik geldi.
+        return _bitir("iptal" if error else "dogrulama")
+
+    if not secrets.compare_digest(state, durum.get("csrf") or ""):
+        return _bitir("dogrulama")
+
+    try:
+        ham_token = await google_oauth_service.kodu_takas_et(
+            code, verifier=durum.get("verifier") or ""
+        )
+        claims = await google_oidc.verify_id_token(
+            ham_token, nonce=durum.get("nonce") or ""
+        )
+    except google_oauth_service.OAuthAkisHatasi as exc:
+        logger.info("google oauth akış hatası: %s", exc)
+        return _bitir(exc.kod)
+    except google_oidc.GoogleKimlikHatasi as exc:
+        logger.warning("google id_token doğrulanamadı: %s", exc)
+        return _bitir("dogrulama")
+
+    if mod == "kayit":
+        # Yeni hesap açma kolu form kaydıyla AYNI kovayı tüketir; ayrı kova
+        # olsaydı Google paralel ve limitsiz bir kayıt kanalı olurdu.
+        await enforce(
+            bucket=f"rl:register:{client_ip(request)}",
+            limit=settings.RATE_LIMIT_REGISTER,
+            window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+        )
+
+    try:
+        user, olay = await google_oauth_service.cozumle(
+            db,
+            claims,
+            mod=mod or "giris",
+            rol=durum.get("rol"),
+            onay_surumu=durum.get("onay_surumu"),
+            ip=client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+            kayit_kapisi=_kayit_kapisi,
+        )
+    except google_oauth_service.OAuthAkisHatasi as exc:
+        logger.info("google kimlik çözümlenemedi: %s", exc)
+        await db.rollback()
+        return _bitir(exc.kod)
+    except HTTPException as exc:
+        await db.rollback()
+        return _bitir(
+            "kayit_kapali" if exc.status_code == status.HTTP_403_FORBIDDEN else "dogrulama"
+        )
+
+    hatirla = bool(durum.get("hatirla", True))
+    user.last_seen_at = datetime.datetime.now(datetime.timezone.utc)
+    refresh = await refresh_token_service.issue(
+        db, role_id=user.role_id, user_id=user.id, persistent=hatirla
+    )
+    await db.commit()
+
+    # Yeni eğitmen doğrudan ilan sihirbazına düşer — form kaydının davranışı
+    # (`Register.tsx`, `AuthModal.tsx`). Google kolu farklı davransaydı aynı
+    # ürün kararı iki yerde ayrışırdı.
+    hedef = git
+    if olay == "kayit" and durum.get("rol") == "tutor":
+        hedef = "/ilanini-olustur"
+
+    yanit = _google_donus("ok", git=hedef, mod=mod)
+    google_oauth_service.state_sil(yanit)
+    set_refresh_cookie(yanit, refresh, remember=hatirla)
+    return yanit
 
 
 @router.post("/verify-email/confirm", response_model=MessageResponse)

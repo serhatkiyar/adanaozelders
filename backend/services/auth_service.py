@@ -143,6 +143,47 @@ async def register_client(
     return client
 
 
+async def register_google_user(
+    db: AsyncSession,
+    *,
+    rol: RoleType,
+    email: str,
+    first_name: str,
+    last_name: str,
+):
+    """Google ile gelen kullanıcı için PAROLASIZ hesap açar.
+
+    `register_tutor`/`register_client` ile aynı tekillik kapısını kullanır:
+    `_email_taken` beş tabloyu tarar ve çakışmada 409 verir. Bu ÖNEMLİ — ÜK-5
+    ("bir e-posta = bir hesap") Google kolundan atlanabilseydi, kararın
+    doğduğu üretim hatası (aynı e-postayla ikinci hesap açılması ve ilkine bir
+    daha girilememesi) geri gelirdi.
+
+    `email_verified_at` doldurulur: Google `email_verified: true` demeden buraya
+    gelinmiyor (`core/google_oidc.verify_id_token` kapısı), yani adres zaten
+    kanıtlanmıştır. Ayrıca doğrulama e-postası GÖNDERİLMEZ — kullanıcıdan zaten
+    kanıtladığı bir şeyi tekrar istemek olurdu.
+
+    `hashed_password=None`: parolasız hesabın kırdığı akışlar ve gerekçe
+    `models/mixins.py::PasswordMixin`.
+    """
+    model = {RoleType.TUTOR: Tutor, RoleType.CLIENT: Client}[rol]
+    if await _email_taken(db, model, email):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+    user = model(
+        email=email,
+        hashed_password=None,
+        first_name=first_name,
+        last_name=last_name,
+        role_id=ROLE_IDS[rol],
+        email_verified_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    db.add(user)
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
 async def update_me(
     db: AsyncSession, user: Admin | Tutor | Client, data: UserUpdate
 ) -> Admin | Tutor | Client:
