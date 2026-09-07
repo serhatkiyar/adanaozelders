@@ -15,7 +15,7 @@ import { fetchOAuthProviders } from "@/api/auth";
  *   yönde hata yapmak burada "çalışmayan bir düğme" demek, orada "gereksiz
  *   gizlenen bir düğme".
  */
-export function useGoogleGirisiAcik(): boolean {
+export function useGoogleGirisi(): { acik: boolean; startUrl: string | null } {
   const { data } = useQuery({
     queryKey: ["auth", "oauth-providers"],
     queryFn: fetchOAuthProviders,
@@ -30,5 +30,8 @@ export function useGoogleGirisiAcik(): boolean {
     // sekmesine dönerse düğme kendiliğinden gelsin.
     refetchOnWindowFocus: true,
   });
-  return data?.google ?? false;
+  return {
+    acik: (data?.google ?? false) && Boolean(data?.google_start_url),
+    startUrl: data?.google_start_url ?? null,
+  };
 }

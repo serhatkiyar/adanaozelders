@@ -1,7 +1,7 @@
 import { useLocation } from "react-router-dom";
 
 import { oauthStartUrl, type OAuthMod, type RegisterRole } from "@/api/auth";
-import { useGoogleGirisiAcik } from "@/hooks/useOAuthSaglayicilari";
+import { useGoogleGirisi } from "@/hooks/useOAuthSaglayicilari";
 import { donusAdresiUret } from "@/lib/guvenliDonus";
 import { useAuthStore } from "@/store/authStore";
 
@@ -75,11 +75,11 @@ export function GoogleGirisDugmesi({
   devreDisi = false,
   className = "",
 }: Props) {
-  const acik = useGoogleGirisiAcik();
+  const { acik, startUrl } = useGoogleGirisi();
   const konum = useLocation();
   const setRemember = useAuthStore((s) => s.setRemember);
 
-  if (!acik) return null;
+  if (!acik || !startUrl) return null;
 
   const basildi = () => {
     // Tercih tam sayfa gezinmeden ÖNCE yerele yazılır: access token'ın
@@ -87,7 +87,7 @@ export function GoogleGirisDugmesi({
     // dönüş sayfası token'ı yazarken bayrağın hazır olması gerekiyor.
     setRemember(hatirla);
     window.location.assign(
-      oauthStartUrl({
+      oauthStartUrl(startUrl, {
         mod,
         rol,
         hatirla,

@@ -109,12 +109,40 @@ def test_yarim_yapilandirma_kapali_sayilir(client, monkeypatch):
 
 def test_saglayici_ucu_durumu_soyler(client, google_kapali):
     r = client.get("/api/v1/auth/oauth/providers")
-    assert r.status_code == 200 and r.json() == {"google": False}
+    assert r.status_code == 200
+    govde = r.json()
+    assert govde["google"] is False
+    assert govde["google_start_url"] is None
 
 
-def test_saglayici_ucu_acikken_true(client, google_acik):
+def test_saglayici_ucu_acikken_MUTLAK_adres_verir(client, google_acik):
+    """ÖLÇÜLMÜŞ kusurun nöbetçisi.
+
+    Düğme önce adresi göreli (`/api/v1/...`) kuruyordu; geliştirmede tarayıcı
+    oraya Vite dev sunucusu üzerinden gidiyor ve Vite'ın proxy'si dış bir
+    siteye (accounts.google.com) giden 303'ü iletemeyip **500** veriyordu.
+    Ölçüm: proxy üzerinden 500, doğrudan API kökünden 303.
+
+    Backend testlerinin hiçbiri bunu göremezdi çünkü hepsi API'ye DOĞRUDAN
+    gidiyor. Sözleşme bu yüzden burada çıpalanıyor: adres mutlak olmalı ve
+    `GOOGLE_OAUTH_REDIRECT_URI` ile AYNI kökten türemeli — ayrışırlarsa biri
+    çalışırken diğeri sessizce kırılır.
+    """
     r = client.get("/api/v1/auth/oauth/providers")
-    assert r.json() == {"google": True}
+    govde = r.json()
+    assert govde["google"] is True
+
+    adres = govde["google_start_url"]
+    assert adres.startswith(("http://", "https://")), f"mutlak olmalı: {adres!r}"
+    assert adres.endswith("/auth/google/start")
+
+    from core.config import settings
+
+    kok = settings.BACKEND_BASE_URL.rstrip("/")
+    assert adres.startswith(kok)
+    assert settings.GOOGLE_OAUTH_REDIRECT_URI.startswith(kok), (
+        "start adresi ile redirect URI aynı kökten türemeli"
+    )
 
 
 # ── Yetkilendirme baslatma ───────────────────────────────────────────────────

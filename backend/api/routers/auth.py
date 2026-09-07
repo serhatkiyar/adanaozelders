@@ -371,14 +371,33 @@ def _google_donus(kod: str, *, git: str | None, mod: str | None) -> RedirectResp
 
 
 @router.get("/oauth/providers")
-async def oauth_saglayicilari() -> dict[str, bool]:
-    """Public: hangi sosyal giriş açık? Frontend düğmeyi buna göre çizer.
+async def oauth_saglayicilari() -> dict:
+    """Public: hangi sosyal giriş açık ve akış NEREDEN başlatılır?
 
     Frontend tarafı bilinçli olarak FAIL-CLOSED okur (`useKayitAcik`in
     fail-open'ının tersi): yapılandırılmamış bir sağlayıcının düğmesi
     kullanıcıyı 404'e götürürdü.
+
+    `google_start_url` MUTLAK adrestir ve bu ZORUNLU — ölçülmüş bir kusurun
+    düzeltmesi. Düğme önce göreli adres (`/api/v1/auth/google/start`)
+    kullanıyordu; geliştirmede tarayıcı o adrese Vite dev sunucusu üzerinden
+    gidiyor ve Vite'ın proxy'si dış bir siteye (accounts.google.com) giden
+    303'ü iletemeyip **500** üretiyordu. Akış bir XHR değil, tam sayfa
+    gezinmedir: proxy'ye hiç uğramamalı, doğrudan API köküne gitmeli.
+
+    Kök `BACKEND_BASE_URL`den türetilir — `GOOGLE_OAUTH_REDIRECT_URI` ile aynı
+    kaynak, dolayısıyla ikisi hiçbir ortamda ayrışamaz. Üretimde ön yüz ve API
+    zaten aynı origin'de olduğu için değer orada da doğrudur.
     """
-    return {"google": settings.GOOGLE_OAUTH_ENABLED}
+    return {
+        "google": settings.GOOGLE_OAUTH_ENABLED,
+        "google_start_url": (
+            f"{settings.BACKEND_BASE_URL.rstrip('/')}"
+            f"{settings.API_V1_PREFIX}/auth/google/start"
+            if settings.GOOGLE_OAUTH_ENABLED
+            else None
+        ),
+    }
 
 
 @router.get("/google/start", dependencies=[Depends(_oauth_limit)])
