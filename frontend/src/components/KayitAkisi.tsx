@@ -155,7 +155,7 @@ export function KayitAkisi({
           {adim !== "eposta"
             ? "Üyelik"
             : role === "tutor"
-              ? "Eğitmen olarak kayıt ol"
+              ? "Eğitmen olarak kaydolun"
               : "Kayıt Ol"}
         </h1>
       </div>
@@ -249,7 +249,7 @@ export function KayitAkisi({
           className="w-full rounded-xl bg-marka py-3.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {adim === "eposta"
-            ? "E-posta ile kayıt ol"
+            ? "E-posta ile kaydol"
             : adim === "parola"
               ? mutation.isPending
                 ? "Kaydediliyor..."

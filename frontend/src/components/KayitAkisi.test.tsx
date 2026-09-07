@@ -77,7 +77,7 @@ describe("KayitAkisi — ilk ekran", () => {
   it("eğitmen yolundan gelince başlık bunu söyler", async () => {
     kur("tutor");
     expect(
-      screen.getByRole("heading", { name: /Eğitmen olarak kayıt ol/i })
+      screen.getByRole("heading", { name: /Eğitmen olarak kaydolun/i })
     ).toBeTruthy();
   });
 
@@ -86,7 +86,7 @@ describe("KayitAkisi — ilk ekran", () => {
     // ne olacağını bilmeli.
     kur();
     expect(
-      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+      screen.getByRole("button", { name: "E-posta ile kaydol" })
     ).toBeTruthy();
   });
 
@@ -105,7 +105,7 @@ describe("KayitAkisi — adımlar arası geçiş", () => {
 
     await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
     await kullanici.click(
-      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+      screen.getByRole("button", { name: "E-posta ile kaydol" })
     );
 
     // 2. adim
@@ -128,7 +128,7 @@ describe("KayitAkisi — adımlar arası geçiş", () => {
 
     await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
     await kullanici.click(
-      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+      screen.getByRole("button", { name: "E-posta ile kaydol" })
     );
     await kullanici.click(
       await screen.findByRole("button", { name: /Önceki adıma dön/i })
@@ -149,7 +149,7 @@ describe("KayitAkisi — adımlar arası geçiş", () => {
 
     await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
     await kullanici.click(
-      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+      screen.getByRole("button", { name: "E-posta ile kaydol" })
     );
 
     expect(await screen.findByLabelText(/^Adınız/i)).toBeTruthy();
