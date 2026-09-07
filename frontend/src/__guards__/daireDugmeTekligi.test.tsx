@@ -79,8 +79,11 @@ describe("dairesel ok düğmesi · tek kaynak", () => {
     // geçirirdi ("" === "").
     const s = kaynakSinifi();
     expect(s).toContain("rounded-full");
-    expect(s).toContain("h-8");
-    expect(s).toContain("w-8");
+    // Ölçü 8 Eyl'de h-8'den h-7'ye indi (kullanıcı: "bir tık daha küçük
+    // olsa"). Bu testin işi ölçünün DEĞERİNİ savunmak değil, üç ayrı düğmenin
+    // tek kaynaktan gelmeye devam etmesi; değer değişince burası da değişir.
+    expect(s).toContain("h-7");
+    expect(s).toContain("w-7");
     expect(s.length).toBeGreaterThan(60);
     // İkon da kaynaktan geliyor: çağrı yeri glif seçmiyor, yön veriyor.
     const { container } = sar(<DaireDugme yon="sol" aria-label="x" />);
@@ -91,7 +94,7 @@ describe("dairesel ok düğmesi · tek kaynak", () => {
     const etkin = kaynakSinifi(false);
     const pasif = kaynakSinifi(true);
     expect(pasif).not.toBe(etkin); // gerçekten soluklaşıyor
-    for (const ortak of ["rounded-full", "h-8", "w-8"]) {
+    for (const ortak of ["rounded-full", "h-7", "w-7"]) {
       expect(etkin).toContain(ortak);
       expect(pasif).toContain(ortak);
     }

@@ -290,6 +290,26 @@ function CategoryContent({ active }: { active: CategoryKey }) {
   );
 }
 
+/**
+ * Vitrin kartının genişliği — konteynere BAĞLI, sabit piksel DEĞİL.
+ *
+ * Kartlar `w-[210px]` sabitken satırın sağ kenarı konteynerle hizalanmıyordu:
+ * içerik genişliği 1216-48 = 1168px, beş kart ise 5x210 + 4x20 = 1130px
+ * tutuyordu ve kalan 38px son kartı sağ kenardan içeride bırakıyordu. Kaydırma
+ * okları konteynerin sağ ucunda durduğu için fark gözle görülür haldeydi.
+ *
+ * Konteyner ölçüsünü (`max-w-[1216px]`) küçültmek çözüm DEĞİL: aynı ölçü
+ * `SiteFooter`da da kullanılıyor, yani hizasızlık sayfanın başka yerine kayardı.
+ * Bunun yerine kart genişliği kalan alandan hesaplanıyor; boşluk `gap-5` (20px)
+ * olduğundan çıkarılan değer (kart sayısı - 1) x 20.
+ *
+ * Kart sayısı ekran genişliğiyle artar ve her eşikte kart ~220px civarında
+ * kalır; sabit piksel kullanılsaydı ya dar ekranda taşar ya geniş ekranda
+ * boşluk bırakırdı.
+ */
+const VITRIN_KART =
+  "shrink-0 w-[190px] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
+
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
   // yanında gri dairesel ok butonu — tamamına o götürür.
@@ -346,7 +366,7 @@ function FeaturedTutorRow() {
         }
       >
         {tutors.map((tutor) => (
-          <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
+          <div key={tutor.id} className={VITRIN_KART}>
             <TutorCard tutor={tutor} featured />
           </div>
         ))}
@@ -389,7 +409,7 @@ function TutorRow({
           baslik={<RowHeader heading={heading} href={href} />}
         >
           {data!.map((tutor) => (
-            <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
+            <div key={tutor.id} className={VITRIN_KART}>
               <TutorCard tutor={tutor} />
             </div>
           ))}
@@ -430,7 +450,7 @@ function LibraryRow({
           baslik={<RowHeader heading={heading} href={href} />}
         >
           {data!.map((lib) => (
-            <div key={lib.id} className="w-[190px] shrink-0 sm:w-[210px]">
+            <div key={lib.id} className={VITRIN_KART}>
               <LibraryCard library={lib} />
             </div>
           ))}
