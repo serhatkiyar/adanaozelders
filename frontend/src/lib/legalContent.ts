@@ -103,7 +103,7 @@ const KVKK: LegalDoc = {
   title: "KVKK Aydınlatma Metni",
   description:
     "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında Adana Özel Ders platformunda işlenen kişisel verilere ilişkin aydınlatma metni.",
-  updatedAt: "2026-09-06",
+  updatedAt: "2026-09-07",
   sections: [
     {
       id: "veri-sorumlusu",
@@ -121,6 +121,7 @@ const KVKK: LegalDoc = {
         p("Platforma üye olduğunuzda ve Platformu kullandığınızda aşağıdaki kişisel veri kategorileri işlenir:"),
         list(
           "Kimlik bilgileri: ad, soyad, doğum tarihi, cinsiyet (isteğe bağlı).",
+          "Google ile giriş yapmayı seçerseniz Google'dan alınan bilgiler: ad, soyad, e-posta adresi, e-posta adresinin doğrulanmış olup olmadığı ve Google hesabınızın kalıcı kullanıcı kimliği. Bu bilgiler yalnızca hesabınızı açmak ve girişinizi tanımak için işlenir; Google'a bizden kişisel veri AKTARILMAZ ve Google ile giriş düğmesine basmadığınız sürece Google'a hiçbir istek gitmez.",
           "İletişim bilgileri: e-posta adresi.",
           "Eğitmen profil bilgileri (eğitmenler için): eğitim geçmişi, verilen dersler, saatlik ücret, biyografi, profil fotoğrafı, ders verilen konum.",
           "Konum bilgileri: \"yakınımda\" araması yaptığınızda tarayıcınızın paylaştığı yaklaşık konum (sunucuda saklanmaz, yalnız arama için kullanılır); eğitmen/kütüphane konumları (ilan amaçlı, ilgili kullanıcının kendi girdisidir).",
