@@ -227,8 +227,8 @@ describe("ÜK-1 · sitede indigo kalmadı", () => {
 /* ── 2. Değer: kararın TA KENDİSİ ─────────────────────────────────────── */
 
 describe("ÜK-1 · token değerleri kararın TA KENDİSİ", () => {
-  it("dolgu `#FA8C10` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
-    expect(token("marka")).toBe("250 140 16");
+  it("dolgu `#FF9900` (Amazon turuncusu) ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
+    expect(token("marka")).toBe("255 153 0");
     expect(ham("panel-accent")).toBe("var(--marka)");
     expect(token("panel-accent")).toBe(token("marka"));
     expect(ham("panel-accent-fg")).toBe("var(--marka-fg)");
@@ -295,12 +295,20 @@ describe("ÜK-1 · dolgu PARLAK, üstündeki yazı KOYU", () => {
     // bir adım açmak 2,95, ton kaydırmak (28°–44°) daha parlak bir çözüm
     // ÜRETMİYOR, dolguya kenarlık eklemek 336 çağrı yerini etkiliyor.
     //
-    // Eşik bilerek 2,5'e indi ve bu bir ÜRÜN KARARIDIR, kaçamak değil:
+    // 7 Eyl 2026 · ikinci iniş: renk Amazon'un kendi turuncusuna (#FF9900)
+    // sabitlendi ve eşik 2,1'e indi. Bu bir "biraz daha aç" kaydırması DEĞİL,
+    // sektörde yerleşik bir değere DEMİRLEME: Amazon aynı rengi birincil
+    // düğmede koyu yazıyla kullanıyor ve bizim ölçtüğümüz yazı kontrastı da
+    // 8,33 (eşik 4,5). Alt eşik artık o değerin hemen altında duruyor;
+    // bir sonraki "biraz daha aç" isteği bu düğümü KIRAR ve yeniden karar
+    // verilmesini zorlar.
+    //
+    // Eşik bilerek indi ve bu bir ÜRÜN KARARIDIR, kaçamak değil:
     // eşiğin tamamen kaldırılması hâlinde dolgu beyaza kadar açılabilir ve
     // düğme sayfadan hiç ayrılmazdı. Metin okunurluğu (aşağıdaki 4,5 kuralı)
     // TARTIŞMAYA AÇIK DEĞİLDİR ve olduğu gibi duruyor.
     const olculen = kontrast(token("marka"), BEYAZ);
-    expect(olculen).toBeGreaterThanOrEqual(2.3);
+    expect(olculen).toBeGreaterThanOrEqual(2.1);
     // Üst kapı: eşiği gevşetmek "sınırsız açılabilir" demek değil. Renk
     // 3'ün üstüne geri çıkarsa bu yorum bayatlar — o gün eşik geri yükselir.
     expect(olculen).toBeLessThan(3);

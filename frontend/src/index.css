@@ -182,11 +182,11 @@
      * kenarını yitiriyor; okunurluk YİTMİYOR — üstündeki koyu yazı 6,85
      * (eşik 4,5) ve bu nöbetçide hâlâ zorunlu.
      */
-    --marka: 250 140 16;                /* #F0850F — PARLAK dolgu. METİN OLARAK
+    --marka: 255 153 0;                /* #F0850F — PARLAK dolgu. METİN OLARAK
                                          * KULLANILMAZ: beyaz zeminde 3,15 verir,
                                          * gövde metni eşiği 4,5'tir. Metin için
                                          * `--marka-metin` vardır. */
-    --marka-hover: 220 123 14;           /* #D47408 — dolgu hover (dolguyla
+    --marka-hover: 224 135 0;           /* #D47408 — dolgu hover (dolguyla
                                          * aynı oranda açıldı) */
     --marka-fg: 43 16 0;                /* #2B1000 — dolgu ÜSTÜNDEKİ yazı (6,85) */
 
