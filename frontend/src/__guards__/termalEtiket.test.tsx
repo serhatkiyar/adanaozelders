@@ -48,6 +48,7 @@ vi.mock("qrcode.react", () => ({
   ),
 }));
 
+import { OPERATOR } from "@/lib/legalContent";
 import {
   TERMAL_BOY_MM,
   TERMAL_EN_MM,
@@ -125,6 +126,30 @@ describe("termal kargo etiketi · 100 × 150 mm", () => {
     const qr = getByTestId("qr");
     expect(qr.getAttribute("data-level")).toBe("M");
     expect(Number(qr.getAttribute("data-size"))).toBeGreaterThanOrEqual(120);
+  });
+
+  it("LOGO basılır ve SİYAH sürümdür", () => {
+    // Kullanıcı isteği. Renkli logo termal kafada gri lekeye dönerdi; siyah
+    // sürüm `public/logo-yatay-siyah.svg` olarak projeye alındı.
+    const { container } = render(<TermalEtiketKarti package={PAKET} />);
+    const logo = container.querySelector("img");
+    expect(logo, "logo yok").toBeTruthy();
+    expect(logo!.getAttribute("src")).toBe("/logo-yatay-siyah.svg");
+    // Genişlik mm cinsinden sabitlenir: `px` yazıcı DPI'ında kayar.
+    expect(logo!.style.width).toMatch(/mm$/);
+  });
+
+  it("GÖNDERİCİ bloğu işletme kimliğinin TEK kaynağından gelir", () => {
+    // Kargo etiketinin değişmezi: teslim edilemeyen paketin döneceği adres.
+    // Uydurulmuş metin DEĞİL — `legalContent.ts::OPERATOR`, yani yasal
+    // metinlerdeki bilgiyle aynı kaynak. İkisi ayrışamaz.
+    const { container } = render(<TermalEtiketKarti package={PAKET} />);
+    const metin = container.querySelector(".termal-etiket")!.textContent ?? "";
+    // Büyük harf CSS ile yapılır (`uppercase`), metin kaynakta "Gönderici".
+    expect(metin).toContain("Gönderici");
+    expect(metin).toContain(OPERATOR.entity);
+    expect(metin).toContain(OPERATOR.phone);
+    expect(metin).toContain(OPERATOR.address);
   });
 
   it("adres ve alıcı KIRPILMAZ (kâğıtta truncate yasağı sürüyor)", () => {

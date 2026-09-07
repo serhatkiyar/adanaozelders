@@ -27,6 +27,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Button, ErrorState } from "@/components/admin/ui";
 import { usePackageLabel } from "@/hooks/usePacking";
 import { getErrorMessage } from "@/lib/errors";
+import { OPERATOR } from "@/lib/legalContent";
 import { SITE_NAME } from "@/lib/seo";
 import {
   MISSING_ITEMS_TEXT,
@@ -321,12 +322,17 @@ export function TermalEtiketKarti({ package: paket }: { package: PackageLabelDat
         padding: "4mm",
       }}
     >
-      {/* ── Üst şerit: marka + sipariş ── */}
-      <div className="flex items-baseline justify-between border-b-2 border-black pb-[2mm]">
-        <p className="text-[3.6mm] font-black uppercase tracking-tight">
-          {SITE_NAME}
-        </p>
-        <p className="text-[3.2mm] font-bold">Sipariş #{paket.order_id}</p>
+      {/* ── Üst şerit: LOGO + sipariş ──
+          Logo `yatay-siyah` sürümdür: termal kafa renk basmaz, gri tonu da
+          lekeye çevirir. Renkli logo basılsaydı gri lekeye dönerdi. */}
+      <div className="flex items-center justify-between gap-[3mm] border-b-2 border-black pb-[2mm]">
+        <img
+          src="/logo-yatay-siyah.svg"
+          alt={SITE_NAME}
+          style={{ width: "46mm" }}
+          className="shrink-0"
+        />
+        <p className="shrink-0 text-[3.2mm] font-bold">#{paket.order_id}</p>
       </div>
 
       {/* ── Kod: bir metre uzaktan okunur ── */}
@@ -372,6 +378,19 @@ export function TermalEtiketKarti({ package: paket }: { package: PackageLabelDat
         </div>
       ) : null}
 
+      {/* ── GÖNDERİCİ ──
+          Gerçek kargo etiketlerinin değişmezi: paket teslim edilemezse geri
+          döneceği adres kâğıdın üstünde yazar. Veri uydurulmuyor, işletme
+          kimliğinin TEK kaynağından (`legalContent.ts::OPERATOR`) geliyor —
+          aynı bilgi yasal metinlerde de yazılı, ikisi ayrışamaz. */}
+      <div className="mt-[2mm] border-t border-black pt-[1.5mm]">
+        <p className="text-[2.8mm] font-bold uppercase tracking-widest">Gönderici</p>
+        <p className="mt-[0.5mm] text-[3mm] font-semibold leading-snug">
+          {OPERATOR.entity} · {OPERATOR.phone}
+        </p>
+        <p className="text-[2.8mm] leading-snug">{OPERATOR.address}</p>
+      </div>
+
       {/* ── İçerik: en altta, alan artarsa büyür ── */}
       <div className="mt-[2mm] flex-1 border-t border-black pt-[1.5mm]">
         <p className="text-[2.8mm] font-bold uppercase tracking-widest">
@@ -390,6 +409,14 @@ export function TermalEtiketKarti({ package: paket }: { package: PackageLabelDat
           <p className="mt-[1mm] text-[3mm] font-black">{MISSING_ITEMS_TEXT}</p>
         )}
       </div>
+
+      {/* ── Alt satır: basım tarihi ──
+          Kargo etiketlerinin değişmezi. Paket verisinde bir tarih YOK, bu
+          yüzden basım anı yazılır ve "Basım" diye ADLANDIRILIR — "sipariş
+          tarihi" sanılmasın. Uydurulmuş bir alan değil, ne olduğu yazılı. */}
+      <p className="mt-[2mm] border-t border-black pt-[1mm] text-[2.6mm]">
+        Basım: {new Date().toLocaleDateString("tr-TR")}
+      </p>
     </section>
   );
 }
