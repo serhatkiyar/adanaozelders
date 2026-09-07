@@ -155,7 +155,7 @@ export default function PublicTutorProfile() {
               Artık yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar;
               kısa kaldığında hiçbir şey değişmez. */}
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="relative rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+            <section className="relative rounded-2xl bg-white p-5 shadow-md ring-1 ring-slate-100/70 ">
               {/* Favori + paylaş: sağ üst köşede DİKEY sütun (Superprof deseni,
                   kullanıcı kararı 8 Eyl). Önce fotoğrafın üstünde yatay bir
                   satırdaydılar ve kartın en değerli yerini —ismin hemen
