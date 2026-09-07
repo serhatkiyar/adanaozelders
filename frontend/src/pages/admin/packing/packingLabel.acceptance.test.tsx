@@ -259,8 +259,8 @@ describe("istasyonda paket etiketi", () => {
     const buton = await screen.findByRole("button", { name: /etiketi yazdır/i });
     fireEvent.click(buton);
 
-    await waitFor(() => expect(document.querySelector(".package-label")).toBeTruthy());
-    const kagit = document.querySelector(".package-label")!;
+    await waitFor(() => expect(document.querySelector(".termal-etiket")).toBeTruthy());
+    const kagit = document.querySelector(".termal-etiket")!;
 
     // Sevkiyat kimliği GERÇEKTEN kâğıtta.
     expect(kagit.textContent).toContain("Ayşe Yıldız");
@@ -285,7 +285,7 @@ describe("istasyonda paket etiketi", () => {
     await sar("/yonetim/paketleme/paket/77");
 
     fireEvent.click(await screen.findByRole("button", { name: /etiketi yazdır/i }));
-    await waitFor(() => expect(document.querySelector(".package-label")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".termal-etiket")).toBeTruthy());
 
     expect(yazmaIstekleri()).toHaveLength(0);
     expect(istekler.some((i) => i.url.includes("/packing/packages/77/label"))).toBe(true);
@@ -354,7 +354,7 @@ describe("istasyonda paket etiketi", () => {
 
     const etiketDugmesi = await screen.findByRole("button", { name: /etiketi yazdır/i });
     fireEvent.click(etiketDugmesi);
-    await waitFor(() => expect(document.querySelector(".package-label")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector(".termal-etiket")).toBeTruthy());
     expect(qrCagrilari[0].value).toBe("PKG1:77:ETIKET_UCUNDAN_GELEN_TOKEN");
   });
 
@@ -366,7 +366,7 @@ describe("istasyonda paket etiketi", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /etiketi yazdır/i }));
     await screen.findByRole("alert");
-    expect(document.querySelector(".package-label")).toBeNull();
+    expect(document.querySelector(".termal-etiket")).toBeNull();
   });
 });
 

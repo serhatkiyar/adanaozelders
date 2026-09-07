@@ -157,7 +157,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
     const style = baskiStili();
     expect(style).toContain("@media print");
     expect(style).toMatch(
-      /\.package-label\s*,\s*\.package-label\s*\*\s*\{[^}]*visibility:\s*visible/,
+      /\.termal-etiket\s*,\s*\.termal-etiket\s*\*\s*\{[^}]*visibility:\s*visible/,
     );
   });
 
@@ -199,14 +199,18 @@ describe("PackageLabel baskı sözleşmesi", () => {
         onClose={() => {}}
       />,
     );
-    expect(String(qrCagrilari[0].className ?? "")).toContain("shrink-0");
+    // 7 Eyl 2026: `shrink-0` iddiası özneSİZ kaldı — termal etikette karekodun
+    // yatay bir flex kardeşi yok, kendi satırında ortalanmış duruyor ve
+    // ezilecek bir düzen yok. Kusur SINIFI ("QR okunmayacak kadar küçülür")
+    // korunuyor: ölçü doğrudan çıpalanır.
+    expect(qrCagrilari[0].size).toBeGreaterThanOrEqual(120);
     expect(Number(qrCagrilari[0].size ?? 0)).toBeGreaterThanOrEqual(96);
   });
 
   it("insan okunur paket kodu ve sipariş numarası basılır", async () => {
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket()} onClose={() => {}} />);
-    const text = document.querySelector(".package-label")?.textContent ?? "";
+    const text = document.querySelector(".termal-etiket")?.textContent ?? "";
     expect(text).toContain("PKT-000077");
     expect(text).toContain("1922");
   });
@@ -236,7 +240,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
         onClose={() => {}}
       />,
     );
-    const text = document.querySelector(".package-label")?.textContent ?? "";
+    const text = document.querySelector(".termal-etiket")?.textContent ?? "";
     expect(text).toContain("FZK-000011");
     expect(text).toContain("Paragraf Denemeleri × 2");
     expect(text).not.toContain("AYT Fizik Konu Anlatımı × 1");
@@ -247,7 +251,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // F26'da etiket bomboş basılmıştı; boşluk hatayı gizler.
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket({ items: [] })} onClose={() => {}} />);
-    const text = document.querySelector(".package-label")?.textContent ?? "";
+    const text = document.querySelector(".termal-etiket")?.textContent ?? "";
     expect(text).toContain("Kalem bilgisi yok");
   });
 
@@ -256,7 +260,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
     render(
       <PackageLabel package={paket({ delivery_pref: "KOMSUYA_BIRAK" })} onClose={() => {}} />,
     );
-    expect(document.querySelector(".package-label")?.textContent ?? "").toMatch(
+    expect(document.querySelector(".termal-etiket")?.textContent ?? "").toMatch(
       /KOMŞUYA/i,
     );
   });
@@ -276,7 +280,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
         onClose={() => {}}
       />,
     );
-    expect(document.querySelector(".package-label")?.textContent ?? "").toContain(
+    expect(document.querySelector(".termal-etiket")?.textContent ?? "").toContain(
       "3 numaralı daire, Nesrin Hanım",
     );
   });
@@ -287,7 +291,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // saha ekranından taze ve yetki denetimli alır (`DeliveryStopOut.phone`).
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket({ phone: "+905550001000" })} onClose={() => {}} />);
-    const text = document.querySelector(".package-label")?.textContent ?? "";
+    const text = document.querySelector(".termal-etiket")?.textContent ?? "";
     expect(text).not.toContain("+905550001000");
     expect(text).not.toContain("5550001000");
   });
@@ -300,7 +304,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
         onClose={() => {}}
       />,
     );
-    const text = document.querySelector(".package-label")?.textContent ?? "";
+    const text = document.querySelector(".termal-etiket")?.textContent ?? "";
     expect(text).toContain("Seyhan");
     expect(text).toContain("Adana");
   });
@@ -315,14 +319,14 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // İddianın ANLAMI değişmedi, yalnız karakteri.
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket({ recipient: null, address: null })} onClose={() => {}} />);
-    const text = document.querySelector(".package-label")?.textContent ?? "";
+    const text = document.querySelector(".termal-etiket")?.textContent ?? "";
     expect(text).toContain("-");
     expect(text).toMatch(/eksik/i);
   });
 
   it("adres ve alıcı KIRPILMAZ: truncate / line-clamp yok", async () => {
     // Kesilen adres kuryeyi yanlış kapıya götürür ve kesildiğini de göstermez.
-    // Ölçüm gerçek DOM'da: `.package-label` altındaki hiçbir düğüm kırpma
+    // Ölçüm gerçek DOM'da: `.termal-etiket` altındaki hiçbir düğüm kırpma
     // sınıfı taşımamalı.
     const PackageLabel = await bilesen();
     render(
@@ -335,7 +339,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
         onClose={() => {}}
       />,
     );
-    const kart = document.querySelector(".package-label")!;
+    const kart = document.querySelector(".termal-etiket")!;
     expect(kart.querySelectorAll(".truncate")).toHaveLength(0);
     expect(kart.querySelectorAll('[class*="line-clamp"]')).toHaveLength(0);
     // Metin gerçekten TAM basılıyor mu (sınıf yokluğu tek başına yetmez).
@@ -355,7 +359,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // İkiye bölünen etiketin QR'ı okunamaz; kutu kör gider.
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket()} onClose={() => {}} />);
-    expect(baskiStili()).toMatch(/\.package-label\s*\{[^}]*break-inside:\s*avoid/);
+    expect(baskiStili()).toMatch(/\.termal-etiket\s*\{[^}]*break-inside:\s*avoid/);
   });
 
   it("Escape kapatır (kullanıcı paketleme akışına döner)", async () => {
