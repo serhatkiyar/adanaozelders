@@ -7,11 +7,11 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { useClientDetail } from "@/hooks/useClientProfile";
 import { useBookings } from "@/hooks/useBookings";
 import { formatLastSeen } from "@/lib/datetime";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
-import { BookingStatus, Gender } from "@/types";
+import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
+import { BookingStatus } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
-export default function StudentProfile() {
+export default function UyeProfili() {
   const { id } = useParams();
   const clientId = Number(id);
   const navigate = useNavigate();
@@ -29,16 +29,16 @@ export default function StudentProfile() {
 
   if (isError || !student) {
     return (
-      <DashboardShell title="Öğrenci" navItems={TUTOR_NAV}>
+      <DashboardShell title="Üye" navItems={TUTOR_NAV}>
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             ← Geri dön
           </button>
           <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
-            <p className="text-sm text-slate-500">Öğrenci bulunamadı.</p>
+            <p className="text-sm text-slate-500">Üye bulunamadı.</p>
           </div>
         </div>
       </DashboardShell>
@@ -50,17 +50,14 @@ export default function StudentProfile() {
     Date.now() - new Date(student.last_seen_at).getTime() < 120_000;
   // Backend eğitmene tam doğum tarihi döndürmez (KVKK); sunucu hesaplı yaş gelir.
   const age = student.age ?? ageFromBirthDate(student.birth_date);
-  const genderLabel =
-    student.gender && student.gender !== Gender.UNSPECIFIED
-      ? GENDER_LABEL[student.gender]
-      : null;
+  const genderLabel = gorunurCinsiyet(student.gender);
 
   return (
-    <DashboardShell title="Öğrenci Profili" navItems={TUTOR_NAV}>
+    <DashboardShell title="Üye Profili" navItems={TUTOR_NAV}>
       <div className="mx-auto max-w-2xl space-y-5 pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+          className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
         >
           ← Geri dön
         </button>
@@ -114,7 +111,7 @@ export default function StudentProfile() {
                   onClick={() =>
                     navigate(ROUTES.messageWith(student.id, student.full_name))
                   }
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-marka px-3 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />

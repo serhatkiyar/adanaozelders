@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { FullScreenSpinner } from "@/components/Spinner";
@@ -32,6 +32,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { BookingStatus, ROLE_IDS } from "@/types";
+import { rolEtiketi } from "@/lib/roles";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 function durationLabel(startIso: string, endIso: string): string {
   const min = Math.round(
@@ -55,7 +57,7 @@ export default function LessonDetail() {
       : user?.role_id === ROLE_IDS.CLIENT
         ? "CLIENT"
         : null;
-  const navItems = role === "TUTOR" ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = role === "TUTOR" ? TUTOR_NAV : UYE_NAV;
 
   const { data: booking, isLoading, isError } = useBooking(bookingId);
   const { data: review } = useReviewByBooking(bookingId);
@@ -91,7 +93,7 @@ export default function LessonDetail() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             ← Geri dön
           </button>
@@ -108,7 +110,7 @@ export default function LessonDetail() {
   const isClient = role === "CLIENT";
   const counterpartName = isClient
     ? booking.tutor_name ?? "Eğitmen"
-    : booking.client_name ?? "Öğrenci";
+    : booking.client_name ?? ADSIZ_UYE;
   const counterpartLink = isClient
     ? `/student/tutors/${booking.tutor_id}`
     : `/tutor/students/${booking.client_id}`;
@@ -174,7 +176,7 @@ export default function LessonDetail() {
       <div className="mx-auto max-w-6xl pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="mb-5 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+          className="mb-5 inline-block text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
         >
           ← Geri dön
         </button>
@@ -194,7 +196,7 @@ export default function LessonDetail() {
                   {counterpartName}
                 </p>
                 <p className="text-xs text-slate-400 ">
-                  {isClient ? "Eğitmen" : "Öğrenci"} · profili gör →
+                  {rolEtiketi(isClient ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)} · profili gör →
                 </p>
               </div>
             </Link>
@@ -240,7 +242,7 @@ export default function LessonDetail() {
                     bookingId,
                     booking.meeting_room!,
                     booking.tutor_name || "Eğitmen",
-                    booking.client_name || "Öğrenci"
+                    booking.client_name || ADSIZ_UYE
                   )
                 }
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
@@ -386,7 +388,7 @@ export default function LessonDetail() {
               <button
                 disabled={busy}
                 onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-60"
+                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
               >
                 Tamamla
               </button>
@@ -411,7 +413,7 @@ export default function LessonDetail() {
             {isClient && isCompleted && !alreadyReviewed && (
               <button
                 onClick={() => setShowReview(true)}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95"
+                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
               >
                 Değerlendir
               </button>
@@ -434,8 +436,8 @@ export default function LessonDetail() {
               </p>
             )}
             {review.tutor_reply && (
-              <div className="mt-3 rounded-xl border-l-2 border-indigo-300 bg-indigo-50/60 px-4 py-3 ">
-                <p className="text-xs font-semibold text-indigo-700 ">
+              <div className="mt-3 rounded-xl border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3 ">
+                <p className="text-xs font-semibold text-marka-metin-hover ">
                   Eğitmen yanıtı
                 </p>
                 <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
@@ -458,7 +460,7 @@ export default function LessonDetail() {
                   Süre doldu
                 </span>
               ) : (
-                <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 ">
+                <span className="rounded-full bg-marka-soft px-2.5 py-1 text-xs font-semibold text-marka-metin-hover ">
                   {qaGroup.remaining}/{qaGroup.quota} hak · {qaGroup.days_left} gün
                 </span>
               )}
@@ -529,7 +531,7 @@ export default function LessonDetail() {
                       <div className="flex max-w-[85%] flex-col gap-1">
                         <div className="flex items-baseline gap-2">
                           <span className="text-xs font-semibold text-slate-700 ">
-                            {isMine ? "Sen" : (comment.sender_role === "TUTOR" ? "Eğitmen" : "Öğrenci")}
+                            {isMine ? "Sen" : rolEtiketi(comment.sender_role === "TUTOR" ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)}
                           </span>
                           <span className="text-[10px] text-slate-400">
                             {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -538,7 +540,7 @@ export default function LessonDetail() {
                         <div
                           className={`relative rounded-2xl px-4 py-2 text-sm ${
                             isMine
-                              ? "bg-indigo-600 text-white"
+                              ? "bg-marka text-marka-fg"
                               : "bg-slate-100 text-slate-800 "
                           }`}
                         >
@@ -572,12 +574,12 @@ export default function LessonDetail() {
                   placeholder="Mesajınız"
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
-                  className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
+                  className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
                 />
                 <button
                   type="submit"
                   disabled={addComment.isPending || !commentBody.trim()}
-                  className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Gönder
                 </button>

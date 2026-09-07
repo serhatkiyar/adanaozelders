@@ -19,7 +19,7 @@ const WINDOWS = [7, 30, 90, 180] as const;
 type Window = (typeof WINDOWS)[number];
 
 function pct(rate: number | null): string {
-  return rate == null ? "—" : `%${Math.round(rate * 100)}`;
+  return rate == null ? "-" : `%${Math.round(rate * 100)}`;
 }
 
 function ParetoList({
@@ -73,7 +73,7 @@ function isoDate(d: Date): string {
 }
 
 function num(v: number | null): string {
-  return v == null ? "—" : v.toLocaleString("tr-TR", { maximumFractionDigits: 1 });
+  return v == null ? "-" : v.toLocaleString("tr-TR", { maximumFractionDigits: 1 });
 }
 
 function OpsMetricsSection() {
@@ -240,7 +240,7 @@ export default function DeliveryPerformancePage() {
             Teslimat Göstergeleri
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
-            Baseline ölçümü — hedef konmadı, sayılar yön verir.
+            Baseline ölçümü: hedef konmadı, sayılar yön verir.
           </p>
         </div>
         <div role="group" aria-label="Gün aralığı" className="flex gap-1">

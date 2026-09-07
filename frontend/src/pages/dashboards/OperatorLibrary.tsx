@@ -105,7 +105,7 @@ function Hero({ lib }: { lib: LibraryDetailOut }) {
 
   return (
     <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ">
-      <div className="relative h-40 w-full bg-gradient-to-br from-indigo-100 to-violet-100 ">
+      <div className="relative h-40 w-full bg-gradient-to-br from-marka-soft to-marka-line ">
         {lib.cover_url && (
           <img src={lib.cover_url} alt="" className="h-full w-full object-cover" />
         )}
@@ -117,7 +117,7 @@ function Hero({ lib }: { lib: LibraryDetailOut }) {
       </div>
       <div className="px-5 pb-5">
         <div className="-mt-10 flex items-end gap-4">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-md ring-4 ring-white ">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-marka text-2xl font-bold text-marka-fg shadow-md ring-4 ring-white ">
             {lib.logo_url ? (
               <img src={lib.logo_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -195,9 +195,9 @@ function Section({
         <Button
           size="sm"
           variant="ghost"
-          className="shrink-0 text-indigo-600 hover:bg-indigo-50 "
+          className="shrink-0 text-marka-soft-fg hover:bg-marka-soft "
           aria-expanded={editing}
-          aria-label={`${title} — ${editing ? "düzenlemeyi kapat" : "düzenle"}`}
+          aria-label={`${title}: ${editing ? "düzenlemeyi kapat" : "düzenle"}`}
           onClick={onToggle}
         >
           {editing ? "Kapat" : "Düzenle"}
@@ -283,7 +283,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
           )}
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ">
-              Kapasite: {lib.capacity != null ? `${lib.capacity} koltuk` : "—"}
+              Kapasite: {lib.capacity != null ? `${lib.capacity} koltuk` : "-"}
             </span>
             <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ">
               Çalışma ücreti:{" "}
@@ -319,7 +319,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
             </label>
             <label className="block">
               <span className="mb-1 block text-sm font-semibold text-slate-700 ">
-                Çalışma ücreti (TL/saat — boş ise kapalı)
+                Çalışma ücreti (TL/saat: boş ise kapalı)
               </span>
               <input
                 type="number"
@@ -566,7 +566,7 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
                 key={h.weekday}
                 className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
                   isToday
-                    ? "bg-indigo-50 font-semibold text-indigo-700 "
+                    ? "bg-marka-soft font-semibold text-marka-metin-hover "
                     : "text-slate-600 "
                 }`}
               >
@@ -590,6 +590,7 @@ function HoursSection({ lib }: { lib: LibraryDetailOut }) {
                 <label className="flex items-center gap-1 text-xs text-slate-500 ">
                   <input
                     type="checkbox"
+                    className="accent-marka"
                     checked={!h.is_closed}
                     onChange={(e) =>
                       setHour(h.weekday, {
@@ -684,7 +685,7 @@ function AmenitiesSection({ lib }: { lib: LibraryDetailOut }) {
                   onClick={() => toggle(a)}
                   className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     active
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-marka text-marka-fg"
                       : "bg-slate-100 text-slate-600 "
                   }`}
                 >

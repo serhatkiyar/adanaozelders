@@ -62,7 +62,7 @@ export function CancelModal({
             maxLength={500}
             onChange={(e) => setReason(e.target.value)}
             placeholder="ör. Programımda değişiklik oldu…"
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
           />
           <div className="flex justify-end gap-2">
             <button

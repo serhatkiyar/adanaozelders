@@ -40,7 +40,7 @@ const OSM: TileSource = {
  */
 const SATELLITE: TileSource = {
   url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics",
+  attribution: "Tiles &copy; Esri. Source: Esri, Maxar, Earthstar Geographics",
   maxZoom: 19,
 };
 

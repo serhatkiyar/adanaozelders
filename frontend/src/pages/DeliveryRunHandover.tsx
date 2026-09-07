@@ -178,7 +178,7 @@ export default function DeliveryRunHandover() {
             Zimmet · Tur #{runId}
           </h1>
           <span className="shrink-0 text-xs font-medium text-slate-500 ">
-            {manifest ? (RUN_STATUS_LABEL[manifest.run_status] ?? manifest.run_status) : "—"}
+            {manifest ? (RUN_STATUS_LABEL[manifest.run_status] ?? manifest.run_status) : "-"}
           </span>
         </div>
       </header>
@@ -257,7 +257,7 @@ export default function DeliveryRunHandover() {
             <button
               type="submit"
               disabled={!kod.trim() || scan.isPending}
-              className="shrink-0 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              className="shrink-0 rounded-xl bg-marka px-5 py-2.5 text-sm font-bold text-marka-fg disabled:opacity-50"
             >
               {scan.isPending ? "Okunuyor…" : "Zimmetle"}
             </button>

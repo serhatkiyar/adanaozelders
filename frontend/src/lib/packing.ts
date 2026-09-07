@@ -252,7 +252,7 @@ export function completeBlockers(paket: CompletablePackage): string[] {
     const eksik = satir.expected_qty - satir.scanned_qty;
     if (eksik > 0) {
       engeller.push(
-        `“${satir.title}” — ${satir.expected_qty} adetin ${satir.scanned_qty} tanesi okutuldu, ${eksik} tanesi eksik.`,
+        `“${satir.title}”: ${satir.expected_qty} adetin ${satir.scanned_qty} tanesi okutuldu, ${eksik} tanesi eksik.`,
       );
     }
   }

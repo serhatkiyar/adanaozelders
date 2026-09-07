@@ -38,7 +38,7 @@ export default function CourierHome() {
               className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-200 "
             />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 ">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-marka-line text-sm font-bold text-marka-metin-hover ">
               {(ws?.account.first_name?.[0] ?? "K").toLocaleUpperCase("tr-TR")}
             </div>
           )}
@@ -63,7 +63,7 @@ export default function CourierHome() {
         {isError ? (
           <div className="text-center">
             <p className="text-sm text-slate-500 ">
-              Bilgiler alınamadı — bağlantını kontrol edip yeniden dene.
+              Bilgiler alınamadı: bağlantını kontrol edip yeniden dene.
             </p>
             <button
               onClick={() => refetch()}
@@ -79,7 +79,7 @@ export default function CourierHome() {
               Bugünün turu hazırlanıyor
             </p>
             <p className="mt-2 max-w-xs text-sm text-slate-500 ">
-              {ws.run.stops.length} duraklık tur planlandı — yönetici başlatınca
+              {ws.run.stops.length} duraklık tur planlandı: yönetici başlatınca
               bu ekran kendiliğinden açılacak.
             </p>
           </div>
@@ -89,7 +89,7 @@ export default function CourierHome() {
               Bugün için atanmış bir turun yok
             </p>
             <p className="mt-2 max-w-xs text-sm text-slate-500 ">
-              Tur atandığında burada görünecek — sayfa kendini yeniler.
+              Tur atandığında burada görünecek: sayfa kendini yeniler.
             </p>
           </div>
         )}

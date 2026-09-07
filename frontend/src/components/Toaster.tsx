@@ -41,9 +41,9 @@ const TYPE_CLS: Record<ToastType, { border: string; icon: string; bar: string }>
     bar:    "bg-amber-400",
   },
   info: {
-    border: "border-l-indigo-500",
-    icon: "bg-indigo-50 text-indigo-600 ",
-    bar:    "bg-indigo-400",
+    border: "border-l-marka-mid",
+    icon: "bg-marka-soft text-marka-soft-fg ",
+    bar:    "bg-marka-mid",
   },
 };
 

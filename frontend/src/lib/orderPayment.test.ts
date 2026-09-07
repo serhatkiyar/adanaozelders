@@ -33,9 +33,9 @@ describe("orderPaymentLabel", () => {
   });
 
   it("boş değerde tire döner", () => {
-    expect(orderPaymentLabel(null)).toBe("—");
-    expect(orderPaymentLabel(undefined)).toBe("—");
-    expect(orderPaymentLabel("")).toBe("—");
+    expect(orderPaymentLabel(null)).toBe("-");
+    expect(orderPaymentLabel(undefined)).toBe("-");
+    expect(orderPaymentLabel("")).toBe("-");
   });
 
   it("bilinmeyen durumu ham gösterir (sessizce kaybetmez)", () => {

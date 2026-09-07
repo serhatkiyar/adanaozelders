@@ -27,7 +27,7 @@ export const EXAM_TEMPLATES: ExamTemplate[] = [
   },
   {
     key: "ayt-say",
-    label: "AYT — Sayısal",
+    label: "AYT Sayısal",
     examType: "AYT",
     subjects: [
       { subject: "Matematik", max: 40 },
@@ -38,7 +38,7 @@ export const EXAM_TEMPLATES: ExamTemplate[] = [
   },
   {
     key: "ayt-ea",
-    label: "AYT — Eşit Ağırlık",
+    label: "AYT Eşit Ağırlık",
     examType: "AYT",
     subjects: [
       { subject: "Matematik", max: 40 },
@@ -49,7 +49,7 @@ export const EXAM_TEMPLATES: ExamTemplate[] = [
   },
   {
     key: "ayt-soz",
-    label: "AYT — Sözel",
+    label: "AYT Sözel",
     examType: "AYT",
     subjects: [
       { subject: "Edebiyat", max: 24 },

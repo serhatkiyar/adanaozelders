@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { useCreateExam, useExams } from "@/hooks/useExams";
 import { EXAM_TEMPLATES } from "@/lib/examTemplates";
 import { upcomingExams } from "@/lib/examDates";
@@ -88,7 +88,7 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
               {exam.title}
             </span>
             {exam.exam_type && (
-              <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600 ">
+              <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-medium text-marka-soft-fg ">
                 {exam.exam_type}
               </span>
             )}
@@ -272,10 +272,10 @@ export default function Exams() {
   const examCountdown = upcomingExams();
 
   const inputCls =
-    "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+    "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
   return (
-    <DashboardShell title="Denemelerim" navItems={STUDENT_NAV}>
+    <DashboardShell title="Denemelerim" navItems={UYE_NAV}>
       <div className="mx-auto max-w-4xl space-y-6">
         {/* ── Sınav geri sayımı ── */}
         {examCountdown.length > 0 && (
@@ -285,7 +285,7 @@ export default function Exams() {
                 key={e.name}
                 className="flex shrink-0 flex-col items-center rounded-2xl bg-white px-5 py-3 shadow-sm ring-1 ring-slate-100 "
               >
-                <span className="text-2xl font-bold leading-none text-indigo-600 ">
+                <span className="text-2xl font-bold leading-none text-marka-metin ">
                   {e.days}
                 </span>
                 <span className="mt-0.5 text-[10px] uppercase tracking-wide text-slate-400">
@@ -318,7 +318,7 @@ export default function Exams() {
               {trend.map((n, i) => (
                 <div
                   key={i}
-                  className="flex-1 rounded-t bg-gradient-to-t from-indigo-500 to-violet-500"
+                  className="flex-1 rounded-t bg-gradient-to-t from-marka to-marka-hover"
                   style={{ height: `${Math.max(4, (Math.max(0, n) / trendMax) * 100)}%` }}
                   title={fmtNet(n)}
                 />
@@ -343,7 +343,7 @@ export default function Exams() {
                     id={id}
                     value={templateKey}
                     onChange={(e) => setTemplateKey(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   >
                     {EXAM_TEMPLATES.map((t) => (
                       <option key={t.key} value={t.key}>
@@ -360,7 +360,7 @@ export default function Exams() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="ör. TYT Denemesi 3"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   />
               )}
             </Field>
@@ -372,7 +372,7 @@ export default function Exams() {
                     value={examDate}
                     max={toDateStr(new Date())}
                     onChange={(e) => setExamDate(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   />
               )}
             </Field>
@@ -403,7 +403,7 @@ export default function Exams() {
                           value={r.subject}
                           onChange={(e) => setRow(i, { subject: e.target.value })}
                           placeholder="Ders"
-                          className="w-full min-w-[7rem] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                          className="w-full min-w-[7rem] rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                         />
                         {r.max > 0 && (
                           <span
@@ -471,7 +471,7 @@ export default function Exams() {
             <button
               type="button"
               onClick={addRow}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 "
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-marka-soft-fg transition hover:bg-marka-soft "
             >
               + Ders ekle
             </button>
@@ -494,7 +494,7 @@ export default function Exams() {
           <button
             type="submit"
             disabled={createExam.isPending}
-            className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-marka py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {createExam.isPending ? "Kaydediliyor…" : "Denemeyi Kaydet"}
           </button>

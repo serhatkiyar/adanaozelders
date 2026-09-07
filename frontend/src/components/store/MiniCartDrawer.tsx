@@ -89,7 +89,7 @@ export function MiniCartDrawer({
           </div>
           <PlainButton
             onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus"
           >
             <span className="sr-only">Kapat</span>
             <span aria-hidden="true" className="text-xl leading-none">
@@ -162,7 +162,7 @@ export function MiniCartDrawer({
           <div className="mt-4 space-y-2">
             <Link
               to={ROUTES.storeCheckout}
-              className="flex h-11 items-center justify-center rounded-lg bg-indigo-600 px-6 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+              className="flex h-11 items-center justify-center rounded-lg bg-marka px-6 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
             >
               Ödemeye geç
             </Link>

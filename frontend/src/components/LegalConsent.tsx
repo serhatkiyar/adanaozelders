@@ -5,7 +5,7 @@ import { ROUTES } from "@/lib/routes";
 // → kayıt formu ve ödeme yüzeyleri gibi sık yüklenen chunk'ları şişirmez.
 
 const linkCls =
-  "font-semibold text-indigo-600 underline-offset-2 hover:underline ";
+  "font-semibold text-marka-metin underline-offset-2 hover:underline ";
 
 /**
  * Kayıt formlarındaki zorunlu KVKK/koşul onayı. `required` checkbox olduğundan
@@ -17,7 +17,7 @@ export function ConsentCheckbox() {
       <input
         type="checkbox"
         required
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 "
+        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
       />
       <span>
         <Link to={ROUTES.kvkk} target="_blank" className={linkCls}>

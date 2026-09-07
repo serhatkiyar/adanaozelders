@@ -161,7 +161,7 @@ export function OrdersPanel() {
         return adet > 0 ? (
           <span className="text-sm">{adet}</span>
         ) : (
-          <span className="text-xs text-slate-400">—</span>
+          <span className="text-xs text-slate-400">-</span>
         );
       },
     },

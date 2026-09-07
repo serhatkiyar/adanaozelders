@@ -172,7 +172,12 @@ async def test_R3b_downgrade_KAYIPLIDIR_veri_geri_gelmez(taze_db):
     _alembic("upgrade", "head", db=ad)
     assert "username" not in await _kolonlar(engine, "clients")
 
-    _alembic("downgrade", "-1", db=ad)
+    # `-1` DEĞİL, ADLI revizyon: zincire yeni bir migration eklendiği anda
+    # `-1` başka bir şeyi geri alır ve bu test "downgrade kolonu geri
+    # getirmedi" diye YANLIŞ yerde kırılır. (6 Eyl'de tam olarak bu oldu:
+    # izin etiketi migration'ı head olunca `-1` onu geri aldı.)
+    # Hedef, `username`i düşüren revizyonun EBEVEYNİ.
+    _alembic("downgrade", "c8e1a5b73f20", db=ad)
     kolonlar = await _kolonlar(engine, "clients")
     assert "username" in kolonlar, "downgrade kolonu geri getirmedi"
 

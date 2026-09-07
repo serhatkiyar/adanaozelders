@@ -100,7 +100,7 @@ export default function DamageEventsPage() {
       onSuccess: (r) => {
         setSonuc(
           r.replayed
-            ? "Bu işlem zaten işlenmişti — aynı anahtarla ikinci kez uygulanmadı, stok değişmedi."
+            ? "Bu işlem zaten işlenmişti: aynı anahtarla ikinci kez uygulanmadı, stok değişmedi."
             : `Hasar kaydı alındı: ${damageKindPastLabel(payload.kind)}, ürün #${payload.product_id}, ${payload.qty} adet.`
         );
         // KOŞULSUZ kapatma: veri kaydedildi, bekçiye soracak bir şey yok.

@@ -177,6 +177,10 @@ export const OLCUM_TABANI = [
   "src/components/Spinner.tsx",
   "src/components/StarRating.tsx",
   "src/components/map/MapGate.tsx",
+  // Dairesel ok düğmesi (7 Eyl 2026): vitrin/şerit kaydırma ve "tümünü gör"
+  // oklarının TEK kaynağı. Üç ayrı el yazımını değiştirdi; ölçüme sıfır borç
+  // ekler (ham düğme değil, adı zorunlu `aria-label` ile geliyor).
+  "src/components/ui/DaireDugme.tsx",
   "src/components/ui/Field.tsx",
   "src/components/ui/Modal.tsx",
   "src/components/ui/PlainButton.tsx",

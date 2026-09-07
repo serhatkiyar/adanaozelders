@@ -5,6 +5,9 @@ alışveriş yapabilsin" isteğinin doğru davranışını tek yerde sabitlemek 
 maddenin karşılığında gerçek HTTP + gerçek PostgreSQL testi bulunmasını
 zorunlu kılmak.
 
+Ürün kararı bağlamı: **ÜK-5** (bir e-posta = bir hesap) ve **ÜK-6**
+(eğitmen de favorileyebilir) — `docs/urun-kararlari.md`.
+
 ---
 
 ## 0. Ölçülen başlangıç durumu
@@ -62,6 +65,8 @@ kesintisiz alışverişi verir.
 - Kayıtlı adresler (dört uç)
 - Mağaza favorileri, koleksiyonlar ("Listelerim"), stok bildirimi
 - **Ürün yorumu / puanı** — satın alma şartı (`store_service._has_purchased`) korunur
+- **Eğitmen ve kütüphane favorileri** (`bookmarks.py`, `library_bookmarks.py`)
+  — 6 Eyl 2026'da kapsam dışından buraya taşındı, bkz. aşağıdaki not
 
 **Kapsam dışı** — CLIENT'a özel kalır:
 
@@ -72,6 +77,15 @@ kesintisiz alışverişi verir.
 Gerekçe: bu yüzeyler "eğitmen eğitmenden ders alır" gibi çözülmemiş ürün
 sorularını ve `_assert_party` / `_can_message_client_tutor` gibi görmediği
 tarafları doğurur.
+
+**Favorilerin kapsam değiştirmesi (ÜK-6 · `docs/urun-kararlari.md`).** Yukarıdaki
+gerekçe favoriye uymuyordu: favori özel bir listedir — taraf ilişkisi kurmaz,
+para yolu yoktur, mesajlaşma açmaz. Favori, `require_roles` toptan uygulandığı
+için ders ve kütüphane yüzeylerinin yanına düşmüştü. Tutarsızlık ölçülüydü:
+eğitmen mağazada ürün favorileyebiliyor ama ders verdiği kütüphaneyi
+favorileyemiyordu. K-20 yalnız `bookmarks` için daraltıldı; rezervasyon ve
+talep uçları listede kaldı. Yeni kural: eğitmen **kendi ilanını** favorileyemez
+(§3'ün favori karşılığı, `bookmark_service.add`).
 
 ---
 
@@ -150,14 +164,32 @@ Her satır, üretim kodu değişmeden **kırmızı** olmalı.
 | K-11 | Gölge e-postası + herhangi bir şifre ile giriş | 401 |
 | K-12 | Şifre sıfırlama eğitmen satırına gider, gölgeye değil | doğru |
 | ~~K-13~~ | ~~Gölge kullanıcı adı global tekillikte yer tutmaz~~ | **DÜŞTÜ (5 Eyl 2026):** `username` alanı şemadan kaldırıldı, madde konusuz kaldı. Testi de silindi. |
-| K-14 | Eğitmenin e-postasıyla ayrı bir öğrenci hesabı açılabilir (bugünkü davranış) | 201 — gölge bunu kırmaz |
+| K-14 | **DEĞİŞTİ (6 Eyl 2026):** bir e-posta = bir hesap. Eğitmenin e-postasıyla ayrı bir üye hesabı AÇILAMAZ | 409 — engel eğitmenin KENDİ satırı |
+| K-14b | Gölge tekillik alanını hâlâ tüketmez — 409 gölge yokken de aynı | sebep izole edilir |
+
+> **K-14 neden tersine döndü.** Madde zaten *"(bugünkü davranış)"* diye
+> kaydedilmişti: ürün kuralı değil, mevcut davranışın karakterizasyonuydu.
+> Asıl şart hep ikinci sütundaydı — *gölge bunu kırmaz* — ve o şart korunuyor.
+>
+> Gerçek Postgres'te ölçülen tehlike: aynı e-posta iki tabloda birden
+> olabildiğinde, kişi iki hesapta AYNI parolayı kullanırsa (ki "üyeyim, bir de
+> eğitmen olayım" diyen herkes bunu yapar) `authenticate`
+> `_LOGIN_PRECEDENCE`te TUTOR'ı önce görür, giriş eğitmeni açar ve ÜYE
+> HESABINA — siparişleri, rezervasyonları, favorileri, mesajlarıyla —
+> hiçbir parolayla ULAŞILAMAZ. Sessiz hesap kaybı.
+>
+> Nöbetçi: `tests/integration/test_ayni_eposta_iki_tablo_pg.py`.
 | K-15 | Eğitmen adını değiştirir → sonraki alışverişte gölge adı güncel | drift yok |
 | K-16 | Admin kullanıcı dizini ve `total_clients` gölgeyi saymaz | doğru |
 | K-17 | Eğitmen hesabını kapatır → gölge de anonimleşir | doğru |
 | K-18 | Yolda kargosu olan eğitmen hesap kapatma ister | reddedilir |
 | K-19 | Mağaza alıcı uçlarının hiçbirinde `require_roles(RoleType.CLIENT)` kalmaz | rota tablosundan ölçülür, uç başına ayrı test |
-| K-20 | Kapsam dışı uçlar (ders, kütüphane, talep) TUTOR'a kapalı kalır | 403 |
+| K-20 | Kapsam dışı uçlar (ders rezervasyonu, talep) TUTOR'a kapalı kalır | 403 |
 | K-21 | ADMIN / operatör / kurye `get_shopping_client`'a girerse | 403 |
+| K-22 | Eğitmen bir eğitmeni favoriler, listesinde görür, siler | 204 · listede · 204 |
+| K-23 | Eğitmen bir kütüphaneyi favoriler, listesinde görür | 204 · listede |
+| K-24 | Eğitmen KENDİ ilanını favorileyemez (başkasını favoriler) | 400 · 204 |
+| K-25 | Eğitmenin favorisi gerçek müşterinin listesine karışmaz | izole |
 
 ---
 

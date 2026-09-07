@@ -62,7 +62,7 @@ export function AddressMapModal({
                   type="button"
                   onClick={() => lat != null && lng != null && onConfirm(lat, lng, address)}
                   disabled={lat == null}
-                  className="flex-1 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50"
                 >
                   Onayla
                 </button>

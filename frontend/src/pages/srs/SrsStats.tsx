@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useSrsDecks, useSrsStats } from "@/hooks/useSrs";
 import { getErrorMessage } from "@/lib/errors";
@@ -16,7 +16,7 @@ const dayFmt = new Intl.DateTimeFormat("tr-TR", {
 
 export default function SrsStats() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
 
   const decksQuery = useSrsDecks();
   const [deckId, setDeckId] = useState("");
@@ -39,7 +39,7 @@ export default function SrsStats() {
           <div>
             <Link
               to={ROUTES.srs}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+              className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
             >
               ← Aralıklı Tekrar
             </Link>
@@ -81,7 +81,7 @@ export default function SrsStats() {
               action={
                 <Link
                   to={ROUTES.srs}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                 >
                   Çalışmaya başla
                 </Link>
@@ -106,7 +106,7 @@ export default function SrsStats() {
                   <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900 ">
                     {stats.data?.retention_rate != null
                       ? `%${Math.round(stats.data.retention_rate * 100)}`
-                      : "—"}
+                      : "-"}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-400 ">
                     Tekrar kartlarında "Tekrar" dışı cevap payı
@@ -148,7 +148,7 @@ export default function SrsStats() {
                         </span>
                         <div className="h-4 flex-1 overflow-hidden rounded bg-slate-100 ">
                           <div
-                            className="h-full rounded bg-indigo-500/80 "
+                            className="h-full rounded bg-marka-mid/80 "
                             style={{ width: `${(d.due / maxDue) * 100}%` }}
                           />
                         </div>

@@ -35,7 +35,7 @@ export default function TestLiveLesson() {
     <div className="min-h-screen bg-slate-100 px-4 py-12 ">
       <div className="mx-auto max-w-lg space-y-6">
         <header className="text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-indigo-500">Test · Prototip</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-marka-metin">Test · Prototip</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900 ">Canlı ders önizleme</h1>
           <p className="mt-2 text-sm text-slate-500 ">
             Zaman kapısını atlayıp gömülü Jitsi penceresini elle başlatır. Kamera/mikrofon izni
@@ -51,7 +51,7 @@ export default function TestLiveLesson() {
             <Field label="Eğitmen adı">
               <input className="input" value={tutor} onChange={(e) => setTutor(e.target.value)} />
             </Field>
-            <Field label="Öğrenci adı">
+            <Field label="Üye adı">
               <input className="input" value={client} onChange={(e) => setClient(e.target.value)} />
             </Field>
           </div>
@@ -71,7 +71,7 @@ export default function TestLiveLesson() {
           <div className="flex flex-wrap gap-3 pt-1">
             <button
               onClick={start}
-              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover"
             >
               🎥 Canlı dersi başlat
             </button>
@@ -108,7 +108,7 @@ export default function TestLiveLesson() {
             href={jitsiUrl(room.trim() || "adana-test-oda")}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-indigo-500"
+            className="underline hover:text-marka-metin"
           >
             {jitsiUrl(room.trim() || "adana-test-oda")}
           </a>

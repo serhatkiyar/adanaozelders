@@ -177,7 +177,7 @@ export default function TutorPreApply() {
                       if (taslak) guncelle(taslak.alanlar);
                       setTaslakVar(false);
                     }}
-                    className="text-sm font-medium text-indigo-700 hover:text-indigo-900"
+                    className="text-sm font-medium text-marka-metin-hover hover:text-marka-soft-fg"
                   >
                     Devam et
                   </PlainButton>
@@ -228,7 +228,7 @@ export default function TutorPreApply() {
                     to={ROUTES.kvkk}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-medium text-indigo-700 underline underline-offset-2"
+                    className="font-medium text-marka-metin-hover underline underline-offset-2"
                   >
                     KVKK aydınlatma metnini
                   </Link>{" "}

@@ -13,6 +13,8 @@ import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import type { AdminUserRolePath } from "@/types";
+import { rolEtiketi } from "@/lib/roles";
+import { ROLE_IDS } from "@/types";
 
 const VALID_ROLES = new Set<AdminUserRolePath>(["admin", "tutor", "client"]);
 
@@ -41,7 +43,7 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 pb-12">
-      <Link to={backUrl} className="inline-flex items-center gap-2 text-sm font-semibold text-panel-accent transition hover:opacity-80">
+      <Link to={backUrl} className="inline-flex items-center gap-2 text-sm font-semibold text-panel-accent-text transition hover:opacity-80">
         <span aria-hidden="true">←</span> Kullanıcılara dön
       </Link>
 
@@ -57,7 +59,7 @@ export default function AdminUserDetailPage() {
               <p className="mt-1 break-all text-sm text-slate-600 ">{user.email}</p>
             </div>
           </div>
-          <Badge tone="info">{user.role === "ADMIN" ? "Yönetici" : user.role === "TUTOR" ? "Eğitmen" : "Öğrenci"}</Badge>
+          <Badge tone="info">{rolEtiketi(ROLE_IDS[user.role])}</Badge>
         </div>
 
         <dl className="mt-6 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4 ">

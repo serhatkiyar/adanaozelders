@@ -52,7 +52,7 @@ function Pill({
       disabled={disabled}
       className={`rounded-xl px-3.5 py-2 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
         active
-          ? "bg-indigo-600 text-white shadow-sm"
+          ? "bg-marka text-marka-fg shadow-sm"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
       }`}
     >
@@ -337,7 +337,7 @@ export function BookingModal({
               <div
                 key={s}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  step >= s ? "bg-indigo-600" : "bg-slate-100 "
+                  step >= s ? "bg-marka" : "bg-slate-100 "
                 }`}
               />
             );
@@ -361,7 +361,7 @@ export function BookingModal({
                     onClick={() => setMode(TeachingMode.ONLINE)}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.ONLINE
-                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 "
+                        ? "border-marka bg-marka-soft/50 text-marka-metin-hover "
                         : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 "
                     }`}
                   >
@@ -375,7 +375,7 @@ export function BookingModal({
                     onClick={() => setMode(TeachingMode.IN_PERSON)}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.IN_PERSON
-                        ? "border-indigo-600 bg-indigo-50/50 text-indigo-700 "
+                        ? "border-marka bg-marka-soft/50 text-marka-metin-hover "
                         : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 "
                     }`}
                   >
@@ -387,8 +387,8 @@ export function BookingModal({
                   </button>
                 </div>
               ) : (
-                <div className="rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-5 mt-4 ">
-                  <p className="text-sm font-medium text-indigo-800 text-center">
+                <div className="rounded-2xl border-2 border-marka-line bg-marka-soft p-5 mt-4 ">
+                  <p className="text-sm font-medium text-marka-soft-fg text-center">
                     Bu eğitmen sadece <strong>{mode === TeachingMode.ONLINE ? "Uzaktan" : "Yüzyüze"}</strong> ders vermektedir.
                   </p>
                 </div>
@@ -397,7 +397,7 @@ export function BookingModal({
               <button
                 type="button"
                 onClick={handleNext}
-                className="mt-8 w-full rounded-xl bg-indigo-600 px-4 py-3.5 text-center text-sm font-bold text-white transition hover:bg-indigo-700"
+                className="mt-8 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover"
               >
                 Devam Et
               </button>
@@ -414,7 +414,7 @@ export function BookingModal({
               </div>
 
               {hasAvailability && (
-                <div className="rounded-xl bg-indigo-50 px-4 py-3 text-xs leading-relaxed text-indigo-700 ">
+                <div className="rounded-xl bg-marka-soft px-4 py-3 text-xs leading-relaxed text-marka-metin-hover ">
                   <span className="font-semibold">Müsait saatler:</span>{" "}
                   {summarize(tutor.availability ?? [])
                     .map((s) => `${WEEKDAYS_SHORT[s.weekday]} ${s.ranges}`)
@@ -476,7 +476,7 @@ export function BookingModal({
                 type="button"
                 onClick={handleNext}
                 disabled={!selectedDate || !selectedTime || isTimeDisabled(selectedTime)}
-                className="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3.5 text-center text-sm font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-6 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Devam Et
               </button>
@@ -499,7 +499,7 @@ export function BookingModal({
                     <button
                       type="button"
                       onClick={() => setShowAddressForm(false)}
-                      className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 "
+                      className="flex items-center gap-1 text-xs font-semibold text-marka-metin hover:text-marka-metin-hover "
                     >
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -536,7 +536,7 @@ export function BookingModal({
                   <button
                     type="button"
                     onClick={handleOpenNew}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-indigo-300 py-2.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 "
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-marka-mid py-2.5 text-xs font-semibold text-marka-soft-fg transition hover:bg-marka-soft "
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -547,27 +547,27 @@ export function BookingModal({
                     type="button"
                     onClick={handleNext}
                     disabled={!bookingLocation.trim() && !locationLat}
-                    className="mt-3 w-full rounded-xl bg-indigo-600 px-4 py-3.5 text-center text-sm font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="mt-3 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Devam Et
                   </button>
                 </div>
               ) : (
                 /* ── Hiç kayıtlı adres yok: ekleme daveti ── */
-                <div className="flex flex-col items-center justify-center rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-8 ">
-                  <div className="mb-4 rounded-full bg-indigo-100 p-4 text-indigo-600 ">
+                <div className="flex flex-col items-center justify-center rounded-xl border border-marka-line bg-marka-soft/50 px-4 py-8 ">
+                  <div className="mb-4 rounded-full bg-marka-line p-4 text-marka-soft-fg ">
                     <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0Z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0Z" />
                     </svg>
                   </div>
-                  <p className="mb-4 text-center text-sm font-medium text-indigo-900 ">
+                  <p className="mb-4 text-center text-sm font-medium text-marka-soft-fg ">
                     Dersin yapılacağı adresi ekleyin; sonraki rezervasyonlarda tek tıkla seçebilirsiniz.
                   </p>
                   <button
                     type="button"
                     onClick={handleOpenNew}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-indigo-700"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-marka px-6 py-3 text-sm font-bold text-marka-fg transition hover:bg-marka-hover"
                   >
                     Adres Ekle
                   </button>
@@ -593,7 +593,7 @@ export function BookingModal({
                     type="checkbox"
                     checked={freeLesson}
                     onChange={(e) => setFreeLesson(e.target.checked)}
-                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-marka"
                   />
                   <span className="text-sm">
                     <span className="font-semibold text-emerald-800 ">
@@ -616,7 +616,7 @@ export function BookingModal({
                       placeholder="Kendinizi kısaca tanıtın, ders beklentilerinizi veya hedeflerinizi yazın..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                     />
                 )}
               </Field>
@@ -624,7 +624,7 @@ export function BookingModal({
               <button
                 type="submit"
                 disabled={createBooking.isPending || (mode === TeachingMode.IN_PERSON && !bookingLocation.trim() && !locationLat)}
-                className="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3.5 text-center text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-6 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {createBooking.isPending
                   ? "Gönderiliyor…"

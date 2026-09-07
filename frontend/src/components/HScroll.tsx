@@ -1,15 +1,41 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { PlainButton } from "@/components/ui/PlainButton";
+import { DaireDugme } from "@/components/ui/DaireDugme";
 
-// Yatay tek satır kaydırıcı: kategori çubuğundaki gibi kenarlarda beliren
-// (sınıra gelince gizlenen) ok butonları + basılı tutunca sürekli kaydırma.
+/**
+ * Yatay tek satır kaydırıcı — vitrin kuşakları (eğitmen / kütüphane kartları).
+ *
+ * ## Buton yerleşimi (kullanıcı kararı, 7 Eyl 2026)
+ *
+ * Oklar eskiden kuşağın SOL/SAĞ kenarında, kartların ÜSTÜNE binen beyaz
+ * dairelerdi ve sınıra gelince tamamen kayboluyorlardı. Kullanıcı bu görünümü
+ * beğenmedi; Airbnb deseni istendi: oklar başlık satırının SAĞ UCUNDA, kartların
+ * dışında; sınıra gelince kaybolmaz **soluklaşır**.
+ *
+ * Düğmenin GÖRÜNÜMÜ burada tanımlı değil: `ui/DaireDugme` tek kaynaktır.
+ * İlk yazımda buraya ayrı bir stil (beyaz + kenarlık) elle yazılmıştı ve aynı
+ * satırdaki "tümünü gör" okundan farklı görünüyordu — kullanıcı itirazı.
+ *
+ * Kaybolmak yerine solmanın bir bedeli var ve bilinçli: düğme yerinde kalınca
+ * satırın kaydırılabilir olduğu görünür kalır ve üstteki düzen zıplamaz.
+ *
+ * `baslik` verilmezse (bugün her çağrı yeri veriyor) oklar hiç çizilmez —
+ * kartların üstüne binen eski davranış geri gelmez.
+ *
+ * Nöbetçi: `__guards__/vitrinKaydirma.test.tsx`.
+ */
 export function HScroll({
   children,
   className = "",
+  baslik,
+  etiket = "Kuşak",
 }: {
   children: ReactNode;
   className?: string;
+  /** Başlık satırının SOL tarafı; oklar sağ uca yerleşir. */
+  baslik?: ReactNode;
+  /** Ok düğmelerinin erişilebilir adında geçen kuşak adı. */
+  etiket?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -44,14 +70,17 @@ export function HScroll({
   useEffect(() => stopScroll, []);
 
   const startScroll = (dir: "left" | "right") => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollBy({ left: dir === "left" ? -400 : 400, behavior: "smooth" });
+    const el = scrollRef.current;
+    if (!el) return;
+    // Bir "sayfa" = görünen genişlik (eksi bir kart payı), sabit 400px değil:
+    // geniş ekranda tek tık yarım kart kaydırıyordu.
+    const adim = Math.max(240, el.clientWidth - 80);
+    el.scrollBy({ left: dir === "left" ? -adim : adim, behavior: "smooth" });
 
+    // Basılı tutunca sürekli kaydırma korundu — yeri değişti, davranışı değil.
     timeoutRef.current = setTimeout(() => {
       intervalRef.current = setInterval(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollBy({ left: dir === "left" ? -15 : 15, behavior: "auto" });
-        }
+        scrollRef.current?.scrollBy({ left: dir === "left" ? -15 : 15, behavior: "auto" });
       }, 15);
     }, 400);
 
@@ -62,8 +91,37 @@ export function HScroll({
     window.addEventListener("pointerup", handleUp);
   };
 
+  // İçerik zaten sığıyorsa okları hiç çizme (iki yön de kapalı = kaydırma yok).
+  const kaydirilabilir = canScrollLeft || canScrollRight;
+
   return (
-    <div className="relative w-full">
+    <div className="w-full">
+      {baslik !== undefined && (
+        <div className="mb-4 flex items-center justify-between gap-4">
+          {baslik}
+          {kaydirilabilir && (
+            <div className="flex shrink-0 items-center gap-2">
+              <DaireDugme
+                yon="sol"
+                disabled={!canScrollLeft}
+                onPointerDown={() => canScrollLeft && startScroll("left")}
+                onPointerUp={stopScroll}
+                onPointerLeave={stopScroll}
+                aria-label={`${etiket}: sola kaydır`}
+              />
+              <DaireDugme
+                yon="sag"
+                disabled={!canScrollRight}
+                onPointerDown={() => canScrollRight && startScroll("right")}
+                onPointerUp={stopScroll}
+                onPointerLeave={stopScroll}
+                aria-label={`${etiket}: sağa kaydır`}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       <div
         ref={scrollRef}
         onScroll={checkScroll}
@@ -72,40 +130,6 @@ export function HScroll({
       >
         {children}
       </div>
-
-      {canScrollRight && (
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
-          <PlainButton
-            type="button"
-            onPointerDown={() => startScroll("right")}
-            onPointerUp={stopScroll}
-            onPointerLeave={stopScroll}
-            className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 "
-            aria-label="Sağa kaydır"
-          >
-            <svg className="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </PlainButton>
-        </div>
-      )}
-
-      {canScrollLeft && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-          <PlainButton
-            type="button"
-            onPointerDown={() => startScroll("left")}
-            onPointerUp={stopScroll}
-            onPointerLeave={stopScroll}
-            className="pointer-events-auto flex h-10 w-10 select-none items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 text-slate-800 transition hover:scale-105 hover:bg-slate-50 "
-            aria-label="Sola kaydır"
-          >
-            <svg className="h-5 w-5 mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </PlainButton>
-        </div>
-      )}
 
       <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
     </div>

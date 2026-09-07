@@ -31,6 +31,12 @@ export function TutorCard({
       ? "Uzaktan"
       : tutor.district || "Yüzyüze & Uzaktan";
     
+  // Cinsiyet listede YAZILMAZ (kullanıcı kararı, 7 Eyl 2026). Bir süre meta
+  // satırının parçasıydı; kartta demografik bir öznitelik taşımanın karşılığı
+  // yok. Arama tarafı DEĞİŞMEDİ: cinsiyet filtresi ve faset sayıları yerinde,
+  // değer eğitmen profilinde (`PublicTutorProfile`) görünmeye devam ediyor.
+  const metaSatiri = locationText;
+
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
   // Superprof usually only shows first name
   const firstName = tutor.full_name.split(" ")[0];
@@ -43,7 +49,7 @@ export function TutorCard({
       {/* ── Picture Area ── */}
       <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 ">
         <img 
-          src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=c7d2fe&color=3730a3&size=400"} 
+          src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=fed7aa&color=9a3412&size=400"} 
           alt={tutor.full_name} 
           className="h-full w-full object-cover"
           loading="lazy"
@@ -74,7 +80,7 @@ export function TutorCard({
             {firstName}
           </p>
           <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">
-            <span>{locationText}</span>
+            <span>{metaSatiri}</span>
           </div>
         </div>
       </div>

@@ -47,7 +47,7 @@ export function OrderInvoiceModal({
 
   const statusLabel = STATUS_LABELS[order.status]?.label ?? order.status;
   const buyerName =
-    belge?.buyer.name || order.ship_recipient || buyerFallbackName || "—";
+    belge?.buyer.name || order.ship_recipient || buyerFallbackName || "-";
   const cityLine = [
     belge?.buyer.district ?? order.ship_district,
     belge?.buyer.city ?? order.ship_city,
@@ -172,7 +172,7 @@ export function OrderInvoiceModal({
                       </td>
                       {belge && (
                         <td className="py-2 text-center align-top text-slate-600 ">
-                          {faturaSatiri ? oranEtiketi(faturaSatiri.tax_rate) : "—"}
+                          {faturaSatiri ? oranEtiketi(faturaSatiri.tax_rate) : "-"}
                         </td>
                       )}
                       <td className="py-2 text-right align-top text-slate-600 ">
@@ -240,7 +240,7 @@ export function OrderInvoiceModal({
             type="button"
             disabled={fatura.isLoading}
             onClick={() => window.print()}
-            className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-full bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
           >
             Yazdır / PDF olarak kaydet
           </button>

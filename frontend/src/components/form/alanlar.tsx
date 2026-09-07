@@ -19,7 +19,7 @@ import { PlainButton } from "@/components/ui/PlainButton";
 const GIRDI =
   "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-base " +
   "text-slate-900 outline-none transition placeholder:text-slate-400 " +
-  "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+  "focus:border-marka-mid focus:ring-2 focus:ring-marka/20";
 
 const HATALI = "border-rose-300 focus:border-rose-400 focus:ring-rose-100";
 
@@ -222,7 +222,7 @@ export function SegmentSecim({
   onChange: (deger: string) => void;
   secenekler: readonly { deger: string; etiket: string }[];
   /**
-   * Seçili seçeneğin sınıfları. Verilmezse varsayılan indigo kullanılır.
+   * Seçili seçeneğin sınıfları. Verilmezse marka aksanı kullanılır.
    *
    * RENK BURADA YAZILMAZ: ilan sihirbazı mercan aksan kullanıyor ve o hex'in
    * bu dosyaya girmesi `__guards__/sihirbazMercani.test.ts` tarafından
@@ -246,7 +246,7 @@ export function SegmentSecim({
               className={`rounded-xl border px-4 py-3 text-left text-[15px] transition ${
                 secili
                   ? (aktifSinif ??
-                    "border-indigo-600 bg-indigo-50 font-medium text-indigo-900")
+                    "border-marka bg-marka-soft font-medium text-marka-soft-fg")
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
               }`}
             >
@@ -281,7 +281,7 @@ export function OnayKutusu({
           checked={isaretli}
           onChange={(e) => onChange(e.target.checked)}
           aria-invalid={hata ? true : undefined}
-          className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
         />
         <span className="text-sm leading-relaxed text-slate-600">{children}</span>
       </label>
@@ -311,7 +311,7 @@ export function AnaDugme({
       type={tip}
       onClick={onClick}
       disabled={bekliyor}
-      className="w-full rounded-xl bg-indigo-600 px-5 py-3.5 text-[15px] font-semibold text-white transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+      className="w-full rounded-xl bg-marka px-5 py-3.5 text-[15px] font-semibold text-marka-fg transition hover:bg-marka-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka disabled:cursor-not-allowed disabled:opacity-60"
     >
       {children}
     </button>

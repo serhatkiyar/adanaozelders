@@ -201,7 +201,7 @@ function CatalogCard({ catalog, canManage, onEdit }: { catalog: CatalogOut; canM
     <>
     <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm ">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 ">
+        <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-bold text-marka-metin-hover ">
           {catalog.exam_type}
         </span>
         {catalog.is_nationwide && (
@@ -491,6 +491,7 @@ function CatalogEditorIcerik({
               <Form.Control>
                 <input
                   type="checkbox"
+                  className="accent-marka"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   onBlur={field.onBlur}
@@ -510,6 +511,7 @@ function CatalogEditorIcerik({
               <Form.Control>
                 <input
                   type="checkbox"
+                  className="accent-marka"
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                   onBlur={field.onBlur}

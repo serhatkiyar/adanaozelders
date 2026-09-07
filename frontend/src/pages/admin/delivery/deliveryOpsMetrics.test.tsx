@@ -152,7 +152,10 @@ describe("İP-19 — operasyon metrikleri bölümü", () => {
 
     // null → "—" ve alt metin; ASLA "%0" değil.
     const zamaninda = await within(bolum).findByTestId("ops-metrik-zamaninda");
-    expect(zamaninda.textContent).toContain("—");
+    // 7 Eyl 2026: gösterge/ad uzun tireden (—) düz karaktere döndü.
+    // Kullanıcı kararı: uzun tire arayüzde "yapay zeka yazmış" izlenimi
+    // bırakıyor. İddianın ANLAMI değişmedi, yalnız beklenen karakter.
+    expect(zamaninda.textContent).toContain("-");
     expect(zamaninda.textContent).toContain("henüz veri yok");
     expect(zamaninda.textContent).not.toContain("%0");
 

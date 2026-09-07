@@ -8,7 +8,7 @@ import { ROUTES } from "@/lib/routes";
 import type { BlogPostAdmin } from "@/types";
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("tr-TR", {
     day: "numeric",
     month: "short",

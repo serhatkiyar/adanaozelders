@@ -23,7 +23,7 @@ interface RescheduleModalProps {
 }
 
 const fieldCls =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 ";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
   const [date, setDate] = useState("");
@@ -126,7 +126,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
             <button
               type="submit"
               disabled={reschedule.isPending}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
             >
               {reschedule.isPending ? "Taşınıyor…" : "Ertele"}
             </button>

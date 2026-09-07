@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROLE_IDS } from "@/types";
 import { useTimerStore, remainingMsOf } from "@/store/timerStore";
@@ -16,12 +16,12 @@ import {
 import { primeAudio } from "@/lib/timerSound";
 
 const RING: Record<TimerMode, string> = {
-  focus: "stroke-indigo-500",
+  focus: "stroke-marka",
   short: "stroke-emerald-500",
   long: "stroke-amber-500",
 };
 const TAB_ACTIVE: Record<TimerMode, string> = {
-  focus: "bg-indigo-600 text-white",
+  focus: "bg-marka text-marka-fg",
   short: "bg-emerald-600 text-white",
   long: "bg-amber-500 text-white",
 };
@@ -31,7 +31,7 @@ const CIRC = 2 * Math.PI * RADIUS;
 
 export default function DeepWork() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
 
   const {
     settings,
@@ -139,7 +139,7 @@ export default function DeepWork() {
                     key={i}
                     className={`h-2 w-2 rounded-full ${
                       i < cyclePos
-                        ? "bg-indigo-500"
+                        ? "bg-marka-mid"
                         : "bg-slate-200 "
                     }`}
                   />
@@ -164,7 +164,7 @@ export default function DeepWork() {
               className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-lg transition active:scale-95 ${
                 running
                   ? "bg-slate-700 hover:bg-slate-600"
-                  : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/30"
+                  : "bg-marka hover:bg-marka-hover shadow-marka/30"
               }`}
               title={running ? "Duraklat" : "Başlat"}
             >
@@ -201,7 +201,7 @@ export default function DeepWork() {
                 onChange={(e) => setTask(e.target.value)}
                 maxLength={120}
                 placeholder="Örn. Matematik, türev soruları"
-                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
               />
           )}
         </Field>
@@ -306,7 +306,7 @@ function SettingNumber({
           const n = parseFloat(e.target.value);
           if (!Number.isNaN(n) && n >= 0) onChange(n);
         }}
-        className="w-20 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-right text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
+        className="w-20 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-right text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
       />
     </div>
   );
@@ -329,7 +329,7 @@ function Toggle({
       <span className="text-sm text-slate-600 ">{label}</span>
       <span
         className={`relative h-6 w-11 rounded-full transition ${
-          checked ? "bg-indigo-600" : "bg-slate-300 "
+          checked ? "bg-marka" : "bg-slate-300 "
         }`}
       >
         <span

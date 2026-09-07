@@ -46,7 +46,7 @@ export function CapacityStrip({
                     : "text-slate-700 "
               }`}
             >
-              {!d.is_working_day ? "—" : d.capacity > 0 ? `${d.booked}/${d.capacity}` : d.booked}
+              {!d.is_working_day ? "-" : d.capacity > 0 ? `${d.booked}/${d.capacity}` : d.booked}
             </p>
             {d.retry_debt > 0 && (
               <p className="text-[10px] font-medium text-amber-600 ">
@@ -64,7 +64,7 @@ export function CapacityStrip({
           <button
             key={d.day}
             type="button"
-            title={`${label}${d.retry_debt > 0 ? ` · ${d.retry_debt} öncelikli yeniden deneme` : ""} — bu güne git`}
+            title={`${label}${d.retry_debt > 0 ? ` · ${d.retry_debt} öncelikli yeniden deneme` : ""}: bu güne git`}
             onClick={() => onSelectDate(d.day)}
             className={`${cls} cursor-pointer hover:ring-slate-300 `}
           >

@@ -22,14 +22,15 @@ import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus"
 import { isLessonJoinable } from "@/lib/lesson";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 /* ─── stat box ───────────────────────────────────────── */
 
-type Tone = "amber" | "indigo" | "emerald" | "slate";
+type Tone = "amber" | "marka" | "emerald" | "slate";
 
 const TONE: Record<Tone, { num: string; bg: string; ring: string }> = {
   amber:   { num: "text-amber-600",   bg: "bg-amber-50",   ring: "ring-amber-100"   },
-  indigo:  { num: "text-indigo-600",  bg: "bg-indigo-50",  ring: "ring-indigo-100"  },
+  marka:   { num: "text-marka-soft-fg",  bg: "bg-marka-soft",  ring: "ring-marka/20"  },
   emerald: { num: "text-emerald-600", bg: "bg-emerald-50", ring: "ring-emerald-100" },
   slate:   { num: "text-slate-700",   bg: "bg-slate-50",   ring: "ring-slate-100"   },
 };
@@ -88,17 +89,17 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
         isPending
           ? "ring-amber-200 "
           : isAccepted
-          ? "ring-indigo-100 "
+          ? "ring-marka/20 "
           : "ring-slate-100 "
       }`}
     >
       <Link
-        to={ROUTES.studentProfile(booking.client_id)}
+        to={ROUTES.uyeProfili(booking.client_id)}
         className="flex min-w-0 items-start gap-3 transition hover:opacity-80"
       >
         <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 hover:text-indigo-600 ">
+          <p className="truncate text-sm font-semibold text-slate-900 hover:text-marka-metin ">
             {clientName}
           </p>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -116,7 +117,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       <div className="flex shrink-0 items-center gap-2">
         <Link
           to={ROUTES.lesson(booking.id)}
-          className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 "
+          className="text-xs font-semibold text-marka-metin transition hover:text-marka-metin-hover "
         >
           Detay →
         </Link>
@@ -159,7 +160,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
             <button
               disabled={busy}
               onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {complete.isPending ? "…" : "Tamamla"}
             </button>
@@ -280,18 +281,18 @@ export default function TutorDashboard() {
         {ilan?.status === TutorStatus.DRAFT && (
           <Link
             to={ROUTES.tutorOnboarding}
-            className="flex items-center justify-between gap-4 rounded-2xl bg-indigo-50 px-5 py-4 ring-1 ring-indigo-100 transition hover:bg-indigo-100/70"
+            className="flex items-center justify-between gap-4 rounded-2xl bg-marka-soft px-5 py-4 ring-1 ring-marka/20 transition hover:bg-marka-line/70"
           >
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-indigo-900">
+              <p className="text-sm font-semibold text-marka-soft-fg">
                 İlanın henüz yayında değil
               </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-indigo-700">
+              <p className="mt-0.5 text-xs leading-relaxed text-marka-metin-hover">
                 Kaldığın yerden devam et; tamamlayınca öğrenciler seni aramada
                 bulmaya başlar.
               </p>
             </div>
-            <span className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white">
+            <span className="shrink-0 rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg">
               Devam et
             </span>
           </Link>
@@ -335,7 +336,7 @@ export default function TutorDashboard() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
               <StatBox label="Bekleyen" value={groups.pending.length} tone="amber" icon="⏳" />
-              <StatBox label="Onaylı" value={groups.accepted.length} tone="indigo" icon="✅" />
+              <StatBox label="Onaylı" value={groups.accepted.length} tone="marka" icon="✅" />
               <StatBox label="Tamamlanan" value={completedCount} tone="emerald" icon="🎓" />
             </div>
 
@@ -380,12 +381,12 @@ export default function TutorDashboard() {
             ) : payout ? (
               <Link
                 to={ROUTES.profile}
-                className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-5 py-3.5 ring-1 ring-indigo-100 transition hover:bg-indigo-100 "
+                className="flex items-center justify-between gap-3 rounded-2xl bg-marka-soft px-5 py-3.5 ring-1 ring-marka/20 transition hover:bg-marka-line "
               >
-                <p className="text-sm font-medium text-indigo-800 ">
+                <p className="text-sm font-medium text-marka-soft-fg ">
                   💳 Ödemeleri alabilmek için <strong>ödeme bilgilerini</strong> ekle (IBAN + kimlik).
                 </p>
-                <span className="shrink-0 text-sm font-bold text-indigo-600 ">
+                <span className="shrink-0 text-sm font-bold text-marka-metin ">
                   Ekle →
                 </span>
               </Link>
@@ -406,15 +407,15 @@ export default function TutorDashboard() {
               hint="Yanıtını bekleyen yeni talepler."
               bookings={groups.pending}
               alert
-              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
+              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)}
             />
             <BookingSection
               title="Onaylı Dersler"
               hint="Yaklaşan dersler, bittiğinde tamamlandı olarak işaretle."
               bookings={groups.accepted}
-              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
+              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)}
             />
-            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")} />
+            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)} />
           </>
         )}
       </div>

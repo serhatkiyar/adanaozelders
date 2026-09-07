@@ -157,3 +157,105 @@ function Satir({ etiket, ikon, onClick }: { etiket: string; ikon: React.ReactNod
     </button>
   );
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   İlçe seçici — `MekanSelect`in KÜTÜPHANE ikizi (kullanıcı kararı, 7 Eyl).
+
+   Kütüphane fiziksel bir mekândır: "Online / Yüz yüze / İkisi de olur"
+   satırları orada anlamsız. Geriye kalan TEK fark budur; etkileşim ve
+   görünüm birebir aynı: yazılabilir kutu, altında düz satırlar, satıra
+   TIKLAYINCA seçilir ve panel kapanır. Checkbox/Tamam/Temizle yok.
+
+   Aynı dosyada duruyor ki satır görünümü (`Satir`), ikon ve panel kabuğu
+   ikisinde de TEK yerden gelsin — ayrı dosyaya alınsaydı biri değişip
+   diğeri kalabilirdi ve "tasarım benzesin" kararı sessizce bozulurdu.
+
+   Not: seçim TEK ilçedir (`[d]`), tıpkı `MekanSelect`in ilçe satırları gibi.
+   Çoklu ilçe hâlâ /kutuphaneler sayfasının `DistrictSelect`inde yaşıyor.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export function IlceSelect({
+  value,
+  onChange,
+  triggerClassName = "",
+  hizaRef,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  triggerClassName?: string;
+  /** Panelin hizalanacağı öğe (arama hapının form'u). */
+  hizaRef?: React.RefObject<HTMLElement>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLInputElement>(null);
+
+  const ozet =
+    value.length === 1 ? value[0] : value.length > 1 ? `${value.length} ilçe` : "Tüm ilçeler";
+
+  const openPopover = () => {
+    const r = (hizaRef?.current ?? triggerRef.current)?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 8, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
+  const sec = (next: string[]) => {
+    onChange(next);
+    setText("");
+    setOpen(false);
+    triggerRef.current?.blur();
+  };
+
+  const n = kucult(text);
+  const TUM_ILCELER = [...SEARCH_PRIMARY_DISTRICTS, ...SEARCH_MORE_DISTRICTS];
+  const ilceler = n ? TUM_ILCELER.filter((x) => kucult(x).includes(n)) : TUM_ILCELER;
+  // "Tüm ilçeler" satırı seçimi TEMİZLER. `MekanSelect`te karşılığı yok çünkü
+  // orada mekân satırları zaten sıfırlıyor; burada olmasa seçim geri alınamazdı.
+  const tumuGoster = !n || kucult("Tüm ilçeler").includes(n);
+
+  return (
+    <>
+      <input
+        ref={triggerRef}
+        type="text"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (!open) openPopover();
+        }}
+        onFocus={openPopover}
+        onBlur={() => setOpen(false)}
+        placeholder={ozet}
+        aria-label="İlçe"
+        className={`${triggerClassName} ${
+          value.length > 0
+            ? "placeholder:font-semibold placeholder:text-slate-700 "
+            : "placeholder:text-slate-400 "
+        }`}
+      />
+
+      {open && pos && (
+        <div
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }}
+          className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 "
+        >
+          {tumuGoster && (
+            <Satir etiket="Tüm ilçeler" ikon={<PinSvg />} onClick={() => sec([])} />
+          )}
+
+          {ilceler.length > 0 && (
+            <>
+              <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ">
+                İlçe
+              </p>
+              {ilceler.map((d) => (
+                <Satir key={d} etiket={d} ikon={<PinSvg />} onClick={() => sec([d])} />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}

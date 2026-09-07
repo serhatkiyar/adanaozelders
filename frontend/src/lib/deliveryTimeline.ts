@@ -7,7 +7,7 @@ export const TIMELINE_LABELS: Record<string, string> = {
   PAYMENT_CONFIRMED: "Ödemen onaylandı",
   PLANNED_FOR_DELIVERY: "Dağıtım planlandı",
   OUT_FOR_DELIVERY: "Kuryemiz dağıtıma çıktı",
-  DELIVERY_FAILED: "Teslim edilemedi — yeniden planlanacak",
+  DELIVERY_FAILED: "Teslim edilemedi: yeniden planlanacak",
   POSTPONED: "Teslimat isteğinle ertelendi",
   DELIVERED: "Teslim edildi",
   CANCELLED: "Sipariş iptal edildi",

@@ -93,7 +93,7 @@ export function formatChatTime(iso?: string | null): string {
 // Ortalama yanıt süresi: saniye -> "~5 dk", "~2 saat", "~3 gün" (yaklaşık).
 // Çok kısa süreler "~1 dk"ya yuvarlanır; null/negatif/geçersizde "—".
 export function formatResponseTime(seconds?: number | null): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "-";
   if (seconds < 3600) return `~${Math.max(1, Math.round(seconds / 60))} dk`;
   if (seconds < 86_400) return `~${Math.round(seconds / 3600)} saat`;
   return `~${Math.round(seconds / 86_400)} gün`;
@@ -103,7 +103,7 @@ export function formatResponseTime(seconds?: number | null): string {
 export function formatLastSeen(iso?: string | null): string {
   if (!iso) return "Hiç görülmedi";
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "—";
+  if (Number.isNaN(then)) return "-";
   const sec = Math.floor((Date.now() - then) / 1000);
   if (sec < 90) return "az önce aktifti";
   if (sec < 3600) return `${Math.floor(sec / 60)} dk önce aktifti`;

@@ -58,7 +58,7 @@ export default function FaqPage() {
             Aradığını bulamazsan{" "}
             <Link
               to={ROUTES.contact}
-              className="font-medium text-indigo-600 underline-offset-2 hover:underline "
+              className="font-medium text-marka-metin underline-offset-2 hover:underline "
             >
               bize yazabilirsin
             </Link>
@@ -73,7 +73,7 @@ export default function FaqPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={`${total} soru içinde ara…`}
-            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
           />
         </label>
 
@@ -82,7 +82,7 @@ export default function FaqPage() {
             “{query}” için sonuç bulunamadı.{" "}
             <Link
               to={ROUTES.contact}
-              className="font-medium text-indigo-600 hover:underline "
+              className="font-medium text-marka-metin hover:underline "
             >
               Sorunu bize yaz
             </Link>

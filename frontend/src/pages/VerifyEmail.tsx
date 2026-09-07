@@ -63,7 +63,7 @@ export default function VerifyEmail() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-100 ">
         {status === "verifying" && (
           <>
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-marka-line border-t-marka" />
             <h1 className="mt-4 text-xl font-bold text-slate-900 ">
               E-postan doğrulanıyor…
             </h1>
@@ -98,7 +98,7 @@ export default function VerifyEmail() {
             </p>
             <Link
               to={authToken ? roleHome(user?.role_id) : ROUTES.login}
-              className="mt-6 inline-block rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              className="mt-6 inline-block rounded-lg bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               {authToken ? "Panele git" : "Giriş yap"}
             </Link>
@@ -134,7 +134,7 @@ export default function VerifyEmail() {
             </p>
             <Link
               to={authToken ? roleHome(user?.role_id) : ROUTES.login}
-              className="mt-6 inline-block rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              className="mt-6 inline-block rounded-lg bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               {authToken ? "Panele dön" : "Giriş yap"}
             </Link>

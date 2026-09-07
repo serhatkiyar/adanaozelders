@@ -108,7 +108,7 @@ function splitSemasi(items: PackageItem[]) {
           code: z.ZodIssueCode.custom,
           path: ["adetler"],
           message:
-            "Kutuda hiç kalem kalmıyor — bu bölme değil, teslimatı tamamen ertelemek olur.",
+            "Kutuda hiç kalem kalmıyor: bu bölme değil, teslimatı tamamen ertelemek olur.",
         });
       }
     });
@@ -235,7 +235,7 @@ function SplitIcerik({
             {/* Tutturulamayan tarih şikâyet üretir; bilinmiyorsa boş bırakmak
                 müşteriye "temin ediliyor" demektir ve bu dürüst cevaptır. */}
             <span className="mt-1 block text-xs text-slate-400">
-              Tedarik tarihini bilmiyorsan boş bırak — müşteri &quot;temin ediliyor&quot;
+              Tedarik tarihini bilmiyorsan boş bırak: müşteri &quot;temin ediliyor&quot;
               görür.
             </span>
           </Form.Item>

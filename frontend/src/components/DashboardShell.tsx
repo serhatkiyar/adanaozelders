@@ -1,4 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useMutation } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { useAuthStore } from "@/store/authStore";
@@ -46,6 +53,38 @@ export function DashboardShell({
     document.title = `Adana Özel Ders · ${title}`;
   }, [title]);
 
+  /* ── YAPIŞKAN ÜST BOŞLUK — tek kaynak (kullanıcı kararı, 7 Eyl 2026) ──
+   *
+   * Kusur: başlık zaten yapışkandı ama doğrulama şeridi AKIŞTAYDI. Sayfa
+   * kaydırılınca şerit gidiyor, yanındaki yapışkan kart da 60 piksel peşinden
+   * sürükleniyor ve ancak ondan sonra sabitleniyordu. Kullanıcı: *"henüz
+   * sayfanın en üstündeyken kaydırmaya başlayınca kart hareket ediyor, ilk
+   * kısımda hareket etmesi çok saçma."*
+   *
+   * Çözüm: başlık ve şerit TEK yapışkan yığın oldu, yüksekliği ölçülüp
+   * `--yapiskan-ust` olarak yayınlanıyor. Yapışkan yan kartlar üst boşluklarını
+   * sabit bir sayı yerine bu değişkenden alır; şerit açılıp kapansa da hizalar
+   * kendiliğinden doğru kalır ve kart HİÇ hareket etmez.
+   *
+   * Ölçüm ResizeObserver'la yapılır: şerit iki satıra sarabiliyor, arama
+   * çubuğu genişleyip daralıyor — sabit bir sayı yazmak yanlış olurdu.
+   */
+  const yiginRef = useRef<HTMLDivElement>(null);
+  const [yapiskanUst, setYapiskanUst] = useState(0);
+  useLayoutEffect(() => {
+    const el = yiginRef.current;
+    if (!el) return;
+    const olc = () => setYapiskanUst(Math.round(el.getBoundingClientRect().height));
+    olc();
+    const gozlemci = new ResizeObserver(olc);
+    gozlemci.observe(el);
+    window.addEventListener("resize", olc);
+    return () => {
+      gozlemci.disconnect();
+      window.removeEventListener("resize", olc);
+    };
+  }, [showVerifyBanner]);
+
   return (
     <div
       className={
@@ -53,10 +92,14 @@ export function DashboardShell({
           ? "flex h-screen flex-col overflow-hidden bg-slate-50 "
           : "min-h-screen bg-slate-50 "
       }
+      style={{ "--yapiskan-ust": `${yapiskanUst}px` } as CSSProperties}
     >
-      <DashboardHeader navItems={navItems} transparent center={center} bottom={bottom} expanded />
+      {/* Başlık + şerit TEK yapışkan yığın: şerit akışta kalsaydı kaydırınca
+          gider, yanındaki yapışkan kartı da peşinden sürüklerdi. */}
+      <div ref={yiginRef} className="sticky top-0 z-40">
+        <DashboardHeader navItems={navItems} transparent center={center} bottom={bottom} expanded />
 
-      {showVerifyBanner && (
+        {showVerifyBanner && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <svg
@@ -108,8 +151,9 @@ export function DashboardShell({
               </svg>
             </button>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       <main className={flush ? "min-h-0 flex-1 overflow-hidden" : "p-4 sm:p-6"}>
         {children}

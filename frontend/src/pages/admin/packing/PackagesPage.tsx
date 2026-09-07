@@ -215,7 +215,7 @@ export default function PackagesPage() {
     canPrintLabel(paket.status) ? (
       <input
         type="checkbox"
-        className="h-4 w-4 shrink-0"
+        className="h-4 w-4 shrink-0 accent-marka"
         aria-label={`${paket.code} etiketini seç`}
         checked={secili.includes(paket.id)}
         onChange={() => secimDegistir(paket.id)}
@@ -240,7 +240,7 @@ export default function PackagesPage() {
             <div className="min-w-0">
               <Link
                 to={ROUTES.adminPackingPackage(row.original.id)}
-                className="text-sm font-semibold text-panel-accent hover:underline"
+                className="text-sm font-semibold text-panel-accent-text hover:underline"
               >
                 {row.original.code}
               </Link>
@@ -328,7 +328,7 @@ export default function PackagesPage() {
           <button
             type="button"
             onClick={() => url.ayarla({ siparis: 0 })}
-            className="min-h-9 rounded-lg bg-panel-accent-soft px-3 text-xs font-semibold text-panel-accent transition hover:bg-panel-accent-soft/70"
+            className="min-h-9 rounded-lg bg-panel-accent-soft px-3 text-xs font-semibold text-panel-accent-text transition hover:bg-panel-accent-soft/70"
           >
             Sipariş #{siparis} süzgecini kaldır ×
           </button>
@@ -351,7 +351,7 @@ export default function PackagesPage() {
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 ">
                 <input
                   type="checkbox"
-                  className="h-4 w-4"
+                  className="h-4 w-4 accent-marka"
                   checked={seciliGorunen.length === basilabilirler.length}
                   onChange={(e) =>
                     setSecili(e.target.checked ? basilabilirler.map((p) => p.id) : [])
@@ -399,7 +399,7 @@ export default function PackagesPage() {
                  Kolondaki `<a>`, aksiyon `<button>`ları ve seçim `<input>`u —
                  üçü de satırı açmamalı. */
               onRowClick={(p) => navigate(ROUTES.adminPackingPackage(p.id))}
-              satirAdi={(p) => `${p.code} — paket detayı`}
+              satirAdi={(p) => `${p.code}: paket detayı`}
               renderMobileRow={(paket) => {
                 const damga = zamanDamgasi(paket);
                 return (

@@ -232,7 +232,7 @@ function SessionRow({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 ">
+            <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-bold text-marka-metin-hover ">
               {session.exam_type}
             </span>
             <span className="text-sm font-semibold text-slate-900 ">
@@ -557,7 +557,7 @@ function ResultsPanel({
           <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wide text-slate-400">
-                <th className="py-1.5 pr-2 font-semibold">Öğrenci</th>
+                <th className="py-1.5 pr-2 font-semibold">Üye</th>
                 <th className="px-1 py-1.5 font-semibold">Karne</th>
                 <th className="px-1 py-1.5 font-semibold">Net</th>
                 <th className="px-1 py-1.5 font-semibold">Sıra</th>
@@ -613,7 +613,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
   };
 
   const numCls =
-    "w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:border-indigo-400 ";
+    "w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm text-slate-900 outline-none focus:border-marka-mid ";
 
   return (
     <tr>
@@ -660,7 +660,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           step="0.01"
           value={net}
           aria-label={`${row.client_name}, toplam net`}
-          placeholder="—"
+          placeholder="-"
           onChange={(e) => setNet(e.target.value)}
           className={numCls}
         />
@@ -671,7 +671,7 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           min={1}
           value={rank}
           aria-label={`${row.client_name}, sıra`}
-          placeholder="—"
+          placeholder="-"
           onChange={(e) => setRank(e.target.value)}
           className={numCls}
         />

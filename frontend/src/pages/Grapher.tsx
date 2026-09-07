@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROLE_IDS } from "@/types";
 import { compile, type CompiledFn } from "@/lib/mathParse";
@@ -58,7 +58,7 @@ const LIGHT: Theme = { bg: "#ffffff", grid: "#eef2f7", axis: "#94a3b8", tick: "#
 
 export default function Grapher() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
 
   const initial = useRef(loadPersisted());
   const [functions, setFunctions] = useState<FnRow[]>(initial.current.functions);
@@ -372,7 +372,7 @@ export default function Grapher() {
                         onChange={(e) => updateExpr(f.id, e.target.value)}
                         spellCheck={false}
                         placeholder="örn. x^2"
-                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 "
+                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-mono text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
                       />
                       <button
                         onClick={() => removeFn(f.id)}
@@ -393,7 +393,7 @@ export default function Grapher() {
               </div>
               <button
                 onClick={addFn}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-semibold text-slate-500 transition hover:border-indigo-400 hover:text-indigo-600 "
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2 text-sm font-semibold text-slate-500 transition hover:border-marka-mid hover:text-marka-metin "
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
@@ -409,7 +409,7 @@ export default function Grapher() {
                   type="checkbox"
                   checked={showRoots}
                   onChange={(e) => setShowRoots(e.target.checked)}
-                  className="h-4 w-4 accent-indigo-600"
+                  className="h-4 w-4 accent-marka"
                 />
               </label>
               <div className="mt-3 flex gap-2">
@@ -421,7 +421,7 @@ export default function Grapher() {
                 </button>
                 <button
                   onClick={downloadPng}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-marka py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />

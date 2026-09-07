@@ -720,7 +720,7 @@ function EditorIcerik({
                   onClick={() => olanakDegistir(a)}
                   className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                     secili
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-marka text-marka-fg"
                       : "bg-slate-100 text-slate-600 "
                   }`}
                 >
@@ -746,6 +746,7 @@ function EditorIcerik({
                 <label className="mt-2 flex items-center gap-1 text-xs text-slate-500">
                   <input
                     type="checkbox"
+                    className="accent-marka"
                     aria-label={`${WEEKDAY_LABELS[g.weekday]} açık`}
                     checked={!g.is_closed}
                     onChange={(e) => gunuAc(i, e.target.checked)}

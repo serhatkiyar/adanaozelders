@@ -61,7 +61,7 @@ export function ReviewsSection({
           <svg viewBox="0 0 20 20" className="h-6 w-6 text-amber-400" fill="currentColor" aria-hidden>
             <path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9 4.7 17.6l1-5.8L1.5 7.7l5.9-.9L10 1.5z" />
           </svg>
-          {count > 0 && average != null ? average.toFixed(1) : "—"}
+          {count > 0 && average != null ? average.toFixed(1) : "-"}
         </h2>
         <span className="text-base text-slate-500 ">
           {count > 0

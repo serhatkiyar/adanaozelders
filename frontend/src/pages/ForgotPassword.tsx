@@ -39,7 +39,7 @@ export default function ForgotPassword() {
             </div>
             <Link
               to={ROUTES.login}
-              className="inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-700 "
+              className="inline-block text-sm font-semibold text-marka-metin hover:text-marka-metin-hover "
             >
               ← Giriş ekranına dön
             </Link>
@@ -54,7 +54,7 @@ export default function ForgotPassword() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                     placeholder="ornek@eposta.com"
                   />
               )}
@@ -69,7 +69,7 @@ export default function ForgotPassword() {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {mutation.isPending ? "Gönderiliyor..." : "Sıfırlama bağlantısı gönder"}
             </button>
@@ -80,7 +80,7 @@ export default function ForgotPassword() {
           Şifreni hatırladın mı?{" "}
           <Link
             to={ROUTES.login}
-            className="font-semibold text-indigo-600 hover:text-indigo-700 "
+            className="font-semibold text-marka-metin hover:text-marka-metin-hover "
           >
             Giriş yap
           </Link>

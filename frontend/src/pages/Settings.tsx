@@ -19,7 +19,7 @@ import {
 } from "@/hooks/useProfile";
 import { useOperatorMe } from "@/hooks/useLibraryExams";
 import { resendEmailVerification } from "@/api/auth";
-import { GENDER_LABEL } from "@/lib/demographics";
+import { gorunurCinsiyet } from "@/lib/demographics";
 import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -31,7 +31,7 @@ type CategoryKey = "personal" | "security" | "payments" | "appearance" | "addres
 import { PhoneEditor } from "@/components/PhoneEditor";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 const fieldLabelCls =
   "mb-1.5 block text-xs font-medium text-slate-500 ";
@@ -306,7 +306,7 @@ function LockedChangeNote({ children }: { children: React.ReactNode }) {
 
 function PendingChangeNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-3 rounded-xl bg-indigo-50 px-3 py-2 text-xs leading-relaxed text-indigo-700 ">
+    <div className="mb-3 rounded-xl bg-marka-soft px-3 py-2 text-xs leading-relaxed text-marka-metin-hover ">
       {children}
     </div>
   );
@@ -374,8 +374,10 @@ function PersonalSection() {
   };
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const genderLabel =
-    user.gender && user.gender !== Gender.UNSPECIFIED ? GENDER_LABEL[user.gender] : null;
+  // KENDİ ayar ekranı: boş durumda "Belirtilmemiş" YAZILIR — burada yokluk
+  // eyleme dönüştürülebilir bir bilgidir (yanındaki alandan doldurulabilir).
+  // Başkasına gösterilen yüzeylerde tam tersi geçerlidir (bkz. gorunurCinsiyet).
+  const genderLabel = gorunurCinsiyet(user.gender) ?? "Belirtilmemiş";
 
   return (
     <section>

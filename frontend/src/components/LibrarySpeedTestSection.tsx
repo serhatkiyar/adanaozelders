@@ -101,8 +101,8 @@ export function LibrarySpeedTestSection({
 
       {/* Senin ölçümün */}
       {!running && result && (
-        <div className="mt-4 rounded-xl bg-indigo-50 px-4 py-3 ">
-          <p className="text-xs font-semibold text-indigo-700 ">
+        <div className="mt-4 rounded-xl bg-marka-soft px-4 py-3 ">
+          <p className="text-xs font-semibold text-marka-metin-hover ">
             Senin ölçümün
           </p>
           <div className="mt-2 grid grid-cols-3 gap-2">
@@ -159,7 +159,7 @@ function Metric({
       <p
         className={`text-sm font-bold ${
           accent
-            ? "text-indigo-700 "
+            ? "text-marka-metin-hover "
             : "text-slate-900 "
         }`}
       >

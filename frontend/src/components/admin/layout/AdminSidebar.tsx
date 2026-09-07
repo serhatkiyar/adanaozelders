@@ -122,7 +122,7 @@ export function AdminSidebar({
       katli ? "justify-center px-0" : ""
     } ${
       aktif
-        ? "bg-panel-accent-soft text-panel-accent"
+        ? "bg-panel-accent-soft text-panel-accent-text"
         : "text-panel-fg-muted hover:bg-panel-surface-hover hover:text-panel-fg"
     }`;
 
@@ -249,7 +249,7 @@ export function AdminSidebar({
                               <Glif
                                 ad={item.icon}
                                 className={`h-[18px] w-[18px] shrink-0 ${
-                                  active ? "text-panel-accent" : "text-panel-fg-subtle group-hover:text-panel-fg"
+                                  active ? "text-panel-accent-text" : "text-panel-fg-subtle group-hover:text-panel-fg"
                                 }`}
                               />
                               {!katli && <span className="min-w-0 flex-1 truncate">{etiket}</span>}
@@ -290,7 +290,7 @@ export function AdminSidebar({
                 <Glif
                   ad="settings"
                   className={`h-[18px] w-[18px] shrink-0 ${
-                    isActive ? "text-panel-accent" : "text-panel-fg-subtle group-hover:text-panel-fg"
+                    isActive ? "text-panel-accent-text" : "text-panel-fg-subtle group-hover:text-panel-fg"
                   }`}
                 />
                 {!katli && <span className="min-w-0 flex-1 truncate">Ayarlar</span>}

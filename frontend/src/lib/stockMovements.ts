@@ -66,7 +66,7 @@ const REASON_LABELS: Record<string, string> = {
   KIRIK: "Kırık",
   ISLAK: "Islak / nem",
   BASKI_HATASI: "Baskı hatası",
-  MUSTERI_IADESI_HASARLI: "Müşteri iadesi — hasarlı geldi",
+  MUSTERI_IADESI_HASARLI: "Müşteri iadesi: hasarlı geldi",
   ...Object.fromEntries(ADMIN_REASON_OPTIONS.map((o) => [o.value, o.label])),
 };
 
@@ -183,6 +183,6 @@ export function consistencyBadge(v: VerificationLike | null): ConsistencyBadge {
   }
   return {
     tone: "warning",
-    label: `Sapma var — ürün stoğu ${v.current_stock}, defter ${v.ledger_stock}`,
+    label: `Sapma var: ürün stoğu ${v.current_stock}, defter ${v.ledger_stock}`,
   };
 }

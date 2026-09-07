@@ -90,7 +90,7 @@ export function DersSecici({
                             aria-pressed={acik}
                             className={`inline-flex min-h-[44px] items-center rounded-full px-3 text-xs transition disabled:opacity-50 ${
                               acik
-                                ? "bg-indigo-600 font-medium text-white"
+                                ? "bg-marka font-medium text-marka-fg"
                                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                           >
@@ -114,9 +114,9 @@ export function DersSecici({
           value={sorgu}
           disabled={!duzenlenebilir}
           onChange={(e) => setSorgu(e.target.value)}
-          placeholder="Ders ara — matematik, gitar, python…"
+          placeholder="Ders ara: matematik, gitar, python…"
           aria-label="Ders ara"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base outline-none transition placeholder:text-slate-400 focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:opacity-50"
         />
 
         {sorgu.trim() === "" ? (
@@ -146,7 +146,7 @@ export function DersSecici({
                         aria-pressed={acik}
                         className={`inline-flex min-h-[44px] items-center rounded-full px-3.5 text-sm font-medium transition active:scale-95 disabled:opacity-50 ${
                           acik
-                            ? "bg-indigo-600 text-white"
+                            ? "bg-marka text-marka-fg"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                         }`}
                       >

@@ -130,7 +130,7 @@ export function icerikKorumasiDenetle({ kok, korumaVar, korumasiz, baslik }: Kor
       `Panelde bulunan kontroller:\n${ornekler}\n` +
       "Üç doğru yazımdan birini seç: (1) pencereyi `DuzenlemePenceresi` ile kur " +
       "ve İÇERİK bileşeninde `useYuzeyKirliFormBekcisi` çağır; (2) formu " +
-      "pencereye ver — `DuzenlemeYuzeyi` bekçiyi kendisi bağlar; (3) pencere " +
+      "pencereye ver `DuzenlemeYuzeyi` bekçiyi kendisi bağlar; (3) pencere " +
       "GERÇEKTEN korunmaya değer bir şey tutmuyorsa (salt-okunur detay, tek " +
       "süzgeç kutusu) `korumasiz` beyanını yaz ve gerekçesini yanına not düş."
   );

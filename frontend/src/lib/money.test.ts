@@ -24,7 +24,7 @@ describe("formatTRY", () => {
     expect(formatTRY(99.99)).toContain("99,99");
   });
   it("null için fallback", () => {
-    expect(formatTRY(null)).toBe("—");
+    expect(formatTRY(null)).toBe("-");
     expect(formatTRY(null, "yok")).toBe("yok");
   });
 });
@@ -40,7 +40,7 @@ describe("formatTL", () => {
     expect(formatTL(1250)).toBe("1.250 TL");
   });
   it("null için fallback", () => {
-    expect(formatTL(null)).toBe("—");
+    expect(formatTL(null)).toBe("-");
     expect(formatTL(null, "yok")).toBe("yok");
   });
 });

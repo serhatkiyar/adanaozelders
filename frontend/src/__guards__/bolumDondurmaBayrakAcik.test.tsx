@@ -27,6 +27,8 @@ vi.mock("@/lib/ozellikBayraklari", () => ({
   // yeterlidir" sözleşmesi yeni donmuş bölümler için de geçerli olmalı.
   OGREN_ACIK: true,
   KISISELLESTIRME_ACIK: true,
+  // 6 Eyl: öğrenci talepleri. Aynı sözleşme yeni bayrak için de geçerli.
+  TALEPLER_ACIK: true,
 }));
 
 import App from "@/App";
@@ -34,7 +36,7 @@ import "@/pages/NotFound";
 
 import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import Learn from "@/pages/Learn";
 
@@ -81,14 +83,16 @@ describe("bayrak AÇIK — kategori çubuğu eski hâline döner", () => {
 });
 
 describe("bayrak AÇIK — menü girdileri ve hub kartı eski hâline döner", () => {
-  it("eğitmen menüsündeki 'Kütüphaneler' yeniden /kutuphaneler'e gidiyor", () => {
-    sar(<DashboardHeader navItems={TUTOR_NAV} />);
-    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
-      (a) => a.getAttribute("href")
-    );
-    expect(hedefler).toContain("/kutuphaneler");
-    expect(screen.queryByText("Yakında")).toBeNull();
-  });
+  /* KALDIRILDI (7 Eyl 2026) — "eğitmen menüsündeki 'Kütüphaneler' yeniden
+     /kutuphaneler'e gidiyor".
+
+     Kütüphaneler ve Mağaza o gün özel dersin yan panelinden çıktı (kullanıcı
+     kararı, bkz. `lib/nav.ts`). İddianın öznesi olan menü girdisi artık YOK;
+     düğüm bırakılsaydı bayrak açıkken de kapalıyken de aynı sonucu verir,
+     yani hiçbir şeyi kanıtlamayan bir yeşil olurdu.
+
+     KUTUPHANELER_ACIK bayrağının kanıtı kaybolmadı: aynı dosyadaki kategori
+     çubuğu düğümü ve rota düğümü bayrağı okumaya devam ediyor. */
 
   it("Öğren hub'ındaki 'Denemelerim' yeniden /denemeler'e gidiyor", () => {
     sar(<Learn />);
@@ -97,6 +101,29 @@ describe("bayrak AÇIK — menü girdileri ve hub kartı eski hâline döner", (
     );
     expect(hedefler).toContain("/denemeler");
     expect(screen.queryByText("Yakında")).toBeNull();
+  });
+});
+
+describe("bayrak AÇIK — öğrenci talepleri geri gelir (6 Eyl)", () => {
+  it("İKİ UÇ da menüde yeniden var", () => {
+    // Dondurmayı "gizlenmiş silme"den ayıran düğüm: bayrağı `true` yapmak
+    // TEK BAŞINA yeterli olmalı, başka hiçbir dosyaya dokunmadan.
+    expect(UYE_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
+    expect(TUTOR_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
+  });
+
+  it("eğitmen menüsünde /talepler yeniden GERÇEK bağlantı", () => {
+    sar(<DashboardHeader navItems={TUTOR_NAV} />);
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
+      (a) => a.getAttribute("href")
+    );
+    expect(hedefler).toContain("/talepler");
+    // Donuk kalıntı yok: `aria-disabled` taşıyan bir Talepler öğesi kalmadı.
+    const donuk = Array.from(
+      document.body.querySelectorAll("[aria-disabled='true']")
+    ).filter((el) => (el.textContent ?? "").includes("Talep"));
+    expect(donuk).toEqual([]);
   });
 });
 
@@ -117,6 +144,11 @@ describe("bayrak AÇIK — rotalar gerçek sayfayı açar", () => {
     return sonuc;
   };
 
+  it("/talepler artık 'Yakında' DEĞİL (gerçek rota geri döndü)", async () => {
+    await yoluBas("/talepler");
+    expect(screen.queryByText(/Yakında/i)).toBeNull();
+  });
+
   it.each(["/kutuphaneler", "/kutuphane-kayit"])(
     "%s artık 'Yakında' DEĞİL",
     async (yol) => {
@@ -134,7 +166,7 @@ describe("bayrak AÇIK — Öğren menüye ve rotaya geri döner", () => {
   // ve `__guards__/tembelModul.test.ts` onu gerekçesiz saymakta haklı.
   it("öğrenci ve eğitmen menüsünde 'Öğren' yeniden var", () => {
     for (const [ad, menu] of [
-      ["STUDENT_NAV", STUDENT_NAV],
+      ["UYE_NAV", UYE_NAV],
       ["TUTOR_NAV", TUTOR_NAV],
     ] as const) {
       const girdi = menu.find((i) => i.to === ROUTES.learn);

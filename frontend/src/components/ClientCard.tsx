@@ -1,29 +1,26 @@
 import { Link } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { formatLastSeen } from "@/lib/datetime";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
-import { Gender, type ClientSearchOut } from "@/types";
+import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
+import { type ClientSearchOut } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
 export function ClientCard({ client }: { client: ClientSearchOut }) {
   const age = ageFromBirthDate(client.birth_date);
-  const genderLabel =
-    client.gender && client.gender !== Gender.UNSPECIFIED
-      ? GENDER_LABEL[client.gender]
-      : null;
+  const genderLabel = gorunurCinsiyet(client.gender);
   const isOnline =
     !!client.last_seen_at &&
     Date.now() - new Date(client.last_seen_at).getTime() < 120_000;
 
   return (
     <Link
-      to={ROUTES.studentProfile(client.id)}
-      className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-indigo-200 "
+      to={ROUTES.uyeProfili(client.id)}
+      className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-marka/20 "
     >
       <div className="flex items-start gap-3">
         <Avatar name={client.full_name} avatar_url={client.avatar_url} />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-indigo-700 ">
+          <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-marka-metin-hover ">
             {client.full_name}
           </h3>
         </div>

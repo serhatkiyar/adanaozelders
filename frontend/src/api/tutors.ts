@@ -55,6 +55,28 @@ export async function fetchPriceHistogram(
   return data;
 }
 
+/**
+ * Cinsiyet fasetleri — seçenek başına kaç eğitmen.
+ *
+ * `gender` BİLEREK dışarıda: faset kendi eksenini saymaz. Sayarsaydı kullanıcı
+ * "Kadın"ı seçtiği anda "Erkek 0" görünürdü. Aynı desen `price-histogram`da da
+ * var (o da fiyat filtresini atlar).
+ */
+export type GenderFacetParams = Omit<PriceHistogramParams, "gender">;
+
+/** Anahtarlar: `MALE` · `FEMALE` · `UNSPECIFIED` · `belirtilmemis` · `gorunmeyen`. */
+export type GenderFacets = Record<string, number>;
+
+export async function fetchGenderFacets(
+  params: GenderFacetParams
+): Promise<GenderFacets> {
+  const { data } = await apiClient.get<GenderFacets>("/tutors/gender-facets", {
+    params,
+    paramsSerializer: { indexes: null },
+  });
+  return data;
+}
+
 // Öne çıkarma bloğu: arama ile AYNI sert filtreler, en fazla 3 sonuç.
 // `sort` ve `exam` bilinçli olarak YOK — bu blokta sıralama satın alınmaz.
 export type FeaturedTutorParams = Omit<

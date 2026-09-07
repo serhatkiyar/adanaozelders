@@ -17,6 +17,6 @@ export function srsDueLabel(
   state: SrsCardState,
   iso: string | null | undefined,
 ): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return state === "REVIEW" ? formatDate(iso) : formatDateTime(iso);
 }

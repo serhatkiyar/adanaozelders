@@ -281,7 +281,7 @@ export function DeliveryPrefControls({
           <button
             onClick={() => setPostponeOpen(true)}
             disabled={postponePending}
-            className="font-semibold text-indigo-600 hover:underline disabled:opacity-50 "
+            className="font-semibold text-marka-metin hover:underline disabled:opacity-50 "
           >
             Yarına ertele
           </button>
@@ -327,14 +327,14 @@ export function DeliveryPrefControls({
             <button
               type="button"
               onClick={() => setNeighborFor(null)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus "
             >
               Vazgeç
             </button>
             <button
               type="submit"
               disabled={setPending || neighborNote.trim().length < 3}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 "
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus disabled:opacity-50 "
             >
               Kaydet
             </button>
@@ -358,7 +358,7 @@ export function DeliveryPrefControls({
             <button
               type="button"
               onClick={() => setPostponeOpen(false)}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 "
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus "
             >
               Vazgeç
             </button>
@@ -366,7 +366,7 @@ export function DeliveryPrefControls({
               type="button"
               onClick={doPostpone}
               disabled={postponePending}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 "
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus disabled:opacity-50 "
             >
               {postponePending ? "Erteleniyor…" : "Yarına ertele"}
             </button>

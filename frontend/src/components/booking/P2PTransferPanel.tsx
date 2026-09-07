@@ -31,7 +31,7 @@ export function P2PTransferPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-indigo-50 px-4 py-3 text-xs leading-relaxed text-indigo-700 ">
+      <div className="rounded-xl bg-marka-soft px-4 py-3 text-xs leading-relaxed text-marka-metin-hover ">
         <span className="font-semibold">Uçtan uca aktarım.</span> Dosya doğrudan
         karşı tarafa gönderilir, sunucuda saklanmaz ve boyut sınırı yoktur. Her iki
         taraf da derste açık olmalıdır.
@@ -42,7 +42,7 @@ export function P2PTransferPanel() {
         <div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-4 text-sm font-semibold text-slate-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 "
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-4 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka-soft-fg "
           >
             <span aria-hidden className="text-lg">⇪</span>
             Dosya seç ve gönder
@@ -98,7 +98,7 @@ export function P2PTransferPanel() {
             <div className="mt-3">
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 ">
                 <div
-                  className="h-full rounded-full bg-indigo-600 transition-all"
+                  className="h-full rounded-full bg-marka transition-all"
                   style={{ width: `${active.status === "connecting" ? 4 : pct}%` }}
                 />
               </div>

@@ -4,8 +4,19 @@ import { ImageCropModal } from "@/components/ImageCropModal";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 
+import { SegmentSecim } from "@/components/form/alanlar";
+import { Gender } from "@/types";
+
+import { SECILI_SEGMENT } from "../tema";
 import { TanitimVideosu } from "./Metinler";
 import type { AdimProps } from "./ortak";
+
+/** Sıra bilinçli: "Belirtmek istemiyorum" bir KAÇIŞ değil, geçerli bir cevap. */
+const CINSIYETLER = [
+  { deger: Gender.FEMALE, etiket: "Kadın" },
+  { deger: Gender.MALE, etiket: "Erkek" },
+  { deger: Gender.UNSPECIFIED, etiket: "Belirtmek istemiyorum" },
+] as const;
 
 /**
  * Adım 7 — profil fotoğrafı (ve isteğe bağlı tanıtım videosu).
@@ -15,7 +26,7 @@ import type { AdimProps } from "./ortak";
  * alanıdır ve sihirbaz dışında da aynı yerden güncellenir.
  */
 export function AdimFotograf(props: AdimProps) {
-  const { dis } = props;
+  const { d, dis, guncelle } = props;
   const girdiRef = useRef<HTMLInputElement>(null);
   const {
     isUploading,
@@ -90,6 +101,17 @@ export function AdimFotograf(props: AdimProps) {
             JPEG veya PNG, en fazla 5 MB. Yükledikten sonra kırpabilirsin.
           </p>
         </div>
+      </div>
+
+      <div className="border-t border-slate-100 pt-7" data-alan="cinsiyet">
+        <SegmentSecim
+          aktifSinif={SECILI_SEGMENT}
+          etiket="Cinsiyetin (isteğe bağlı)"
+          ipucu="İlanında görünür ve öğrenciler ona göre filtreleyebilir. Boş bırakırsan cinsiyet filtresi kullanan aramalarda ilanın çıkmaz."
+          deger={d.gender}
+          onChange={(v) => guncelle({ gender: v as Gender | "" })}
+          secenekler={CINSIYETLER}
+        />
       </div>
 
       <div className="border-t border-slate-100 pt-7">

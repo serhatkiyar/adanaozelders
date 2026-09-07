@@ -94,7 +94,7 @@ describe("R5 — routes tek kaynağında flashcard girdisi yok", () => {
 describe("R6 — Öğren hub'ında Kelime Kartları kartı yok (gerçek DOM)", () => {
   function hubuBas() {
     // `useCurrentUser` token yokken devre dışıdır (`enabled: !!token`), bu
-    // yüzden ağ isteği doğmaz ve hub STUDENT_NAV ile render edilir.
+    // yüzden ağ isteği doğmaz ve hub UYE_NAV ile render edilir.
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });

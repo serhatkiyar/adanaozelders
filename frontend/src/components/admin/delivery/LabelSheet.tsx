@@ -30,7 +30,7 @@ export function LabelSheet({ run, onClose }: { run: DeliveryRun; onClose: () => 
       <style>{`@media print { body > #root { display: none !important; } .delivery-label-sheet, .delivery-label-sheet * { visibility: visible !important; } .delivery-label-sheet { position: static !important; inset: auto !important; background: white !important; } .delivery-label-noprint { display: none !important; } .delivery-label-paper { box-shadow: none !important; margin: 0 !important; } }`}</style>
       <div className="delivery-label-noprint sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
         <p className="text-sm font-semibold">
-          Tur #{run.id} — {stops.length} etiket
+          Tur #{run.id}: {stops.length} etiket
         </p>
         <div className="flex gap-2">
           <button
@@ -62,8 +62,8 @@ export function LabelSheet({ run, onClose }: { run: DeliveryRun; onClose: () => 
               <p className="text-sm font-bold">
                 #{s.sequence} · Sipariş {s.order_id}
               </p>
-              <p className="truncate font-semibold">{s.recipient ?? "—"}</p>
-              <p className="line-clamp-3 whitespace-pre-line">{s.address ?? "—"}</p>
+              <p className="truncate font-semibold">{s.recipient ?? "-"}</p>
+              <p className="line-clamp-3 whitespace-pre-line">{s.address ?? "-"}</p>
               <p>{s.phone ?? ""}</p>
               {/* Kutunun üstünde NE olduğu yazmak zorunda: "N parça" tek başına
                   paketi doğrulamaya yetmez. Baskıda kırpma YOK — satırlar

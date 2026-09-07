@@ -67,13 +67,13 @@ export function DateStrip({
               onClick={() => onChange(d.value)}
               className={`flex-shrink-0 snap-start flex flex-col items-center justify-center w-[72px] h-[84px] rounded-2xl border-2 transition-all ${
                 active
-                  ? "border-indigo-600 bg-indigo-600 shadow-md "
-                  : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-indigo-50 "
+                  ? "border-marka bg-marka shadow-md "
+                  : "border-slate-100 bg-white hover:border-marka-line hover:bg-marka-soft "
               }`}
             >
               <span
                 className={`text-[10px] font-bold uppercase tracking-wider ${
-                  active ? "text-indigo-200 " : "text-slate-400 "
+                  active ? "text-marka-fg " : "text-slate-400 "
                 }`}
               >
                 {d.month}

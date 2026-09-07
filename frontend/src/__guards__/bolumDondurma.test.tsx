@@ -38,7 +38,8 @@ import { dirname, join, resolve } from "node:path";
 
 import { CategoryBar } from "@/components/CategoryBar";
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV, type NavItem } from "@/lib/nav";
+import { ROUTES } from "@/lib/routes";
 import Learn from "@/pages/Learn";
 import {
   DENEMELER_ACIK,
@@ -187,31 +188,59 @@ describe("C — Öğren hub'ındaki 'Denemelerim' kartı (gerçek DOM)", () => {
   });
 });
 
-describe("D — eğitmen menüsündeki 'Kütüphaneler' girdisi (gerçek DOM)", () => {
-  /** Yan menü (avatar açılırı) gerçek tıklamayla açılır — girdi orada METİNLE görünür. */
-  function menuyuAc() {
-    sar(<DashboardHeader navItems={TUTOR_NAV} />);
+describe("D — hesap menüsünde DONMUŞ girdi mekanizması (gerçek DOM)", () => {
+  /** Yan menü (avatar açılırı) gerçek tıklamayla açılır. */
+  function menuyuAc(nav: NavItem[]) {
+    sar(<DashboardHeader navItems={nav} />);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
   }
 
-  it("NÖBETÇİ: menü render oluyor ve diğer girdiler hâlâ bağlantı", () => {
-    menuyuAc();
-    // Üst bar kısayolu + yan menü girdisi: aynı hedefe iki bağlantı normaldir.
-    const mesajlar = screen.getAllByRole("link", { name: /Mesajlar/ });
-    expect(mesajlar.length).toBeGreaterThan(0);
-    for (const a of mesajlar) expect(a.getAttribute("href")).toBe("/mesajlar");
+  /* Bu bölüm 7 Eyl 2026'da TUTOR_NAV'dan KOPARILDI.
+     Önce "eğitmen menüsündeki Kütüphaneler girdisi" deniyordu; Kütüphaneler ve
+     Mağaza o gün yan panelden çıktı (kullanıcı kararı) ve iddia öznesiz kaldı.
+     Dahası: `yakinda` bayrağını taşıyan TEK ürün girdisi oydu, yani düğüm
+     silinseydi dondurma mekanizması hiç nöbetsiz kalacaktı.
+
+     Çözüm: düğüm artık ÜRÜN listesine değil MEKANİZMAYA bakıyor — sentetik
+     bir nav öğesiyle. Böylece hangi bölümün donduğu değişse de "donmuş girdi
+     bağlantı DEĞİLDİR" sözleşmesi çıpalı kalır. */
+
+  const CANLI: NavItem = { to: "/mesajlar", label: "Mesajlar", icon: "messages" };
+  const DONMUS: NavItem = { to: "/deneme-bolum", label: "Deneme Bölüm", yakinda: true };
+
+  it("DONMUŞ girdi bağlantı DEĞİL ve klavyeyle odaklanamaz", () => {
+    menuyuAc([CANLI, DONMUS]);
+    expect(screen.queryByRole("link", { name: /Deneme Bölüm/ })).toBeNull();
+    const donuk = screen.getByText("Deneme Bölüm").closest("[aria-disabled='true']");
+    expect(donuk, "donmuş girdi aria-disabled taşımıyor").toBeTruthy();
+    expect(donuk?.getAttribute("tabindex")).toBe("-1");
+    // Not: "Yakında" ROZETİ bu yüzeyde basılmıyor — `NavItem.yakinda`
+    // açıklaması rozeti vaat ediyor ama `DashboardHeader` yalnız soluklaştırıp
+    // devre dışı bırakıyor. İddia gerçeğe göre yazıldı; rozet istenirse ayrı
+    // bir kalem (bugün donmuş girdi zaten yok — aşağıdaki KAPSAM düğümü).
+    // Anchor'a hiç dönüşmemeli: `href` taşıyan bir öğe tıklamayı yutar.
+    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map((a) =>
+      a.getAttribute("href")
+    );
+    expect(hedefler).not.toContain("/deneme-bolum");
   });
 
-  it("'Kütüphaneler' yeniden GERÇEK bağlantı (/kutuphaneler)", () => {
-    menuyuAc();
-    const linkler = screen.getAllByRole("link", { name: /Kütüphaneler/ });
+  it("DOLULUK: aynı menüdeki CANLI girdi gerçek bağlantı", () => {
+    // Bu olmadan yukarıdaki üç olumsuz iddia, menü hiç render olmadığında da
+    // yeşil kalırdı.
+    menuyuAc([CANLI, DONMUS]);
+    const linkler = screen.getAllByRole("link", { name: /Mesajlar/ });
     expect(linkler.length).toBeGreaterThan(0);
-    for (const a of linkler) expect(a.getAttribute("href")).toBe("/kutuphaneler");
-    // Donuk kalıntı yok: aria-disabled taşıyan Kütüphaneler öğesi kalmadı.
-    const donuk = Array.from(document.body.querySelectorAll("[aria-disabled='true']")).filter(
-      (el) => (el.textContent ?? "").includes("Kütüphaneler")
-    );
-    expect(donuk).toEqual([]);
+    for (const a of linkler) expect(a.getAttribute("href")).toBe("/mesajlar");
+  });
+
+  it("KAPSAM: bugün hiçbir rol menüsünde donmuş girdi YOK", () => {
+    // Mekanizma yaşıyor ama ürün tarafında taşıyıcısı kalmadı. Bu düğüm o
+    // durumu YAZILI tutar: biri yeniden bir bölümü dondurursa burası kırılır
+    // ve dondurmanın bilinçli olduğu görülür.
+    for (const nav of [UYE_NAV, TUTOR_NAV]) {
+      expect(nav.some((i) => i.yakinda)).toBe(false);
+    }
   });
 });
 
@@ -252,6 +281,73 @@ describe("E — Öğren rota kapısı (gerçek App + gerçek router)", () => {
     cleanup();
     await yoluBas("/egitmenler");
     expect(screen.queryByText(/Yakında/i)).toBeNull();
+  });
+});
+
+describe("F — öğrenci talepleri donduruldu (6 Eyl · gerçek App + gerçek DOM)", () => {
+  const yoluBas = async (yol: string) => {
+    window.history.pushState({}, "", yol);
+    const sonuc = render(
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    return sonuc;
+  };
+
+  it("/talepler → 'Yakında' (giriş kapısına DÜŞMEZ)", async () => {
+    // Rota bilerek korumanın DIŞINDA: doğrudan URL yazan kullanıcı, giriş
+    // ekranı ya da 404 yerine ne olduğunu anlatan bir sayfa görmeli.
+    await yoluBas("/talepler");
+    expect(await screen.findByText(/Yakında/i)).toBeTruthy();
+  });
+
+  it("İKİ UÇ birden kalktı: öğrencinin 'Taleplerim'i ve eğitmenin 'Gelen Talepler'i", () => {
+    // Tek uç kapatılsaydı eğitmen, hiç dolmayacak bir gelen kutusuna bakmaya
+    // devam ederdi — akışın iki ucu aynı bayrağa bağlı olmak ZORUNDA.
+    expect(UYE_NAV.some((i) => i.to === ROUTES.demands)).toBe(false);
+    expect(TUTOR_NAV.some((i) => i.to === ROUTES.demands)).toBe(false);
+  });
+
+  it("menüde ölü bağlantı kalmadı (gerçek DOM, iki rol)", () => {
+    for (const nav of [UYE_NAV, TUTOR_NAV]) {
+      const { unmount } = sar(<DashboardHeader navItems={nav} />);
+      fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+      const olu = Array.from(document.body.querySelectorAll("a[href]")).filter(
+        (a) => (a.getAttribute("href") ?? "") === "/talepler"
+      );
+      expect(olu).toEqual([]);
+      unmount();
+    }
+  });
+
+  it("DOLULUK: menü gerçekten doldu — 'bağlantı yok' iddiası boş DOM'dan gelmiyor", () => {
+    sar(<DashboardHeader navItems={UYE_NAV} />);
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+    expect(
+      Array.from(document.body.querySelectorAll("a[href]")).length
+    ).toBeGreaterThan(3);
+  });
+
+  it("kopya metni donmuş bölümü VAAT ETMİYOR", () => {
+    // "Derslerin, kütüphane rezervasyonların ve talep durumların" — bu ibare
+    // Hesabım kartında duruyordu ve donmuş bir bölümü vaat ediyordu. Kopya
+    // artık bayrağa bağlı; sabit metin geri gelirse burası konuşur.
+    const kaynak = readFileSync(
+      join(SRC_KOK, "pages", "AccountHub.tsx"),
+      "utf8"
+    );
+    expect(kaynak).toContain("TALEPLER_ACIK");
+    expect(
+      kaynak,
+      "kopya sabit: donmuş bölüm hâlâ vaat ediliyor"
+    ).not.toContain('desc: "Derslerin, kütüphane rezervasyonların ve talep durumların."');
   });
 });
 

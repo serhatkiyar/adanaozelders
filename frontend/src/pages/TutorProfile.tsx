@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
-import { TutorTrustBar } from "@/components/TutorTrust";
+import { TutorOzetTablosu } from "@/components/TutorTrust";
 import { ReportModal } from "@/components/ReportModal";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
@@ -69,7 +69,7 @@ function OwnerReplyAction({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="mt-3 text-sm font-medium text-indigo-600 transition hover:text-indigo-700 "
+        className="mt-3 text-sm font-medium text-marka-metin transition hover:text-marka-metin-hover "
       >
         Yanıtla
       </button>
@@ -85,7 +85,7 @@ function OwnerReplyAction({
         onChange={(e) => setText(e.target.value)}
         autoFocus
         placeholder="Değerlendirmeye yanıtını yaz…"
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
       />
       <div className="flex justify-end gap-2">
         <button
@@ -102,7 +102,7 @@ function OwnerReplyAction({
           type="button"
           onClick={submitReply}
           disabled={replyMutation.isPending}
-          className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95 disabled:opacity-60"
+          className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
         >
           {replyMutation.isPending ? "Gönderiliyor…" : "Yanıtla"}
         </button>
@@ -125,7 +125,7 @@ export default function TutorProfile() {
     currentUser?.role_id === ROLE_IDS.TUTOR
       ? TUTOR_NAV
       : currentUser?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
+        ? UYE_NAV
         : undefined;
 
   const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);
@@ -160,7 +160,7 @@ export default function TutorProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover"
           >
             ← Geri dön
           </button>
@@ -206,19 +206,20 @@ export default function TutorProfile() {
         />
       )}
       <div className="mx-auto max-w-[76rem] pb-12">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
-        >
-          ← Geri dön
-        </button>
-
-        <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
+        {/* "← Geri dön" KALDIRILDI (kullanıcı kararı, 7 Eyl 2026): tarayıcının
+            kendi geri düğmesi zaten var ve bağlantı, kartı bir satır aşağı
+            itiyordu. Hata dalındaki kopyası KALIR — orada sayfanın tek
+            çıkışı odur. */}
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
-            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
+          {/* Kart ekrandan TAŞMASIN (kullanıcı kararı, 7 Eyl 2026): sticky kart
+              viewport'tan uzunsa alt kısmı (fiyat + birincil düğme) görünmüyor
+              ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
+              yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
-              <div className="mb-4 flex items-center justify-end gap-2">
+              <div className="mb-2 flex items-center justify-end gap-2">
                 {!isOwnerTutor && hasActiveBooking && (
                   <button
                     type="button"
@@ -244,7 +245,7 @@ export default function TutorProfile() {
                 <Avatar
                   name={tutor.full_name}
                   avatar_url={tutor.avatar_url}
-                  size="xl"
+                  size="lg"
                   shape="square"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
@@ -259,7 +260,7 @@ export default function TutorProfile() {
                   className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 ">
+                  <span className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover ">
                     {tutor.rating_count > 0
                       ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
                       : "Değerlendirme yok"}
@@ -267,36 +268,31 @@ export default function TutorProfile() {
                 </button>
 
                 {modeLabel && (
-                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ">
+                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-metin-hover ">
                     {modeLabel}
                   </span>
                 )}
               </div>
 
-              {/* Güven sinyalleri (dikey diziliş) */}
-              <TutorTrustBar tutor={tutor} vertical />
-
-              {/* Ücret + CTA */}
-              <div className="mt-5 border-t border-slate-100 pt-5 text-center ">
-                <p className="text-xs font-medium text-slate-500 ">
-                  Saatlik ücret
-                </p>
-                <p className="text-2xl font-bold tracking-tight text-slate-900 ">
-                  {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
-                </p>
-                {tutor.first_lesson_free !== false && (
-                  <p className="mt-1 text-sm font-semibold text-emerald-600 ">
-                    {canRequestFreeLesson ? "İlk dersin ücretsiz" : "İlk ders ücretsiz"}
-                  </p>
-                )}
-              </div>
+              {/* Ücret + güven sinyalleri TEK TABLODA (Superprof deseni).
+                  Eskiden ikisi ayrı bloktu ve kart 632 piksele çıkıyordu;
+                  1366x768'de bile taşıyordu. Ayrıntı: `TutorOzetTablosu`. */}
+              <TutorOzetTablosu
+                tutor={tutor}
+                ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              />
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="mt-4 block w-full rounded-full bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                  className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
                   Ders Talep Et
                 </button>
+              )}
+              {tutor.first_lesson_free !== false && (
+                <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
+                  {canRequestFreeLesson ? "İlk dersin ücretsiz" : "İlk ders ücretsiz"}
+                </p>
               )}
             </section>
 
@@ -331,7 +327,7 @@ export default function TutorProfile() {
                   {tutor.subjects.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 "
+                      className="rounded-full bg-marka-soft px-3 py-1 text-sm font-medium text-marka-metin-hover "
                     >
                       {s}
                     </span>

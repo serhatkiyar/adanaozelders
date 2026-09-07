@@ -5,7 +5,7 @@ import {
 } from "@/hooks/useLibraryBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { setPendingFavorite } from "@/lib/pendingFavorite";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 
 interface LibraryBookmarkButtonProps {
   libraryId: number;
@@ -24,9 +24,11 @@ export function LibraryBookmarkButton({
   const { data: bookmarks } = useLibraryBookmarks();
   const toggle = useToggleLibraryBookmark();
 
-  // Yalnız öğrenciler favorileyebilir; eğitmen/admin'e gösterme.
+  // Favorileyebilen roller: üye VE eğitmen (ÜK-6 · docs/urun-kararlari.md).
+  // Eğitmenin isteği sunucuda gölge `Client`e çevrilir; admin/operatör/kurye
+  // 403 alacağı için düğme onlara HÂLÂ gösterilmez.
   // Anonim ziyaretçiye gösterilir → tıklayınca giriş modalı açılır.
-  if (user && user.role_id !== ROLE_IDS.CLIENT) return null;
+  if (user && !alisverisYapabilir(user.role_id)) return null;
 
   const bookmarked = !!bookmarks?.some((l) => l.id === libraryId);
 
@@ -90,12 +92,14 @@ export function LibraryBookmarkButton({
       className="shrink-0 transition active:scale-90 hover:scale-110 disabled:opacity-50"
     >
       {/* Airbnb tarzı kalp: dolgu (pasif: yarı saydam siyah / aktif: rose) +
-          beyaz kenar + görsel üzerinde okunurluk için gölge. */}
+          beyaz kenar + görsel üzerinde okunurluk için gölge.
+          `BookmarkButton` ile AYNI değerler — ikisi de aynı kart yüzeyinde
+          yan yana çıkıyor, ayrışırlarsa göze çarpar. */}
       <svg
         viewBox="0 0 24 24"
-        strokeWidth={2}
+        strokeWidth={1.5}
         className={`${glyph} stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] transition-colors ${
-          bookmarked ? "fill-rose-500" : "fill-black/50"
+          bookmarked ? "fill-rose-500" : "fill-black/40"
         }`}
       >
         <path

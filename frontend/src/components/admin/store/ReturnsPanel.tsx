@@ -84,7 +84,7 @@ export function ReturnsPanel() {
           type="checkbox"
           checked={onlyPending}
           onChange={(e) => setOnlyPending(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus"
+          className="h-4 w-4 rounded border-slate-300 text-panel-accent-text focus:ring-panel-focus accent-marka"
         />
         Yalnız bekleyenler
       </label>
@@ -110,7 +110,7 @@ export function ReturnsPanel() {
               {r.order?.ship_recipient && (
                 <p className="mt-1 text-xs text-slate-500">
                   {r.order.ship_recipient}
-                  {r.order.ship_address ? ` — ${r.order.ship_address}` : ""}
+                  {r.order.ship_address ? `: ${r.order.ship_address}` : ""}
                 </p>
               )}
               {r.admin_note && (

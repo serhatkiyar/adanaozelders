@@ -36,7 +36,7 @@ function Board({
               <span className="min-w-0 flex-1 truncate text-sm text-slate-700 ">
                 {e.name}
               </span>
-              <span className="shrink-0 text-sm font-semibold text-indigo-600 ">
+              <span className="shrink-0 text-sm font-semibold text-marka-metin ">
                 {fmt(e.value)}
               </span>
             </li>
@@ -81,13 +81,13 @@ export default function Leaderboard() {
             <Board
               title="En çok ders alan öğrenciler"
               icon="📚"
-              entries={data.students_by_lessons}
+              entries={data.uyeler_ders_sayisi}
               fmt={(v) => `${v} ders`}
             />
             <Board
               title="En yüksek net yapan öğrenciler"
               icon="📈"
-              entries={data.students_by_net}
+              entries={data.uyeler_net}
               fmt={(v) => `${v.toFixed(1)} net`}
             />
           </div>

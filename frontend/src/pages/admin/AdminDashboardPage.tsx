@@ -51,7 +51,7 @@ function QueueCard({ label, value, to, tone = "neutral", description }: QueueCar
         <div><p className="font-semibold text-slate-900 ">{label}</p><p className="mt-1 text-xs leading-5 text-slate-500 ">{description}</p></div>
         <Badge tone={tone}>{value}</Badge>
       </div>
-      <p className="mt-3 text-xs font-semibold text-panel-accent group-hover:opacity-80">Kuyruğu aç →</p>
+      <p className="mt-3 text-xs font-semibold text-panel-accent-text group-hover:opacity-80">Kuyruğu aç →</p>
     </Link>
   );
 }
@@ -199,7 +199,7 @@ function MoneySection({
           Para
         </h2>
         <p className="text-sm text-slate-500">
-          İşlem hacmi ve platform geliri — {periodLabel}.
+          İşlem hacmi ve platform geliri: {periodLabel}.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

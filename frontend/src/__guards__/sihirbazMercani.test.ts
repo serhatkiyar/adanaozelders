@@ -1,29 +1,35 @@
 /**
- * İlan sihirbazının mercan aksanı — SIZMA nöbetçisi.
+ * İlan sihirbazı SİTENİN rengini kullanır — nöbetçi.
  *
- * ## Karar
+ * ## Değişen karar (kullanıcı, 7 Eyl 2026)
  *
- * `/ilanini-olustur` Superprof'un görünüşünü alıyor (mercan aksan, dolgulu
- * bilgi kartı, kalın başlık). Bu, `docs/tasarim-dili.md`nin iki kuralını bu
- * ekranlar için bilerek deliyor ve kapsamı TEK SAYFAYLA sınırlı.
+ * Bu dosya 5 Eyl'de TERSİNİ çıpalıyordu: sihirbaz mercan bir hex ailesi
+ * (`#F2695E`) taşıyordu ve nöbetçinin işi o rengin sihirbaz DIŞINA
+ * sızmamasıydı. Kullanıcı ekranı görüp *"orada renkler turuncu değil kırmızı"*
+ * dedi. İtiraz haklıydı: ilan oluşturma markanın en kritik akışı ve orada
+ * başka bir marka rengi görünüyordu.
  *
- * ## Bu nöbetçi neden var
+ * Ham hex'lerin tamamı kalktı; sihirbaz artık marka token'larını kullanıyor.
+ * İstisna kapanınca nöbetçinin işi de tersine döndü: eskiden "renk dışarı
+ * sızmasın" diyordu, şimdi "sihirbazda ham renk KALMASIN" diyor.
  *
- * Kapsamı yazılı bir kararla sınırlamak yetmiyor: bir sonraki oturum "sihirbazda
- * böyle yapılmış" diyerek aynı rengi başka bir ekrana taşıyabilir ve kimse fark
- * etmez. Sitenin geri kalanı indigo; iki aksanın karışması, marka kararının
- * sessizce buharlaşması demek olurdu.
+ * ## Bu nöbetçinin ASIL iddiası
  *
- * Aşağıdaki eşik bir TAVAN değil TABAN: mercan hex'i `tutorOnboarding` dışında
- * bir dosyada doğduğu gün CI kırılır ve dosya adıyla görünür.
+ * Sessizce yanlış gidebilecek iki şey var:
  *
- * ## Gücü ve sınırı
+ *   1. Biri sihirbaza yeniden ham bir hex yazar ("burası zaten ayrı rejimdi").
+ *      O gün sihirbaz ton değişimlerinden kopar ve site yarım turuncu kalır.
+ *   2. Dolgunun üstüne `text-white` yazılır. Marka turuncusu PARLAK dolgudur;
+ *      beyaz yazı 2,4 verir ve okunmaz (ÜK-1). Eski mercan koyu olduğu için
+ *      beyaz yazı ORADA doğruydu — göç sırasında kalan bir `text-white`
+ *      hiçbir derleme hatası üretmez, sadece okunmaz.
  *
- * KAYNAK SÖZLEŞMESİ testidir: "ekran gerçekten mercan çiziyor" iddiasını jsdom
- * kanıtlayamaz (Tailwind sınıfı burada hesaplanan bir renge dönüşmez). İşi tek:
- * kapsamın sessizce genişleyememesi.
- */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+ * ## Gücü ve sınırı (kök CLAUDE.md §C)
+ *
+ * KAYNAK SÖZLEŞMESİ testidir: "ekran gerçekten turuncu çiziyor" iddiasını
+ * jsdom kanıtlayamaz (Tailwind sınıfı burada hesaplanan renge dönüşmez).
+ * Çalışma zamanı kanıtı gerçek Chrome turundadır.
+ */import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -92,15 +98,53 @@ function mercanBulgulari(): string[] {
   return bulgular;
 }
 
-describe("sihirbaz mercanı yalnız sihirbazda", () => {
-  it("mercan hex'i `pages/tutorOnboarding` DIŞINA çıkmaz", () => {
-    const disarida = mercanBulgulari().filter(
-      (y) => !y.startsWith(`${IZINLI}/`),
-    );
+describe("sihirbaz sitenin rengini kullanır", () => {
+  it("sihirbaz ağacında ham mercan hex'i KALMADI", () => {
+    const kalan = mercanBulgulari().filter((y) => y.startsWith(`${IZINLI}/`));
     expect(
-      disarida,
-      "mercan aksan sihirbaz dışına sızmış — istisnanın kapsamı tek sayfaydı",
+      kalan,
+      "sihirbazda ham hex var — marka token'ı kullanılmalı (ÜK-1)",
     ).toEqual([]);
+  });
+
+  it("hex sitenin HİÇBİR yerinde yok", () => {
+    // Eski istisna kapandı: artık ne içeride ne dışarıda.
+    expect(mercanBulgulari()).toEqual([]);
+  });
+
+  it("tema marka token'larına bağlı (DOLULUK)", () => {
+    // Boş bir tema dosyası yukarıdaki iki "yok" iddiasını bedava geçirirdi.
+    const tema = readFileSync(join(KOK, IZINLI, "tema.ts"), "utf8");
+    for (const beklenen of [
+      '"bg-marka"',
+      '"hover:bg-marka-hover"',
+      '"text-marka-metin"',
+      '"bg-marka-soft"',
+      '"text-marka-fg"',
+    ]) {
+      expect(tema, `tema '${beklenen}' taşımıyor`).toContain(beklenen);
+    }
+    // Sınıflar TAM DİZE: parçalanmış `bg-[${x}]` Tailwind tarayıcısınca
+    // görülmez ve sessizce hiçbir şey üretmez.
+    expect(yorumsuz(tema)).not.toMatch(/bg-\[\$\{/);
+  });
+
+  it("PARLAK dolgunun üstüne beyaz yazı yazılmaz (ÜK-1)", () => {
+    // Göç tuzağı: eski mercan koyuydu, `text-white` orada doğruydu. Kalan bir
+    // tane hiçbir derleme hatası üretmez, sadece okunmaz.
+    const kacaklar: string[] = [];
+    for (const dosya of kaynakDosyalari()) {
+      const kisa = relative(KOK, dosya).split(sep).join("/");
+      if (!kisa.startsWith(`${IZINLI}/`)) continue;
+      readFileSync(dosya, "utf8")
+        .split(SATIR_SONU)
+        .forEach((satir, i) => {
+          if (/bg-marka/.test(satir) && /text-white/.test(satir)) {
+            kacaklar.push(`${kisa}:${i + 1}`);
+          }
+        });
+    }
+    expect(kacaklar, "marka dolgusunun üstünde beyaz yazı").toEqual([]);
   });
 
   it("tarama gerçekten `src/` ağacına bakıyor (yalancı yeşil kapısı)", () => {
@@ -111,25 +155,6 @@ describe("sihirbaz mercanı yalnız sihirbazda", () => {
     );
     expect(dosyalar.length).toBeGreaterThan(200);
     expect(dosyalar).toContain("src/index.css");
-    expect(dosyalar).toContain("src/components/NavbarWidget.tsx");
     expect(dosyalar).toContain(`${IZINLI}/tema.ts`);
-  });
-
-  it("renk Tailwind token'ı DEĞİL — config mercanı tanımıyor", () => {
-    // Token eklemek rengi tüm siteden erişilebilir kılar ve panel token
-    // ailesiyle karışırdı; kapsam kilidi bu yüzden config'te de sınanıyor.
-    const cfg = readFileSync(join(KOK, "tailwind.config.js"), "utf8");
-    expect(MERCAN_HEX.test(cfg)).toBe(false);
-  });
-
-  it("tema dosyası sınıfları TAM DİZE olarak yazıyor", () => {
-    // Parçalanmış `bg-[${x}]` Tailwind'in tarayıcısı tarafından görülmez ve
-    // sessizce hiçbir şey üretmez — düğme şeffaf kalır, kimse fark etmez.
-    // Yorumlar elenir: tema dosyasının kendi açıklaması, kaçınılması gereken
-    // biçimi örnek olarak anıyor.
-    const tema = readFileSync(join(KOK, IZINLI, "tema.ts"), "utf8");
-    expect(tema).toContain('"bg-[#F2695E]"');
-    expect(tema).toContain('"bg-[#FDEFEE]"');
-    expect(yorumsuz(tema)).not.toMatch(/bg-\[\$\{/);
   });
 });

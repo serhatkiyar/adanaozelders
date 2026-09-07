@@ -22,7 +22,7 @@ import type { FeatureFlagOut } from "@/api/featureFlags";
 const BLOCKER_TEXT: Record<string, string> = {
   flag_disabled: "Bu koldaki ödeme bayrağı kapalı.",
   provider_marketplace_support:
-    "Ödeme sağlayıcısı alt üye işyeri (pazaryeri) modelini desteklemiyor — iyzico Pazaryeri entegrasyonu tamamlanmadan bu kol açılamaz.",
+    "Ödeme sağlayıcısı alt üye işyeri (pazaryeri) modelini desteklemiyor: iyzico Pazaryeri entegrasyonu tamamlanmadan bu kol açılamaz.",
   check_failed:
     "Durum okunamadı; kol güvenli tarafta kalmak için kapalı sayılıyor.",
 };
@@ -72,7 +72,7 @@ export default function AdminSettingsPage() {
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold text-slate-900 ">Ödeme kolları</h2>
           <p className="text-xs text-slate-500 ">
-            Her kol bağımsızdır — birinin eksiği diğerini kapatmaz.
+            Her kol bağımsızdır: birinin eksiği diğerini kapatmaz.
           </p>
         </div>
         <p className="mb-4 max-w-3xl text-sm text-slate-600 ">
@@ -179,7 +179,7 @@ export default function AdminSettingsPage() {
                     // "Bağlanmadı" rozetinin tam cümlesi: operatör bunu "değişikliğim
                     // henüz yayılmadı" diye okumamalı.
                     <p className="mt-2 text-sm text-amber-700 ">
-                      Bu bayrak henüz hiçbir kontrolde okunmuyor — açmak veya kapatmak
+                      Bu bayrak henüz hiçbir kontrolde okunmuyor: açmak veya kapatmak
                       davranışı değiştirmez.
                     </p>
                   )}

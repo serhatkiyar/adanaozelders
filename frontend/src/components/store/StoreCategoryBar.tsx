@@ -77,8 +77,10 @@ export function StoreCategoryBar() {
           <Link
             to={ROUTES.home}
             onMouseEnter={() => setOpenId(null)}
-            // Logo lacivertiyle (#1a365d) dolgulu buton — şeritteki tek renkli aksiyon.
-            className="shrink-0 self-center whitespace-nowrap rounded-full bg-[#1a365d] px-3.5 py-1 text-sm font-medium text-white transition-colors hover:bg-[#24477c]"
+            // Marka aksanıyla dolgulu buton — şeritteki tek renkli aksiyon.
+            // (Tarihçe: logo lacivertiydi (#1a365d) ve ELLE yazılmıştı; ÜK-1'te
+            //  token'a bağlandı — sitede tek başına kalmış bir lacivert olamazdı.)
+            className="shrink-0 self-center whitespace-nowrap rounded-full bg-marka px-3.5 py-1 text-sm font-medium text-marka-fg transition-colors hover:bg-marka-hover"
           >
             Özel Ders Al
           </Link>
@@ -114,7 +116,7 @@ export function StoreCategoryBar() {
                   key={kid.id}
                   to={`${ROUTES.store}?category=${kid.id}`}
                   onClick={() => setOpenId(null)}
-                  className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-indigo-600 "
+                  className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-marka-metin "
                 >
                   {kid.name}
                 </Link>

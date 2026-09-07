@@ -91,7 +91,11 @@ async def anonymize_account(db: AsyncSession, user) -> list[str]:
     user.is_active = False
     user.deleted_at = _now()
 
-    for field in ("phone", "about", "avatar_url", "headline", "bio", "birth_date"):
+    # `gender` bu listeye ÜK-1 turunda eklendi: `birth_date` temizleniyordu ama
+    # cinsiyet KALIYORDU. İkisi de aydınlatma metninin aynı kaleminde ("kimlik
+    # bilgileri") işlenen demografik veridir; birini silip diğerini bırakmak
+    # bilinçli bir ayrım değil, unutulmuş bir alandı.
+    for field in ("phone", "about", "avatar_url", "headline", "bio", "birth_date", "gender"):
         if hasattr(user, field):
             setattr(user, field, None)
     # Telefon doğrulaması ve e-posta doğrulaması sıfırlanır.
@@ -192,6 +196,12 @@ async def export_personal_data(db: AsyncSession, user) -> dict:
                 user.birth_date.isoformat()
                 if getattr(user, "birth_date", None)
                 else None
+            ),
+            # Aydınlatma metni cinsiyeti işlenen veri sayıyor ama döküm onu
+            # vermiyordu: yasal metin kodun tutmadığı bir söz veriyordu.
+            # `.value` ile yazılır — enum nesnesi JSON'a serileşmez.
+            "cinsiyet": (
+                user.gender.value if getattr(user, "gender", None) else None
             ),
             "kayit_tarihi": (
                 user.created_at.isoformat() if getattr(user, "created_at", None) else None

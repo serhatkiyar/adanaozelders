@@ -145,9 +145,9 @@ export default function AdminBookingsPage() {
       enableSorting: false,
       cell: ({ row }) => (
         <div className="min-w-48">
-          <Link to={ROUTES.adminUser("tutor", row.original.tutor_id)} className="font-semibold text-panel-accent hover:underline">{row.original.tutor_name || `Eğitmen #${row.original.tutor_id}`}</Link>
+          <Link to={ROUTES.adminUser("tutor", row.original.tutor_id)} className="font-semibold text-panel-accent-text hover:underline">{row.original.tutor_name || `Eğitmen #${row.original.tutor_id}`}</Link>
           <span className="mx-1.5 text-slate-300">↔</span>
-          <Link to={ROUTES.adminUser("client", row.original.client_id)} className="font-semibold text-panel-accent hover:underline">{row.original.client_name || `Öğrenci #${row.original.client_id}`}</Link>
+          <Link to={ROUTES.adminUser("client", row.original.client_id)} className="font-semibold text-panel-accent-text hover:underline">{row.original.client_name || `Öğrenci #${row.original.client_id}`}</Link>
         </div>
       ),
     },

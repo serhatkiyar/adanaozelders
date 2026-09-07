@@ -30,7 +30,7 @@ export function StockBadge({
   // Dijital ürünün stoğu yoktur ve tükenmez — 0 gibi gösterip "Tükendi"
   // demek karşılığı olmayan bir vaat üretirdi.
   if (stock === null || stock === undefined) {
-    return <span className="text-xs text-slate-400 ">—</span>;
+    return <span className="text-xs text-slate-400 ">-</span>;
   }
   if (stock <= 0) {
     return <Badge tone="danger">Tükendi</Badge>;

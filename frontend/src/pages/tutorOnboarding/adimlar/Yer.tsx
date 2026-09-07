@@ -55,7 +55,7 @@ export function AdimYer({ d, guncelle }: AdimProps) {
             dolgu
             ad="konum"
             etiket="Semt veya mahalle"
-            ipucu="İsteğe bağlı. Açık adres yazma — bu satır ilanında görünür."
+            ipucu="İsteğe bağlı. Açık adres yazma: bu satır ilanında görünür."
             deger={d.locationText}
             onChange={(v) => guncelle({ locationText: v })}
             maxLength={255}
@@ -81,7 +81,7 @@ export function AdimYer({ d, guncelle }: AdimProps) {
             ) : (
               <PlainButton
                 onClick={() => setHaritaAcik(true)}
-                className="text-[14px] font-medium text-indigo-600 underline underline-offset-4 transition hover:text-indigo-700"
+                className="text-[14px] font-medium text-marka-metin underline underline-offset-4 transition hover:text-marka-metin-hover"
               >
                 Haritada işaretle (isteğe bağlı)
               </PlainButton>

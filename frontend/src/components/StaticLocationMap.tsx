@@ -10,7 +10,7 @@ import { tileSource } from "@/lib/mapTiles";
 const pinIcon = L.divIcon({
   className: "",
   html: `<div style="position:relative;width:28px;height:34px">
-    <div style="position:absolute;inset:0;width:28px;height:28px;border-radius:9999px;background:#4f46e5;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.35)"></div>
+    <div style="position:absolute;inset:0;width:28px;height:28px;border-radius:9999px;background:rgb(var(--marka));border:2.5px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.35)"></div>
     <div style="position:absolute;left:50%;top:25px;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #fff;filter:drop-shadow(0 2px 1px rgba(15,23,42,.3))"></div>
   </div>`,
   iconSize: [28, 34],

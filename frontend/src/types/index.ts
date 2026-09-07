@@ -550,6 +550,8 @@ export interface TutorProfileUpdate {
   first_lesson_free?: boolean | null;
   hourly_rate?: number | null;
   teaching_mode?: TeachingMode | null;
+  /** Arama faseti; ilanda GORUNUR. Isteğe bağlı — boş bırakılabilir. */
+  gender?: Gender | null;
   location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
@@ -1057,8 +1059,8 @@ export interface LeaderboardEntry {
 export interface LeaderboardOut {
   tutors_by_lessons: LeaderboardEntry[];
   tutors_by_rating: LeaderboardEntry[];
-  students_by_lessons: LeaderboardEntry[];
-  students_by_net: LeaderboardEntry[];
+  uyeler_ders_sayisi: LeaderboardEntry[];
+  uyeler_net: LeaderboardEntry[];
 }
 
 /* ============================ ADMIN ============================ */

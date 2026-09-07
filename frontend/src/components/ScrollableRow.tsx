@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { DaireDugme } from "@/components/ui/DaireDugme";
+
 interface ScrollableRowProps {
   children: ReactNode;
   className?: string;
@@ -14,7 +16,7 @@ interface ScrollableRowProps {
 }
 
 // W3Schools tarzı yatay kaydırılabilir şerit:
-// - sm+ ekranlarda yalnızca taşma varken görünen ❮ / ❯ ok butonları
+// - sm+ ekranlarda yalnızca taşma varken görünen ok butonları (ui/DaireDugme)
 // - fare ile sürükle-kaydır (mobilde native swipe kullanılır)
 // - gizli scrollbar
 export function ScrollableRow({
@@ -86,20 +88,20 @@ export function ScrollableRow({
     }
   };
 
-  const arrowBase =
-    "absolute top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-600 shadow-md ring-1 ring-slate-200 transition hover:bg-slate-50 sm:flex";
+  // Yerleşim burada (kenarda, üste binen), GÖRÜNÜM `ui/DaireDugme`de.
+  // Eskiden burada da ayrı bir stil (beyaz + gölge + halka) ve ikon yerine
+  // ham bir ok KARAKTERİ vardı — sitedeki üçüncü dairesel düğme yazımıydı.
+  const yerlesim = "absolute top-1/2 z-10 hidden -translate-y-1/2 shadow-md sm:inline-flex";
 
   return (
     <div className="relative">
       {showArrows && canLeft && (
-        <button
-          type="button"
+        <DaireDugme
+          yon="sol"
           aria-label="Sola kaydır"
           onClick={() => scrollByDir(-1)}
-          className={`${arrowBase} left-1`}
-        >
-          ❮
-        </button>
+          className={`${yerlesim} left-1`}
+        />
       )}
 
       <div
@@ -118,14 +120,12 @@ export function ScrollableRow({
       </div>
 
       {showArrows && canRight && (
-        <button
-          type="button"
+        <DaireDugme
+          yon="sag"
           aria-label="Sağa kaydır"
           onClick={() => scrollByDir(1)}
-          className={`${arrowBase} right-1`}
-        >
-          ❯
-        </button>
+          className={`${yerlesim} right-1`}
+        />
       )}
     </div>
   );

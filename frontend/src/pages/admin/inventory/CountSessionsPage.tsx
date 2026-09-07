@@ -349,7 +349,7 @@ export default function CountSessionsPage() {
         header: "Uyarı",
         enableSorting: false,
         cell: ({ row }) =>
-          needsRecount(row.original) ? <StaleRozeti /> : <span className="text-xs">—</span>,
+          needsRecount(row.original) ? <StaleRozeti /> : <span className="text-xs">-</span>,
       },
       {
         id: "created_at",
@@ -437,7 +437,7 @@ export default function CountSessionsPage() {
               ) : undefined
             }
             onRowClick={(o) => navigate(ROUTES.adminInventoryCount(o.id))}
-            satirAdi={(o) => `${o.code} — sayım oturumu`}
+            satirAdi={(o) => `${o.code}: sayım oturumu`}
             renderMobileRow={(o) => {
               const rozet = sessionStatusBadge(o.status);
               return (

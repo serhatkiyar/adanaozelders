@@ -136,7 +136,7 @@ export default function OrderDetailPage() {
       <div className="mx-auto max-w-5xl px-4 py-8 md:px-8">
         {/* Breadcrumb */}
         <nav className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 ">
-          <Link to={ROUTES.orders} className="hover:text-indigo-600 ">
+          <Link to={ROUTES.orders} className="hover:text-marka-metin ">
             Siparişlerim
           </Link>
           <span className="text-slate-300 ">/</span>
@@ -242,9 +242,9 @@ export default function OrderDetailPage() {
         {canTrack && (
           <Link
             to={ROUTES.cargoTracking(order.track_token!)}
-            className="mt-5 flex items-center gap-4 rounded-2xl border border-slate-200 p-5 transition-colors hover:border-indigo-300 "
+            className="mt-5 flex items-center gap-4 rounded-2xl border border-slate-200 p-5 transition-colors hover:border-marka-mid "
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 ">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-marka-soft text-marka-soft-fg ">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
               </svg>
@@ -253,7 +253,7 @@ export default function OrderDetailPage() {
               <p className="text-sm font-semibold text-slate-900 ">Kargo Takibi</p>
               <p className="mt-0.5 text-sm text-slate-500 ">{trackSub}</p>
             </div>
-            <span className="shrink-0 text-sm font-semibold text-indigo-600 ">
+            <span className="shrink-0 text-sm font-semibold text-marka-metin ">
               Takip et →
             </span>
           </Link>
@@ -329,7 +329,7 @@ export default function OrderDetailPage() {
                   href={`https://www.google.com/search?q=${encodeURIComponent("kargo takip " + order.tracking_no)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-medium text-indigo-600 hover:underline "
+                  className="text-xs font-medium text-marka-metin hover:underline "
                 >
                   Kargo takibi: {order.tracking_no}
                 </a>
@@ -388,7 +388,7 @@ export default function OrderDetailPage() {
               <button
                 type="button"
                 onClick={() => setInvoiceOpen(true)}
-                className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 "
+                className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka-metin "
               >
                 Fatura
               </button>
@@ -405,7 +405,7 @@ export default function OrderDetailPage() {
             <button
               type="button"
               onClick={reorder}
-              className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+              className="rounded-full bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
             >
               Tekrar sipariş et
             </button>
@@ -551,7 +551,7 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
                   value={opt.value}
                   checked={type === opt.value}
                   onChange={() => setType(opt.value)}
-                  className="mt-0.5"
+                  className="mt-0.5 accent-marka"
                 />
                 <span>
                   <span className="font-medium text-slate-800 ">
@@ -617,7 +617,7 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
                 ? "Ürün hasarlı geldi / yanlış ürün gönderildi…"
                 : "İstersen kısa bir not bırakabilirsin."
             }
-            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
           />
         </label>
 
@@ -640,7 +640,7 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
           <button
             type="submit"
             disabled={request.isPending || selected.length === 0}
-            className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-full bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
           >
             {request.isPending ? "Gönderiliyor…" : "Talebi gönder"}
           </button>

@@ -115,14 +115,14 @@ export function StockMovementsPanel() {
                 <span className="text-xs text-slate-500 ">
                   {denetim.data.checked} ürün denetlendi
                   {denetim.data.next_offset != null &&
-                    " — defterin tamamı için sonraki sayfalar da denetlenmeli"}
+                    ": defterin tamamı için sonraki sayfalar da denetlenmeli"}
                 </span>
               </div>
               {denetim.data.problems.length > 0 && (
                 <ul className="space-y-1 text-xs text-amber-900 ">
                   {denetim.data.problems.slice(0, 20).map((p, i) => (
                     <li key={`${p.product_id}-${p.code}-${i}`}>
-                      <span className="font-mono">{p.sku ?? p.product_id}</span> —{" "}
+                      <span className="font-mono">{p.sku ?? p.product_id}</span>: {" "}
                       {p.message}
                       {p.expected != null && p.actual != null && (
                         <>

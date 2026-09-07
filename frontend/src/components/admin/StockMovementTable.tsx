@@ -25,7 +25,7 @@ const REF_LABELS: Record<string, string> = {
 };
 
 function referans(m: StockMovementOut): string {
-  if (!m.ref_type) return "—";
+  if (!m.ref_type) return "-";
   const ad = REF_LABELS[m.ref_type] ?? m.ref_type;
   const kimlik = m.ref_id != null ? `#${m.ref_id}` : "";
   const satir = m.ref_line_id != null ? ` · satır ${m.ref_line_id}` : "";

@@ -149,7 +149,7 @@ export function PackingLabelSheet({
           <ul className="mt-1 list-disc pl-5">
             {sorunlular.map((s) => (
               <li key={s.packageId}>
-                Paket #{s.packageId} — {s.sebep}
+                Paket #{s.packageId}: {s.sebep}
               </li>
             ))}
           </ul>

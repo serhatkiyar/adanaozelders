@@ -43,14 +43,11 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { parseAdminAuditQuery, type AdminAuditSort } from "@/lib/adminOperationsQuery";
 import type { AuditLogOut } from "@/types";
+import { ROL_ETIKETI } from "@/lib/roles";
 
-const ACTOR_ROLE_LABEL: Record<number, string> = {
-  1: "Admin",
-  2: "Eğitmen",
-  3: "Öğrenci",
-  4: "Operatör",
-  5: "Kurye",
-};
+// (Tarihçe: burada rol 1 "Admin" yazıyordu, diğer iki ekranda "Yönetici" —
+//  merkezî kaynak bu tutarsızlığı da kapattı.)
+const ACTOR_ROLE_LABEL = ROL_ETIKETI;
 
 /** Adres varsayılanları — anahtar ADLARI eski sürümle birebir aynıdır. */
 const VARSAYILAN = {
@@ -209,7 +206,7 @@ export default function AdminAuditLogsPage() {
       enableSorting: false,
       cell: ({ row }) => {
         const text = row.original.reason || row.original.details;
-        return <span className="block max-w-md truncate text-xs text-slate-500" title={text ?? undefined}>{text || "—"}</span>;
+        return <span className="block max-w-md truncate text-xs text-slate-500" title={text ?? undefined}>{text || "-"}</span>;
       },
     },
     {
@@ -273,7 +270,7 @@ export default function AdminAuditLogsPage() {
             ) : undefined
           }
           onRowClick={(row) => yuzey.ac(row)}
-          satirAdi={(row) => `${row.action} — denetim kaydı ayrıntısı`}
+          satirAdi={(row) => `${row.action}: denetim kaydı ayrıntısı`}
           renderMobileRow={(log) => (
             <div>
               <div className="flex items-center justify-between gap-2"><Badge tone="info">{log.action}</Badge><span className="text-xs text-slate-400">{formatDateTime(log.created_at)}</span></div>

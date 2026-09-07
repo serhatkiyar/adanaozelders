@@ -37,10 +37,12 @@ describe("formatLastSeen", () => {
 
 describe("formatResponseTime", () => {
   it("null/negatif/geçersiz -> '—'", () => {
-    expect(formatResponseTime(null)).toBe("—");
-    expect(formatResponseTime(undefined)).toBe("—");
-    expect(formatResponseTime(-5)).toBe("—");
-    expect(formatResponseTime(Number.NaN)).toBe("—");
+        // 7 Eyl 2026 (ÜK-7): gösterge uzun tireden (—) düz tireye döndü.
+    // İddianın anlamı aynı, yalnız beklenen karakter değişti.
+    expect(formatResponseTime(null)).toBe("-");
+    expect(formatResponseTime(undefined)).toBe("-");
+    expect(formatResponseTime(-5)).toBe("-");
+    expect(formatResponseTime(Number.NaN)).toBe("-");
   });
   it("dakika aralığı", () => {
     expect(formatResponseTime(300)).toBe("~5 dk");

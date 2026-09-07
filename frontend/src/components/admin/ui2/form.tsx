@@ -399,7 +399,7 @@ function Control({ children }: { children: ReactElement }) {
   if (GELISTIRME && typeof cocukProps.id === "string" && cocukProps.id) {
     console.error(
       `Form.Control: <${elemanAdi(cocuk.type)}> kendi id'sini ("${cocukProps.id}") ` +
-        `veriyor ama id'nin sahibi Form.Item'dır ("${kimlik?.id}") — ` +
+        `veriyor ama id'nin sahibi Form.Item'dır ("${kimlik?.id}") ` +
         "etiket bağı ona kurulu. Çocuğun id'si kullanılmayacak; " +
         "document.getElementById ile bu kontrolü arayan kod varsa kırılır."
     );
@@ -431,7 +431,7 @@ function Control({ children }: { children: ReactElement }) {
     console.error(
       `Form.Control: <${elemanAdi(cocuk.type)}> id'yi DOM'a indirmedi ` +
         `(alan: "${alan?.ad ?? "bilinmiyor"}", beklenen id: "${kimlik.id}"). ` +
-        "Etiket bağı kurulmadı — kontrol ekran okuyucuya ADSIZ görünüyor. " +
+        "Etiket bağı kurulmadı: kontrol ekran okuyucuya ADSIZ görünüyor. " +
         "Bileşen id/aria-* prop'larını iç kontrole iletmeli " +
         "(ör. `({ id, ...p }) => <input id={id} {...p} />`)."
     );

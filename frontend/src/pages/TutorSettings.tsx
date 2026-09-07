@@ -98,7 +98,7 @@ const MODES = [
 /* ─── shared style tokens ────────────────────────────── */
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ";
 
 const labelCls =
   "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 ";
@@ -334,7 +334,7 @@ export default function TutorSettings() {
                         runAction(submitAction, "İlanın onaya gönderildi.")
                       }
                       disabled={actionBusy}
-                      className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {data.status === TutorStatus.REJECTED
                         ? "Yeniden Gönder"
@@ -442,7 +442,7 @@ export default function TutorSettings() {
                           }
                           className={`rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
                             selected
-                              ? "bg-indigo-600 text-white shadow-sm shadow-indigo-200 "
+                              ? "bg-marka text-marka-fg shadow-sm shadow-marka/10 "
                               : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                           }`}
                         >
@@ -488,7 +488,7 @@ export default function TutorSettings() {
                       value={district}
                       disabled={!editable}
                       onChange={(e) => setDistrict(e.target.value)}
-                      className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm outline-none focus:border-indigo-400 disabled:opacity-50 "
+                      className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm outline-none focus:border-marka-mid disabled:opacity-50 "
                     >
                       <option value="">İlçe seç (opsiyonel)</option>
                       {ADANA_DISTRICTS.map((d) => (
@@ -517,7 +517,7 @@ export default function TutorSettings() {
                     disabled={!editable}
                     onChange={(e) => setLocationText(e.target.value)}
                     placeholder="ör. Kadıköy, İstanbul"
-                    className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 disabled:opacity-50 "
+                    className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-marka-mid disabled:opacity-50 "
                   />
                   <MapPicker
                     initialLat={locationLat}
@@ -553,7 +553,7 @@ export default function TutorSettings() {
                           onChange={(e) =>
                             updateWindow(i, { weekday: Number(e.target.value) })
                           }
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 "
+                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:opacity-50 "
                         >
                           {WEEKDAYS_LONG.map((d, idx) => (
                             <option key={idx} value={idx}>
@@ -569,7 +569,7 @@ export default function TutorSettings() {
                           onChange={(e) =>
                             updateWindow(i, { start_minute: hhmmToMin(e.target.value) })
                           }
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 "
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:opacity-50 "
                         />
                         <span className="text-slate-400">–</span>
                         <input
@@ -580,7 +580,7 @@ export default function TutorSettings() {
                           onChange={(e) =>
                             updateWindow(i, { end_minute: hhmmToMin(e.target.value) })
                           }
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:opacity-50 "
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:opacity-50 "
                         />
                         <button
                           type="button"
@@ -599,7 +599,7 @@ export default function TutorSettings() {
                       <button
                         type="button"
                         onClick={addWindow}
-                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 "
+                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-marka-soft-fg transition hover:bg-marka-soft "
                       >
                         + Pencere ekle
                       </button>
@@ -612,7 +612,7 @@ export default function TutorSettings() {
                   Yaş ve cinsiyet bilgini{" "}
                   <Link
                     to={ROUTES.profile}
-                    className="font-semibold text-indigo-600 hover:underline "
+                    className="font-semibold text-marka-metin hover:underline "
                   >
                     Profil
                   </Link>{" "}
@@ -672,7 +672,7 @@ export default function TutorSettings() {
                     disabled={!editable}
                     checked={firstLessonFree}
                     onChange={(e) => setFirstLessonFree(e.target.checked)}
-                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-marka"
                   />
                   <span className="text-sm">
                     <span className="font-semibold text-slate-800 ">
@@ -689,7 +689,7 @@ export default function TutorSettings() {
                   <button
                     type="submit"
                     disabled={!editable || updateProfile.isPending}
-                    className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {updateProfile.isPending ? "Kaydediliyor…" : "Kaydet"}
                   </button>

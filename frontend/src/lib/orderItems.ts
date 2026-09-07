@@ -44,7 +44,7 @@ export function hasItemDetail(
 }
 
 /** Yüzeylerin ortak kullandığı eksik-veri metni. */
-export const MISSING_ITEMS_TEXT = "Kalem bilgisi yok — siparişi açıp kontrol edin";
+export const MISSING_ITEMS_TEXT = "Kalem bilgisi yok: siparişi açıp kontrol edin";
 
 /**
  * Tek satıra sığdırılmış özet (etiket ve dar alanlar için).

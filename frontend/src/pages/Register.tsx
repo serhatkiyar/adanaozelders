@@ -73,7 +73,7 @@ export default function Register() {
       onClick={() => setRole(value)}
       className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
         role === value
-          ? "bg-indigo-600 text-white"
+          ? "bg-marka text-marka-fg"
           : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
       }`}
     >
@@ -86,12 +86,12 @@ export default function Register() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-100 ">
         <h1 className="text-2xl font-bold text-slate-900 ">Kayıt Ol</h1>
         <p className="mt-1 text-sm text-slate-500 ">
-          Hesap türünü seçerek başla.
+          Ne yapmak istiyorsun?
         </p>
 
         <div className="mt-6 flex gap-2">
-          {roleTab("client", "Öğrenci")}
-          {roleTab("tutor", "Eğitmen")}
+          {roleTab("client", "Ders almak")}
+          {roleTab("tutor", "Ders vermek")}
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -106,7 +106,7 @@ export default function Register() {
                     maxLength={75}
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                     placeholder="Adınız"
                   />
               )}
@@ -121,7 +121,7 @@ export default function Register() {
                     maxLength={75}
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                     placeholder="Soyadınız"
                   />
               )}
@@ -136,7 +136,7 @@ export default function Register() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   placeholder="ornek@eposta.com"
                 />
             )}
@@ -152,7 +152,7 @@ export default function Register() {
                   maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   placeholder="En az 8 karakter"
                 />
             )}
@@ -169,7 +169,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mutation.isPending ? "Kaydediliyor..." : "Kayıt Ol"}
           </button>
@@ -179,7 +179,7 @@ export default function Register() {
           Zaten hesabın var mı?{" "}
           <Link
             to={ROUTES.login}
-            className="font-semibold text-indigo-600 hover:text-indigo-700 "
+            className="font-semibold text-marka-metin hover:text-marka-metin-hover "
           >
             Giriş yap
           </Link>

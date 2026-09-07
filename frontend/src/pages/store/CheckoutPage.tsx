@@ -152,9 +152,9 @@ export default function CheckoutPage() {
             {hasPhysical && (
               <Section title="Teslimat Adresi">
                 <div className="space-y-3">
-                  <div className="rounded-xl border-2 border-indigo-500 p-3 ">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700 ">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full border-[5px] border-indigo-600 " />
+                  <div className="rounded-xl border-2 border-marka-mid p-3 ">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-marka-metin-hover ">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full border-[5px] border-marka " />
                       Adrese teslim edilsin
                     </div>
                     <div className="mt-3 pl-6">
@@ -165,7 +165,7 @@ export default function CheckoutPage() {
                               key={a.id}
                               className={`flex cursor-pointer gap-3 rounded-xl border p-3 transition-colors ${
                                 selectedAddr === a.id
-                                  ? "border-indigo-500 bg-indigo-50/50 "
+                                  ? "border-marka-mid bg-marka-soft/50 "
                                   : "border-slate-200 "
                               }`}
                             >
@@ -174,7 +174,7 @@ export default function CheckoutPage() {
                                 name="address"
                                 checked={selectedAddr === a.id}
                                 onChange={() => setAddressId(a.id)}
-                                className="mt-1 accent-indigo-600"
+                                className="mt-1 accent-marka"
                               />
                               <div>
                                 <p className="text-sm font-medium text-slate-800 ">{a.title}</p>
@@ -189,7 +189,7 @@ export default function CheckoutPage() {
                           ))}
                           <Link
                             to={ROUTES.addresses}
-                            className="inline-block pt-1 text-xs font-medium text-indigo-600 hover:underline "
+                            className="inline-block pt-1 text-xs font-medium text-marka-metin hover:underline "
                           >
                             Adreslerimi yönet →
                           </Link>
@@ -208,7 +208,7 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={() => setPickupInfo(true)}
-                        className="text-xs text-indigo-600 underline-offset-2 hover:underline "
+                        className="text-xs text-marka-metin underline-offset-2 hover:underline "
                       >
                         Nedir?
                       </button>
@@ -234,7 +234,7 @@ export default function CheckoutPage() {
                   <Link
                     to={ROUTES.distanceSales}
                     target="_blank"
-                    className="mt-2 inline-block text-xs font-medium text-indigo-600 hover:underline "
+                    className="mt-2 inline-block text-xs font-medium text-marka-metin hover:underline "
                   >
                     Tümünü oku →
                   </Link>
@@ -287,7 +287,7 @@ export default function CheckoutPage() {
                     )}
                     <div className="flex items-center justify-between border-t border-slate-200 pt-3 ">
                       <span className="font-semibold text-slate-700 ">Toplam</span>
-                      <span className="text-xl font-semibold text-indigo-600 ">
+                      <span className="text-xl font-semibold text-marka-metin ">
                         {formatTL(validation.total)}
                       </span>
                     </div>
@@ -322,14 +322,14 @@ export default function CheckoutPage() {
                   type="checkbox"
                   checked={consent}
                   onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 "
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
                 />
                 <span>
-                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-indigo-600 hover:underline ">
+                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-marka-metin hover:underline ">
                     Ön Bilgilendirme Koşulları
                   </Link>
                   'nı ve{" "}
-                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-indigo-600 hover:underline ">
+                  <Link to={ROUTES.distanceSales} target="_blank" className="font-medium text-marka-metin hover:underline ">
                     Mesafeli Satış Sözleşmesi
                   </Link>
                   'ni okudum, onaylıyorum.
@@ -350,7 +350,7 @@ export default function CheckoutPage() {
                   !!couponError ||
                   blockedBranches.length > 0
                 }
-                className="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 "
+                className="mt-4 w-full rounded-xl bg-marka py-3 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 "
               >
                 {createOrder.isPending ? "İşleniyor…" : "Ödeme Yap"}
               </button>
@@ -380,7 +380,7 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={() => setPickupInfo(false)}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
             >
               Anladım
             </button>
@@ -599,7 +599,7 @@ function PreInfoForm({
       </dl>
       <p className="mt-2 text-[11px] text-slate-400">
         İade ve şikayet için{" "}
-        <Link to={ROUTES.refundPolicy} target="_blank" className="text-indigo-600 hover:underline ">
+        <Link to={ROUTES.refundPolicy} target="_blank" className="text-marka-metin hover:underline ">
           İptal ve İade Politikası
         </Link>{" "}
         · {OPERATOR.email}
@@ -666,13 +666,13 @@ function CouponBox({
               value={couponInput}
               onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
               placeholder="Kupon kodu"
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase outline-none focus:border-indigo-400 "
+              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase outline-none focus:border-marka-mid "
             />
             <button
               type="button"
               disabled={!couponInput.trim()}
               onClick={onApply}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:opacity-50"
             >
               Uygula
             </button>
@@ -683,7 +683,7 @@ function CouponBox({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="text-sm font-medium text-indigo-600 hover:underline "
+          className="text-sm font-medium text-marka-metin hover:underline "
         >
           İndirim kodu kullan
         </button>

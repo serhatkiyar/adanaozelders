@@ -110,6 +110,42 @@ async def tutor_price_histogram(
     )
 
 
+@router.get("/gender-facets", response_model=dict[str, int])
+async def tutor_gender_facets(
+    q: str | None = Query(default=None),
+    mode: list[TeachingMode] | None = Query(default=None),
+    min_age: int | None = Query(default=None, ge=0, le=120),
+    max_age: int | None = Query(default=None, ge=0, le=120),
+    subject: list[str] | None = Query(default=None),
+    district: list[str] | None = Query(default=None),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0, le=500),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cinsiyet filtresinin seçenek başına kaç eğitmene denk geldiği.
+
+    `gender` parametresi BİLEREK YOK: faset kendi eksenini saymaz (aynı desen
+    `price-histogram`da da var). Dönen `gorunmeyen`, cinsiyet filtresi
+    seçildiğinde sonuçtan düşen eğitmen sayısıdır — bu uç noktanın var oluş
+    sebebi o sessiz elemeyi görünür kılmaktır.
+
+    SATIR DEĞİL SAYI döner; kimlik sızdırmaz.
+    """
+    return await search_service.gender_facets(
+        db,
+        q=q,
+        modes=[m.value for m in mode] if mode else None,
+        min_age=min_age,
+        max_age=max_age,
+        subjects=subject,
+        districts=district,
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+    )
+
+
 @router.get("/featured", response_model=list[TutorSearchOut])
 async def featured_tutors(
     q: str | None = Query(default=None),

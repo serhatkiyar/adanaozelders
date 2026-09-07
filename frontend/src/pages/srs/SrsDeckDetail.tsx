@@ -4,7 +4,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Field } from "@/components/ui/Field";
 import { ConfirmDialog } from "@/components/admin/ui/ConfirmDialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
@@ -198,7 +198,7 @@ function NoteForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
         >
           {pending ? "Kaydediliyor…" : initial ? "Kaydet" : "Not Ekle"}
         </button>
@@ -317,15 +317,15 @@ function AssignmentSection({ deckId }: { deckId: number }) {
             aria-expanded={open && matches.length > 0}
             aria-controls={listId}
             aria-autocomplete="list"
-            placeholder="Öğrenci adı yaz…"
-            aria-label="Öğrenci ara"
+            placeholder="Üye adı yaz…"
+            aria-label="Üye ara"
             className="input w-64"
           />
           {open && matches.length > 0 && (
             <div
               id={listId}
               role="listbox"
-              aria-label="Öğrenci sonuçları"
+              aria-label="Üye sonuçları"
               className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg "
             >
               {matches.map((s) => (
@@ -351,7 +351,7 @@ function AssignmentSection({ deckId }: { deckId: number }) {
         <button
           type="submit"
           disabled={assign.isPending || !picked}
-          className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
         >
           Ata
         </button>
@@ -430,7 +430,7 @@ export default function SrsDeckDetail() {
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
   const isTutor = user?.role_id === ROLE_IDS.TUTOR;
-  const navItems = isTutor ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = isTutor ? TUTOR_NAV : UYE_NAV;
 
   const decksQuery = useSrsDecks();
   const deck =
@@ -538,7 +538,7 @@ export default function SrsDeckDetail() {
             action={
               <Link
                 to={ROUTES.srs}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
               >
                 Destelere dön
               </Link>
@@ -556,7 +556,7 @@ export default function SrsDeckDetail() {
           <div className="min-w-0">
             <Link
               to={ROUTES.srs}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+              className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
             >
               ← Aralıklı Tekrar
             </Link>
@@ -571,7 +571,7 @@ export default function SrsDeckDetail() {
           </div>
           <Link
             to={ROUTES.srsStudy(deck.id)}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+            className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
           >
             Çalış
           </Link>
@@ -613,7 +613,7 @@ export default function SrsDeckDetail() {
               <button
                 onClick={saveLimits}
                 disabled={updateDeck.isPending}
-                className="mb-5 rounded-xl px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 "
+                className="mb-5 rounded-xl px-4 py-2 text-sm font-semibold text-marka-soft-fg transition hover:bg-marka-soft disabled:opacity-50 "
               >
                 Kaydet
               </button>
@@ -638,7 +638,7 @@ export default function SrsDeckDetail() {
             {isOwn && !adding && (
               <button
                 onClick={() => setAdding(true)}
-                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 "
+                className="text-sm font-semibold text-marka-metin hover:text-marka-metin-hover "
               >
                 + Not Ekle
               </button>
@@ -651,7 +651,7 @@ export default function SrsDeckDetail() {
               {cardsQuery.data?.items.length} tanesi listeleniyor.{" "}
               <Link
                 to={`${ROUTES.srsBrowser}?deste=${deckId}`}
-                className="font-semibold text-indigo-600 hover:text-indigo-700 "
+                className="font-semibold text-marka-metin hover:text-marka-metin-hover "
               >
                 Tümünü tarayıcıda aç
               </Link>

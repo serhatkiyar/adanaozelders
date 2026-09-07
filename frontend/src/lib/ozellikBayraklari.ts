@@ -48,6 +48,23 @@ export const DENEMELER_ACIK = false;
 export const OGREN_ACIK = false;
 
 /**
+ * Öğrenci talepleri: öğrencinin "şu dersi arıyorum" ilanı açması ve
+ * eğitmenlerin bu ilanlara dönmesi (`/talepler`).
+ *
+ * 6 Eyl 2026, kullanıcı kararı: *"şu an kullanmak istemiyorum, kodları
+ * dursun."*
+ *
+ * İKİ YÜZEY BİRDEN kapsanır ve bu zorunludur: öğrencinin "Taleplerim"i ile
+ * eğitmenin "Gelen Talepler"i aynı akışın iki ucu. Yalnız öğrenci tarafı
+ * kapatılsaydı eğitmen, hiç dolmayacak bir gelen kutusuna bakmaya devam
+ * ederdi.
+ *
+ * Kod, veri ve backend uçları YERİNDE — yalnız arayüz donduruldu. Bayrağı
+ * `true` yapmak tek başına yeterlidir.
+ */
+export const TALEPLER_ACIK = false;
+
+/**
  * Ayarlar'daki "Görünüm ve tercihler" sekmesi: üst bar widget'ı (YKS/LGS geri
  * sayımı, hava durumu, saat), kısayol düzeni ve "son görüntülenenler" anahtarı.
  *

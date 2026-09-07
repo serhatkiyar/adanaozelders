@@ -76,7 +76,7 @@ export function StickyBuyBar({
         <PlainButton
           disabled={disabled}
           onClick={onAdd}
-          className="ml-auto flex h-11 flex-1 items-center justify-center rounded-lg bg-indigo-600 px-6 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          className="ml-auto flex h-11 flex-1 items-center justify-center rounded-lg bg-marka px-6 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
         >
           {label}
         </PlainButton>

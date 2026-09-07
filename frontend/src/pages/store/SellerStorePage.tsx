@@ -29,7 +29,7 @@ export default function SellerStorePage() {
       <Seo title={`${sellerName}, Mağaza`} noindex />
       <div className="mx-auto max-w-[1464px] px-4 py-8 md:px-8">
         <nav className="flex items-center gap-1.5 text-sm text-slate-500 ">
-          <Link to={ROUTES.store} className="hover:text-indigo-600 ">
+          <Link to={ROUTES.store} className="hover:text-marka-metin ">
             Mağaza
           </Link>
           <span className="text-slate-300 ">/</span>
@@ -37,7 +37,7 @@ export default function SellerStorePage() {
         </nav>
 
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-lg font-semibold text-indigo-700 ">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-marka-soft text-lg font-semibold text-marka-metin-hover ">
             {sellerName.charAt(0).toUpperCase()}
           </div>
           <div>

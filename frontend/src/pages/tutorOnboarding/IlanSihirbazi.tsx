@@ -89,6 +89,7 @@ function sunucudanDurum(t: TutorOut): Durum {
     hourlyRate: t.hourly_rate ?? "",
     firstLessonFree: !!t.first_lesson_free,
     introVideoUrl: t.intro_video_url ?? "",
+    gender: t.gender ?? "",
   };
 }
 

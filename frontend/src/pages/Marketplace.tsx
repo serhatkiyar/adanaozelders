@@ -1,12 +1,12 @@
 import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
 import { SegmentedControl } from "@/components/SegmentedControl";
-import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
+import { useTutorSearch, useTutorPriceHistogram, useTutorGenderFacets } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
@@ -54,7 +54,7 @@ export default function Marketplace() {
     currentUser?.role_id === ROLE_IDS.TUTOR
       ? TUTOR_NAV
       : currentUser?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
+        ? UYE_NAV
         : undefined;
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
@@ -99,6 +99,14 @@ export default function Marketplace() {
     if (JSON.stringify(districtParams) !== JSON.stringify(district))
       setDistrict(districtParams);
     if (examParam !== exam) setExam(examParam);
+    // Elle yazılmış `?gender=abc` API'ye ULAŞMAMALI: enum üyesi değilse boşa
+    // düşer. (Sihirbazın `?adim=` için öğrendiği ders — doğrulanmamış bir URL
+    // parametresi doğrudan sunucuya geçirilmez.)
+    const genderParam = searchParams.get("gender") ?? "";
+    const gecerliGender = (Object.values(Gender) as string[]).includes(genderParam)
+      ? (genderParam as Gender)
+      : "";
+    if (gecerliGender !== gender) setGender(gecerliGender);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -155,8 +163,9 @@ export default function Marketplace() {
     district.forEach((d) => next.append("district", d));
     modes.forEach((m) => next.append("mode", m));
     if (exam.trim()) next.set("exam", exam.trim());
+    if (gender) next.set("gender", gender);
     setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, modes, exam, setSearchParams]);
+  }, [debouncedQ, subjects, district, modes, exam, gender, setSearchParams]);
 
   const debouncedMin = useDebounce(minRate);
   const debouncedMax = useDebounce(maxRate);
@@ -222,6 +231,14 @@ export default function Marketplace() {
   }, [debouncedQ, subjects, district, modes, gender, debouncedMinAge, debouncedMaxAge, nearMe, radiusKm]);
 
   const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(histParams, showFilters);
+
+  // Faset KENDİ eksenini saymaz: `gender` çıkarılır. Kalsaydı "Kadın" seçili
+  // iken "Erkek 0" görünür ve sayılar seçim yapmayı imkânsız kılardı.
+  const fasetParams = useMemo(() => {
+    const { gender: _atlandi, ...kalan } = histParams;
+    return kalan;
+  }, [histParams]);
+  const { data: fasetler } = useTutorGenderFacets(fasetParams, showFilters);
 
   const hasModalFilters =
     !!minRate || !!maxRate || !!gender || !!minAge || !!maxAge || !!nearMe;
@@ -302,7 +319,7 @@ export default function Marketplace() {
         <FilterIconSvg />
         Filtreler
         {hasModalFilters && (
-          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white ">
+          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-marka text-[9px] font-bold text-marka-fg ">
             ✓
           </span>
         )}
@@ -315,7 +332,7 @@ export default function Marketplace() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as TutorSort)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-indigo-500/20 ${
+          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
             sort !== TutorSort.RELEVANCE
               ? "border-slate-900 bg-slate-900 text-white "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
@@ -375,7 +392,7 @@ export default function Marketplace() {
         <select
           value={modeSegment}
           onChange={(e) => selectMode(e.target.value as any)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-indigo-500/20 ${
+          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
             !isAllMode
               ? "border-slate-900 bg-slate-900 text-white "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
@@ -406,7 +423,7 @@ export default function Marketplace() {
         <button
           key={s}
           onClick={() => removeSubject(s)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 "
+          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
         >
           {s}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
@@ -455,7 +472,7 @@ export default function Marketplace() {
               {hasFilters && (
                 <button
                   onClick={clearAll}
-                  className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                  className="mt-4 rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                 >
                   Tüm filtreleri temizle
                 </button>
@@ -468,7 +485,7 @@ export default function Marketplace() {
                 <span>{organicTutors.length} eğitmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-marka-mid" />
                     Güncelleniyor
                   </span>
                 )}
@@ -484,7 +501,7 @@ export default function Marketplace() {
                     type="button"
                     onClick={() => setLimit((l) => l + 20)}
                     disabled={isFetching}
-                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 active:scale-95 disabled:opacity-60 "
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft active:scale-95 disabled:opacity-60 "
                   >
                     {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                   </button>
@@ -531,7 +548,7 @@ export default function Marketplace() {
                       setRadiusKm(Number(val));
                       if (!nearMe) requestNearMe();
                     }}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                   >
                     <option value="">Farketmez (Her Yer)</option>
                     <option value="5">En fazla 5 km</option>
@@ -546,7 +563,7 @@ export default function Marketplace() {
                     </svg>
                   </span>
                 </div>
-                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-indigo-600">Konum alınıyor…</p>}
+                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>}
                 {nearMe && !geoLoading && <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>}
               </div>
 
@@ -567,20 +584,41 @@ export default function Marketplace() {
               <div>
                 <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Cinsiyet</h3>
                 <div className="flex flex-wrap gap-2">
-                  {GENDER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                        gender === opt.value
-                          ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
-                          : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  {GENDER_OPTIONS.map((opt) => {
+                    const adet = fasetler?.[opt.value];
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
+                        className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                          gender === opt.value
+                            ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"
+                            : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
+                        }`}
+                      >
+                        {opt.label}
+                        {/* Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar —
+                            asıl düzeltme budur. */}
+                        {adet !== undefined && (
+                          <span className={gender === opt.value ? "ml-1.5 opacity-80" : "ml-1.5 text-slate-400"}>
+                            {adet}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+                {/* SESSİZ ELEME artık sessiz değil.
+                    `Tutor.gender == FEMALE` karşılaştırması hem NULL hem
+                    UNSPECIFIED satırları eler; öğrenci bugüne kadar bunu
+                    göremiyordu. Yalnız filtre ETKİNKEN gösterilir: filtre
+                    kapalıyken kimse elenmiyor. */}
+                {gender && !!fasetler?.gorunmeyen && (
+                  <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
+                    Cinsiyetini belirtmemiş {fasetler.gorunmeyen} eğitmen bu
+                    filtreyle görünmüyor.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -593,7 +631,7 @@ export default function Marketplace() {
               </button>
               <button
                 onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition hover:bg-indigo-700 active:scale-95"
+                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
               >
                 Sonuçları Göster
               </button>

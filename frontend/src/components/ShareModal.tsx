@@ -109,7 +109,7 @@ export function ShareModal({
           </span>
           <button
             onClick={handleCopy}
-            className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-300 "
+            className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover focus:ring-2 focus:ring-marka-focus "
           >
             {copied ? "Kopyalandı" : "Kopyala"}
           </button>

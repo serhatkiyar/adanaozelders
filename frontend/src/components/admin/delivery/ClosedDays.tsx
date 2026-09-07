@@ -87,7 +87,7 @@ export function ClosedDays() {
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">Teslimat Takvimi</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
-            Kapalı günler — söz motoru bu tarihlere teslimat sözü vermez. Hafta 7 gün açık.
+            Kapalı günler: söz motoru bu tarihlere teslimat sözü vermez. Hafta 7 gün açık.
           </p>
         </div>
         {canManage && (

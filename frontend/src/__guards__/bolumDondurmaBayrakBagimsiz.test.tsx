@@ -33,6 +33,7 @@ vi.mock("@/lib/ozellikBayraklari", () => ({
   // üretim değeriyle (kapalı) bırakılır ki karışık durum bozulmasın.
   OGREN_ACIK: false,
   KISISELLESTIRME_ACIK: false,
+  TALEPLER_ACIK: false,
 }));
 
 import { CategoryBar } from "@/components/CategoryBar";
@@ -73,11 +74,11 @@ describe("bayraklar BAĞIMSIZ — yalnız DENEMELER açık", () => {
     expect(hedefler).toContain("/denemeler");
   });
 
-  it("eğitmen menüsündeki 'Kütüphaneler' donuk kaldı (KUTUPHANELER bayrağı okunuyor)", () => {
-    sar(<DashboardHeader navItems={TUTOR_NAV} />);
-    const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
-      (a) => a.getAttribute("href")
-    );
-    expect(hedefler).not.toContain("/kutuphaneler");
-  });
+  /* KALDIRILDI (7 Eyl 2026) — "eğitmen menüsündeki 'Kütüphaneler' donuk kaldı".
+
+     Kütüphaneler yan panelden çıkınca (kullanıcı kararı, `lib/nav.ts`) bu
+     düğüm YALANCI YEŞİLE döndü: menüde artık hiç `/kutuphaneler` bağlantısı
+     olmadığı için "içermiyor" iddiası bayraktan bağımsız olarak geçiyordu.
+     Bayrağın gerçekten okunduğunu hâlâ aynı dosyadaki kategori çubuğu
+     düğümü kanıtlıyor. */
 });

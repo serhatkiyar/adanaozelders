@@ -296,7 +296,7 @@ export default function StorePage() {
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
                     placeholder="En az"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 "
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-marka-mid "
                   />
                   <span className="text-slate-400">–</span>
                   <input
@@ -305,7 +305,7 @@ export default function StorePage() {
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
                     placeholder="En çok"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 "
+                    className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-marka-mid "
                   />
                 </div>
 
@@ -341,7 +341,7 @@ export default function StorePage() {
                     type="checkbox"
                     checked={inStock}
                     onChange={(e) => setInStock(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 "
+                    className="h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
                   />
                   Sadece stoktakiler
                 </label>
@@ -420,7 +420,7 @@ export default function StorePage() {
                       else searchParams.delete("sort");
                       setSearchParams(searchParams);
                     }}
-                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 "
+                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-marka-mid "
                   >
                     {(Object.keys(SORT_LABELS) as Sort[]).map((s) => (
                       <option key={s} value={s}>
@@ -456,7 +456,7 @@ export default function StorePage() {
                       <button
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
-                        className="rounded-full border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50 "
+                        className="rounded-full border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-marka-mid hover:text-marka-metin disabled:opacity-50 "
                       >
                         {isFetchingNextPage
                           ? "Yükleniyor…"
@@ -494,7 +494,7 @@ export default function StorePage() {
                   {debouncedQ && seciliKategori && (
                     <button
                       onClick={() => kategoriSec(undefined)}
-                      className="mt-6 rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                      className="mt-6 rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
                     >
                       Tüm kategorilerde ara
                     </button>
@@ -504,7 +504,7 @@ export default function StorePage() {
                     className={
                       debouncedQ && seciliKategori
                         ? "mt-3 block w-full text-sm font-medium text-slate-500 transition-colors hover:text-slate-800"
-                        : "mt-6 rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+                        : "mt-6 rounded-full bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
                     }
                   >
                     Filtreleri temizle
@@ -633,7 +633,7 @@ function FacetGroup({
               type="checkbox"
               checked={selected.includes(option.value)}
               onChange={() => toggle(option.value)}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 "
+              className="h-4 w-4 rounded border-slate-300 text-marka-metin focus:ring-marka-focus accent-marka"
             />
             <span className="min-w-0 flex-1 truncate">{option.value}</span>
             <span className="shrink-0 text-xs text-slate-400">
@@ -646,7 +646,7 @@ function FacetGroup({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-2 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 "
+          className="mt-2 text-xs font-semibold text-marka-metin transition hover:text-marka-metin-hover "
         >
           {expanded ? "Daha az göster" : `Tümünü göster (${options.length})`}
         </button>

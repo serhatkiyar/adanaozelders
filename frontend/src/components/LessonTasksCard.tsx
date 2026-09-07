@@ -49,7 +49,7 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
         </h3>
         <Link
           to={ROUTES.tasks}
-          className="text-xs font-medium text-indigo-600 hover:text-indigo-700 "
+          className="text-xs font-medium text-marka-metin hover:text-marka-metin-hover "
         >
           Görevlerim →
         </Link>
@@ -101,12 +101,12 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
           maxLength={200}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Derse görev ekle…"
-          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 "
+          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
         />
         <button
           type="submit"
           disabled={createTask.isPending}
-          className="flex-none rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          className="flex-none rounded-xl bg-marka px-4 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
         >
           Ekle
         </button>

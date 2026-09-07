@@ -112,14 +112,14 @@ function StuckRow({ kayit }: { kayit: StuckEscrowRecord }) {
           )}
         </div>
         <p className="text-xs text-slate-500 ">
-          {kayit.amount ? formatTL(kayit.amount) : "—"} · durum{" "}
+          {kayit.amount ? formatTL(kayit.amount) : "-"} · durum{" "}
           {kayit.money_status} · {kayit.refund_attempts} deneme
           {kayit.refund_requested_at
             ? ` · ilk niyet ${formatDateTime(kayit.refund_requested_at)}`
             : ""}
         </p>
         <p className="break-all font-mono text-[11px] text-slate-400 ">
-          Sağlayıcı referansı: {kayit.provider_ref ?? "—"}
+          Sağlayıcı referansı: {kayit.provider_ref ?? "-"}
         </p>
       </div>
       <span className="shrink-0 text-xs text-slate-400 ">

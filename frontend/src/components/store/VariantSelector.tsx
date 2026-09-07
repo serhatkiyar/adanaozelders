@@ -67,7 +67,7 @@ export function VariantSelector({ axes }: { axes: Eksen[] }) {
           >
             {eksen.name}:{" "}
             <span className="font-medium text-slate-900">
-              {eksen.secili ?? "—"}
+              {eksen.secili ?? "-"}
             </span>
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">
@@ -108,7 +108,7 @@ function DegerBaglantisi({
     "inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm transition-colors";
   const gorunum =
     deger.durum === "secili"
-      ? "border-indigo-600 bg-indigo-50 font-medium text-indigo-900 ring-1 ring-indigo-600"
+      ? "border-marka bg-marka-soft font-medium text-marka-soft-fg ring-1 ring-marka-focus"
       : deger.durum === "tukendi"
         ? "border-slate-200 text-slate-400 line-through hover:border-slate-300"
         : deger.durum === "yok"

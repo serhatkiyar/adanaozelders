@@ -9,20 +9,15 @@ import { useMyStats, useUpdateProfile } from "@/hooks/useProfile";
 import { useMyEducations } from "@/hooks/useEducations";
 import { useAvatarUpload } from "@/hooks/useAvatarUpload";
 import { ImageCropModal } from "@/components/ImageCropModal";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
+import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import { Gender, ROLE_IDS } from "@/types";
+import { ROLE_IDS } from "@/types";
 import { ROUTES } from "@/lib/routes";
-
-const ROLE_META: Record<number, { label: string }> = {
-  [ROLE_IDS.ADMIN]: { label: "Yönetici" },
-  [ROLE_IDS.TUTOR]: { label: "Eğitmen" },
-  [ROLE_IDS.CLIENT]: { label: "Öğrenci" },
-};
+import { rolEtiketi } from "@/lib/roles";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 export default function Profile() {
   const { data: user, isLoading } = useCurrentUser();
@@ -63,12 +58,9 @@ export default function Profile() {
     );
   };
 
-  const role = user ? ROLE_META[user.role_id] : undefined;
+  const rolAdi = user ? rolEtiketi(user.role_id) : "";
   const age = user ? ageFromBirthDate(user.birth_date) : null;
-  const genderLabel =
-    user?.gender && user.gender !== Gender.UNSPECIFIED
-      ? GENDER_LABEL[user.gender]
-      : null;
+  const genderLabel = gorunurCinsiyet(user?.gender);
   const metaLine = [age !== null ? `${age} yaşında` : null, genderLabel]
     .filter(Boolean)
     .join(" · ");
@@ -150,9 +142,9 @@ export default function Profile() {
                     <h2 className="truncate text-xl font-bold tracking-tight text-slate-900 ">
                       {user.full_name}
                     </h2>
-                    {role && (
+                    {rolAdi && (
                       <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 ">
-                        {role.label}
+                        {rolAdi}
                       </span>
                     )}
                   </div>

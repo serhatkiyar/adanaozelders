@@ -18,7 +18,7 @@ export const ORDER_PAYMENT_LABELS: Record<string, string> = {
 
 /** Bilinmeyen durumda ham değeri döndürür (sessiz kaybolmaktansa görünür olsun). */
 export function orderPaymentLabel(status: string | null | undefined): string {
-  if (!status) return "—";
+  if (!status) return "-";
   return ORDER_PAYMENT_LABELS[status] ?? status;
 }
 

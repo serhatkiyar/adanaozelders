@@ -23,7 +23,7 @@ import { useMyRegistrations } from "@/hooks/useLibraryExams";
 import { useMyStudyReservations } from "@/hooks/useStudy";
 import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
 import { isBranchOpen } from "@/lib/paymentAvailability";
-import { STUDENT_NAV } from "@/lib/nav";
+import { UYE_NAV } from "@/lib/nav";
 import { toReservationItem } from "@/lib/reservationModel";
 import { ROUTES } from "@/lib/routes";
 import { useMeetingStore } from "@/store/meetingStore";
@@ -31,12 +31,13 @@ import { BookingStatus, PaymentStatus } from "@/types";
 import { BookingRow, PAY_CLOSED_NOTICE_ID } from "@/components/reservation/LessonRow";
 import type { ReservationItem } from "@/lib/reservationModel";
 import type { BookingOut, RegistrationOut, StudyReservationOut } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 export default function Reservations() {
   useCheckoutResultToast(); // iyzico dönüşü: ?odeme=basarili|basarisiz
 
   return (
-    <DashboardShell title="Rezervasyonlar" navItems={STUDENT_NAV}>
+    <DashboardShell title="Rezervasyonlar" navItems={UYE_NAV}>
       <div className="mx-auto max-w-3xl px-1 pb-16 pt-2 sm:px-2">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Rezervasyonlar
@@ -191,7 +192,7 @@ function SatirIcerigi({
             bk.id,
             bk.meeting_room!,
             bk.tutor_name || "Eğitmen",
-            bk.client_name || "Öğrenci",
+            bk.client_name || ADSIZ_UYE,
           )
         }
       />

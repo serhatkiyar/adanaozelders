@@ -47,7 +47,7 @@ function Sayac({
         className="mt-1 text-2xl font-bold tabular-nums text-slate-900 "
         aria-busy={yukleniyor || undefined}
       >
-        {yukleniyor ? "…" : (sayi ?? "—")}
+        {yukleniyor ? "…" : (sayi ?? "-")}
       </p>
       <p className="mt-1 text-xs text-slate-500 ">{aciklama}</p>
     </Link>
@@ -91,7 +91,7 @@ export default function InventoryOverviewPage() {
           </div>
           <Link
             to={ROUTES.adminInventoryDamage}
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-panel-accent transition hover:bg-panel-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-panel-accent-text transition hover:bg-panel-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus "
           >
             Tümü
           </Link>

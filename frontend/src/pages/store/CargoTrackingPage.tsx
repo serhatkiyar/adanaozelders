@@ -227,10 +227,10 @@ function OrderTabs({ t }: { t: OrderTracking }) {
 
   const rows: [string, string][] =
     tab === "siparis"
-      ? [["Sipariş No", t.order_no ?? "—"]]
+      ? [["Sipariş No", t.order_no ?? "-"]]
       : [
-          ["Alıcı", t.recipient_masked ?? "—"],
-          ["Adres", t.address_masked ?? "—"],
+          ["Alıcı", t.recipient_masked ?? "-"],
+          ["Adres", t.address_masked ?? "-"],
         ];
 
   return (
@@ -319,7 +319,7 @@ export default function CargoTrackingPage() {
             <div className="border-b border-slate-200 pb-4">
               <p className="text-lg text-slate-500">
                 Sipariş No :{" "}
-                <span className="font-semibold text-slate-900">{t.order_no ?? "—"}</span>
+                <span className="font-semibold text-slate-900">{t.order_no ?? "-"}</span>
               </p>
             </div>
 

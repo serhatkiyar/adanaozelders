@@ -47,7 +47,7 @@ function LessonGroup({
             <span
               className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                 group.remaining > 0
-                  ? "bg-indigo-50 text-indigo-700 "
+                  ? "bg-marka-soft text-marka-metin-hover "
                   : "bg-slate-100 text-slate-500 "
               }`}
             >
@@ -70,7 +70,7 @@ function LessonGroup({
         <div className="space-y-3 border-t border-slate-100 px-5 py-4 ">
           <Link
             to={ROUTES.tutor(group.tutor_id)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 transition hover:text-indigo-700 "
+            className="inline-flex items-center gap-1 text-xs font-medium text-marka-metin transition hover:text-marka-metin-hover "
           >
             {tutorName} profilini gör →
           </Link>

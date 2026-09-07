@@ -12,7 +12,7 @@ import {
   useMyDemands,
   useRespondDemand,
 } from "@/hooks/useDemands";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useSubjects } from "@/hooks/useSubjects";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
@@ -20,13 +20,14 @@ import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS, type DemandOut } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 // Ders listesi artık koda gömülü DEĞİL, katalogdan gelir. Talep formu
 // öğrenci yüzeyidir: vitrin kapsamı (arkasında eğitmen olan dersler).
 const subjectLabel = (q: string) => q;
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 const labelCls = "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 function budgetText(d: DemandOut): string | null {
@@ -53,7 +54,7 @@ function StudentDemands() {
   const { data: demands, isLoading } = useMyDemands();
 
   return (
-    <DashboardShell title="Taleplerim" navItems={STUDENT_NAV}>
+    <DashboardShell title="Taleplerim" navItems={UYE_NAV}>
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 ">
@@ -217,7 +218,7 @@ function DemandForm() {
         <button
           type="submit"
           disabled={create.isPending}
-          className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+          className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:opacity-50"
         >
           {create.isPending ? "Yayınlanıyor…" : "Talebi Yayınla"}
         </button>
@@ -246,7 +247,7 @@ function MyDemandCard({ demand }: { demand: DemandOut }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 ">
+            <span className="rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-semibold text-marka-metin-hover ">
               {subjectLabel(demand.subject)}
             </span>
             {!isOpen && (
@@ -282,7 +283,7 @@ function MyDemandCard({ demand }: { demand: DemandOut }) {
 
       <button
         onClick={() => setShowResponses((v) => !v)}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:underline "
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-marka-metin hover:underline "
       >
         {count > 0 ? `${count} eğitmen yanıtladı` : "Henüz yanıt yok"}
         {count > 0 && (
@@ -325,7 +326,7 @@ function DemandResponders({ demandId }: { demandId: number }) {
                 className="h-9 w-9 shrink-0 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 ">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-marka-line text-sm font-bold text-marka-soft-fg ">
                 {r.tutor_name.charAt(0)}
               </div>
             )}
@@ -342,7 +343,7 @@ function DemandResponders({ demandId }: { demandId: number }) {
           </div>
           <Link
             to={ROUTES.messageWith(r.tutor_id, r.tutor_name)}
-            className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700"
+            className="shrink-0 rounded-lg bg-marka px-3 py-1.5 text-xs font-semibold text-marka-fg transition hover:bg-marka-hover"
           >
             Mesaj
           </Link>
@@ -380,7 +381,7 @@ function TutorDemands() {
               onClick={() => setMine(t.v)}
               className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
                 mine === t.v
-                  ? "bg-white text-indigo-600 shadow-sm "
+                  ? "bg-white text-marka-metin shadow-sm "
                   : "text-slate-500 "
               }`}
             >
@@ -431,7 +432,7 @@ function BrowseDemandCard({ demand }: { demand: DemandOut }) {
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 ">
+        <span className="rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-semibold text-marka-metin-hover ">
           {subjectLabel(demand.subject)}
         </span>
         {demand.level && (
@@ -457,8 +458,8 @@ function BrowseDemandCard({ demand }: { demand: DemandOut }) {
       <div className="mt-3">
         {demand.responded ? (
           <Link
-            to={ROUTES.messageWith(demand.client_id, demand.client_name ?? "Öğrenci")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 "
+            to={ROUTES.messageWith(demand.client_id, demand.client_name ?? ADSIZ_UYE)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-marka-line px-4 py-2 text-sm font-semibold text-marka-soft-fg transition hover:bg-marka-soft "
           >
             Sohbete git →
           </Link>
@@ -482,7 +483,7 @@ function BrowseDemandCard({ demand }: { demand: DemandOut }) {
               <button
                 onClick={send}
                 disabled={respond.isPending}
-                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-lg bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50"
               >
                 {respond.isPending ? "Gönderiliyor…" : "Gönder"}
               </button>
@@ -491,7 +492,7 @@ function BrowseDemandCard({ demand }: { demand: DemandOut }) {
         ) : (
           <button
             onClick={() => setComposing(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
           >
             Yanıtla
           </button>

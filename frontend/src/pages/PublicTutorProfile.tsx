@@ -1,3 +1,4 @@
+import { gorunurCinsiyet } from "@/lib/demographics";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { PublicShell } from "@/components/PublicShell";
 import { Avatar } from "@/components/Avatar";
@@ -16,7 +17,7 @@ import { BookmarkButton } from "@/components/BookmarkButton";
 import { useNavSearch } from "@/hooks/useNavSearch";
 import {
   DocumentedBadge,
-  TutorTrustBar,
+  TutorOzetTablosu,
   hasVerifiedEducation,
 } from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
@@ -58,7 +59,7 @@ export default function PublicTutorProfile() {
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
           >
             ← Geri dön
           </button>
@@ -143,24 +144,26 @@ export default function PublicTutorProfile() {
         />
       )}
       <div className="mx-auto max-w-[76rem] pb-12">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
-        >
-          ← Geri dön
-        </button>
-
-        <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
+        {/* "← Geri dön" KALDIRILDI (kullanıcı kararı, 7 Eyl 2026): tarayıcının
+            kendi geri düğmesi zaten var ve bağlantı, kartı bir satır aşağı
+            itiyordu. Hata ekranındaki kopyası KALIR — orada sayfanın tek
+            çıkışı odur. */}
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
-            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
+          {/* Kart ekrandan TAŞMASIN (kullanıcı kararı, 7 Eyl 2026): sticky kart
+              viewport'tan uzunsa alt kısmı görünmüyordu ve kullanıcı kartın
+              tamamını görmek için SAYFAYI en aşağı kaydırmak zorunda kalıyordu.
+              Artık yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar;
+              kısa kaldığında hiçbir şey değişmez. */}
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyon: favori + paylaş (kartın yukarısında) */}
-              <div className="mb-4 flex items-center justify-end gap-2">
+              <div className="mb-2 flex items-center justify-end gap-2">
                 <ShareButton size="md" />
                 <BookmarkButton tutorId={tutor.id} size="md" onSolid />
               </div>
               <div className="flex flex-col items-center text-center">
-                <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
+                <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="lg" shape="square" />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <h1 className="text-xl font-bold text-slate-900 ">
                     {tutor.full_name}
@@ -178,7 +181,7 @@ export default function PublicTutorProfile() {
                   className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 ">
+                  <span className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover ">
                     {hasRatings
                       ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
                       : "Değerlendirme yok"}
@@ -186,35 +189,41 @@ export default function PublicTutorProfile() {
                 </button>
 
                 {modeLabel && (
-                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 ">
+                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-metin-hover ">
                     {modeLabel}
                   </span>
                 )}
-              </div>
 
-              {/* Güven sinyalleri (dikey diziliş) */}
-              <TutorTrustBar tutor={tutor} vertical />
-
-              {/* Ücret + CTA */}
-              <div className="mt-5 border-t border-slate-100 pt-5 text-center ">
-                <p className="text-xs font-medium text-slate-500 ">
-                  Saatlik ücret
-                </p>
-                <p className="text-2xl font-bold tracking-tight text-slate-900 ">
-                  {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
-                </p>
-                {tutor.first_lesson_free !== false && (
-                  <p className="mt-1 text-sm font-semibold text-emerald-600 ">
-                    İlk ders ücretsiz
+                {/* Cinsiyet: API bunu ta baştan taşıyordu ama hiçbir ekran
+                    basmıyordu. Öğrenci "Kadın" filtreliyor, sonuçlar geliyor,
+                    ama neye göre geldiğini göremiyordu. Rozet DEĞİL sade meta
+                    satırı — demografik bir öznitelik, ticari bir sinyal değil.
+                    Belirtilmemişse kalem tümüyle atlanır. */}
+                {gorunurCinsiyet(tutor.gender) && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {gorunurCinsiyet(tutor.gender)}
                   </p>
                 )}
               </div>
+
+              {/* Ücret + güven sinyalleri TEK TABLODA (Superprof deseni).
+                  Girişli sürümle (TutorProfile) AYNI bileşen: rotanın iki
+                  kabuğu ayrışmasın. */}
+              <TutorOzetTablosu
+                tutor={tutor}
+                ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              />
               <Link
                 to="?modal=login"
-                className="mt-4 block w-full rounded-full bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
                 Ders Talep Et
               </Link>
+              {tutor.first_lesson_free !== false && (
+                <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
+                  İlk ders ücretsiz
+                </p>
+              )}
             </section>
           </aside>
 
@@ -227,7 +236,7 @@ export default function PublicTutorProfile() {
                   {tutor.subjects.map((s) => (
                     <span
                       key={s}
-                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 "
+                      className="rounded-full bg-marka-soft px-3 py-1 text-sm font-medium text-marka-metin-hover "
                     >
                       {s}
                     </span>

@@ -79,7 +79,7 @@ export function LibraryMapPanel({
       {/* ── İçerik — banner dahil hepsi birlikte kaydırılır ── */}
       <div className="flex-1 overflow-y-auto">
         {/* Banner */}
-        <div className="relative h-36 bg-gradient-to-br from-indigo-100 to-violet-100 ">
+        <div className="relative h-36 bg-gradient-to-br from-marka-soft to-marka-line ">
           {banner ? (
             <img src={banner} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -266,7 +266,7 @@ function PanelAction({
       <span
         className={`flex h-11 w-11 items-center justify-center rounded-full text-lg transition ${
           primary
-            ? "bg-indigo-600 text-white hover:bg-indigo-700"
+            ? "bg-marka text-marka-fg hover:bg-marka-hover"
             : "bg-slate-100 text-slate-700 hover:bg-slate-200 "
         }`}
       >

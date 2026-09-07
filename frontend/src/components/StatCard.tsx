@@ -1,4 +1,4 @@
-type Tone = "indigo" | "amber" | "emerald" | "slate" | "red";
+type Tone = "marka" | "amber" | "emerald" | "slate" | "red";
 
 interface StatCardProps {
   label: string;
@@ -8,7 +8,7 @@ interface StatCardProps {
 }
 
 const TONES: Record<Tone, string> = {
-  indigo: "text-indigo-600",
+  marka: "text-marka-metin",
   amber: "text-amber-600",
   emerald: "text-emerald-600",
   slate: "text-slate-900",

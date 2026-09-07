@@ -88,7 +88,7 @@ function RunCourier({ run }: { run: DeliveryRun }) {
     return (
       <Link
         to={ROUTES.adminDeliveryCouriers}
-        className="text-xs font-semibold text-panel-accent hover:underline"
+        className="text-xs font-semibold text-panel-accent-text hover:underline"
       >
         Kurye ekle →
       </Link>
@@ -154,7 +154,7 @@ function StopRow({
       <SeqBadge stop={stop} />
       <div className="min-w-0 flex-1 basis-48">
         <p className="truncate text-sm font-medium text-slate-900 ">
-          {stop.recipient ?? "—"}
+          {stop.recipient ?? "-"}
           <span className="ml-2 text-xs font-normal text-slate-400">#{stop.order_id}</span>
           {stop.lat == null && (
             <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ">
@@ -163,8 +163,8 @@ function StopRow({
           )}
           {coLocated.length > 0 && (
             <span
-              className="ml-2 inline-flex items-center rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-medium text-panel-accent"
-              title={`Aynı adrese ${coLocated.length} paket daha var — birlikte teslim edilir`}
+              className="ml-2 inline-flex items-center rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-medium text-panel-accent-text"
+              title={`Aynı adrese ${coLocated.length} paket daha var: birlikte teslim edilir`}
             >
               +{coLocated.length} paket
             </span>
@@ -180,7 +180,7 @@ function StopRow({
       {stop.is_outlier && stop.status === "PENDING" && (
         <span
           className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 "
-          title="Bu durak rotaya ciddi ek yol katıyor — dış kuryeye devretmeyi düşünün"
+          title="Bu durak rotaya ciddi ek yol katıyor: dış kuryeye devretmeyi düşünün"
         >
           rotayı bozuyor · +{stop.detour_km} km
         </span>
@@ -332,7 +332,7 @@ export default function DeliveryRunDetailPage() {
           if (action === "cancel") iptalYuzeyi.kapat();
           toast.success(
             action === "start"
-              ? "Tur başlatıldı — siparişler 'dağıtımda' olarak işaretlendi."
+              ? "Tur başlatıldı: siparişler 'dağıtımda' olarak işaretlendi."
               : action === "complete"
                 ? "Tur tamamlandı."
                 : "Tur iptal edildi."
@@ -395,7 +395,7 @@ export default function DeliveryRunDetailPage() {
                       toast.success(
                         r.optimize_provider === "vroom"
                           ? "Rota optimize edildi (yol ağı)."
-                          : "Rota optimize edildi (yaklaşık — yol ağı servisi kapalı)."
+                          : "Rota optimize edildi (yaklaşık: yol ağı servisi kapalı)."
                       ),
                     onError: (e) => toast.error(getErrorMessage(e, "Optimize edilemedi.")),
                   })
@@ -412,7 +412,7 @@ export default function DeliveryRunDetailPage() {
             {run.status === "ACTIVE" && (
               <Link
                 to={ROUTES.deliveryRun(run.id)}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-panel-accent ring-1 ring-panel-accent/30 transition hover:bg-panel-accent-soft/40 "
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-panel-accent-text ring-1 ring-panel-accent/30 transition hover:bg-panel-accent-soft/40 "
               >
                 Saha Ekranı →
               </Link>
@@ -437,7 +437,7 @@ export default function DeliveryRunDetailPage() {
                 isPending={runAction.isPending}
                 title={
                   pendingCount > 0
-                    ? `${pendingCount} durak henüz sonuçlanmadı — önce teslim et ya da "teslim edilemedi" işaretle`
+                    ? `${pendingCount} durak henüz sonuçlanmadı: önce teslim et ya da "teslim edilemedi" işaretle`
                     : undefined
                 }
               >
@@ -479,13 +479,13 @@ export default function DeliveryRunDetailPage() {
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                 run.optimize_provider === "vroom"
-                  ? "bg-panel-accent-soft text-panel-accent"
+                  ? "bg-panel-accent-soft text-panel-accent-text"
                   : "bg-amber-50 text-amber-700 "
               }`}
               title={
                 run.optimize_provider === "vroom"
                   ? "Gerçek yol ağı üzerinden hesaplandı (OSRM+VROOM)"
-                  : "Kuş uçuşu yaklaşımı — yol ağı servisi kapalıyken kullanılan tahmindir; ETA'lar yaklaşıktır"
+                  : "Kuş uçuşu yaklaşımı: yol ağı servisi kapalıyken kullanılan tahmindir; ETA'lar yaklaşıktır"
               }
             >
               {run.optimize_provider === "vroom" ? "yol ağı" : "yaklaşık"}
@@ -493,7 +493,7 @@ export default function DeliveryRunDetailPage() {
             <Button
               size="sm"
               variant="ghost"
-              className="ml-auto px-1 font-semibold text-panel-accent hover:underline"
+              className="ml-auto px-1 font-semibold text-panel-accent-text hover:underline"
               aria-expanded={showMap}
               onClick={() => setShowMap((v) => !v)}
             >
@@ -511,17 +511,17 @@ export default function DeliveryRunDetailPage() {
         <div className="border-t border-slate-100 px-6 py-4 ">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-              Rota — {run.stops.length} durak
+              Rota: {run.stops.length} durak
             </h3>
             {planning && run.status === "ACTIVE" && pendingCount > 1 && (
               <p className="text-[11px] text-amber-600 ">
-                Tur sahada — sıra değişikliği kuryeye anında yansır.
+                Tur sahada: sıra değişikliği kuryeye anında yansır.
               </p>
             )}
           </div>
           {run.stops.length === 0 ? (
             <p className="py-6 text-center text-sm text-slate-400 ">
-              Henüz durak yok — aşağıdaki hazır siparişlerden ekleyin.
+              Henüz durak yok: aşağıdaki hazır siparişlerden ekleyin.
             </p>
           ) : (
             <ul className="mt-1 divide-y divide-slate-100 ">
@@ -581,7 +581,7 @@ export default function DeliveryRunDetailPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="px-1 text-xs font-semibold text-panel-accent hover:underline"
+                  className="px-1 text-xs font-semibold text-panel-accent-text hover:underline"
                   isPending={addStops.isPending}
                   onClick={() =>
                     addStops.mutate(
@@ -603,8 +603,8 @@ export default function DeliveryRunDetailPage() {
               </div>
             ) : eligible.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-400 ">
-                Tura hazır sipariş yok —{" "}
-                <Link to={ROUTES.adminDeliveryOrders} className="font-semibold text-panel-accent hover:underline">
+                Tura hazır sipariş yok: {" "}
+                <Link to={ROUTES.adminDeliveryOrders} className="font-semibold text-panel-accent-text hover:underline">
                   Siparişler
                 </Link>{" "}
                 sekmesinden paket hazırlayın.
@@ -615,7 +615,7 @@ export default function DeliveryRunDetailPage() {
                   <li key={o.order_id} className="flex flex-wrap items-center gap-3 py-3">
                     <div className="min-w-0 flex-1 basis-48">
                       <p className="truncate text-sm font-medium text-slate-900 ">
-                        {o.recipient ?? "—"}
+                        {o.recipient ?? "-"}
                         <span className="ml-2 text-xs font-normal text-slate-400">#{o.order_id}</span>
                         {o.lat == null && (
                           <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ">

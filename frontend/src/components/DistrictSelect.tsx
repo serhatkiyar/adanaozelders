@@ -116,7 +116,7 @@ export function DistrictSelect({
                 <button
                   type="button"
                   onClick={() => setShowMore(true)}
-                  className="flex w-full items-center rounded-xl px-3 py-1.5 text-left text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
+                  className="flex w-full items-center rounded-xl px-3 py-1.5 text-left text-xs font-medium text-marka-soft-fg transition hover:bg-marka-soft "
                 >
                   Diğer ilçeleri görüntüle
                 </button>
@@ -131,7 +131,7 @@ export function DistrictSelect({
                       setOpen(false);
                       setMapOpen(true);
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 "
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-marka-soft-fg transition hover:bg-marka-soft "
                   >
                     <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -158,7 +158,7 @@ export function DistrictSelect({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex-1 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                className="flex-1 rounded-xl bg-marka px-3 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
               >
                 Tamam
               </button>
@@ -193,7 +193,7 @@ function CheckboxRow({ label, checked, onClick }: { label: string; checked: bool
       <span
         className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border transition ${
           checked
-            ? "border-indigo-600 bg-indigo-600 text-white"
+            ? "border-marka bg-marka text-marka-fg"
             : "border-slate-300 "
         }`}
       >

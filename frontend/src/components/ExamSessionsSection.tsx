@@ -142,11 +142,11 @@ function ExamSessionRow({
   return (
     <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-100 p-4 ">
       {/* Tarih kutusu */}
-      <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo-50 ">
-        <span className="text-xl font-extrabold leading-none text-indigo-700 ">
+      <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-marka-soft ">
+        <span className="text-xl font-extrabold leading-none text-marka-metin-hover ">
           {day}
         </span>
-        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-500 ">
+        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-marka-metin ">
           {month}
         </span>
       </div>
@@ -154,7 +154,7 @@ function ExamSessionRow({
       {/* Orta: tip + başlık + saat/süre/kontenjan */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 ">
+          <span className="rounded-full bg-marka-soft px-2 py-0.5 text-xs font-bold text-marka-metin-hover ">
             {session.exam_type}
           </span>
           <span className="text-sm font-semibold text-slate-900 ">
@@ -199,7 +199,7 @@ function ExamSessionRow({
           payOpen ? (
             <Link
               to={ROUTES.login}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
             >
               Giriş yap & kaydol
             </Link>
@@ -213,7 +213,7 @@ function ExamSessionRow({
           <button
             onClick={doRegisterAndPay}
             disabled={busy || full || !payOpen}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {!payOpen ? "Ödeme kapalı" : busy ? "İşleniyor…" : full ? "Doldu" : "Kaydol & Öde"}
           </button>

@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { navForRole, STUDENT_NAV } from "@/lib/nav";
+import { navForRole, UYE_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROUTES } from "@/lib/routes";
 import { DENEMELER_ACIK } from "@/lib/ozellikBayraklari";
 
 export default function Learn() {
   const { data: user } = useCurrentUser();
-  const navItems = navForRole(user?.role_id) ?? STUDENT_NAV;
+  const navItems = navForRole(user?.role_id) ?? UYE_NAV;
 
   return (
     <DashboardShell title="Öğren" navItems={navItems}>
@@ -180,7 +180,7 @@ export default function Learn() {
           {DENEMELER_ACIK ? (
           <Link
             to={ROUTES.exams}
-            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-marka to-marka-hover p-6 text-marka-fg shadow-lg shadow-marka/20 transition hover:-translate-y-0.5 hover:shadow-xl"
           >
             <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
             <div className="relative">
@@ -190,7 +190,7 @@ export default function Learn() {
                 </svg>
               </span>
               <h2 className="mt-4 text-lg font-bold">Denemelerim</h2>
-              <p className="mt-1 text-sm text-indigo-50">
+              <p className="mt-1 text-sm text-marka-fg">
                 Girdiğin deneme sınavlarını kaydet, netlerini ve ilerlemeni analiz et.
               </p>
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
@@ -206,7 +206,7 @@ export default function Learn() {
           {/* Takvim */}
           <Link
             to={ROUTES.calendar}
-            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-blue-600 p-6 text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-500 to-blue-600 p-6 text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
           >
             <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
             <div className="relative">

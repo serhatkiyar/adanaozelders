@@ -209,7 +209,7 @@ function CurrentStopCard({
       data-testid="aktif-durak"
       className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 "
     >
-      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 ">
+      <p className="text-xs font-semibold uppercase tracking-wide text-marka-metin ">
         {isJumped ? "Seçilen durak" : "Sıradaki durak"} · #{stop.sequence}
       </p>
       <h2 className="mt-1 text-xl font-bold text-slate-900 ">
@@ -220,9 +220,9 @@ function CurrentStopCard({
       </p>
       <p className="mt-2 text-xs text-slate-500 ">
         Sipariş #{stop.order_id} ·{" "}
-        {stop.items.map((it) => `${it.title} ×${it.quantity}`).join(", ") || "—"}
+        {stop.items.map((it) => `${it.title} ×${it.quantity}`).join(", ") || "-"}
         {stop.eta && (
-          <span className="ml-2 font-semibold text-indigo-600 ">
+          <span className="ml-2 font-semibold text-marka-metin ">
             tahmini ~{formatEta(stop.eta)}
           </span>
         )}
@@ -242,7 +242,7 @@ function CurrentStopCard({
             href={navUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="col-span-2 rounded-xl bg-indigo-600 py-3 text-center text-base font-bold text-white hover:bg-indigo-700"
+            className="col-span-2 rounded-xl bg-marka py-3 text-center text-base font-bold text-marka-fg hover:bg-marka-hover"
           >
             Yol Tarifi Al
           </a>
@@ -295,7 +295,7 @@ function CurrentStopCard({
           {kapi.zimmetLinki && (
             <Link
               to={ROUTES.deliveryRunHandover(stop.run_id)}
-              className="inline-block text-sm font-semibold text-indigo-600 hover:underline "
+              className="inline-block text-sm font-semibold text-marka-metin hover:underline "
             >
               Zimmet ekranını aç →
             </Link>
@@ -712,7 +712,7 @@ export default function DeliveryDriver() {
         {(run.status === "PLANNED" || run.status === "ACTIVE") && (
           <Link
             to={ROUTES.deliveryRunHandover(run.id)}
-            className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-100 "
+            className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-marka-metin shadow-sm ring-1 ring-slate-100 "
           >
             Paketleri araca al (zimmet) →
           </Link>
@@ -749,7 +749,7 @@ export default function DeliveryDriver() {
             {selectedStop != null && nextStop && selectedStop.id !== nextStop.id && (
               <button
                 onClick={() => setSelectedStopId(null)}
-                className="w-full rounded-xl py-2 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 "
+                className="w-full rounded-xl py-2 text-xs font-semibold text-marka-metin ring-1 ring-marka/20 "
               >
                 Sıradaki durağa dön (#{nextStop.sequence})
               </button>
@@ -867,12 +867,12 @@ export default function DeliveryDriver() {
                     s.status === "PENDING" && run.status === "ACTIVE"
                       ? "cursor-pointer"
                       : "cursor-default"
-                  } ${current?.id === s.id ? "bg-indigo-50/50 -mx-4 px-4 " : ""}`}
+                  } ${current?.id === s.id ? "bg-marka-soft/50 -mx-4 px-4 " : ""}`}
                 >
                 <span
                   className={`w-6 text-right text-sm font-semibold tabular-nums ${
                     current?.id === s.id
-                      ? "text-indigo-600 "
+                      ? "text-marka-metin "
                       : "text-slate-400"
                   }`}
                 >

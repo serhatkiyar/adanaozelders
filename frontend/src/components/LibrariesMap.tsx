@@ -37,12 +37,12 @@ function libraryIcon(lib: LibrarySearchOut, selected = false): L.DivIcon {
     ? `<img src="${esc(lib.logo_url)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"/>`
     : "";
   const ring = selected
-    ? "0 0 0 3px #6366f1, 0 4px 10px rgba(15,23,42,.4)"
+    ? "0 0 0 3px rgb(var(--marka-mid)), 0 4px 10px rgba(15,23,42,.4)"
     : "0 2px 6px rgba(15,23,42,.35)";
   const scale = selected ? "transform:scale(1.12);transform-origin:bottom center;" : "";
   const html = `
     <div style="position:relative;width:44px;height:52px;${scale}">
-      <div style="position:relative;width:44px;height:44px;border-radius:9999px;overflow:hidden;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;border:2px solid #fff;box-shadow:${ring}">
+      <div style="position:relative;width:44px;height:44px;border-radius:9999px;overflow:hidden;background:rgb(var(--marka));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;border:2px solid #fff;box-shadow:${ring}">
         <span>${initial}</span>${img}
       </div>
       <div style="position:absolute;left:50%;top:41px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fff;filter:drop-shadow(0 2px 1px rgba(15,23,42,.25))"></div>
@@ -179,7 +179,7 @@ export function LibrariesMap({
                   <div className="mt-2 flex items-center gap-1.5">
                     <Link
                       to={ROUTES.library(lib.slug)}
-                      className="inline-block rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold !text-white hover:bg-indigo-700 hover:!text-white"
+                      className="inline-block rounded-lg bg-marka px-3 py-1 text-xs font-semibold !text-marka-fg hover:bg-marka-hover hover:!text-marka-fg"
                     >
                       Profili gör →
                     </Link>

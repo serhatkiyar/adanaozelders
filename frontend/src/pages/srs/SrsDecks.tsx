@@ -4,7 +4,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useCopySrsDeck,
@@ -74,7 +74,7 @@ function DeckRow({
     >
       <Link
         to={ROUTES.srsDeck(deck.id)}
-        className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 transition hover:text-indigo-600 "
+        className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 transition hover:text-marka-metin "
       >
         {deck.name}
       </Link>
@@ -84,7 +84,7 @@ function DeckRow({
           to={ROUTES.srsStudy(deck.id)}
           className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
             due > 0
-              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+              ? "bg-marka text-marka-fg hover:bg-marka-hover"
               : "text-slate-500 hover:bg-slate-100 "
           }`}
         >
@@ -221,7 +221,7 @@ function CreateDeckModal({
           <button
             type="submit"
             disabled={createDeck.isPending}
-            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+            className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
           >
             {createDeck.isPending ? "Oluşturuluyor…" : "Oluştur"}
           </button>
@@ -241,7 +241,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export default function SrsDecks() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : UYE_NAV;
   const navigate = useNavigate();
   const decksQuery = useSrsDecks();
   const platformQuery = useSrsPlatformDecks();
@@ -267,7 +267,7 @@ export default function SrsDecks() {
           <div>
             <Link
               to={ROUTES.learn}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 "
+              className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
             >
               ← Öğren
             </Link>
@@ -293,7 +293,7 @@ export default function SrsDecks() {
             </Link>
             <button
               onClick={() => setCreating(true)}
-              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
             >
               Yeni Deste
             </button>
@@ -334,7 +334,7 @@ export default function SrsDecks() {
                     action={
                       <button
                         onClick={() => setCreating(true)}
-                        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+                        className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                       >
                         Deste Oluştur
                       </button>
@@ -368,7 +368,7 @@ export default function SrsDecks() {
                       </button>
                       <Link
                         to={ROUTES.srsStudy(deck.id)}
-                        className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700"
+                        className="rounded-xl bg-marka px-3 py-1.5 text-xs font-semibold text-marka-fg transition hover:bg-marka-hover"
                       >
                         Çalış
                       </Link>
@@ -427,7 +427,7 @@ export default function SrsDecks() {
                       </button>
                       <Link
                         to={ROUTES.srsStudy(deck.id)}
-                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 "
+                        className="rounded-xl px-3 py-1.5 text-xs font-semibold text-marka-soft-fg transition hover:bg-marka-soft "
                       >
                         Çalış
                       </Link>

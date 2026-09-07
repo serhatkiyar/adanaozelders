@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { StaticLocationMap } from "@/components/StaticLocationMap";
 import { ExamSessionsSection } from "@/components/ExamSessionsSection";
 import { LibraryReservationModal } from "@/components/LibraryReservationModal";
@@ -33,6 +33,7 @@ import { ROUTES } from "@/lib/routes";
 import { regionLabel } from "@/lib/region";
 import { PinIcon } from "@/components/PinIcon";
 import { ROLE_IDS } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 import type {
   LibraryDetailOut,
   LibraryImageOut,
@@ -97,7 +98,7 @@ export default function LibraryDetail() {
   const isTutor = currentUser?.role_id === ROLE_IDS.TUTOR;
   // Öğrenci ve eğitmen kütüphaneyle mesajlaşabilir (açık).
   const canMessage = isClient || isTutor;
-  const navItems = isTutor ? TUTOR_NAV : isClient ? STUDENT_NAV : undefined;
+  const navItems = isTutor ? TUTOR_NAV : isClient ? UYE_NAV : undefined;
 
   const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
     useNavSearch("kutuphaneler");
@@ -126,7 +127,7 @@ export default function LibraryDetail() {
           </div>
           <Link
             to={ROUTES.libraries}
-            className="mt-4 inline-block text-sm font-semibold text-indigo-600 hover:underline"
+            className="mt-4 inline-block text-sm font-semibold text-marka-metin hover:underline"
           >
             ← Tüm kütüphaneler
           </Link>
@@ -152,14 +153,14 @@ export default function LibraryDetail() {
 
           <Link
             to={ROUTES.libraries}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline "
+            className="inline-flex items-center gap-1 text-sm font-semibold text-marka-metin hover:underline "
           >
             ← Tüm kütüphaneler
           </Link>
 
           {/* ── Hero (orijinal tasarım — dokunulmadı) ── */}
           <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 ">
-            <div className="relative h-48 w-full bg-gradient-to-br from-indigo-100 to-violet-100 sm:h-60 ">
+            <div className="relative h-48 w-full bg-gradient-to-br from-marka-soft to-marka-line sm:h-60 ">
               {lib.cover_url ? (
                 <img src={lib.cover_url} alt={lib.name} className="h-full w-full object-cover" />
               ) : (
@@ -204,7 +205,7 @@ export default function LibraryDetail() {
                 <span className="text-sm font-semibold text-slate-700 ">
                   {avgLabel}
                 </span>
-                <span className="text-xs text-slate-400 underline-offset-2 group-hover:text-indigo-600 group-hover:underline ">
+                <span className="text-xs text-slate-400 underline-offset-2 group-hover:text-marka-metin group-hover:underline ">
                   ({lib.rating_count} değerlendirme)
                 </span>
               </button>
@@ -219,7 +220,7 @@ export default function LibraryDetail() {
                 <button
                   type="button"
                   onClick={() => setShowReserve(true)}
-                  className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105"
+                  className="inline-flex items-center gap-2 rounded-full bg-marka px-4 py-2 text-sm font-medium text-marka-fg shadow-md hover:bg-marka-hover focus:outline-none focus:ring-2 focus:ring-marka-focus focus:ring-offset-2 transition-transform hover:scale-105"
                 >
                   Rezervasyon Yap
                 </button>
@@ -287,7 +288,7 @@ export default function LibraryDetail() {
                   {lib.phone && (
                     <a
                       href={`tel:${lib.phone}`}
-                      className="flex items-center gap-3 text-sm text-indigo-600 transition hover:text-indigo-700 "
+                      className="flex items-center gap-3 text-sm text-marka-metin transition hover:text-marka-metin-hover "
                     >
                       <span className="text-slate-400 ">
                         <PhoneIcon />
@@ -333,7 +334,7 @@ export default function LibraryDetail() {
                         key={h.weekday}
                         className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
                           isToday
-                            ? "bg-indigo-50 font-semibold text-indigo-700 "
+                            ? "bg-marka-soft font-semibold text-marka-metin-hover "
                             : "text-slate-600 "
                         }`}
                       >
@@ -619,12 +620,12 @@ function ReviewsModal({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 ">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-marka-line text-sm font-bold text-marka-soft-fg ">
                       {(r.client_name ?? "?").charAt(0).toUpperCase()}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-slate-800 ">
-                        {r.client_name ?? "Öğrenci"}
+                        {r.client_name ?? ADSIZ_UYE}
                       </span>
                       {r.verified && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 ">
@@ -713,7 +714,7 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
         rows={2}
         maxLength={2000}
         placeholder="Deneyimini paylaş (opsiyonel)…"
-        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-400 "
+        className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid "
       />
       <button
         onClick={submit}

@@ -136,9 +136,9 @@ function ChoiceCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-4 rounded-2xl border-2 border-slate-100 bg-white p-4 text-left transition-all hover:border-indigo-300 hover:bg-indigo-50/50 active:scale-[0.99] "
+      className="group flex w-full items-center gap-4 rounded-2xl border-2 border-slate-100 bg-white p-4 text-left transition-all hover:border-marka-mid hover:bg-marka-soft/50 active:scale-[0.99] "
     >
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-100 ">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-marka-soft text-marka-soft-fg transition group-hover:bg-marka-line ">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -148,7 +148,7 @@ function ChoiceCard({
         </span>
       </span>
       <svg
-        className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500 "
+        className="h-5 w-5 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-marka-metin "
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

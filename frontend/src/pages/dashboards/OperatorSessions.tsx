@@ -17,6 +17,7 @@ import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type { AttendanceResult } from "@/types";
+import { ADSIZ_UYE } from "@/lib/roles";
 
 const cardCls =
   "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ";
@@ -164,7 +165,7 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
         </h2>
         <div data-testid="rez-hata">
           <ErrorState
-            description="Rezervasyon listesi yüklenemedi. Bu bir bağlantı/yetki hatasıdır — listenin boş olduğu anlamına GELMEZ."
+            description="Rezervasyon listesi yüklenemedi. Bu bir bağlantı/yetki hatasıdır: listenin boş olduğu anlamına GELMEZ."
             onRetry={() => void refetch()}
           />
         </div>
@@ -217,7 +218,7 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
                     <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-slate-800 ">
-                          {r.client_name ?? "Öğrenci"}
+                          {r.client_name ?? ADSIZ_UYE}
                         </p>
                         <p className="truncate text-xs text-slate-500 ">
                           {formatDateTime(r.starts_at)} – {formatDateTime(r.ends_at)}
@@ -233,7 +234,7 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
                           variant="success"
                           className="shrink-0"
                           isPending={attend.isPending}
-                          onClick={() => doAttend(r.id, r.client_name ?? "Öğrenci")}
+                          onClick={() => doAttend(r.id, r.client_name ?? ADSIZ_UYE)}
                         >
                           Giriş ver
                         </Button>

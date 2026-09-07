@@ -41,7 +41,7 @@ function MeetingDrawer({ bookingId }: { bookingId: number }) {
             onClick={() => setTab(t.id)}
             className={`flex-1 rounded-lg px-2 py-2 text-xs font-semibold transition ${
               tab === t.id
-                ? "bg-indigo-600 text-white"
+                ? "bg-marka text-marka-fg"
                 : "text-slate-500 hover:bg-slate-100 "
             }`}
           >
@@ -126,7 +126,7 @@ export function GlobalMeeting() {
           <div className="absolute inset-x-0 top-0 flex items-center justify-between bg-slate-800/90 px-3 py-1.5 text-white backdrop-blur">
             <button
               onClick={toggleMinimize}
-              className="truncate text-left text-xs font-medium hover:text-indigo-300"
+              className="truncate text-left text-xs font-medium hover:text-marka-line"
               title="Büyüt"
             >
               🎥 {tutorName} - {clientName}
@@ -178,7 +178,7 @@ export function GlobalMeeting() {
                 <button
                   onClick={toggleDrawer}
                   title="Ders panelini aç"
-                  className="fixed right-0 top-1/2 z-[9999] flex -translate-y-1/2 items-center rounded-l-xl bg-slate-800/90 py-3 pl-2 pr-1.5 text-white shadow-lg backdrop-blur transition hover:bg-indigo-600"
+                  className="fixed right-0 top-1/2 z-[9999] flex -translate-y-1/2 items-center rounded-l-xl bg-slate-800/90 py-3 pl-2 pr-1.5 text-white shadow-lg backdrop-blur transition hover:bg-marka hover:text-marka-fg"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>

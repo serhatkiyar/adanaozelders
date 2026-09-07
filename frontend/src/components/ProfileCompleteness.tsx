@@ -46,18 +46,18 @@ export function ProfileCompleteness({
   const noSubjects = (tutor.subjects?.length ?? 0) === 0;
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-indigo-100 ">
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-marka/20 ">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-slate-900 ">
           Profilini tamamla
         </h3>
-        <span className="text-sm font-bold text-indigo-600 ">
+        <span className="text-sm font-bold text-marka-metin ">
           %{pct}
         </span>
       </div>
       <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100 ">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-marka to-marka-hover transition-all"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -82,7 +82,7 @@ export function ProfileCompleteness({
       {showLink && (
         <Link
           to={ROUTES.tutorListing}
-          className="mt-3 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95"
+          className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
         >
           İlan Ayarları'na git →
         </Link>

@@ -44,6 +44,6 @@ export function kelimeSayaci(
     // yazmak, kullanıcıyı olmayan bir duvara karşı hazırlar.
     metin: yeterli
       ? `${sayi} sözcük`
-      : `${sayi} sözcük — en az ${enAz} öneriyoruz.${ipucu ? ` ${ipucu}` : ""}`,
+      : `${sayi} sözcük: en az ${enAz} öneriyoruz.${ipucu ? ` ${ipucu}` : ""}`,
   };
 }

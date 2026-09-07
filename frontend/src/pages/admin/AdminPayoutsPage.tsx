@@ -63,7 +63,7 @@ export default function AdminPayoutsPage() {
             onClick={() => url.ayarla({ sekme: key })}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === key
-                ? "border-panel-accent text-panel-accent"
+                ? "border-panel-accent text-panel-accent-text"
                 : "border-transparent text-slate-500 hover:text-slate-800 "
             }`}
           >
@@ -167,7 +167,7 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
       </div>
       <p className="mt-3 text-xs text-slate-400 ">
         “Emanette” sütunu henüz hak edilmemiş tutardır (ders yapılmadı / katılım
-        doğrulanmadı) — borç değildir, iade edilebilir.
+        doğrulanmadı): borç değildir, iade edilebilir.
       </p>
     </div>
   );
@@ -223,10 +223,10 @@ function HistoryList() {
                 {formatTL(r.amount)}
               </td>
               <td className="py-3 pr-4 text-slate-500 ">
-                {r.reference ?? "—"}
+                {r.reference ?? "-"}
               </td>
               <td className="py-3 font-mono text-xs text-slate-400 ">
-                {r.iban_snapshot ?? "—"}
+                {r.iban_snapshot ?? "-"}
               </td>
             </tr>
           ))}
@@ -249,7 +249,7 @@ function PayPenceresi({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<PayeeBalance, vo
   return (
     <DuzenlemePenceresi
       yuzey={yuzey}
-      baslik={bakiye ? `Ödeme kaydı — ${bakiye.name}` : "Ödeme kaydı"}
+      baslik={bakiye ? `Ödeme kaydı: ${bakiye.name}` : "Ödeme kaydı"}
       aciklama="Havaleyi bankadan yaptıktan sonra buraya kaydedin."
     >
       {bakiye && <PayIcerik yuzey={yuzey} balance={bakiye} />}

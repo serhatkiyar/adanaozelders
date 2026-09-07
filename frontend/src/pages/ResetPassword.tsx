@@ -54,7 +54,7 @@ export default function ResetPassword() {
             </div>
             <Link
               to={ROUTES.forgotPassword}
-              className="inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-700 "
+              className="inline-block text-sm font-semibold text-marka-metin hover:text-marka-metin-hover "
             >
               ← Sıfırlama bağlantısı iste
             </Link>
@@ -67,7 +67,7 @@ export default function ResetPassword() {
             </div>
             <Link
               to={ROUTES.login}
-              className="inline-block text-sm font-semibold text-indigo-600 hover:text-indigo-700 "
+              className="inline-block text-sm font-semibold text-marka-metin hover:text-marka-metin-hover "
             >
               Hemen giriş yap →
             </Link>
@@ -82,7 +82,7 @@ export default function ResetPassword() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                     placeholder="En az 8 karakter"
                   />
               )}
@@ -96,7 +96,7 @@ export default function ResetPassword() {
                     required
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 "
+                    className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                     placeholder="••••••••"
                   />
               )}
@@ -115,7 +115,7 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {mutation.isPending ? "Güncelleniyor..." : "Şifreyi güncelle"}
             </button>

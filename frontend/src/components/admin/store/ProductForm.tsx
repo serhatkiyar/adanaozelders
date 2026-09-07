@@ -632,7 +632,7 @@ export function ProductForm({
                     checked={field.value}
                     onBlur={field.onBlur}
                     onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus "
+                    className="h-4 w-4 rounded border-slate-300 text-panel-accent-text focus:ring-panel-focus accent-marka"
                   />
                 </Form.Control>
                 <Form.Label className="text-sm font-semibold text-slate-700 ">
@@ -751,7 +751,7 @@ export function ProductForm({
           acik={showSpecs}
           onDegis={() => setShowSpecs((v) => !v)}
         >
-          Kitap künyesi — kitap dışı ürünlerde boş bırakın
+          Kitap künyesi: kitap dışı ürünlerde boş bırakın
         </KatlanirBaslik>
         {showSpecs && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -804,7 +804,7 @@ export function ProductForm({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <p className="text-xs text-amber-700 ">
                 Bu ürün bir varyant grubunda ama seçilen kategori kitap
-                kategorisi — kitapta varyant açılamaz. Kaydetmeden önce grubu
+                kategorisi: kitapta varyant açılamaz. Kaydetmeden önce grubu
                 kaldırın ya da kategoriyi değiştirin.
               </p>
               <Button
@@ -823,7 +823,7 @@ export function ProductForm({
             </div>
           ) : (
             <p className="text-xs text-slate-400 ">
-              Kitap kategorisinde varyant açılamaz — farklı baskı/cilt ayrı
+              Kitap kategorisinde varyant açılamaz: farklı baskı/cilt ayrı
               ISBN'li ayrı bir üründür.
             </p>
           )
@@ -836,7 +836,7 @@ export function ProductForm({
               Varyantlar (renk, ebat…)
               {varyantGrubuId != null && (
                 <span className="text-xs font-normal text-slate-400">
-                  — grupta
+: grupta
                 </span>
               )}
             </KatlanirBaslik>
@@ -927,7 +927,7 @@ function ProductManagedAttributes({ productId }: { productId: number }) {
                   >
                     <input
                       type="checkbox"
-                      className="mr-1.5"
+                      className="mr-1.5 accent-marka"
                       checked={selected.includes(value.id)}
                       onChange={() =>
                         setSelected((current) =>
@@ -1007,7 +1007,7 @@ function KatlanirBaslik({
       type="button"
       aria-expanded={acik}
       onClick={onDegis}
-      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent "
+      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent-text "
     >
       <svg
         width="14"
@@ -1108,7 +1108,7 @@ function VariantMembershipFields({
                 <Form.Control>
                   <input className="input" {...field} />
                 </Form.Control>
-                <Form.Hint>Zorunlu — raftaki ayırt edici.</Form.Hint>
+                <Form.Hint>Zorunlu: raftaki ayırt edici.</Form.Hint>
                 <Form.ErrorMessage />
               </Form.Item>
             )}
@@ -1275,7 +1275,7 @@ function VariantMembershipFields({
                     .join(" / ")}
                   <span className="text-slate-400"> · {m.title}</span>
                   {m.id === currentProductId && (
-                    <span className="ml-1.5 text-xs text-panel-accent">
+                    <span className="ml-1.5 text-xs text-panel-accent-text">
                       (bu ürün)
                     </span>
                   )}
@@ -1327,7 +1327,7 @@ function DeriveVariantForm({
         <b>taslak</b> olarak oluşur. Başlık önerisi:{" "}
         {value1
           ? suggestedVariantTitle(group.title, value1, value2 || null)
-          : "—"}
+          : "-"}
       </p>
       <div className="grid gap-2 sm:grid-cols-3">
         <Form.Item>

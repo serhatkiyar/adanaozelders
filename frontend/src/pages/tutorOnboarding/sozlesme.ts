@@ -1,5 +1,5 @@
 import { BASLIK_EN_AZ_KELIME, kelimeSay } from "@/lib/metin";
-import { TeachingMode, type TutorProfileUpdate } from "@/types";
+import { Gender, TeachingMode, type TutorProfileUpdate } from "@/types";
 
 /**
  * İlan sihirbazının sözleşmesi: adım listesi, adım doğrulaması ve her adımın
@@ -28,6 +28,8 @@ export interface Durum {
   hourlyRate: string;
   firstLessonFree: boolean;
   introVideoUrl: string;
+  /** Arama faseti. İSTEĞE BAĞLI — boş bırakılabilir. */
+  gender: Gender | "";
 }
 
 /** Sunucudan gelen, sihirbazın kendi yazmadığı ama okuduğu durum. */
@@ -51,6 +53,7 @@ export const BOS_DURUM: Durum = {
   hourlyRate: "",
   firstLessonFree: false,
   introVideoUrl: "",
+  gender: "",
 };
 
 export interface Hata {
@@ -182,7 +185,7 @@ export const ADIMLAR: Adim[] = [
       kelimeSay(d.lessonInfo) < YONTEM_EN_AZ_KELIME
         ? {
             alan: "yontem",
-            mesaj: `Biraz daha anlat — en az ${YONTEM_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.lessonInfo)}.`,
+            mesaj: `Biraz daha anlat: en az ${YONTEM_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.lessonInfo)}.`,
           }
         : null,
     yama: (d) => ({ lesson_info: d.lessonInfo.trim() }),
@@ -206,7 +209,7 @@ export const ADIMLAR: Adim[] = [
       kelimeSay(d.bio) < HAKKINDA_EN_AZ_KELIME
         ? {
             alan: "hakkinda",
-            mesaj: `Biraz daha anlat — en az ${HAKKINDA_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.bio)}.`,
+            mesaj: `Biraz daha anlat: en az ${HAKKINDA_EN_AZ_KELIME} sözcük; şu an ${kelimeSay(d.bio)}.`,
           }
         : null,
     yama: (d) => ({ bio: d.bio.trim() }),
@@ -232,7 +235,7 @@ export const ADIMLAR: Adim[] = [
       if (d.teachingMode !== TeachingMode.ONLINE && !d.district)
         return {
           alan: "ilce",
-          mesaj: "Yüz yüze ders için ilçeni seç — öğrenciler ilçeye göre arıyor.",
+          mesaj: "Yüz yüze ders için ilçeni seç: öğrenciler ilçeye göre arıyor.",
         };
       return null;
     },
@@ -294,8 +297,24 @@ export const ADIMLAR: Adim[] = [
     ipucu:
       "Yüzün net görünsün, tek başına ol ve karşıya bak. Fotoğrafı olan ilanlar belirgin biçimde daha çok tıklanıyor.",
     atlanabilir: true,
+    // Telefon adımının "Numaran ilanında görünmez" uyarısının SİMETRİĞİ.
+    // Cinsiyet bir arama faseti ve ilanda GÖRÜNÜR; sorulduğu anda bunun
+    // söylenmesi, alanın eklenmesinin koşuludur.
     hatirlatma:
-      "Fotoğrafın tüm ilanlarında kullanılır.",
+      "Fotoğrafın tüm ilanlarında kullanılır. Cinsiyetini yazarsan ilanında görünür ve öğrenciler ona göre filtreleyebilir.",
+    yama: (d) => ({
+      gender: d.gender || null,
+      intro_video_url: d.introVideoUrl.trim() || null,
+      // Tanıtım videosu bu adımda gösteriliyor (`TanitimVideosu`) ama uzun
+      // süre yamada YOKTU: eğitmen linki yazıyor, alan doluyor, "İleri"ye
+      // basıyor ve link sunucuya HİÇ gitmiyordu. Ekranda değer durduğu için
+      // hata görünmüyordu; kayıp ancak sayfa yenilenince fark ediliyordu.
+      //
+      // `|| null`: sunucu boş string'i de temizleme sayıyor
+      // (`schemas/tutor.py::_check_intro_video` strip'leyip None döndürür),
+      // yani ikisi de çalışır. `null` seçildi çünkü istemci tipi
+      // `string | null` ve "alanı temizle" niyeti okunur olsun.
+    }),
   },
   {
     anahtar: "ozet",

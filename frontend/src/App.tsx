@@ -14,6 +14,7 @@ import {
   DENEMELER_ACIK,
   KUTUPHANELER_ACIK,
   OGREN_ACIK,
+  TALEPLER_ACIK,
 } from "@/lib/ozellikBayraklari";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -138,7 +139,7 @@ const AdminTutorApplicationsPage = lazy(
 );
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
-const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
+const UyeProfili = lazy(() => import("@/pages/UyeProfili"));
 const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
@@ -389,6 +390,14 @@ function App() {
             <Route path={PATHS.exams} element={<Yakinda />} />
           )}
 
+          {/* Öğrenci talepleri donduruldu (bkz. lib/ozellikBayraklari.ts).
+              Denemeler/Öğren ile AYNI sözleşme: rota korumanın DIŞINDA, çünkü
+              doğrudan URL yazan kullanıcı giriş ekranı ya da 404 yerine
+              "Yakında" görmeli. Bayrak açılınca korumalı bloktaki yerini alır. */}
+          {!TALEPLER_ACIK && (
+            <Route path={PATHS.demands} element={<Yakinda />} />
+          )}
+
           {/* Öğren hub'ı donduruldu (bkz. lib/ozellikBayraklari.ts). Rotalar
               KORUMANIN DIŞINDA: doğrudan URL yazan kullanıcı giriş ekranı ya
               da 404 yerine "Yakında" görsün — Denemeler'le aynı sözleşme.
@@ -482,7 +491,9 @@ function App() {
             {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
             <Route path={PATHS.balance} element={<Balance />} />
             {/* Talepler — rol delegasyonu sayfa içinde (CLIENT açar, TUTOR yanıtlar) */}
-            <Route path={PATHS.demands} element={<Demands />} />
+            {TALEPLER_ACIK && (
+              <Route path={PATHS.demands} element={<Demands />} />
+            )}
             <Route path={PATHS.leaderboard} element={<Leaderboard />} />
             <Route path={PATHS.notifications} element={<Notifications />} />
             <Route path={PATHS.profile} element={<AccountDispatcher />} />
@@ -498,9 +509,15 @@ function App() {
             />
           </Route>
 
+          {/* ── Favoriler: öğrenci + eğitmen (ÜK-6) ──
+              Eğitmen de eğitmen/kütüphane favoriler; sunucu tarafında gölge
+              `Client`e çevrilir (docs/urun-kararlari.md). */}
+          <Route element={<ProtectedRoute allowedRoleIds={[...ALISVERIS_ROLLERI]} />}>
+            <Route path={PATHS.favorites} element={<Favorites />} />
+          </Route>
+
           {/* ── Yalnızca CLIENT ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
-            <Route path={PATHS.favorites} element={<Favorites />} />
             {DENEMELER_ACIK && <Route path={PATHS.exams} element={<Exams />} />}
           </Route>
 
@@ -522,7 +539,7 @@ function App() {
               element={<IlanSihirbazi />}
             />
             <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
-            <Route path={PATHS.studentProfile} element={<StudentProfile />} />
+            <Route path={PATHS.uyeProfili} element={<UyeProfili />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
 
@@ -631,7 +648,7 @@ function App() {
           />
           <Route
             path="/tutor/students/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
+            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
           />
           <Route
             path="/panel/rezervasyonlar/:id"
@@ -639,7 +656,14 @@ function App() {
           />
           <Route
             path="/panel/ogrenciler/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
+            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
+          />
+          {/* /ogrenciler -> /uyeler. Oturum içi ve eğitmen-özel bir yol,
+              SEO'ya girmez; yine de paylaşılmış bir link kırılmasın diye
+              yönlendirme bırakıldı (aynı desen: `/panel/ogrenciler`). */}
+          <Route
+            path="/ogrenciler/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
           />
 
           <Route path="*" element={<NotFound />} />

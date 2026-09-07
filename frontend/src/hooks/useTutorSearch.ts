@@ -1,10 +1,12 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   fetchFeaturedTutors,
+  fetchGenderFacets,
   fetchPriceHistogram,
   fetchTutor,
   searchTutors,
   type FeaturedTutorParams,
+  type GenderFacetParams,
   type PriceHistogramParams,
   type TutorSearchParams,
 } from "@/api/tutors";
@@ -48,5 +50,18 @@ export function useTutorDetail(id: number) {
     queryKey: ["tutors", "detail", id],
     queryFn: () => fetchTutor(id),
     enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/**
+ * Cinsiyet fasetleri. Yalnız filtre çekmecesi AÇIKKEN çağrılır —
+ * `useTutorPriceHistogram` ile aynı maliyet deseni.
+ */
+export function useTutorGenderFacets(params: GenderFacetParams, enabled = true) {
+  return useQuery({
+    queryKey: ["tutors", "gender-facets", params],
+    queryFn: () => fetchGenderFacets(params),
+    enabled,
+    staleTime: 60_000,
   });
 }

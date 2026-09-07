@@ -5,19 +5,20 @@ import { useSurfaceStore } from "@/store/surfaceStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS, TeachingMode } from "@/types";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_NAME, siteUrl, absoluteUrl } from "@/lib/seo";
 import { TutorCard } from "@/components/TutorCard";
 import { LibraryCard } from "@/components/LibraryCard";
 import { HScroll } from "@/components/HScroll";
+import { DaireBaglanti } from "@/components/ui/DaireDugme";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
-import { BigSearch, DersArama, CompactSearch } from "@/components/HeroSearch";
+import { DersArama, KutuphaneArama, CompactSearch } from "@/components/HeroSearch";
 import type { MekanDegeri } from "@/components/MekanSelect";
 import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
@@ -118,17 +119,21 @@ export default function Landing() {
   // (bottom slot artık justify-center içermiyor — her sayfa kendi hizalar).
   // Arama hapı SEKMEYE bakar (30 Ağu): eğitmenlerde ders+mekân, kütüphanelerde
   // ad/semt yazısı + ilçe (uzaktan seçeneği yok — fiziksel mekân).
+  //
+  // 7 Eyl 2026: iki hap TASARIM OLARAK ikizlendi (kullanıcı kararı). Önce
+  // kütüphane sekmesi `BigSearch` basıyordu — pin + açılır ilçe menüsü +
+  // serbest metin; sekme değişince çubuğun kendisi değişiyordu. Artık ikisi de
+  // aynı kabuk, aynı sıralama, aynı eşit bölmeler; fark yalnız sağ bölmenin
+  // seçicisinde. Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`.
   const bottom = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
       {active === "kutuphaneler" ? (
-        <BigSearch
+        <KutuphaneArama
           q={kutQ}
           setQ={setKutQ}
           district={kutDistrict}
           setDistrict={setKutDistrict}
-          showRemoteOption={false}
           onSubmit={kutSubmit}
-          placeholder={HERO_PLACEHOLDER.kutuphaneler}
         />
       ) : (
         <DersArama
@@ -206,7 +211,7 @@ function Navbar({
       user.role_id === ROLE_IDS.TUTOR
         ? TUTOR_NAV
         : user.role_id === ROLE_IDS.CLIENT
-          ? STUDENT_NAV
+          ? UYE_NAV
           : undefined;
     return (
       <DashboardHeader
@@ -288,20 +293,17 @@ function CategoryContent({ active }: { active: CategoryKey }) {
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
   // yanında gri dairesel ok butonu — tamamına o götürür.
+  //
+  // 7 Eyl 2026: bu blok artık `HScroll`un `baslik` yuvasına giriyor; kaydırma
+  // okları aynı satırın SAĞ ucunda duruyor. Alt boşluk (`mb-4`) oraya taşındı.
+  // Ok düğmesi de elle yazılmayı bıraktı: `ui/DaireDugme` ile kaydırma
+  // oklarıyla AYNI kaynaktan geliyor (ölçü h-7 -> h-8 oldu, ikisi eşitlendi).
   return (
-    <div className="mb-4 flex items-center gap-2.5">
-      <h2 className="text-xl font-bold tracking-tight text-slate-900 ">
+    <div className="flex min-w-0 items-center gap-2.5">
+      <h2 className="truncate text-xl font-bold tracking-tight text-slate-900 ">
         {heading}
       </h2>
-      <Link
-        to={href}
-        aria-label={`${heading}, tümünü gör`}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
-        </svg>
-      </Link>
+      <DaireBaglanti to={href} yon="ileri" aria-label={`${heading}, tümünü gör`} />
     </div>
   );
 }
@@ -326,18 +328,23 @@ function FeaturedTutorRow() {
 
   return (
     <section aria-label="Reklam" className="mx-auto max-w-[1216px] px-6">
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold tracking-wide text-slate-500">
-          Reklam
-        </h2>
-        <Link
-          to={ROUTES.rankingCriteria}
-          className="text-xs text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
-        >
-          Sıralama nasıl belirleniyor?
-        </Link>
-      </div>
-      <HScroll className="gap-5 pb-2">
+      <HScroll
+        className="gap-5 pb-2"
+        etiket="Reklam"
+        baslik={
+          <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+            <h2 className="text-sm font-semibold tracking-wide text-slate-500">
+              Reklam
+            </h2>
+            <Link
+              to={ROUTES.rankingCriteria}
+              className="shrink-0 text-xs text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
+            >
+              Sıralama nasıl belirleniyor?
+            </Link>
+          </div>
+        }
+      >
         {tutors.map((tutor) => (
           <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
             <TutorCard tutor={tutor} featured />
@@ -368,11 +375,19 @@ function TutorRow({
 
   return (
     <section className="mx-auto max-w-[1216px] px-6">
-      <RowHeader heading={heading} href={href} />
       {isLoading ? (
-        <RowSkeleton />
+        <>
+          <div className="mb-4">
+            <RowHeader heading={heading} href={href} />
+          </div>
+          <RowSkeleton />
+        </>
       ) : (
-        <HScroll className="gap-5 pb-2">
+        <HScroll
+          className="gap-5 pb-2"
+          etiket={heading}
+          baslik={<RowHeader heading={heading} href={href} />}
+        >
           {data!.map((tutor) => (
             <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
               <TutorCard tutor={tutor} />
@@ -401,11 +416,19 @@ function LibraryRow({
 
   return (
     <section className="mx-auto max-w-[1216px] px-6">
-      <RowHeader heading={heading} href={href} />
       {isLoading ? (
-        <RowSkeleton />
+        <>
+          <div className="mb-4">
+            <RowHeader heading={heading} href={href} />
+          </div>
+          <RowSkeleton />
+        </>
       ) : (
-        <HScroll className="gap-5 pb-2">
+        <HScroll
+          className="gap-5 pb-2"
+          etiket={heading}
+          baslik={<RowHeader heading={heading} href={href} />}
+        >
           {data!.map((lib) => (
             <div key={lib.id} className="w-[190px] shrink-0 sm:w-[210px]">
               <LibraryCard library={lib} />
@@ -423,10 +446,10 @@ export function AnnouncementBanner() {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
   return (
-    <div className="relative bg-indigo-600 px-4 py-2.5 text-center text-xs font-semibold text-white sm:text-sm">
+    <div className="relative bg-marka px-4 py-2.5 text-center text-xs font-semibold text-marka-fg sm:text-sm">
       <span>
         🎓 YKS 2025 hazırlığına başla - uzman eğitmenlerle ilk dersin{" "}
-        <Link to={ROUTES.tutors} className="underline underline-offset-2 hover:text-indigo-100">
+        <Link to={ROUTES.tutors} className="underline underline-offset-2 hover:text-marka-fg">
           hemen randevu al →
         </Link>
       </span>

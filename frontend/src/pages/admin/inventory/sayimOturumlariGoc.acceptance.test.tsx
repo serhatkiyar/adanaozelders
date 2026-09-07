@@ -292,7 +292,7 @@ describe("S-4 · liste, satır tıklaması ve boş durum ayrımı", () => {
     sar();
     await screen.findByTestId("session-row-7");
     expect(
-      screen.getByRole("button", { name: "SAY-2027-0007 — sayım oturumu" })
+      screen.getByRole("button", { name: "SAY-2027-0007: sayım oturumu" })
     ).toBeTruthy();
   });
 

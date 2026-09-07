@@ -16,7 +16,7 @@ export const REPORT_REASON_LABEL: Record<ReportReason, string> = {
 };
 
 const inputCls =
-  "mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 ";
+  "mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 export function ReportModal({
   targetType,

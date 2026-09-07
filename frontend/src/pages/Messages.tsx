@@ -5,7 +5,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { Avatar } from "@/components/Avatar";
 import { BookingActionCard } from "@/components/BookingActionCard";
 import { RightContextPanel } from "@/components/RightContextPanel";
-import { STUDENT_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
+import { UYE_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useArchiveConversation,
@@ -44,7 +44,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     role === "TUTOR"
       ? TUTOR_NAV
       : role === "CLIENT"
-        ? STUDENT_NAV
+        ? UYE_NAV
         : role === "LIBRARY"
           ? OPERATOR_NAV
           : undefined;
@@ -187,7 +187,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
         : activeCounterpartyRole === "TUTOR"
           ? ROUTES.tutor(activeCounterpartyId)
           : activeCounterpartyRole === "CLIENT"
-            ? ROUTES.studentProfile(activeCounterpartyId)
+            ? ROUTES.uyeProfili(activeCounterpartyId)
             : null;
 
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedId);
@@ -412,7 +412,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                         className={`inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
                           activeChip
                             ? "bg-white/20 text-current "
-                            : "bg-indigo-600 text-white"
+                            : "bg-marka text-marka-fg"
                         }`}
                       >
                         {inboxUnread > 9 ? "9+" : inboxUnread}
@@ -439,7 +439,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
                 </svg>
                 {archivedUnread > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white ring-2 ring-white ">
+                  <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[10px] font-bold text-marka-fg ring-2 ring-white ">
                     {archivedUnread > 9 ? "9+" : archivedUnread}
                   </span>
                 )}
@@ -698,7 +698,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   return (
                     <p className="px-1 pb-1 text-right text-[11px] font-medium">
                       {seen ? (
-                        <span className="text-indigo-500 ">Görüldü</span>
+                        <span className="text-marka-metin ">Görüldü</span>
                       ) : (
                         <span className="text-slate-400 ">Gönderildi</span>
                       )}
@@ -713,8 +713,8 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               <div className="border-t border-slate-200 bg-white ">
               {replyTarget && (
                 <div className="mx-auto flex w-full max-w-4xl items-start gap-2 px-3 pt-3 sm:px-6">
-                  <div className="min-w-0 flex-1 rounded-lg border-l-2 border-indigo-500 bg-slate-50 px-3 py-2 ">
-                    <p className="text-[11px] font-semibold text-indigo-600 ">
+                  <div className="min-w-0 flex-1 rounded-lg border-l-2 border-marka-mid bg-slate-50 px-3 py-2 ">
+                    <p className="text-[11px] font-semibold text-marka-metin ">
                       {replyTarget.sender_role === role
                         ? "Kendine yanıt"
                         : `${activeName ?? "Kullanıcı"} kişisine yanıt`}
@@ -750,12 +750,12 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     }
                   }}
                   placeholder="Mesaj yaz…"
-                  className="min-h-[48px] max-h-40 flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 "
+                  className="min-h-[48px] max-h-40 flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 />
                 <button
                   type="submit"
                   disabled={send.isPending || !text.trim()}
-                  className="shrink-0 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="shrink-0 rounded-xl bg-marka px-5 py-3 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {send.isPending ? "…" : "Gönder"}
                 </button>
@@ -827,7 +827,7 @@ function MessageRow({
         <div
           className={`rounded-2xl px-4 py-2.5 ${
             mine
-              ? "bg-indigo-600 text-white"
+              ? "bg-marka text-marka-fg"
               : "bg-white text-slate-700 ring-1 ring-slate-100 "
           }`}
         >
@@ -835,8 +835,8 @@ function MessageRow({
             <div
               className={`mb-1.5 rounded-md border-l-2 px-2 py-1 text-xs ${
                 mine
-                  ? "border-white/60 bg-white/15 text-indigo-50"
-                  : "border-indigo-400 bg-slate-50 text-slate-500 "
+                  ? "border-white/60 bg-white/15 text-marka-fg"
+                  : "border-marka-mid bg-slate-50 text-slate-500 "
               }`}
             >
               <span className="line-clamp-2 whitespace-pre-line">
@@ -847,7 +847,7 @@ function MessageRow({
           <p className="whitespace-pre-line text-[15px] leading-relaxed">{m.body}</p>
           <p
             className={`mt-1 text-[10px] ${
-              mine ? "text-indigo-200" : "text-slate-400 "
+              mine ? "text-marka-fg" : "text-slate-400 "
             }`}
           >
             {formatDateTime(m.created_at)}
@@ -863,7 +863,7 @@ function MessageRow({
                 onClick={() => onReact(r.emoji)}
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition ${
                   r.reacted
-                    ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 "
+                    ? "bg-marka-line text-marka-metin-hover ring-1 ring-marka-focus "
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
                 }`}
               >
@@ -970,7 +970,7 @@ function ConversationRow({
       onClick={onClick}
       className={`flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition ${
         active
-          ? "bg-indigo-50 "
+          ? "bg-marka-soft "
           : "hover:bg-slate-50 "
       }`}
     >
@@ -993,7 +993,7 @@ function ConversationRow({
             {c.last_message ?? "Yeni sohbet"}
           </p>
           {(c.unread ?? 0) > 0 && (
-            <span className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold text-white">
+            <span className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-marka px-1.5 text-[10px] font-bold text-marka-fg">
               {(c.unread ?? 0) > 9 ? "9+" : c.unread}
             </span>
           )}
@@ -1022,7 +1022,7 @@ function MessageHitRow({
       onClick={onClick}
       className={`flex w-full items-start gap-3.5 px-4 py-3 text-left transition ${
         active
-          ? "bg-indigo-50 "
+          ? "bg-marka-soft "
           : "hover:bg-slate-50 "
       }`}
     >
@@ -1045,7 +1045,7 @@ function MessageHitRow({
             seg.match ? (
               <mark
                 key={i}
-                className="rounded bg-indigo-100 px-0.5 font-medium text-indigo-700 "
+                className="rounded bg-marka-line px-0.5 font-medium text-marka-metin-hover "
               >
                 {seg.text}
               </mark>

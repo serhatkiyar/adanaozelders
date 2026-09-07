@@ -398,7 +398,7 @@ function VehicleRow({ v }: { v: Vehicle }) {
             )}
           </p>
           <p className="text-xs text-slate-500 ">
-            {meta.length > 0 ? meta.join(" · ") : "—"}
+            {meta.length > 0 ? meta.join(" · ") : "-"}
           </p>
         </div>
         {/* Aksiyon şeridi ARTIK HOVER'A BAĞLI DEĞİL (İP-A7d2): dokunmatik
@@ -442,7 +442,7 @@ function VehicleRow({ v }: { v: Vehicle }) {
                 toast.error(
                   getErrorMessage(
                     e,
-                    "Aracın açık turu var — önce turları kapatın veya iptal edin."
+                    "Aracın açık turu var: önce turları kapatın veya iptal edin."
                   )
                 );
               } else {
@@ -511,7 +511,7 @@ function VehicleSection() {
         <div>
           <h2 className="text-base font-bold text-slate-900 ">Araçlar</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
-            Tur kurma ve Günü Optimize Et bu filoyu kullanır — durak tavanı ve
+            Tur kurma ve Günü Optimize Et bu filoyu kullanır: durak tavanı ve
             vardiya rota planına girer.
           </p>
         </div>
@@ -531,7 +531,7 @@ function VehicleSection() {
           </div>
         ) : vehicles.length === 0 && !adding ? (
           <p className="py-6 text-center text-sm text-slate-400 ">
-            Filoda araç yok — tur kurabilmek için en az bir araç ekleyin.
+            Filoda araç yok: tur kurabilmek için en az bir araç ekleyin.
           </p>
         ) : (
           <ul className="divide-y divide-slate-100 ">
@@ -549,7 +549,7 @@ function VehicleSection() {
                   <p className="text-xs text-slate-500 ">
                     {[v.plate, v.max_stops != null ? `${v.max_stops} durak` : null, shiftText(v)]
                       .filter(Boolean)
-                      .join(" · ") || "—"}
+                      .join(" · ") || "-"}
                   </p>
                 </li>
               )
@@ -627,7 +627,7 @@ function NoktaAlanlari({ form }: { form: UseFormReturn<NoktaFormDegerleri> }) {
           <Form.Item className="flex w-44 flex-col">
             <Form.Label className={ALAN_ETIKET}>Nokta adı</Form.Label>
             <Form.Control>
-              <input className="input" placeholder="Depo — Seyhan" {...field} />
+              <input className="input" placeholder="Depo: Seyhan" {...field} />
             </Form.Control>
             <Form.ErrorMessage />
           </Form.Item>
@@ -761,7 +761,7 @@ function BasePointRow({ p, isDefault }: { p: PickupPoint; isDefault: boolean }) 
         <p className="truncate text-sm font-medium text-slate-900 ">
           {p.name}
           {isDefault && (
-            <span className="ml-2 rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-semibold text-panel-accent">
+            <span className="ml-2 rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-semibold text-panel-accent-text">
               varsayılan
             </span>
           )}
@@ -855,7 +855,7 @@ function BasePointSection() {
           <div className="my-3 h-10 animate-pulse rounded-lg bg-slate-100 " />
         ) : basePoints.length === 0 && !adding ? (
           <p className="py-6 text-center text-sm text-slate-400 ">
-            Tanımlı başlangıç noktası yok — rota optimizasyonu için bir nokta ekleyin.
+            Tanımlı başlangıç noktası yok: rota optimizasyonu için bir nokta ekleyin.
           </p>
         ) : (
           <ul className="divide-y divide-slate-100 ">

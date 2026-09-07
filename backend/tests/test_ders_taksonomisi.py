@@ -269,18 +269,24 @@ class TestAramaFiltresi:
         sql = str(stmt.compile(dialect=postgresql.dialect()))
         assert "tr_normalize" in sql
 
-    def test_uc_listeleme_yolu_da_cozumlemeden_gecer(self):
-        """Arama, fiyat histogramı ve öne çıkarma AYNI kümeyi kullanmalı.
+    def test_her_listeleme_yolu_cozumlemeden_gecer(self):
+        """Arama, fiyat histogramı, öne çıkarma ve cinsiyet fasetleri AYNI
+        kümeyi kullanmalı.
 
-        Ayrışırlarsa histogram, listede görünmeyen eğitmenlerin dağılımını
-        gösterir — dosyanın kendi yorumunun uyardığı ikizlenme tuzağı.
+        Ayrışırlarsa histogram listede görünmeyen eğitmenlerin dağılımını,
+        faset de listede olmayan sayıları gösterir — dosyanın kendi yorumunun
+        uyardığı ikizlenme tuzağı.
+
+        Sayı DÖRT: `gender_facets` (6 Eyl) dördüncü yol olarak eklendi.
+        Eşik bir SAYI olduğu için yeni bir listeleme yolu eklenip çözümlemeyi
+        atlayan biri burada durur; sayıyı büyütmeden geçemez.
         """
         kaynak = (BACKEND / "services" / "search_service.py").read_text(encoding="utf-8")
         cagri = [
             s for s in kaynak.splitlines()
             if "await subject_service.resolve_filter_terms(" in s
         ]
-        assert len(cagri) == 3, cagri
+        assert len(cagri) == 4, cagri
 
 
 class TestAramaBulunabilirligi:

@@ -28,7 +28,7 @@ export const RESERVATION_STATUS_LABEL: Record<ReservationStatusKey, string> = {
 
 export const RESERVATION_STATUS_STYLE: Record<ReservationStatusKey, string> = {
   BEKLIYOR: "bg-amber-50 text-amber-700",
-  ONAYLANDI: "bg-indigo-50 text-indigo-700",
+  ONAYLANDI: "bg-marka-soft text-marka-metin-hover",
   // Giriş yapıldı ve tamamlandı aynı ailede: ikisi de "başarıyla bitti".
   GIRIS_YAPILDI: "bg-emerald-50 text-emerald-700",
   TAMAMLANDI: "bg-emerald-50 text-emerald-700",

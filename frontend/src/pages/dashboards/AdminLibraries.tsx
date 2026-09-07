@@ -236,7 +236,7 @@ export default function AdminLibraries() {
                   </p>
                   <p className="truncate text-xs text-slate-500 ">
                     {lib.location_text || "Konum yok"} · ★{" "}
-                    {lib.rating_average != null ? lib.rating_average.toFixed(1) : "—"}
+                    {lib.rating_average != null ? lib.rating_average.toFixed(1) : "-"}
                   </p>
                 </div>
               </div>

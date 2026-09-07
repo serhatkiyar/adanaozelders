@@ -51,7 +51,7 @@ function OrderRow({
     <li className="flex flex-wrap items-center gap-3 py-3">
       <div className="min-w-0 flex-1 basis-52">
         <p className="truncate text-sm font-medium text-slate-900 ">
-          {order.recipient ?? "—"}
+          {order.recipient ?? "-"}
           <span className="ml-2 text-xs font-normal text-slate-400">#{order.order_id}</span>
           {order.lat == null && (
             <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ">
@@ -135,7 +135,7 @@ function PrepQueue() {
             </p>
             <Link
               to={ROUTES.adminPacking}
-              className="shrink-0 text-xs font-semibold text-panel-accent hover:underline"
+              className="shrink-0 text-xs font-semibold text-panel-accent-text hover:underline"
             >
               Paketleme istasyonunu aç →
             </Link>
@@ -226,8 +226,8 @@ function ReadyQueue() {
                 </>
               ) : (
                 <p className="text-xs text-slate-500 ">
-                  Bugün açık tur yok —{" "}
-                  <Link to={ROUTES.adminDelivery} className="font-semibold text-panel-accent hover:underline">
+                  Bugün açık tur yok: {" "}
+                  <Link to={ROUTES.adminDelivery} className="font-semibold text-panel-accent-text hover:underline">
                     Bugün sekmesinden
                   </Link>{" "}
                   tur oluştur.
@@ -309,7 +309,7 @@ function OutsourcedQueue() {
               ) : (
                 <Link
                   to={ROUTES.adminStoreOrders}
-                  className="text-xs font-semibold text-panel-accent hover:underline"
+                  className="text-xs font-semibold text-panel-accent-text hover:underline"
                 >
                   Mağaza siparişlerinde aç →
                 </Link>

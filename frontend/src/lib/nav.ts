@@ -1,5 +1,5 @@
 import { ROUTES } from "@/lib/routes";
-import { KUTUPHANELER_ACIK, OGREN_ACIK } from "@/lib/ozellikBayraklari";
+import { OGREN_ACIK, TALEPLER_ACIK } from "@/lib/ozellikBayraklari";
 
 export type NavIcon =
   | "favorites"
@@ -39,27 +39,48 @@ export interface NavItem {
 /**
  * Öğren TAM GİZLENİR, "Yakında" rozetiyle DURMAZ (5 Eyl 2026).
  *
- * Kütüphaneler'den farkı bilinçli: Kütüphaneler yakında gelecek bir bölüm ve
- * rozet bir vaat. Öğren ise lansman hikâyesinin dışına alındı — vaat etmediğimiz
- * bir şeyi menüde tutmak kullanıcıya boş bir söz verir.
+ * Gerekçe: Öğren lansman hikâyesinin dışına alındı — vaat etmediğimiz bir şeyi
+ * menüde "Yakında" diye tutmak kullanıcıya boş bir söz verir.
+ *
+ * (Bu paragraf eskiden Kütüphaneler ile karşılaştırma yapıyordu; Kütüphaneler
+ * 7 Eyl 2026'da bu menülerden tümüyle çıktı — aşağıya bak.)
  */
-export const STUDENT_NAV: NavItem[] = [
+/**
+ * Kütüphaneler ve Mağaza bu iki menüden ÇIKTI (kullanıcı kararı, 7 Eyl 2026).
+ *
+ * Bunlar özel dersin yan paneline ait değil: özel ders paneli kişinin KENDİ
+ * işini taşır (favorileri, mesajları, rezervasyonları, ilanı, bakiyesi).
+ * Kütüphaneler ve Mağaza ayrı keşif yüzeyleridir ve kendi girişleri duruyor —
+ * ana sayfadaki kategori çubuğu (`CategoryBar`) ve doğrudan rotaları
+ * (`/kutuphaneler`, `/magaza`). Rotalar, sayfalar ve mağazanın kendi
+ * gezinmesi DEĞİŞMEDİ; kaldırılan yalnız bu iki menü girdisi.
+ *
+ * Nöbetçi: `__guards__/yanPanelKapsami.test.ts`.
+ */
+export const UYE_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
-  { to: ROUTES.demands, label: "Taleplerim", icon: "demand" },
+  ...(TALEPLER_ACIK
+    ? [{ to: ROUTES.demands, label: "Taleplerim", icon: "demand" } as NavItem]
+    : []),
   ...(OGREN_ACIK
     ? [{ to: ROUTES.learn, label: "Öğren", icon: "learn" } as NavItem]
     : []),
   { to: ROUTES.bookings, label: "Rezervasyonlar", icon: "bookings" },
-  { to: ROUTES.store, label: "Mağaza", icon: "store" },
 ];
 
 export const TUTOR_NAV: NavItem[] = [
+  // Favoriler eğitmene de açık (ÜK-6 · docs/urun-kararlari.md): eğitmen ders
+  // verdiği kütüphaneyi ve meslektaşını işaretleyebilir. Üst bardaki TEK
+  // kısayol da budur (ÜK-2) — üyeyle aynı davranış.
+  { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   // İlan, eğitmenin platformdaki tek ürünü — üst gezinmede yeri olmaması
   // eğitmeni onu hesap menüsünün altında aramaya zorluyordu.
   { to: ROUTES.tutorListing, label: "İlanım", icon: "tickets" },
   { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
-  { to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" },
+  ...(TALEPLER_ACIK
+    ? [{ to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" } as NavItem]
+    : []),
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   // Eğitmen de "Öğren" hub'ını görür (aralıklı tekrar, pomodoro,
@@ -70,8 +91,6 @@ export const TUTOR_NAV: NavItem[] = [
   ...(OGREN_ACIK
     ? [{ to: ROUTES.learn, label: "Öğren", icon: "learn" } as NavItem]
     : []),
-  { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library", yakinda: !KUTUPHANELER_ACIK },
-  { to: ROUTES.store, label: "Mağaza", icon: "shop" },
 ];
 
 // Kütüphane operatörü: özet panel + profil + operasyon + para + mesajlar.
@@ -103,7 +122,7 @@ export function navForRole(roleId: number | undefined | null): NavItem[] | undef
     case 2:
       return TUTOR_NAV;
     case 3:
-      return STUDENT_NAV;
+      return UYE_NAV;
     case 4:
       return OPERATOR_NAV;
     default:

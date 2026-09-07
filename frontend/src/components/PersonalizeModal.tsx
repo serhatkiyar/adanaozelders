@@ -48,7 +48,7 @@ function Switch({
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-        checked ? "bg-indigo-600" : "bg-slate-300 "
+        checked ? "bg-marka" : "bg-slate-300 "
       }`}
     >
       <span
@@ -61,7 +61,7 @@ function Switch({
 }
 
 const subInputClass =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 ";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 /* ── Üst bar (widget) bölümü ─────────────────────────────────────────── */
 
@@ -100,26 +100,26 @@ function NavbarWidgetSection() {
               aria-pressed={active}
               className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
                 active
-                  ? "border-indigo-500 bg-indigo-50/60 "
+                  ? "border-marka-mid bg-marka-soft/60 "
                   : "border-slate-200 hover:border-slate-300 hover:bg-slate-50 "
               }`}
             >
               <span
                 className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
                   active
-                    ? "border-indigo-600 "
+                    ? "border-marka "
                     : "border-slate-300 "
                 }`}
               >
                 {active && (
-                  <span className="h-2 w-2 rounded-full bg-indigo-600 " />
+                  <span className="h-2 w-2 rounded-full bg-marka " />
                 )}
               </span>
               <span className="min-w-0 flex-1">
                 <span
                   className={`block text-sm font-semibold ${
                     active
-                      ? "text-indigo-700 "
+                      ? "text-marka-metin-hover "
                       : "text-slate-800 "
                   }`}
                 >
@@ -251,7 +251,7 @@ function SurfaceEditor({
             }}
             className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
               over
-                ? "border-indigo-400 bg-indigo-50/60 "
+                ? "border-marka-mid bg-marka-soft/60 "
                 : "border-slate-200 "
             } ${dragging ? "opacity-50" : ""}`}
           >
@@ -515,7 +515,7 @@ export function PersonalizeModal({
         aria-current={isActive}
         className={`${base} ${
           isActive
-            ? "bg-indigo-50 text-indigo-700 "
+            ? "bg-marka-soft text-marka-metin-hover "
             : "text-slate-600 hover:bg-slate-100 "
         }`}
       >

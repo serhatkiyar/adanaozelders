@@ -12,13 +12,13 @@ import { toast } from "@/store/toastStore";
 import type { DocumentType, Education, EducationCreate } from "@/types";
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
 const fieldLabelCls =
   "mb-1.5 block text-xs font-medium text-slate-500 ";
 
 const saveBtn =
-  "rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
 
 const cancelBtn =
   "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 ";
@@ -206,8 +206,8 @@ function EducationForm({
       </div>
 
       {showVerification && (
-        <div className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 ">
-          <p className="text-xs font-semibold text-indigo-700 ">
+        <div className="space-y-3 rounded-xl border border-marka-line bg-marka-soft/50 p-3 ">
+          <p className="text-xs font-semibold text-marka-metin-hover ">
             Diploma doğrulama (e-Devlet)
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -350,7 +350,7 @@ function DocumentArea({
             type="button"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 "
+            className="rounded-lg px-2 py-1 text-xs font-medium text-marka-soft-fg transition hover:bg-marka-soft disabled:opacity-50 "
           >
             {uploading ? "Yükleniyor…" : "Değiştir"}
           </button>
@@ -435,7 +435,7 @@ function EducationItem({
 
   return (
     <div className="flex gap-3.5">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-marka-soft text-marka-soft-fg ">
         {CapIcon}
       </span>
       <div className="min-w-0 flex-1">
@@ -487,7 +487,7 @@ function EducationItem({
               <button
                 type="button"
                 onClick={onEdit}
-                className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
+                className="rounded-lg px-2 py-1 text-xs font-medium text-marka-soft-fg transition hover:bg-marka-soft "
               >
                 Düzenle
               </button>
@@ -592,7 +592,7 @@ export function EducationSection({
               setEditingId(null);
               setAdding(true);
             }}
-            className="inline-flex min-h-[44px] items-center rounded-lg px-2.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 "
+            className="inline-flex min-h-[44px] items-center rounded-lg px-2.5 text-xs font-medium text-marka-soft-fg transition hover:bg-marka-soft "
           >
             + Ekle
           </button>

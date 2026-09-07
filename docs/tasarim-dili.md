@@ -9,6 +9,9 @@ _neden_ o değer seçildiği yazılıdır; B2'yi yazan oturum "burada neden 24 d
 de 16 piksel" sorusunun cevabını burada bulmalıdır. Gerekçesi olmayan kural
 kural değildir — kopyalanır, sonra da unutulur.
 
+Renk kararının kendisi ve ölçülen kontrast bedeli **ÜK-1**'de:
+`docs/urun-kararlari.md`.
+
 Kaynak: Medusa Admin'in tasarım dili (`docs.medusajs.com/user-guide` +
 `@medusajs/ui@4.2.1` paketinin kendi kaynağı). Karşılaştırma belgeleri:
 `docs/medusa-arayuz-karsilastirma.md`, `docs/medusa-karsilastirma-raporu.md`,
@@ -83,13 +86,18 @@ saydamlık varyantı sessizce kırılırdı.
 | `--panel-fg` | Birincil metin | slate-900 | slate-50 |
 | `--panel-fg-muted` | İkincil metin, açıklama | slate-600 | slate-400 |
 | `--panel-fg-subtle` | Üçüncül metin, ikon, etiket | slate-500 | slate-500 |
-| `--panel-accent` | Aksiyon rengi (etkin gezinme, birincil düğme) | **#1A365D** (marka lacivert) | **#8AB0DE** |
-| `--panel-accent-fg` | Aksiyon üstündeki metin | beyaz | slate-950 |
-| `--panel-accent-soft` | Aksiyonun sakin hâli (etkin satır zemini) | **#EAF0F7** | **#152944** |
-| `--panel-focus` | Odak halkası | **#1A365D** | **#8AB0DE** |
-| `--panel-attention` | **Dikkat** rengi — düz hâl (şerit, nokta) | #F6AD55 | #F6AD55 |
-| `--panel-attention-soft` | Dikkat rozetinin zemini | #FDF1E1 | #422006 |
-| `--panel-attention-fg` | Dikkat rozetinin metni | #7C2D12 | #F6AD55 |
+| `--panel-accent` | Aksiyon DOLGUSU (birincil düğme) — metin olarak kullanılmaz | `var(--marka)` → **#E37200** | (tarihçe: #1A365D / #8AB0DE) |
+| `--panel-accent-fg` | Dolgu üstündeki metin (KOYU) | `var(--marka-fg)` → **#2B1000** | slate-950 |
+| `--panel-accent-soft` | Aksiyonun sakin hâli (etkin satır zemini) | `var(--marka-soft)` → **#FFF4E9** | (tarihçe: #EAF0F7) |
+| `--panel-accent-text` | Panelde marka YAZISI (etkin gezinme, tablo bağlantısı) | `var(--marka-metin)` → **#96430A** |
+| `--panel-focus` | Odak halkası | `var(--marka-focus)` → **#C2570C** | (tarihçe: #1A365D) |
+| `--panel-attention` | **Dikkat** rengi — düz hâl (şerit, nokta) | `var(--dikkat)` → **#F59E0B** | (tarihçe: #F6AD55) |
+| `--panel-attention-soft` | Dikkat rozetinin zemini | `var(--dikkat-soft)` → **#FEF3C7** | (tarihçe: #FDF1E1) |
+| `--panel-attention-fg` | Dikkat rozetinin metni | `var(--dikkat-fg)` → **#78350F** | (tarihçe: #7C2D12) |
+
+> **Panel ailesi ÜK-1'ten beri kendi değerini TUTMAZ**, `--marka-*` / `--dikkat-*`
+> ailelerine takma addır (bkz. §1.4). Bu sayede panel ağacındaki 244 sınıf hiç
+> değişmeden turuncuya geçti. Koyu tema sütunu tarihçedir; site tek temadır.
 
 **Koyu temada aksan neden farklı bir değer:** `#1A365D` slate-900 yüzeyin
 üstünde **1,3** kontrast verir — düğme zeminden ayırt edilemez. Aksan aynı
@@ -112,6 +120,13 @@ Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullan
    `Badge`/`StatusBadge` içinde geçer, düz metinde değil. Gerekçe: aynı yeşil
    hem "başarılı" hem "aktif" hem de dekoratif olarak kullanılırsa anlamını
    kaybeder.
+   **Uyarı çipi = açık zemin + KOYU metin; asla dolgulu düğme değildir.**
+   Aksan turuncu olduktan sonra (ÜK-1) uyarıyı aksandan ayıran şey hue değil
+   BİÇİMdir: aksan koyu dolgu + açık metin taşır, uyarı tam tersini. Dolgulu
+   bir uyarı düğmesi hem yanlış anlam verir hem kontrastı düşürür
+   (`amber-500` üstünde beyaz metin = **2,15**). Nöbetçi:
+   `__guards__/markaAksani.test.ts` — `bg-*dikkat*` ile `text-white` aynı
+   sınıf dizesinde `toEqual([])`.
 3. **Odak halkası her etkileşimli öğede zorunludur** ve `ring-panel-focus` +
    `ring-2` + `ring-offset-2`'dir. Kontrast eşiği 3:1'dir (WCAG 2.1 SC 1.4.11).
    Gerekçe: bağımsız denetim #3 (B-11) açık temada `indigo-400` halkanın
@@ -121,7 +136,94 @@ Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullan
    B-9 — dokuz yerel widget koyu temada beyaz blok çiziyordu; tek tek yamamak
    onuncusunu davet ederdi.
 
-### 1.4 Marka: navy + turuncu — **KARAR VERİLDİ (İP-B2 · Ç-3)**
+### 1.4 Marka aksanı: **TURUNCU — KARAR (ÜK-1, kullanıcı)**
+
+Marka rengi **`#E37200`**tır (tam doygun turuncu, ton 30°) ve **dolgu** olarak
+kullanılır; üstündeki yazı **koyudur** (`#2B1000`). Açık zeminlerdeki marka
+yazısı ayrı ve daha koyu bir adımdır (`#96430A`).
+
+**DOLGU PARLAK, YAZI KOYU — kural bilerek bu yönde.** İlk sürüm tersiydi (koyu
+dolgu + beyaz yazı) ve iki tur denendi:
+
+| Deneme | Dolgu | Sonuç |
+|---|---|---|
+| 1 | `#C2410C` + beyaz | kullanıcı "fazla koyu" buldu |
+| 2 | `#BD580C` + beyaz | ton 26°ye kaydırıldı, yine yanık/kahve okundu |
+| **3** | **`#E37200` + koyu yazı** | **canlı turuncu** |
+
+Sebep aritmetiktir: beyaz yazıyı taşımak için turuncunun kontrastı 4,5'e
+çıkmalı, bu da onu **parlaklık 0,18** bandına hapsediyor — turuncunun canlı
+olduğu bant 0,28+. Yani "beyaz yazı" ısrarı, rengin kahveleşmesini zorunlu
+kılıyordu. Turuncu markaların hiçbiri bunu yapmaz: Amazon (`#FF9900`) ve
+Trendyol (`#F27A1A`) düğmelerinde **koyu yazı** kullanır.
+
+**Bedeli ölçüldü ve karşılandı:** parlak dolgu beyaz sayfada sınırını
+kaybedebilir. Trendyol'un ham tonu `#F27A1A` beyaza karşı **2,77** verir ve
+SC 1.4.11'in 3:1 eşiğinin altında kalır. `#E37200` aynı ailenin **3,15** veren
+hâlidir — sınır görünür, canlılık korunur.
+
+**Dolgu METİN OLARAK KULLANILMAZ.** Beyaz zeminde 3,15 verir; gövde metni
+eşiği 4,5'tir. Bu yüzden `--marka-metin` ayrı bir adımdır (Tailwind ve Radix
+ölçekleri de tam olarak bunu yapar). Nöbetçi `text-marka` yazımını
+`toEqual([])` ile yasaklar — sınıf geçerli göründüğü için ne tip kontrolü ne
+build yakalayabilir, yalnız metin soluk kalır.
+
+**Aksan ile uyarı artık DEĞERle değil DOYGUNLUKLA ayrılır.** İkisi de turuncu
+ailesinden; ayrım dolgunun doygun (parlaklık 0,28), uyarı çipinin soluk
+(0,89) olmasıdır. Nöbetçi bu farkı ölçer. Eski 3:1 ölçütü düşürülmedi,
+**değiştirildi** — sayıyı teste uydurmak sözleşmeyi sessizce zayıflatmak olurdu.
+
+**Bu karar §1.4'ün eski hâlini (Ç-3) bilerek TERSİNE ÇEVİRİR.** Ç-3 "turuncu
+aksan değil, dikkat rengidir" diyordu ve gerekçesi aşağıda tarihçe olarak
+duruyor. Gerekçe kullanıcıya iletildi, karar tekrarlandı. Dayanağı bir ölçüm
+düzeltmesi değil **ürün yargısıdır**; burada böyle yazılmasının sebebi, ileride
+"acaba kontrast mı gerektirdi" diye okunmamasıdır.
+
+**Ölçülen bedel — kabul edildi.** Birincil düğmenin metin kontrastı
+`indigo-600` + beyaz iken **6,29**di; şimdi `#E37200` + koyu yazı ile
+**5,67**. AA (4,5) korunur.
+
+| Rol | Değer | Ölçülen |
+|---|---|---|
+| Dolgu | `#E37200` | üstünde koyu yazı **5,67** · beyaz sayfada sınır **3,15** |
+| Dolgu üstündeki yazı | `#2B1000` | — |
+| Dolgu hover | `#C96500` | koyu yazı **5,17** |
+| **Marka yazısı** (açık zemin) | `#96430A` | beyazda **6,77** · soft'ta **6,24** · line'da **5,08** |
+| Marka yazısı hover | `#7C3708` | beyazda **8,72** |
+| Sıcak zemin | `#FFF4E9` | — |
+| Kenarlık | `#FDD9B5` | **yalnız kenarlık** |
+| Ara ton (kenarlık/halka) | `#D9660F` | beyaza karşı **3,58** — SC 1.4.11'i geçer, **AA metni GEÇMEZ** |
+| Odak halkası | `#C2570C` | beyaza karşı **4,50** (eşik 3) — dolgunun kendisi DEĞİL |
+| Dikkat düz | `#F59E0B` | beyaza karşı 2,15 — **metin taşımaz** |
+| Dikkat çipi | `#FEF3C7` zemin / `#78350F` metin | **8,15** |
+
+**Marka turuncusu `#F6AD55` birincil dolgu OLAMAZ:** üstünde beyaz metin
+**1,90** verir. Bu, "sarı turuncu" isteğinin düğmenin PARLAKLIĞINDA değil
+**tonunda ve zeminlerde** karşılanmasının sebebidir.
+
+**Aksan ile dikkat DEĞER ve BİÇİMle ayrılır, hue ile değil.** Ç-3'ün endişesi
+("aynı ekranda hem 'yap' hem 'dikkat et'") ortadan kalkmadı; çözüm değişti:
+aksan = koyu dolgu + AÇIK metin, dikkat = açık zemin + KOYU metin. Yeni bir hue
+ailesi icat edilmez. Nöbetçi bunu parlaklık ve kontrastla ölçer
+(`__guards__/markaAksani.test.ts`).
+
+**Uygulama token katmanındadır.** `--marka-*` / `--dikkat-*` `index.css`
+`:root` içinde tek kaynaktır; panel ailesi (`--panel-accent` vb.) ona **takma
+ad**dır, yani panel ağacındaki 244 sınıf hiç değişmeden turuncuya geçti. Public
+sitedeki 1.086 ham `indigo-` sınıfı token'a süpürüldü; nöbetçi eşiği `src/**`
+için `toEqual([])`.
+
+**Kalan risk — kabul edildi.** Sitede turuncu/kehribar zaten **alan rengi**
+olarak kullanılıyor: yıldız puanı, kargo firması rengi, görev önceliği ölçeği.
+Aksan turuncu olunca bunlar marka gibi okunabilir. Azaltıcı, aksanın her zaman
+koyu dolgu, alan renklerinin açık/orta ton olması. Tümüyle çözülemez.
+
+---
+
+### 1.4 (tarihçe) Marka: navy + turuncu — Ç-3, **GEÇERSİZ**
+
+> Aşağıdaki bölüm **yürürlükte değildir**; ÜK-1 ile yukarıdaki karar geçerlidir.
+> Silinmemesinin sebebi, o günkü gerekçenin ve ölçümlerin okunabilir kalmasıdır.
 
 `#1A365D` navy, `#F6AD55` turuncu ve `Figtree` yazı tipi **bugün kod tabanında
 hiç geçmiyor** (arama: sıfır sonuç, `frontend/` ağacının tamamında). Panel
@@ -147,7 +249,8 @@ Tavsiye — **Medusa'nın dili + bizim kimliğimiz**, klon değil:
 **İP-B2'de uygulandı.** Değişiklik yalnız token'da kalmadı: panel ağacındaki
 (`components/admin/**`, `pages/admin/**`) **55 `indigo-` sınıfı** token'lara
 süpürüldü ve nöbetçi eşiği `toEqual([])` yapıldı
-(`__guards__/panelAksani.test.ts`) — yani panelde yeni bir `indigo-` doğduğu
+(o gün `__guards__/panelAksani.test.ts`; ÜK-1'te `markaAksani.test.ts` adıyla
+kapsamı `src/**`e genişletildi) — yani panelde yeni bir `indigo-` doğduğu
 gün CI kırılır. "Panel yarı lacivert yarı indigo kalmaz" bir niyet değil,
 ölçülen bir sözleşmedir.
 
@@ -570,7 +673,10 @@ Bu dil aşağıdakileri **bozamaz**. Bozuyorsa tasarım kararı yanlıştır:
 | Erişilebilir adı olmayan form kontrolü | `≤ 7` (kaynak) / `0` (çalışma zamanı) | `uiBaseline` + `calismaZamaniKapisi` |
 | Ham `<button>` | artamaz | `uiBaseline.test.ts` |
 | `ui2/` dışında `@medusajs/ui` importu | `toEqual([])` | `uiBaseline.test.ts` |
-| **Panel ağacında `indigo-` sınıfı** | `toEqual([])` | `panelAksani.test.ts` (İP-B2) |
+| **`src/**` içinde `indigo-` sınıfı** | `toEqual([])` | `markaAksani.test.ts` (ÜK-1) |
+| **Aksan/hover/çip AA kontrastı** | `≥ 4,5` (kaynaktan hesaplanır) | `markaAksani.test.ts` (ÜK-1) |
+| **Dolgulu uyarı düğmesi** (`bg-*dikkat*` + `text-white`) | `toEqual([])` | `markaAksani.test.ts` (ÜK-1) |
+| **Köprüde karşılığı olmayan marka sınıfı** | `toEqual([])` | `gecerliMarkaSinifi.test.ts` (ÜK-1) |
 | **Dış yazı tipi konağına atıf** | `toEqual([])` | `disFont.test.ts` (İP-B2 · KVKK) |
 | **Satır başına açık düğme** | `≤ 2`, hiçbiri yıkıcı değil | `satirAksiyonlari.tsx` (çalışma zamanı) |
 
