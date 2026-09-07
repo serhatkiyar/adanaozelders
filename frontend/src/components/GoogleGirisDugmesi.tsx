@@ -5,8 +5,6 @@ import { useGoogleGirisi } from "@/hooks/useOAuthSaglayicilari";
 import { donusAdresiUret } from "@/lib/guvenliDonus";
 import { useAuthStore } from "@/store/authStore";
 import { currentConsentVersion } from "@/lib/legalContent";
-import { ROUTES } from "@/lib/routes";
-import { Link } from "react-router-dom";
 
 /**
  * Google logosu — INLINE SVG.
@@ -112,39 +110,6 @@ export function GoogleGirisDugmesi({
       <GoogleLogosu />
       Google ile devam et
     </button>
-  );
-}
-
-/**
- * Google düğmesinin altındaki yasal bilgilendirme.
- *
- * Giriş akışı da hesap açabiliyor (e-posta hiçbir tabloda yoksa), dolayısıyla
- * orada da onayın alınması gerekiyor — ama giriş ekranında onay KUTUSU yok.
- * Çözüm, bu depoda zaten kabul edilmiş desen: ödeme yüzeylerindeki
- * `PaymentConsentNote` de "Ödemeye geçerek ... kabul etmiş olursun" diyor.
- * Sürüm akışta taşınıp `user_consents`a yazılır, yani ispat zinciri kopmaz.
- *
- * Kayıt ekranında GÖSTERİLMEZ: orada gerçek bir onay kutusu var ve iki farklı
- * onay biçimini yan yana koymak hangisinin geçerli olduğunu belirsizleştirir.
- */
-export function GoogleYasalNotu() {
-  const linkCls = "underline underline-offset-2 hover:text-slate-600";
-  return (
-    <p className="mt-2 text-center text-[11px] leading-relaxed text-slate-400">
-      Google ile devam ederek{" "}
-      <Link to={ROUTES.kvkk} target="_blank" className={linkCls}>
-        KVKK Aydınlatma Metni
-      </Link>
-      'ni,{" "}
-      <Link to={ROUTES.terms} target="_blank" className={linkCls}>
-        Kullanım Koşulları
-      </Link>
-      'nı ve{" "}
-      <Link to={ROUTES.privacy} target="_blank" className={linkCls}>
-        Gizlilik Politikası
-      </Link>
-      'nı kabul etmiş olursun.
-    </p>
   );
 }
 

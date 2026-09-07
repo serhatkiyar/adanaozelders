@@ -12,7 +12,6 @@ import { toast } from "@/store/toastStore";
 import {
   GirisAyirici,
   GoogleGirisDugmesi,
-  GoogleYasalNotu,
 } from "@/components/GoogleGirisDugmesi";
 
 export default function Login() {
@@ -134,7 +133,6 @@ export default function Login() {
             ömrünü sunucu, access token'ın nerede duracağını yerel bayrak
             belirliyor ve ikisi de düğmeye basıldığı anda sabitleniyor. */}
         <GoogleGirisDugmesi mod="giris" hatirla={rememberMe} />
-        <GoogleYasalNotu />
 
         <p className="mt-6 text-center text-sm text-slate-500 ">
           Hesabın yok mu?{" "}

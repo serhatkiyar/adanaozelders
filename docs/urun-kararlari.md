@@ -299,10 +299,15 @@ girdim."* Haklı — Google ile giren birine "önce kayıt ol" denmez.
 - **Rol**: varsayılan CLIENT (Üye). Eğitmen olmak ayrı ve bilinçli bir
   yolculuktur (`/kayit` → "Ders vermek" → ilan sihirbazı); seçilmemiş bir rolü
   atamak yanlış olurdu.
-- **KVKK**: giriş ekranında onay kutusu yok, o yüzden onay düğmenin altındaki
-  bilgilendirme metniyle alınır — bu depoda zaten kabul edilmiş desen
-  (`PaymentConsentNote`: *"Ödemeye geçerek ... kabul etmiş olursun"*). Sürüm
-  akışta taşınır ve `user_consents`a yazılır; sürüm yoksa hesap AÇILMAZ.
+- **KVKK**: onay sürümü akışta taşınır ve `user_consents`a yazılır; sürüm
+  yoksa hesap AÇILMAZ. Giriş düğmesinin altına bir bilgilendirme metni
+  eklenmişti, **kaldırıldı**: kullanıcı rakiplerde böyle bir metin olmadığını
+  söyledi ve haklıydı — o metin her düğmenin altında değil, olsa olsa sayfanın
+  en altında tek satır olarak bulunur. Aydınlatma metni footer'da ve `/kvkk`
+  adresinde erişilebilir, kayıt ekranındaki gerçek onay kutusu yerinde duruyor.
+  Bilinen sınır: giriş akışından açılan hesapta onay, aydınlatma metni ekranda
+  gösterilmeden kaydediliyor. Avukat incelemesinde bu maddeye bakılmalı
+  (lansman öncesi yasal gözden geçirme zaten bekliyor).
 
 **Yan etkisi bilinçli:** kayıt kapısı (`registration_open`) artık giriş modunda
 da denetleniyor. Muafiyet ilk sürümde doğruydu (giriş hesap açmıyordu); karar
