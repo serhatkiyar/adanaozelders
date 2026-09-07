@@ -44,20 +44,25 @@ export function IdentityVerifiedBadge() {
 /** "Diploması Doğrulandı" rozeti — en az bir eğitimde belge DOĞRULANMIŞ (admin
  *  e-Devlet barkodunu teyit etmiş). Yalnız yüklenmiş (doğrulanmamış) belge yetmez. */
 /**
- * Diploması doğrulanmış eğitmen — MÜHÜR, cümle değil.
+ * Diploması doğrulanmış eğitmen — NİŞAN, cümle değil.
  *
  * Önce "Diploması Doğrulandı" yazan yeşil bir çipti ve eğitmenin adının hemen
  * yanında durduğu için ismi eziyordu. Rozetin işi bilgi vermek değil, bir
  * ayrıcalığı İŞARET ETMEK; açıklaması zaten profilin eğitim bölümünde yazılı.
  *
- * Şekil bilerek mühür: tırtıklı kenar + kurdele, diplomanın kendi görsel dili.
- * Düz çizgiyle çizildi çünkü site 3B/gradyanlı öğe kullanmıyor ve rozet 20px'e
- * inince ancak silüeti okunur kalır. Renk mevcut güven paletinde (emerald);
- * altın yeni bir anlam rengi açmak olurdu ve marka turuncusuyla çakışırdı.
+ * Şekil kullanıcının seçtiği madalya (kullanıcı dosyayı gönderdi, 8 Eyl):
+ * dolu daire üstüne beyaz çember + kurdele ucu. Akademik nişanın yerleşik
+ * görsel dili ve 20px'e indiğinde de siluet olarak okunuyor. 3B/gradyanlı bir
+ * görsel yerine düz çizgi tercih edildi çünkü site başka hiçbir yerde öyle bir
+ * öğe kullanmıyor.
  *
- * Metin kalktı ama ERİŞİLEBİLİRLİK kalmadı sayılmaz: `title` fareyle,
- * `aria-label` ekran okuyucuyla, `role="img"` de ikonun süs değil ANLAM
- * taşıdığını söyler. Yalnız `title` bırakılsaydı rozet dokunmatik ekranda ve
+ * Renk sabit değil `currentColor`: sarmalayıcı `text-emerald-600` veriyor,
+ * yani rozet site paletine bağlı kalıyor. Gelen dosyadaki `#60C78F` doğrudan
+ * gömülseydi palete kaçak bir yeşil daha girerdi.
+ *
+ * Metin kalktı ama ERİŞİLEBİLİRLİK kalmadı sayılmaz: `role="img"` +
+ * `aria-label` ikonun süs değil ANLAM taşıdığını söyler, `title` fareyle
+ * açıklamayı verir. Yalnız `title` bırakılsaydı rozet dokunmatik ekranda ve
  * ekran okuyucuda sessiz kalırdı.
  */
 export function DocumentedBadge() {
@@ -69,26 +74,18 @@ export function DocumentedBadge() {
       aria-label={aciklama}
       className="inline-flex shrink-0 text-emerald-600"
     >
-      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-        {/* Tırtıklı mühür kenarı: dairenin üstüne 12 dişli bir yıldız. */}
-        <path
-          fill="currentColor"
-          d="M12 1.6l1.7 1.35 2.1-.5.98 1.93 2.15.3.13 2.16 1.83 1.16-.75 2.03 1.2 1.8-1.55 1.5.46 2.12-2 .82-.33 2.14-2.16-.13-1.1 1.87-1.98-.87-1.68 1.36-1.68-1.36-1.98.87-1.1-1.87-2.16.13-.33-2.14-2-.82.46-2.12-1.55-1.5 1.2-1.8-.75-2.03L4.94 6.84l.13-2.16 2.15-.3.98-1.93 2.1.5L12 1.6z"
-        />
-        {/* Kurdele uçları — mührün diploma bağı. */}
-        <path
-          fill="currentColor"
-          d="M8.6 17.4l-1.5 4.9 2.9-1.35 1.5 2.05.9-4.3-3.8-1.3zm6.8 0l-3.8 1.3.9 4.3 1.5-2.05 2.9 1.35-1.5-4.9z"
-        />
-        {/* İçteki onay: mührün ne söylediği. Beyaz oyma, dolgunun üstünde. */}
-        <path
-          d="M9.2 11.9l1.9 1.9 3.7-3.9"
+      <svg viewBox="0 0 512 512" className="h-5 w-5" aria-hidden>
+        <circle cx="256" cy="256" r="256" fill="currentColor" />
+        <g
           fill="none"
           stroke="#fff"
-          strokeWidth={2.1}
+          strokeWidth={24.3}
           strokeLinecap="round"
           strokeLinejoin="round"
-        />
+        >
+          <circle cx="256" cy="208.4" r="86.3" />
+          <path d="M306 278.8 316.4 390 256 353 195.6 390 206 278.8" />
+        </g>
       </svg>
     </span>
   );
