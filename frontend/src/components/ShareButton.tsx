@@ -101,7 +101,9 @@ export function ShareButton({
           aria-label="Paylaş"
           title="Paylaş"
           onClick={open}
-          className={`relative flex ${dim} shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 active:scale-90 ${className}`}
+          // 8 Eyl 2026: daire ZEMİN kalktı — yanındaki kalple aynı karar.
+          // İkincil iki eylem için gri dolu daireler fazla ağırlıktı.
+          className={`relative flex ${dim} shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 active:scale-90 ${className}`}
         >
           {icon}
         </button>

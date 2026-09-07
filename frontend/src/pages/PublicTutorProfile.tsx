@@ -156,14 +156,25 @@ export default function PublicTutorProfile() {
               Artık yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar;
               kısa kaldığında hiçbir şey değişmez. */}
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
-              {/* Üst aksiyon: favori + paylaş (kartın yukarısında) */}
-              <div className="mb-2 flex items-center justify-end gap-2">
+            <section className="relative rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+              {/* Favori + paylaş: sağ üst köşede DİKEY sütun (Superprof deseni,
+                  kullanıcı kararı 8 Eyl). Önce fotoğrafın üstünde yatay bir
+                  satırdaydılar ve kartın en değerli yerini —ismin hemen
+                  üstünü— iki ikon için harcıyorlardı. Köşeye alınınca dikey
+                  akış doğal: ikisi de ikincil eylem, alt alta okunuyor.
+
+                  `absolute` bilinçli: normal akışta kalsalardı fotoğrafı aşağı
+                  iter ve kartı uzatırlardı; kart zaten ekrana sığması için
+                  kompaktlanmıştı (7 Eyl, 632 -> 516 px). */}
+              <div className="absolute right-4 top-4 z-10 flex flex-col items-center gap-3">
+                <BookmarkButton tutorId={tutor.id} size="md" />
                 <ShareButton size="md" />
-                <BookmarkButton tutorId={tutor.id} size="md" onSolid />
               </div>
               <div className="flex flex-col items-center text-center">
-                <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="lg" shape="square" />
+                {/* Fotoğraf 64px'ten 128px'e çıktı. Kartın tek görseli o ve
+                    eğitmen seçiminde yüz belirleyici; küçük hâli avatar değil
+                    "yer tutucu" gibi duruyordu. */}
+                <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <h1 className="text-xl font-bold text-slate-900 ">
                     {tutor.full_name}

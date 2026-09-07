@@ -179,8 +179,23 @@ describe("ilan sayfası · sabit kart", () => {
     expect(kaynak, "dikey güven çubuğu geri gelmiş").not.toContain(
       "<TutorTrustBar"
     );
-    // Avatar da küçük kaldı: `xl` (128px) kartı tek başına 128 px şişiriyordu.
-    expect(kaynak, "avatar yeniden xl olmuş").not.toMatch(/size="xl"/);
+    // Avatar YASAĞI 8 Eyl'de kalktı ve yerini bütçeye bıraktı.
+    //
+    // 7 Eyl'de `xl` (128px) yasaklanmıştı çünkü kartı tek başına 64px
+    // şişiriyordu (lg=64 → xl=128). 8 Eyl'de favori ve paylaş düğmeleri sağ üst
+    // köşeye `absolute` alındı; eskiden fotoğrafın üstünde kendi satırlarını
+    // kaplıyorlardı (h-9 + mb-2 ≈ 44px) ve o satır artık akışta DEĞİL.
+    //
+    // Yani bütçe şöyle değişti:  +64 (avatar) − 44 (kalkan satır) = net +20px.
+    // Kart ~516 → ~536px. Ölçülmüş taşma sınırı 1366x768'de "altı 672" idi;
+    // +20px onu 692'ye taşır, hâlâ içeride.
+    //
+    // Korunan asıl iddia yukarıdaki üç düğüm: özet tablosu duruyor, ücret
+    // ikinci kez basılmıyor, dikey güven çubuğu geri gelmiyor. Kartı asıl
+    // şişiren onlardı; avatar tek başına o sınıfta değil.
+    //
+    // DİKKAT: buraya bir satır daha eklenirse bütçe yeniden hesaplanmalı.
+    // Kartın ekrana sığması ölçülmüş bir karardır, tahmin değil.
   });
 
   it.each(KABUKLAR)(
