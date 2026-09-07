@@ -12,6 +12,7 @@ import { SITE_NAME, siteUrl, absoluteUrl } from "@/lib/seo";
 import { TutorCard } from "@/components/TutorCard";
 import { LibraryCard } from "@/components/LibraryCard";
 import { HScroll } from "@/components/HScroll";
+import { DaireBaglanti } from "@/components/ui/DaireDugme";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
@@ -295,20 +296,14 @@ function RowHeader({ heading, href }: { heading: string; href: string }) {
   //
   // 7 Eyl 2026: bu blok artık `HScroll`un `baslik` yuvasına giriyor; kaydırma
   // okları aynı satırın SAĞ ucunda duruyor. Alt boşluk (`mb-4`) oraya taşındı.
+  // Ok düğmesi de elle yazılmayı bıraktı: `ui/DaireDugme` ile kaydırma
+  // oklarıyla AYNI kaynaktan geliyor (ölçü h-7 -> h-8 oldu, ikisi eşitlendi).
   return (
     <div className="flex min-w-0 items-center gap-2.5">
       <h2 className="truncate text-xl font-bold tracking-tight text-slate-900 ">
         {heading}
       </h2>
-      <Link
-        to={href}
-        aria-label={`${heading}, tümünü gör`}
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-6-6 6 6-6 6" />
-        </svg>
-      </Link>
+      <DaireBaglanti to={href} yon="ileri" aria-label={`${heading}, tümünü gör`} />
     </div>
   );
 }

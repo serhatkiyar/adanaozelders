@@ -348,6 +348,7 @@ const KAPI_KAPSAMI = [
   "src/components/admin/ui2/liste/bosDurum.tsx",
   "src/components/admin/ui2/liste/menu.tsx",
   "src/components/admin/ui2/medusa-tr.tsx",
+  "src/components/ui/DaireDugme.tsx",
   "src/components/ui/PlainButton.tsx",
   "src/pages/DeliveryDriver.tsx",
   "src/pages/DeliveryRunHandover.tsx",
@@ -492,6 +493,10 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/ui2/gezinmeBekcisi.tsx": "kabuk",
   "src/components/admin/ui2/medusa-tr.tsx": "kabuk",
   "src/components/ui/Modal.tsx": "pencere-kabugu",
+  // Dairesel ok düğmesi: `PlainButton` üzerine kurulu saf sunum. Adı çağrı
+  // yerinden ZORUNLU `aria-label` ile gelir, kendi başına render edilince
+  // adsız görünür — `PlainButton` ile aynı sınıf.
+  "src/components/ui/DaireDugme.tsx": "sunum",
   "src/components/ui/PlainButton.tsx": "sunum",
   "src/pages/DeliveryDriver.tsx": "kosullu",
   "src/pages/DeliveryRunHandover.tsx": "kosullu",

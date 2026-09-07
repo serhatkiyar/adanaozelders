@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { PlainButton } from "@/components/ui/PlainButton";
+import { DaireDugme } from "@/components/ui/DaireDugme";
 
 /**
  * Yatay tek satır kaydırıcı — vitrin kuşakları (eğitmen / kütüphane kartları).
@@ -10,7 +10,11 @@ import { PlainButton } from "@/components/ui/PlainButton";
  * Oklar eskiden kuşağın SOL/SAĞ kenarında, kartların ÜSTÜNE binen beyaz
  * dairelerdi ve sınıra gelince tamamen kayboluyorlardı. Kullanıcı bu görünümü
  * beğenmedi; Airbnb deseni istendi: oklar başlık satırının SAĞ UCUNDA, kartların
- * dışında, küçük ve kenarlıklı; sınıra gelince kaybolmaz **soluklaşır**.
+ * dışında; sınıra gelince kaybolmaz **soluklaşır**.
+ *
+ * Düğmenin GÖRÜNÜMÜ burada tanımlı değil: `ui/DaireDugme` tek kaynaktır.
+ * İlk yazımda buraya ayrı bir stil (beyaz + kenarlık) elle yazılmıştı ve aynı
+ * satırdaki "tümünü gör" okundan farklı görünüyordu — kullanıcı itirazı.
  *
  * Kaybolmak yerine solmanın bir bedeli var ve bilinçli: düğme yerinde kalınca
  * satırın kaydırılabilir olduğu görünür kalır ve üstteki düzen zıplamaz.
@@ -87,13 +91,6 @@ export function HScroll({
     window.addEventListener("pointerup", handleUp);
   };
 
-  const okSinifi = (aktif: boolean) =>
-    `flex h-8 w-8 select-none items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition ${
-      aktif
-        ? "hover:border-slate-300 hover:bg-slate-50 "
-        : "cursor-default text-slate-300 "
-    }`;
-
   // İçerik zaten sığıyorsa okları hiç çizme (iki yön de kapalı = kaydırma yok).
   const kaydirilabilir = canScrollLeft || canScrollRight;
 
@@ -104,32 +101,22 @@ export function HScroll({
           {baslik}
           {kaydirilabilir && (
             <div className="flex shrink-0 items-center gap-2">
-              <PlainButton
-                type="button"
+              <DaireDugme
+                yon="sol"
                 disabled={!canScrollLeft}
                 onPointerDown={() => canScrollLeft && startScroll("left")}
                 onPointerUp={stopScroll}
                 onPointerLeave={stopScroll}
-                className={okSinifi(canScrollLeft)}
                 aria-label={`${etiket}: sola kaydır`}
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </PlainButton>
-              <PlainButton
-                type="button"
+              />
+              <DaireDugme
+                yon="sag"
                 disabled={!canScrollRight}
                 onPointerDown={() => canScrollRight && startScroll("right")}
                 onPointerUp={stopScroll}
                 onPointerLeave={stopScroll}
-                className={okSinifi(canScrollRight)}
                 aria-label={`${etiket}: sağa kaydır`}
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </PlainButton>
+              />
             </div>
           )}
         </div>
