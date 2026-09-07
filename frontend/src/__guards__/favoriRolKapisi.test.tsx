@@ -122,6 +122,59 @@ describe("ÜK-6 · favori düğmesi doğru rollere görünür", () => {
   });
 });
 
+describe("favori düğmesinin GÖRÜNÜMÜ", () => {
+  /* Kullanıcı kararı, 7 Eyl 2026: *"favorileme ve paylaşma sembolleri
+     olmamış."* Ölçüldü ve haklıydı — kart içindeki iki düğme ayrışmıştı:
+
+       paylaş : dairesel gri zemin + çizgi ikon
+       kalp   : zemin YOK + DOLU açık gri kalp
+
+     Dolu gri kalp "favorilenmiş ama pasif" gibi okunuyordu; oysa favori
+     DEĞİLDİ. Kalp artık favorilenmemişken çizgi, favorilenince dolu; kap da
+     paylaş düğmesiyle aynı daire. */
+
+  const kalpSvg = (): SVGElement => {
+    const svg = document.querySelector("button svg");
+    expect(svg, "kalp çizilmedi").toBeTruthy();
+    return svg as SVGElement;
+  };
+
+  it("kart içinde (onSolid) favorilenmemiş kalp DOLU DEĞİL", () => {
+    // Asıl kusur sınıfı. `fill-slate-300` görsel olarak "dolu" demekti.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(["me"], { id: 7, role_id: ROLE_IDS.CLIENT, full_name: "T", email: "t@x.co" });
+    qc.setQueryData(["bookmarks"], []);
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <BookmarkButton tutorId={1} size="md" onSolid />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const sinif = kalpSvg().getAttribute("class") ?? "";
+    expect(sinif, "kalp dolu görünüyor ama favori değil").toContain("fill-none");
+    expect(sinif).not.toContain("fill-slate");
+  });
+
+  it("kart içinde kalp, paylaş düğmesiyle AYNI dairesel kabı taşır", () => {
+    // İkisi yan yana duruyor; ölçü ve zemin ayrışırsa göze batıyor.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    qc.setQueryData(["me"], { id: 7, role_id: ROLE_IDS.CLIENT, full_name: "T", email: "t@x.co" });
+    qc.setQueryData(["bookmarks"], []);
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <BookmarkButton tutorId={1} size="md" onSolid />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const sinif = screen.getByRole("button").className;
+    for (const parca of ["rounded-full", "h-9", "w-9", "bg-slate-100"]) {
+      expect(sinif, `kap '${parca}' taşımıyor`).toContain(parca);
+    }
+  });
+});
+
 describe("ÜK-6 · ölü uç yok — favorileyen listesini de görebilir", () => {
   it("eğitmen menüsünde Favorilerim bağlantısı VAR", () => {
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);

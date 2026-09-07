@@ -32,8 +32,28 @@ export function BookmarkButton({
   // Anonim ziyaretçiye gösterilir → tıklayınca giriş modalı açılır.
   if (user && !alisverisYapabilir(user.role_id)) return null;
 
-  const icon =
-    size === "lg" ? "h-8 w-8" : size === "md" ? "h-7 w-7" : "h-6 w-6";
+  const icon = onSolid
+    ? size === "md"
+      ? "h-5 w-5"
+      : "h-4 w-4"
+    : size === "lg"
+      ? "h-8 w-8"
+      : size === "md"
+        ? "h-7 w-7"
+        : "h-6 w-6";
+
+  // Düz zeminde (kart içinde) kap: `ShareButton`ın DAİRESİYLE AYNI ölçü ve
+  // renk. Kullanıcı kararı, 7 Eyl 2026 — ikisi yan yana duruyordu ve
+  // ayrışmışlardı: paylaş dairesel zeminliydi, kalp zeminsiz ve DOLU GRİYDİ,
+  // yani "favorilenmiş ama pasif" gibi okunuyordu. Kalp artık favorilenmemişken
+  // ÇİZGİ, favorilenince dolu.
+  const kap = onSolid
+    ? `flex ${size === "md" ? "h-9 w-9" : "h-8 w-8"} shrink-0 items-center justify-center rounded-full transition active:scale-90 disabled:opacity-50 ${
+        bookmarked
+          ? "bg-rose-50 text-rose-500 hover:bg-rose-100"
+          : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+      }`
+    : "shrink-0 transition active:scale-90 hover:scale-110 disabled:opacity-50";
 
   // Airbnb tarzı kalp: dolgu (pasif/aktif) + okunurluk için kenar/gölge.
   //
@@ -43,8 +63,8 @@ export function BookmarkButton({
   // açık renkli fotoğraflarda kalbi kaybederdi, bu yüzden gölge DEĞİŞMEDİ.
   const fillCls = onSolid
     ? bookmarked
-      ? "fill-rose-500 stroke-rose-500"
-      : "fill-slate-300 stroke-slate-300 "
+      ? "fill-current stroke-current"
+      : "fill-none stroke-current"
     : bookmarked
       ? "fill-rose-500 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
       : "fill-black/40 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]";
@@ -67,11 +87,11 @@ export function BookmarkButton({
         toggle.mutate({ tutorId, bookmarked });
       }}
       disabled={toggle.isPending}
-      className="shrink-0 transition active:scale-90 hover:scale-110 disabled:opacity-50"
+      className={kap}
     >
       <svg
         viewBox="0 0 24 24"
-        strokeWidth={1.5}
+        strokeWidth={onSolid ? 1.8 : 1.5}
         className={`${icon} transition-colors ${fillCls}`}
       >
         <path
