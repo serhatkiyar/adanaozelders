@@ -83,6 +83,7 @@ const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const GoogleDonus = lazy(() => import("@/pages/GoogleDonus"));
+const HesapSilmeOnayi = lazy(() => import("@/pages/HesapSilmeOnayi"));
 const AdminLayout = lazy(() => import("@/components/admin/layout/AdminLayout"));
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
@@ -473,6 +474,7 @@ function App() {
               oturumu acarken calisir, oturumlu kullaniciyi disari atan
               bir guard akisi tam ortasinda keserdi. */}
           <Route path={PATHS.googleReturn} element={<GoogleDonus />} />
+          <Route path={PATHS.confirmDelete} element={<HesapSilmeOnayi />} />
 
           {/* ── Oturum-içi (DÜZ). Yalnızca kimlik gerektiren ortak uçlar ── */}
           <Route element={<ProtectedRoute />}>

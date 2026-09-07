@@ -779,6 +779,39 @@ async def my_deletion_eligibility(
     return {"can_delete": ok, "reason": reason}
 
 
+@router.post(
+    "/me/delete/request",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=MessageResponse,
+    dependencies=[Depends(_email_limit)],
+)
+async def request_account_deletion(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Parolasız hesap için silme onay bağlantısı yollar.
+
+    Parolalı hesapta çağrılırsa 400: orada onay parola ile veriliyor ve ikinci
+    bir yol açmak silme kapısını zayıflatırdı (bkz. `delete_my_account`).
+    """
+    if user.hashed_password is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Bu hesapta silme onayı parola ile veriliyor.",
+        )
+    # Uygunluk ÖNCE denetlenir: silinemeyecek bir hesap için onay maili yollamak
+    # kullanıcıyı boşuna yolculuğa çıkarır (açık siparişi varsa nasılsa 409 alır).
+    ok, reason = await account_deletion_service.can_delete(db, user)
+    if not ok:
+        raise HTTPException(status.HTTP_409_CONFLICT, reason or "Hesap şu an silinemez")
+
+    await verification_service.send_account_delete_confirm(db, user)
+    await db.commit()
+    return MessageResponse(
+        detail="Silme onayı bağlantısı e-posta adresine gönderildi."
+    )
+
+
 @router.post("/me/delete", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_account(
     payload: AccountDeleteRequest,
@@ -788,12 +821,48 @@ async def delete_my_account(
 ):
     """Hesabı anonimleştirir ve kapatır (geri alınamaz).
 
-    Parola yeniden istenir: oturumu ele geçiren birinin hesabı yok etmesini
+    Onay yeniden istenir: oturumu ele geçiren birinin hesabı yok etmesini
     zorlaştırır. Mali kayıtlar (sipariş/ödeme) mevzuat gereği SİLİNMEZ; yalnız
     kimlik/iletişim verisi geri döndürülemez biçimde temizlenir.
+
+    İki kanıt kolu KARŞILIKLI DIŞLAYICIDIR ve hangisinin geçerli olduğunu
+    hesabın durumu belirler, isteğin içeriği değil:
+
+    - Parolalı hesap YALNIZ parola kabul eder. Aksi halde parolalı bir hesap
+      için de e-posta token'ı istenebilir ve silme, tek bir kanıt sınıfına
+      (e-posta kutusu) indirgenirdi.
+    - Parolasız (Google) hesap YALNIZ token kabul eder; parola diye bir şeyi
+      yoktur ve `verify_password` her denemede `False` döndüğü için kullanıcı
+      "parola hatalı" duvarında sıkışırdı.
     """
-    if not await verify_password_async(payload.password, user.hashed_password):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Parola hatalı")
+    if user.hashed_password is not None:
+        if not payload.password:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "Bu hesap için parola gerekiyor."
+            )
+        if not await verify_password_async(payload.password, user.hashed_password):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Parola hatalı")
+    else:
+        if not payload.token:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Bu hesapta parola yok. Silme onayı e-posta bağlantısıyla verilir.",
+            )
+        onaylanan = await verification_service.consume_token(
+            db, raw_token=payload.token, purpose=TokenPurpose.ACCOUNT_DELETE
+        )
+        # Token'ın BAŞKA bir hesaba ait olmadığı ayrıca denetlenir: yalnız
+        # "geçerli bir token" aramak, elinde kendi silme bağlantısı olan birinin
+        # onu başka bir oturumda kullanmasına izin verirdi.
+        if (
+            onaylanan is None
+            or onaylanan.id != user.id
+            or onaylanan.role_id != user.role_id
+        ):
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Onay bağlantısı geçersiz veya süresi dolmuş.",
+            )
 
     ok, reason = await account_deletion_service.can_delete(db, user)
     if not ok:

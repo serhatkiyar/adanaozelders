@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from models.tutor import Gender
 
@@ -53,7 +53,27 @@ class PasswordResetConfirm(BaseModel):
 
 
 class AccountDeleteRequest(BaseModel):
-    """Hesap silme onayı. Parola yeniden istenir: ele geçirilmiş bir oturumun
-    hesabı yok etmesini zorlaştırır (geri alınamaz işlem)."""
+    """Hesap silme onayı. İKİ KOL, biri seçilir.
 
-    password: str = Field(min_length=1, max_length=128)
+    Onay her hâlükârda istenir: ele geçirilmiş bir oturumun hesabı yok etmesini
+    zorlaştırır (geri alınamaz işlem). Kanıtın BİÇİMİ hesaba göre değişir:
+
+    ``password``  Parolalı hesap — bugünkü davranış, birebir korunur.
+    ``token``     Parolasız (Google ile açılmış) hesap. Parola sorulamayacağı
+                  için onay e-posta kutusuna gönderilen tek kullanımlık bir
+                  bağlantıyla verilir. Bu kol olmasaydı Google ile açılan hesap
+                  KVKK silme hakkını hiç kullanamazdı.
+
+    İkisi birden gönderilemez: hangi kanıtın geçerli sayıldığı belirsiz kalırdı
+    ve uç, hesabın durumuna göre doğru kolu seçmek yerine ilk dolu alana bakma
+    eğilimine girerdi.
+    """
+
+    password: str | None = Field(default=None, min_length=1, max_length=128)
+    token: str | None = Field(default=None, min_length=1, max_length=256)
+
+    @model_validator(mode="after")
+    def _tek_kanit(self) -> "AccountDeleteRequest":
+        if bool(self.password) == bool(self.token):
+            raise ValueError("Parola ya da onay bağlantısı; ikisinden tam olarak biri.")
+        return self

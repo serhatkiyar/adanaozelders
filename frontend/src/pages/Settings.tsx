@@ -9,6 +9,7 @@ import { PersonalizePanel } from "@/components/PersonalizeModal";
 import { KISISELLESTIRME_ACIK } from "@/lib/ozellikBayraklari";
 import { navForRole } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { requestAccountDeletion } from "@/api/users";
 import {
   useChangePassword,
   useDeleteMyAccount,
@@ -703,7 +704,19 @@ function SecuritySection() {
       </p>
 
       <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 sm:px-6">
-        {/* Şifre */}
+        {/* Şifre. Parolasız (Google ile açılmış) hesapta bu form HİÇBİR ZAMAN
+            çalışmazdı: "mevcut şifre" sorulur, oysa yoktur. Bu yüzden satır
+            forma değil, parola belirlemeyi sağlayan "Şifremi unuttum" akışına
+            yönlendirir; `reset_password` mevcut parolayı zaten sormuyor. */}
+        {user?.has_password === false ? (
+          <SettingRow
+            title="Şifre"
+            value="Bu hesap Google ile açıldı, parolası yok."
+            editable={false}
+          >
+            <div />
+          </SettingRow>
+        ) : (
         <SettingRow
           title="Şifre"
           value="Son güncellemeyi gizli tutuyoruz · ••••••••"
@@ -768,6 +781,7 @@ function SecuritySection() {
             />
           </form>
         </SettingRow>
+        )}
 
         {/* E-posta doğrulama durumu */}
         <SettingRow
@@ -809,6 +823,16 @@ function DataAndAccountSection() {
   const download = useDownloadMyData();
   const { data: eligibility } = useDeletionEligibility();
   const deleteAccount = useDeleteMyAccount();
+  // Parolasiz hesabin silme onayi: e-postaya tek kullanimlik baglanti gider.
+  const silmeOnayiIste = useMutation({
+    mutationFn: requestAccountDeletion,
+    onSuccess: (yanit) => {
+      toast.success(yanit.detail);
+      setOpen(false);
+    },
+    onError: (err) =>
+      toast.error(getErrorMessage(err, "Silme bağlantısı gönderilemedi.")),
+  });
 
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
@@ -817,14 +841,22 @@ function DataAndAccountSection() {
   if (!user) return null;
 
   const CONFIRM_WORD = "HESABIMI SİL";
+  // Parolasız (Google ile açılmış) hesapta parola alanı yoktur; onay e-posta
+  // bağlantısıyla verilir. `has_password` gelmezse eski davranış korunur.
+  const parolasiz = user?.has_password === false;
+
   const canSubmit =
-    password.length > 0 &&
+    (parolasiz || password.length > 0) &&
     confirmText.trim() === CONFIRM_WORD &&
     eligibility?.can_delete !== false;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    deleteAccount.mutate(password, {
+    if (parolasiz) {
+      silmeOnayiIste.mutate();
+      return;
+    }
+    deleteAccount.mutate({ password }, {
       onSuccess: () => toast.success("Hesabın kapatıldı. Seni özleyeceğiz."),
       onError: (err) => {
         if (err instanceof AxiosError && err.response?.status === 400) {
@@ -888,17 +920,25 @@ function DataAndAccountSection() {
               </span>
             </p>
             <div className="space-y-3">
-              <div>
-                <label htmlFor={`${uid}-parolan`} className={fieldLabelCls}>Parolan</label>
-                <input id={`${uid}-parolan`}
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  className={inputCls}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
+              {parolasiz ? (
+                <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  Bu hesap Google ile açıldı ve parolası yok. Onaylayınca
+                  e-posta adresine tek kullanımlık bir silme bağlantısı
+                  göndereceğiz.
+                </p>
+              ) : (
+                <div>
+                  <label htmlFor={`${uid}-parolan`} className={fieldLabelCls}>Parolan</label>
+                  <input id={`${uid}-parolan`}
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    className={inputCls}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+              )}
               <div>
                 <label className={fieldLabelCls}>
                   Onaylamak için <code>{CONFIRM_WORD}</code> yaz
@@ -925,7 +965,13 @@ function DataAndAccountSection() {
                 disabled={!canSubmit || deleteAccount.isPending}
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {deleteAccount.isPending ? "Siliniyor…" : "Hesabımı kalıcı olarak sil"}
+                {parolasiz
+                  ? silmeOnayiIste.isPending
+                    ? "Gönderiliyor..."
+                    : "Silme bağlantısı gönder"
+                  : deleteAccount.isPending
+                    ? "Siliniyor..."
+                    : "Hesabımı kalıcı olarak sil"}
               </button>
             </div>
           </form>

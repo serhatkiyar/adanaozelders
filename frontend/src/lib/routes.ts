@@ -80,6 +80,8 @@ export const PATHS = {
   verifyEmail: "/e-posta-dogrula",
   /** Google girişinden dönüş. Sunucu buraya `?durum=...&git=...` ile yollar. */
   googleReturn: "/google-donus",
+  /** Parolasız hesabın silme onayı (e-posta bağlantısı). */
+  confirmDelete: "/hesap-silme-onayi",
 
   // ── Oturum-içi (DÜZ, role-adaptive) ──
   /** Rezervasyonlar (ders + kütüphane) (CLIENT). Eğitmen için sadece dersler. */
@@ -262,6 +264,7 @@ export const ROUTES = {
   resetPassword: PATHS.resetPassword,
   verifyEmail: PATHS.verifyEmail,
   googleReturn: PATHS.googleReturn,
+  confirmDelete: PATHS.confirmDelete,
 
   // ── Oturum-içi ──
   bookings: PATHS.bookings,

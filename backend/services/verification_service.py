@@ -29,6 +29,10 @@ def _hash(raw: str) -> str:
 def _ttl_hours(purpose: TokenPurpose) -> int:
     if purpose is TokenPurpose.PASSWORD_RESET:
         return settings.PASSWORD_RESET_TOKEN_TTL_HOURS
+    if purpose is TokenPurpose.ACCOUNT_DELETE:
+        # Silme geri alınamaz; onay penceresi şifre sıfırlamayla aynı kısalıkta
+        # tutulur. E-posta doğrulamanın 24 saati burada fazla geniş olurdu.
+        return settings.PASSWORD_RESET_TOKEN_TTL_HOURS
     return settings.EMAIL_VERIFY_TOKEN_TTL_HOURS
 
 
@@ -105,6 +109,20 @@ async def send_password_reset(db: AsyncSession, user) -> None:
     raw = await issue_token(db, user=user, purpose=TokenPurpose.PASSWORD_RESET)
     url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/sifre-yenile?token={raw}"
     await mail.send_password_reset_email(to=user.email, name=user.full_name, reset_url=url)
+
+
+async def send_account_delete_confirm(db: AsyncSession, user) -> None:
+    """Hesap silme onay bağlantısını yollar (parolasız hesaplar için).
+
+    Parolalı hesapta silme parola ile onaylanır. Google ile açılmış hesabın
+    parolası yoktur ve o kapı kapalı kalsaydı kullanıcı KVKK silme hakkını
+    kullanamazdı. Onay yine de İKİNCİ bir kanıt ister: e-posta kutusuna erişim.
+    """
+    raw = await issue_token(db, user=user, purpose=TokenPurpose.ACCOUNT_DELETE)
+    url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/hesap-silme-onayi?token={raw}"
+    await mail.send_account_delete_email(
+        to=user.email, name=user.full_name, confirm_url=url
+    )
 
 
 async def mark_email_verified(db: AsyncSession, user) -> None:

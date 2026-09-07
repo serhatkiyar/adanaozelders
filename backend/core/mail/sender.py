@@ -53,6 +53,12 @@ async def send_verification_email(*, to: str, name: str, verify_url: str) -> boo
     )
 
 
+async def send_account_delete_email(*, to: str, name: str, confirm_url: str) -> bool:
+    return await _safe_send(
+        templates.account_delete_email(to=to, name=name, confirm_url=confirm_url)
+    )
+
+
 async def send_password_reset_email(*, to: str, name: str, reset_url: str) -> bool:
     return await _safe_send(
         templates.password_reset_email(to=to, name=name, reset_url=reset_url)

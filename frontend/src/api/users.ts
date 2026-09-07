@@ -70,7 +70,22 @@ export async function checkDeletionEligibility(): Promise<DeletionEligibility> {
   return data;
 }
 
-/** Hesabı anonimleştirip kapatır — GERİ ALINAMAZ. Parola doğrulaması ister. */
-export async function deleteMyAccount(password: string): Promise<void> {
-  await apiClient.post("/auth/me/delete", { password });
+/**
+ * Hesabı anonimleştirip kapatır — GERİ ALINAMAZ.
+ *
+ * İki kanıt kolu var ve hangisinin geçerli olduğunu HESABIN DURUMU belirler:
+ * parolalı hesap parolasıyla, parolasız (Google ile açılmış) hesap e-postasına
+ * gönderilen tek kullanımlık bağlantıyla onaylar. İkinci kol olmasaydı Google
+ * ile açılan hesap KVKK silme hakkını hiç kullanamazdı.
+ */
+export async function deleteMyAccount(
+  kanit: { password: string } | { token: string }
+): Promise<void> {
+  await apiClient.post("/auth/me/delete", kanit);
+}
+
+/** Parolasız hesap için silme onay bağlantısı ister. */
+export async function requestAccountDeletion(): Promise<{ detail: string }> {
+  const { data } = await apiClient.post<{ detail: string }>("/auth/me/delete/request");
+  return data;
 }

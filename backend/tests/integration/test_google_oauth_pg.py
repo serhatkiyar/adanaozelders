@@ -179,8 +179,11 @@ async def test_kayit_kapisi_KAPALIYKEN_hicbir_satir_dogmaz(pg):
     email = _eposta()
     c = _claims(email=email)
     try:
-        with pytest.raises(Exception):
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as hata:
             await _cozumle(c, mod="kayit", rol="client", kapi=_kapi_kapali)
+        assert hata.value.status_code == 403
         async with AsyncSessionLocal() as s:
             assert (
                 await s.execute(select(Client.id).where(Client.email == email))
@@ -493,3 +496,77 @@ async def test_SILINMIS_hesap_google_ile_geri_donmez(pg, ip3):
         assert hata.value.kod == "hesap_yok"
     finally:
         await _temizle(subjectler=(c["sub"],))
+
+
+# ── 7. KVKK silme hakki: parolasiz hesabin token kolu ────────────────────────
+
+
+async def test_parolasiz_hesap_TOKENLE_silinebilir(pg):
+    """KVKK silme hakkı parolasız hesapta da kullanılabilmeli.
+
+    Silme parola isteyerek onaylanıyordu; Google ile açılan hesabın parolası
+    yoktur ve o kol tek başına bırakılsaydı kullanıcı hesabını HİÇ silemezdi.
+    Onay ikinci bir kanıt sınıfına dayanır: e-posta kutusuna erişim.
+
+    Bu test aynı zamanda `token_purpose` enum'unun veritabanında GERÇEKTEN
+    genişlediğini kanıtlar — `alembic check` bu değişikliği görmemişti.
+    """
+    from models.verification_token import TokenPurpose
+    from services import verification_service
+
+    email = _eposta()
+    c = _claims(email=email)
+    try:
+        user, _ = await _cozumle(c, mod="kayit", rol="client")
+
+        async with AsyncSessionLocal() as s:
+            satir = (await s.execute(select(Client).where(Client.id == user.id))).scalar_one()
+            ham = await verification_service.issue_token(
+                s, user=satir, purpose=TokenPurpose.ACCOUNT_DELETE
+            )
+            await s.commit()
+
+        async with AsyncSessionLocal() as s:
+            onaylanan = await verification_service.consume_token(
+                s, raw_token=ham, purpose=TokenPurpose.ACCOUNT_DELETE
+            )
+            await s.commit()
+        assert onaylanan is not None and onaylanan.id == user.id
+
+        # Tek kullanimlik: ayni token ikinci kez calismaz.
+        async with AsyncSessionLocal() as s:
+            assert (
+                await verification_service.consume_token(
+                    s, raw_token=ham, purpose=TokenPurpose.ACCOUNT_DELETE
+                )
+                is None
+            )
+    finally:
+        await _temizle(emailler=(email,), subjectler=(c["sub"],))
+
+
+async def test_silme_tokeni_BASKA_AMACLA_kullanilamaz(pg):
+    """Amaç ayrımı: silme onayı token'ı şifre sıfırlama yerine geçmemeli."""
+    from models.verification_token import TokenPurpose
+    from services import verification_service
+
+    email = _eposta()
+    c = _claims(email=email)
+    try:
+        user, _ = await _cozumle(c, mod="kayit", rol="client")
+        async with AsyncSessionLocal() as s:
+            satir = (await s.execute(select(Client).where(Client.id == user.id))).scalar_one()
+            ham = await verification_service.issue_token(
+                s, user=satir, purpose=TokenPurpose.ACCOUNT_DELETE
+            )
+            await s.commit()
+
+        async with AsyncSessionLocal() as s:
+            assert (
+                await verification_service.consume_token(
+                    s, raw_token=ham, purpose=TokenPurpose.PASSWORD_RESET
+                )
+                is None
+            )
+    finally:
+        await _temizle(emailler=(email,), subjectler=(c["sub"],))

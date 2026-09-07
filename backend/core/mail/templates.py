@@ -75,6 +75,37 @@ def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 
 
+def account_delete_email(*, to: str, name: str, confirm_url: str) -> EmailMessage:
+    """Hesap silme onayı — parolası olmayan (Google ile açılmış) hesaplar için.
+
+    Metin bilerek uyarıcı: silme geri alınamaz ve mali kayıtlar mevzuat gereği
+    kalır. Talebi yapmayan biri için de açık bir "hiçbir şey olmadı" cümlesi var.
+    """
+    ttl = settings.PASSWORD_RESET_TOKEN_TTL_HOURS
+    subject = f"{_BRAND} · Hesap silme onayı"
+    text = (
+        f"Merhaba {name},\n\n"
+        f"Hesabını silme talebini onaylamak için aşağıdaki bağlantıya tıkla:\n"
+        f"{confirm_url}\n\n"
+        f"Bu işlem GERİ ALINAMAZ. Bağlantı {ttl} saat geçerlidir. "
+        f"Bu talebi sen yapmadıysan hesabına hiçbir şey olmaz; bu e-postayı yok sayabilirsin."
+    )
+    html = _layout(
+        heading="Hesabını silmek istediğini onayla",
+        intro=(
+            f"Merhaba <b>{name}</b>, hesabını silme talebini aldık. "
+            f"Onaylamak için aşağıdaki butona tıkla."
+        ),
+        button_label="Hesabımı sil",
+        button_url=confirm_url,
+        outro=(
+            f"Bu işlem GERİ ALINAMAZ. Bağlantı {ttl} saat geçerlidir. "
+            f"Bu talebi sen yapmadıysan hesabına hiçbir şey olmaz."
+        ),
+    )
+    return EmailMessage(to=to, subject=subject, html=html, text=text)
+
+
 def password_reset_email(*, to: str, name: str, reset_url: str) -> EmailMessage:
     ttl = settings.PASSWORD_RESET_TOKEN_TTL_HOURS
     subject = f"{_BRAND} · Şifre sıfırlama"
