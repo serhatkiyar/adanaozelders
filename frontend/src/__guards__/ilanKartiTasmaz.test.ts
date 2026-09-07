@@ -19,9 +19,15 @@
  *
  * ## Gerçek Chrome ölçümü (kanıt)
  *
- *   ekran 620px → kart 508px, altı 611 (taşmıyor), kendi içinde KAYABİLİR
- *   ekran 768px → kart 620px, altı 723 (taşmıyor), kaymaya gerek YOK
- *   ekran 900px → kart 620px, altı 723 (taşmıyor), kaymaya gerek YOK
+ * GİRİŞLİ kabukta, kartın gerçek yüksekliği ölçüldü (e-posta doğrulama
+ * şeridi dahil, yani en kötü hâl):
+ *
+ *   önce   1366x768 → kart 632px, altı 788  TAŞIYOR
+ *          1280x720 → kart 608px, altı 764  TAŞIYOR
+ *          1100x700 → kart 588px, altı 744  TAŞIYOR
+ *
+ *   sonra  1366x768 → kart 516px, altı 672  taşmıyor
+ *          1280x720 → kart 516px, altı 672  taşmıyor
  *
  ## Bu nöbetçinin ASIL dersi: rotanın İKİ kabuğu var
  *
@@ -132,6 +138,24 @@ describe("ilan sayfası · sabit kart", () => {
     expect(ust, "üst boşluk okunamadı").toBeTruthy();
     expect(sinir, "yükseklik sınırı okunamadı").toBeTruthy();
     expect(Number(sinir![1])).toBeGreaterThan(Number(ust![1]) / 4);
+  });
+
+  it.each(KABUKLAR)("%s: kart Superprof deseninde KOMPAKT kalır", (ad) => {
+    // Asıl kusur "sticky" değil UZUNLUKtu: kart 632 px'ti ve 1366x768,
+    // 1280x720, 1100x700 ekranlarının üçünde de taşıyordu. Ücret ve güven
+    // sinyalleri AYRI BLOKLAR hâlindeydi; tek etiket/değer tablosuna
+    // indirilince 516 px'e düştü.
+    //
+    // Bu düğüm o kararı tutar: kart ücreti kendi büyük bloğunda TEKRAR
+    // basmaya kalkarsa (ya da tablo bileşeni düşerse) kırılır.
+    const kaynak = oku(ad);
+    expect(kaynak, "özet tablosu kullanılmıyor").toContain("<TutorOzetTablosu");
+    expect(kaynak, "ayrı ücret bloğu geri gelmiş").not.toContain("Saatlik ücret");
+    expect(kaynak, "dikey güven çubuğu geri gelmiş").not.toContain(
+      "<TutorTrustBar"
+    );
+    // Avatar da küçük kaldı: `xl` (128px) kartı tek başına 128 px şişiriyordu.
+    expect(kaynak, "avatar yeniden xl olmuş").not.toMatch(/size="xl"/);
   });
 
   it.each(KABUKLAR)(

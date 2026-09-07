@@ -149,3 +149,55 @@ export function hasVerifiedEducation(
 ): boolean {
   return !!educations?.some((e) => e.verification_status === "VERIFIED");
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Sabit kartın ÖZET TABLOSU (kullanıcı kararı, 7 Eyl 2026 · Superprof deseni)
+
+   Kart 632 pikseldi ve 1366x768, 1280x720, 1100x700 ekranlarının üçünde de
+   taşıyordu; kullanıcı kartın tamamını görmek için sayfayı sonuna kadar
+   kaydırmak zorunda kalıyordu. Ölçüldü: Superprof'un aynı kartı yaklaşık
+   yarı boyda çünkü ücreti ve güven sinyallerini AYRI BLOKLAR hâlinde değil
+   tek bir etiket/değer tablosunda veriyor.
+
+   Bu bileşen o tabloyu kurar: solda etiket, sağda değer, aralarında saç-teli
+   çizgi. `TutorTrustBar`ın dikey hâli + ayrı ücret bloğu bunun yerine geçti.
+   Veri yoksa satır BASILMAZ — "Belirtilmemiş" yazmak yokluğu ilan etmektir.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export function TutorOzetTablosu({
+  tutor,
+  ucret,
+}: {
+  tutor: TutorSearchOut;
+  /** Biçimlendirilmiş saatlik ücret; `null` ise satır basılmaz. */
+  ucret: string | null;
+}) {
+  const satirlar: { etiket: string; deger: string }[] = [];
+
+  if (ucret) satirlar.push({ etiket: "Ücret", deger: ucret });
+
+  if (tutor.avg_response_seconds != null) {
+    satirlar.push({
+      etiket: "Yanıt süresi",
+      deger: formatResponseTime(tutor.avg_response_seconds),
+    });
+  }
+
+  const tamamlanan = tutor.completed_lessons ?? 0;
+  if (tamamlanan > 0) {
+    satirlar.push({ etiket: "Tamamlanan ders", deger: String(tamamlanan) });
+  }
+
+  if (satirlar.length === 0) return null;
+
+  return (
+    <dl className="mt-4 divide-y divide-slate-100 border-y border-slate-100 ">
+      {satirlar.map((s) => (
+        <div key={s.etiket} className="flex items-center justify-between gap-3 py-2.5">
+          <dt className="text-sm text-slate-500 ">{s.etiket}</dt>
+          <dd className="text-sm font-semibold text-slate-900 ">{s.deger}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}

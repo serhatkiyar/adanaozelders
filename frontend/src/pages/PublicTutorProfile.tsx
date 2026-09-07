@@ -17,7 +17,7 @@ import { BookmarkButton } from "@/components/BookmarkButton";
 import { useNavSearch } from "@/hooks/useNavSearch";
 import {
   DocumentedBadge,
-  TutorTrustBar,
+  TutorOzetTablosu,
   hasVerifiedEducation,
 } from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
@@ -156,14 +156,14 @@ export default function PublicTutorProfile() {
               Artık yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar;
               kısa kaldığında hiçbir şey değişmez. */}
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyon: favori + paylaş (kartın yukarısında) */}
-              <div className="mb-4 flex items-center justify-end gap-2">
+              <div className="mb-2 flex items-center justify-end gap-2">
                 <ShareButton size="md" />
                 <BookmarkButton tutorId={tutor.id} size="md" onSolid />
               </div>
               <div className="flex flex-col items-center text-center">
-                <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
+                <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="lg" shape="square" />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <h1 className="text-xl font-bold text-slate-900 ">
                     {tutor.full_name}
@@ -206,29 +206,24 @@ export default function PublicTutorProfile() {
                 )}
               </div>
 
-              {/* Güven sinyalleri (dikey diziliş) */}
-              <TutorTrustBar tutor={tutor} vertical />
-
-              {/* Ücret + CTA */}
-              <div className="mt-5 border-t border-slate-100 pt-5 text-center ">
-                <p className="text-xs font-medium text-slate-500 ">
-                  Saatlik ücret
-                </p>
-                <p className="text-2xl font-bold tracking-tight text-slate-900 ">
-                  {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
-                </p>
-                {tutor.first_lesson_free !== false && (
-                  <p className="mt-1 text-sm font-semibold text-emerald-600 ">
-                    İlk ders ücretsiz
-                  </p>
-                )}
-              </div>
+              {/* Ücret + güven sinyalleri TEK TABLODA (Superprof deseni).
+                  Girişli sürümle (TutorProfile) AYNI bileşen: rotanın iki
+                  kabuğu ayrışmasın. */}
+              <TutorOzetTablosu
+                tutor={tutor}
+                ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              />
               <Link
                 to="?modal=login"
                 className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
                 Ders Talep Et
               </Link>
+              {tutor.first_lesson_free !== false && (
+                <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
+                  İlk ders ücretsiz
+                </p>
+              )}
             </section>
           </aside>
 

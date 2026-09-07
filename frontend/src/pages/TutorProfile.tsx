@@ -7,7 +7,7 @@ import { StarRating } from "@/components/StarRating";
 import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
-import { TutorTrustBar } from "@/components/TutorTrust";
+import { TutorOzetTablosu } from "@/components/TutorTrust";
 import { ReportModal } from "@/components/ReportModal";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
@@ -217,9 +217,9 @@ export default function TutorProfile() {
               ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
               yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
+            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
-              <div className="mb-4 flex items-center justify-end gap-2">
+              <div className="mb-2 flex items-center justify-end gap-2">
                 {!isOwnerTutor && hasActiveBooking && (
                   <button
                     type="button"
@@ -245,7 +245,7 @@ export default function TutorProfile() {
                 <Avatar
                   name={tutor.full_name}
                   avatar_url={tutor.avatar_url}
-                  size="xl"
+                  size="lg"
                   shape="square"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
@@ -274,23 +274,13 @@ export default function TutorProfile() {
                 )}
               </div>
 
-              {/* Güven sinyalleri (dikey diziliş) */}
-              <TutorTrustBar tutor={tutor} vertical />
-
-              {/* Ücret + CTA */}
-              <div className="mt-5 border-t border-slate-100 pt-5 text-center ">
-                <p className="text-xs font-medium text-slate-500 ">
-                  Saatlik ücret
-                </p>
-                <p className="text-2xl font-bold tracking-tight text-slate-900 ">
-                  {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
-                </p>
-                {tutor.first_lesson_free !== false && (
-                  <p className="mt-1 text-sm font-semibold text-emerald-600 ">
-                    {canRequestFreeLesson ? "İlk dersin ücretsiz" : "İlk ders ücretsiz"}
-                  </p>
-                )}
-              </div>
+              {/* Ücret + güven sinyalleri TEK TABLODA (Superprof deseni).
+                  Eskiden ikisi ayrı bloktu ve kart 632 piksele çıkıyordu;
+                  1366x768'de bile taşıyordu. Ayrıntı: `TutorOzetTablosu`. */}
+              <TutorOzetTablosu
+                tutor={tutor}
+                ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              />
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
@@ -298,6 +288,11 @@ export default function TutorProfile() {
                 >
                   Ders Talep Et
                 </button>
+              )}
+              {tutor.first_lesson_free !== false && (
+                <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
+                  {canRequestFreeLesson ? "İlk dersin ücretsiz" : "İlk ders ücretsiz"}
+                </p>
               )}
             </section>
 
