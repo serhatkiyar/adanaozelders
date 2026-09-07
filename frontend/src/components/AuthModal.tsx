@@ -15,6 +15,7 @@ import { currentConsentVersion } from "@/lib/legalContent";
 import {
   GirisAyirici,
   GoogleGirisDugmesi,
+  GoogleYasalNotu,
 } from "@/components/GoogleGirisDugmesi";
 import { googleHataMetni } from "@/lib/googleHata";
 
@@ -217,6 +218,7 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
 
       <GirisAyirici />
       <GoogleGirisDugmesi mod="giris" hatirla={rememberMe} />
+      <GoogleYasalNotu />
 
       <p className="mt-6 text-center text-sm text-slate-500 ">
         Hesabın yok mu?{" "}

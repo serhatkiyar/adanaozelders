@@ -283,8 +283,31 @@ refresh token'lar iptal edilir: o hesabı doğrulanmamış bir adresle açan ki�
 adresin sahibi olmayabilir, gerçek sahibi Google ile kanıtlayıp geldiğinde
 kanıtsız oturumlar düşer.
 
-**Giriş modu hesap AÇMAZ.** Giriş düğmesine basan kişi hesabı olduğunu
-sanıyordur; sessizce ikinci bir hesap yaratmak onu kendi verisinden ayırırdı.
+**Giriş modu da hesap AÇAR — düzeltilmiş karar.** İlk sürüm giriş akışında
+hesap açmıyor, *"Bu Google hesabıyla eşleşen bir üyelik yok, önce kayıt
+olabilirsin"* diyordu. Gerekçe "kullanıcı hesabı olduğunu sanıyordur, sessizce
+ikinci hesap yaratmayalım" idi ve YANLIŞ YERE uygulanmıştı: ikinci hesap riski
+yalnız e-posta mevcut bir hesapla **eşleştiğinde** doğar, onu da otomatik
+bağlama kolu çözüyor. O noktaya gelindiyse e-posta hiçbir tabloda yok demektir,
+yani bölünecek bir hesap da yok.
+
+Karşılığında ürettiği davranış her sosyal girişin sözleşmesine aykırıydı.
+Kullanıcının sözleriyle: *"olum bu ne saçma sapan bir uyarı, yüzlerce siteye
+girdim."* Haklı — Google ile giren birine "önce kayıt ol" denmez.
+
+İki soru vardı, ikisi de çözüldü:
+- **Rol**: varsayılan CLIENT (Üye). Eğitmen olmak ayrı ve bilinçli bir
+  yolculuktur (`/kayit` → "Ders vermek" → ilan sihirbazı); seçilmemiş bir rolü
+  atamak yanlış olurdu.
+- **KVKK**: giriş ekranında onay kutusu yok, o yüzden onay düğmenin altındaki
+  bilgilendirme metniyle alınır — bu depoda zaten kabul edilmiş desen
+  (`PaymentConsentNote`: *"Ödemeye geçerek ... kabul etmiş olursun"*). Sürüm
+  akışta taşınır ve `user_consents`a yazılır; sürüm yoksa hesap AÇILMAZ.
+
+**Yan etkisi bilinçli:** kayıt kapısı (`registration_open`) artık giriş modunda
+da denetleniyor. Muafiyet ilk sürümde doğruydu (giriş hesap açmıyordu); karar
+değişince arka kapıya dönüşürdü. Bedeli: kapı kapalıyken mevcut hesap sahipleri
+de Google ile giremez, parolalarıyla girerler.
 
 **Parolasız hesap ve ölçülmüş bir tuzak.** `hashed_password` beş tabloda da
 nullable oldu. Alternatif, depoda zaten kullanılan sentinel hash'ti (`"!"`) ve

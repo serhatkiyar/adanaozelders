@@ -173,6 +173,25 @@ async def test_egitmen_kaydi_tutors_tablosuna_gider(pg):
         await _temizle(emailler=(email,), subjectler=(c["sub"],))
 
 
+async def test_kayit_kapisi_GIRIS_MODUNDA_da_hesap_acmaz(pg):
+    """Giriş akışı hesap açabildiği için kapı orada da geçerli olmalı; aksi
+    halde `registration_open` kapalıyken Google bir arka kapı olurdu."""
+    email = _eposta()
+    c = _claims(email=email)
+    try:
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as hata:
+            await _cozumle(c, mod="giris", kapi=_kapi_kapali)
+        assert hata.value.status_code == 403
+        async with AsyncSessionLocal() as s:
+            assert (
+                await s.execute(select(Client.id).where(Client.email == email))
+            ).first() is None
+    finally:
+        await _temizle(emailler=(email,), subjectler=(c["sub"],))
+
+
 async def test_kayit_kapisi_KAPALIYKEN_hicbir_satir_dogmaz(pg):
     """Kapı `start`ta da denetleniyor ama asıl kilit burada: aradaki pencere
     kullanıcının Google ekranında geçirdiği süre kadar geniş."""
@@ -200,23 +219,68 @@ async def test_kayit_kapisi_KAPALIYKEN_hicbir_satir_dogmaz(pg):
 # ── 2. Giris kolu: hesap ACMAZ ───────────────────────────────────────────────
 
 
-async def test_giris_modunda_hesap_yoksa_SATIR_DOGMAZ(pg):
-    """Giriş düğmesine basan kişi hesabı olduğunu sanıyordur. Sessizce ikinci
-    bir hesap yaratmak onu kendi verisinden ayırırdı."""
+async def test_giris_modunda_hesap_yoksa_UYE_HESABI_ACILIR(pg):
+    """Google ile giren birine "önce kayıt ol" DENMEZ.
+
+    İlk sürüm burada `hesap_yok` hatası veriyordu; gerekçe "kullanıcı hesabı
+    olduğunu sanıyordur, sessizce ikinci hesap yaratmayalım" idi. Gerekçe yanlış
+    yere uygulanmıştı: ikinci hesap riski yalnız e-posta mevcut bir hesapla
+    EŞLEŞTİĞİNDE doğar ve o durumu otomatik bağlama kolu çözüyor. Buraya
+    gelindiyse e-posta hiçbir tabloda yok, yani bölünecek bir hesap da yok.
+
+    Karşılığında ürettiği davranış her sosyal girişin sözleşmesine aykırıydı ve
+    kullanıcı bunu haklı olarak hata sandı.
+
+    Rol varsayılanı CLIENT: eğitmen olmak ayrı ve bilinçli bir yolculuktur.
+    """
     email = _eposta()
     c = _claims(email=email)
     try:
-        with pytest.raises(gos.OAuthAkisHatasi) as hata:
-            await _cozumle(c, mod="giris")
-        assert hata.value.kod == "hesap_yok"
+        user, olay = await _cozumle(c, mod="giris")
+        assert olay == "kayit"
+        async with AsyncSessionLocal() as s:
+            satir = (
+                await s.execute(select(Client).where(Client.email == email))
+            ).scalar_one()
+            assert satir.hashed_password is None
+            assert satir.email_verified_at is not None
+            # Egitmen DEGIL: secmedigi bir rol atanmaz.
+            assert (
+                await s.execute(select(Tutor.id).where(Tutor.email == email))
+            ).first() is None
+            # KVKK ispat kaydi giris akisinda da yazilir.
+            onaylar = (
+                await s.execute(
+                    select(UserConsent).where(
+                        UserConsent.user_id == satir.id,
+                        UserConsent.role_id == satir.role_id,
+                    )
+                )
+            ).scalars().all()
+            assert {o.doc_key for o in onaylar} == {"kvkk", "terms", "privacy"}
+    finally:
+        await _temizle(emailler=(email,), subjectler=(c["sub"],))
+
+
+async def test_onay_surumu_YOKSA_hesap_acilmaz(pg):
+    """KVKK ispat yükü veri sorumlusundadır: rıza kaydı olmadan hesap açılmaz.
+
+    Giriş akışında onay KUTUSU yok; sürüm düğmenin altındaki bilgilendirme
+    metniyle birlikte taşınır. Taşınmazsa akış hesap açmak yerine durur.
+    """
+    email = _eposta()
+    c = _claims(email=email)
+    try:
+        async with AsyncSessionLocal() as s:
+            with pytest.raises(gos.OAuthAkisHatasi) as hata:
+                await gos.cozumle(
+                    s, c, mod="giris", rol=None, onay_surumu=None,
+                    ip="203.0.113.7", user_agent="pytest", kayit_kapisi=_kapi_acik,
+                )
+            assert hata.value.kod == "dogrulama"
         async with AsyncSessionLocal() as s:
             assert (
                 await s.execute(select(Client.id).where(Client.email == email))
-            ).first() is None
-            assert (
-                await s.execute(
-                    select(OAuthIdentity.id).where(OAuthIdentity.subject == c["sub"])
-                )
             ).first() is None
     finally:
         await _temizle(emailler=(email,), subjectler=(c["sub"],))

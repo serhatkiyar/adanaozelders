@@ -408,17 +408,37 @@ async def cozumle(
             )
         return user, "baglandi"
 
-    if mod != "kayit":
-        raise OAuthAkisHatasi("hesap_yok", "giriş modunda hesap açılmaz")
+    # Buraya gelindiyse bu e-posta HİÇBİR kullanıcı tablosunda yok. Hesap açılır
+    # — giriş modunda da.
+    #
+    # İlk sürüm `mod="giris"` için "hesap_yok" hatası veriyordu; gerekçe
+    # "kullanıcı hesabı olduğunu sanıyordur, sessizce ikinci hesap yaratmayalım"
+    # idi. Gerekçe YANLIŞ YERE uygulanmıştı: ikinci hesap riski yalnız e-posta
+    # mevcut bir hesapla eşleştiğinde doğar ve o durumu yukarıdaki otomatik
+    # bağlama kolu zaten çözüyor. Bu noktada eşleşme YOK demektir, dolayısıyla
+    # bölecek bir hesap da yok.
+    #
+    # Karşılığında ürettiği davranış her sosyal girişin sözleşmesine aykırıydı:
+    # kullanıcı "Google ile devam et"e basıp "önce kayıt ol" duvarına çarpıyordu.
+    # Hiçbir sağlayıcı böyle davranmaz ve kullanıcı haklı olarak bunu bir hata
+    # sanar.
+    #
+    # Rol varsayılanı CLIENT: eğitmen olmak ayrı ve bilinçli bir yolculuk
+    # (`/kayit` → "Ders vermek" → ilan sihirbazı). Giriş akışından gelen kişiyi
+    # eğitmen yapmak, seçmediği bir rolü ona atamak olurdu.
+    rol_tipi = IZINLI_ROLLER.get(rol or "") or RoleType.CLIENT
 
     # Kayıt kapısı BURADA tekrar denetlenir: `start` ile `callback` arasında
     # admin bayrağı kapatmış olabilir ve o pencere Google'ın ekranında geçen
-    # süre kadar geniştir.
+    # süre kadar geniştir. Giriş modunda da geçerli — kapı kapalıyken Google
+    # yeni hesap açan bir arka kapı olamaz.
     await kayit_kapisi(db)
 
-    rol_tipi = IZINLI_ROLLER.get(rol or "")
-    if rol_tipi is None:
-        raise OAuthAkisHatasi("dogrulama", f"kayıt için geçersiz rol: {rol!r}")
+    # Rıza sürümü olmadan hesap AÇILMAZ: KVKK ispat yükü veri sorumlusundadır.
+    # Giriş akışında da düğmenin altındaki bilgilendirme metniyle birlikte
+    # taşınır (ödeme yüzeylerindeki `PaymentConsentNote` deseni).
+    if not onay_surumu:
+        raise OAuthAkisHatasi("dogrulama", "onay sürümü olmadan hesap açılamaz")
 
     ad, soyad = _ad_soyad(claims)
     try:

@@ -55,8 +55,16 @@ def _temiz_bayrak_onbellegi():
     flags.reset_cache()
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def bayrak(monkeypatch):
+    """AUTOUSE, bilerek.
+
+    Kayıt kapısı artık HER MODDA denetleniyor (giriş akışı da hesap
+    açabildiği için). `is_enabled` fail-closed'dır ve birim testinde gerçek DB
+    olmadığından, fixture almayan her test ölçtüğü şeyle ilgisi olmayan bir
+    sebeple 403 alırdı. Varsayılan katalog değerleri geçerli (kayıt AÇIK);
+    kapatmak isteyen test sözlüğe yazar.
+    """
     from core import flags
 
     durum: dict[str, bool] = {}
@@ -149,7 +157,10 @@ def test_saglayici_ucu_acikken_MUTLAK_adres_verir(client, google_acik):
 
 
 def test_giris_modu_googlea_yonlendirir(client, google_acik):
-    r = client.get("/api/v1/auth/google/start?mod=giris", follow_redirects=False)
+    r = client.get(
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07",
+        follow_redirects=False,
+    )
     assert r.status_code == 303
     hedef = r.headers["location"]
     assert hedef.startswith("https://accounts.google.com/o/oauth2/v2/auth?")
@@ -200,13 +211,32 @@ def test_kayit_kapaliyken_google_ARKA_KAPI_ACMAZ(client, google_acik, bayrak):
     assert "kapalı" in r.json()["detail"]
 
 
-def test_kayit_kapaliyken_GIRIS_etkilenmez(client, google_acik, bayrak):
-    """Kapı yalnız yeni kaydı durdurur; mevcut hesapların girişi sürmeli."""
+def test_kayit_kapaliyken_GIRIS_MODU_da_durur(client, google_acik, bayrak):
+    """Giriş akışı da hesap açabildiği için kapı orada da geçerli.
+
+    İlk sürümde giriş modu kapıdan muaftı ve o zaman DOĞRUYDU: giriş hiç hesap
+    açmıyordu. Karar değişince (Google ile gelene "önce kayıt ol" denmemesi)
+    muafiyet bir ARKA KAPIYA dönüştü — `registration_open` kapalıyken Google
+    üzerinden hesap açılabilirdi.
+
+    Bedeli açık ve kabul edildi: kayıt kapalıyken mevcut hesap sahipleri de
+    Google ile giremez, parolalarıyla girerler. Kapı zaten "lansman öncesi
+    halka kapalı çalışma" içindir.
+    """
     from core import flags
 
     bayrak[flags.FLAG_REGISTRATION_OPEN] = False
+    r = client.get(
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07",
+        follow_redirects=False,
+    )
+    assert r.status_code == 403, r.text
+
+
+def test_giris_modunda_da_onay_surumu_ZORUNLU(client, google_acik):
+    """Giriş akışı hesap açabildiği için KVKK ispat kaydı orada da gerekli."""
     r = client.get("/api/v1/auth/google/start?mod=giris", follow_redirects=False)
-    assert r.status_code == 303
+    assert r.status_code == 422, r.text
 
 
 @pytest.mark.parametrize("rol", ["admin", "courier", "library_operator", "yonetici"])
@@ -251,7 +281,10 @@ def test_state_uyusmazsa_dogrulama_hatasi(client, google_acik):
     işlem yapar.
     """
     client.cookies.clear()
-    baslat = client.get("/api/v1/auth/google/start?mod=giris", follow_redirects=False)
+    baslat = client.get(
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07",
+        follow_redirects=False,
+    )
     assert baslat.status_code == 303
 
     r = client.get(
@@ -263,7 +296,10 @@ def test_state_uyusmazsa_dogrulama_hatasi(client, google_acik):
 
 def test_kullanici_google_ekraninda_vazgecerse_iptal(client, google_acik):
     client.cookies.clear()
-    client.get("/api/v1/auth/google/start?mod=giris", follow_redirects=False)
+    client.get(
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07",
+        follow_redirects=False,
+    )
     r = client.get(
         "/api/v1/auth/google/callback?error=access_denied", follow_redirects=False
     )
@@ -274,7 +310,10 @@ def test_callback_state_cerezini_HER_DURUMDA_siler(client, google_acik):
     """Tek kullanımlık: aynı `state` ile ikinci bir callback yeniden oynatma
     (replay) olurdu."""
     client.cookies.clear()
-    client.get("/api/v1/auth/google/start?mod=giris", follow_redirects=False)
+    client.get(
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07",
+        follow_redirects=False,
+    )
     r = client.get(
         "/api/v1/auth/google/callback?error=access_denied", follow_redirects=False
     )
@@ -308,7 +347,7 @@ def test_donus_adresi_state_cerezinden_TASINIR(client, google_acik):
 
     client.cookies.clear()
     client.get(
-        "/api/v1/auth/google/start?mod=giris&donus=/magaza/urun/kitap-42",
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07&donus=/magaza/urun/kitap-42",
         follow_redirects=False,
     )
     r = client.get(
@@ -324,7 +363,7 @@ def test_tehlikeli_donus_adresi_akista_TASINMAZ(client, google_acik):
 
     client.cookies.clear()
     client.get(
-        "/api/v1/auth/google/start?mod=giris&donus=//evil.example",
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07&donus=//evil.example",
         follow_redirects=False,
     )
     r = client.get(
@@ -338,7 +377,10 @@ def test_tehlikeli_donus_adresi_akista_TASINMAZ(client, google_acik):
 
 def test_callback_her_zaman_KENDI_SITEMIZE_doner(client, google_acik):
     client.cookies.clear()
-    client.get("/api/v1/auth/google/start?mod=giris", follow_redirects=False)
+    client.get(
+        "/api/v1/auth/google/start?mod=giris&onay_surumu=2026-09-07",
+        follow_redirects=False,
+    )
     r = client.get(
         "/api/v1/auth/google/callback?error=access_denied", follow_redirects=False
     )

@@ -412,18 +412,20 @@ async def google_start(
     """Google'ın onay ekranına yönlendirir; `state` çerezini yazar."""
     _google_acik_mi()
 
-    if mod == "kayit":
-        # Kapı burada VE callback'te denetlenir. Buradaki denetim kullanıcıyı
-        # boşuna Google'a göndermemek için; asıl kilit callback'tekidir, çünkü
-        # aradaki pencere kullanıcının Google ekranında geçirdiği süre kadar
-        # geniştir ve admin o sırada kaydı kapatmış olabilir.
-        await _kayit_kapisi(db)
-        # Onay sürümü kayıt uçlarıyla AYNI biçimde doğrulanır (RegisterRequest).
-        # Gevşek bırakmak KVKK ispat kaydına çöp yazardı.
-        if not onay_surumu or not _ONAY_SURUM_BICIMI.match(onay_surumu):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT, "Onay sürümü geçersiz."
-            )
+    # Onay sürümü HER MODDA zorunlu. Giriş akışı da hesap açabiliyor (e-posta
+    # hiçbir tabloda yoksa), dolayısıyla KVKK ispat kaydı orada da gerekiyor.
+    # Biçim kayıt uçlarıyla AYNI kuralla doğrulanır (`RegisterRequest`); gevşek
+    # bırakmak ispat kaydına çöp yazardı.
+    if not onay_surumu or not _ONAY_SURUM_BICIMI.match(onay_surumu):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Onay sürümü geçersiz."
+        )
+    # Kapı burada VE callback'te denetlenir. Buradaki denetim kullanıcıyı boşuna
+    # Google'a göndermemek için; asıl kilit callback'tekidir, çünkü aradaki
+    # pencere kullanıcının Google ekranında geçirdiği süre kadar geniştir ve
+    # admin o sırada kaydı kapatmış olabilir. Giriş modunda da denetlenir: kapı
+    # kapalıyken hiçbir yoldan yeni hesap açılmamalı.
+    await _kayit_kapisi(db)
 
     tasiyici = Response()
     try:
@@ -506,14 +508,14 @@ async def google_callback(
         logger.warning("google id_token doğrulanamadı: %s", exc)
         return _bitir("dogrulama")
 
-    if mod == "kayit":
-        # Yeni hesap açma kolu form kaydıyla AYNI kovayı tüketir; ayrı kova
-        # olsaydı Google paralel ve limitsiz bir kayıt kanalı olurdu.
-        await enforce(
-            bucket=f"rl:register:{client_ip(request)}",
-            limit=settings.RATE_LIMIT_REGISTER,
-            window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
-        )
+    # Yeni hesap açma kolu form kaydıyla AYNI kovayı tüketir; ayrı kova olsaydı
+    # Google paralel ve limitsiz bir kayıt kanalı olurdu. Mod ayrımı YOK: giriş
+    # akışı da hesap açabildiği için aynı sınıra tabidir.
+    await enforce(
+        bucket=f"rl:register:{client_ip(request)}",
+        limit=settings.RATE_LIMIT_REGISTER,
+        window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+    )
 
     try:
         user, olay = await google_oauth_service.cozumle(
