@@ -3,15 +3,14 @@ import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
+import { fetchMe, login, type RegisterRole } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useKayitAcik } from "@/hooks/useKayitAcik";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
-import { ConsentCheckbox } from "@/components/LegalConsent";
-import { currentConsentVersion } from "@/lib/legalContent";
+import { KayitAkisi } from "@/components/KayitAkisi";
 import {
   GirisAyirici,
   GoogleGirisDugmesi,
@@ -238,185 +237,51 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
  * Kayıt formu DÖRT ALANDIR — gerekçesi `pages/Register.tsx` başlığındadır.
  * Kayıt başarılıysa otomatik giriş yapılır; eğitmen ilan sihirbazına gider.
  */
-function RegisterForm({ initialRole, onSuccess, googleHatasi }: { initialRole: RegisterRole, onSuccess: () => void, googleHatasi?: string | null }) {
-  const [role, setRole] = useState<RegisterRole>(initialRole);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  // Google akışı formu göndermez; tarayıcının `required` kontrolü orada
-  // devreye girmez. Onay durumu bu yüzden state'te (bkz. LegalConsent).
-  const [onayVerildi, setOnayVerildi] = useState(false);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const setToken = useAuthStore((s) => s.setToken);
-  const setUser = useAuthStore((s) => s.setUser);
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      await register(role, {
-        email,
-        password,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        // KVKK ispat kaydı (bkz. Register.tsx).
-        consent_version: currentConsentVersion(),
-      });
-      const token = await login(email, password);
-      setToken(token.access_token);
-      const user = await fetchMe();
-      setUser(user);
-      queryClient.setQueryData(["me"], user);
-      return user;
-    },
-    onSuccess: (user) => {
-      onSuccess();
-      toast.success(buildWelcome(user.id, user.full_name));
-      if (role === "tutor") navigate(ROUTES.tutorOnboarding);
-    },
-  });
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    mutation.mutate();
-  };
-
-  const roleTab = (value: RegisterRole, label: string) => (
-    <button
-      type="button"
-      onClick={() => setRole(value)}
-      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
-        role === value
-          ? "bg-marka text-marka-fg"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
-      }`}
-    >
-      {label}
-    </button>
-  );
-
+/**
+ * Penceredeki kayıt formu — akış `components/KayitAkisi.tsx` ile ORTAK.
+ *
+ * Form önce burada bir kopya olarak duruyordu. Akış üç adıma bölününce
+ * (e-posta → ad/soyad → parola) kopya üç katına çıkacaktı ve iki yüzey
+ * kaçınılmaz olarak ayrışırdı; sayfa bir adımı düzeltir, pencere eski hâlinde
+ * kalırdı.
+ */
+function RegisterForm({
+  initialRole,
+  onSuccess,
+  googleHatasi,
+}: {
+  initialRole: RegisterRole;
+  onSuccess: () => void;
+  googleHatasi?: string | null;
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-slate-900 ">Kayıt Ol</h2>
-      <p className="mt-1 text-sm text-slate-500 ">
-        Ne yapmak istiyorsun?
-      </p>
-
-      <div className="mt-6 flex gap-2">
-        {roleTab("client", "Ders almak")}
-        {roleTab("tutor", "Ders vermek")}
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Ad" required>
-            {(id) => (
-                <input
-                    id={id}
-                  type="text"
-                  required
-                  minLength={1}
-                  maxLength={75}
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                  placeholder="Adınız"
-                />
-            )}
-          </Field>
-          <Field label="Soyad" required>
-            {(id) => (
-                <input
-                    id={id}
-                  type="text"
-                  required
-                  minLength={1}
-                  maxLength={75}
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                  placeholder="Soyadınız"
-                />
-            )}
-          </Field>
+      {googleHatasi && (
+        <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
+          {googleHatasi}
         </div>
-
-        <Field label="E-posta" required>
-          {(id) => (
-              <input
-                    id={id}
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                placeholder="ornek@eposta.com"
-              />
-          )}
-        </Field>
-
-        <Field label="Parola" required>
-          {(id) => (
-              <input
-                    id={id}
-                type="password"
-                required
-                minLength={8}
-                maxLength={128}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                placeholder="En az 8 karakter"
-              />
-          )}
-        </Field>
-
-        <ConsentCheckbox checked={onayVerildi} onChange={setOnayVerildi} />
-
-        {(mutation.isError || googleHatasi) && (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
-            {mutation.isError
-              ? getErrorMessage(mutation.error, "Kayıt başarısız.")
-              : googleHatasi}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {mutation.isPending ? "Kaydediliyor..." : "Kayıt Ol"}
-        </button>
-      </form>
-
-      <GirisAyirici />
-      <GoogleGirisDugmesi
-        mod="kayit"
-        rol={role}
-        onaySurumu={currentConsentVersion()}
-        devreDisi={!onayVerildi}
-      />
-      {!onayVerildi && (
-        <p className="mt-2 text-center text-xs text-slate-400">
-          Devam etmek için yukarıdaki onay kutusunu işaretle.
-        </p>
       )}
-
-      <p className="mt-6 text-center text-sm text-slate-500 ">
-        Zaten hesabın var mı?{" "}
-        <button
-          onClick={() => {
-            searchParams.set("modal", "login");
-            setSearchParams(searchParams, { replace: true });
-          }}
-          className="font-semibold text-marka-metin hover:text-marka-metin-hover "
-        >
-          Giriş yap
-        </button>
-      </p>
+      <KayitAkisi
+        baslangicRolu={initialRole}
+        onSuccess={onSuccess}
+        girisBaglantisi={
+          <p className="mt-6 text-center text-sm text-slate-500 ">
+            Zaten hesabın var mı?{" "}
+            <button
+              onClick={() => {
+                searchParams.set("modal", "login");
+                searchParams.delete("hata");
+                setSearchParams(searchParams, { replace: true });
+              }}
+              className="font-semibold text-marka-metin hover:text-marka-metin-hover "
+            >
+              Giriş yap
+            </button>
+          </p>
+        }
+      />
     </>
   );
 }
