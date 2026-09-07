@@ -1,4 +1,3 @@
-import { gorunurCinsiyet } from "@/lib/demographics";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { PublicShell } from "@/components/PublicShell";
 import { Avatar } from "@/components/Avatar";
@@ -212,22 +211,15 @@ export default function PublicTutorProfile() {
                   </span>
                 </button>
 
-                {modeLabel && (
-                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-metin-hover ">
-                    {modeLabel}
-                  </span>
-                )}
+                {/* Ders mekânı (Uzaktan / Yüz yüze) buradan KALKTI ve sol
+                    sütunda "Ders Mekânı" başlığı altına taşındı: kartın işi
+                    karar verdirmek (ücret, iletişim), açıklama sol sütunun.
 
-                {/* Cinsiyet: API bunu ta baştan taşıyordu ama hiçbir ekran
-                    basmıyordu. Öğrenci "Kadın" filtreliyor, sonuçlar geliyor,
-                    ama neye göre geldiğini göremiyordu. Rozet DEĞİL sade meta
-                    satırı — demografik bir öznitelik, ticari bir sinyal değil.
-                    Belirtilmemişse kalem tümüyle atlanır. */}
-                {gorunurCinsiyet(tutor.gender) && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    {gorunurCinsiyet(tutor.gender)}
-                  </p>
-                )}
+                    Cinsiyet de kalktı. Kartta 7 Eyl'de zaten kaldırılmıştı,
+                    profil o turda kapsam dışı bırakılmıştı; kullanıcı 8 Eyl'de
+                    kapsamı buraya da genişletti ("fotoğraftan belli olur
+                    zaten"). Aramadaki cinsiyet filtresi ve faset sayıları
+                    DEĞİŞMEDİ — sessiz eleme hâlâ görünür, ki asıl gerekçe oydu. */}
               </div>
 
               {/* Ücret + güven sinyalleri TEK TABLODA (Superprof deseni).
@@ -284,6 +276,18 @@ export default function PublicTutorProfile() {
                 </h2>
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.bio}
+                </p>
+              </section>
+            )}
+
+            {/* Ders Mekânı — kartta rozet olarak duruyordu, buraya taşındı */}
+            {modeLabel && (
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 ">
+                  Ders Mekânı
+                </h2>
+                <p className="text-[15px] leading-relaxed text-slate-600 ">
+                  {modeLabel}
                 </p>
               </section>
             )}

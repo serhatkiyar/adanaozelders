@@ -267,11 +267,10 @@ export default function TutorProfile() {
                   </span>
                 </button>
 
-                {modeLabel && (
-                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-metin-hover ">
-                    {modeLabel}
-                  </span>
-                )}
+                {/* Ders mekânı buradan KALKTI, sol sütundaki "Ders Mekânı"
+                    başlığına taşındı. Anonim kabukla (PublicTutorProfile) aynı
+                    değişiklik: rotanın iki kabuğu ayrışmasın — bu ayrışma daha
+                    önce ölçülmüş bir kusurdu (bkz. __guards__/ilanKartiTasmaz). */}
               </div>
 
               {/* Ücret + güven sinyalleri TEK TABLODA (Superprof deseni).
@@ -351,6 +350,18 @@ export default function TutorProfile() {
                 </h2>
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.bio}
+                </p>
+              </section>
+            )}
+
+            {/* Ders Mekânı — kartta rozet olarak duruyordu, buraya taşındı */}
+            {modeLabel && (
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 ">
+                  Ders Mekânı
+                </h2>
+                <p className="text-[15px] leading-relaxed text-slate-600 ">
+                  {modeLabel}
                 </p>
               </section>
             )}
