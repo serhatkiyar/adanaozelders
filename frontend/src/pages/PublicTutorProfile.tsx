@@ -167,7 +167,7 @@ export default function PublicTutorProfile() {
                   iter ve kartı uzatırlardı; kart zaten ekrana sığması için
                   kompaktlanmıştı (7 Eyl, 632 -> 516 px). */}
               <div className="absolute right-4 top-4 z-10 flex flex-col items-center gap-3">
-                <BookmarkButton tutorId={tutor.id} size="md" />
+                <BookmarkButton tutorId={tutor.id} size="md" onSolid />
                 <ShareButton size="md" />
               </div>
               <div className="flex flex-col items-center text-center">
@@ -180,19 +180,23 @@ export default function PublicTutorProfile() {
                     rozet kadar sola kayıyordu ve fotoğrafın merkeziyle
                     hizasını kaybediyordu. Rozet artık akışın dışında, ismin
                     sağ kenarına yaslı. */}
-                <div className="relative mt-3 flex w-full items-center justify-center">
-                  <h1 className="text-xl font-bold text-slate-900 ">
+                <div className="mt-3 flex w-full items-center justify-center">
+                  <h1 className="relative text-xl font-bold text-slate-900 ">
                     {tutor.full_name}
-                  </h1>
                   {/* Diploma artık YAYIN KAPISI değil, ayrıcalık (5 Eyl 2026):
                       belgesiz eğitmen de yayında olur, belgesi admin tarafından
                       e-Devlet üzerinden doğrulanmış olan bu rozeti alır. Rozet
                       bugüne kadar tanımlıydı ama hiçbir ekrana bağlanmamıştı. */}
-                  {hasVerifiedEducation(tutor.educations) && (
-                    <span className="absolute left-full ml-1.5">
-                      <DocumentedBadge />
-                    </span>
-                  )}
+                    {/* Rozet İSMİN sağ kenarına yaslı — `absolute` çıpası
+                        `h1`de, sarmalayıcıda DEĞİL. İlk denemede sarmalayıcıya
+                        bağlanmıştı ve o `w-full` olduğu için rozet kartın sağ
+                        kenarına, isimden metrelerce uzağa düştü. */}
+                    {hasVerifiedEducation(tutor.educations) && (
+                      <span className="absolute left-full top-1/2 ml-1.5 -translate-y-1/2">
+                        <DocumentedBadge />
+                      </span>
+                    )}
+                  </h1>
                 </div>
 
                 <button
