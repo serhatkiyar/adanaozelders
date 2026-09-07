@@ -227,8 +227,8 @@ describe("ÜK-1 · sitede indigo kalmadı", () => {
 /* ── 2. Değer: kararın TA KENDİSİ ─────────────────────────────────────── */
 
 describe("ÜK-1 · token değerleri kararın TA KENDİSİ", () => {
-  it("dolgu `#E37200` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
-    expect(token("marka")).toBe("227 114 0");
+  it("dolgu `#F0850F` ve panel ONA TAKMA AD (ikinci doğruluk kaynağı yok)", () => {
+    expect(token("marka")).toBe("240 133 15");
     expect(ham("panel-accent")).toBe("var(--marka)");
     expect(token("panel-accent")).toBe(token("marka"));
     expect(ham("panel-accent-fg")).toBe("var(--marka-fg)");
@@ -238,7 +238,7 @@ describe("ÜK-1 · token değerleri kararın TA KENDİSİ", () => {
 
   it("odak halkası tanımlı, markadan AYRI ve eşiği geçiyor", () => {
     expect(ham("panel-focus")).toBe("var(--marka-focus)");
-    // Odak halkası dolgunun kendisi OLAMAZ: dolgu beyaza karşı 3,15 verir ve
+    // Odak halkası dolgunun kendisi OLAMAZ: dolgu beyaza karşı 2,60 verir ve
     // ince bir halka olarak zayıf kalır. Ayrı, daha koyu bir adım kullanılır.
     expect(token("marka-focus")).not.toBe(token("marka"));
     expect(kontrast(token("marka-focus"), BEYAZ)).toBeGreaterThanOrEqual(3);
@@ -287,14 +287,27 @@ describe("ÜK-1 · dolgu PARLAK, üstündeki yazı KOYU", () => {
     expect(kontrast(token("dikkat-fg"), token("dikkat-soft"))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("DÜĞMENİN SINIRI beyaz sayfada görünür (SC 1.4.11)", () => {
-    // Parlak dolgunun bedeli budur ve ölçülür: Trendyol'un `#F27A1A` tonu
-    // 2,77'de kalıyor ve düğme beyaz sayfada sınırsız görünüyordu.
-    expect(kontrast(token("marka"), BEYAZ)).toBeGreaterThanOrEqual(3);
+  it("dolgu beyaz sayfadan AYIRT EDİLİR (SC 1.4.11 · gevşetilmiş eşik)", () => {
+    // ── DEĞİŞEN KABUL ÖLÇÜTÜ (kullanıcı kararı, 7 Eyl 2026) ──
+    //
+    // Bu düğüm `>= 3` istiyordu ve `#E37200` tam 3,15 ile geçiyordu. Kullanıcı
+    // rengi daha açık istedi; ölçüm alternatiflerin tükendiğini gösterdi:
+    // bir adım açmak 2,95, ton kaydırmak (28°–44°) daha parlak bir çözüm
+    // ÜRETMİYOR, dolguya kenarlık eklemek 336 çağrı yerini etkiliyor.
+    //
+    // Eşik bilerek 2,5'e indi ve bu bir ÜRÜN KARARIDIR, kaçamak değil:
+    // eşiğin tamamen kaldırılması hâlinde dolgu beyaza kadar açılabilir ve
+    // düğme sayfadan hiç ayrılmazdı. Metin okunurluğu (aşağıdaki 4,5 kuralı)
+    // TARTIŞMAYA AÇIK DEĞİLDİR ve olduğu gibi duruyor.
+    const olculen = kontrast(token("marka"), BEYAZ);
+    expect(olculen).toBeGreaterThanOrEqual(2.5);
+    // Üst kapı: eşiği gevşetmek "sınırsız açılabilir" demek değil. Renk
+    // 3'ün üstüne geri çıkarsa bu yorum bayatlar — o gün eşik geri yükselir.
+    expect(olculen).toBeLessThan(3);
   });
 
   it("DOLGU METİN OLARAK KULLANILAMAZ — bu sürümün asıl kusur sınıfı", () => {
-    // `--marka` beyaz zeminde 3,15 verir; gövde metni eşiği 4,5'tir. Kural
+    // `--marka` beyaz zeminde 2,60 verir; gövde metni eşiği 4,5'tir. Kural
     // tersine çevrilirken 169 `text-marka` çağrı yeri `text-marka-metin`e
     // taşındı. Biri geri yazarsa metin okunmaz olur ve BUNU hiçbir tip
     // kontrolü, hiçbir build yakalayamaz — sınıf geçerlidir, sadece soluktur.

@@ -34,7 +34,8 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 
 ## ÜK-1 — Aksan rengi turuncu; dolgu parlak, yazı koyu
 
-**Karar.** Marka aksanı `#E37200`. Turuncu **dolgu** olarak parlak kullanılır,
+**Karar.** Marka aksanı `#F0850F` (7 Eyl 2026'da `#E37200`'den açıldı).
+Turuncu **dolgu** olarak parlak kullanılır,
 **yazı** olarak asla; açık zeminde marka yazısı ayrı bir token taşır
 (`--marka-metin`, `#96430A`).
 
@@ -44,9 +45,20 @@ gerekiyor; o noktada turuncu kahverengi okunuyor. Kullanıcının tarifi: *"bok
 rengi gibi"*. Renk seçimi elle hex denemekle değil, adlandırılmış paletlerin
 (Tailwind orange/amber, Radix, Material) görsel karşılaştırmasıyla yapıldı.
 
-**Ölçülen bedel.** Gerçek Chrome ölçümü (`docs/ip-c4/kontrast.json`): birincil
-düğme 5,67 · bilgi rozeti 6,24 · uyarı çipi 8,15 · odak halkası 4,50 ·
-kenarlık 3,58 (SC 1.4.11 eşiği 3,0).
+**Ölçülen bedel.** Dolgu üstündeki yazı 6,85 · marka yazısı 6,77 · bilgi
+rozeti 6,24 · uyarı çipi 8,15 · odak halkası 4,50 · kenarlık 3,58.
+
+**7 Eyl 2026 · açıkça kabul edilen bedel.** Kullanıcı rengi daha açık istedi.
+Dolgunun beyaz zemine karşı kontrastı 3,15 → **2,60**; yani SC 1.4.11'in
+"kontrol sınırı görünür olsun" eşiği (3,0) bilerek terk edildi ve düğme beyaz
+zeminde kenarını yitirdi. Alternatifler ölçülüp tükendi: bir adım açmak zaten
+2,95, ton kaydırmak (28°-44° tarandı) eşiği koruyan daha parlak bir renk
+üretmiyor, dolguya kenarlık eklemek 336 çağrı yerini etkiliyor. **Metin
+okunurluğu (4,5) tartışmaya açık değil ve korundu.**
+
+Ton değişimi artık tek komut: `node frontend/scripts/marka-tonu.mjs "#RRGGBB"`
+(`--olc` yalnız ölçer, yazmaz). Nöbetçideki çıpayı bilerek güncellemez —
+o bir ürün kararıdır.
 
 **Kapsam dışı.** `success`/`danger`/`neutral` ham Tailwind ölçeğinde kaldı —
 bunlar marka değil **anlam** renkleridir ve marka değişse de değişmezler
