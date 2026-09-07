@@ -23,6 +23,21 @@
  *   ekran 768px → kart 620px, altı 723 (taşmıyor), kaymaya gerek YOK
  *   ekran 900px → kart 620px, altı 723 (taşmıyor), kaymaya gerek YOK
  *
+ ## Bu nöbetçinin ASIL dersi: rotanın İKİ kabuğu var
+ *
+ * İlk yazımda yalnız `PublicTutorProfile` çıpalanmıştı ve nöbetçi YEŞİL
+ * geçiyordu — ama kusur ekranda duruyordu. Sebep: `/egitmenler/:slug`
+ * rotası `TutorProfilePage` dağıtıcısına gidiyor ve oturuma göre AYRI bir
+ * bileşen basıyor:
+ *
+ *     anonim   → PublicTutorProfile
+ *     girişli  → TutorProfile
+ *
+ * Düzeltme birine uygulanıp diğeri unutulmuştu; anonim tarayıcıyla yapılan
+ * doğrulama da o yüzden "düzeldi" diyordu. Artık liste İKİSİNİ de kapsıyor
+ * ve dağıtıcının iki dalı da ayrıca çıpalı: üçüncü bir kabuk eklenirse
+ * (ya da biri listeden düşerse) bu düğüm kırılır.
+ *
  * ## Gücü ve sınırı (kök CLAUDE.md §C)
  *
  * KAYNAK SÖZLEŞMESİ testidir. jsdom düzen hesaplamaz; "kart ekrana sığıyor"
@@ -40,74 +55,99 @@ const KOK = resolve(
   "..",
   ".."
 );
-const KAYNAK = readFileSync(
-  join(KOK, "src", "pages", "PublicTutorProfile.tsx"),
-  "utf8"
-);
+/** Rotanın İKİ kabuğu — dağıtıcı oturuma göre birini basar. */
+const KABUKLAR = ["PublicTutorProfile.tsx", "TutorProfile.tsx"] as const;
+
+const oku = (ad: string) =>
+  readFileSync(join(KOK, "src", "pages", ad), "utf8");
+
+const DAGITICI = oku("TutorProfilePage.tsx");
 
 /** `<aside ... className="...">` içindeki sınıf dizesi. */
-function asideSinifi(): string {
-  const i = KAYNAK.indexOf("<aside");
+function asideSinifi(kaynak: string): string {
+  const i = kaynak.indexOf("<aside");
   if (i < 0) return "";
-  const j = KAYNAK.indexOf('className="', i);
-  return j < 0 ? "" : KAYNAK.slice(j + 11, KAYNAK.indexOf('"', j + 11));
+  const j = kaynak.indexOf('className="', i);
+  return j < 0 ? "" : kaynak.slice(j + 11, kaynak.indexOf('"', j + 11));
+}
+
+/** Yorumları eleyen kod metni: "KALDIRILDI" notu TARİHtir, borç değil. */
+function yorumsuz(kaynak: string): string {
+  return kaynak
+    .split(new RegExp(String.raw`
+?
+`))
+    .filter((satir) => {
+      const k = satir.trim();
+      return !(
+        k.startsWith("//") ||
+        k.startsWith("*") ||
+        k.startsWith("/*") ||
+        k.startsWith("{/*")
+      );
+    })
+    .join(String.fromCharCode(10));
 }
 
 describe("ilan sayfası · sabit kart", () => {
-  it("DOLULUK: sayfa ve sabit kart gerçekten bulundu", () => {
-    // Boş bir dize aşağıdaki tüm `toContain` iddialarını çökertirdi ama
-    // "içermiyor" iddialarını bedava geçirirdi.
-    expect(KAYNAK.length).toBeGreaterThan(2000);
-    expect(asideSinifi().length).toBeGreaterThan(20);
+  it("DOLULUK: her iki kabuk ve sabit kartı gerçekten bulundu", () => {
+    // Boş bir dize "içermiyor" iddialarını bedava geçirirdi.
+    for (const ad of KABUKLAR) {
+      const kaynak = oku(ad);
+      expect(kaynak.length, `${ad} okunamadı`).toBeGreaterThan(2000);
+      expect(asideSinifi(kaynak).length, `${ad} sabit kart yok`).toBeGreaterThan(20);
+    }
   });
 
-  it("kart sabit, YÜKSEKLİĞİ EKRANLA SINIRLI ve gerekirse kendi içinde kayar", () => {
-    // Üçü birlikte anlamlı: `sticky` tek başına taşmayı üretir, `max-h` tek
-    // başına içeriği kırpar, `overflow` tek başına bir şey yapmaz.
-    const sinif = asideSinifi();
-    expect(sinif, "sticky düştü").toContain("lg:sticky");
-    expect(sinif, "yükseklik sınırı yok — kart yine taşar").toMatch(
-      /lg:max-h-\[calc\(100vh-/
-    );
-    expect(sinif, "taşma davranışı tanımsız").toContain("lg:overflow-y-auto");
+  it("dağıtıcı GERÇEKTEN iki kabuk basıyor (liste bayatlarsa kırılır)", () => {
+    // Kaçırılan kusurun kökü buydu: rotanın iki dalı var ve düzeltme
+    // yalnız birine uygulanmıştı.
+    expect(DAGITICI).toContain("PublicTutorProfile");
+    expect(DAGITICI).toContain("TutorProfile");
+    // Üçüncü bir kabuk eklenirse burası da güncellenmeli.
+    const basilanlar = (DAGITICI.match(/<([A-Z][A-Za-z]*) \/>/g) ?? []).length;
+    expect(basilanlar, "dağıtıcı ikiden fazla kabuk basıyor").toBe(2);
   });
 
-  it("kartın üst boşluğu ile yükseklik sınırı TUTARLI", () => {
+  it.each(KABUKLAR)(
+    "%s: kart sabit, YÜKSEKLİĞİ EKRANLA SINIRLI, gerekirse kendi içinde kayar",
+    (ad) => {
+      // Üçü birlikte anlamlı: `sticky` tek başına taşmayı üretir, `max-h` tek
+      // başına içeriği kırpar, `overflow` tek başına bir şey yapmaz.
+      const sinif = asideSinifi(oku(ad));
+      expect(sinif, "sticky düştü").toContain("lg:sticky");
+      expect(sinif, "yükseklik sınırı yok — kart yine taşar").toMatch(
+        /lg:max-h-\[calc\(100vh-/
+      );
+      expect(sinif, "taşma davranışı tanımsız").toContain("lg:overflow-y-auto");
+    }
+  );
+
+  it.each(KABUKLAR)("%s: üst boşluk ile yükseklik sınırı TUTARLI", (ad) => {
     // `top-24` (6rem) ile başlayan kart `100vh - 7rem` ile sınırlıysa altta
     // 1rem pay kalır. Sınır üst boşluktan KÜÇÜK olursa kart yine taşar.
-    const sinif = asideSinifi();
+    const sinif = asideSinifi(oku(ad));
     const ust = sinif.match(/lg:top-(\d+)/);
     const sinir = sinif.match(/lg:max-h-\[calc\(100vh-(\d+)rem\)\]/);
     expect(ust, "üst boşluk okunamadı").toBeTruthy();
     expect(sinir, "yükseklik sınırı okunamadı").toBeTruthy();
-    const ustRem = Number(ust![1]) / 4; // Tailwind ölçeği: 24 => 6rem
-    expect(Number(sinir![1])).toBeGreaterThan(ustRem);
+    expect(Number(sinir![1])).toBeGreaterThan(Number(ust![1]) / 4);
   });
 
-  it("'Geri dön' ilan sayfasından KALKTI ama hata ekranında DURUYOR", () => {
-    // Kapsam çıpası. Hata ekranında sayfanın tek çıkışı odur; oradan da
-    // kaldırmak ölü uç üretirdi (ÜK-2'deki bildirim zili dersi).
-    // Yorumlar elenir: "KALDIRILDI" notu ifadeyi anıyor ve o TARİHtir,
-    // borç değil. (Aynı tuzağa bu oturumda bir kez düşüldü.)
-    const kod = KAYNAK.split(new RegExp(String.raw`\r?\n`))
-      .filter((satir) => {
-        const k = satir.trim();
-        return !(
-          k.startsWith("//") ||
-          k.startsWith("*") ||
-          k.startsWith("/*") ||
-          k.startsWith("{/*")
-        );
-      })
-      .join(String.fromCharCode(10));
-    const geriDonSayisi = kod.split("Geri dön").length - 1;
-    expect(geriDonSayisi, "beklenen: yalnız hata ekranındaki tek kopya").toBe(1);
-
-    // O tek kopya gerçekten HATA dalında mı: "Eğitmen bulunamadı" ile aynı
-    // blokta olmalı.
-    const hataBasi = kod.indexOf("Eğitmen bulunamadı");
-    const geriDonYeri = kod.indexOf("Geri dön");
-    expect(hataBasi, "hata dalı bulunamadı").toBeGreaterThan(0);
-    expect(Math.abs(hataBasi - geriDonYeri)).toBeLessThan(1500);
-  });
+  it.each(KABUKLAR)(
+    "%s: 'Geri dön' ilan yüzeyinden KALKTI, yalnız hata dalında DURUYOR",
+    (ad) => {
+      // Kapsam çıpası. Hata dalında sayfanın tek çıkışı odur; oradan da
+      // kaldırmak ölü uç üretirdi (ÜK-2'deki bildirim zili dersi).
+      const kod = yorumsuz(oku(ad));
+      expect(
+        kod.split("Geri dön").length - 1,
+        "beklenen: yalnız hata dalındaki tek kopya"
+      ).toBe(1);
+      const hataBasi = kod.indexOf("Eğitmen bulunamadı");
+      const geriDonYeri = kod.indexOf("Geri dön");
+      expect(hataBasi, "hata dalı bulunamadı").toBeGreaterThan(0);
+      expect(Math.abs(hataBasi - geriDonYeri)).toBeLessThan(1500);
+    }
+  );
 });

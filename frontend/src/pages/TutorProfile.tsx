@@ -206,16 +206,17 @@ export default function TutorProfile() {
         />
       )}
       <div className="mx-auto max-w-[76rem] pb-12">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
-        >
-          ← Geri dön
-        </button>
-
-        <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
+        {/* "← Geri dön" KALDIRILDI (kullanıcı kararı, 7 Eyl 2026): tarayıcının
+            kendi geri düğmesi zaten var ve bağlantı, kartı bir satır aşağı
+            itiyordu. Hata dalındaki kopyası KALIR — orada sayfanın tek
+            çıkışı odur. */}
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
+          {/* Kart ekrandan TAŞMASIN (kullanıcı kararı, 7 Eyl 2026): sticky kart
+              viewport'tan uzunsa alt kısmı (fiyat + birincil düğme) görünmüyor
+              ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
+              yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:overscroll-contain">
             <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 ">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
               <div className="mb-4 flex items-center justify-end gap-2">
