@@ -175,7 +175,12 @@ export default function PublicTutorProfile() {
                     eğitmen seçiminde yüz belirleyici; küçük hâli avatar değil
                     "yer tutucu" gibi duruyordu. */}
                 <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {/* İsim TAM ORTADA durur; rozet onu ittirmez.
+                    `justify-center` ile ikisi birlikte ortalanınca isim
+                    rozet kadar sola kayıyordu ve fotoğrafın merkeziyle
+                    hizasını kaybediyordu. Rozet artık akışın dışında, ismin
+                    sağ kenarına yaslı. */}
+                <div className="relative mt-3 flex w-full items-center justify-center">
                   <h1 className="text-xl font-bold text-slate-900 ">
                     {tutor.full_name}
                   </h1>
@@ -183,7 +188,11 @@ export default function PublicTutorProfile() {
                       belgesiz eğitmen de yayında olur, belgesi admin tarafından
                       e-Devlet üzerinden doğrulanmış olan bu rozeti alır. Rozet
                       bugüne kadar tanımlıydı ama hiçbir ekrana bağlanmamıştı. */}
-                  {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
+                  {hasVerifiedEducation(tutor.educations) && (
+                    <span className="absolute left-full ml-1.5">
+                      <DocumentedBadge />
+                    </span>
+                  )}
                 </div>
 
                 <button
