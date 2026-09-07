@@ -62,7 +62,9 @@ export function KayitAkisi({
   girisBaglantisi,
 }: Props) {
   const [adim, setAdim] = useState<Adim>("eposta");
-  const [role, setRole] = useState<RegisterRole>(baslangicRolu);
+  // Rol EKRANDA sorulmaz; kullanıcının geldiği yoldan belli olur
+  // ("Ders Ver" düğmesi `?role=tutor` gönderir, diğer her yol üye).
+  const role = baslangicRolu;
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -121,22 +123,11 @@ export function KayitAkisi({
     if (onceki) setAdim(onceki);
   };
 
-  const roleTab = (value: RegisterRole, label: string) => (
-    <button
-      type="button"
-      onClick={() => setRole(value)}
-      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
-        role === value
-          ? "bg-marka text-marka-fg"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
-      }`}
-    >
-      {label}
-    </button>
-  );
-
+  // Kutular bilerek YÜKSEK (py-3.5). İnce alanlar yan yana gelince ekran
+  // "sandviç" gibi sıkışık görünüyordu; dokunma hedefi de küçüktü. Yükseklik
+  // düğmelerle (Google dahil) aynı tutuluyor, yoksa hizasız bir kolon çıkar.
   const inputCls =
-    "mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
+    "mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 ";
 
   return (
     <>
@@ -161,21 +152,17 @@ export function KayitAkisi({
           </button>
         )}
         <h1 className="text-2xl font-bold text-slate-900">
-          {adim === "eposta" ? "Kayıt Ol" : "Üyelik"}
+          {adim !== "eposta"
+            ? "Üyelik"
+            : role === "tutor"
+              ? "Eğitmen olarak kayıt ol"
+              : "Kayıt Ol"}
         </h1>
       </div>
-
-      {adim === "eposta" && (
-        <p className="mt-1 text-sm text-slate-500">Ne yapmak istiyorsun?</p>
-      )}
 
       <form onSubmit={ilerle} className="mt-6 space-y-4">
         {adim === "eposta" && (
           <>
-            <div className="flex gap-2">
-              {roleTab("client", "Ders almak")}
-              {roleTab("tutor", "Ders vermek")}
-            </div>
             <Field label="E-posta" required>
               {(id) => (
                 <input
@@ -259,13 +246,15 @@ export function KayitAkisi({
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-marka py-3.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {adim === "parola"
-            ? mutation.isPending
-              ? "Kaydediliyor..."
-              : "Kayıt Ol"
-            : "Devam et"}
+          {adim === "eposta"
+            ? "E-posta ile kayıt ol"
+            : adim === "parola"
+              ? mutation.isPending
+                ? "Kaydediliyor..."
+                : "Kayıt Ol"
+              : "Devam et"}
         </button>
       </form>
 

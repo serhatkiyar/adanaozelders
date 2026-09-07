@@ -29,14 +29,14 @@ vi.mock("@/api/auth", async () => {
   };
 });
 
-function kur() {
+function kur(rol: "client" | "tutor" = "client") {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <KayitAkisi girisBaglantisi={<span>giris</span>} />
+        <KayitAkisi baslangicRolu={rol} girisBaglantisi={<span>giris</span>} />
       </MemoryRouter>
     </QueryClientProvider>
   );
@@ -61,10 +61,33 @@ describe("KayitAkisi — ilk ekran", () => {
     ).toBeTruthy();
   });
 
-  it("rol sekmeleri ilk ekranda durur", async () => {
+  it("rol SEKMESİ yok; rol geldiğin yoldan belli olur", async () => {
+    // Sekme bir etkileşim daha demekti ve bilgi zaten bağlamda var: "Ders Ver"
+    // düğmesi `?role=tutor` gönderiyor, diğer her yol üye kaydı.
     kur();
-    expect(screen.getByRole("button", { name: "Ders almak" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Ders vermek" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Ders almak" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ders vermek" })).toBeNull();
+  });
+
+  it("başlık role göre değişir", async () => {
+    kur();
+    expect(screen.getByRole("heading", { name: "Kayıt Ol" })).toBeTruthy();
+  });
+
+  it("eğitmen yolundan gelince başlık bunu söyler", async () => {
+    kur("tutor");
+    expect(
+      screen.getByRole("heading", { name: /Eğitmen olarak kayıt ol/i })
+    ).toBeTruthy();
+  });
+
+  it("ilk adımın düğmesi ne yapacağını söyler", async () => {
+    // "Devam et" hangi yola girdiğini söylemiyordu; kullanıcı düğmeye basmadan
+    // ne olacağını bilmeli.
+    kur();
+    expect(
+      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+    ).toBeTruthy();
   });
 
   it("ilk ekranda geri düğmesi YOKTUR", async () => {
@@ -81,7 +104,9 @@ describe("KayitAkisi — adımlar arası geçiş", () => {
     kur();
 
     await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
-    await kullanici.click(screen.getByRole("button", { name: "Devam et" }));
+    await kullanici.click(
+      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+    );
 
     // 2. adim
     expect(await screen.findByLabelText(/^Adınız/i)).toBeTruthy();
@@ -102,7 +127,9 @@ describe("KayitAkisi — adımlar arası geçiş", () => {
     kur();
 
     await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
-    await kullanici.click(screen.getByRole("button", { name: "Devam et" }));
+    await kullanici.click(
+      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+    );
     await kullanici.click(
       await screen.findByRole("button", { name: /Önceki adıma dön/i })
     );
@@ -121,7 +148,9 @@ describe("KayitAkisi — adımlar arası geçiş", () => {
     expect(screen.getByText(/Kaydolarak/i)).toBeTruthy();
 
     await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
-    await kullanici.click(screen.getByRole("button", { name: "Devam et" }));
+    await kullanici.click(
+      screen.getByRole("button", { name: "E-posta ile kayıt ol" })
+    );
 
     expect(await screen.findByLabelText(/^Adınız/i)).toBeTruthy();
     expect(screen.queryByText(/Kaydolarak/i)).toBeNull();

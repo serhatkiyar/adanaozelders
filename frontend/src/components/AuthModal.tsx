@@ -155,7 +155,7 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 placeholder="ornek@eposta.com"
               />
           )}
@@ -169,7 +169,7 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 placeholder="••••••••"
               />
           )}
@@ -208,7 +208,7 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-marka py-3.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {mutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
         </button>

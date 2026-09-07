@@ -105,10 +105,13 @@ export function GoogleGirisDugmesi({
       type="button"
       onClick={basildi}
       disabled={devreDisi}
-      className={`flex w-full items-center justify-center gap-2.5 rounded-lg border border-slate-300 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+      className={`flex w-full items-center justify-center gap-2.5 rounded-xl border border-slate-300 bg-white py-3.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       <GoogleLogosu />
-      Google ile devam et
+      {/* Metin bağlama göre: kayıt ekranında "kaydol", giriş ekranında "giriş
+          yap". Tek bir "devam et" ikisine de uyuyordu ama hiçbirini
+          söylemiyordu; kullanıcı düğmeye basmadan ne olacağını bilmeli. */}
+      {mod === "kayit" ? "Google ile kaydol" : "Google ile giriş yap"}
     </button>
   );
 }
