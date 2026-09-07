@@ -9,6 +9,7 @@ from models.mixins import (
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
+    PasswordMixin,
     SoftDeleteMixin,
     TimestampMixin,
 )
@@ -17,6 +18,7 @@ from models.mixins import (
 class Admin(
     Base,
     NameMixin,
+    PasswordMixin,
     TimestampMixin,
     SoftDeleteMixin,
     LastSeenMixin,
@@ -27,7 +29,9 @@ class Admin(
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    # NULL = parolasız hesap (Google ile açıldı). Gerekçe ve üç akışın
+    # korunması: models/mixins.py::PasswordMixin.
+    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("true")
     )

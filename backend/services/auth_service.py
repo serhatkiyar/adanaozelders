@@ -182,6 +182,17 @@ async def change_password(
     current_password: str,
     new_password: str,
 ) -> None:
+    # Parolasiz (Google) hesapta "mevcut parola" diye bir sey yok; genel
+    # "parola hatali" mesaji kullaniciyi olmayan bir parolayi hatirlamaya
+    # calistirirdi. Parola BELIRLEME icin ayri bir akis yazilmadi: mevcut
+    # sifre sifirlama zinciri (`reset_password`) mevcut parolayi zaten
+    # sormuyor, yani fiilen "parola belirle" akisidir.
+    if user.hashed_password is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Bu hesapta parola yok. Parola belirlemek için 'Şifremi unuttum' "
+            "bağlantısını kullan.",
+        )
     if not await verify_password_async(current_password, user.hashed_password):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Current password is incorrect"
@@ -207,7 +218,18 @@ async def authenticate(db: AsyncSession, *, email: str, password: str):
             model,
         )
         user = (await db.execute(stmt)).scalar_one_or_none()
-        if user is not None and await verify_password_async(password, user.hashed_password):
+        # `hashed_password is None` = Google ile acilmis parolasiz hesap. Parola
+        # yolu ona KAPALIDIR ve bu bir kolaylik kaybi degil kapidir: acik
+        # birakilsaydi bcrypt bos/sentinel hash uzerinde patlar, cagiran 401
+        # yerine 500 gorurdu — "var olmayan e-posta 401 / Google hesabi 500"
+        # ayrimi hesap varligini sizdiran bir yan kanal olurdu.
+        # `verify_password` ayni durumu yedek olarak da yakalar; buradaki acik
+        # kontrol niyeti gorunur kilar. Bkz. models/mixins.py::PasswordMixin.
+        if (
+            user is not None
+            and user.hashed_password is not None
+            and await verify_password_async(password, user.hashed_password)
+        ):
             return user, role
     return None, None
 

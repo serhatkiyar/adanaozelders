@@ -19,6 +19,12 @@ class UserOut(BaseModel):
     full_name: str  # first_name + last_name (model hybrid)
     is_active: bool
     email_verified: bool = False
+    # Hesabin parolasi var mi (model: PasswordMixin.has_password). Google ile
+    # acilan hesapta False'tur ve arayuz buna bakar: parolasiz hesaba "Sifre
+    # degistir" formu gosterilirse form HICBIR ZAMAN calismaz (mevcut parola
+    # sorulur, oysa yoktur). Ayarlar ekrani bunun yerine "Sifremi unuttum"a
+    # yonlendirir.
+    has_password: bool = True
     phone: str | None = None
     phone_verified: bool = False
     role_id: int
