@@ -63,6 +63,19 @@ async def test_egitmen_diakritiksiz_yazimla_bulunur(db, factory):
 
 
 async def test_egitmen_adi_diakritiksiz_bulunur(db, factory):
+    """ADLA aranınca bulunur; SOYADLA bulunmaz (ÜK-9).
+
+    Test 8 Eyl 2026'da DEĞİŞTİ. Eskiden "gungor" sorgusunun da sonuç
+    getirmesini bekliyordu; ÜK-9 ("soyad public yüzeylerde görünmez") soyadla
+    eşleşmeyi BİLEREK kapattı ve gerekçesi kozmetik değil:
+
+        soyadla eşleşme açık bıraksaydık soyad gizli ama SORGULANABİLİR
+        kalırdı — bir soyadı yazıp sonuç dönüp dönmediğine bakarak o kişinin
+        platformda olup olmadığı öğrenilebilirdi (varlık sızıntısı).
+
+    Yani ikinci döngü artık kuralın kendisidir: soyadla arama sonuç
+    DÖNDÜRMEMELİ. Açılırsa bu düğüm konuşur.
+    """
     from models.tutor import TutorStatus
 
     tutor = await factory.tutor(db, status=TutorStatus.APPROVED)
@@ -71,9 +84,18 @@ async def test_egitmen_adi_diakritiksiz_bulunur(db, factory):
     tutor.headline = "Kimya dersleri"
     await db.commit()
 
-    for sorgu in ("Şeyma", "seyma", "gungor"):
+    # ADLA bulunur — diakritikli de, diakritiksiz de.
+    for sorgu in ("Şeyma", "seyma"):
         sonuc = await _egitmen_ara(db, sorgu)
         assert any(t.id == tutor.id for t in sonuc), f"'{sorgu}' sonuç getirmedi"
+
+    # SOYADLA bulunmaz — varlık sızıntısı kapalı (ÜK-9).
+    for sorgu in ("Güngör", "gungor", "GUNGOR"):
+        sonuc = await _egitmen_ara(db, sorgu)
+        assert not any(t.id == tutor.id for t in sonuc), (
+            f"'{sorgu}' soyadıyla eşleşti — soyad gizli ama sorgulanabilir "
+            f"kaldı, yani ÜK-9 kâğıt üstünde"
+        )
 
 
 async def test_urun_yazim_hatasina_toleransli(db, factory):

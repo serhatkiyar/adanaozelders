@@ -249,7 +249,13 @@ async def test_G1_sitemap_yalniz_public_kayitlari_icerir(db, factory, fake_provi
     def tutor_slug_of(t) -> str:
         from core.slug import tutor_slug
 
-        return tutor_slug(t.id, f"{t.first_name} {t.last_name}".strip())
+        # YALNIZ AD (ÜK-9, 8 Eyl 2026). Bu yardımcı eskiden
+        # `f"{first_name} {last_name}"` kuruyordu — yani üretim kuralının bir
+        # KOPYASIYDI ve kural değişince sessizce bayatladı: soyad public
+        # yüzeylerden kalkınca slug `isim-{id}` oldu, test hâlâ
+        # `isim-soyisim-{id}` bekliyordu ve "onaylı eğitmen girmeli" iddiası
+        # kırmızıya döndü. Kaynağı `sitemap_service` ile aynı tuttuk.
+        return tutor_slug(t.id, t.first_name or "")
 
     assert gizli_urun.slug not in locs, "taslak ürün sitemap'e girmemeli"
     assert tutor_slug_of(onaysiz) not in locs, "onaysız eğitmen girmemeli"
