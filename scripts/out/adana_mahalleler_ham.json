@@ -1,0 +1,5155 @@
+{
+ "Seyhan": [
+  {
+   "type": "node",
+   "id": 1885680855,
+   "lat": 36.9782976,
+   "lon": 35.2246829,
+   "tags": {
+    "name": "Sarıhamzalı",
+    "place": "suburb",
+    "wikidata": "Q7424900",
+    "wikipedia": "tr:Sarıhamzalı, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2443113286,
+   "lat": 37.0283681,
+   "lon": 35.143903,
+   "tags": {
+    "name": "Karakuyu",
+    "place": "suburb",
+    "wikidata": "Q6368178",
+    "wikipedia": "tr:Karakuyu, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6256088280,
+   "lat": 37.0223561,
+   "lon": 35.3194396,
+   "tags": {
+    "name": "Yenibaraj",
+    "name:ja": "新弾幕",
+    "place": "suburb",
+    "population": "10180",
+    "wikidata": "Q105336662",
+    "wikimedia_commons": "Category:Yenibaraj Mahallesi, Seyhan",
+    "wikipedia": "tr:Yenibaraj, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 7890091316,
+   "lat": 37.0207458,
+   "lon": 35.2722954,
+   "tags": {
+    "name": "Gürselpaşa",
+    "name:ja": "グーセルさま",
+    "place": "suburb",
+    "wikidata": "Q97226032",
+    "wikipedia": "tr:Gürselpaşa, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 7890091333,
+   "lat": 37.0289578,
+   "lon": 35.2656922,
+   "tags": {
+    "name": "2000 Evler",
+    "name:ja": "二千家たち",
+    "place": "suburb",
+    "wikidata": "Q97224041",
+    "wikipedia": "tr:2000 Evler, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8999896614,
+   "lat": 36.9957966,
+   "lon": 35.188822,
+   "tags": {
+    "name": "Mekan",
+    "place": "suburb",
+    "wikidata": "Q109391931",
+    "wikipedia": "tr:Mekan, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8999896615,
+   "lat": 37.0004454,
+   "lon": 35.1980993,
+   "tags": {
+    "name": "Kavaklı",
+    "place": "suburb",
+    "wikidata": "Q109391926",
+    "wikipedia": "tr:Kavaklı, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8999896616,
+   "lat": 37.0023986,
+   "lon": 35.2092222,
+   "tags": {
+    "name": "Koza",
+    "place": "suburb",
+    "wikidata": "Q109391929",
+    "wikipedia": "tr:Koza, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8999940717,
+   "lat": 37.0014904,
+   "lon": 35.2057876,
+   "tags": {
+    "name": "Söğütlü",
+    "place": "suburb",
+    "wikidata": "Q109391943",
+    "wikipedia": "tr:Söğütlü, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9350090766,
+   "lat": 36.8715789,
+   "lon": 35.244956,
+   "tags": {
+    "name": "Serinevler",
+    "place": "suburb",
+    "wikidata": "Q109391942",
+    "wikipedia": "tr:Serinevler, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9502103688,
+   "lat": 37.0176312,
+   "lon": 35.2439688,
+   "tags": {
+    "name": "Yenimahalle",
+    "name:ja": "新近所",
+    "place": "suburb",
+    "wikidata": "Q109391949",
+    "wikipedia": "tr:Yenimahalle, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9502103689,
+   "lat": 37.0289723,
+   "lon": 35.243785,
+   "tags": {
+    "name": "Bahçeşehir",
+    "name:ja": "園都市",
+    "place": "suburb",
+    "wikidata": "Q97224608",
+    "wikipedia": "tr:Bahçeşehir, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9502103690,
+   "lat": 36.9990569,
+   "lon": 35.2370166,
+   "tags": {
+    "name": "Yeşiloba",
+    "place": "suburb",
+    "wikidata": "Q24912464",
+    "wikipedia": "tr:Yeşiloba, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066132,
+   "lat": 36.9951837,
+   "lon": 35.332117,
+   "tags": {
+    "name": "Reşatbey",
+    "name:ja": "レシャットさん",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066133,
+   "lat": 36.9922017,
+   "lon": 35.3228044,
+   "tags": {
+    "name": "Çınarlı",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066134,
+   "lat": 36.9896994,
+   "lon": 35.3315162,
+   "tags": {
+    "name": "Kayalıbağ",
+    "name:ja": "石有庭",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066135,
+   "lat": 36.9819864,
+   "lon": 35.3333187,
+   "tags": {
+    "name": "Türkocağı",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066136,
+   "lat": 36.9852431,
+   "lon": 35.3318166,
+   "tags": {
+    "name": "Ulucamii",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066137,
+   "lat": 36.9853117,
+   "lon": 35.3273534,
+   "tags": {
+    "name": "Karasoku",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066138,
+   "lat": 36.9820892,
+   "lon": 35.329113,
+   "tags": {
+    "name": "Sarıyakup",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066139,
+   "lat": 36.9818835,
+   "lon": 35.3261947,
+   "tags": {
+    "name": "Alidede",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066140,
+   "lat": 36.9844889,
+   "lon": 35.3216028,
+   "tags": {
+    "name": "Kocavezir",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066141,
+   "lat": 36.9817464,
+   "lon": 35.3163242,
+   "tags": {
+    "name": "Mirzaçelebi",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066142,
+   "lat": 36.9801694,
+   "lon": 35.3210449,
+   "tags": {
+    "name": "Sucuzade",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066143,
+   "lat": 36.9796552,
+   "lon": 35.3267097,
+   "tags": {
+    "name": "Beşocak",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066144,
+   "lat": 36.9770496,
+   "lon": 35.3256797,
+   "tags": {
+    "name": "Hürriyet",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066145,
+   "lat": 36.9789695,
+   "lon": 35.3322458,
+   "tags": {
+    "name": "Mestanzade",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066146,
+   "lat": 36.9750611,
+   "lon": 35.3317308,
+   "tags": {
+    "name": "Şehitduran",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066147,
+   "lat": 36.9880197,
+   "lon": 35.3274822,
+   "tags": {
+    "name": "Tepebağ",
+    "place": "suburb",
+    "wikidata": "Q7701247",
+    "wikimedia_commons": "Category:Tepebağ, Seyhan",
+    "wikipedia": "en:Tepebağ"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066148,
+   "lat": 36.9883968,
+   "lon": 35.3232765,
+   "tags": {
+    "name": "Kuruköprü",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066149,
+   "lat": 36.9870599,
+   "lon": 35.3201007,
+   "tags": {
+    "name": "Hanedan",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066150,
+   "lat": 36.9852431,
+   "lon": 35.3143072,
+   "tags": {
+    "name": "Yeşilyuva",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066151,
+   "lat": 36.9890824,
+   "lon": 35.3182125,
+   "tags": {
+    "name": "Hurmalı",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066166,
+   "lat": 36.9502348,
+   "lon": 35.314865,
+   "tags": {
+    "name": "Mıdık",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066167,
+   "lat": 36.9810265,
+   "lon": 35.3097152,
+   "tags": {
+    "name": "Gülpınar",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066180,
+   "lat": 37.0222226,
+   "lon": 35.2861976,
+   "tags": {
+    "name": "Pınar",
+    "name:ja": "春",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066181,
+   "lat": 37.0146843,
+   "lon": 35.2952956,
+   "tags": {
+    "name": "Fatih",
+    "name:ja": "征服者",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066182,
+   "lat": 37.0223597,
+   "lon": 35.2968406,
+   "tags": {
+    "name": "Tellidere",
+    "name:ja": "線有川",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066183,
+   "lat": 37.0191389,
+   "lon": 35.3086852,
+   "tags": {
+    "name": "Yeşilyurt",
+    "name:ja": "緑国",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066184,
+   "lat": 37.0134506,
+   "lon": 35.3183841,
+   "tags": {
+    "name": "Sümer",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066190,
+   "lat": 37.0098524,
+   "lon": 35.3291988,
+   "tags": {
+    "name": "Ziyapaşa",
+    "name:ja": "ジヤーパシャ",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066191,
+   "lat": 37.0064597,
+   "lon": 35.3218174,
+   "tags": {
+    "name": "Gazipaşa",
+    "name:ja": "ベテランパシャ",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066192,
+   "lat": 36.9949439,
+   "lon": 35.3004455,
+   "tags": {
+    "name": "Sakarya",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066193,
+   "lat": 37.0072822,
+   "lon": 35.3122043,
+   "tags": {
+    "name": "Namık Kemal",
+    "name:ja": "ケマルナミックス",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066194,
+   "lat": 37.0031011,
+   "lon": 35.3295421,
+   "tags": {
+    "name": "Cemalpaşa",
+    "name:ja": "ジェマルパシャ",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066195,
+   "lat": 37.0004278,
+   "lon": 35.3199291,
+   "tags": {
+    "name": "Kurtuluş",
+    "name:ja": "解放",
+    "place": "suburb",
+    "wikidata": "Q24912943",
+    "wikipedia": "en:Kurtuluş, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066196,
+   "lat": 36.9950124,
+   "lon": 35.3137064,
+   "tags": {
+    "name": "Döşeme",
+    "name:ja": "床",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066197,
+   "lat": 36.9971717,
+   "lon": 35.30375,
+   "tags": {
+    "name": "Ahmet Remzi Yüreğir",
+    "name:ja": "良癖アフメットレムジ",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066198,
+   "lat": 37.0034095,
+   "lon": 35.2989864,
+   "tags": {
+    "name": "Denizli",
+    "name:ja": "海有",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066199,
+   "lat": 37.0088586,
+   "lon": 35.301218,
+   "tags": {
+    "name": "Mithatpaşa",
+    "name:ja": "ミットハットパシャ",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066200,
+   "lat": 37.007762,
+   "lon": 35.287528,
+   "tags": {
+    "name": "İsmetpaşa",
+    "name:ja": "イスメットパシャ",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066201,
+   "lat": 36.9995367,
+   "lon": 35.2949094,
+   "tags": {
+    "name": "Narlıca",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066202,
+   "lat": 37.0006334,
+   "lon": 35.2897167,
+   "tags": {
+    "name": "Bahçelievler",
+    "name:ja": "庭有家",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066203,
+   "lat": 37.0035123,
+   "lon": 35.2841806,
+   "tags": {
+    "name": "Yeşilevler",
+    "name:ja": "緑家",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066204,
+   "lat": 36.9982,
+   "lon": 35.2847385,
+   "tags": {
+    "name": "Demetevler",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066205,
+   "lat": 36.9900079,
+   "lon": 35.3105735,
+   "tags": {
+    "name": "İstiklal",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066206,
+   "lat": 36.9854145,
+   "lon": 35.3029775,
+   "tags": {
+    "name": "Meydan",
+    "place": "suburb",
+    "wikidata": "Q109391932",
+    "wikipedia": "en:Meydan, Seyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066207,
+   "lat": 36.9804437,
+   "lon": 35.3023767,
+   "tags": {
+    "name": "Dumlupınar",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066208,
+   "lat": 36.9735526,
+   "lon": 35.3109169,
+   "tags": {
+    "name": "Dağlıoğlu",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111609,
+   "lat": 36.9756783,
+   "lon": 35.318942,
+   "tags": {
+    "name": "Havuzlubahçe",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111610,
+   "lat": 36.970844,
+   "lon": 35.3263235,
+   "tags": {
+    "name": "Yenibey",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111611,
+   "lat": 36.9677924,
+   "lon": 35.3225898,
+   "tags": {
+    "name": "Barbaros",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111612,
+   "lat": 36.9659408,
+   "lon": 35.3171396,
+   "tags": {
+    "name": "Bey",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111613,
+   "lat": 37.0039236,
+   "lon": 35.2758979,
+   "tags": {
+    "name": "Barış",
+    "name:ja": "平和",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111614,
+   "lat": 37.0049518,
+   "lon": 35.2646541,
+   "tags": {
+    "name": "Aydınlar",
+    "name:ja": "光人",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111615,
+   "lat": 36.9989198,
+   "lon": 35.2690314,
+   "tags": {
+    "name": "Fevzipaşa",
+    "name:ja": "フェヰジパシャ",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111616,
+   "lat": 36.9915847,
+   "lon": 35.2821635,
+   "tags": {
+    "name": "Şakirpaşa",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111617,
+   "lat": 36.9915162,
+   "lon": 35.2670573,
+   "tags": {
+    "name": "Onur",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111618,
+   "lat": 36.9834262,
+   "lon": 35.2673148,
+   "tags": {
+    "name": "Ova",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111619,
+   "lat": 36.9854831,
+   "lon": 35.2785586,
+   "tags": {
+    "name": "Uçak",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111620,
+   "lat": 36.9902136,
+   "lon": 35.3013038,
+   "tags": {
+    "name": "Emek",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111621,
+   "lat": 36.9743755,
+   "lon": 35.298643,
+   "tags": {
+    "name": "Gülbahçesi",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270111622,
+   "lat": 36.9645693,
+   "lon": 35.3077411,
+   "tags": {
+    "name": "Akkapı",
+    "place": "suburb"
+   }
+  }
+ ],
+ "Çukurova": [
+  {
+   "type": "node",
+   "id": 1420983340,
+   "lat": 37.0558123,
+   "lon": 35.1741438,
+   "tags": {
+    "name": "Karahan",
+    "name:ja": "黒半",
+    "old_name": "Karahanlı",
+    "place": "suburb",
+    "population": "1712",
+    "wikidata": "Q6367942",
+    "wikipedia": "tr:Karahan, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1420985426,
+   "lat": 37.0425121,
+   "lon": 35.1982698,
+   "tags": {
+    "alt_name": "Şambayat",
+    "name": "Şambayadı",
+    "name:ja": "水地古",
+    "place": "suburb",
+    "population": "5189",
+    "wikidata": "Q11133835",
+    "wikipedia": "tr:Şambayadı, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1507075419,
+   "lat": 37.0556288,
+   "lon": 35.2268854,
+   "tags": {
+    "name": "Kabasakal",
+    "name:ja": "失礼顎鬚",
+    "place": "suburb",
+    "population": "1354",
+    "wikidata": "Q6653955",
+    "wikipedia": "tr:Kabasakal, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2443113295,
+   "lat": 37.1102933,
+   "lon": 35.112182,
+   "tags": {
+    "name": "Salbaş",
+    "name:hy": "Մանաշ",
+    "name:ja": "差流頭",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2443113305,
+   "lat": 37.0497669,
+   "lon": 35.1232605,
+   "tags": {
+    "name": "Tömek",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4716669746,
+   "lat": 37.058692,
+   "lon": 35.2935969,
+   "tags": {
+    "addr:city": "Adana",
+    "alt_name:ja": "カルス民",
+    "name": "Karslılar",
+    "name:ja": "カルスラー",
+    "place": "suburb",
+    "population": "4693",
+    "wikidata": "Q97226492",
+    "wikipedia": "tr:Karslılar, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5082284455,
+   "lat": 37.1228254,
+   "lon": 35.2092223,
+   "tags": {
+    "name": "Çungurlu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589354745,
+   "lat": 37.0308167,
+   "lon": 35.3178467,
+   "tags": {
+    "name": "Beyazevler",
+    "name:ja": "白家",
+    "place": "suburb",
+    "population": "9497",
+    "population:date": "2018",
+    "source:population": "tuik.gov.tr",
+    "wikidata": "Q109386273",
+    "wikimedia_commons": "Category:Beyazevler, Çukurova",
+    "wikipedia": "tr:Beyazevler, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589354746,
+   "lat": 37.0393845,
+   "lon": 35.3095437,
+   "tags": {
+    "alt_name:ja": "マフ不合",
+    "alt_name:ja-Hira": "まふふごう",
+    "name": "Mahfesığmaz",
+    "name:ja": "マーフェシーマズ",
+    "old_name": "Mahfesığmaz",
+    "place": "suburb",
+    "population": "34085",
+    "population:date": "2018",
+    "source:population": "tuik.gov.tr",
+    "wikidata": "Q97227289",
+    "wikipedia": "tr:Mahfesığmaz, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589354747,
+   "lat": 37.0470729,
+   "lon": 35.3094964,
+   "tags": {
+    "alt_name:ja": "美水辺",
+    "name": "Güzelyalı",
+    "name:ja": "グゼールヤリ",
+    "place": "suburb",
+    "population": "41193",
+    "wikidata": "Q6065104",
+    "wikimedia_commons": "Category:Güzelyalı, Çukurova",
+    "wikipedia": "tr:Güzelyalı, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589541028,
+   "lat": 37.0430615,
+   "lon": 35.2267846,
+   "tags": {
+    "alt_name:ja": "風丘",
+    "alt_name:ja-Hira": "かぜおか",
+    "name": "Esentepe",
+    "name:ja": "エゼンテペ",
+    "place": "suburb",
+    "population": "1620",
+    "wikidata": "Q109960833",
+    "wikipedia": "tr:Esentepe, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589546432,
+   "lat": 37.1080899,
+   "lon": 35.1092862,
+   "tags": {
+    "name": "Kocatepe",
+    "name:ja": "大丘",
+    "place": "suburb",
+    "population": "1185"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589546433,
+   "lat": 37.1089745,
+   "lon": 35.113883,
+   "tags": {
+    "name": "Yeni Mahalle",
+    "name:ja": "新",
+    "place": "suburb",
+    "population": "1072"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589546434,
+   "lat": 37.1190723,
+   "lon": 35.1239973,
+   "tags": {
+    "name": "Salbaş Esentepe",
+    "name:ja": "差流頭風丘",
+    "place": "suburb",
+    "population": "473",
+    "wikidata": "Q7403742",
+    "wikipedia": "tr:Salbaş Esentepe, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589548756,
+   "lat": 37.0381461,
+   "lon": 35.2789157,
+   "tags": {
+    "name": "Huzurevleri",
+    "name:ja": "フゥズルエブレーリ",
+    "place": "suburb",
+    "population": "60334",
+    "wikidata": "Q6064132",
+    "wikimedia_commons": "Category:Huzurevleri, Çukurova",
+    "wikipedia": "tr:Huzurevleri, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589548758,
+   "lat": 37.0440515,
+   "lon": 35.2458702,
+   "tags": {
+    "alt_name": "100.Yıl;100. Yıl",
+    "alt_name:ja": "百目年",
+    "alt_name:ja-Hira": "ひゃくめねん",
+    "name": "Yüzüncüyıl",
+    "name:ja": "ユズンジュリル",
+    "place": "suburb",
+    "population": "31225",
+    "wikidata": "Q109960839",
+    "wikipedia": "tr:Yüzüncüyıl, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589551746,
+   "lat": 37.0395088,
+   "lon": 35.2991442,
+   "tags": {
+    "alt_name:ja": "強山",
+    "alt_name:ja-Hira": "つよやま",
+    "name": "Toros",
+    "name:ja": "トロス",
+    "place": "suburb",
+    "population": "61821",
+    "population:date": "2022年",
+    "source:population": "www.nufusune.com",
+    "wikidata": "Q6062275",
+    "wikipedia": "tr:Toros, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589551748,
+   "lat": 37.0421391,
+   "lon": 35.2876665,
+   "tags": {
+    "alt_name:ja": "国",
+    "alt_name:ja-Hira": "くに",
+    "name": "Yurt",
+    "name:ja": "ユルト",
+    "place": "suburb",
+    "population": "45876",
+    "population:date": "2019年",
+    "source:population": "wikipedia",
+    "wikidata": "Q109960838",
+    "wikipedia": "tr:Yurt, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8927742992,
+   "lat": 37.0428548,
+   "lon": 35.2653016,
+   "tags": {
+    "alt_name:ja": "市立家",
+    "alt_name:ja-Hira": "しりつか",
+    "name": "Belediye Evleri",
+    "name:ja": "ベレディエエブレーリ",
+    "place": "suburb",
+    "wikidata": "Q109386272",
+    "wikipedia": "tr:Belediye Evleri, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8927742993,
+   "lat": 37.0593667,
+   "lon": 35.2722461,
+   "tags": {
+    "alt_name:ja": "狼丘",
+    "alt_name:ja-Hira": "おおかみおか",
+    "name": "Kurttepe",
+    "name:ja": "クルッツテペ",
+    "place": "suburb",
+    "wikidata": "Q6447233",
+    "wikipedia": "tr:Kurttepe, Çukurova"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9472097711,
+   "lat": 37.0790919,
+   "lon": 35.1761734,
+   "tags": {
+    "name": "Tapantepe",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9472097712,
+   "lat": 37.0972102,
+   "lon": 35.1571727,
+   "tags": {
+    "name": "Abacılar",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Yüreğir": [
+  {
+   "type": "node",
+   "id": 470861013,
+   "lat": 36.9626028,
+   "lon": 35.6270367,
+   "tags": {
+    "alt_name": "Yakapınar",
+    "name": "Misis",
+    "name:el": "Μοψουεστία",
+    "name:hy": "Մամեստիա",
+    "name:la": "Mopsuestia",
+    "name:uk": "Якапинар",
+    "name:ur": "یاکاپینار، یورےغیر",
+    "old_name": "Misis;Mopsos;Mobsuestia;Mopsuestia;Mompsuestia;Mopsuhestia;Moponhestia;Hadriana;Mampsiustia;al-Massisa;Masista;Mamista;Mamistra;Malmistra",
+    "place": "quarter",
+    "population": "2740",
+    "population:date": "2015",
+    "wikidata": "Q3820135",
+    "wikipedia": "tr:Yakapınar, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1420983339,
+   "lat": 36.8448092,
+   "lon": 35.3392419,
+   "tags": {
+    "name": "Doğankent",
+    "old_name": "Mihmandar",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1885680799,
+   "lat": 36.9260329,
+   "lon": 35.343285,
+   "tags": {
+    "name": "Havutlu",
+    "place": "suburb",
+    "wikidata": "Q5684110",
+    "wikipedia": "tr:Havutlu, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1985700391,
+   "lat": 36.9096872,
+   "lon": 35.5657486,
+   "tags": {
+    "name": "Abdioğlu",
+    "name:hy": "Աբդօղլու",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1985700565,
+   "lat": 36.8065107,
+   "lon": 35.336982,
+   "tags": {
+    "name": "Solaklı",
+    "name:hy": "Սոլագլը",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1985700620,
+   "lat": 36.8156967,
+   "lon": 35.2781064,
+   "tags": {
+    "name": "Yunusoğlu",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4908499580,
+   "lat": 36.9604878,
+   "lon": 35.6265825,
+   "tags": {
+    "alt_name": "Eskimisis Mah.",
+    "name": "Eski Misis Mah.",
+    "place": "suburb",
+    "wikidata": "Q109383947",
+    "wikipedia": "tr:Eski Misis, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4908499581,
+   "lat": 36.95282,
+   "lon": 35.6262357,
+   "tags": {
+    "name": "Geçitli",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 4908499582,
+   "lat": 36.9586275,
+   "lon": 35.6084713,
+   "tags": {
+    "alt_name": "Yenimisis Mah.;Yeni Misis Mah.",
+    "name": "Yakapınar",
+    "place": "suburb",
+    "wikidata": "Q3820135",
+    "wikipedia": "tr:Yakapınar, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8927742995,
+   "lat": 36.9799624,
+   "lon": 35.4149209,
+   "tags": {
+    "name": "Güzel Cumhuriyet",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8927742996,
+   "lat": 36.9760134,
+   "lon": 35.3894408,
+   "tags": {
+    "name": "Güzelevler",
+    "place": "suburb",
+    "wikidata": "Q109383951",
+    "wikipedia": "tr:Güzelevler, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8927742997,
+   "lat": 36.9530412,
+   "lon": 35.6299777,
+   "tags": {
+    "name": "Geçitli Cumhuriyet",
+    "place": "suburb",
+    "wikidata": "Q5555103",
+    "wikipedia": "tr:Geçitli Cumhuriyet, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8927742998,
+   "lat": 36.9517723,
+   "lon": 35.6245489,
+   "tags": {
+    "name": "Havraniye Mah.",
+    "place": "suburb",
+    "wikidata": "Q109383952",
+    "wikipedia": "tr:Havraniye, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999231,
+   "lat": 36.9105375,
+   "lon": 35.5662027,
+   "tags": {
+    "name": "Özler",
+    "place": "suburb",
+    "wikidata": "Q109383965",
+    "wikipedia": "tr:Özler, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999232,
+   "lat": 36.9086652,
+   "lon": 35.5647977,
+   "tags": {
+    "name": "Abdioğlu Cumhuriyet Mah.",
+    "place": "suburb",
+    "wikidata": "Q4664990",
+    "wikipedia": "tr:Abdioğlu Cumhuriyet, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999237,
+   "lat": 36.8147327,
+   "lon": 35.2770318,
+   "tags": {
+    "name": "Yunusoğlu Cumhuriyet Mah.",
+    "place": "suburb",
+    "wikidata": "Q8061410",
+    "wikipedia": "tr:Yunusoğlu Cumhuriyet, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999238,
+   "lat": 36.8169784,
+   "lon": 35.278414,
+   "tags": {
+    "name": "Yunusoğlu Hürriyet",
+    "place": "suburb",
+    "wikidata": "Q25475719",
+    "wikipedia": "tr:Yunusoğlu Hürriyet, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999239,
+   "lat": 36.806108,
+   "lon": 35.3393636,
+   "tags": {
+    "name": "Atatürk",
+    "place": "suburb",
+    "wikidata": "Q109383941",
+    "wikipedia": "tr:Atatürk, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999240,
+   "lat": 36.8068983,
+   "lon": 35.3340099,
+   "tags": {
+    "name": "Solaklı Cumhuriyet Mah.",
+    "place": "suburb",
+    "wikidata": "Q7555665",
+    "wikipedia": "tr:Solaklı Cumhuriyet, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999241,
+   "lat": 36.8041136,
+   "lon": 35.3381261,
+   "tags": {
+    "name": "Solaklı Hürriyet Mah.",
+    "place": "suburb",
+    "wikidata": "Q109383974",
+    "wikipedia": "tr:Solaklı Hürriyet, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999242,
+   "lat": 36.8438173,
+   "lon": 35.3413716,
+   "tags": {
+    "name": "Doğankent Cumhuriyet",
+    "place": "suburb",
+    "wikidata": "Q4831877",
+    "wikipedia": "tr:Doğankent Cumhuriyet, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999243,
+   "lat": 36.8434321,
+   "lon": 35.3336562,
+   "tags": {
+    "name": "Doğankent Bahçelievler Mah.",
+    "place": "suburb",
+    "wikidata": "Q25475728",
+    "wikipedia": "tr:Doğankent Bahçelievler, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999244,
+   "lat": 36.8473377,
+   "lon": 35.3414196,
+   "tags": {
+    "name": "Gazipaşa Mah.",
+    "place": "suburb",
+    "wikidata": "Q109383948",
+    "wikipedia": "tr:Gazipaşa, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9397999245,
+   "lat": 36.8500039,
+   "lon": 35.3391147,
+   "tags": {
+    "name": "Doğankent Kışla Mah.",
+    "place": "suburb",
+    "wikidata": "Q25475736",
+    "wikipedia": "tr:Doğankent Kışla, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9501199827,
+   "lat": 37.0050483,
+   "lon": 35.3807976,
+   "tags": {
+    "alt_name": "Ulubatlıhasan",
+    "name": "Ulubatlı Hasan",
+    "place": "suburb",
+    "wikidata": "Q109386739",
+    "wikipedia": "tr:Ulubatlı Hasan, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9501199828,
+   "lat": 37.0051003,
+   "lon": 35.3853648,
+   "tags": {
+    "alt_name": "Mutlu",
+    "name": "Mutlu",
+    "old_name": "Madama",
+    "place": "suburb",
+    "wikidata": "Q109383963",
+    "wikipedia": "tr:Mutlu, Yüreğir"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9501199829,
+   "lat": 36.8032888,
+   "lon": 35.3101659,
+   "tags": {
+    "name": "Tanrıverdi",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066129,
+   "lat": 36.9833919,
+   "lon": 35.3637886,
+   "tags": {
+    "name": "Başak",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066130,
+   "lat": 36.9706554,
+   "lon": 35.371127,
+   "tags": {
+    "name": "Koza",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066131,
+   "lat": 36.9789695,
+   "lon": 35.3764915,
+   "tags": {
+    "name": "Levent",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066152,
+   "lat": 36.9977544,
+   "lon": 35.3522872,
+   "tags": {
+    "name": "Akıncılar",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066153,
+   "lat": 36.9925102,
+   "lon": 35.3540468,
+   "tags": {
+    "name": "Sarıçam",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066154,
+   "lat": 36.9888082,
+   "lon": 35.3571367,
+   "tags": {
+    "name": "Özgür",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066155,
+   "lat": 36.9849688,
+   "lon": 35.3499269,
+   "tags": {
+    "name": "Dede Korkut",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066156,
+   "lat": 36.9774268,
+   "lon": 35.3637886,
+   "tags": {
+    "name": "19 Mayıs",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066157,
+   "lat": 36.9780439,
+   "lon": 35.356965,
+   "tags": {
+    "name": "Yunus Emre",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066158,
+   "lat": 36.9795181,
+   "lon": 35.352888,
+   "tags": {
+    "name": "Anadolu",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066159,
+   "lat": 36.9711526,
+   "lon": 35.3626727,
+   "tags": {
+    "name": "Yeşil Bağlar",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066160,
+   "lat": 36.9660094,
+   "lon": 35.3583812,
+   "tags": {
+    "name": "Bahçelievler",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066161,
+   "lat": 36.974924,
+   "lon": 35.3462791,
+   "tags": {
+    "name": "Güneşli",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066162,
+   "lat": 36.9771182,
+   "lon": 35.3428458,
+   "tags": {
+    "name": "Yamaçlı",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066163,
+   "lat": 36.9835634,
+   "lon": 35.34276,
+   "tags": {
+    "name": "Cumhuriyet",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066164,
+   "lat": 36.9684406,
+   "lon": 35.3383799,
+   "tags": {
+    "name": "Haydaroğlu",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066165,
+   "lat": 36.9658379,
+   "lon": 35.3328895,
+   "tags": {
+    "name": "Seyhan",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066168,
+   "lat": 37.0002907,
+   "lon": 35.3587245,
+   "tags": {
+    "name": "Tahsilli",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066169,
+   "lat": 36.9977544,
+   "lon": 35.3628444,
+   "tags": {
+    "name": "Dervişler",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066170,
+   "lat": 36.9915847,
+   "lon": 35.3715133,
+   "tags": {
+    "name": "Atakent",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066171,
+   "lat": 36.9880883,
+   "lon": 35.3846454,
+   "tags": {
+    "name": "Yenidoğan",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066172,
+   "lat": 36.9982343,
+   "lon": 35.3849887,
+   "tags": {
+    "name": "Çamlıbel",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066173,
+   "lat": 36.998577,
+   "lon": 35.3750323,
+   "tags": {
+    "name": "Şehit Erkut Akbay",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066174,
+   "lat": 37.0034438,
+   "lon": 35.372672,
+   "tags": {
+    "name": "Kiremithane",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066175,
+   "lat": 37.0030668,
+   "lon": 35.3632307,
+   "tags": {
+    "name": "Dadaloğlu",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066176,
+   "lat": 37.0070766,
+   "lon": 35.3588962,
+   "tags": {
+    "name": "Serinevler",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066177,
+   "lat": 37.0088586,
+   "lon": 35.3705691,
+   "tags": {
+    "name": "Selahattin Eyyubi",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066178,
+   "lat": 37.0154381,
+   "lon": 35.3655051,
+   "tags": {
+    "name": "Karacaoğlan",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066179,
+   "lat": 37.0216744,
+   "lon": 35.3672217,
+   "tags": {
+    "name": "P.T.T",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066185,
+   "lat": 37.0090642,
+   "lon": 35.3487681,
+   "tags": {
+    "name": "Kazım Karabekir",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066186,
+   "lat": 37.0015931,
+   "lon": 35.3454208,
+   "tags": {
+    "name": "Yavuzlar",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066187,
+   "lat": 36.9923388,
+   "lon": 35.3408717,
+   "tags": {
+    "name": "Sinanpaşa",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066188,
+   "lat": 37.0122855,
+   "lon": 35.3376102,
+   "tags": {
+    "name": "Köprülü",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10270066189,
+   "lat": 37.0218115,
+   "lon": 35.3376102,
+   "tags": {
+    "name": "Kışla",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 11764930248,
+   "lat": 36.9684451,
+   "lon": 35.3434451,
+   "tags": {
+    "name": "Akdeniz",
+    "place": "suburb"
+   }
+  }
+ ],
+ "Sarıçam": [
+  {
+   "type": "node",
+   "id": 269942625,
+   "lat": 37.0394649,
+   "lon": 35.4545561,
+   "tags": {
+    "name": "Buruk",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 269944496,
+   "lat": 37.0591562,
+   "lon": 35.4212106,
+   "tags": {
+    "name": "Boynuyoğun",
+    "place": "suburb",
+    "wikidata": "Q4952588",
+    "wikipedia": "tr:Boynuyoğun, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1420832352,
+   "lat": 36.9929052,
+   "lon": 35.4399739,
+   "tags": {
+    "name": "İncirlik",
+    "name:el": "Ιντζιρλίκ",
+    "name:hy": "Ինջիրլիկ",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1420983342,
+   "lat": 36.9897445,
+   "lon": 35.5092892,
+   "tags": {
+    "name": "Kürkçüler",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1507078923,
+   "lat": 37.0681131,
+   "lon": 35.3853975,
+   "tags": {
+    "name": "Çarkıpare",
+    "place": "suburb",
+    "wikidata": "Q8077535",
+    "wikimedia_commons": "Category:Çarkıpare, Sarıçam",
+    "wikipedia": "tr:Çarkıpare, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1507078962,
+   "lat": 37.0717705,
+   "lon": 35.3935739,
+   "tags": {
+    "name": "Çınarlı",
+    "place": "suburb",
+    "wikidata": "Q8077843",
+    "wikipedia": "tr:Çınarlı, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1949328866,
+   "lat": 37.0146595,
+   "lon": 35.6010754,
+   "tags": {
+    "name": "Kirazlı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1949328872,
+   "lat": 37.0291293,
+   "lon": 35.5556087,
+   "tags": {
+    "name": "Okurlar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288165920,
+   "lat": 37.1186477,
+   "lon": 35.5796592,
+   "tags": {
+    "name": "Niğdeliler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288302045,
+   "lat": 37.2071057,
+   "lon": 35.3621892,
+   "tags": {
+    "name": "Şarıklı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952257330,
+   "lat": 37.0160091,
+   "lon": 35.3904277,
+   "tags": {
+    "name": "Mehmet Akif Ersoy",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952257331,
+   "lat": 37.0176763,
+   "lon": 35.3859562,
+   "tags": {
+    "name": "Remzi Oğuz Arık",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952257332,
+   "lat": 37.0261944,
+   "lon": 35.4005904,
+   "tags": {
+    "name": "Yıldırım Beyazıt",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282067,
+   "lat": 36.9914361,
+   "lon": 35.4360103,
+   "tags": {
+    "name": "Hürriyet",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282068,
+   "lat": 36.9862068,
+   "lon": 35.4371303,
+   "tags": {
+    "name": "Yeni",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282069,
+   "lat": 37.0408505,
+   "lon": 35.4208235,
+   "tags": {
+    "name": "Yavuz Sultan Selim",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282070,
+   "lat": 36.9941593,
+   "lon": 35.4414219,
+   "tags": {
+    "name": "Kemalpaşa",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282071,
+   "lat": 37.0362248,
+   "lon": 35.4242708,
+   "tags": {
+    "name": "Orhangazi",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282072,
+   "lat": 37.0367733,
+   "lon": 35.3949906,
+   "tags": {
+    "name": "Gültepe",
+    "place": "suburb",
+    "population": "14745"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282073,
+   "lat": 37.0311588,
+   "lon": 35.4144768,
+   "tags": {
+    "name": "Şahintepe",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282075,
+   "lat": 37.0335374,
+   "lon": 35.4061812,
+   "tags": {
+    "name": "Yeşiltepe",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282076,
+   "lat": 37.0515402,
+   "lon": 35.417342,
+   "tags": {
+    "name": "Sofudede",
+    "place": "suburb",
+    "wikidata": "Q109385960",
+    "wikipedia": "tr:Sofudede, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282077,
+   "lat": 37.0448405,
+   "lon": 35.4570946,
+   "tags": {
+    "name": "İstiklal",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282078,
+   "lat": 37.0373273,
+   "lon": 35.4145471,
+   "tags": {
+    "name": "Esentepe",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282079,
+   "lat": 37.0381814,
+   "lon": 35.451125,
+   "tags": {
+    "name": "Buruk Cumhuriyet",
+    "name:hy": "Բուրուկ",
+    "place": "suburb",
+    "wikidata": "Q5000981",
+    "wikipedia": "tr:Buruk Cumhuriyet, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952282080,
+   "lat": 37.0497995,
+   "lon": 35.4241271,
+   "tags": {
+    "name": "Beyceli",
+    "place": "suburb",
+    "wikidata": "Q4899837",
+    "wikipedia": "tr:Beyceli, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952326157,
+   "lat": 37.0723571,
+   "lon": 35.4075704,
+   "tags": {
+    "name": "Osmangazi",
+    "place": "suburb",
+    "wikidata": "Q109387095",
+    "wikipedia": "tr:Osmangazi, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952340713,
+   "lat": 36.9773106,
+   "lon": 35.5734772,
+   "tags": {
+    "name": "Acıdere",
+    "old_name": "Suluca",
+    "place": "suburb",
+    "wikidata": "Q7636844",
+    "wikipedia": "tr:Acıdere, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952340714,
+   "lat": 36.9749005,
+   "lon": 35.5697393,
+   "tags": {
+    "name": "Suluca",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952340715,
+   "lat": 36.973197,
+   "lon": 35.5656675,
+   "tags": {
+    "alt_name": "Suluca Mah.",
+    "name": "Karşıyaka",
+    "place": "suburb",
+    "wikidata": "Q25475723",
+    "wikipedia": "tr:Karşıyaka, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952343288,
+   "lat": 37.0123513,
+   "lon": 35.4989883,
+   "tags": {
+    "name": "Göztepe",
+    "old_name": "Abdülhadi",
+    "place": "suburb",
+    "wikidata": "Q109393368",
+    "wikipedia": "tr:Göztepe, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952343289,
+   "lat": 36.9836301,
+   "lon": 35.5175035,
+   "tags": {
+    "alt_name": "Dağcı Mah.;Dağcı Mahalle",
+    "name": "Dağcı",
+    "place": "suburb",
+    "wikidata": "Q109385597",
+    "wikipedia": "tr:Dağcı, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952343290,
+   "lat": 36.9884213,
+   "lon": 35.5103596,
+   "tags": {
+    "name": "Yürekli",
+    "place": "suburb",
+    "wikidata": "Q109385970",
+    "wikipedia": "tr:Yürekli, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2952343291,
+   "lat": 36.9967222,
+   "lon": 35.512508,
+   "tags": {
+    "name": "Müminli",
+    "old_name": "Kürkçüler",
+    "place": "suburb",
+    "wikidata": "Q6454173",
+    "wikipedia": "tr:Müminli, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6252506868,
+   "lat": 37.0544136,
+   "lon": 35.3648913,
+   "tags": {
+    "name": "Balcalı",
+    "place": "suburb",
+    "population": "5764",
+    "wikidata": "Q109385596",
+    "wikimedia_commons": "Category:Balcalı, Sarıçam",
+    "wikipedia": "tr:Balcalı, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6517250710,
+   "lat": 37.1021905,
+   "lon": 35.6188291,
+   "tags": {
+    "name": "Küçükiniş",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9503926397,
+   "lat": 37.1138227,
+   "lon": 35.5291843,
+   "tags": {
+    "name": "Ustahasanlar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9503926398,
+   "lat": 37.1341823,
+   "lon": 35.5467367,
+   "tags": {
+    "name": "Hasanefendi",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9503926399,
+   "lat": 37.1427008,
+   "lon": 35.5330682,
+   "tags": {
+    "name": "Kadirin Çiftliği",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9504625529,
+   "lat": 37.1911599,
+   "lon": 35.4753255,
+   "tags": {
+    "name": "Torunlar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10312598856,
+   "lat": 36.9695411,
+   "lon": 35.5961751,
+   "tags": {
+    "name": "Acıdere OSB",
+    "place": "suburb",
+    "wikidata": "Q109385594",
+    "wikipedia": "tr:Acıdere OSB, Sarıçam"
+   }
+  },
+  {
+   "type": "node",
+   "id": 11764930247,
+   "lat": 37.0197637,
+   "lon": 35.3989961,
+   "tags": {
+    "name": "Mehmet Akif Ersoy",
+    "place": "suburb"
+   }
+  }
+ ],
+ "Ceyhan": [
+  {
+   "type": "node",
+   "id": 1060773629,
+   "lat": 36.8933838,
+   "lon": 35.9471357,
+   "tags": {
+    "name": "İncirli",
+    "name:ar": "إنجرلي",
+    "old_name": "İncirli Suyu;Karatepe Karakolu;Katabolos;Katavolo",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1060774287,
+   "lat": 36.9085622,
+   "lon": 35.9337283,
+   "tags": {
+    "alt_name": "Karayılan",
+    "name": "Karatepe",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2054517179,
+   "lat": 37.1786325,
+   "lon": 35.7308201,
+   "tags": {
+    "name": "Akmaşat",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2054517187,
+   "lat": 37.1760364,
+   "lon": 35.6145784,
+   "tags": {
+    "name": "Gümüşdere",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2054518776,
+   "lat": 37.2495955,
+   "lon": 35.7475055,
+   "tags": {
+    "name": "Üçdut",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288377294,
+   "lat": 37.087355,
+   "lon": 35.9980304,
+   "tags": {
+    "name": "İslamoğlu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6235154044,
+   "lat": 37.0479264,
+   "lon": 35.8166872,
+   "tags": {
+    "name": "Altıocak",
+    "place": "suburb",
+    "population": "2873",
+    "wikidata": "Q108410035",
+    "wikipedia": "tr:Altıocak, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6236273616,
+   "lat": 37.2082944,
+   "lon": 36.0255271,
+   "tags": {
+    "name": "Birkent Eskikent",
+    "old_name": "Türk Şükriye;Şükriye",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6236273617,
+   "lat": 37.2067221,
+   "lon": 36.0427577,
+   "tags": {
+    "alt_name": "Yenikent",
+    "name": "Birkent Yenikent",
+    "old_name": "Rumeli Şükriye",
+    "old_name:tr": "Rumeli Şükriye",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6246646799,
+   "lat": 37.053796,
+   "lon": 35.8099034,
+   "tags": {
+    "name": "Koruklu",
+    "place": "suburb",
+    "population": "191",
+    "wikidata": "Q109386256",
+    "wikipedia": "tr:Koruklu, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6247241301,
+   "lat": 37.0453958,
+   "lon": 35.8191283,
+   "tags": {
+    "name": "İnönü",
+    "place": "suburb",
+    "population": "1997",
+    "wikidata": "Q109383907",
+    "wikipedia": "tr:İnönü, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6247577161,
+   "lat": 37.0399403,
+   "lon": 35.8225172,
+   "tags": {
+    "name": "Fatih Sultan Mehmet",
+    "place": "suburb",
+    "population": "4523",
+    "wikidata": "Q109383904",
+    "wikipedia": "tr:Fatih Sultan Mehmet, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6247615981,
+   "lat": 37.0405565,
+   "lon": 35.8318717,
+   "tags": {
+    "name": "Emek",
+    "place": "suburb",
+    "population": "2437",
+    "wikidata": "Q109960825",
+    "wikipedia": "tr:Emek, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6247785014,
+   "lat": 37.0491959,
+   "lon": 35.8383241,
+   "tags": {
+    "name": "Esentepe",
+    "place": "suburb",
+    "population": "2994",
+    "wikidata": "Q109383903",
+    "wikipedia": "tr:Esentepe, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6247976933,
+   "lat": 37.0349878,
+   "lon": 35.8294746,
+   "tags": {
+    "name": "Şahin Özbilen",
+    "place": "suburb",
+    "population": "9967",
+    "wikidata": "Q109386264",
+    "wikipedia": "tr:Şahin Özbilen, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6454475423,
+   "lat": 37.2546532,
+   "lon": 35.8279288,
+   "tags": {
+    "name": "Kücük Camuzağlı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6517249820,
+   "lat": 37.1362008,
+   "lon": 35.7558256,
+   "tags": {
+    "name": "Çukurkamış",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6517250709,
+   "lat": 37.1171186,
+   "lon": 35.6452945,
+   "tags": {
+    "name": "Karcılar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588843229,
+   "lat": 37.048301,
+   "lon": 35.8058431,
+   "tags": {
+    "name": "Belediye Evleri",
+    "place": "suburb",
+    "population": "7472",
+    "population:date": "2020",
+    "wikidata": "Q108410130",
+    "wikipedia": "tr:Belediye Evleri, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588861471,
+   "lat": 37.0412707,
+   "lon": 35.8096609,
+   "tags": {
+    "name": "Küçükkırım",
+    "place": "suburb",
+    "population": "3562",
+    "wikidata": "Q109386255",
+    "wikipedia": "tr:Küçükkırım, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588883256,
+   "lat": 37.0297301,
+   "lon": 35.8322198,
+   "tags": {
+    "name": "İstiklal",
+    "place": "suburb",
+    "population": "10411",
+    "wikidata": "Q109383908",
+    "wikipedia": "tr:İstiklal, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588883257,
+   "lat": 37.0311062,
+   "lon": 35.8223238,
+   "tags": {
+    "name": "Hürriyet",
+    "place": "suburb",
+    "population": "3625",
+    "wikidata": "Q109960826",
+    "wikipedia": "tr:Hürriyet, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588917035,
+   "lat": 37.035967,
+   "lon": 35.8156559,
+   "tags": {
+    "name": "Şehit Hacı İbrahim",
+    "place": "suburb",
+    "population": "1268",
+    "wikidata": "Q109386266",
+    "wikipedia": "tr:Şehit Hacı İbrahim, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588926984,
+   "lat": 37.0440708,
+   "lon": 35.8095231,
+   "tags": {
+    "name": "Yarsuat",
+    "place": "suburb",
+    "population": "2811",
+    "wikidata": "Q109386271",
+    "wikipedia": "tr:Yarsuat, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588932985,
+   "lat": 37.0383318,
+   "lon": 35.8103022,
+   "tags": {
+    "name": "Bota",
+    "place": "suburb",
+    "population": "2081",
+    "wikidata": "Q109383898",
+    "wikipedia": "tr:Bota, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588980107,
+   "lat": 37.0346512,
+   "lon": 35.8119415,
+   "tags": {
+    "name": "Civantayak",
+    "place": "suburb",
+    "population": "422",
+    "wikidata": "Q109383902",
+    "wikipedia": "tr:Civantayak, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589226364,
+   "lat": 37.0330628,
+   "lon": 35.8153308,
+   "tags": {
+    "name": "Aydemiroğlu",
+    "place": "suburb",
+    "population": "506",
+    "wikidata": "Q109383897",
+    "wikipedia": "tr:Aydemiroğlu, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589226365,
+   "lat": 37.0317532,
+   "lon": 35.8137287,
+   "tags": {
+    "name": "Zübeyde Hanım",
+    "place": "suburb",
+    "population": "843",
+    "wikidata": "Q108945475",
+    "wikipedia": "tr:Zübeyde Hanım, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589230560,
+   "lat": 37.0279332,
+   "lon": 35.812806,
+   "tags": {
+    "name": "Konakoğlu",
+    "place": "suburb",
+    "population": "835",
+    "wikidata": "Q109383910",
+    "wikipedia": "tr:Konakoğlu, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589278962,
+   "lat": 37.0215837,
+   "lon": 35.8257141,
+   "tags": {
+    "name": "Mithat Paşa",
+    "place": "suburb",
+    "population": "3832",
+    "wikidata": "Q109386257",
+    "wikipedia": "tr:Mithat Paşa, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589287826,
+   "lat": 37.0271966,
+   "lon": 35.8236421,
+   "tags": {
+    "name": "Ulus",
+    "place": "suburb",
+    "population": "4558",
+    "wikidata": "Q109386268",
+    "wikipedia": "tr:Ulus, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589287828,
+   "lat": 37.0223033,
+   "lon": 35.8179679,
+   "tags": {
+    "name": "Burhaniye",
+    "place": "suburb",
+    "population": "5338",
+    "wikidata": "Q108409875",
+    "wikipedia": "tr:Burhaniye, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589287829,
+   "lat": 37.0233561,
+   "lon": 35.8120659,
+   "tags": {
+    "alt_name": "Büyük Kırım",
+    "name": "Büyükkırım",
+    "place": "suburb",
+    "population": "795",
+    "wikipedia": "tr:Büyükkırım, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589287830,
+   "lat": 37.0218236,
+   "lon": 35.8098354,
+   "tags": {
+    "name": "Muradiye",
+    "place": "suburb",
+    "population": "2171",
+    "wikidata": "Q109386260",
+    "wikipedia": "tr:Muradiye, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589288803,
+   "lat": 37.016838,
+   "lon": 35.8047714,
+   "tags": {
+    "name": "Modernevler",
+    "place": "suburb",
+    "population": "1215",
+    "wikidata": "Q109386259",
+    "wikipedia": "tr:Modernevler, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589288804,
+   "lat": 37.0125204,
+   "lon": 35.8054366,
+   "tags": {
+    "name": "Sarısakal",
+    "place": "suburb",
+    "population": "2334",
+    "wikidata": "Q109386265",
+    "wikipedia": "tr:Sarısakal, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589288805,
+   "lat": 37.0127945,
+   "lon": 35.8133115,
+   "tags": {
+    "name": "Gazi Osman Paşa",
+    "place": "suburb",
+    "population": "6359",
+    "wikidata": "Q109383906",
+    "wikipedia": "tr:Gazi Osman Paşa, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589340187,
+   "lat": 37.0120406,
+   "lon": 35.8196416,
+   "tags": {
+    "name": "Namık Kemal",
+    "place": "suburb",
+    "population": "16471",
+    "wikidata": "Q109386262",
+    "wikipedia": "tr:Namık Kemal, Ceyhan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589342424,
+   "lat": 37.0156558,
+   "lon": 35.8279457,
+   "tags": {
+    "name": "Cumhuriyet",
+    "place": "suburb",
+    "population": "10718"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9180875705,
+   "lat": 37.0254387,
+   "lon": 35.8097743,
+   "tags": {
+    "name": "Atatürk",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9195241467,
+   "lat": 37.2143317,
+   "lon": 35.9922677,
+   "tags": {
+    "name": "Birkent Celiluşağı",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9211726999,
+   "lat": 37.217562,
+   "lon": 35.9760383,
+   "tags": {
+    "name": "Mahmudiye",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9496014556,
+   "lat": 37.1588031,
+   "lon": 35.6046295,
+   "tags": {
+    "name": "Yörükler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9496063460,
+   "lat": 37.2265013,
+   "lon": 35.7501125,
+   "tags": {
+    "name": "Yeşilova",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9498117414,
+   "lat": 36.9500933,
+   "lon": 35.9208405,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9506913997,
+   "lat": 37.1225831,
+   "lon": 36.028676,
+   "tags": {
+    "name": "Keçebe",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9506913998,
+   "lat": 37.1348323,
+   "lon": 36.0216379,
+   "tags": {
+    "alt_name": "Bakirli",
+    "name": "Bekirli",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Kozan": [
+  {
+   "type": "node",
+   "id": 1005043388,
+   "lat": 37.2930458,
+   "lon": 35.8355963,
+   "tags": {
+    "is_in": "Kozan, Hamam",
+    "name": "Kamışoba",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1949040563,
+   "lat": 37.6085599,
+   "lon": 35.5967615,
+   "tags": {
+    "name": "Çömrük",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2287775943,
+   "lat": 37.4540585,
+   "lon": 35.7723413,
+   "tags": {
+    "name": "Güneri",
+    "place": "suburb",
+    "wikidata": "Q988993",
+    "wikipedia": "tr:Güneri, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2287775945,
+   "lat": 37.470631,
+   "lon": 35.8115713,
+   "tags": {
+    "name": "Hacımirzalı",
+    "place": "suburb",
+    "population": "1214",
+    "wikidata": "Q989172",
+    "wikipedia": "tr:Hacımirzalı, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2287775991,
+   "lat": 37.3558469,
+   "lon": 35.7458184,
+   "tags": {
+    "name": "Orta",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2892831591,
+   "lat": 37.6272879,
+   "lon": 35.8492297,
+   "tags": {
+    "ele": "683",
+    "name": "Horzum Yaylası",
+    "place": "neighbourhood",
+    "wikidata": "Q6016768",
+    "wikipedia": "tr:Horzum Yaylası"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3248812604,
+   "lat": 37.5842795,
+   "lon": 35.8375744,
+   "tags": {
+    "name": "Karamusalı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3535228804,
+   "lat": 37.671195,
+   "lon": 36.0010373,
+   "tags": {
+    "name": "Kargapazarı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6453614935,
+   "lat": 37.349196,
+   "lon": 35.801053,
+   "tags": {
+    "name": "Kurtoğlu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6453614936,
+   "lat": 37.3443173,
+   "lon": 35.8101189,
+   "tags": {
+    "is_in": "Kozan, Hamam",
+    "name": "Karamanlı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6453614938,
+   "lat": 37.3303362,
+   "lon": 35.7663131,
+   "tags": {
+    "alt_name": "Çavuşağa",
+    "is_in": "Kozan, Arslanlı",
+    "name": "Çavuşa",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6453614939,
+   "lat": 37.3295495,
+   "lon": 35.7580591,
+   "tags": {
+    "is_in": "Kozan, Arslanlı",
+    "name": "Topallar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6453614940,
+   "lat": 37.3112498,
+   "lon": 35.7984728,
+   "tags": {
+    "is_in": "Kozan, Hamam",
+    "name": "Torunlar",
+    "old_name": "Kocabey",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6462962501,
+   "lat": 37.4488712,
+   "lon": 35.8529645,
+   "tags": {
+    "name": "Memi",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6462962502,
+   "lat": 37.4334911,
+   "lon": 35.8371288,
+   "tags": {
+    "name": "Mahmutlu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589662252,
+   "lat": 37.473585,
+   "lon": 35.8348997,
+   "tags": {
+    "name": "Ağlıboğaz",
+    "place": "suburb",
+    "population": "6021",
+    "wikidata": "Q109385573",
+    "wikipedia": "tr:Ağlıboğaz, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589710965,
+   "lat": 37.443797,
+   "lon": 35.8184246,
+   "tags": {
+    "name": "Mahmutlu",
+    "place": "suburb",
+    "population": "3340",
+    "wikidata": "Q19611866",
+    "wikipedia": "tr:Mahmutlu, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589710966,
+   "lat": 37.4429421,
+   "lon": 35.8149488,
+   "tags": {
+    "name": "Yarımoğlu",
+    "place": "suburb",
+    "population": "487",
+    "wikidata": "Q109385585",
+    "wikipedia": "tr:Yarımoğlu, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589710967,
+   "lat": 37.4459481,
+   "lon": 35.8195545,
+   "tags": {
+    "name": "Arslanpaşa",
+    "place": "suburb",
+    "population": "4099",
+    "wikidata": "Q6057532",
+    "wikipedia": "tr:Arslanpaşa, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589710968,
+   "lat": 37.4452824,
+   "lon": 35.8167593,
+   "tags": {
+    "name": "Hacıuşağı",
+    "place": "suburb",
+    "population": "576",
+    "wikidata": "Q109385579",
+    "wikipedia": "tr:Hacıuşağı, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589710969,
+   "lat": 37.4516641,
+   "lon": 35.8125934,
+   "tags": {
+    "name": "Cumhuriyet",
+    "place": "suburb",
+    "population": "6040",
+    "wikidata": "Q6057573",
+    "wikipedia": "tr:Cumhuriyet, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589710970,
+   "lat": 37.4514081,
+   "lon": 35.8157539,
+   "tags": {
+    "name": "Tufanpaşa",
+    "place": "suburb",
+    "population": "12025",
+    "wikidata": "Q6061777",
+    "wikipedia": "tr:Tufanpaşa, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589710971,
+   "lat": 37.4662329,
+   "lon": 35.8209277,
+   "tags": {
+    "name": "Karacaoğlan",
+    "place": "suburb",
+    "population": "11696",
+    "wikidata": "Q109385580",
+    "wikipedia": "tr:Karacaoğlan, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589716876,
+   "lat": 37.4474899,
+   "lon": 35.7925326,
+   "tags": {
+    "name": "Varsaklar",
+    "place": "suburb",
+    "population": "6140",
+    "wikidata": "Q6059770",
+    "wikipedia": "tr:Varsaklar, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589731403,
+   "lat": 37.4637157,
+   "lon": 35.8281323,
+   "tags": {
+    "name": "Türkeli",
+    "place": "suburb",
+    "population": "11309",
+    "wikidata": "Q6057434",
+    "wikipedia": "tr:Türkeli, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589731404,
+   "lat": 37.4549117,
+   "lon": 35.8399848,
+   "tags": {
+    "name": "Bağlar",
+    "place": "suburb",
+    "population": "1477",
+    "wikidata": "Q109385575",
+    "wikipedia": "tr:Bağlar, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589731405,
+   "lat": 37.4427539,
+   "lon": 35.8265,
+   "tags": {
+    "name": "Tavşantepe",
+    "place": "suburb",
+    "population": "6302",
+    "wikidata": "Q6057705",
+    "wikipedia": "tr:Tavşantepe, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589738302,
+   "lat": 37.4491619,
+   "lon": 35.8055469,
+   "tags": {
+    "name": "Şevkiye",
+    "place": "suburb",
+    "population": "7642",
+    "wikidata": "Q109385581",
+    "wikipedia": "tr:Şevkiye, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589738303,
+   "lat": 37.4541032,
+   "lon": 35.7939878,
+   "tags": {
+    "name": "Çanaklı",
+    "place": "suburb",
+    "population": "8375",
+    "wikidata": "Q109385577",
+    "wikipedia": "tr:Çanaklı, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6597547685,
+   "lat": 37.444743,
+   "lon": 35.8148278,
+   "tags": {
+    "name": "Taş",
+    "place": "suburb",
+    "population": "664",
+    "wikidata": "Q109385582",
+    "wikipedia": "tr:Taş, Kozan"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8586142340,
+   "lat": 37.7884036,
+   "lon": 35.580951,
+   "tags": {
+    "alt_name": "Hasançavuşlar",
+    "name": "Hasan Çavuşlar",
+    "place": "neighbourhood",
+    "source": "Maxar Premium-Luftbilder (Beta)"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9481055299,
+   "lat": 37.5425527,
+   "lon": 35.6358826,
+   "tags": {
+    "name": "Eseler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9483418929,
+   "lat": 37.5471548,
+   "lon": 35.832231,
+   "tags": {
+    "name": "Dağlıcak",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9483418932,
+   "lat": 37.6871784,
+   "lon": 35.6927615,
+   "tags": {
+    "name": "Bekdeş",
+    "old_name": "Bekdaşlı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9483418933,
+   "lat": 37.7000699,
+   "lon": 35.75037,
+   "tags": {
+    "name": "Avluk",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9483924999,
+   "lat": 37.4579547,
+   "lon": 35.5200863,
+   "tags": {
+    "name": "Sarıağaç",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9484080989,
+   "lat": 37.4085509,
+   "lon": 35.5445479,
+   "tags": {
+    "name": "Topçular",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9484096655,
+   "lat": 37.404214,
+   "lon": 35.5763282,
+   "tags": {
+    "name": "Yağlıören",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9484096941,
+   "lat": 37.4351694,
+   "lon": 35.5560708,
+   "tags": {
+    "name": "Kızılhöyük",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9484114009,
+   "lat": 37.4033949,
+   "lon": 35.6307112,
+   "tags": {
+    "name": "Sakıztepe",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485236511,
+   "lat": 37.5475674,
+   "lon": 35.7128459,
+   "tags": {
+    "name": "Kayauşağı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485274261,
+   "lat": 37.5477928,
+   "lon": 35.6935501,
+   "tags": {
+    "name": "Alifakılı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485274462,
+   "lat": 37.5490687,
+   "lon": 35.6870484,
+   "tags": {
+    "name": "Karapınar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485274728,
+   "lat": 37.532063,
+   "lon": 35.6472874,
+   "tags": {
+    "name": "Geçili",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485275130,
+   "lat": 37.5085684,
+   "lon": 35.5785853,
+   "tags": {
+    "name": "Cırnazlı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485275161,
+   "lat": 37.4782979,
+   "lon": 35.5723572,
+   "tags": {
+    "name": "Hacıkerimli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485275244,
+   "lat": 37.4697917,
+   "lon": 35.557766,
+   "tags": {
+    "name": "Koltaklı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485294627,
+   "lat": 37.6061699,
+   "lon": 35.6210285,
+   "tags": {
+    "name": "Akkoca",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9485300135,
+   "lat": 37.5677842,
+   "lon": 35.7145679,
+   "tags": {
+    "name": "Kuzören",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9492476424,
+   "lat": 37.363131,
+   "lon": 35.5766487,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9492476738,
+   "lat": 37.384685,
+   "lon": 35.5810261,
+   "tags": {
+    "name": "Çöbük",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9514465124,
+   "lat": 37.4468057,
+   "lon": 35.9215915,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9823600869,
+   "lat": 37.4101156,
+   "lon": 35.8018391,
+   "tags": {
+    "is_in": "Kozan. Işıklı",
+    "name": "Kale Arkası",
+    "old_name": "Aydınlılar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9824183807,
+   "lat": 37.4007957,
+   "lon": 35.7957013,
+   "tags": {
+    "is_in": "Kozan.Işıklı",
+    "name": "Yeniköy",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588630421,
+   "lat": 37.2952001,
+   "lon": 35.8081241,
+   "tags": {
+    "name": "Tılan",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588630450,
+   "lat": 37.3240715,
+   "lon": 35.7909898,
+   "tags": {
+    "is_in": "Kozan, Hamam",
+    "name": "Aliağalar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588634962,
+   "lat": 37.3257201,
+   "lon": 35.763423,
+   "tags": {
+    "is_in": "Kozan, Arslanlı",
+    "name": "Karaosmanlar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588634963,
+   "lat": 37.3153887,
+   "lon": 35.7855799,
+   "tags": {
+    "is_in": "Kozan, Arslanlı",
+    "name": "Denizler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588671502,
+   "lat": 37.3674518,
+   "lon": 35.8035371,
+   "tags": {
+    "is_in": "Kozan.Işıklı",
+    "name": "Çolak Hasan",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588671503,
+   "lat": 37.3638875,
+   "lon": 35.8070132,
+   "tags": {
+    "is_in": "Kozan.Işıklı",
+    "name": "Toklular",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588682706,
+   "lat": 37.3763861,
+   "lon": 35.8267201,
+   "tags": {
+    "is_in": "Kozan. Yassıçalı",
+    "name": "Aşağı Kayhan",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 10588682707,
+   "lat": 37.3898529,
+   "lon": 35.8286532,
+   "tags": {
+    "is_in": "Kozan. Yassıçalı",
+    "name": "Yukarı Kayhan",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 13508500206,
+   "lat": 37.6267656,
+   "lon": 35.8488632,
+   "tags": {
+    "name": "Çamdere",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Karaisalı": [
+  {
+   "type": "node",
+   "id": 558686600,
+   "lat": 37.1985406,
+   "lon": 35.263094,
+   "tags": {
+    "name": "Karalar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2187059813,
+   "lat": 37.1785295,
+   "lon": 34.9930016,
+   "tags": {
+    "name": "Küçükçınar",
+    "old_name": "Fellah",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2187143217,
+   "lat": 37.2225452,
+   "lon": 35.1411394,
+   "tags": {
+    "name": "Saklı",
+    "old_name": "Salıklı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2187143218,
+   "lat": 37.2699945,
+   "lon": 35.1629267,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2187143219,
+   "lat": 37.3620352,
+   "lon": 35.1182806,
+   "tags": {
+    "name": "Eskiköy",
+    "old_name": "Eskişehir",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288274309,
+   "lat": 37.2586765,
+   "lon": 35.2915141,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288274310,
+   "lat": 37.2866181,
+   "lon": 35.2729902,
+   "tags": {
+    "name": "Solakkadirli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288274311,
+   "lat": 37.3687498,
+   "lon": 35.2619,
+   "tags": {
+    "name": "Cingöz",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288274312,
+   "lat": 37.4206583,
+   "lon": 35.2140453,
+   "tags": {
+    "name": "Tabanlı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288274313,
+   "lat": 37.4214724,
+   "lon": 35.2744183,
+   "tags": {
+    "name": "Sofudede",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2313246044,
+   "lat": 37.2789871,
+   "lon": 35.0648146,
+   "tags": {
+    "alt_name": "Aşağıyörükler",
+    "name": "Aşağıyörükler",
+    "place": "suburb",
+    "wikidata": "Q4833512",
+    "wikipedia": "tr:Aşağıyörükler, Karaisalı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2501385497,
+   "lat": 37.2902425,
+   "lon": 35.2272432,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6454691219,
+   "lat": 37.4148308,
+   "lon": 35.2365545,
+   "tags": {
+    "name": "Karmış",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6468848989,
+   "lat": 37.2752096,
+   "lon": 35.131398,
+   "tags": {
+    "name": "Dereköy",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6574429088,
+   "lat": 37.3920246,
+   "lon": 35.0375676,
+   "tags": {
+    "name": "Çevlik",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6574431389,
+   "lat": 37.4198845,
+   "lon": 35.075655,
+   "tags": {
+    "ele": "1452",
+    "name": "Kocaoluk Yaylası",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6574431742,
+   "lat": 37.4148741,
+   "lon": 35.040164,
+   "tags": {
+    "ele": "1551",
+    "name": "Kızıldağ Yaylası",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287345,
+   "lat": 37.2569048,
+   "lon": 35.0571333,
+   "tags": {
+    "name": "Selampınar",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287346,
+   "lat": 37.2571054,
+   "lon": 35.0601434,
+   "tags": {
+    "name": "Karapınar",
+    "place": "suburb"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287347,
+   "lat": 37.2518458,
+   "lon": 35.0618999,
+   "tags": {
+    "alt_name": "Çeçeli",
+    "name": "Çeceli",
+    "old_name": "Yenimahalle",
+    "place": "suburb",
+    "wikidata": "Q109393353",
+    "wikipedia": "tr:Çeceli, Karaisalı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538891,
+   "lat": 37.3953318,
+   "lon": 35.2609527,
+   "tags": {
+    "name": "Mollaömerli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538892,
+   "lat": 37.3315732,
+   "lon": 35.258925,
+   "tags": {
+    "name": "Cananlı",
+    "old_name": "Kelceler;Kel Tahtacı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538893,
+   "lat": 37.2616127,
+   "lon": 35.2591503,
+   "tags": {
+    "name": "Cevherli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538894,
+   "lat": 37.3249487,
+   "lon": 35.211364,
+   "tags": {
+    "name": "Aydınlı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538895,
+   "lat": 37.3844122,
+   "lon": 35.1969766,
+   "tags": {
+    "name": "Köpekli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538896,
+   "lat": 37.3981702,
+   "lon": 35.1860332,
+   "tags": {
+    "name": "Mezit",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538897,
+   "lat": 37.3895014,
+   "lon": 35.1543939,
+   "tags": {
+    "name": "Kevizli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538898,
+   "lat": 37.3638302,
+   "lon": 35.1437026,
+   "tags": {
+    "name": "Sürmeliler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538899,
+   "lat": 37.3721183,
+   "lon": 35.1403981,
+   "tags": {
+    "name": "Gonurlu",
+    "old_name": "Konurlu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538900,
+   "lat": 37.3803713,
+   "lon": 35.0802791,
+   "tags": {
+    "name": "Karahamzauşağı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538901,
+   "lat": 37.2840922,
+   "lon": 35.2411794,
+   "tags": {
+    "name": "Gödebekirli",
+    "old_name": "Götebekirli;Bekirli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538903,
+   "lat": 37.3699611,
+   "lon": 35.2259552,
+   "tags": {
+    "name": "İnceler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473538904,
+   "lat": 37.3332623,
+   "lon": 35.231148,
+   "tags": {
+    "alt_name": "Abdullu",
+    "name": "Abdilli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473574825,
+   "lat": 37.3253795,
+   "lon": 35.1451242,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9473574826,
+   "lat": 37.2306701,
+   "lon": 35.1632022,
+   "tags": {
+    "name": "Kesiri",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9474160382,
+   "lat": 37.3732992,
+   "lon": 35.2037305,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9474174072,
+   "lat": 37.4070595,
+   "lon": 35.2226078,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9474174107,
+   "lat": 37.3876175,
+   "lon": 35.2287394,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9474269218,
+   "lat": 37.3861172,
+   "lon": 35.1071548,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Karataş": [
+  {
+   "type": "node",
+   "id": 1985700398,
+   "lat": 36.7369233,
+   "lon": 34.9904284,
+   "tags": {
+    "name": "Aydınlar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589635280,
+   "lat": 36.5641647,
+   "lon": 35.3856488,
+   "tags": {
+    "name": "Yeni",
+    "place": "suburb",
+    "population": "3170",
+    "wikidata": "Q109393366",
+    "wikipedia": "tr:Yenimahalle, Karataş"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589635281,
+   "lat": 36.564615,
+   "lon": 35.3816755,
+   "tags": {
+    "name": "Kemaliye",
+    "place": "suburb",
+    "population": "4055",
+    "wikidata": "Q109393362",
+    "wikipedia": "tr:Kemaliye, Karataş"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589635282,
+   "lat": 36.5626014,
+   "lon": 35.380576,
+   "tags": {
+    "name": "Orta",
+    "place": "suburb",
+    "population": "681",
+    "wikidata": "Q109393363",
+    "wikipedia": "tr:Orta, Karataş"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589635283,
+   "lat": 36.561984,
+   "lon": 35.3808134,
+   "tags": {
+    "name": "Karşıyaka",
+    "place": "suburb",
+    "population": "1870",
+    "wikidata": "Q109393361",
+    "wikipedia": "tr:Karşıyaka, Karataş"
+   }
+  }
+ ],
+ "Yumurtalık": [
+  {
+   "type": "node",
+   "id": 2356361203,
+   "lat": 36.7662654,
+   "lon": 35.5669304,
+   "tags": {
+    "name": "Hacıhüseyinler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6246468530,
+   "lat": 36.7698974,
+   "lon": 35.5615176,
+   "tags": {
+    "name": "Hacı Müminler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6246468531,
+   "lat": 36.7365055,
+   "lon": 35.5782172,
+   "tags": {
+    "name": "Zeynepli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9245545663,
+   "lat": 36.7694255,
+   "lon": 35.7839761,
+   "tags": {
+    "name": "Kemalpaşa",
+    "place": "suburb",
+    "population": "1194",
+    "wikidata": "Q109383933",
+    "wikipedia": "tr:Kemalpaşa, Yumurtalık"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9245647183,
+   "lat": 36.7688293,
+   "lon": 35.7903853,
+   "tags": {
+    "name": "Ayas",
+    "place": "suburb",
+    "population": "707",
+    "wikidata": "Q109383931",
+    "wikipedia": "tr:Ayas, Yumurtalık"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9245647184,
+   "lat": 36.7687207,
+   "lon": 35.787719,
+   "tags": {
+    "name": "Ören",
+    "place": "suburb",
+    "population": "708",
+    "wikidata": "Q109383934",
+    "wikipedia": "tr:Ören, Yumurtalık"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9245658430,
+   "lat": 36.7727766,
+   "lon": 35.7928864,
+   "tags": {
+    "name": "Devrişiye",
+    "place": "suburb",
+    "population": "991",
+    "wikidata": "Q109383932",
+    "wikipedia": "tr:Devrişiye, Yumurtalık"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9245747594,
+   "lat": 36.7761733,
+   "lon": 35.7967353,
+   "tags": {
+    "name": "Akdeniz",
+    "place": "suburb",
+    "population": "1625",
+    "wikidata": "Q109386732",
+    "wikipedia": "tr:Akdeniz, Yumurtalık"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9246747927,
+   "lat": 36.780647,
+   "lon": 35.8076391,
+   "tags": {
+    "name": "Akyuva",
+    "place": "suburb",
+    "population": "519",
+    "wikidata": "Q109383930",
+    "wikipedia": "tr:Akyuva, Yumurtalık"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9265154752,
+   "lat": 36.7692653,
+   "lon": 35.6997838,
+   "tags": {
+    "name": "İkisu",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9498713850,
+   "lat": 36.8629354,
+   "lon": 35.9097361,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9499892460,
+   "lat": 36.7235614,
+   "lon": 35.5258798,
+   "tags": {
+    "name": "Göbeören",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9499892524,
+   "lat": 36.7392796,
+   "lon": 35.5116856,
+   "tags": {
+    "alt_name": "Şeyhganem",
+    "name": "Şeyhganim",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9500191335,
+   "lat": 36.7657904,
+   "lon": 35.6625652,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "İmamoğlu": [
+  {
+   "type": "node",
+   "id": 1948892953,
+   "lat": 37.3554331,
+   "lon": 35.5356348,
+   "tags": {
+    "name": "Eğriçam",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1948892960,
+   "lat": 37.3675209,
+   "lon": 35.519777,
+   "tags": {
+    "name": "Orta Eğriçam",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2054517182,
+   "lat": 37.3429375,
+   "lon": 35.6872088,
+   "tags": {
+    "name": "Eskiveliler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2054517196,
+   "lat": 37.2906017,
+   "lon": 35.607845,
+   "tags": {
+    "alt_name": "Ortahöyük",
+    "name": "Ortahüyük",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2054517203,
+   "lat": 37.2254668,
+   "lon": 35.6511712,
+   "tags": {
+    "name": "Yenievler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2287937790,
+   "lat": 37.2726266,
+   "lon": 35.7808944,
+   "tags": {
+    "name": "Üçhüyük",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6516355695,
+   "lat": 37.2552681,
+   "lon": 35.6928152,
+   "tags": {
+    "name": "Menteş",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6516356885,
+   "lat": 37.2996096,
+   "lon": 35.6660145,
+   "tags": {
+    "name": "Tarsuslu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6516453785,
+   "lat": 37.3138865,
+   "lon": 35.598557,
+   "tags": {
+    "name": "Abdiluşağı",
+    "old_name": "Höyük",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589574184,
+   "lat": 37.2618768,
+   "lon": 35.6598164,
+   "tags": {
+    "name": "Cumhuriyet",
+    "place": "suburb",
+    "population": "4364",
+    "wikidata": "Q109960858",
+    "wikipedia": "tr:Cumhuriyet, İmamoğlu"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589590885,
+   "lat": 37.2615096,
+   "lon": 35.6629092,
+   "tags": {
+    "name": "Adalet",
+    "place": "suburb",
+    "population": "2137",
+    "wikidata": "Q109960856",
+    "wikipedia": "tr:Adalet, İmamoğlu"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589590886,
+   "lat": 37.2580103,
+   "lon": 35.6638203,
+   "tags": {
+    "name": "Tuna",
+    "place": "suburb",
+    "population": "1683",
+    "wikidata": "Q109393350",
+    "wikipedia": "tr:Tuna, İmamoğlu"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589590887,
+   "lat": 37.2550762,
+   "lon": 35.6622518,
+   "tags": {
+    "name": "Fatih",
+    "place": "suburb",
+    "population": "4210",
+    "wikidata": "Q109960859",
+    "wikipedia": "tr:Fatih, İmamoğlu"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6589590888,
+   "lat": 37.2561064,
+   "lon": 35.6563023,
+   "tags": {
+    "name": "Hürriyet",
+    "place": "suburb",
+    "population": "5997",
+    "wikidata": "Q109960860",
+    "wikipedia": "tr:Hürriyet, İmamoğlu"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9491903016,
+   "lat": 37.2495635,
+   "lon": 35.6581878,
+   "tags": {
+    "name": "Yenievler",
+    "place": "suburb",
+    "population": "4210",
+    "wikidata": "Q109393351",
+    "wikipedia": "tr:Yenievler, İmamoğlu"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9492363898,
+   "lat": 37.4126414,
+   "lon": 35.5251503,
+   "tags": {
+    "alt_name": "Elifceler",
+    "name": "Elifçeler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9492476423,
+   "lat": 37.3556948,
+   "lon": 35.5574655,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9492497452,
+   "lat": 37.3154993,
+   "lon": 35.4949593,
+   "tags": {
+    "name": "Tekdam",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Pozantı": [
+  {
+   "type": "node",
+   "id": 1442651372,
+   "lat": 37.3894932,
+   "lon": 34.8602478,
+   "tags": {
+    "alt_name": "Eskikonacık",
+    "name": "Eski Konacık",
+    "old_name": "Eski Anahşa;Anahşa;Anaşa;annaşa;Anasha;Anaxşa",
+    "place": "suburb",
+    "wikidata": "Q989228",
+    "wikipedia": "tr:Eskikonacık, Pozantı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1442651418,
+   "lat": 37.4225653,
+   "lon": 34.8452639,
+   "tags": {
+    "alt_name": "Yenikonacık",
+    "name": "Yeni Konacık",
+    "old_name": "Yeni Anahşa",
+    "place": "suburb",
+    "wikidata": "Q989781",
+    "wikipedia": "tr:Yenikonacık, Pozantı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5085204494,
+   "lat": 37.3482623,
+   "lon": 34.8251507,
+   "tags": {
+    "name": "Bürücek",
+    "place": "quarter"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6603704552,
+   "lat": 37.4233076,
+   "lon": 34.8718896,
+   "tags": {
+    "alt_name": "Cumhuriyet Mahallesi",
+    "name": "Cumhuriyet",
+    "place": "suburb",
+    "population": "911",
+    "wikidata": "Q109385586",
+    "wikipedia": "tr:Cumhuriyet, Pozantı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6603704553,
+   "lat": 37.4214658,
+   "lon": 34.8718028,
+   "tags": {
+    "alt_name": "İstiklal Mahallesi",
+    "name": "İstiklal",
+    "place": "suburb",
+    "population": "1950",
+    "wikidata": "Q109385587",
+    "wikipedia": "tr:İstiklal, Pozantı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6603704554,
+   "lat": 37.4277436,
+   "lon": 34.8720722,
+   "tags": {
+    "alt_name": "Zafer Mahallesi",
+    "name": "Zafer",
+    "place": "suburb",
+    "population": "5869",
+    "wikidata": "Q109385589",
+    "wikipedia": "tr:Zafer, Pozantı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6603704555,
+   "lat": 37.4256429,
+   "lon": 34.8735232,
+   "tags": {
+    "alt_name": "Kurtuluş Mahallesi",
+    "name": "Kurtuluş",
+    "place": "suburb",
+    "population": "1626",
+    "wikidata": "Q109385588",
+    "wikipedia": "tr:Kurtuluş, Pozantı"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6622134258,
+   "lat": 37.5387968,
+   "lon": 34.9431887,
+   "tags": {
+    "name": "Güzelardıç",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6622134259,
+   "lat": 37.6116478,
+   "lon": 34.9758446,
+   "tags": {
+    "name": "Saklıcennet",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6632394576,
+   "lat": 37.6370576,
+   "lon": 34.9839234,
+   "tags": {
+    "name": "Şahintepesi",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Aladağ": [
+  {
+   "type": "node",
+   "id": 1884298371,
+   "lat": 37.521345,
+   "lon": 35.391477,
+   "tags": {
+    "name": "Başpınar",
+    "place": "suburb",
+    "population": "859",
+    "wikidata": "Q31189689",
+    "wikipedia": "tr:Başpınar, Aladağ"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2287937657,
+   "lat": 37.4314917,
+   "lon": 35.3033448,
+   "tags": {
+    "name": "Zeynepoğlu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2288274308,
+   "lat": 37.478928,
+   "lon": 35.195213,
+   "tags": {
+    "name": "Çömekli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2501385489,
+   "lat": 37.5324523,
+   "lon": 35.2546526,
+   "tags": {
+    "name": "Köşkerli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 2501385494,
+   "lat": 37.4939581,
+   "lon": 35.3675062,
+   "tags": {
+    "ele": "1184",
+    "name": "yayla",
+    "place": "neighbourhood",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3386292227,
+   "lat": 37.5370084,
+   "lon": 35.4255362,
+   "tags": {
+    "name": "Ağcakise Yaylası",
+    "place": "neighbourhood",
+    "source": "bing",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5095844036,
+   "lat": 37.5472253,
+   "lon": 35.3961374,
+   "tags": {
+    "name": "Mansurlu Mah.",
+    "place": "suburb",
+    "population": "1519",
+    "wikidata": "Q31189687",
+    "wikipedia": "tr:Mansurlu, Aladağ"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5099182201,
+   "lat": 37.5465243,
+   "lon": 35.394306,
+   "tags": {
+    "name": "Sinanpaşa Mah.",
+    "place": "suburb",
+    "wikidata": "Q109383891",
+    "wikipedia": "tr:Sinanpaşa, Aladağ"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5189263413,
+   "lat": 37.529536,
+   "lon": 35.3789055,
+   "tags": {
+    "name": "Meydan Yaylası",
+    "name:hy": "Բարձրբերդ",
+    "old_name": "Partsırpert",
+    "place": "neighbourhood",
+    "source": "bing",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6448553265,
+   "lat": 37.4884633,
+   "lon": 35.1577865,
+   "tags": {
+    "name": "Sivişli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588812101,
+   "lat": 37.5242457,
+   "lon": 35.402761,
+   "tags": {
+    "name": "Akpınar",
+    "place": "suburb",
+    "population": "495",
+    "wikidata": "Q31189688",
+    "wikipedia": "tr:Akpınar, Aladağ"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9480518723,
+   "lat": 37.6037773,
+   "lon": 35.2465975,
+   "tags": {
+    "alt_name": "Soğukoluk Yaylası",
+    "name": "Soğukoluk",
+    "place": "neighbourhood",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9481279571,
+   "lat": 37.5010019,
+   "lon": 35.4944444,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Feke": [
+  {
+   "type": "node",
+   "id": 2287665121,
+   "lat": 37.7942502,
+   "lon": 35.7798583,
+   "tags": {
+    "name": "Çataoluk Yaylası",
+    "place": "neighbourhood",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3535228802,
+   "lat": 37.7320176,
+   "lon": 36.013026,
+   "tags": {
+    "name": "Esirmek",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3535228805,
+   "lat": 37.8491756,
+   "lon": 35.9391385,
+   "tags": {
+    "alt_name": "Bahçelievler",
+    "name": "Sülemişli",
+    "place": "suburb",
+    "wikidata": "Q109960852",
+    "wikipedia": "tr:Sülemişli, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3535228806,
+   "lat": 37.7856663,
+   "lon": 36.003379,
+   "tags": {
+    "name": "Tufanli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3535228807,
+   "lat": 37.9008658,
+   "lon": 35.9081086,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5061927609,
+   "lat": 37.9229693,
+   "lon": 35.6161996,
+   "tags": {
+    "name": "Yedigöz",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 5061927610,
+   "lat": 37.9177583,
+   "lon": 35.6714033,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588834540,
+   "lat": 37.8150006,
+   "lon": 35.9115141,
+   "tags": {
+    "name": "İslam Mah.",
+    "place": "suburb",
+    "population": "1528",
+    "wikidata": "Q109960844",
+    "wikipedia": "tr:İslam, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6588834541,
+   "lat": 37.8138123,
+   "lon": 35.9143922,
+   "tags": {
+    "name": "Karacaoğlan Mah.",
+    "place": "suburb",
+    "population": "985",
+    "wikidata": "Q109960845",
+    "wikipedia": "tr:Karacaoğlan, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6595125392,
+   "lat": 37.8082477,
+   "lon": 35.9377347,
+   "tags": {
+    "name": "Kazancı",
+    "place": "suburb",
+    "wikidata": "Q109960848",
+    "wikipedia": "tr:Kazancı, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 8586532425,
+   "lat": 37.8443636,
+   "lon": 35.6149374,
+   "tags": {
+    "name": "Karataş",
+    "place": "neighbourhood",
+    "source": "Maxar Premium-Luftbilder (Beta)"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486989994,
+   "lat": 37.8349713,
+   "lon": 35.8144748,
+   "tags": {
+    "name": "Maran Yaylası",
+    "place": "neighbourhood",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486989995,
+   "lat": 37.7931007,
+   "lon": 35.8027267,
+   "tags": {
+    "name": "Ziyelli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486989996,
+   "lat": 37.8037655,
+   "lon": 35.7678151,
+   "tags": {
+    "name": "Fındık Yaylası",
+    "place": "neighbourhood",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486989997,
+   "lat": 37.8367931,
+   "lon": 35.9117103,
+   "tags": {
+    "name": "Keklikçi",
+    "place": "suburb",
+    "wikidata": "Q109960850",
+    "wikipedia": "tr:Keklikçi, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486989998,
+   "lat": 37.8230737,
+   "lon": 35.9577369,
+   "tags": {
+    "name": "Köleli",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486990013,
+   "lat": 37.8042911,
+   "lon": 35.8773565,
+   "tags": {
+    "name": "Karacauşağı",
+    "place": "suburb",
+    "wikidata": "Q109960846",
+    "wikipedia": "tr:Karacauşağı, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486990014,
+   "lat": 37.8318445,
+   "lon": 35.8542681,
+   "tags": {
+    "name": "Gökçeli",
+    "place": "suburb",
+    "wikidata": "Q109960842",
+    "wikipedia": "tr:Gökçeli, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486990015,
+   "lat": 37.8140898,
+   "lon": 35.9092212,
+   "tags": {
+    "name": "Yeşil Düşmüş Mah.",
+    "place": "suburb",
+    "population": "1528",
+    "wikidata": "Q109960855",
+    "wikipedia": "tr:Yeşil Düşmüş, Feke"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9486990016,
+   "lat": 37.7719625,
+   "lon": 36.0016367,
+   "tags": {
+    "name": "Çorcular",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9487029617,
+   "lat": 37.8112758,
+   "lon": 35.7052714,
+   "tags": {
+    "name": "Sarız",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9487029626,
+   "lat": 37.9076036,
+   "lon": 35.942502,
+   "tags": {
+    "name": "Damderesi",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9487468461,
+   "lat": 37.7991878,
+   "lon": 35.8235192,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9487488170,
+   "lat": 37.7549727,
+   "lon": 35.8324671,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Saimbeyli": [
+  {
+   "type": "node",
+   "id": 6239601075,
+   "lat": 38.03705,
+   "lon": 35.96136,
+   "tags": {
+    "name": "Arapismaildamı Yaylası",
+    "place": "neighbourhood",
+    "source": "bing",
+    "turkey_class": "yayla"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6483211679,
+   "lat": 37.8729987,
+   "lon": 36.2313115,
+   "tags": {
+    "name": "Karaçalılık",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6483211680,
+   "lat": 37.8917637,
+   "lon": 36.2214625,
+   "tags": {
+    "name": "Sülmen",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287339,
+   "lat": 37.9859464,
+   "lon": 36.0886575,
+   "tags": {
+    "name": "Yeşilbağlar Mah.",
+    "place": "suburb",
+    "wikidata": "Q109385593",
+    "wikipedia": "tr:Yeşilbağlar, Saimbeyli"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287340,
+   "lat": 37.9848773,
+   "lon": 36.090214,
+   "tags": {
+    "name": "İslam Mah.",
+    "place": "suburb",
+    "wikidata": "Q109385592",
+    "wikipedia": "tr:İslam, Saimbeyli"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287341,
+   "lat": 37.9832033,
+   "lon": 36.0878782,
+   "tags": {
+    "name": "Fatih Mah.",
+    "place": "suburb",
+    "wikidata": "Q109385591",
+    "wikipedia": "tr:Fatih, Saimbeyli"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9488722120,
+   "lat": 37.9840078,
+   "lon": 35.990138,
+   "tags": {
+    "name": "Emirler",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9488722121,
+   "lat": 37.9629613,
+   "lon": 36.0237193,
+   "tags": {
+    "name": "Venk",
+    "old_name": "Vank",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9488722122,
+   "lat": 37.9865742,
+   "lon": 36.0409498,
+   "tags": {
+    "name": "Sarıyakuplu",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9488722123,
+   "lat": 37.8657319,
+   "lon": 36.0378814,
+   "tags": {
+    "name": "Aynalıçeşme",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9488722147,
+   "lat": 37.9885867,
+   "lon": 35.9012174,
+   "tags": {
+    "name": "mahalle",
+    "place": "neighbourhood"
+   }
+  }
+ ],
+ "Tufanbeyli": [
+  {
+   "type": "node",
+   "id": 1042947917,
+   "lat": 38.3542087,
+   "lon": 36.2728774,
+   "tags": {
+    "name": "Aktaşalanı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1347242776,
+   "lat": 38.1218589,
+   "lon": 36.1110075,
+   "tags": {
+    "name": "Çiftlik",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1347243169,
+   "lat": 38.148603,
+   "lon": 36.3205849,
+   "tags": {
+    "name": "Kireç",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1347245097,
+   "lat": 38.1559409,
+   "lon": 36.3242993,
+   "tags": {
+    "name": "Ortaoluk",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1347246624,
+   "lat": 38.20773,
+   "lon": 36.3474475,
+   "tags": {
+    "name": "Belbaşı",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1347247639,
+   "lat": 38.3493427,
+   "lon": 36.3828862,
+   "tags": {
+    "name": "Karadurdular",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1347249311,
+   "lat": 38.23354,
+   "lon": 36.3600031,
+   "tags": {
+    "name": "Katarası",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 1347251229,
+   "lat": 38.1616405,
+   "lon": 36.0203482,
+   "tags": {
+    "name": "Emirgazi",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 6009871736,
+   "lat": 38.3664107,
+   "lon": 36.2438992,
+   "tags": {
+    "alt_name": "Ağdere",
+    "name": "Ağpınar",
+    "place": "neighbourhood"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287342,
+   "lat": 38.2631724,
+   "lon": 36.2189209,
+   "tags": {
+    "name": "Cumhuriyet",
+    "place": "suburb",
+    "wikidata": "Q109391953",
+    "wikipedia": "tr:Cumhuriyet, Tufanbeyli"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287343,
+   "lat": 38.2638869,
+   "lon": 36.2219155,
+   "tags": {
+    "name": "Yenicami",
+    "place": "suburb",
+    "wikidata": "Q109391956",
+    "wikipedia": "tr:Yenicami, Tufanbeyli"
+   }
+  },
+  {
+   "type": "node",
+   "id": 9411287344,
+   "lat": 38.2600248,
+   "lon": 36.2215033,
+   "tags": {
+    "name": "İstiklal",
+    "place": "suburb",
+    "wikidata": "Q109391954",
+    "wikipedia": "tr:İstiklal, Tufanbeyli"
+   }
+  }
+ ]
+}

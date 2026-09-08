@@ -12,11 +12,16 @@ export const ADANA_DISTRICTS = [
 export type AdanaDistrict = (typeof ADANA_DISTRICTS)[number];
 
 // Arama ekranındaki "ders mekanı" (ilçe) seçici için genişletilmiş liste.
-// ADANA_DISTRICTS'ten (onboarding/adres formları) bağımsız: burada başta bir
-// "Merkez" kısayolu var + daha fazla ilçe "Diğer ilçeleri görüntüle" ile açılır.
+// ADANA_DISTRICTS'ten (onboarding/adres formları) bağımsız: daha fazla ilçe
+// "Diğer ilçeleri görüntüle" ile açılır.
 // Onboarding dropdown'ı henüz bu genişletilmiş listeyi sunmuyor — yalnız arama tarafı.
+//
+// "Merkez" 8 Eyl 2026'da KALDIRILDI: gerçek bir Adana ilçesi değildi, hiçbir
+// eğitmen/kütüphane kaydında böyle bir değer yazılı olamazdı ve filtre birebir
+// ilçe adına baktığı için seçildiğinde GARANTİLİ 0 sonuç veriyordu — hata
+// vermeden, sessizce. Kullanıcının "merkez" dediği yer Seyhan/Çukurova/
+// Yüreğir/Sarıçam'dır; onlar zaten listenin başında.
 export const SEARCH_PRIMARY_DISTRICTS = [
-  "Merkez",
   "Seyhan",
   "Çukurova",
   "Yüreğir",

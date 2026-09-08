@@ -444,49 +444,26 @@ path.district-poly {
   animation: custom-snow 10s linear infinite;
 }
 
-@keyframes spin-neon {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(1080deg); }
-}
+/* Navbar'ın "Ders Ver" / "Giriş Yap" düğmeleri.
 
+   8 Eyl 2026 (kullanıcı): *"o hover efektini istemiyorum, sadece etrafı
+   renkli olsun, dönen bir şey istemiyorum."* Eskiden hover'da 4,5 saniye
+   dönen bir konik gradyan (`spin-neon`) çalışıyordu; kenarlık iki
+   pseudo-element ile taklit ediliyordu (dönen gradyan altta, beyaz iç dolgu
+   üstte).
+
+   Yerine sabit bir kenarlık kondu. `border` DEĞİL `box-shadow: inset`:
+   gerçek bir kenarlık düğmeyi 3px büyütür ve navbar'da yatay taşma
+   ölçülmüştü (bkz. PublicNavbar'daki üçüncü düğme notu) — inset gölge
+   yerleşimi hiç değiştirmez. */
 .btn-neon-hover {
-  position: relative;
-  overflow: hidden;
-  border: none !important; /* ensure inset works nicely */
-  z-index: 0; /* creates stacking context so negative z-index pseudos don't hide behind page bg */
+  transition:
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
 }
 
-.btn-neon-hover::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 250%;
-  aspect-ratio: 1;
-  background: conic-gradient(from 0deg, transparent 0%, rgb(var(--marka)) 10%, rgb(var(--dikkat)) 30%, rgb(var(--marka-mid)) 50%, transparent 60%);
-  transform: translate(-50%, -50%) rotate(0deg);
-  z-index: -2;
-  opacity: 0;
-  transition: opacity 0.1s ease;
-}
-
-.btn-neon-hover:hover::before {
-  opacity: 1;
-  animation: spin-neon 4.5s ease-out forwards;
-}
-
-.btn-neon-hover::after {
-  content: "";
-  position: absolute;
-  inset: 1.5px; /* border thickness */
-  border-radius: inherit;
-  background-color: theme("colors.white");
-  z-index: -1;
-  transition: background-color 0.2s ease;
-}
-
-
-.btn-neon-hover:hover::after {
+.btn-neon-hover:hover {
+  box-shadow: inset 0 0 0 1.5px rgb(var(--marka));
   background-color: theme("colors.slate.50");
 }
 

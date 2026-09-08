@@ -49,6 +49,11 @@ ignore = [
 # Depolama taşıma aracı da CLI: taşınacak/taşınan her nesneyi rapor eder
 # (dry-run çıktısı, uygulamadan önce gözden geçirilen şeyin ta kendisidir).
 "scripts/migrate_storage_visibility.py" = ["T20"]
+# İlçe backfill aracı da CLI: hangi eğitmene hangi ilçenin YAZILACAĞINI
+# uygulamadan önce satır satır basar. Prova çıktısı, gözden geçirilen şeyin ta
+# kendisidir — `location_text` serbest metninden ilçe çıkarımı elle
+# doğrulanmadan uygulanmamalı.
+"scripts/ilce_backfill.py" = ["T201"]
 # Aşağıdaki üçü de argparse'lı CLI araçlarıdır ve konsol çıktısı ARACIN
 # KENDİSİDİR. İstisna dosya + kural bazında dar tutulur — `scripts/` dizinine
 # toplu muafiyet verilmez, yoksa yarın eklenen bir script sessizce muaf olur.

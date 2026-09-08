@@ -46,7 +46,7 @@ export function TutorCard({
   return (
     <Link
       to={ROUTES.tutor(tutorSlug(tutor))}
-      className="group flex flex-col transition duration-300 mx-auto w-full max-w-[310px]"
+      className="group flex h-full flex-col transition duration-300 mx-auto w-full max-w-[310px]"
     >
       {/* ── Picture Area ── */}
       <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 ">
@@ -98,7 +98,7 @@ export function TutorCard({
       </div>
 
       {/* ── Bottom Part ── */}
-      <div className="flex flex-col pt-3 pb-1 px-1">
+      <div className="flex flex-1 flex-col pt-3 pb-1 px-1">
         {/* Badges: Rating & Status */}
         <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 ">
           <li className="flex items-center gap-1">
@@ -119,7 +119,7 @@ export function TutorCard({
         </h3>
 
         {/* Pricing */}
-        <div className="mt-1 flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between pt-1">
           <div className="flex items-baseline text-slate-900 ">
             <span className="text-sm font-bold">
               {rate !== null ? formatTRY(rate) : "Ücret belirtilmemiş"}

@@ -16,6 +16,7 @@ import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 
 /* ─── options ─────────────────────────────────────────── */
@@ -59,6 +60,8 @@ export default function Marketplace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
+  // Mahalle çapası — `?mahalle=Reşatbey` paylaşılabilir bağlantıdır.
+  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
   const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
   const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
   const [showFilters, setShowFilters] = useState(false);
@@ -93,11 +96,13 @@ export default function Marketplace() {
     const subjectParams = searchParams.getAll("subject");
     const examParam = searchParams.get("exam") ?? "";
     const districtParams = searchParams.getAll("district");
+    const urlYer = yeriOku(searchParams).yer;
     if (qParam !== q) setQ(qParam);
     if (JSON.stringify(subjectParams) !== JSON.stringify(subjects))
       setSubjects(subjectParams);
     if (JSON.stringify(districtParams) !== JSON.stringify(district))
       setDistrict(districtParams);
+    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
     if (examParam !== exam) setExam(examParam);
     // Elle yazılmış `?gender=abc` API'ye ULAŞMAMALI: enum üyesi değilse boşa
     // düşer. (Sihirbazın `?adim=` için öğrendiği ders — doğrulanmamış bir URL
@@ -160,12 +165,12 @@ export default function Marketplace() {
     const next = new URLSearchParams();
     if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
     subjects.forEach((s) => next.append("subject", s));
-    district.forEach((d) => next.append("district", d));
+    yeriYaz(next, yer, district);
     modes.forEach((m) => next.append("mode", m));
     if (exam.trim()) next.set("exam", exam.trim());
     if (gender) next.set("gender", gender);
     setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, modes, exam, gender, setSearchParams]);
+  }, [debouncedQ, subjects, district, yer, modes, exam, gender, setSearchParams]);
 
   const debouncedMin = useDebounce(minRate);
   const debouncedMax = useDebounce(maxRate);
@@ -177,6 +182,15 @@ export default function Marketplace() {
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
     if (district.length) p.district = district;
+    // Mahalle seçiliyse ÇEVRESİNDE aranır (konum çapası, eşitlik filtresi
+    // değil). "Yakınımdakiler" kullanıcının kendi konumunu kullanır ve
+    // mahalle çapasını geçersiz kılar — ikisi aynı anda anlamlı değil.
+    const yerKonumu = yerinArananKonumu(yer);
+    if (yerKonumu && !nearMe) {
+      p.lat = yerKonumu.lat;
+      p.lng = yerKonumu.lng;
+      p.radius_km = yerKonumu.radius_km;
+    }
     if (exam.trim()) p.exam = exam.trim();
     const min = Number(debouncedMin);
     const max = Number(debouncedMax);
@@ -220,6 +234,14 @@ export default function Marketplace() {
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
     if (district.length) p.district = district;
+    // Histogram sonuç listesiyle AYNI kümeyi ölçmeli; mahalle çapası burada
+    // atlanırsa fiyat çubuğu listede olmayan eğitmenleri sayar.
+    const histYer = yerinArananKonumu(yer);
+    if (histYer && !nearMe) {
+      p.lat = histYer.lat;
+      p.lng = histYer.lng;
+      p.radius_km = histYer.radius_km;
+    }
     if (modes.length) p.mode = modes;
     if (gender) p.gender = gender;
     const minA = Number(debouncedMinAge);
@@ -228,7 +250,7 @@ export default function Marketplace() {
     if (debouncedMaxAge && !Number.isNaN(maxA) && maxA >= 0) p.max_age = maxA;
     if (nearMe) { p.lat = nearMe.lat; p.lng = nearMe.lng; p.radius_km = radiusKm; }
     return p;
-  }, [debouncedQ, subjects, district, modes, gender, debouncedMinAge, debouncedMaxAge, nearMe, radiusKm]);
+  }, [debouncedQ, subjects, district, yer, modes, gender, debouncedMinAge, debouncedMaxAge, nearMe, radiusKm]);
 
   const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(histParams, showFilters);
 
@@ -292,10 +314,12 @@ export default function Marketplace() {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
-        remote={modeSegment === TeachingMode.ONLINE}
-        setRemote={(v) => selectMode(v ? TeachingMode.ONLINE : MODE_ALL)}
         onSubmit={submitSearch}
-        placeholder="Ders ara… (ör. Lise Matematik)"
+        placeholder="Matematik, İngilizce…"
+        yer={yer}
+        setYer={setYer}
+        solBaslik="Yer"
+        sagBaslik="Ders"
         trending={TRENDING_SEARCHES}
       />
     </div>

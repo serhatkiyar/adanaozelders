@@ -24,6 +24,7 @@ import { amenityIcon } from "@/lib/amenityIcons";
 import { ROLE_IDS } from "@/types";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
 import { LIBRARY_TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import type { LibrarySearchParams } from "@/api/libraries";
 
@@ -36,7 +37,8 @@ const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
   { value: "distance", label: "📍 Yakınımda" },
 ];
 
-const SEARCH_PLACEHOLDER = "Kütüphane veya semt ara…";
+// Alan başlığı ("Kütüphane") ne aradığını söylüyor; ipucu yalnız ÖRNEK verir.
+const SEARCH_PLACEHOLDER = "Kütüphane adı";
 
 const FilterIconSvg = () => (
   <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -61,6 +63,9 @@ export default function Libraries() {
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [view, setView] = useState<ViewMode>("list");
   const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
+  // Mahalle çapası URL'den okunur: `?mahalle=Reşatbey` paylaşılabilir bir
+  // bağlantıdır ve geri dönüldüğünde kutuda yeniden görünür.
+  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
 
   // Dış navigasyon (geri/ileri tuşu, link ile gelme) state'i günceller.
   // Guard: yalnız URL'deki değer mevcut state'ten farklıysa güncelle
@@ -68,9 +73,11 @@ export default function Libraries() {
   useEffect(() => {
     const qParam = searchParams.get("q") ?? "";
     const districtParams = searchParams.getAll("district");
+    const urlYer = yeriOku(searchParams).yer;
     if (qParam !== q) setQ(qParam);
     if (JSON.stringify(districtParams) !== JSON.stringify(district))
       setDistrict(districtParams);
+    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
   const [amenities, setAmenities] = useState<string[]>([]);
@@ -101,9 +108,9 @@ export default function Libraries() {
   useEffect(() => {
     const next = new URLSearchParams();
     if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
-    district.forEach((d) => next.append("district", d));
+    yeriYaz(next, yer, district);
     setSearchParams(next, { replace: true });
-  }, [debouncedQ, district, setSearchParams]);
+  }, [debouncedQ, district, yer, setSearchParams]);
 
   // "Yakınımda" sıralaması konum ister; reddedilirse sıralamayı geri al.
   const requestNearMe = (onFail?: () => void) => {
@@ -143,7 +150,18 @@ export default function Libraries() {
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (district.length) p.district = district;
     if (amenities.length) p.amenities = amenities;
-    // Konum yalnız "Yakınımda" sıralamasında uygulanır.
+    // Mahalle seçiliyse ÇEVRESİNDE aranır: mahalle adı bir eşitlik filtresi
+    // değil, konum çapasıdır. İlçe filtresi de yanında kalır — yarıçap
+    // koordinatı olmayan kaydı eler, ilçe onları yakalamaya devam eder.
+    const yerKonumu = yerinArananKonumu(yer);
+    if (yerKonumu && sort !== "distance") {
+      p.lat = yerKonumu.lat;
+      p.lng = yerKonumu.lng;
+      p.radius_km = yerKonumu.radius_km;
+      p.sort = "distance";
+    }
+    // "Yakınımda" sıralaması kullanıcının KENDİ konumunu kullanır ve mahalle
+    // çapasını geçersiz kılar — ikisi aynı anda anlamlı değil.
     if (sort === "distance" && nearMe) {
       p.lat = nearMe.lat;
       p.lng = nearMe.lng;
@@ -153,7 +171,7 @@ export default function Libraries() {
       p.sort = "rating";
     }
     return p;
-  }, [debouncedQ, district, amenities, nearMe, radiusKm, sort, limit]);
+  }, [debouncedQ, district, yer, amenities, nearMe, radiusKm, sort, limit]);
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
 
@@ -205,9 +223,12 @@ export default function Libraries() {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
-        showRemoteOption={false}
         onSubmit={submitSearch}
         placeholder={SEARCH_PLACEHOLDER}
+        yer={yer}
+        setYer={setYer}
+        solBaslik="Yer"
+        sagBaslik="Kütüphane"
         trending={LIBRARY_TRENDING_SEARCHES}
       />
     </div>

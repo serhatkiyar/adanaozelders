@@ -1,0 +1,315 @@
+import { useRef, useState } from "react";
+
+import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
+import { TeachingMode } from "@/types";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Arama hapının iki seçicisi: DERS ŞEKLİ ve YER.
+
+   ## Neden ayrıldılar (kullanıcı, 8 Eyl 2026)
+
+   Eskiden tek bir "ders mekânı" seçicisi vardı ve içinde hem ders şekli
+   (Online / Yüz yüze / İkisi de olur) hem de ilçe satırları yan yana
+   duruyordu. İkisi birbirini eziyordu: bir şekle tıklamak ilçeyi siliyor,
+   bir ilçeye tıklamak online'ı zorla kapatıyordu. Kullanıcının şikâyeti
+   birebir şuydu: *"mevcut tasarım çok kafa karıştırıcı."*
+
+   "İkisi de olur" satırı ayrıca YALAN söylüyordu: kutuda "Online + Yüz yüze"
+   yazarken adrese hiçbir mod parametresi yazılmıyordu — yani filtre
+   uygulanmıyor, KALDIRILIYORDU. Hiç seçim yapmamakla ürettiği adres birebir
+   aynıydı.
+
+   ## Bugünkü kural (kullanıcı kararı)
+
+   Ders şekli TEK seçimdir: *"yalnızca bir seçenek seçilebilsin, yüz yüze veya
+   uzaktan."* Ve **yer yalnız "Yüz yüze" seçiliyken sorulur.**
+
+   Bu, sorunu kökünden kaldırıyor: "fark etmez + Seyhan" kombinasyonu artık
+   OLUŞAMIYOR. Uzaktan ders arayan kimseye yer sorulmadığı için, ilçesi
+   tasarım gereği boş olan (bkz. `tutorOnboarding/sozlesme.ts` — ilçe yalnız
+   yüz yüzede zorunlu) uzaktan eğitmenlerin bir ilçe filtresiyle sessizce
+   elenmesi imkânsız hâle geliyor.
+
+   Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/** Ders şekli — tek seçim. `""` = fark etmez (filtre uygulanmaz). */
+export type DersSekli = TeachingMode.ONLINE | TeachingMode.IN_PERSON | "";
+
+/** Seçici kutularında ve özet satırlarında kullanılan tek sözlük.
+ *  Aynı kavram bir zamanlar beş ayrı adla dolaşıyordu ("Ders mekânı",
+ *  "İkisi de olur", "Eğitim Şekli", "Tümü", "Her İkisi"). */
+export const SEKIL_ADI: Record<DersSekli, string> = {
+  [TeachingMode.ONLINE]: "Uzaktan",
+  [TeachingMode.IN_PERSON]: "Yüz yüze",
+  "": "Fark etmez",
+};
+
+/** URL'den gelen ham `mode` değerini güvenle çözer.
+ *  Elle yazılmış `?mode=abc` sunucuya ULAŞMAMALI; enum üyesi değilse
+ *  "fark etmez"e düşer. `BOTH` de burada elenir: eğitmenin ilan değeridir,
+ *  arama filtresi değil — kullanıcının "fark etmez"i filtresizliktir. */
+export function sekliCoz(ham: string | null): DersSekli {
+  return ham === TeachingMode.ONLINE || ham === TeachingMode.IN_PERSON ? ham : "";
+}
+
+const SEKIL_SATIRLARI: { deger: DersSekli; aciklama?: string }[] = [
+  { deger: "", aciklama: "Uzaktan da olur, yüz yüze de" },
+  { deger: TeachingMode.ONLINE, aciklama: "Eğitmen nerede olursa olsun" },
+  { deger: TeachingMode.IN_PERSON, aciklama: "Nerede olacağını sonra seçersin" },
+];
+
+const kucult = (s: string) => s.toLocaleLowerCase("tr-TR").trim();
+
+const PinSvg = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+  </svg>
+);
+
+const EkranSvg = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18v11H3zM8 20h8m-4-4v4" />
+  </svg>
+);
+
+const SekilSvg = ({ deger }: { deger: DersSekli }) =>
+  deger === TeachingMode.ONLINE ? <EkranSvg /> : <PinSvg />;
+
+/** Panelin ortak kabuğu — iki seçici de AYNI görünümü paylaşır. */
+function Panel({
+  pos,
+  children,
+}: {
+  pos: { top: number; left: number; width: number };
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }}
+      className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 "
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Ders önerileriyle aynı satır görünümü: ikon + etiket, tıkla-seç-kapan.
+ *  `altEtiket` mahalle satırlarında ilçeyi gösterir — Adana'da aynı mahalle
+ *  adı birden fazla ilçede var, kırılım olmadan hangisi olduğu anlaşılmaz. */
+function Satir({
+  etiket,
+  altEtiket,
+  ikon,
+  secili,
+  onClick,
+}: {
+  etiket: string;
+  altEtiket?: string;
+  ikon: React.ReactNode;
+  secili?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
+    >
+      <span className="shrink-0 text-slate-400">{ikon}</span>
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate ${secili ? "font-semibold text-slate-900" : ""}`}>
+          {etiket}
+        </span>
+        {altEtiket && (
+          <span className="block truncate text-xs text-slate-400">{altEtiket}</span>
+        )}
+      </span>
+      {secili && (
+        <svg
+          className="h-4 w-4 shrink-0 text-marka-metin"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+/** Yazılabilir kutu + `fixed` panel — iki seçicinin ortak iskeleti.
+ *  `fixed` şart: navbar'ın `max-height`la katlanan kabı `absolute` paneli
+ *  akışa karıştırıyor ("seçenekler ana akışın altına yükleniyor" hatası). */
+function useSecici(hizaRef?: React.RefObject<HTMLElement>) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLInputElement>(null);
+
+  const ac = () => {
+    const r = (hizaRef?.current ?? triggerRef.current)?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 8, left: r.left, width: r.width });
+    setOpen(true);
+  };
+
+  const kapat = () => {
+    setText("");
+    setOpen(false);
+    triggerRef.current?.blur();
+  };
+
+  return { open, setOpen, text, setText, pos, triggerRef, ac, kapat };
+}
+
+/* ─── Ders şekli seçici ──────────────────────────────────────────────── */
+
+export function SekilSelect({
+  value,
+  onChange,
+  triggerClassName = "",
+  hizaRef,
+  id,
+}: {
+  value: DersSekli;
+  onChange: (next: DersSekli) => void;
+  triggerClassName?: string;
+  /** Görünür etiketin `htmlFor` ile bağlanacağı id. Etiketle `aria-label`
+   *  BİRLİKTE kullanılmaz: ikisi varken ekran okuyucu `aria-label`ı okur ve
+   *  görünen etiket sessizce yok sayılır. */
+  id?: string;
+  /** Panelin hizalanacağı öğe (arama hapının form'u). */
+  hizaRef?: React.RefObject<HTMLElement>;
+}) {
+  const { open, setOpen, text, setText, pos, triggerRef, ac, kapat } = useSecici(hizaRef);
+
+  const sec = (next: DersSekli) => {
+    onChange(next);
+    kapat();
+  };
+
+  const n = kucult(text);
+  const satirlar = n
+    ? SEKIL_SATIRLARI.filter((s) => kucult(SEKIL_ADI[s.deger]).includes(n))
+    : SEKIL_SATIRLARI;
+
+  return (
+    <>
+      <input
+        ref={triggerRef}
+        type="text"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (!open) ac();
+        }}
+        onFocus={ac}
+        onBlur={() => setOpen(false)}
+        id={id}
+        placeholder={SEKIL_ADI[value]}
+        aria-label={id ? undefined : "Ders şekli"}
+        className={`${triggerClassName} ${
+          value
+            ? "placeholder:font-semibold placeholder:text-slate-700 "
+            : "placeholder:text-slate-400 "
+        }`}
+      />
+
+      {open && pos && (
+        <Panel pos={pos}>
+          {satirlar.map((s) => (
+            <Satir
+              key={s.deger || "farketmez"}
+              etiket={SEKIL_ADI[s.deger]}
+              altEtiket={s.aciklama}
+              ikon={<SekilSvg deger={s.deger} />}
+              secili={s.deger === value}
+              onClick={() => sec(s.deger)}
+            />
+          ))}
+        </Panel>
+      )}
+    </>
+  );
+}
+
+/* ─── Yer seçici ─────────────────────────────────────────────────────────
+   Hem eğitmen hapının ÜÇÜNCÜ bölmesinde (yalnız "Yüz yüze" seçiliyken)
+   hem de kütüphane hapında kullanılır. Tek bileşen olması bilinçli: iki
+   yüzey aynı öneri listesini, aynı satır görünümünü ve aynı Türkçe katlamalı
+   eşleşmeyi paylaşsın diye. Ayrı yazılsalardı biri değişip diğeri kalırdı.
+   ──────────────────────────────────────────────────────────────────────── */
+
+export function YerSelect({
+  value,
+  onChange,
+  triggerClassName = "",
+  hizaRef,
+  id,
+  placeholder = "Hangi semtte?",
+}: {
+  value: YerSecimi | null;
+  onChange: (next: YerSecimi | null) => void;
+  triggerClassName?: string;
+  id?: string;
+  hizaRef?: React.RefObject<HTMLElement>;
+  placeholder?: string;
+}) {
+  const { open, setOpen, text, setText, pos, triggerRef, ac, kapat } = useSecici(hizaRef);
+
+  const sec = (next: YerSecimi | null) => {
+    onChange(next);
+    kapat();
+  };
+
+  const n = kucult(text);
+  const yerler = yerAra(text);
+  // "Tüm yerler" satırı seçimi TEMİZLER; olmasaydı seçim geri alınamazdı.
+  const tumuGoster = !n || kucult("Tüm yerler").includes(n);
+
+  return (
+    <>
+      <input
+        ref={triggerRef}
+        type="text"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (!open) ac();
+        }}
+        onFocus={ac}
+        onBlur={() => setOpen(false)}
+        id={id}
+        placeholder={value ? yerEtiketi(value) : placeholder}
+        aria-label={id ? undefined : "Yer"}
+        className={`${triggerClassName} ${
+          value
+            ? "placeholder:font-semibold placeholder:text-slate-700 "
+            : "placeholder:text-slate-400 "
+        }`}
+      />
+
+      {open && pos && (
+        <Panel pos={pos}>
+          {tumuGoster && (
+            <Satir etiket="Tüm yerler" ikon={<PinSvg />} onClick={() => sec(null)} />
+          )}
+          {yerler.map((y) => (
+            <Satir
+              key={`${y.secim.tur}:${y.altBaslik}:${y.baslik}`}
+              etiket={y.baslik}
+              altEtiket={y.altBaslik}
+              ikon={<PinSvg />}
+              onClick={() => sec(y.secim)}
+            />
+          ))}
+        </Panel>
+      )}
+    </>
+  );
+}

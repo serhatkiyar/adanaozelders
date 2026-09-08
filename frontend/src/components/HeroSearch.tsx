@@ -1,9 +1,35 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { DistrictSelect } from "@/components/DistrictSelect";
-import { IlceSelect, MekanSelect, type MekanDegeri } from "@/components/MekanSelect";
+import {
+  SekilSelect,
+  YerSelect,
+  type DersSekli,
+} from "@/components/AramaSecicileri";
+import type { YerSecimi } from "@/lib/yerArama";
+import { TeachingMode } from "@/types";
 import { categoryMeta, type CategoryKey } from "@/components/CategoryBar";
 import { dersAra } from "@/lib/dersArama";
 import { useSubjects } from "@/hooks/useSubjects";
+
+/* ─── Alan başlığı deseni (Airbnb, kullanıcı kararı 8 Eyl) ──────────────
+   Alan adı önce PLACEHOLDER'ın kendisiydi (`Ders "Matematik"`) ve kod bunu
+   bilinçli yazmıştı. İki kusuru vardı: kullanıcı yazmaya başlayınca alanın ne
+   olduğu kayboluyor, ve iki bölmeli hapta hangi kutunun ne olduğu ancak içine
+   tıklayınca anlaşılıyordu. Airbnb ikisini ayırır: etiket KALICI, ipucu
+   placeholder'da. Bizde eksik olan yalnız üstteki satırdı.
+
+   `flex-1 basis-0` artık BÖLME sarmalayıcısında (eskiden input'taydı) ve bölme
+   başına BİR kez geçer — `__guards__/aramaHapiIkizligi.test.ts` bunu sayıyor.
+
+   Etiket varken girdilere `aria-label` YAZILMAZ: ikisi birlikteyken ekran
+   okuyucu `aria-label`ı okur ve görünen etiket sessizce yok sayılır. */
+const BOLME = "flex min-w-0 flex-1 basis-0 flex-col justify-center py-1";
+// 12px: ilk deneme 11px'di ve kullanıcı "yazılar küçük" dedi. Airbnb'nin alan
+// başlığı da 12px — girdi metninden (14px) ayrışacak kadar küçük, okunacak
+// kadar büyük.
+const ETIKET = "cursor-pointer text-xs font-semibold leading-tight text-slate-700";
+const GIRDI =
+  "w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400";
 
 /* ─── arama bileşenleri: büyük (açık) + kompakt (tetikleyici) ───────────
    Landing'in beğenilen Airbnb tarzı arama hapı. Hem ana sayfa hem de
@@ -39,13 +65,21 @@ export type BigSearchProps = {
   placeholder: string;
   /** Verilirse input boş+odaktayken trend aramalar popover'ı açılır. */
   trending?: readonly string[];
-  /** "Uzaktan Eğitim" checkbox'ı — yalnız eğitmen aramasında anlamlı. */
-  remote?: boolean;
-  setRemote?: (v: boolean) => void;
-  showRemoteOption?: boolean;
+  /* Alan başlıkları çağıranda yaşar: aynı hap eğitmen sonuçlarında "Ders",
+     kütüphane sonuçlarında "Kütüphane" arıyor.
+
+     `sagBaslik` ZORUNLU. Nötr bir varsayılan ("Ara") denendi ve ölçüldü:
+     hapın gönder düğmesinin erişilebilir adı da "Ara" — ekran okuyucuda aynı
+     hapta iki "Ara" oluyordu. Sol taraf "İlçe" her yüzeyde aynı olduğu için
+     varsayılan kalabiliyor. */
+  solBaslik?: string;
+  sagBaslik: string;
+  /** Mahalle çapası (bkz. lib/yerArama.ts). Verilmezse yalnız ilçe seçilir. */
+  yer?: YerSecimi | null;
+  setYer?: (v: YerSecimi | null) => void;
 };
 
-// Büyük (açık) arama — etiketsiz tek satır: ilçe (pin + değer) | yazı | ara.
+// Büyük (açık) arama — tek satır: ilçe (pin + değer) | yazı | ara.
 export function BigSearch({
   q,
   setQ,
@@ -54,11 +88,14 @@ export function BigSearch({
   onSubmit,
   placeholder,
   trending,
-  remote,
-  setRemote,
-  showRemoteOption,
+  solBaslik = "Yer",
+  sagBaslik,
+  yer = null,
+  setYer,
 }: BigSearchProps) {
   const [focused, setFocused] = useState(false);
+  const ilceId = useId();
+  const qId = useId();
 
   return (
     <div className="relative w-full max-w-2xl">
@@ -68,32 +105,43 @@ export function BigSearch({
         // kullanıcısına "buradasın" işareti kalmıyordu; halka forma taşındı.
         className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
       >
-        <div className="flex shrink-0 items-center gap-2 rounded-full py-2.5 pl-4 pr-3 transition hover:bg-slate-50 ">
+        <div className="flex shrink-0 items-center gap-2 rounded-full py-1.5 pl-4 pr-3 transition hover:bg-slate-50 ">
           <PinIconSvg />
-          <DistrictSelect
-            value={district}
-            onChange={setDistrict}
-            remote={remote}
-            onRemoteChange={setRemote}
-            showRemoteOption={showRemoteOption}
-            triggerClassName="flex cursor-pointer items-center gap-1 bg-transparent text-sm font-medium text-slate-700 outline-none "
-          />
+          {/* Tetikleyici bir <button>; `<label htmlFor>` ona bağlanmaz ve
+              ESLint de kabul etmez. Görünür başlık bir <span>, erişilebilir ad
+              `aria-labelledby` ile ona bağlanıyor. */}
+          <div className="flex min-w-0 flex-col justify-center py-1">
+            <span id={ilceId} className={ETIKET}>
+              {solBaslik}
+            </span>
+            <DistrictSelect
+              value={district}
+              onChange={setDistrict}
+              yer={yer}
+              onYerChange={setYer}
+              triggerLabelledBy={ilceId}
+              triggerClassName="flex cursor-pointer items-center gap-1 bg-transparent text-sm font-medium text-slate-700 outline-none "
+            />
+          </div>
         </div>
 
         <div className="h-7 w-px shrink-0 bg-slate-200 " />
 
-        <input
-          type="text"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder={placeholder}
-          // Görsel etiket yok (placeholder tasarımın parçası); ekran okuyucu
-          // için erişilebilir ad aria-label ile verilir.
-          aria-label={placeholder}
-          className="min-w-0 flex-1 bg-transparent px-5 text-sm text-slate-900 outline-none placeholder:text-slate-400 "
-        />
+        <div className="flex min-w-0 flex-1 flex-col justify-center px-5 py-1">
+          <label htmlFor={qId} className={ETIKET}>
+            {sagBaslik}
+          </label>
+          <input
+            id={qId}
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={placeholder}
+            className={GIRDI}
+          />
+        </div>
 
         <button
           type="submit"
@@ -145,8 +193,10 @@ export function DersArama({
   ders,
   dersEtiket,
   onDersChange,
-  mekan,
-  setMekan,
+  sekil,
+  setSekil,
+  yer,
+  setYer,
   onSubmit,
 }: {
   /** Seçili dersin kanonik `q` değeri; "" = seçim yok. */
@@ -154,13 +204,24 @@ export function DersArama({
   /** Seçili dersin görünen adı (özet ve input değeri için). */
   dersEtiket: string;
   onDersChange: (q: string, label: string) => void;
-  mekan: MekanDegeri;
-  setMekan: (v: MekanDegeri) => void;
+  /** Ders şekli — TEK seçim, `""` = fark etmez. */
+  sekil: DersSekli;
+  setSekil: (v: DersSekli) => void;
+  /** Yer YALNIZ "Yüz yüze" seçiliyken sorulur (bkz. AramaSecicileri.tsx). */
+  yer: YerSecimi | null;
+  setYer: (v: YerSecimi | null) => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
   const [text, setText] = useState(dersEtiket);
   const [focused, setFocused] = useState(false);
-  // Öneri paneli MekanSelect ile AYNI desende `fixed` konumlanır: navbar'ın
+  const dersId = useId();
+  const sekilId = useId();
+  const yerId = useId();
+  // Üçüncü bölme YALNIZ yüz yüze seçiliyken var. Kullanıcının tasarımı:
+  // uzaktan ders arayana yer sormak anlamsız, üstelik uzaktan eğitmenlerin
+  // ilçesi tasarım gereği boş olduğu için onları sessizce elerdi.
+  const yerGorunur = sekil === TeachingMode.IN_PERSON;
+  // Öneri paneli seçicilerle AYNI desende `fixed` konumlanır: navbar'ın
   // max-height'la katlanan kabı `absolute` paneli akışa karıştırıyordu
   // ("seçenekler ana akışın altına yükleniyor" hatası).
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -187,34 +248,72 @@ export function DersArama({
         onSubmit={onSubmit}
         className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
       >
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (ders) onDersChange("", ""); // yazmaya başlayınca seçim bozulur
-          }}
-          onFocus={odaklan}
-          onBlur={() => setFocused(false)}
-          placeholder='Ders "Matematik"'
-          aria-label="Ders kategorisi"
-          // İki bölme EŞİT genişlikte (flex-1 basis-0) — kullanıcı kararı.
-          className="min-w-0 flex-1 basis-0 bg-transparent py-2.5 pl-5 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 "
-        />
+        {/* İki bölme EŞİT genişlikte (flex-1 basis-0) — kullanıcı kararı.
+            Sınıf artık INPUT'ta değil sarmalayıcıda: etiket ile girdi alt alta
+            duruyor. Sayı bölme başına BİR kalmalı, `aramaHapiIkizligi`
+            nöbetçisi bunu sayıyor. */}
+        <div className={BOLME + " pl-5 pr-3"}>
+          <label htmlFor={dersId} className={ETIKET}>
+            Ders
+          </label>
+          <input
+            id={dersId}
+            type="text"
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              if (ders) onDersChange("", ""); // yazmaya başlayınca seçim bozulur
+            }}
+            onFocus={odaklan}
+            onBlur={() => setFocused(false)}
+            placeholder="Matematik, İngilizce…"
+            className={GIRDI}
+          />
+        </div>
 
         <div className="h-7 w-px shrink-0 bg-slate-200 " />
 
         {/* Ders girdisiyle AYNI his: hover zemini/hap yok, düz yazı alanı. */}
-        <div className="flex min-w-0 flex-1 basis-0 items-center py-2.5 pl-3 pr-2">
-          <MekanSelect
-            value={mekan}
-            onChange={setMekan}
+        <div className={BOLME + " pl-3 pr-2"}>
+          <label htmlFor={sekilId} className={ETIKET}>
+            Ders şekli
+          </label>
+          <SekilSelect
+            id={sekilId}
+            value={sekil}
+            onChange={(v) => {
+              setSekil(v);
+              // Yüz yüzeden çıkıldığında yer seçimi de düşer: görünmeyen bir
+              // alanın sessizce aramaya karışması, kullanıcının göremediği
+              // bir filtre demektir.
+              if (v !== TeachingMode.IN_PERSON) setYer(null);
+            }}
             hizaRef={formRef}
             // cursor-pointer YOK: burası artık yazılabilir bir metin alanı,
             // el imleci "buraya yazılmaz" hissi veriyordu.
             triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
           />
         </div>
+
+        {/* ÜÇÜNCÜ bölme — yalnız yüz yüzede. Hapın dış genişliği sabit kalır,
+            bölmeler kendi aralarında yeniden paylaşır. */}
+        {yerGorunur && (
+          <>
+            <div className="h-7 w-px shrink-0 bg-slate-200 " />
+            <div className={BOLME + " pl-3 pr-2"}>
+              <label htmlFor={yerId} className={ETIKET}>
+                Yer
+              </label>
+              <YerSelect
+                id={yerId}
+                value={yer}
+                onChange={setYer}
+                hizaRef={formRef}
+                triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
+              />
+            </div>
+          </>
+        )}
 
         <button
           type="submit"
@@ -226,7 +325,7 @@ export function DersArama({
       </form>
 
       {/* Kategori önerileri — yazdıkça süzülür; boşken tam taksonomi.
-          MekanSelect ile aynı desen: fixed konum + aynı kabuk görünümü. */}
+          Seçicilerle aynı desen: fixed konum + aynı kabuk görünümü. */}
       {acik && (
         <div
           style={{ position: "fixed", top: pos!.top, left: pos!.left, width: pos!.width }}
@@ -277,19 +376,25 @@ export function DersArama({
 export function KutuphaneArama({
   q,
   setQ,
-  district,
-  setDistrict,
+  yer,
+  setYer,
   onSubmit,
+  // Konum YANDAKİ alanda seçiliyor; ad kutusunda semtin işi yok
+  // (kullanıcı, 8 Eyl: "kütüphane semt araması ne alaka").
   placeholder = "Kütüphane adı",
 }: {
   q: string;
   setQ: (v: string) => void;
-  district: string[];
-  setDistrict: (v: string[]) => void;
+  /** Seçili yer — ilçe ya da mahalle (bkz. lib/yerArama.ts). Ayrı bir ilçe
+   *  listesi taşınmaz: `YerSecimi` ilçeyi zaten içinde tutuyor. */
+  yer: YerSecimi | null;
+  setYer: (v: YerSecimi | null) => void;
   onSubmit: (e: React.FormEvent) => void;
   placeholder?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const adId = useId();
+  const ilceId = useId();
 
   return (
     <div className="relative w-full max-w-2xl">
@@ -298,22 +403,31 @@ export function KutuphaneArama({
         onSubmit={onSubmit}
         className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
       >
-        <input
-          type="text"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={placeholder}
-          aria-label={placeholder}
-          // İki bölme EŞİT genişlikte (flex-1 basis-0) — `DersArama` ile aynı.
-          className="min-w-0 flex-1 basis-0 bg-transparent py-2.5 pl-5 pr-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 "
-        />
+        {/* İki bölme EŞİT genişlikte (flex-1 basis-0) — `DersArama` ile aynı. */}
+        <div className={BOLME + " pl-5 pr-3"}>
+          <label htmlFor={adId} className={ETIKET}>
+            Kütüphane
+          </label>
+          <input
+            id={adId}
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={placeholder}
+            className={GIRDI}
+          />
+        </div>
 
         <div className="h-7 w-px shrink-0 bg-slate-200 " />
 
-        <div className="flex min-w-0 flex-1 basis-0 items-center py-2.5 pl-3 pr-2">
-          <IlceSelect
-            value={district}
-            onChange={setDistrict}
+        <div className={BOLME + " pl-3 pr-2"}>
+          <label htmlFor={ilceId} className={ETIKET}>
+            Yer
+          </label>
+          <YerSelect
+            id={ilceId}
+            value={yer}
+            onChange={setYer}
             hizaRef={formRef}
             triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
           />
