@@ -5,6 +5,7 @@ import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
+import { EgitmenYanitAksiyonu } from "@/components/EgitmenYanitAksiyonu";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
 import { TutorOzetTablosu } from "@/components/TutorTrust";
@@ -20,8 +21,6 @@ import {
 import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { formatRate, parseMoney } from "@/lib/money";
-import { getErrorMessage } from "@/lib/errors";
-import { toast } from "@/store/toastStore";
 import { BookingStatus, ROLE_IDS, TeachingMode } from "@/types";
 import type { TutorSearchOut } from "@/types";
 import { BookingModal } from "@/components/BookingModal";
@@ -32,84 +31,6 @@ import { videoEmbedUrl } from "@/lib/video";
 import { useNavSearch } from "@/hooks/useNavSearch";
 
 // Removed constants
-
-/* ─── Eğitmen yanıtı aksiyonu (ReviewsSection kart-altı slotu) ─────────── */
-
-function OwnerReplyAction({
-  reviewId,
-  replyMutation,
-}: {
-  reviewId: number;
-  replyMutation: ReturnType<typeof useReplyToReview>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState("");
-
-  const submitReply = () => {
-    if (!text.trim()) {
-      toast.error("Lütfen bir yanıt yaz.");
-      return;
-    }
-    replyMutation.mutate(
-      { reviewId, reply: text.trim() },
-      {
-        onSuccess: () => {
-          toast.success("Yanıtın eklendi.");
-          setEditing(false);
-          setText("");
-        },
-        onError: (err) =>
-          toast.error(getErrorMessage(err, "Yanıt eklenemedi.")),
-      }
-    );
-  };
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="mt-3 text-sm font-medium text-marka-metin transition hover:text-marka-metin-hover "
-      >
-        Yanıtla
-      </button>
-    );
-  }
-
-  return (
-    <div className="mt-3 space-y-2">
-      <textarea
-        rows={3}
-        maxLength={2000}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        autoFocus
-        placeholder="Değerlendirmeye yanıtını yaz…"
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-      />
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(false);
-            setText("");
-          }}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 "
-        >
-          Vazgeç
-        </button>
-        <button
-          type="button"
-          onClick={submitReply}
-          disabled={replyMutation.isPending}
-          className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
-        >
-          {replyMutation.isPending ? "Gönderiliyor…" : "Yanıtla"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /* ─── main page ─────────────────────────────────────────── */
 
@@ -156,7 +77,7 @@ export default function TutorProfile() {
 
   if (isError || !tutor) {
     return (
-      <DashboardShell title="Eğitmen" navItems={navItems}>
+      <DashboardShell title="Eğitmen" navItems={navItems} sekmeler={null}>
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
@@ -195,6 +116,7 @@ export default function TutorProfile() {
     <DashboardShell
       title="Eğitmen Detayı"
       navItems={navItems}
+      sekmeler={null}
       center={center}
       bottom={bottom}
     >
@@ -216,8 +138,8 @@ export default function TutorProfile() {
               viewport'tan uzunsa alt kısmı (fiyat + birincil düğme) görünmüyor
               ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
               yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)]">
+            <section className="rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
               <div className="mb-2 flex items-center justify-end gap-2">
                 {!isOwnerTutor && hasActiveBooking && (
@@ -226,7 +148,7 @@ export default function TutorProfile() {
                     title="Mesaj Gönder"
                     aria-label="Mesaj Gönder"
                     onClick={() =>
-                      navigate(ROUTES.messageWith(tutor.id, tutor.full_name))
+                      navigate(ROUTES.messageWith(tutor.id, tutor.display_name))
                     }
                     className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 "
                   >
@@ -243,14 +165,14 @@ export default function TutorProfile() {
 
               <div className="flex flex-col items-center text-center">
                 <Avatar
-                  name={tutor.full_name}
+                  name={tutor.display_name}
                   avatar_url={tutor.avatar_url}
                   size="lg"
                   shape="square"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <h1 className="text-xl font-bold text-slate-900 ">
-                    {tutor.full_name}
+                    {tutor.display_name}
                   </h1>
                 </div>
 
@@ -267,11 +189,10 @@ export default function TutorProfile() {
                   </span>
                 </button>
 
-                {modeLabel && (
-                  <span className="mt-3 rounded-full bg-marka-soft px-2.5 py-0.5 text-xs font-medium text-marka-metin-hover ">
-                    {modeLabel}
-                  </span>
-                )}
+                {/* Ders mekânı buradan KALKTI, sol sütundaki "Ders Mekânı"
+                    başlığına taşındı. Anonim kabukla (PublicTutorProfile) aynı
+                    değişiklik: rotanın iki kabuğu ayrışmasın — bu ayrışma daha
+                    önce ölçülmüş bir kusurdu (bkz. __guards__/ilanKartiTasmaz). */}
               </div>
 
               {/* Ücret + güven sinyalleri TEK TABLODA (Superprof deseni).
@@ -312,7 +233,7 @@ export default function TutorProfile() {
               <ReportModal
                 targetType="TUTOR"
                 targetId={tutorId}
-                targetLabel={tutor.full_name}
+                targetLabel={tutor.display_name}
                 onClose={() => setShowReport(false)}
               />
             )}
@@ -347,10 +268,22 @@ export default function TutorProfile() {
             {tutor.bio && (
               <section className="border-t border-slate-100 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
-                  {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
+                  {tutor.display_name} ile ilgili bilgiler
                 </h2>
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.bio}
+                </p>
+              </section>
+            )}
+
+            {/* Ders Mekânı — kartta rozet olarak duruyordu, buraya taşındı */}
+            {modeLabel && (
+              <section className="border-t border-slate-100 pt-6 ">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 ">
+                  Ders Mekânı
+                </h2>
+                <p className="text-[15px] leading-relaxed text-slate-600 ">
+                  {modeLabel}
                 </p>
               </section>
             )}
@@ -376,7 +309,7 @@ export default function TutorProfile() {
                 <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
                   <iframe
                     src={embedUrl}
-                    title={`${tutor.full_name} tanıtım videosu`}
+                    title={`${tutor.display_name} tanıtım videosu`}
                     className="h-full w-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -408,7 +341,7 @@ export default function TutorProfile() {
                   isOwnerTutor
                     ? (item) =>
                         item.reply ? null : (
-                          <OwnerReplyAction
+                          <EgitmenYanitAksiyonu
                             reviewId={item.id}
                             replyMutation={replyMutation}
                           />
@@ -432,7 +365,7 @@ export default function TutorProfile() {
       {showReviews && tutor && (
         <ReviewListModal
           tutorId={tutor.id}
-          tutorName={tutor.full_name}
+          tutorName={tutor.display_name}
           onClose={() => setShowReviews(false)}
         />
       )}

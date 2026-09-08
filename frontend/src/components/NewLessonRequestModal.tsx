@@ -164,7 +164,7 @@ export function NewLessonRequestModal({
                 <TutorRow
                   key={t.id}
                   id={t.id}
-                  name={t.full_name}
+                  name={t.display_name}
                   avatar={t.avatar_url}
                   onPick={onPick}
                 />

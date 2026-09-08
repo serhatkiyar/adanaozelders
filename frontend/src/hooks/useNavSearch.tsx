@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
-import { TeachingMode } from "@/types";
+import { yeriYaz, type YerSecimi } from "@/lib/yerArama";
 
 /* ─── useNavSearch ────────────────────────────────────────────────────────
    Detay sayfalarının (eğitmen/kütüphane ilanı) navbar'ına Marketplace'teki
@@ -14,24 +14,21 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [district, setDistrict] = useState<string[]>([]);
-  const [remote, setRemote] = useState(false);
+  // Mahalle çapası — seçilirse arama sayfasına `?mahalle=` ile taşınır.
+  const [yer, setYer] = useState<YerSecimi | null>(null);
   // Kompakt pill'e tıklayınca geniş navbar (kategoriler + büyük arama) açılır.
   const [open, setOpen] = useState(false);
 
-  // Kütüphane aramasında "Uzaktan Eğitim" anlamsız (fiziksel mekan).
-  const showRemoteOption = active !== "kutuphaneler";
-
+  // Alan BAŞLIĞI ne arandığını söylüyor; placeholder yalnız örnek verir.
   const placeholder =
-    active === "kutuphaneler"
-      ? "Kütüphane ara…"
-      : "Ders ara… (ör. Lise Matematik)";
+    active === "kutuphaneler" ? "Kütüphane adı" : "Matematik, İngilizce…";
+  const sagBaslik = active === "kutuphaneler" ? "Kütüphane" : "Ders";
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const sp = new URLSearchParams();
     if (q.trim()) sp.set("q", q.trim());
-    district.forEach((d) => sp.append("district", d));
-    if (showRemoteOption && remote) sp.set("mode", TeachingMode.ONLINE);
+    yeriYaz(sp, yer, district);
     const base = active === "kutuphaneler" ? "/kutuphaneler" : "/egitmenler";
     navigate(sp.toString() ? `${base}?${sp}` : base);
     setOpen(false);
@@ -52,7 +49,6 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
             placeholder={placeholder}
             q={q}
             district={district}
-            remote={showRemoteOption && remote}
             onOpen={() => setOpen(true)}
           />
         </div>
@@ -68,11 +64,12 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
-        remote={remote}
-        setRemote={setRemote}
-        showRemoteOption={showRemoteOption}
         onSubmit={submit}
         placeholder={placeholder}
+        yer={yer}
+        setYer={setYer}
+        solBaslik="Yer"
+        sagBaslik={sagBaslik}
         trending={TRENDING_SEARCHES}
       />
     </div>

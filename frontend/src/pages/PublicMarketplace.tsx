@@ -18,6 +18,8 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
+import { sekliCoz, type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 
 /* ─── options ─────────────────────────────────────────── */
@@ -45,7 +47,13 @@ export default function PublicMarketplace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
-  const [remote, setRemote] = useState(() => searchParams.get("mode") === TeachingMode.ONLINE);
+  // Mahalle çapası — `?mahalle=Reşatbey` paylaşılabilir bağlantıdır.
+  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
+  // Ders şekli TEK değer. Eskiden burada `remote` adında bir boolean vardı ve
+  // yalnız ONLINE'ı ifade edebiliyordu: ana sayfadan "yüz yüze" ile gelen
+  // ANONİM ziyaretçinin filtresi bu ekranda okunmuyor, aşağıdaki URL
+  // senkronunda da geri yazılmıyordu — yani sessizce BUHARLAŞIYORDU.
+  const [sekil, setSekil] = useState<DersSekli>(() => sekliCoz(searchParams.get("mode")));
   const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
   const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
   const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
@@ -64,13 +72,15 @@ export default function PublicMarketplace() {
     const qp = searchParams.get("q") ?? "";
     const sp = searchParams.getAll("subject");
     const dp = searchParams.getAll("district");
+    const urlYer = yeriOku(searchParams).yer;
     const ep = searchParams.get("exam") ?? "";
-    const rp = searchParams.get("mode") === TeachingMode.ONLINE;
+    const rp = sekliCoz(searchParams.get("mode"));
     if (qp !== q) setQ(qp);
+    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
     if (JSON.stringify(sp) !== JSON.stringify(subjects)) setSubjects(sp);
     if (JSON.stringify(dp) !== JSON.stringify(district)) setDistrict(dp);
     if (ep !== exam) setExam(ep);
-    if (rp !== remote) setRemote(rp);
+    if (rp !== sekil) setSekil(rp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -81,11 +91,11 @@ export default function PublicMarketplace() {
     const next = new URLSearchParams();
     if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
     subjects.forEach((s) => next.append("subject", s));
-    district.forEach((d) => next.append("district", d));
-    if (remote) next.set("mode", TeachingMode.ONLINE);
+    yeriYaz(next, yer, district);
+    if (sekil) next.set("mode", sekil);
     if (exam.trim()) next.set("exam", exam.trim());
     setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, remote, exam, setSearchParams]);
+  }, [debouncedQ, subjects, district, yer, sekil, exam, setSearchParams]);
 
   const removeSubject = (s: string) =>
     setSubjects((p) => p.filter((x) => x !== s));
@@ -95,10 +105,19 @@ export default function PublicMarketplace() {
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
     if (district.length) p.district = district;
-    if (remote) p.mode = [TeachingMode.ONLINE];
+    // Mahalle seçiliyse ÇEVRESİNDE aranır (konum çapası, eşitlik filtresi
+    // değil). İlçe filtresi yanında kalır: yarıçap koordinatsız eğitmeni
+    // eler, ilçe onu yakalamaya devam eder.
+    const yerKonumu = yerinArananKonumu(yer);
+    if (yerKonumu) {
+      p.lat = yerKonumu.lat;
+      p.lng = yerKonumu.lng;
+      p.radius_km = yerKonumu.radius_km;
+    }
+    if (sekil) p.mode = [sekil];
     if (exam.trim()) p.exam = exam.trim();
     return p;
-  }, [debouncedQ, subjects, district, remote, exam, sort, limit]);
+  }, [debouncedQ, subjects, district, yer, sekil, exam, sort, limit]);
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
@@ -111,9 +130,9 @@ export default function PublicMarketplace() {
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
     if (district.length) p.district = district;
-    if (remote) p.mode = [TeachingMode.ONLINE];
+    if (sekil) p.mode = [sekil];
     return p;
-  }, [debouncedQ, subjects, district, remote]);
+  }, [debouncedQ, subjects, district, sekil]);
 
   const featuredOnFirstPage = page === 1;
   const [featuredIds, setFeaturedIds] = useState<number[]>([]);
@@ -154,7 +173,7 @@ export default function PublicMarketplace() {
             placeholder="Ders ara… (ör. Lise Matematik)"
             q={q}
             district={district}
-            remote={remote}
+            remote={sekil === TeachingMode.ONLINE}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -171,10 +190,12 @@ export default function PublicMarketplace() {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
-        remote={remote}
-        setRemote={setRemote}
         onSubmit={submitSearch}
-        placeholder="Ders ara… (ör. Lise Matematik)"
+        placeholder="Matematik, İngilizce…"
+        yer={yer}
+        setYer={setYer}
+        solBaslik="Yer"
+        sagBaslik="Ders"
         trending={TRENDING_SEARCHES}
       />
     </div>

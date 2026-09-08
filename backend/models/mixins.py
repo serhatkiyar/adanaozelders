@@ -35,6 +35,30 @@ class NameMixin:
     def _full_name_expression(cls):
         return func.concat(cls.first_name, " ", cls.last_name)
 
+    @property
+    def display_name(self) -> str:
+        """PUBLIC yüzeylerde gösterilen ad — soyad TAŞIMAZ (ÜK-9).
+
+        `full_name` ile farkı bir görüntüleme tercihi değil, KAPSAM ayrımıdır:
+
+        ``full_name``     Yasal ad. Ödeme/KYC (iyzico alt üye işyeri), fatura,
+                          admin panelleri, hesap sahibinin kendi ayarları ve
+                          taraflar arasında sözleşme ilişkisi kurulmuş akışlar
+                          (rezervasyon, mesajlaşma, sipariş).
+        ``display_name``  Herkese açık yüzeyler: eğitmen kartı ve profili, SEO
+                          başlıkları, JSON-LD, yorum yazarı adı, slug.
+
+        Kesme SUNUCUDA yapılır. Arayüzde `split(" ")[0]` yazmak kozmetik kalır:
+        soyad ağ yanıtında, HTML kaynağında, JSON-LD'de ve URL'de durmaya devam
+        eder — kart tam olarak bu durumdaydı.
+
+        KİMLİK İDDİASI TAŞIMAZ (`docs/kimlik-ve-diploma-dogrulama-plani.md`
+        §A6): "Kimliği Doğrulanmış" rozeti bu ada değil, `payout_status`a
+        (iyzico MERNIS/IBAN kontrolü) bağlıdır ve öyle kalmalıdır. Rozet
+        kimliğin DOĞRULANDIĞINI söyler, kimliğin ne olduğunu değil.
+        """
+        return self.first_name
+
 
 class TimestampMixin:
     created_at: Mapped[datetime.datetime] = mapped_column(
@@ -80,6 +104,40 @@ class PhoneVerificationMixin:
     @property
     def phone_verified(self) -> bool:
         return self.phone_verified_at is not None
+
+
+class PasswordMixin:
+    """Parolanın VARLIĞINI bildirir. Kolon burada DEĞİL, her modelde durur.
+
+    ``hashed_password`` beş kullanıcı tablosunda da NULL olabilir: Google ile
+    açılan hesabın parolası yoktur. Sentinel bir hash (``"!"``) yerine NULL
+    seçilmesinin ÖLÇÜLMÜŞ sebebi:
+
+        bcrypt.checkpw(b"sifre", b"!")  ->  ValueError: Invalid salt
+
+    ve ``core/security.verify_password`` bu istisnayı yakalamaz. Sentinel bugün
+    depoda iki yerde yaşıyor (``api/deps.get_shopping_client`` gölge satırı ve
+    ``account_deletion_service.anonymize_account``) ama ikisi de
+    ``auth_service.authenticate``'in sorgusundan zaten düşen satırlardır —
+    gölge ``_exclude_shadow`` ile, silinmiş hesap ``deleted_at`` ile. Google
+    hesabı bunun TERSİdir: canlı, silinmemiş, gölge değil, yani authenticate'in
+    tam da bulacağı satır. Sentinel seçilseydi o e-postayla bir parola denemesi
+    401 değil **500** dönerdi ve "var olmayan e-posta 401 / Google hesabı 500"
+    ayrımı bir hesap-varlığı yan kanalı olurdu.
+
+    Parolasız hesabın kırdığı üç akış açıkça kapatılmıştır:
+    ``auth_service.authenticate``, ``auth_service.change_password`` ve hesap
+    silme ucu (``api/routers/auth.py``). Nöbetçi:
+    ``tests/test_parolasiz_hesap.py``.
+
+    ``has_password`` şemada (``UserOut``) sunulur: Ayarlar ekranı parolasız
+    hesaba "Şifre değiştir" formu göstermemelidir — o form hiçbir zaman
+    çalışmazdı.
+    """
+
+    @property
+    def has_password(self) -> bool:
+        return self.hashed_password is not None
 
 
 class LastSeenMixin:

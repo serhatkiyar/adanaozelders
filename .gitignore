@@ -60,3 +60,6 @@ frontend/ip19-kabul-log.txt
 
 # Tedarikçi turu çıktısı (ekran görüntüleri + Chrome profili) — üretilmiş veri.
 docs/tedarikci-tur/
+
+# Playwright MCP aracının oturum çıktıları (ekran görüntüsü, iz kaydı)
+.playwright-mcp/

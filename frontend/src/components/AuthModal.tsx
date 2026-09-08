@@ -3,26 +3,38 @@ import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
+import { fetchMe, login, type RegisterRole } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useKayitAcik } from "@/hooks/useKayitAcik";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
-import { ConsentCheckbox } from "@/components/LegalConsent";
-import { currentConsentVersion } from "@/lib/legalContent";
+import { KayitAkisi } from "@/components/KayitAkisi";
+import {
+  GirisAyirici,
+  GoogleGirisDugmesi,
+} from "@/components/GoogleGirisDugmesi";
+import { googleHataMetni } from "@/lib/googleHata";
 
 export function AuthModal() {
   const [searchParams, setSearchParams] = useSearchParams();
   const modal = searchParams.get("modal"); // "login" | "register"
   const roleParam = searchParams.get("role") as RegisterRole | null;
+  // Google akışı hata ile döndüğünde kullanıcıyı çıktığı pencereye geri
+  // gönderiyor; toast kaybolabildiği için mesaj pencerenin içinde de
+  // durmalı (tam sayfa gezinme yaşandı, bağlam kayboldu).
+  const googleHatasi = googleHataMetni(searchParams.get("hata"));
   const kayitAcik = useKayitAcik();
   const isOpen = modal === "login" || modal === "register";
 
   const close = () => {
     searchParams.delete("modal");
     searchParams.delete("role");
+    // Google akışından hata ile dönüldüğünde `hata` parametresi eklenir;
+    // temizlenmezse pencere kapatılıp yeniden açıldığında eski hata mesajı
+    // hâlâ orada durur.
+    searchParams.delete("hata");
     setSearchParams(searchParams, { replace: true });
   };
 
@@ -88,13 +100,13 @@ export function AuthModal() {
         </button>
 
         <div className="p-8 max-h-[90vh] overflow-y-auto">
-          {modal === "login" ? <LoginForm onSuccess={close} /> : <RegisterForm initialRole={roleParam || "client"} onSuccess={close} />}
+          {modal === "login" ? <LoginForm onSuccess={close} googleHatasi={googleHatasi} /> : <RegisterForm initialRole={roleParam || "client"} onSuccess={close} googleHatasi={googleHatasi} />}
         </div>
     </Modal>
   );
 }
 
-function LoginForm({ onSuccess }: { onSuccess: () => void }) {
+function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleHatasi?: string | null }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -143,7 +155,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 placeholder="ornek@eposta.com"
               />
           )}
@@ -157,7 +169,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 placeholder="••••••••"
               />
           )}
@@ -185,20 +197,25 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           </button>
         </div>
 
-        {mutation.isError && (
+        {(mutation.isError || googleHatasi) && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
-            {getErrorMessage(mutation.error, "E-posta veya parola hatalı.")}
+            {mutation.isError
+              ? getErrorMessage(mutation.error, "E-posta veya parola hatalı.")
+              : googleHatasi}
           </div>
         )}
 
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-marka py-3.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           {mutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
         </button>
       </form>
+
+      <GirisAyirici />
+      <GoogleGirisDugmesi mod="giris" hatirla={rememberMe} />
 
       <p className="mt-6 text-center text-sm text-slate-500 ">
         Hesabın yok mu?{" "}
@@ -220,167 +237,51 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
  * Kayıt formu DÖRT ALANDIR — gerekçesi `pages/Register.tsx` başlığındadır.
  * Kayıt başarılıysa otomatik giriş yapılır; eğitmen ilan sihirbazına gider.
  */
-function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, onSuccess: () => void }) {
-  const [role, setRole] = useState<RegisterRole>(initialRole);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const setToken = useAuthStore((s) => s.setToken);
-  const setUser = useAuthStore((s) => s.setUser);
-
-  const mutation = useMutation({
-    mutationFn: async () => {
-      await register(role, {
-        email,
-        password,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        // KVKK ispat kaydı (bkz. Register.tsx).
-        consent_version: currentConsentVersion(),
-      });
-      const token = await login(email, password);
-      setToken(token.access_token);
-      const user = await fetchMe();
-      setUser(user);
-      queryClient.setQueryData(["me"], user);
-      return user;
-    },
-    onSuccess: (user) => {
-      onSuccess();
-      toast.success(buildWelcome(user.id, user.full_name));
-      if (role === "tutor") navigate(ROUTES.tutorOnboarding);
-    },
-  });
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    mutation.mutate();
-  };
-
-  const roleTab = (value: RegisterRole, label: string) => (
-    <button
-      type="button"
-      onClick={() => setRole(value)}
-      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
-        role === value
-          ? "bg-marka text-marka-fg"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
-      }`}
-    >
-      {label}
-    </button>
-  );
-
+/**
+ * Penceredeki kayıt formu — akış `components/KayitAkisi.tsx` ile ORTAK.
+ *
+ * Form önce burada bir kopya olarak duruyordu. Akış üç adıma bölününce
+ * (e-posta → ad/soyad → parola) kopya üç katına çıkacaktı ve iki yüzey
+ * kaçınılmaz olarak ayrışırdı; sayfa bir adımı düzeltir, pencere eski hâlinde
+ * kalırdı.
+ */
+function RegisterForm({
+  initialRole,
+  onSuccess,
+  googleHatasi,
+}: {
+  initialRole: RegisterRole;
+  onSuccess: () => void;
+  googleHatasi?: string | null;
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-slate-900 ">Kayıt Ol</h2>
-      <p className="mt-1 text-sm text-slate-500 ">
-        Ne yapmak istiyorsun?
-      </p>
-
-      <div className="mt-6 flex gap-2">
-        {roleTab("client", "Ders almak")}
-        {roleTab("tutor", "Ders vermek")}
-      </div>
-
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Ad" required>
-            {(id) => (
-                <input
-                    id={id}
-                  type="text"
-                  required
-                  minLength={1}
-                  maxLength={75}
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                  placeholder="Adınız"
-                />
-            )}
-          </Field>
-          <Field label="Soyad" required>
-            {(id) => (
-                <input
-                    id={id}
-                  type="text"
-                  required
-                  minLength={1}
-                  maxLength={75}
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                  placeholder="Soyadınız"
-                />
-            )}
-          </Field>
+      {googleHatasi && (
+        <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
+          {googleHatasi}
         </div>
-
-        <Field label="E-posta" required>
-          {(id) => (
-              <input
-                    id={id}
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                placeholder="ornek@eposta.com"
-              />
-          )}
-        </Field>
-
-        <Field label="Parola" required>
-          {(id) => (
-              <input
-                    id={id}
-                type="password"
-                required
-                minLength={8}
-                maxLength={128}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                placeholder="En az 8 karakter"
-              />
-          )}
-        </Field>
-
-        <ConsentCheckbox />
-
-        {mutation.isError && (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
-            {getErrorMessage(mutation.error, "Kayıt başarısız.")}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {mutation.isPending ? "Kaydediliyor..." : "Kayıt Ol"}
-        </button>
-      </form>
-
-      <p className="mt-6 text-center text-sm text-slate-500 ">
-        Zaten hesabın var mı?{" "}
-        <button
-          onClick={() => {
-            searchParams.set("modal", "login");
-            setSearchParams(searchParams, { replace: true });
-          }}
-          className="font-semibold text-marka-metin hover:text-marka-metin-hover "
-        >
-          Giriş yap
-        </button>
-      </p>
+      )}
+      <KayitAkisi
+        baslangicRolu={initialRole}
+        onSuccess={onSuccess}
+        girisBaglantisi={
+          <p className="mt-6 text-center text-sm text-slate-500 ">
+            Zaten hesabın var mı?{" "}
+            <button
+              onClick={() => {
+                searchParams.set("modal", "login");
+                searchParams.delete("hata");
+                setSearchParams(searchParams, { replace: true });
+              }}
+              className="font-semibold text-marka-metin hover:text-marka-metin-hover "
+            >
+              Giriş yap
+            </button>
+          </p>
+        }
+      />
     </>
   );
 }

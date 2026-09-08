@@ -26,38 +26,18 @@ import { ADSIZ_UYE } from "@/lib/roles";
 
 /* ─── stat box ───────────────────────────────────────── */
 
-type Tone = "amber" | "marka" | "emerald" | "slate";
-
-const TONE: Record<Tone, { num: string; bg: string; ring: string }> = {
-  amber:   { num: "text-amber-600",   bg: "bg-amber-50",   ring: "ring-amber-100"   },
-  marka:   { num: "text-marka-soft-fg",  bg: "bg-marka-soft",  ring: "ring-marka/20"  },
-  emerald: { num: "text-emerald-600", bg: "bg-emerald-50", ring: "ring-emerald-100" },
-  slate:   { num: "text-slate-700",   bg: "bg-slate-50",   ring: "ring-slate-100"   },
-};
-
-function StatBox({
-  label,
-  value,
-  tone,
-  icon,
-}: {
-  label: string;
-  value: number;
-  tone: Tone;
-  icon: string;
-}) {
-  const cls = TONE[tone];
+/**
+ * Sayı kutusu — nötr. Eskiden dört tonlu bir renk sözlüğü ve emoji ikonu
+ * (⏳ ✅ 🎓) taşıyordu; panoda aynı anda beş renk ailesi ve üç ayrı ikon dili
+ * dönüyordu. Renk aksiyona ayrıldı, sayı kutusu okunacak bir sayıdır.
+ */
+function StatBox({ label, value }: { label: string; value: number }) {
   return (
-    <div className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ${cls.ring}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-            {label}
-          </p>
-          <p className={`mt-2 text-3xl font-bold ${cls.num}`}>{value}</p>
-        </div>
-        <span className={`rounded-xl p-2.5 text-lg ${cls.bg}`}>{icon}</span>
-      </div>
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
     </div>
   );
 }
@@ -265,14 +245,23 @@ export default function TutorDashboard() {
     return { pending, accepted, history };
   }, [data]);
 
+  // Üç bölüm de aynı çağrıyı yapıyordu; satır birebir üç kez kopyalanmıştı.
+  const derseKatil = (bk: BookingOut) =>
+    joinMeeting(
+      bk.id,
+      bk.meeting_room!,
+      bk.tutor_name || "Eğitmen",
+      bk.client_name || ADSIZ_UYE
+    );
+
   const completedCount = useMemo(
     () => groups.history.filter((b) => b.status === BookingStatus.COMPLETED).length,
     [groups.history]
   );
 
   return (
-    <DashboardShell title="Eğitmen Paneli" navItems={TUTOR_NAV}>
-      <div className="mx-auto max-w-3xl space-y-6 pb-12">
+    <DashboardShell title="Pano" navItems={TUTOR_NAV} genislik="orta">
+      <div className="space-y-6 pb-12">
         {/*
           Taslak ilan panelin en üstünde durur. Eğitmen kayıt olup akışı yarıda
           bıraktığında, geri döndüğünde kaldığı yeri bulabileceği tek yer
@@ -335,35 +324,38 @@ export default function TutorDashboard() {
           <>
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              <StatBox label="Bekleyen" value={groups.pending.length} tone="amber" icon="⏳" />
-              <StatBox label="Onaylı" value={groups.accepted.length} tone="marka" icon="✅" />
-              <StatBox label="Tamamlanan" value={completedCount} tone="emerald" icon="🎓" />
+              <StatBox label="Bekleyen" value={groups.pending.length} />
+              <StatBox label="Onaylı" value={groups.accepted.length} />
+              <StatBox label="Tamamlanan" value={completedCount} />
             </div>
 
-            {/* Kazanç özeti (escrow) — tıklayınca Bakiyem (işlem dökümü) açılır */}
+            {/* Kazanç özeti (escrow) — tıklayınca Bakiyem (işlem dökümü) açılır.
+                Eskiden emerald gradient bir kartti ve panodaki tek gradient
+                öğeydi; çevresindeki hiçbir şeye benzemiyordu. Zemin nötre
+                indi, rakam koyu; yeşil yalnız küçük bir vurgu. */}
             {earnings && (
               <Link
                 to={ROUTES.balance}
-                className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-emerald-50 to-white px-5 py-4 ring-1 ring-emerald-100 transition hover:ring-emerald-300 "
+                className="flex items-center justify-between gap-4 rounded-2xl bg-white px-5 py-4 ring-1 ring-slate-200 transition hover:bg-slate-50"
               >
-                <div>
-                  <p className="text-xs font-medium text-emerald-700 ">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
                     Toplam kazancın (net)
                   </p>
-                  <p className="text-2xl font-bold text-emerald-700 ">
+                  <p className="mt-1 text-2xl font-bold text-slate-900">
                     {formatTRY(earnings.released)}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-emerald-600/80 ">
-                    Bakiyem & işlem dökümü →
+                  <p className="mt-0.5 text-[11px] text-slate-400">
+                    Bakiyem &amp; işlem dökümü →
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-500 ">
+                <div className="shrink-0 text-right">
+                  <p className="text-xs text-slate-500">
                     {/* "Emanet" ifadesi ancak kol açıkken (yani alt üye işyeri
                         modeli çalışırken) doğrudur; kapalıyken nötr etiket. */}
                     {escrowWording ? "Emanette bekleyen" : "Bekleyen"}
                   </p>
-                  <p className="text-lg font-semibold text-slate-700 ">
+                  <p className="mt-1 text-lg font-semibold text-slate-700">
                     {formatTRY(earnings.pending)}
                   </p>
                 </div>
@@ -380,7 +372,9 @@ export default function TutorDashboard() {
               </p>
             ) : payout ? (
               <Link
-                to={ROUTES.profile}
+                // Ödeme bilgileri Ayarlar'ın bir sekmesi; eskiden "Profil"e
+                // yolluyordu ve kullanıcı doğru sekmeyi kendi arıyordu.
+                to={`${ROUTES.settings}?bolum=odeme`}
                 className="flex items-center justify-between gap-3 rounded-2xl bg-marka-soft px-5 py-3.5 ring-1 ring-marka/20 transition hover:bg-marka-line "
               >
                 <p className="text-sm font-medium text-marka-soft-fg ">
@@ -392,30 +386,24 @@ export default function TutorDashboard() {
               </Link>
             ) : null}
 
-            {/* Alert banner for pending */}
-            {groups.pending.length > 0 && (
-              <div className="flex items-center gap-3 rounded-2xl bg-amber-50 px-5 py-3.5 ring-1 ring-amber-200 ">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-                <p className="text-sm text-amber-800 ">
-                  <span className="font-semibold">{groups.pending.length} yeni talep</span> yanıtını bekliyor.
-                </p>
-              </div>
-            )}
-
+            {/* Bekleyen talep uyarı şeridi KALDIRILDI: aynı sayı üç ayrı
+                yerde duruyordu — "Bekleyen" kutusu, bu şerit ve "Bekleyen
+                Aksiyonlar" bölümünün rozeti. Bölümün kendi nabzı (alert)
+                uyarıyı zaten taşıyor. */}
             <BookingSection
               title="Bekleyen Aksiyonlar"
               hint="Yanıtını bekleyen yeni talepler."
               bookings={groups.pending}
               alert
-              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)}
+              onJoinMeeting={derseKatil}
             />
             <BookingSection
               title="Onaylı Dersler"
               hint="Yaklaşan dersler, bittiğinde tamamlandı olarak işaretle."
               bookings={groups.accepted}
-              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)}
+              onJoinMeeting={derseKatil}
             />
-            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE)} />
+            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={derseKatil} />
           </>
         )}
       </div>

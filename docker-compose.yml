@@ -150,6 +150,9 @@ services:
       SMTP_USE_TLS: "False"
       EMAIL_FROM: ${EMAIL_FROM:-no-reply@adanaozelders.com.tr}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
+      # Google ile giris. Bos = ozellik kapali (uclar 404, dugme cizilmez).
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       # Rota optimizasyonu: `--profile routing` açıkken backend container'ı VROOM'a
       # servis adıyla ulaşır (localhost:3000 container içinden çalışmaz). Profil
       # kapalıyken ROUTING_PROVIDER=auto sessizce haversine'e düşer — hard depends_on

@@ -43,16 +43,50 @@ export function IdentityVerifiedBadge() {
 
 /** "Diploması Doğrulandı" rozeti — en az bir eğitimde belge DOĞRULANMIŞ (admin
  *  e-Devlet barkodunu teyit etmiş). Yalnız yüklenmiş (doğrulanmamış) belge yetmez. */
+/**
+ * Diploması doğrulanmış eğitmen — NİŞAN, cümle değil.
+ *
+ * Önce "Diploması Doğrulandı" yazan yeşil bir çipti ve eğitmenin adının hemen
+ * yanında durduğu için ismi eziyordu. Rozetin işi bilgi vermek değil, bir
+ * ayrıcalığı İŞARET ETMEK; açıklaması zaten profilin eğitim bölümünde yazılı.
+ *
+ * Şekil kullanıcının seçtiği madalya (kullanıcı dosyayı gönderdi, 8 Eyl):
+ * dolu daire üstüne beyaz çember + kurdele ucu. Akademik nişanın yerleşik
+ * görsel dili ve 20px'e indiğinde de siluet olarak okunuyor. 3B/gradyanlı bir
+ * görsel yerine düz çizgi tercih edildi çünkü site başka hiçbir yerde öyle bir
+ * öğe kullanmıyor.
+ *
+ * Renk sabit değil `currentColor`: sarmalayıcı `text-emerald-600` veriyor,
+ * yani rozet site paletine bağlı kalıyor. Gelen dosyadaki `#60C78F` doğrudan
+ * gömülseydi palete kaçak bir yeşil daha girerdi.
+ *
+ * Metin kalktı ama ERİŞİLEBİLİRLİK kalmadı sayılmaz: `role="img"` +
+ * `aria-label` ikonun süs değil ANLAM taşıdığını söyler, `title` fareyle
+ * açıklamayı verir. Yalnız `title` bırakılsaydı rozet dokunmatik ekranda ve
+ * ekran okuyucuda sessiz kalırdı.
+ */
 export function DocumentedBadge() {
+  const aciklama = "Diploması e-Devlet üzerinden doğrulandı";
   return (
     <span
-      title="Diploma/belge e-Devlet üzerinden doğrulandı"
-      className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 "
+      title={aciklama}
+      role="img"
+      aria-label={aciklama}
+      className="inline-flex shrink-0 text-emerald-600"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5" aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      <svg viewBox="0 0 512 512" className="h-5 w-5" aria-hidden>
+        <circle cx="256" cy="256" r="256" fill="currentColor" />
+        <g
+          fill="none"
+          stroke="#fff"
+          strokeWidth={24.3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="256" cy="208.4" r="86.3" />
+          <path d="M306 278.8 316.4 390 256 353 195.6 390 206 278.8" />
+        </g>
       </svg>
-      Diploması Doğrulandı
     </span>
   );
 }

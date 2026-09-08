@@ -112,7 +112,7 @@ async def build_sitemap(db: AsyncSession) -> str:
     # ile AYNI fonksiyon) — sapma olursa sitemap 404'e işaret eder.
     tutors = (
         await db.execute(
-            select(Tutor.id, Tutor.first_name, Tutor.last_name, Tutor.updated_at)
+            select(Tutor.id, Tutor.first_name, Tutor.updated_at)
             .where(
                 Tutor.status == TutorStatus.APPROVED,
                 Tutor.is_active.is_(True),
@@ -123,12 +123,15 @@ async def build_sitemap(db: AsyncSession) -> str:
     ).all()
     entries += [
         _url_entry(
-            tutor_path(tutor_slug(tid, f"{first or ''} {last or ''}".strip())),
+            # Yalnız AD (ÜK-9): sitemap slug'ları doğrudan arama motorlarına
+            # veriyor, yani soyad buraya girerse arayüzden kaldırılmış olması
+            # hiçbir şey ifade etmez.
+            tutor_path(tutor_slug(tid, first or "")),
             lastmod=updated,
             changefreq="weekly",
             priority="0.8",
         )
-        for tid, first, last, updated in tutors
+        for tid, first, updated in tutors
     ]
 
     # ── Kütüphaneler (yalnız ACTIVE) ──

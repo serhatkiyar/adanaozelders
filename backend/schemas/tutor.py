@@ -152,15 +152,31 @@ class TutorOut(UserOut):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def slug(self) -> str:
-        """Kanonik SEO slug: ``isim-soyisim-{id}``."""
-        return tutor_slug(self.id, self.full_name)
+        """Kanonik SEO slug: ``isim-{id}`` — soyad İÇERMEZ (ÜK-9).
+
+        `TutorOut` yasal adı taşır (kendi profili/admin) ama slug HER YERDE
+        aynı olmalı: farklı üretilseydi eğitmenin kendi ekranındaki bağlantı
+        public URL'den ayrışırdı.
+        """
+        return tutor_slug(self.id, self.first_name)
 
 
 class TutorSearchOut(BaseModel):
+    """PUBLIC eğitmen şeması — arama, vitrin ve profil detayı.
+
+    Soyad TAŞIMAZ (ÜK-9): bu şema kimlik doğrulaması istemeyen uçlardan dönüyor
+    (`GET /tutors/search`, `/featured`, `/{id|slug}`), yani yanıtı herkes
+    görebiliyor. `display_name` modeldeki property'den gelir
+    (`models/mixins.py::NameMixin`).
+
+    `TutorOut` (yasal ad taşır) yalnız admin uçlarında ve eğitmenin KENDİ
+    profilinde (`/tutors/me`) kullanılıyor; oralara dokunulmadı.
+    """
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    full_name: str
+    display_name: str
     avatar_url: str | None = None
     headline: str | None = None
     bio: str | None = None
@@ -200,5 +216,5 @@ class TutorSearchOut(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def slug(self) -> str:
-        """Kanonik SEO slug: ``isim-soyisim-{id}``."""
-        return tutor_slug(self.id, self.full_name)
+        """Kanonik SEO slug: ``isim-{id}`` — soyad İÇERMEZ (ÜK-9)."""
+        return tutor_slug(self.id, self.display_name)

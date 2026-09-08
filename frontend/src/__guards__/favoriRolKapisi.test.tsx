@@ -60,7 +60,7 @@ function sar(roleId: number | null) {
     qc.setQueryData(["me"], {
       id: 7,
       role_id: roleId,
-      full_name: "Test",
+      display_name: "Test",
       email: "t@example.com",
     });
   }
@@ -142,7 +142,7 @@ describe("favori düğmesinin GÖRÜNÜMÜ", () => {
   it("kart içinde (onSolid) favorilenmemiş kalp DOLU DEĞİL", () => {
     // Asıl kusur sınıfı. `fill-slate-300` görsel olarak "dolu" demekti.
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    qc.setQueryData(["me"], { id: 7, role_id: ROLE_IDS.CLIENT, full_name: "T", email: "t@x.co" });
+    qc.setQueryData(["me"], { id: 7, role_id: ROLE_IDS.CLIENT, display_name: "T", email: "t@x.co" });
     qc.setQueryData(["bookmarks"], []);
     render(
       <QueryClientProvider client={qc}>
@@ -159,7 +159,7 @@ describe("favori düğmesinin GÖRÜNÜMÜ", () => {
   it("kart içinde kalp, paylaş düğmesiyle AYNI dairesel kabı taşır", () => {
     // İkisi yan yana duruyor; ölçü ve zemin ayrışırsa göze batıyor.
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    qc.setQueryData(["me"], { id: 7, role_id: ROLE_IDS.CLIENT, full_name: "T", email: "t@x.co" });
+    qc.setQueryData(["me"], { id: 7, role_id: ROLE_IDS.CLIENT, display_name: "T", email: "t@x.co" });
     qc.setQueryData(["bookmarks"], []);
     render(
       <QueryClientProvider client={qc}>

@@ -37,7 +37,7 @@ const YOL: Record<DaireYon, string> = {
 
 /** Ölçü, renk ve hover TEK yerde. Çağrı yerleri bu dizeyi kopyalamaz. */
 const TEMEL =
-  "inline-flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full transition";
+  "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-full transition";
 const ETKIN = "bg-slate-100 text-slate-700 hover:bg-slate-200";
 const PASIF = "bg-slate-50 text-slate-300 cursor-default";
 
@@ -48,7 +48,7 @@ function Glif({ yon }: { yon: DaireYon }) {
       fill="none"
       stroke="currentColor"
       strokeWidth={2.2}
-      className="h-[15px] w-[15px]"
+      className="h-[13px] w-[13px]"
       aria-hidden
     >
       <path strokeLinecap="round" strokeLinejoin="round" d={YOL[yon]} />

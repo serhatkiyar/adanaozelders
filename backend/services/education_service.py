@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from core import frontend_yollari
+
 import datetime
 
 from fastapi import HTTPException, status
@@ -265,7 +267,7 @@ async def admin_set_verification(
         user_id=edu.tutor_id,
         role_id=ROLE_IDS[RoleType.TUTOR],
         message=message,
-        link="/ilan-ayarlari",
+        link=frontend_yollari.ILANIM,
     )
     await db.refresh(edu)
     return edu

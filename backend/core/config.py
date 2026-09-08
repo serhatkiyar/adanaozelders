@@ -152,6 +152,22 @@ class Settings(BaseSettings):
     # subdomain; geliştirmede frontend kökü + /kargo-takip yolu kullanılır.
     PUBLIC_TRACKING_BASE_URL: str = "http://localhost:5173/kargo-takip"
 
+    # ── Google ile giriş (OAuth 2.0 / OpenID Connect) ──
+    # Boş bırakılırsa özellik TAMAMEN KAPALIDIR: uçlar 404 döner ve arayüz
+    # düğmeyi hiç çizmez (`/auth/oauth/providers`). Geliştirmede dış hesap
+    # gerekmesin diye varsayılan bu — GOOGLE_MAPS_API_KEY ile aynı yaklaşım.
+    #
+    # Sunucu tarafı authorization-code akışı kullanılır, Google'ın tarayıcı
+    # kütüphanesi (GSI) DEĞİL: GSI script'i sayfa açılır açılmaz Google'a istek
+    # atar, yani kullanıcı hiçbir onay vermeden üçüncü tarafa veri gider. Bu
+    # deponun KVKK kararına ters (bkz. frontend __guards__/disFont.test.ts) ve
+    # CSP'deki `script-src 'self'`i de delerdi.
+    GOOGLE_OAUTH_CLIENT_ID: str | None = None
+    GOOGLE_OAUTH_CLIENT_SECRET: str | None = None
+    # `state` çerezinin ömrü: kullanıcının Google ekranında geçireceği süre.
+    # Kısa tutulur; bu çerez tek kullanımlıktır ve callback'te hemen silinir.
+    GOOGLE_OAUTH_STATE_TTL_SECONDS: int = 600
+
     # E-posta gönderimi. EMAIL_PROVIDER: "console" (loglar) | "smtp" (MailHog/SES vb.).
     # Geliştirmede "smtp" + MailHog (port 1025) ya da "console" yeterlidir; gerçek
     # sağlayıcı yalnızca üretimde gerekir.
@@ -444,6 +460,21 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
 
+    @property
+    def GOOGLE_OAUTH_ENABLED(self) -> bool:
+        """İkisi de doluysa açık. Yarım yapılandırma = kapalı (fail-closed)."""
+        return bool(self.GOOGLE_OAUTH_CLIENT_ID and self.GOOGLE_OAUTH_CLIENT_SECRET)
+
+    @property
+    def GOOGLE_OAUTH_REDIRECT_URI(self) -> str:
+        """Google Console'a yazılacak adres. AYRI BİR AYAR DEĞİL, türetilir.
+
+        Google bu adresi birebir karşılaştırır (tek karakter fark
+        `redirect_uri_mismatch` verir). Ayrı bir ayar olsaydı `BACKEND_BASE_URL`
+        değiştiğinde sessizce sapar ve hata ancak canlıda görünürdü.
+        """
+        return f"{self.BACKEND_BASE_URL.rstrip('/')}{self.API_V1_PREFIX}/auth/google/callback"
+
     @model_validator(mode="after")
     def _guard_production(self) -> "Settings":
         """ENVIRONMENT=production iken tehlikeli geliştirme varsayılanlarını reddet.
@@ -458,6 +489,18 @@ class Settings(BaseSettings):
             return self
 
         problems: list[str] = []
+
+        # Google girişi üretimde ZORUNLU DEĞİL: kapalıyken tamamen görünmez
+        # opsiyonel bir özelliktir, `PAYMENT_PROVIDER=fake` gibi sessiz bir
+        # felaket değil. Denetlenen tek şey YARIM yapılandırma: biri dolu biri
+        # boşsa `GOOGLE_OAUTH_ENABLED` False kalır ama operatör özelliği açtığını
+        # sanar; düğme görünmez ve kimse sebebini aramaz.
+        if bool(self.GOOGLE_OAUTH_CLIENT_ID) != bool(self.GOOGLE_OAUTH_CLIENT_SECRET):
+            problems.append(
+                "GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET yarım "
+                "yapılandırılmış (biri dolu, biri boş) — Google girişi sessizce "
+                "kapalı kalır"
+            )
 
         if self.PAYMENT_PROVIDER.strip().lower() != "iyzico":
             problems.append(

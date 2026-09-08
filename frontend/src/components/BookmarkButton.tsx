@@ -47,11 +47,20 @@ export function BookmarkButton({
   // ayrışmışlardı: paylaş dairesel zeminliydi, kalp zeminsiz ve DOLU GRİYDİ,
   // yani "favorilenmiş ama pasif" gibi okunuyordu. Kalp artık favorilenmemişken
   // ÇİZGİ, favorilenince dolu.
+  //
+  // 8 Eyl 2026: daire ZEMİN kalktı. Kullanıcı kartı Superprof'unkiyle
+  // karşılaştırıp "sembolleri kötü" dedi; gri dolu daireler ikincil iki eylem
+  // için fazla ağırlık taşıyor, kartın sakin dilini bozuyordu. İkon artık tek
+  // başına duruyor ve rengiyle konuşuyor: favorilenmemişken gri çizgi,
+  // favorilenince dolu gül rengi.
+  // `group`: hover DÜĞMEDE oluyor ama dolgu SVG'de değişmeli. `hover:` doğrudan
+  // svg'ye yazılsaydı yalnız ikonun kendi üstüne gelince tetiklenir, düğmenin
+  // boş kenarında sessiz kalırdı.
   const kap = onSolid
-    ? `flex ${size === "md" ? "h-9 w-9" : "h-8 w-8"} shrink-0 items-center justify-center rounded-full transition active:scale-90 disabled:opacity-50 ${
+    ? `group flex ${size === "md" ? "h-9 w-9" : "h-8 w-8"} shrink-0 items-center justify-center rounded-full transition active:scale-90 disabled:opacity-50 ${
         bookmarked
-          ? "bg-rose-50 text-rose-500 hover:bg-rose-100"
-          : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+          ? "text-rose-500 hover:bg-rose-50"
+          : "text-slate-900 hover:bg-slate-100"
       }`
     : "shrink-0 transition active:scale-90 hover:scale-110 disabled:opacity-50";
 
@@ -61,10 +70,13 @@ export function BookmarkButton({
   // kullanıcı kararı — kalp fotoğrafın önünde bir leke gibi duruyordu.
   // Okunurluğu artık ağırlıklı olarak `drop-shadow` taşıyor; onu inceltmek
   // açık renkli fotoğraflarda kalbi kaybederdi, bu yüzden gölge DEĞİŞMEDİ.
+  // Düz zeminde kalp SİYAH ÇİZGİdir; üstüne gelince içi kırmızı dolar ve çizgi
+  // de kırmızıya döner (kullanıcı kararı, 8 Eyl). Önizleme niteliğinde: tıklayınca
+  // ne olacağını basmadan gösteriyor.
   const fillCls = onSolid
     ? bookmarked
       ? "fill-current stroke-current"
-      : "fill-none stroke-current"
+      : "fill-none stroke-current group-hover:fill-rose-500 group-hover:stroke-rose-500"
     : bookmarked
       ? "fill-rose-500 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
       : "fill-black/40 stroke-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]";

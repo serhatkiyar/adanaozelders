@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { OPERATOR_NAV, UYE_NAV, TUTOR_NAV } from "@/lib/nav";
+import {
+  OPERATOR_NAV,
+  UYE_NAV,
+  TUTOR_NAV,
+  TUTOR_PANO_SEKMELERI,
+} from "@/lib/nav";
 import { resolveSurface } from "@/lib/navPrefs";
 import { ROUTES } from "@/lib/routes";
 
@@ -43,11 +48,21 @@ describe("Öğren hub'ı — donduruldu", () => {
   // DOLULUK NÖBETÇİSİ: menüler boşalmış ya da import kırılmış olsaydı
   // yukarıdaki "yok" iddiası bedava geçerdi.
   it("menüler dolu ve çözümlenen yüzey çalışıyor", () => {
-    expect(TUTOR_NAV.length).toBeGreaterThan(3);
+    // Eğitmen tarafında kapı 8 Eyl 2026'da YÜZEY DEĞİŞTİRDİ: gezinme avatar
+    // menüsünden panel şeridine taşındı (bkz. lib/nav.ts), menüde yalnız
+    // şeride girmeyenler kaldı. Ölçülen şey değişmedi — gezinme boş bir
+    // listeden gelmiyor olsun; hangi yüzeye yazıldığı bu düğümün işi değil.
+    expect(TUTOR_NAV.length + TUTOR_PANO_SEKMELERI.length).toBeGreaterThan(2);
     expect(UYE_NAV.some((i) => i.to === ROUTES.messages)).toBe(true);
-    const cozulen = resolveSurface(TUTOR_NAV, undefined, "navbar");
+    // Mesajlar artık eğitmenin ŞERİDİNDE; üyede menüde. `resolveSurface`
+    // (kişiselleştirme katmanı) hâlâ üye menüsünde doğru çalışıyor mu?
+    const cozulen = resolveSurface(UYE_NAV, undefined, "navbar");
     const mesajlar = cozulen.find((i) => i.to === ROUTES.messages);
     expect(mesajlar?.visible, "navbar: Mesajlar görünür değil").toBe(true);
+    expect(
+      TUTOR_PANO_SEKMELERI.some((i) => i.to === ROUTES.messages),
+      "eğitmenin Mesajlarım sekmesi şeritten düşmüş"
+    ).toBe(true);
   });
 
   // Karar kaydı: "Tekrar" (SRS) kenar çubuğuna DOĞRUDAN eklenmez — dokuz

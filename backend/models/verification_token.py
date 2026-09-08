@@ -14,6 +14,11 @@ from models.mixins import TimestampMixin
 class TokenPurpose(str, enum.Enum):
     EMAIL_VERIFY = "EMAIL_VERIFY"
     PASSWORD_RESET = "PASSWORD_RESET"
+    #: Parolasız (Google ile açılmış) hesabın silme onayı. Parolalı hesapta
+    #: silme parola ile onaylanır; parolası olmayan hesabın o yolu yoktur ve
+    #: KVKK silme hakkı kapalı bırakılamaz — onay e-postaya gönderilen tek
+    #: kullanımlık bir bağlantıyla verilir.
+    ACCOUNT_DELETE = "ACCOUNT_DELETE"
 
 
 class VerificationToken(Base, TimestampMixin):

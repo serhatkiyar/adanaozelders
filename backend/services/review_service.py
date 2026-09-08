@@ -142,15 +142,17 @@ async def assert_booking_review_viewer(
 async def get_by_booking(db: AsyncSession, booking_id: int) -> Review | None:
     row = (
         await db.execute(
-            select(Review, Client.full_name, Client.avatar_url)
+            select(Review, Client.first_name, Client.avatar_url)
             .join(Client, Review.client_id == Client.id)
             .where(Review.booking_id == booking_id, Review.deleted_at.is_(None))
         )
     ).first()
     if row is None:
         return None
-    review, full_name, avatar_url = row
-    review.client_name = full_name
+    review, ad, avatar_url = row
+    # Yorum yazarı yalnız ADIYLA görünür (ÜK-9): bu uç auth'suz, yani
+    # öğrencinin tam adı giriş yapmamış herkese açık olurdu.
+    review.client_name = ad
     review.client_avatar_url = avatar_url
     return review
 
@@ -164,7 +166,7 @@ async def list_reviews(
     offset: int = 0,
 ) -> list[Review]:
     stmt = (
-        select(Review, Client.full_name, Client.avatar_url)
+        select(Review, Client.first_name, Client.avatar_url)
         .join(Client, Review.client_id == Client.id)
         # Moderasyonla gizlenen yorum public listede görünmez (bkz.
         # services/content_moderation.py); puan toplamından da düşülmüştür.
@@ -177,8 +179,9 @@ async def list_reviews(
     stmt = stmt.order_by(Review.created_at.desc()).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
     reviews: list[Review] = []
-    for review, full_name, avatar_url in rows:
-        review.client_name = full_name  # serileştirme için transient alan
+    for review, ad, avatar_url in rows:
+        # Yalnız ad (ÜK-9) — transient alan, serileştirme için.
+        review.client_name = ad
         review.client_avatar_url = avatar_url
         reviews.append(review)
     return reviews

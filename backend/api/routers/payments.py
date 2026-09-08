@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from core import frontend_yollari
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -43,14 +45,16 @@ logger = logging.getLogger("adana.payments")
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
-# Callback sonrası kullanıcının döndürüleceği frontend sayfaları (lib/routes.ts).
-_BOOKINGS_PAGE = "/ders-talepleri"
-# Kütüphane ödemesi dönüşü. Eski ad "/biletlerim"di; bilet metaforu
-# kaldırıldı (bkz. components/reservation/CheckInCodeCard.tsx). Bu sabit
-# PARA YOLUNDADIR: yol çözülmezse ödemesini yapmış kullanıcı 404 görür.
-_RESERVATIONS_PAGE = "/rezervasyonlar"
-_ORDERS_PAGE = "/siparislerim"
-_PROMOTION_PAGE = "/ilanimi-one-cikar"
+# Callback sonrası kullanıcının döndürüleceği frontend sayfaları.
+# Değerler `core/frontend_yollari`den gelir (istemcideki `lib/routes.ts` ile
+# aynı tutulur). Bu sabitler PARA YOLUNDADIR: yol çözülmezse ödemesini yapmış
+# kullanıcı 404 görür. Rezervasyon dönüşünün eski adı "/biletlerim"di; bilet
+# metaforu kaldırıldı (bkz. components/reservation/CheckInCodeCard.tsx),
+# ardından 8 Eyl 2026'da panel şeridiyle `/pano` oldu.
+_BOOKINGS_PAGE = frontend_yollari.DERS_TALEPLERI
+_RESERVATIONS_PAGE = frontend_yollari.PANO
+_ORDERS_PAGE = frontend_yollari.SIPARISLERIM
+_PROMOTION_PAGE = frontend_yollari.ONE_CIKAR
 
 _pay_limit = user_rate_limit(
     key="payment_pay",

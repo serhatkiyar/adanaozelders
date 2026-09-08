@@ -19,7 +19,8 @@ import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
 import { DersArama, KutuphaneArama, CompactSearch } from "@/components/HeroSearch";
-import type { MekanDegeri } from "@/components/MekanSelect";
+import type { DersSekli } from "@/components/AramaSecicileri";
+import { yeriYaz, type YerSecimi } from "@/lib/yerArama";
 import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import type { TutorSearchParams } from "@/api/tutors";
@@ -44,10 +45,13 @@ export default function Landing() {
   // Yeni arama modeli (29 Ağu): serbest metin yerine ders kategorisi + mekân.
   const [ders, setDers] = useState("");
   const [dersEtiket, setDersEtiket] = useState("");
-  const [mekan, setMekan] = useState<MekanDegeri>({ online: false, yuzyuze: false, district: [] });
-  // Kütüphane sekmesinin KENDİ araması: ders/mekân değil, ad-semt + ilçe.
+  // Ders şekli TEK seçim; "" = fark etmez. Yer YALNIZ yüz yüzede sorulur,
+  // bu yüzden ikisi ayrı state: biri diğerini ezemez.
+  const [sekil, setSekil] = useState<DersSekli>("");
+  const [yer, setYer] = useState<YerSecimi | null>(null);
+  // Kütüphane sekmesinin KENDİ araması: ders şekli değil, ad + yer.
   const [kutQ, setKutQ] = useState("");
-  const [kutDistrict, setKutDistrict] = useState<string[]>([]);
+  const [kutYer, setKutYer] = useState<YerSecimi | null>(null);
   const [scrolled, setScrolled] = useState(false);
   // Daralmışken kompakt aramaya tıklayınca geniş navbar'ı YERİNDE aç (sayfa
   // kaymaz). Tekrar kaydırınca kapanır.
@@ -75,7 +79,7 @@ export default function Landing() {
     e.preventDefault();
     const sp = new URLSearchParams();
     if (kutQ.trim()) sp.set("q", kutQ.trim());
-    kutDistrict.forEach((d) => sp.append("district", d));
+    yeriYaz(sp, kutYer, kutYer ? [kutYer.ilce] : []);
     const qs = sp.toString();
     navigate(`${ROUTES.libraries}${qs ? `?${qs}` : ""}`);
   };
@@ -84,11 +88,15 @@ export default function Landing() {
     e.preventDefault();
     const sp = new URLSearchParams();
     if (ders) sp.append("subject", ders);
-    // İki mekân da (veya hiçbiri) seçiliyse filtre uygulanmaz — tek arama
-    // her iki mekânı birden kapsar (kullanıcı tasarımı).
-    if (mekan.online && !mekan.yuzyuze) sp.set("mode", TeachingMode.ONLINE);
-    if (mekan.yuzyuze && !mekan.online) sp.set("mode", TeachingMode.IN_PERSON);
-    if (mekan.yuzyuze) mekan.district.forEach((d) => sp.append("district", d));
+    // Ders şekli TEK seçim: seçilmemişse ("" = fark etmez) filtre yazılmaz.
+    if (sekil) sp.set("mode", sekil);
+    // Yer YALNIZ yüz yüzede yazılır. Uzaktan ders arayan birine konum
+    // dayatmak, ilçesi tasarım gereği boş olan uzaktan eğitmenleri sessizce
+    // elerdi (bkz. tutorOnboarding/sozlesme.ts — ilçe yalnız yüz yüzede
+    // zorunlu).
+    if (sekil === TeachingMode.IN_PERSON && yer) {
+      yeriYaz(sp, yer.tur === "mahalle" ? yer : null, [yer.ilce]);
+    }
     const qs = sp.toString();
     navigate(`${ROUTES.tutors}${qs ? `?${qs}` : ""}`);
   };
@@ -106,8 +114,16 @@ export default function Landing() {
           active={active}
           placeholder={placeholder}
           q={active === "kutuphaneler" ? kutQ : dersEtiket}
-          district={active === "kutuphaneler" ? kutDistrict : mekan.yuzyuze ? mekan.district : []}
-          remote={active !== "kutuphaneler" && mekan.online && !mekan.yuzyuze}
+          district={
+            active === "kutuphaneler"
+              ? kutYer
+                ? [kutYer.ilce]
+                : []
+              : sekil === TeachingMode.IN_PERSON && yer
+                ? [yer.ilce]
+                : []
+          }
+          remote={active !== "kutuphaneler" && sekil === TeachingMode.ONLINE}
           onOpen={() => setSearchOpen(true)}
         />
       )}
@@ -131,8 +147,8 @@ export default function Landing() {
         <KutuphaneArama
           q={kutQ}
           setQ={setKutQ}
-          district={kutDistrict}
-          setDistrict={setKutDistrict}
+          yer={kutYer}
+          setYer={setKutYer}
           onSubmit={kutSubmit}
         />
       ) : (
@@ -143,8 +159,10 @@ export default function Landing() {
             setDers(qDeger);
             setDersEtiket(etiket);
           }}
-          mekan={mekan}
-          setMekan={setMekan}
+          sekil={sekil}
+          setSekil={setSekil}
+          yer={yer}
+          setYer={setYer}
           onSubmit={submit}
         />
       )}
@@ -290,6 +308,26 @@ function CategoryContent({ active }: { active: CategoryKey }) {
   );
 }
 
+/**
+ * Vitrin kartının genişliği — konteynere BAĞLI, sabit piksel DEĞİL.
+ *
+ * Kartlar `w-[210px]` sabitken satırın sağ kenarı konteynerle hizalanmıyordu:
+ * içerik genişliği 1216-48 = 1168px, beş kart ise 5x210 + 4x20 = 1130px
+ * tutuyordu ve kalan 38px son kartı sağ kenardan içeride bırakıyordu. Kaydırma
+ * okları konteynerin sağ ucunda durduğu için fark gözle görülür haldeydi.
+ *
+ * Konteyner ölçüsünü (`max-w-[1216px]`) küçültmek çözüm DEĞİL: aynı ölçü
+ * `SiteFooter`da da kullanılıyor, yani hizasızlık sayfanın başka yerine kayardı.
+ * Bunun yerine kart genişliği kalan alandan hesaplanıyor; boşluk `gap-5` (20px)
+ * olduğundan çıkarılan değer (kart sayısı - 1) x 20.
+ *
+ * Kart sayısı ekran genişliğiyle artar ve her eşikte kart ~220px civarında
+ * kalır; sabit piksel kullanılsaydı ya dar ekranda taşar ya geniş ekranda
+ * boşluk bırakırdı.
+ */
+const VITRIN_KART =
+  "shrink-0 w-[190px] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
+
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
   // yanında gri dairesel ok butonu — tamamına o götürür.
@@ -346,7 +384,7 @@ function FeaturedTutorRow() {
         }
       >
         {tutors.map((tutor) => (
-          <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
+          <div key={tutor.id} className={VITRIN_KART}>
             <TutorCard tutor={tutor} featured />
           </div>
         ))}
@@ -389,7 +427,7 @@ function TutorRow({
           baslik={<RowHeader heading={heading} href={href} />}
         >
           {data!.map((tutor) => (
-            <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
+            <div key={tutor.id} className={VITRIN_KART}>
               <TutorCard tutor={tutor} />
             </div>
           ))}
@@ -430,7 +468,7 @@ function LibraryRow({
           baslik={<RowHeader heading={heading} href={href} />}
         >
           {data!.map((lib) => (
-            <div key={lib.id} className="w-[190px] shrink-0 sm:w-[210px]">
+            <div key={lib.id} className={VITRIN_KART}>
               <LibraryCard library={lib} />
             </div>
           ))}

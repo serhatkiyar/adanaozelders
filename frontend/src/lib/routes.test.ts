@@ -24,20 +24,50 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     // Kimlik
     expect(PATHS.login).toBe("/giris");
     expect(PATHS.register).toBe("/kayit");
-    // Ortak oturum-içi
-    expect(PATHS.profile).toBe("/hesabim");
-    expect(PATHS.messages).toBe("/mesajlar");
+    /*
+     * PANEL ŞERİDİ `/pano/*` ALTINDA (kullanıcı kararı, 8 Eyl 2026).
+     *
+     * Bu blok 8 Eyl'de DEĞİŞTİ: şeridin altı sayfası düz yollardan
+     * (`/mesajlar`, `/hesabim`, `/rezervasyonlar`, `/bakiyem`,
+     * `/ilan-ayarlari`) ortak bir kökün altına indi. Değişen yalnız
+     * ŞERİDİN sayfalarıdır — `/ayarlar`, `/favoriler`, `/takvim`,
+     * `/siparislerim`, `/ilanimi-one-cikar` ve sihirbaz DÜZ kaldı;
+     * aşağıdaki çıpalar bunu iki yönlü tutar.
+     */
+    expect(PATHS.bookings).toBe("/pano");
+    expect(PATHS.messages).toBe("/pano/mesajlar");
+    expect(PATHS.tutorListing).toBe("/pano/ilanim");
+    expect(PATHS.tutorReviews).toBe("/pano/degerlendirmeler");
+    expect(PATHS.balance).toBe("/pano/bakiyem");
+    expect(PATHS.profile).toBe("/pano/hesabim");
+    expect(PATHS.profileEdit).toBe("/pano/hesabim/profil");
+    expect(PATHS.libraryReservation).toBe("/pano/rezervasyon/:tur/:id");
+    // Şeride GİRMEYENLER düz kalır — önek her oturum-içi yola yayılmaz.
     expect(PATHS.settings).toBe("/ayarlar");
-    // Rezervasyonlar (CLIENT liste: ders + kütüphane) + detay yolları
-    expect(PATHS.bookings).toBe("/rezervasyonlar");
     expect(PATHS.lesson).toBe("/ders-talepleri/:id");
-    expect(PATHS.libraryReservation).toBe("/rezervasyonlar/:tur/:id");
-    // ESKİ YOL KALICI: DB'deki bildirim satırları ve gönderilmiş e-postalar
-    // "/biletlerim" taşıyor. Bilet metaforu kalktı ama bu yönlendirme,
-    // o linkler ölmesin diye duruyor.
-    expect(LEGACY_STATIC.map(([from]) => from)).toContain("/biletlerim");
-    // Tutor yüzeyi
-    expect(PATHS.tutorListing).toBe("/ilan-ayarlari");
+    expect(PATHS.tutorPromotion).toBe("/ilanimi-one-cikar");
+    expect(PATHS.tutorOnboarding).toBe("/ilanini-olustur");
+    /*
+     * ESKİ DÜZ YOLLAR KALICI YÖNLENDİRMEDİR.
+     *
+     * Üretimde canlıydılar: DB'deki bildirim satırları, gönderilmiş
+     * e-postalar ve kullanıcıların yer imleri bunları taşıyor. Biri silinirse
+     * o linkler 404 olur ve bunu ancak eski bir e-postaya tıklayan kullanıcı
+     * fark eder. `/degerlendirmelerim` listede YOK — hiç yayınlanmadı.
+     */
+    const eskiYollar = LEGACY_STATIC.map(([from]) => from);
+    for (const eski of [
+      "/rezervasyonlar",
+      "/mesajlar",
+      "/hesabim",
+      "/hesabim/profil",
+      "/bakiyem",
+      "/ilan-ayarlari",
+      // Bilet metaforu kalktı ama bu yönlendirme aynı sebeple duruyor.
+      "/biletlerim",
+    ]) {
+      expect(eskiYollar, `${eski} yönlendirmesi düşmüş`).toContain(eski);
+    }
     // ÜK-4: yol `/ogrenciler` değil `/uyeler`. Hesap sahibi öğrenci olmak
     // zorunda değil; eski yol `App.tsx`te yönlendirmeye bağlandı.
     expect(PATHS.uyeProfili).toBe("/uyeler/:id");
@@ -88,7 +118,7 @@ describe("ROUTES — tek kaynak tutarlılığı", () => {
 
   it("messageWith query'yi encode eder", () => {
     expect(ROUTES.messageWith(5, "Ayşe Yılmaz")).toBe(
-      "/mesajlar?to=5&name=Ay%C5%9Fe%20Y%C4%B1lmaz",
+      "/pano/mesajlar?to=5&name=Ay%C5%9Fe%20Y%C4%B1lmaz",
     );
   });
 });

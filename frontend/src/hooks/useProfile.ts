@@ -112,7 +112,8 @@ export function useDeletionEligibility() {
 export function useDeleteMyAccount() {
   const logout = useAuthStore((s) => s.logout);
   return useMutation({
-    mutationFn: (password: string) => deleteMyAccount(password),
+    mutationFn: (kanit: { password: string } | { token: string }) =>
+      deleteMyAccount(kanit),
     onSuccess: () => {
       logout();
     },

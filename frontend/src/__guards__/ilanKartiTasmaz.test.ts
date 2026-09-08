@@ -70,11 +70,28 @@ const oku = (ad: string) =>
 const DAGITICI = oku("TutorProfilePage.tsx");
 
 /** `<aside ... className="...">` içindeki sınıf dizesi. */
+/**
+ * Sabit kartın sınıf dizesi.
+ *
+ * 8 Eyl 2026: yükseklik sınırı ve taşma davranışı `<aside>`dan KARTIN KENDİSİNE
+ * taşındı. Sebep ölçülmüş bir kusurdu: kartın gölgesi görünmüyordu, çünkü
+ * `overflow-y-auto` üst katmandaydı ve bir element ÇOCUKLARININ gölgesini
+ * kırpar. Kendi gölgesini kırpmaz — sınır karta inince gölge sayfaya çıktı.
+ *
+ * `sticky` `<aside>`da kalır (konumlandırma onun işi), yükseklik + taşma
+ * kartta. Bu yüzden ikisi birleştirilip okunuyor: nöbetçinin iddiası
+ * "üçü BİRLİKTE duruyor", hangi etiketde durdukları değil.
+ */
 function asideSinifi(kaynak: string): string {
-  const i = kaynak.indexOf("<aside");
-  if (i < 0) return "";
-  const j = kaynak.indexOf('className="', i);
-  return j < 0 ? "" : kaynak.slice(j + 11, kaynak.indexOf('"', j + 11));
+  const parcalar: string[] = [];
+  for (const etiket of ["<aside", "<section"]) {
+    const i = kaynak.indexOf(etiket);
+    if (i < 0) continue;
+    const j = kaynak.indexOf('className="', i);
+    if (j < 0) continue;
+    parcalar.push(kaynak.slice(j + 11, kaynak.indexOf('"', j + 11)));
+  }
+  return parcalar.join(" ");
 }
 
 /** Yorumları eleyen kod metni: "KALDIRILDI" notu TARİHtir, borç değil. */
@@ -179,8 +196,23 @@ describe("ilan sayfası · sabit kart", () => {
     expect(kaynak, "dikey güven çubuğu geri gelmiş").not.toContain(
       "<TutorTrustBar"
     );
-    // Avatar da küçük kaldı: `xl` (128px) kartı tek başına 128 px şişiriyordu.
-    expect(kaynak, "avatar yeniden xl olmuş").not.toMatch(/size="xl"/);
+    // Avatar YASAĞI 8 Eyl'de kalktı ve yerini bütçeye bıraktı.
+    //
+    // 7 Eyl'de `xl` (128px) yasaklanmıştı çünkü kartı tek başına 64px
+    // şişiriyordu (lg=64 → xl=128). 8 Eyl'de favori ve paylaş düğmeleri sağ üst
+    // köşeye `absolute` alındı; eskiden fotoğrafın üstünde kendi satırlarını
+    // kaplıyorlardı (h-9 + mb-2 ≈ 44px) ve o satır artık akışta DEĞİL.
+    //
+    // Yani bütçe şöyle değişti:  +64 (avatar) − 44 (kalkan satır) = net +20px.
+    // Kart ~516 → ~536px. Ölçülmüş taşma sınırı 1366x768'de "altı 672" idi;
+    // +20px onu 692'ye taşır, hâlâ içeride.
+    //
+    // Korunan asıl iddia yukarıdaki üç düğüm: özet tablosu duruyor, ücret
+    // ikinci kez basılmıyor, dikey güven çubuğu geri gelmiyor. Kartı asıl
+    // şişiren onlardı; avatar tek başına o sınıfta değil.
+    //
+    // DİKKAT: buraya bir satır daha eklenirse bütçe yeniden hesaplanmalı.
+    // Kartın ekrana sığması ölçülmüş bir karardır, tahmin değil.
   });
 
   it.each(KABUKLAR)(

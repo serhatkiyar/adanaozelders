@@ -82,6 +82,8 @@ const Register = lazy(() => import("@/pages/Register"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const GoogleDonus = lazy(() => import("@/pages/GoogleDonus"));
+const HesapSilmeOnayi = lazy(() => import("@/pages/HesapSilmeOnayi"));
 const AdminLayout = lazy(() => import("@/components/admin/layout/AdminLayout"));
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
@@ -133,6 +135,7 @@ const IlanSihirbazi = lazy(
   () => import("@/pages/tutorOnboarding/IlanSihirbazi"),
 );
 const TutorPromotion = lazy(() => import("@/pages/TutorPromotion"));
+const TutorReviews = lazy(() => import("@/pages/TutorReviews"));
 const AdminPromotionsPage = lazy(() => import("@/pages/admin/AdminPromotionsPage"));
 const AdminTutorApplicationsPage = lazy(
   () => import("@/pages/admin/AdminTutorApplicationsPage")
@@ -256,11 +259,25 @@ function RootDispatcher() {
   return <Landing />;
 }
 
-// "Hesabım" — CLIENT için birleşik hesap hub'ı; TUTOR/ADMIN için mevcut profil editörü.
+/**
+ * "Hesabım" — CLIENT için birleşik hesap hub'ı, ADMIN için profil editörü.
+ *
+ * TUTOR ARTIK BURAYA GELMİYOR (kullanıcı kararı, 8 Eyl 2026). O ekranda
+ * eğitmen için fotoğraf, hiçbir yerden dolmayan bir "Hakkımda" ve
+ * eğitim/diploma vardı; üçü de gerçek sahiplerine dağıtıldı (fotoğraf ve
+ * eğitim → İlanım, kimlik alanları → zaten oldukları Ayarlar) ve "Hesabım"
+ * panel şeridinden kalktı.
+ *
+ * Rota SİLİNMEDİ, yönlendirmeye bağlandı: `/pano/hesabim` üretimde canlıydı ve
+ * eski bildirim satırları (`name_change_service`) hâlâ o yolu taşıyor. Eğitmen
+ * oraya giderse hesap ayarlarında açılır — 404 değil.
+ */
 function AccountDispatcher() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.CLIENT) return <AccountHub />;
+  if (user.role_id === ROLE_IDS.TUTOR)
+    return <Navigate to={ROUTES.settings} replace />;
   return <Profile />;
 }
 
@@ -312,7 +329,20 @@ export const LEGACY_STATIC: [string, string][] = [
   // bildirim satırları ve gönderilmiş e-postalar hâlâ "/biletlerim" taşıyor;
   // yönlendirme kalkarsa o linkler 404 olur. Nöbetçisi routes.test.ts.
   ["/biletlerim", ROUTES.bookings],
-  // Eski `/panel/*` öneki → yeni düz path
+  /*
+   * Şeridin altı sayfası `/pano/*` altına toplandı (kullanıcı kararı,
+   * 8 Eyl 2026). Aşağıdakiler ÜRETİMDE canlı olan eski düz yollardır:
+   * veritabanındaki bildirim satırları, gönderilmiş e-postalar ve
+   * kullanıcıların yer imleri bunları taşıyor. Silinirlerse 404 olurlar.
+   * (`/pano/degerlendirmeler` listede YOK — o yol hiç yayınlanmadı.)
+   */
+  ["/rezervasyonlar", ROUTES.bookings],
+  ["/mesajlar", ROUTES.messages],
+  ["/hesabim", ROUTES.profile],
+  ["/hesabim/profil", ROUTES.profileEdit],
+  ["/bakiyem", ROUTES.balance],
+  ["/ilan-ayarlari", ROUTES.tutorListing],
+  // Eski `/panel/*` öneki → yeni path
   ["/panel", ROUTES.home],
   ["/panel/profil", ROUTES.profile],
   ["/panel/mesajlar", ROUTES.messages],
@@ -468,6 +498,11 @@ function App() {
           <Route path={PATHS.forgotPassword} element={<ForgotPassword />} />
           <Route path={PATHS.resetPassword} element={<ResetPassword />} />
           <Route path={PATHS.verifyEmail} element={<VerifyEmail />} />
+          {/* Google donusu: `PublicRoute` ile SARILMAZ -- sayfa tam da
+              oturumu acarken calisir, oturumlu kullaniciyi disari atan
+              bir guard akisi tam ortasinda keserdi. */}
+          <Route path={PATHS.googleReturn} element={<GoogleDonus />} />
+          <Route path={PATHS.confirmDelete} element={<HesapSilmeOnayi />} />
 
           {/* ── Oturum-içi (DÜZ). Yalnızca kimlik gerektiren ortak uçlar ── */}
           <Route element={<ProtectedRoute />}>
@@ -539,6 +574,7 @@ function App() {
               element={<IlanSihirbazi />}
             />
             <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
+            <Route path={PATHS.tutorReviews} element={<TutorReviews />} />
             <Route path={PATHS.uyeProfili} element={<UyeProfili />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
@@ -657,6 +693,22 @@ function App() {
           <Route
             path="/panel/ogrenciler/:id"
             element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
+          />
+          {/* Kütüphane rezervasyon detayı `/rezervasyonlar/:tur/:id`ten
+              `/pano/rezervasyon/:tur/:id`e taşındı. Kapıda okunan giriş kodu
+              bu URL'le paylaşılıyor (SMS + bildirim) — yönlendirme şart. */}
+          <Route
+            path="/rezervasyonlar/:tur/:id"
+            element={
+              <LegacyRedirect
+                to={(p) =>
+                  ROUTES.libraryReservation(
+                    p.tur as "deneme" | "calisma",
+                    p.id!
+                  )
+                }
+              />
+            }
           />
           {/* /ogrenciler -> /uyeler. Oturum içi ve eğitmen-özel bir yol,
               SEO'ya girmez; yine de paylaşılmış bir link kırılmasın diye

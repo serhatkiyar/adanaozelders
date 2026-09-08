@@ -412,6 +412,7 @@ export default function LibraryDetail() {
     <DashboardShell
       title="Kütüphane"
       navItems={navItems}
+      sekmeler={null}
       center={center}
       bottom={bottom}
     >

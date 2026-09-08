@@ -28,7 +28,9 @@ export function useUpdateTutorProfile() {
       queryClient.invalidateQueries({ queryKey: ["tutors", "detail", tutor.id] });
       // "Son görüntülenenler" localStorage anlık görüntüsünü de tazele.
       freshenViewedTutor(tutor.id, {
-        full_name: tutor.full_name,
+        // `TutorOut` yasal adı taşır (kendi profili); public önbelleğe
+        // yalnız AD yazılır (ÜK-9).
+        display_name: tutor.first_name,
         avatar_url: tutor.avatar_url,
         headline: tutor.headline,
         bio: tutor.bio,

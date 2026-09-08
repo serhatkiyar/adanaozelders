@@ -37,7 +37,12 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { OPERATOR_NAV, UYE_NAV, TUTOR_NAV } from "@/lib/nav";
+import {
+  OPERATOR_NAV,
+  UYE_NAV,
+  TUTOR_NAV,
+  TUTOR_PANO_SEKMELERI,
+} from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { ROLE_IDS, type NavItem } from "@/types";
@@ -60,7 +65,7 @@ beforeEach(() => {
     user: {
       id: 1,
       role_id: ROLE_IDS.CLIENT,
-      full_name: "Test Kullanıcı",
+      display_name: "Test",
       email: "t@example.com",
     },
   } as never);
@@ -96,7 +101,7 @@ describe("üst bar · en fazla TEK kısayol", () => {
     // açtı; ÜK-2'nin ASIL kuralı ("en fazla TEK kısayol, o da Favorilerim")
     // bozulmadı, iki rolde de aynı tek kısayol var.
     useAuthStore.setState({
-      user: { id: 2, role_id: ROLE_IDS.TUTOR, full_name: "Eğitmen", email: "e@example.com" },
+      user: { id: 2, role_id: ROLE_IDS.TUTOR, display_name: "Eğitmen", email: "e@example.com" },
     } as never);
     sar(TUTOR_NAV);
     expect(ustBardakiHedefler()).toEqual([ROUTES.favorites]);
@@ -119,7 +124,19 @@ describe("üst bar · en fazla TEK kısayol", () => {
     // işi menünün DOLU olduğunu kanıtlamaktır, kaç kalem olduğunu dondurmak
     // değil — eşik kararla birlikte gerekçesiyle indi.
     expect(UYE_NAV.length).toBeGreaterThanOrEqual(3);
-    expect(TUTOR_NAV.length).toBeGreaterThanOrEqual(4);
+    /*
+     * EĞİTMENDE KAPI DEĞİŞTİ (8 Eyl 2026, kullanıcı kararı).
+     *
+     * Eskiden `TUTOR_NAV.length >= 3` yazıyordu. O kapı artık YANLIŞ bir şeyi
+     * ölçüyor: eğitmenin gezinmesi avatar menüsünden PANEL ŞERİDİNE taşındı
+     * (`TUTOR_PANO_SEKMELERI`), menüde yalnız şeride girmeyenler kaldı. Sayıyı
+     * eski yerinde tutmak, doğru yapılmış bir taşımayı kırmızıya düşürürdü.
+     *
+     * Ölçülmesi gereken şey değişmedi: eğitmenin gezinmesi BOŞ bir listeden
+     * gelmiyor olsun. Bu yüzden kapı iki yüzeyin BİRLEŞİMİNE bakar — hangisine
+     * yazıldığı bu düğümün işi değil, var olması onun işi.
+     */
+    expect(TUTOR_NAV.length + TUTOR_PANO_SEKMELERI.length).toBeGreaterThanOrEqual(6);
     expect(UYE_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
     // ÜK-6: eğitmen menüsünde de var (eskiden `false` çıpalıydı).
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
@@ -138,7 +155,7 @@ describe("üst bar · KALDIRILAN kısayolların hedefi hâlâ erişilebilir", ()
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: rol menüsündeki HER hedef hesap menüsünde bağlantı", (_ad, rol, nav) => {
     useAuthStore.setState({
-      user: { id: 3, role_id: rol, full_name: "K", email: "k@example.com" },
+      user: { id: 3, role_id: rol, display_name: "K", email: "k@example.com" },
     } as never);
     sar(nav as NavItem[]);
     menuyuAc();
@@ -183,7 +200,7 @@ describe("üst bar · bildirim zili kalktı ama BİLDİRİMLER erişilebilir", (
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: hesap menüsünde `/bildirimler` bağlantısı VAR", (_ad, rol, nav) => {
     useAuthStore.setState({
-      user: { id: 4, role_id: rol, full_name: "K", email: "k@example.com" },
+      user: { id: 4, role_id: rol, display_name: "K", email: "k@example.com" },
     } as never);
     sar(nav as NavItem[]);
     menuyuAc();

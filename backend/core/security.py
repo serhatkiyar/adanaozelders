@@ -17,9 +17,35 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(pwd, bcrypt.gensalt()).decode("utf-8")
 
 
-def verify_password(password: str, hashed_password: str) -> bool:
+def verify_password(password: str, hashed_password: str | None) -> bool:
+    """Parolayi hash ile karsilastirir. Dogrulanamayan her durum ``False``.
+
+    Iki savunma dali var ve ikisi de YEDEKTIR — birincil kontrol CAGIRANDADIR
+    (``auth_service.authenticate``, ``auth_service.change_password``, hesap
+    silme ucu parolasiz hesabi kendileri ayirir ve kullaniciya dogru mesaji
+    verir). Buradaki daller, dorduncu bir cagri yeri o kontrolu unutursa
+    500 yerine 401 uretilsin diye durur:
+
+    ``hashed_password is None``  Google ile acilmis parolasiz hesap. Eskiden
+        kolon NOT NULL'di; ``None.encode()`` AttributeError firlatirdi.
+
+    ``ValueError``  Sentinel/bozuk hash. OLCULDU:
+        ``bcrypt.checkpw(b"sifre", b"!")`` → ``ValueError: Invalid salt``.
+        Sentinel ``"!"`` depoda iki yerde yaziliyor (``api/deps``in golge
+        Client satiri, ``account_deletion_service``in anonimlestirmesi); ikisi
+        de bugun ``authenticate``in sorgusundan dusen satirlar, ama bir gun
+        dusmezse bu dal 500'u onler.
+
+    Gerekce ve karar: ``models/mixins.py::PasswordMixin``.
+    Nobetci: ``tests/test_parolasiz_hesap.py``.
+    """
+    if not hashed_password:
+        return False
     pwd = password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
-    return bcrypt.checkpw(pwd, hashed_password.encode("utf-8"))
+    try:
+        return bcrypt.checkpw(pwd, hashed_password.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 # ── Async sarmalayıcılar (istek yollarında BUNLAR kullanılır) ───────────────────
@@ -38,7 +64,7 @@ async def hash_password_async(password: str) -> str:
     return await asyncio.to_thread(hash_password, password)
 
 
-async def verify_password_async(password: str, hashed_password: str) -> bool:
+async def verify_password_async(password: str, hashed_password: str | None) -> bool:
     return await asyncio.to_thread(verify_password, password, hashed_password)
 
 

@@ -53,14 +53,14 @@ vi.mock("@/components/EducationSection", () => ({
 const TASLAK = {
   id: 1,
   role_id: 2,
-  full_name: "Ayşe Yılmaz",
+  full_name: "Ayşe",
   slug: "ayse-yilmaz-1",
   status: TutorStatus.DRAFT,
   subjects: [],
   subject_levels: {},
 };
 
-const KULLANICI = { id: 1, role_id: 2, full_name: "Ayşe Yılmaz" };
+const KULLANICI = { id: 1, role_id: 2, full_name: "Ayşe" };
 
 vi.mock("@/hooks/useCurrentUser", () => ({
   useCurrentUser: () => ({ data: KULLANICI, isLoading: false }),

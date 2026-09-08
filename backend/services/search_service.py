@@ -5,7 +5,7 @@ import re
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -51,7 +51,7 @@ def _to_search_out(
 ) -> TutorSearchOut:
     return TutorSearchOut(
         id=tutor.id,
-        full_name=tutor.full_name,
+        display_name=tutor.display_name,
         avatar_url=tutor.avatar_url,
         headline=tutor.headline,
         bio=tutor.bio,
@@ -134,12 +134,33 @@ def _apply_tutor_filters(
         Tutor.deleted_at.is_(None),
     )
     if distance_expr is not None:
-        # Konumu olmayan eğitmenler "yakınımdaki" aramasında elenir.
-        stmt = stmt.where(
+        konumu_var = and_(
             Tutor.location_lat.isnot(None), Tutor.location_lng.isnot(None)
         )
-        if radius_km is not None:
-            stmt = stmt.where(distance_expr <= radius_km)
+        if radius_km is not None and districts:
+            # MAHALLE ARAMASI: yarıçap bir DARALTMA aracıdır, eleme aracı değil.
+            #
+            # İlan sihirbazı ilçeyi ZORUNLU, harita pinini OPSİYONEL tutuyor
+            # (`sozlesme.ts` — `dogrula` yalnız `district`e bakar). Yani
+            # "ilçesini seçmiş ama pin koymamış" eğitmen normal bir durumdur.
+            # Sert yarıçap onları sessizce elerdi: kullanıcı Reşatbey'i seçer,
+            # Seyhan'daki pinsiz eğitmen listeden düşer ve bunu kimse göremez.
+            #
+            # İlçe filtresi zaten ayrıca uygulanıyor (aşağıda), dolayısıyla
+            # buraya düşen koordinatsız kayıtların ilçesi hâlihazırda tutuyor.
+            stmt = stmt.where(
+                or_(
+                    and_(konumu_var, distance_expr <= radius_km),
+                    Tutor.location_lat.is_(None),
+                )
+            )
+        else:
+            # "Yakınımdakiler": kullanıcı kendi konumuna göre arıyor ve mesafe
+            # sıralamanın kendisi. Konumu olmayan eğitmenin burada karşılığı
+            # yok — elenir.
+            stmt = stmt.where(konumu_var)
+            if radius_km is not None:
+                stmt = stmt.where(distance_expr <= radius_km)
 
     if subjects:
         # NORMALİZE eşleşme: `subjects` buraya `subject_service.resolve_filter_terms`
@@ -159,7 +180,18 @@ def _apply_tutor_filters(
         )
 
     if districts:
-        stmt = stmt.where(Tutor.district.in_(districts))
+        # Türkçe katlamalı karşılaştırma. Birebir eşitlik kullanılıyordu ve
+        # "cukurova"/"ÇUKUROVA" gibi aksansız/büyük harfli değerler sessizce
+        # SIFIR sonuç veriyordu — hata değil, boş liste. Kütüphane tarafı aynı
+        # sorunu `normalized()` ile çoktan çözmüş (library_service), eğitmen
+        # tarafı geride kalmıştı.
+        #
+        # `Tutor.district` üzerindeki düz indeks bu ifadeyle kullanılamaz;
+        # kütüphane tarafında da öyle ve o maliyet bilinçli kabul edilmiş.
+        # İlçe kümesi 15 elemanlı, tablo küçük.
+        wanted = [normalize_tr(d) for d in districts if d and d.strip()]
+        if wanted:
+            stmt = stmt.where(normalized(Tutor.district).in_(wanted))
 
     relevance = None
     if q:
@@ -174,7 +206,11 @@ def _apply_tutor_filters(
         # Diakritik-duyarsız arama: hem indeks (generated tsvector / trigram)
         # hem sorgu `tr_normalize`'dan geçer. "matematık" → "matematik".
         like = f"%{normalize_tr(q.strip())}%"
-        norm_name = normalized(Tutor.full_name)
+        # Arama ADA göre yapılır, soyada göre DEĞİL (ÜK-9). Soyad arayüzden
+        # kaldırılıp burada bırakılsaydı gizli ama SORGULANABİLİR kalırdı:
+        # bir soyadı yazıp sonuç dönüp dönmediğine bakarak o kişinin platformda
+        # olup olmadığı öğrenilebilirdi (varlık sızıntısı).
+        norm_name = normalized(Tutor.first_name)
 
         tsquery = search_tsquery(q)
 

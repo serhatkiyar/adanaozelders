@@ -9,6 +9,10 @@ import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
+import {
+  GirisAyirici,
+  GoogleGirisDugmesi,
+} from "@/components/GoogleGirisDugmesi";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -67,7 +71,7 @@ export default function Login() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 placeholder="ornek@eposta.com"
               />
             )}
@@ -82,7 +86,7 @@ export default function Login() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
                 placeholder="••••••••"
               />
             )}
@@ -118,11 +122,17 @@ export default function Login() {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="w-full rounded-lg bg-marka py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-marka py-3.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {mutation.isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
           </button>
         </form>
+
+        <GirisAyirici />
+        {/* "Beni hatırla" tercihi Google akışına da taşınır: refresh çerezinin
+            ömrünü sunucu, access token'ın nerede duracağını yerel bayrak
+            belirliyor ve ikisi de düğmeye basıldığı anda sabitleniyor. */}
+        <GoogleGirisDugmesi mod="giris" hatirla={rememberMe} />
 
         <p className="mt-6 text-center text-sm text-slate-500 ">
           Hesabın yok mu?{" "}

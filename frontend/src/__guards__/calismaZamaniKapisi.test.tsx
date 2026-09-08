@@ -96,6 +96,11 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
   // mount edilemez; borcu DERIN kapida kapaniyor (dal testi).
   "src/components/LibraryEditorModal.tsx": { tur: "props", gerekce: "zorunlu yuzey (duzenleme yuzeyi)" },
   "src/components/LibraryMapPanel.tsx": { tur: "props", gerekce: "zorunlu kutuphane (slug)" },
+  // 8 Eyl 2026 · panel şeridi (eğitmenin kalıcı sekme satırı). Zorunlu
+  // `items` olmadan mount edilemez; şeridi çizen `DashboardShell` kapıda
+  // zaten mount ediliyor. Erişilebilirlik sözleşmesi (adlandırılmış nav +
+  // aria-current) `__guards__/panoSeridi.test.tsx`te gerçek DOM'da sınanır.
+  "src/components/PanelSekmeleri.tsx": { tur: "props", gerekce: "zorunlu items (sekme listesi)" },
   "src/components/map/MapGate.tsx": { tur: "baglam", gerekce: "leaflet MapContainer baglami gerekiyor" },
   "src/components/ui/Field.tsx": { tur: "props", gerekce: "children fonksiyon olarak bekleniyor (render prop)" },
   "src/components/admin/ProductPicker.tsx": {

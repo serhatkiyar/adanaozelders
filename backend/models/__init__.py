@@ -88,6 +88,7 @@ from models.messaging import Conversation, Message, MessageReaction
 from models.name_change_request import NameChangeRequest
 from models.study_reservation import StudyReservation
 from models.notification import Notification
+from models.oauth_identity import OAuthIdentity
 from models.outbox import OutboxEvent, OutboxStatus
 from models.packing import (
     LIVE_PACKAGE_SQL,
@@ -262,6 +263,7 @@ __all__ = [
     "RegistrationStatus",
     "StudyReservation",
     "Notification",
+    "OAuthIdentity",
     "OutboxEvent",
     "OutboxStatus",
     "ConsentDoc",

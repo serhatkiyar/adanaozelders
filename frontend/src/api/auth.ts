@@ -99,3 +99,66 @@ export async function confirmPasswordReset(
   );
   return data;
 }
+
+
+// ── Google ile giriş ─────────────────────────────────────────────────────────
+
+export type OAuthMod = "giris" | "kayit";
+
+/**
+ * Google akışını başlatan TAM SAYFA adresi. Axios ile ÇAĞRILMAZ.
+ *
+ * `kok` SUNUCUDAN gelir (`/auth/oauth/providers` → `google_start_url`) ve
+ * MUTLAKTIR. Bu zorunlu, ölçülmüş bir kusurun düzeltmesi: önce göreli adres
+ * (`/api/v1/...`) üretiliyordu ve geliştirmede tarayıcı oraya Vite dev
+ * sunucusu üzerinden gidiyordu; Vite proxy'si dış bir siteye
+ * (accounts.google.com) giden 303'ü iletemeyip **500** veriyordu. Akış bir XHR
+ * değil, tam sayfa gezinmedir — proxy'ye hiç uğramamalı.
+ *
+ * Google'ın tarayıcı kütüphanesi (GSI) bilerek kullanılmıyor: o script sayfa
+ * açılır açılmaz Google'a istek atar, yani kullanıcı hiçbir onay vermeden
+ * üçüncü tarafa veri gider (KVKK) ve CSP'deki `script-src 'self'` delinirdi.
+ */
+export function oauthStartUrl(
+  kok: string,
+  secenekler: {
+    mod: OAuthMod;
+    rol?: RegisterRole;
+    donus?: string;
+    onaySurumu?: string;
+    hatirla?: boolean;
+  }
+): string {
+  const q = new URLSearchParams({ mod: secenekler.mod });
+  if (secenekler.rol) q.set("rol", secenekler.rol);
+  if (secenekler.donus) q.set("donus", secenekler.donus);
+  if (secenekler.onaySurumu) q.set("onay_surumu", secenekler.onaySurumu);
+  q.set("hatirla", secenekler.hatirla === false ? "false" : "true");
+  return `${kok}?${q.toString()}`;
+}
+
+/**
+ * Access token'ı refresh çerezinden alır.
+ *
+ * Google callback'i access token ÜRETMEZ ve URL'de taşımaz (tarayıcı geçmişine,
+ * `Referer`a ve ara sunucu loglarına yazılırdı); yalnız refresh çerezini yazar.
+ * Dönüş sayfası oturumu buradan tamamlar. `axios.ts` içindeki 401 interceptor'ı
+ * DEĞİŞMEZ; bu onun paralel bir kopyası değil, açık bir çağrıdır.
+ */
+export async function refreshSession(): Promise<Token> {
+  const { data } = await apiClient.post<Token>("/auth/refresh", null, {
+    withCredentials: true,
+  });
+  return data;
+}
+
+export interface OAuthSaglayicilari {
+  google: boolean;
+  /** Akışın başlatılacağı MUTLAK adres; kapalıyken `null`. */
+  google_start_url: string | null;
+}
+
+export async function fetchOAuthProviders(): Promise<OAuthSaglayicilari> {
+  const { data } = await apiClient.get<OAuthSaglayicilari>("/auth/oauth/providers");
+  return data;
+}

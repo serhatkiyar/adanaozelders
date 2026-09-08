@@ -137,7 +137,9 @@ async def meta_for_path(db: AsyncSession, path: str) -> str:
                 )
             ).scalars().first()
             if tutor is not None:
-                name = f"{tutor.first_name or ''} {tutor.last_name or ''}".strip()
+                # Yalnız AD (ÜK-9): bu başlık paylaşım önizlemesinde ve
+                # arama motoru kartında görünüyor.
+                name = (tutor.first_name or "").strip()
                 title = f"{name} — Özel Ders | {SITE_NAME}"
                 description = truncate(
                     getattr(tutor, "headline", None) or getattr(tutor, "about", None)

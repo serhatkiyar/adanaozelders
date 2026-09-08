@@ -8,6 +8,8 @@ için kullanılır. No-show iadesi yoktur (ödenmiş rezervasyon iptal edilemez)
 
 from __future__ import annotations
 
+from core import frontend_yollari
+
 import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -818,7 +820,7 @@ async def _attend_study(
         user_id=res.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
         message="Çalışma alanı rezervasyon girişin doğrulandı.",
-        link="/rezervasyonlar",
+        link=frontend_yollari.PANO,
     )
     await db.commit()
     # Karma puanlama: bu öğrenci daha önce bu kütüphaneye yorum yazdıysa artık yıldız

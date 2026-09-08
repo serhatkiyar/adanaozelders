@@ -169,6 +169,10 @@ export const OLCUM_TABANI = [
   "src/components/MapPicker.tsx",
   "src/components/NavbarWidget.tsx",
   "src/components/NotificationsBell.tsx",
+  // 8 Eyl 2026 · panel şeridi: eğitmenin kalıcı sekme satırı (bkz.
+  // `__guards__/panoSeridi.test.tsx`). Ölçüme girdi — ham düğme ve adsız
+  // kontrol taşımıyor, eşikler değişmedi.
+  "src/components/PanelSekmeleri.tsx",
   "src/components/PersonalizeModal.tsx",
   "src/components/PinIcon.tsx",
   "src/components/QrScanner.tsx",

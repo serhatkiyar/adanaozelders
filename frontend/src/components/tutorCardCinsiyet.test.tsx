@@ -13,11 +13,17 @@
  * yerine yenisi geçtiği için, ileride "eskiden görünüyordu, neden kalktı"
  * sorusunun cevabı burada duruyor.
  *
- * ## Kaldırılmayan şey — kapsam
+ * ## Kapsam 8 Eyl'de GENİŞLEDİ
  *
- * Karar YALNIZ karttır. Arama tarafı olduğu gibi duruyor: cinsiyet filtresi
- * çalışıyor ve faset sayıları görünüyor (sessiz eleme hâlâ görünür). Değer
- * eğitmenin kendi profilinde (`PublicTutorProfile`) basılmaya devam ediyor.
+ * O tur karar yalnız kartı kapsıyordu ve değer eğitmenin profilinde
+ * (`PublicTutorProfile`) basılmaya devam ediyordu. Kullanıcı 8 Eyl'de orayı da
+ * kaldırttı: *"cinsiyet bilgisinin yazmasına gerek var mı, fotoğraftan belli
+ * olur zaten."*
+ *
+ * Arama tarafı İKİ TURDA DA dokunulmadan kaldı: cinsiyet filtresi çalışıyor ve
+ * faset sayıları görünüyor. Asıl gerekçe oydu — öğrenci "Kadın" filtrelediğinde
+ * sonuçların neye göre elendiğini görebiliyor. Kaldırılan şey o şeffaflık
+ * değil, tek tek profillerdeki demografik etiket.
  *
  * ## Bu dosyanın ASIL iddiası
  *
@@ -36,7 +42,7 @@ function egitmen(gender: Gender | null | undefined): TutorSearchOut {
   return {
     id: 7,
     slug: "ayse-yilmaz-7",
-    full_name: "Ayşe Yılmaz",
+    display_name: "Ayşe",
     hourly_rate: "500",
     teaching_mode: TeachingMode.ONLINE,
     gender,

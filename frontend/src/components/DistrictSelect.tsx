@@ -1,5 +1,6 @@
 import { Suspense, lazy, useRef, useState } from "react";
 import { SEARCH_PRIMARY_DISTRICTS, SEARCH_MORE_DISTRICTS } from "@/lib/districts";
+import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 
 /* Harita modalı TEMBEL yüklenir. Ana sayfanın arama kutusu bu bileşeni
    kullanıyor; doğrudan import edildiğinde Leaflet + react-leaflet + ilçe
@@ -16,9 +17,16 @@ const DistrictMapModal = lazy(() =>
 const SHOW_MAP_OPTION = false;
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Çoklu ilçe seçici. Tetik butonu seçimi özetler ("Tüm ilçeler" / "Seyhan" /
-   "2 ilçe" / "Uzaktan Eğitim"). Tıklayınca açılan popover'da en üstte "Uzaktan
-   Eğitim" checkbox'ı, ardından ilçeler düz liste halinde (açılır menü yok) +
+   Çoklu yer seçici (sonuç sayfalarının navbar hapı). Tetik butonu seçimi
+   özetler ("Tüm yerler" / "Seyhan" / "2 ilçe" / "Reşatbey, Seyhan").
+
+   8 Eyl 2026: içindeki "Uzaktan Eğitim" checkbox'ı KALDIRILDI. Ders şekli bir
+   YER seçicisinin içinde yaşamamalı — kullanıcının "kafa karıştırıcı" dediği
+   tasarımın kaynaklarından biri buydu; üstelik yalnız uzaktanı ifade
+   edebiliyor, yüz yüzenin karşılığı bulunmuyordu. Şekil artık kendi alanında
+   (`AramaSecicileri.tsx`).
+
+   Tıklayınca açılan popover'da ilçeler düz liste halinde (açılır menü yok) +
    "Diğer ilçeleri görüntüle" ile geri kalan (daha az nüfuslu) ilçeler açılır.
    Altta "Seçimi temizle" + "Tamam". Popover `fixed` konumlanır → arama
    pill'inin overflow-hidden'ı kırpmaz; her arama çubuğuna stilini bozmadan girer.
@@ -27,40 +35,61 @@ const SHOW_MAP_OPTION = false;
 interface Props {
   value: string[];
   onChange: (next: string[]) => void;
-  /** "Uzaktan Eğitim" checkbox'ı — yalnız eğitmen aramasında anlamlı (kütüphanede yok). */
-  remote?: boolean;
-  onRemoteChange?: (next: boolean) => void;
-  /** Uzaktan Eğitim seçeneğini göster/gizle (kütüphane aramasında anlamsız). */
-  showRemoteOption?: boolean;
   /** Tetik butonunun (bar'a uyan) sınıfları. */
   triggerClassName?: string;
+  /** Görünür etiketin id'si. Tetikleyici bir <button>; ona `<label htmlFor>`
+   *  bağlanamaz, erişilebilir ad `aria-labelledby` ile verilir. */
+  triggerLabelledBy?: string;
+  /** Seçili mahalle çapası (bkz. lib/yerArama.ts). Verilmezse yalnız ilçe
+   *  seçimi çalışır — eski davranış korunur. */
+  yer?: YerSecimi | null;
+  onYerChange?: (v: YerSecimi | null) => void;
 }
 
 export function DistrictSelect({
   value,
   onChange,
-  remote = false,
-  onRemoteChange,
-  showRemoteOption = true,
   triggerClassName = "",
+  triggerLabelledBy,
+  yer = null,
+  onYerChange,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [showMore, setShowMore] = useState(false);
+  // Mahalle araması: kutu boşken bugünkü ilçe listesi, yazınca yer önerileri.
+  const [ara, setAra] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const label =
-    value.length > 0
-      ? value.length === 1
-        ? value[0]
-        : `${value.length} ilçe`
-      : remote
-        ? "Uzaktan Eğitim"
-        : "Tüm ilçeler";
+    yer?.tur === "mahalle"
+      ? yerEtiketi(yer)
+      : value.length > 0
+        ? value.length === 1
+          ? value[0]
+          : `${value.length} ilçe`
+        : "Tüm yerler";
 
-  const toggle = (d: string) =>
+  const toggle = (d: string) => {
+    // İlçe kutusuna dokunmak mahalle çapasını geçersiz kılar: kutuda
+    // "Reşatbey" yazarken başka bir ilçenin işaretli kalması, kullanıcının
+    // gördüğü ile aranan şeyi ayırırdı.
+    onYerChange?.(null);
     onChange(value.includes(d) ? value.filter((x) => x !== d) : [...value, d]);
+  };
+
+  const yerSec = (secim: YerSecimi) => {
+    if (secim.tur === "mahalle") {
+      onYerChange?.(secim);
+      onChange([secim.ilce]);
+    } else {
+      onYerChange?.(null);
+      onChange([secim.ilce]);
+    }
+    setAra("");
+    setOpen(false);
+  };
 
   const openPopover = () => {
     const r = triggerRef.current?.getBoundingClientRect();
@@ -74,10 +103,13 @@ export function DistrictSelect({
         ref={triggerRef}
         type="button"
         onClick={() => (open ? setOpen(false) : openPopover())}
-        aria-label="İlçe"
+        // Görünür başlık varsa erişilebilir ad ONDAN gelir; `aria-label` ile
+        // ikisi birlikte olursa ekran okuyucu görünen başlığı yok sayar.
+        aria-labelledby={triggerLabelledBy}
+        aria-label={triggerLabelledBy ? undefined : "İlçe"}
         className={triggerClassName}
       >
-        <span className={value.length > 0 || remote ? "font-semibold" : ""}>{label}</span>
+        <span className={value.length > 0 || yer ? "font-semibold" : ""}>{label}</span>
         <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
@@ -91,18 +123,37 @@ export function DistrictSelect({
             style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: 224 }}
             className="z-[90] flex max-h-[70vh] flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-100 "
           >
-            <div className="min-h-0 overflow-y-auto p-1.5">
-              {showRemoteOption && (
-                <>
-                  <CheckboxRow
-                    label="Uzaktan Eğitim"
-                    checked={remote}
-                    onClick={() => onRemoteChange?.(!remote)}
-                  />
-                  <div className="my-1 h-px bg-slate-100 " />
-                </>
-              )}
+            {onYerChange && (
+              <div className="shrink-0 border-b border-slate-100 p-1.5">
+                <input
+                  type="text"
+                  value={ara}
+                  onChange={(e) => setAra(e.target.value)}
+                  placeholder="Mahalle veya ilçe ara"
+                  aria-label="Mahalle veya ilçe ara"
+                  className="w-full rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-marka-focus/30"
+                />
+              </div>
+            )}
 
+            <div className="min-h-0 overflow-y-auto p-1.5">
+              {/* Yazılıyorsa YER önerileri; kutu boşken bugünkü ilçe listesi.
+                  Mahalle tek seçimdir (bir konum çapasıdır), ilçeler çoklu
+                  seçim olmaya devam eder. */}
+              {ara.trim() ? (
+                yerAra(ara, 30).map((y) => (
+                  <button
+                    key={`${y.secim.tur}:${y.altBaslik}:${y.baslik}`}
+                    type="button"
+                    onClick={() => yerSec(y.secim)}
+                    className="flex w-full flex-col items-start rounded-xl px-3 py-2 text-left transition hover:bg-slate-50"
+                  >
+                    <span className="text-sm text-slate-800">{y.baslik}</span>
+                    <span className="text-xs text-slate-400">{y.altBaslik}</span>
+                  </button>
+                ))
+              ) : (
+                <>
               {SEARCH_PRIMARY_DISTRICTS.map((d) => (
                 <CheckboxRow key={d} label={d} checked={value.includes(d)} onClick={() => toggle(d)} />
               ))}
@@ -140,15 +191,17 @@ export function DistrictSelect({
                   </button>
                 </>
               )}
+                </>
+              )}
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 border-t border-slate-100 p-1.5 ">
-              {(value.length > 0 || remote) && (
+              {(value.length > 0 || yer) && (
                 <button
                   type="button"
                   onClick={() => {
                     onChange([]);
-                    onRemoteChange?.(false);
+                    onYerChange?.(null);
                   }}
                   className="flex-1 rounded-xl px-3 py-2 text-left text-sm text-slate-500 transition hover:bg-slate-50 "
                 >

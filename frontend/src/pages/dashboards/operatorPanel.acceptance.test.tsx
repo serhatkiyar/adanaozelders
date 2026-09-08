@@ -196,7 +196,7 @@ function operatorOturumu() {
       id: OPERATOR_ID,
       role_id: 4,
       email: "operator@kutuphane.example.com",
-      full_name: "Operatör Test",
+      full_name: "Operatör Kisi",
       email_verified: true,
     } as never,
   });
@@ -247,7 +247,7 @@ async function sar(modulYolu: string, rota = "/") {
 const OPERATOR = {
   id: OPERATOR_ID,
   email: "operator@kutuphane.example.com",
-  full_name: "Operatör Test",
+  full_name: "Operatör Kisi",
   library_id: LIBRARY_ID,
   is_active: true,
   created_at: "2026-01-01T00:00:00Z",
@@ -339,7 +339,7 @@ function temelUclar(
     kutuphane?: unknown;
   } = {}
 ) {
-  sunucu("/auth/me", { data: { id: OPERATOR_ID, role_id: 4, email: OPERATOR.email, full_name: "Operatör Test", email_verified: true } });
+  sunucu("/auth/me", { data: { id: OPERATOR_ID, role_id: 4, email: OPERATOR.email, full_name: "Operatör Kisi", email_verified: true } });
   sunucu("/library-operators/me", { data: OPERATOR });
   sunucu("/libraries/admin/", { data: opts.kutuphane ?? KUTUPHANE() });
   sunucu("/libraries/12/earnings", { data: KAZANC });

@@ -65,8 +65,12 @@ export const BICIM_SECENEKLERI = [
   { deger: "BOTH", etiket: "İkisi de olur" },
 ] as const;
 
+// Not: burada bir zamanlar `.filter((d) => d !== "Merkez")` vardı — arama
+// listesinde gerçek olmayan bir "Merkez" kısayolu bulunduğu için. O kısayol
+// 8 Eyl 2026'da kaynağından kaldırıldı (bkz. lib/districts.ts), süzgeç de
+// gereksiz kaldı.
 export const ILCELER = [
-  ...SEARCH_PRIMARY_DISTRICTS.filter((d) => d !== "Merkez"),
+  ...SEARCH_PRIMARY_DISTRICTS,
   ...SEARCH_MORE_DISTRICTS,
 ].map((d) => ({ deger: d, etiket: d }));
 

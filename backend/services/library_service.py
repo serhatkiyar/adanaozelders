@@ -459,7 +459,7 @@ async def list_reviews(
     out: list[LibraryReviewOut] = []
     for review, client in rows:
         item = LibraryReviewOut.model_validate(review)
-        item.client_name = client.full_name
+        item.client_name = client.display_name
         item.client_avatar_url = client.avatar_url
         item.verified = client.id in verified_ids
         out.append(item)
@@ -538,7 +538,7 @@ async def create_review(
     await db.refresh(review)
 
     item = LibraryReviewOut.model_validate(review)
-    item.client_name = client.full_name
+    item.client_name = client.display_name
     item.client_avatar_url = client.avatar_url
     item.verified = counts
     return item

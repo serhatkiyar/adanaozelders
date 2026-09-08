@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from core import frontend_yollari
+
 from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -273,7 +275,7 @@ async def approve(db: AsyncSession, tutor: Tutor) -> Tutor:
         user_id=tutor.id,
         role_id=ROLE_IDS[RoleType.TUTOR],
         message="İlanın onaylandı ve artık yayında!",
-        link="/ilan-ayarlari",
+        link=frontend_yollari.ILANIM,
     )
     return tutor
 
@@ -286,7 +288,7 @@ async def reject(db: AsyncSession, tutor: Tutor) -> Tutor:
         user_id=tutor.id,
         role_id=ROLE_IDS[RoleType.TUTOR],
         message="İlanın reddedildi. Bilgilerini güncelleyip tekrar gönderebilirsin.",
-        link="/ilan-ayarlari",
+        link=frontend_yollari.ILANIM,
     )
     return tutor
 

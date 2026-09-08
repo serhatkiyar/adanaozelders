@@ -37,17 +37,21 @@ export function ShareButton({
     setIsOpen(true);
   };
 
-  /** iOS tarzı paylaş sembolü: kutudan yukarı çıkan ok. */
+  /**
+   * Paylaş sembolü: üç düğüm + aralarındaki bağ.
+   *
+   * Önce iOS'un "kutudan yukarı çıkan ok" glifiydi ve kullanıcı onu "rezil"
+   * buldu — haklıydı: kutu 20px'e inince oka yapışıp tanınmaz bir leke
+   * oluyordu, üstelik o glif iOS dışında "paylaş" değil "dışa aktar" okunur.
+   * Üç düğümlü bağ platformdan bağımsız yerleşik paylaş işaretidir ve tamamen
+   * çizgiden oluştuğu için küçük boyutta da siluetini korur.
+   */
   const glyphPath = (
-    <>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8.25 7.5H6.75A2.25 2.25 0 0 0 4.5 9.75v9a2.25 2.25 0 0 0 2.25 2.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-1.5"
-      />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V3" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="m7.5 7.5 4.5-4.5 4.5 4.5" />
-    </>
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.769-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+    />
   );
 
   const icon = (
@@ -101,7 +105,9 @@ export function ShareButton({
           aria-label="Paylaş"
           title="Paylaş"
           onClick={open}
-          className={`relative flex ${dim} shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 active:scale-90 ${className}`}
+          // 8 Eyl 2026: daire ZEMİN kalktı — yanındaki kalple aynı karar.
+          // İkincil iki eylem için gri dolu daireler fazla ağırlıktı.
+          className={`relative flex ${dim} shrink-0 items-center justify-center rounded-full text-slate-900 transition hover:bg-slate-100 active:scale-90 ${className}`}
         >
           {icon}
         </button>

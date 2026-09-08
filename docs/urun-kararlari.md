@@ -30,6 +30,8 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 | **ÜK-5** | Bir e-posta = bir hesap (çapraz tablo) | uygulandı | `tests/integration/test_ayni_eposta_iki_tablo_pg.py` |
 | **ÜK-6** | Eğitmen de eğitmen/kütüphane favorileyebilir | uygulandı | `__guards__/favoriRolKapisi.test.tsx`, `test_tutor_shopper_pg.py` K-22..K-25 |
 | **ÜK-7** | Arayüzde uzun tire (—) kullanılmaz | uygulandı | (kabul ölçütleri dört testte) |
+| **ÜK-8** | Sosyal giriş: Google EVET, Facebook HAYIR | uygulandı | `test_google_oidc_dogrulama.py`, `test_google_oauth_pg.py`, `test_parolasiz_hesap.py` |
+| **ÜK-9** | Soyad public yüzeylerde görünmez | uygulandı | `test_soyad_public_yuzeyde_yok.py` |
 
 ---
 
@@ -249,6 +251,154 @@ daraltılır; booking/talep/kütüphane rezervasyonu listede kalır.
 > **Ad borcu.** `get_shopping_client` favorileri de taşıyınca adı eksik
 > kalıyor. Yeniden adlandırma ~25 çağrı yerini ve sözleşme maddelerini
 > etkiliyor; bu turda YAPILMAZ.
+
+---
+
+## ÜK-8 — Sosyal giriş: Google var, Facebook yok
+
+**Karar.** "Google ile devam et" eklendi. Facebook, Apple ve diğer sağlayıcılar
+kapsam dışı. `oauth_identities.provider` kolonu yine de bugünden var: ikinci bir
+sağlayıcı şema değişikliği değil, satır eklemesi olsun diye.
+
+**Facebook neden yok.** Gerekçe "az kullanılıyor" değil, mimari. Facebook Login
+e-posta **vermeyebiliyor** (kullanıcı gizlerse ya da hesap telefonla açılmışsa).
+ÜK-5 *"bir e-posta = bir hesap"* bir üretim hatasından doğdu ve testle çıpalı;
+e-postasız gelen bir kimlik o modeli kırar. Üstüne Meta'nın App Review süreci ve
+yıllık Data Use Checkup yükü var: atlanırsa giriş bir sabah çalışmayı bırakır.
+Apple ise gerekmiyor — App Store kuralı mobil uygulamaya bakar, web'de geçerli
+değil.
+
+**Google'ın kendi kütüphanesi (GSI / One Tap) KULLANILMIYOR.** O script sayfa
+açılır açılmaz `accounts.google.com`a istek atar; yani kullanıcı hiçbir onay
+vermeden üçüncü tarafa veri gider. Bu, deponun yazı tipini self-host'a taşıyan
+KVKK kararıyla aynı sınıf (`__guards__/disFont.test.ts`) ve CSP'deki
+`script-src 'self'`i de delerdi. Bunun yerine sunucu tarafı authorization-code +
+PKCE akışı: hiçbir Google script'i yüklenmez, `client_secret` sunucuda kalır ve
+güvenlik başlıklarına hiç dokunulmaz (yönlendirme, form gönderimi değil —
+`nginx-security-headers.conf` bu ayrımı iyzico için zaten yazıyor).
+
+**Hesap bağlama OTOMATİK.** Google `email_verified: true` döndüğünde ve e-posta
+mevcut bir hesapla eşleştiğinde o hesaba bağlanır; ikinci hesap açılmaz (ÜK-5
+korunur). Doğrulanmamış e-postalı bir hesaba bağlanırken `auth_version` artar ve
+refresh token'lar iptal edilir: o hesabı doğrulanmamış bir adresle açan kişi
+adresin sahibi olmayabilir, gerçek sahibi Google ile kanıtlayıp geldiğinde
+kanıtsız oturumlar düşer.
+
+**Giriş modu da hesap AÇAR — düzeltilmiş karar.** İlk sürüm giriş akışında
+hesap açmıyor, *"Bu Google hesabıyla eşleşen bir üyelik yok, önce kayıt
+olabilirsin"* diyordu. Gerekçe "kullanıcı hesabı olduğunu sanıyordur, sessizce
+ikinci hesap yaratmayalım" idi ve YANLIŞ YERE uygulanmıştı: ikinci hesap riski
+yalnız e-posta mevcut bir hesapla **eşleştiğinde** doğar, onu da otomatik
+bağlama kolu çözüyor. O noktaya gelindiyse e-posta hiçbir tabloda yok demektir,
+yani bölünecek bir hesap da yok.
+
+Karşılığında ürettiği davranış her sosyal girişin sözleşmesine aykırıydı.
+Kullanıcının sözleriyle: *"olum bu ne saçma sapan bir uyarı, yüzlerce siteye
+girdim."* Haklı — Google ile giren birine "önce kayıt ol" denmez.
+
+İki soru vardı, ikisi de çözüldü:
+- **Rol**: varsayılan CLIENT (Üye). Eğitmen olmak ayrı ve bilinçli bir
+  yolculuktur (`/kayit` → "Ders vermek" → ilan sihirbazı); seçilmemiş bir rolü
+  atamak yanlış olurdu.
+- **KVKK**: onay sürümü akışta taşınır ve `user_consents`a yazılır; sürüm
+  yoksa hesap AÇILMAZ. Giriş düğmesinin altına bir bilgilendirme metni
+  eklenmişti, **kaldırıldı**: kullanıcı rakiplerde böyle bir metin olmadığını
+  söyledi ve haklıydı — o metin her düğmenin altında değil, olsa olsa sayfanın
+  en altında tek satır olarak bulunur. Aydınlatma metni footer'da ve `/kvkk`
+  adresinde erişilebilir, kayıt ekranındaki gerçek onay kutusu yerinde duruyor.
+  Bilinen sınır: giriş akışından açılan hesapta onay, aydınlatma metni ekranda
+  gösterilmeden kaydediliyor. Avukat incelemesinde bu maddeye bakılmalı
+  (lansman öncesi yasal gözden geçirme zaten bekliyor).
+
+**Yan etkisi bilinçli:** kayıt kapısı (`registration_open`) artık giriş modunda
+da denetleniyor. Muafiyet ilk sürümde doğruydu (giriş hesap açmıyordu); karar
+değişince arka kapıya dönüşürdü. Bedeli: kapı kapalıyken mevcut hesap sahipleri
+de Google ile giremez, parolalarıyla girerler.
+
+**Parolasız hesap ve ölçülmüş bir tuzak.** `hashed_password` beş tabloda da
+nullable oldu. Alternatif, depoda zaten kullanılan sentinel hash'ti (`"!"`) ve
+migration'dan kurtarıyordu. Ölçüm çürüttü: `bcrypt.checkpw(b"x", b"!")` →
+`ValueError` ve `verify_password` onu yakalamıyordu. Sentinel bugün patlamıyor
+çünkü onu taşıyan iki satır tipi de `authenticate`in sorgusundan zaten düşüyor;
+Google hesabı ise tam da bulunacak satır. Sentinel seçilseydi parola denemesi
+401 değil **500** dönerdi ve bu bir hesap-varlığı yan kanalı olurdu.
+
+**KVKK.** Kayıt onayı Google kolunda da alınır: onay kutusu artık state tutuyor
+(tam sayfa gezinme tarayıcının `required` kontrolünü tetiklemez) ve sürüm imzalı
+`state` çerezinde taşınıp `user_consents`a yazılır. Ayrıca parolasız hesap da
+hesabını silebiliyor — parola isteyen tek kol bırakılsaydı KVKK silme hakkı
+kapanırdı.
+
+**Açık kalan (lansman öncesi).** Google Cloud Console'da OAuth client açılması
+ve consent screen'in PUBLISH edilmesi; ayrıntılar `backend/.env.example`
+içindeki blokta.
+
+---
+
+## ÜK-9 — Soyad public yüzeylerde görünmez
+
+**Karar.** Herkese açık yüzeylerde yalnız **ad** görünür. Yasal ad
+(`full_name`) yerinde durur ve oturum içi akışlarda kullanılmaya devam eder.
+
+**Kullanıcının sorusu.** *"soyisim göstermesek mi acaba."*
+
+**Sektör.** Superprof ve Tutor Hunt yalnız adı gösteriyor, Wyzant ad + soyad
+baş harfini, italki ise eğitmenlere tam yasal adlarını kullanmamalarını
+öneriyor. Biçim olarak "yalnız ad" seçildi.
+
+**Engel çıkmadı.** KVKK aydınlatma metni tam adı eğitmen profil veri
+kategorisinde saymıyor ve "arayüzde yalnız son dört hane" (TCKN) zaten emsal
+bir maskeleme deseni. Mesafeli satış sözleşmesi taraf tanımını *tip* düzeyinde
+yapıyor. Ödeme/KYC/fatura `full_name`'i veritabanı ve iyzico katmanında
+tüketiyor, ekrandan bağımsız. Karar ayrıca deponun yerleşik
+anti-disintermediation felsefesiyle (`core/moderation.py`) aynı yönde: soyad +
+ilçe, birini platform dışında bulmaya yeter.
+
+### Kapsam bir GİZLEME değil, AYRIM
+
+| Nerede | Ne görünür |
+|---|---|
+| Public: kart, profil, SEO/JSON-LD, slug, sitemap, yorum yazarı | yalnız ad |
+| Oturum içi: rezervasyon, mesaj, sipariş, canlı ders | yasal ad |
+| Admin/operatör panelleri, hesabın kendi ayarları | yasal ad |
+| Ödeme, KYC (iyzico alt üye), fatura | yasal ad |
+
+### Kesme SUNUCUDA yapılır
+
+Arayüzde `split(" ")[0]` yazmak kozmetik kalır ve bu depoda tam olarak öyle
+olmuştu: `TutorCard` yalnız adı basıyordu ama aynı bileşenin `alt` metni ve
+avatar URL'i tam adı taşıyor, kartın gittiği adres `/egitmenler/ahmet-yilmaz-42`
+oluyor, `sitemap_service` o slug'ı doğrudan Google'a veriyordu. Soyad ekranda
+gizliydi ama her yerdeydi.
+
+Bu yüzden `full_name` **public şemadan çıkarıldı** (`TutorSearchOut`) ve yerine
+model property'si `display_name` kondu (`models/mixins.py::NameMixin`).
+Slug, sitemap, bot meta (OG/Twitter) ve arama sorgusu da ada indirildi.
+
+**Arama neden değişti:** soyadla eşleşme açık bırakılsaydı soyad gizli ama
+SORGULANABİLİR kalırdı — bir soyadı yazıp sonuç dönüp dönmediğine bakarak o
+kişinin platformda olup olmadığı öğrenilebilirdi.
+
+**Yol üstünde kapanan sızıntı:** avatarı olmayan eğitmenin tam adı her kart
+render'ında `ui-avatars.com`'a query parametresi olarak gidiyordu. Ortak
+`Avatar` bileşeni baş harfi zaten YERELDE üretiyor; kart artık dış servise
+istek atmıyor.
+
+### Rozet bağı korundu
+
+`docs/kimlik-ve-diploma-dogrulama-plani.md` §A6 şart koşuyor: *"görünen ad
+olabilir ama kimlik iddiası taşımaz; 'Kimliği Doğrulanmış' rozeti yasal ada
+bağlanır."* Çelişki yok: `IdentityVerifiedBadge` `payout_status`a (iyzico
+MERNIS/IBAN kontrolü) bakıyor, gösterilen ada değil. Rozet kimliğin
+DOĞRULANDIĞINI söyler, kimliğin ne olduğunu değil.
+
+### Açık kalanlar (bilinçli)
+
+- `lib/routes.ts::messageWith` tam adı URL query string'ine koyuyor
+  (`/mesajlar?to=42&name=…`) — public değil ama gereksiz.
+- `demand_service.py` öğrencinin tam adını, hiçbir rezervasyon olmadan
+  eğitmenlerin talep listesinde gösteriyor. Talepler şu an dondurulmuş (ÜK-3);
+  açılmadan önce ele alınmalı.
 
 ---
 

@@ -38,22 +38,34 @@ export function TutorCard({
   const metaSatiri = locationText;
 
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
-  // Superprof usually only shows first name
-  const firstName = tutor.full_name.split(" ")[0];
+  // Ad SUNUCUDAN kesilmiş geliyor (ÜK-9). Burada `split(" ")[0]` yapılıyordu ve
+  // o kozmetikti: soyad ağ yanıtında, `alt` metninde ve avatar URL'inde
+  // duruyordu — aşağıdaki iki satır tam olarak bu yüzden değişti.
+  const gorunenAd = tutor.display_name;
 
   return (
     <Link
       to={ROUTES.tutor(tutorSlug(tutor))}
-      className="group flex flex-col transition duration-300 mx-auto w-full max-w-[310px]"
+      className="group flex h-full flex-col transition duration-300 mx-auto w-full max-w-[310px]"
     >
       {/* ── Picture Area ── */}
       <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 ">
-        <img 
-          src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=fed7aa&color=9a3412&size=400"} 
-          alt={tutor.full_name} 
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
+        {/* Avatarı olmayan eğitmenin adı ARTIK DIŞARI GİTMİYOR. Burada
+            ui-avatars.com'a `name=<Ad Soyad>` query parametresiyle istek
+            atılıyordu; yani her kart render'ında tam ad üçüncü tarafa
+            veriliyordu. Ortak `Avatar` bileşeni baş harfi YERELDE üretiyor. */}
+        {tutor.avatar_url ? (
+          <img
+            src={tutor.avatar_url}
+            alt={gorunenAd}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-marka-soft text-4xl font-semibold text-marka-metin">
+            {gorunenAd.charAt(0).toLocaleUpperCase("tr")}
+          </div>
+        )}
         
         {/* Reklam etiketi — yasal zorunluluk, karttan ayrılamaz */}
         {featured && (
@@ -77,7 +89,7 @@ export function TutorCard({
           {/* base boyut: uzun ön adlar (Abdurrezzak vb.) xl'de kartı kaplıyordu;
               kütüphane kartıyla da aynı boyut. */}
           <p className="line-clamp-1 text-base font-bold leading-snug text-white drop-shadow-md">
-            {firstName}
+            {gorunenAd}
           </p>
           <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">
             <span>{metaSatiri}</span>
@@ -86,7 +98,7 @@ export function TutorCard({
       </div>
 
       {/* ── Bottom Part ── */}
-      <div className="flex flex-col pt-3 pb-1 px-1">
+      <div className="flex flex-1 flex-col pt-3 pb-1 px-1">
         {/* Badges: Rating & Status */}
         <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 ">
           <li className="flex items-center gap-1">
@@ -107,7 +119,7 @@ export function TutorCard({
         </h3>
 
         {/* Pricing */}
-        <div className="mt-1 flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between pt-1">
           <div className="flex items-baseline text-slate-900 ">
             <span className="text-sm font-bold">
               {rate !== null ? formatTRY(rate) : "Ücret belirtilmemiş"}
