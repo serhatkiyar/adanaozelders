@@ -31,6 +31,7 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 | **ÜK-6** | Eğitmen de eğitmen/kütüphane favorileyebilir | uygulandı | `__guards__/favoriRolKapisi.test.tsx`, `test_tutor_shopper_pg.py` K-22..K-25 |
 | **ÜK-7** | Arayüzde uzun tire (—) kullanılmaz | uygulandı | (kabul ölçütleri dört testte) |
 | **ÜK-8** | Sosyal giriş: Google EVET, Facebook HAYIR | uygulandı | `test_google_oidc_dogrulama.py`, `test_google_oauth_pg.py`, `test_parolasiz_hesap.py` |
+| **ÜK-9** | Soyad public yüzeylerde görünmez | uygulandı | `test_soyad_public_yuzeyde_yok.py` |
 
 ---
 
@@ -331,6 +332,73 @@ kapanırdı.
 **Açık kalan (lansman öncesi).** Google Cloud Console'da OAuth client açılması
 ve consent screen'in PUBLISH edilmesi; ayrıntılar `backend/.env.example`
 içindeki blokta.
+
+---
+
+## ÜK-9 — Soyad public yüzeylerde görünmez
+
+**Karar.** Herkese açık yüzeylerde yalnız **ad** görünür. Yasal ad
+(`full_name`) yerinde durur ve oturum içi akışlarda kullanılmaya devam eder.
+
+**Kullanıcının sorusu.** *"soyisim göstermesek mi acaba."*
+
+**Sektör.** Superprof ve Tutor Hunt yalnız adı gösteriyor, Wyzant ad + soyad
+baş harfini, italki ise eğitmenlere tam yasal adlarını kullanmamalarını
+öneriyor. Biçim olarak "yalnız ad" seçildi.
+
+**Engel çıkmadı.** KVKK aydınlatma metni tam adı eğitmen profil veri
+kategorisinde saymıyor ve "arayüzde yalnız son dört hane" (TCKN) zaten emsal
+bir maskeleme deseni. Mesafeli satış sözleşmesi taraf tanımını *tip* düzeyinde
+yapıyor. Ödeme/KYC/fatura `full_name`'i veritabanı ve iyzico katmanında
+tüketiyor, ekrandan bağımsız. Karar ayrıca deponun yerleşik
+anti-disintermediation felsefesiyle (`core/moderation.py`) aynı yönde: soyad +
+ilçe, birini platform dışında bulmaya yeter.
+
+### Kapsam bir GİZLEME değil, AYRIM
+
+| Nerede | Ne görünür |
+|---|---|
+| Public: kart, profil, SEO/JSON-LD, slug, sitemap, yorum yazarı | yalnız ad |
+| Oturum içi: rezervasyon, mesaj, sipariş, canlı ders | yasal ad |
+| Admin/operatör panelleri, hesabın kendi ayarları | yasal ad |
+| Ödeme, KYC (iyzico alt üye), fatura | yasal ad |
+
+### Kesme SUNUCUDA yapılır
+
+Arayüzde `split(" ")[0]` yazmak kozmetik kalır ve bu depoda tam olarak öyle
+olmuştu: `TutorCard` yalnız adı basıyordu ama aynı bileşenin `alt` metni ve
+avatar URL'i tam adı taşıyor, kartın gittiği adres `/egitmenler/ahmet-yilmaz-42`
+oluyor, `sitemap_service` o slug'ı doğrudan Google'a veriyordu. Soyad ekranda
+gizliydi ama her yerdeydi.
+
+Bu yüzden `full_name` **public şemadan çıkarıldı** (`TutorSearchOut`) ve yerine
+model property'si `display_name` kondu (`models/mixins.py::NameMixin`).
+Slug, sitemap, bot meta (OG/Twitter) ve arama sorgusu da ada indirildi.
+
+**Arama neden değişti:** soyadla eşleşme açık bırakılsaydı soyad gizli ama
+SORGULANABİLİR kalırdı — bir soyadı yazıp sonuç dönüp dönmediğine bakarak o
+kişinin platformda olup olmadığı öğrenilebilirdi.
+
+**Yol üstünde kapanan sızıntı:** avatarı olmayan eğitmenin tam adı her kart
+render'ında `ui-avatars.com`'a query parametresi olarak gidiyordu. Ortak
+`Avatar` bileşeni baş harfi zaten YERELDE üretiyor; kart artık dış servise
+istek atmıyor.
+
+### Rozet bağı korundu
+
+`docs/kimlik-ve-diploma-dogrulama-plani.md` §A6 şart koşuyor: *"görünen ad
+olabilir ama kimlik iddiası taşımaz; 'Kimliği Doğrulanmış' rozeti yasal ada
+bağlanır."* Çelişki yok: `IdentityVerifiedBadge` `payout_status`a (iyzico
+MERNIS/IBAN kontrolü) bakıyor, gösterilen ada değil. Rozet kimliğin
+DOĞRULANDIĞINI söyler, kimliğin ne olduğunu değil.
+
+### Açık kalanlar (bilinçli)
+
+- `lib/routes.ts::messageWith` tam adı URL query string'ine koyuyor
+  (`/mesajlar?to=42&name=…`) — public değil ama gereksiz.
+- `demand_service.py` öğrencinin tam adını, hiçbir rezervasyon olmadan
+  eğitmenlerin talep listesinde gösteriyor. Talepler şu an dondurulmuş (ÜK-3);
+  açılmadan önce ele alınmalı.
 
 ---
 

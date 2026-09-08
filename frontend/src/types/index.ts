@@ -567,7 +567,7 @@ export interface TutorProfileUpdate {
 
 export interface TutorOut extends UserOut {
   status: TutorStatus;
-  slug: string; // backend computed: isim-soyisim-{id}
+  slug: string; // backend computed: isim-{id} (soyad yok, ÜK-9)
   headline?: string | null;
   bio?: string | null;
   lesson_info?: string | null;
@@ -590,7 +590,9 @@ export interface TutorOut extends UserOut {
 export interface TutorSearchOut {
   id: number;
   slug: string; // backend computed: isim-soyisim-{id}
-  full_name: string;
+  /** PUBLIC ad — soyad TAŞIMAZ (ÜK-9). Sunucuda kesiliyor;
+   *  yasal ad yalnız oturum içi ve admin şemalarında. */
+  display_name: string;
   avatar_url?: string | null;
   headline?: string | null;
   bio?: string | null;

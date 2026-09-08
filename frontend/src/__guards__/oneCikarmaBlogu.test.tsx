@@ -40,7 +40,7 @@ function egitmen(id: number, ad: string) {
     slug: `${ad.toLowerCase()}-${id}`,
     first_name: ad,
     last_name: "Test",
-    full_name: `${ad} Test`,
+    display_name: `${ad}`,
     hourly_rate: "300.00",
     rating_avg: 4.5,
     rating_count: 3,

@@ -60,7 +60,7 @@ beforeEach(() => {
     user: {
       id: 1,
       role_id: ROLE_IDS.CLIENT,
-      full_name: "Test Kullanıcı",
+      display_name: "Test",
       email: "t@example.com",
     },
   } as never);
@@ -96,7 +96,7 @@ describe("üst bar · en fazla TEK kısayol", () => {
     // açtı; ÜK-2'nin ASIL kuralı ("en fazla TEK kısayol, o da Favorilerim")
     // bozulmadı, iki rolde de aynı tek kısayol var.
     useAuthStore.setState({
-      user: { id: 2, role_id: ROLE_IDS.TUTOR, full_name: "Eğitmen", email: "e@example.com" },
+      user: { id: 2, role_id: ROLE_IDS.TUTOR, display_name: "Eğitmen", email: "e@example.com" },
     } as never);
     sar(TUTOR_NAV);
     expect(ustBardakiHedefler()).toEqual([ROUTES.favorites]);
@@ -138,7 +138,7 @@ describe("üst bar · KALDIRILAN kısayolların hedefi hâlâ erişilebilir", ()
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: rol menüsündeki HER hedef hesap menüsünde bağlantı", (_ad, rol, nav) => {
     useAuthStore.setState({
-      user: { id: 3, role_id: rol, full_name: "K", email: "k@example.com" },
+      user: { id: 3, role_id: rol, display_name: "K", email: "k@example.com" },
     } as never);
     sar(nav as NavItem[]);
     menuyuAc();
@@ -183,7 +183,7 @@ describe("üst bar · bildirim zili kalktı ama BİLDİRİMLER erişilebilir", (
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: hesap menüsünde `/bildirimler` bağlantısı VAR", (_ad, rol, nav) => {
     useAuthStore.setState({
-      user: { id: 4, role_id: rol, full_name: "K", email: "k@example.com" },
+      user: { id: 4, role_id: rol, display_name: "K", email: "k@example.com" },
     } as never);
     sar(nav as NavItem[]);
     menuyuAc();

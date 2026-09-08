@@ -42,7 +42,7 @@ function egitmen(gender: Gender | null | undefined): TutorSearchOut {
   return {
     id: 7,
     slug: "ayse-yilmaz-7",
-    full_name: "Ayşe Yılmaz",
+    display_name: "Ayşe",
     hourly_rate: "500",
     teaching_mode: TeachingMode.ONLINE,
     gender,

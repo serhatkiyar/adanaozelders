@@ -27,13 +27,13 @@ export default function Favorites() {
   const recent = useRecentlyViewed();
 
   const tutorTiles: Tile[] =
-    tutors?.map((t) => ({ img: t.avatar_url, label: t.full_name?.charAt(0) })) ??
+    tutors?.map((t) => ({ img: t.avatar_url, label: t.display_name?.charAt(0) })) ??
     [];
   const libraryTiles: Tile[] =
     libraries?.map((l) => ({ img: l.cover_url, label: l.name?.charAt(0) })) ?? [];
   const recentTiles: Tile[] = recent.map((t) => ({
     img: t.avatar_url,
-    label: t.full_name?.charAt(0),
+    label: t.display_name?.charAt(0),
   }));
 
   const backToIndex = () => setView("index");

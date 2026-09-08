@@ -70,11 +70,28 @@ const oku = (ad: string) =>
 const DAGITICI = oku("TutorProfilePage.tsx");
 
 /** `<aside ... className="...">` içindeki sınıf dizesi. */
+/**
+ * Sabit kartın sınıf dizesi.
+ *
+ * 8 Eyl 2026: yükseklik sınırı ve taşma davranışı `<aside>`dan KARTIN KENDİSİNE
+ * taşındı. Sebep ölçülmüş bir kusurdu: kartın gölgesi görünmüyordu, çünkü
+ * `overflow-y-auto` üst katmandaydı ve bir element ÇOCUKLARININ gölgesini
+ * kırpar. Kendi gölgesini kırpmaz — sınır karta inince gölge sayfaya çıktı.
+ *
+ * `sticky` `<aside>`da kalır (konumlandırma onun işi), yükseklik + taşma
+ * kartta. Bu yüzden ikisi birleştirilip okunuyor: nöbetçinin iddiası
+ * "üçü BİRLİKTE duruyor", hangi etiketde durdukları değil.
+ */
 function asideSinifi(kaynak: string): string {
-  const i = kaynak.indexOf("<aside");
-  if (i < 0) return "";
-  const j = kaynak.indexOf('className="', i);
-  return j < 0 ? "" : kaynak.slice(j + 11, kaynak.indexOf('"', j + 11));
+  const parcalar: string[] = [];
+  for (const etiket of ["<aside", "<section"]) {
+    const i = kaynak.indexOf(etiket);
+    if (i < 0) continue;
+    const j = kaynak.indexOf('className="', i);
+    if (j < 0) continue;
+    parcalar.push(kaynak.slice(j + 11, kaynak.indexOf('"', j + 11)));
+  }
+  return parcalar.join(" ");
 }
 
 /** Yorumları eleyen kod metni: "KALDIRILDI" notu TARİHtir, borç değil. */

@@ -1052,8 +1052,9 @@ async def search_products(
     # sayfada 30 gidiş-dönüş demekti (N+1).
     tedarikci = await _tedarikci_stogu(db, [r[0] for r in rows])
     out: list[ProductSearchOut] = []
-    for p, fn, ln, grp_min, grp_n, grp_stok, _skor, _relv in rows:
-        name = f"{fn} {ln}".strip() if fn else None
+    for p, fn, _ln, grp_min, grp_n, grp_stok, _skor, _relv in rows:
+        # Yalnız AD (ÜK-9) — soyad public ürün listesinde görünmez.
+        name = fn or None
         out.append(
             _to_search_out(
                 p,
@@ -1084,7 +1085,8 @@ async def _tutor_name(db: AsyncSession, tutor_id: int | None) -> str | None:
     if tutor_id is None:
         return None
     t = await db.get(Tutor, tutor_id)
-    return t.full_name if t is not None else None
+    # Yalnız AD (ÜK-9): ürün kartı ve satıcı mağazası public yüzeylerdir.
+    return t.display_name if t is not None else None
 
 
 async def _variants_block(
@@ -2334,7 +2336,7 @@ async def list_products_admin(
             p,
             prior_mean,
             confidence,
-            tutor_name=(f"{fn} {ln}".strip() if fn else None),
+            tutor_name=(fn or None),  # yalnız AD (ÜK-9)
             supplier_qty=(
                 Decimal(tedarikci_bilgi[p.id].stock_qty)
                 if p.id in tedarikci_bilgi
@@ -2342,7 +2344,7 @@ async def list_products_admin(
             ),
             supplier_info=tedarikci_bilgi.get(p.id),
         )
-        for p, fn, ln in rows
+        for p, fn, _ln in rows
     ], toplam
 
 
@@ -2373,10 +2375,10 @@ async def list_favorites(db: AsyncSession, client_id: int) -> list[ProductSearch
             p,
             prior_mean,
             confidence,
-            tutor_name=(f"{fn} {ln}".strip() if fn else None),
+            tutor_name=(fn or None),  # yalnız AD (ÜK-9)
             supplier_qty=tedarikci.get(p.id),
         )
-        for p, fn, ln in rows
+        for p, fn, _ln in rows
     ]
 
 
@@ -2754,7 +2756,7 @@ async def list_reviews(
     out: list[ProductReviewOut] = []
     for review, client in rows:
         item = ProductReviewOut.model_validate(review)
-        item.client_name = client.full_name
+        item.client_name = client.display_name
         item.client_avatar_url = client.avatar_url
         out.append(item)
     return out
@@ -2821,7 +2823,7 @@ async def create_review(
     await db.commit()
     await db.refresh(review)
     item = ProductReviewOut.model_validate(review)
-    item.client_name = client.full_name
+    item.client_name = client.display_name
     item.client_avatar_url = client.avatar_url
     return item
 

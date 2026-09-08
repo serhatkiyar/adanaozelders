@@ -35,6 +35,30 @@ class NameMixin:
     def _full_name_expression(cls):
         return func.concat(cls.first_name, " ", cls.last_name)
 
+    @property
+    def display_name(self) -> str:
+        """PUBLIC yüzeylerde gösterilen ad — soyad TAŞIMAZ (ÜK-9).
+
+        `full_name` ile farkı bir görüntüleme tercihi değil, KAPSAM ayrımıdır:
+
+        ``full_name``     Yasal ad. Ödeme/KYC (iyzico alt üye işyeri), fatura,
+                          admin panelleri, hesap sahibinin kendi ayarları ve
+                          taraflar arasında sözleşme ilişkisi kurulmuş akışlar
+                          (rezervasyon, mesajlaşma, sipariş).
+        ``display_name``  Herkese açık yüzeyler: eğitmen kartı ve profili, SEO
+                          başlıkları, JSON-LD, yorum yazarı adı, slug.
+
+        Kesme SUNUCUDA yapılır. Arayüzde `split(" ")[0]` yazmak kozmetik kalır:
+        soyad ağ yanıtında, HTML kaynağında, JSON-LD'de ve URL'de durmaya devam
+        eder — kart tam olarak bu durumdaydı.
+
+        KİMLİK İDDİASI TAŞIMAZ (`docs/kimlik-ve-diploma-dogrulama-plani.md`
+        §A6): "Kimliği Doğrulanmış" rozeti bu ada değil, `payout_status`a
+        (iyzico MERNIS/IBAN kontrolü) bağlıdır ve öyle kalmalıdır. Rozet
+        kimliğin DOĞRULANDIĞINI söyler, kimliğin ne olduğunu değil.
+        """
+        return self.first_name
+
 
 class TimestampMixin:
     created_at: Mapped[datetime.datetime] = mapped_column(

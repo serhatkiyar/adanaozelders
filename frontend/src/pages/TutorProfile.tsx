@@ -216,8 +216,8 @@ export default function TutorProfile() {
               viewport'tan uzunsa alt kısmı (fiyat + birincil düğme) görünmüyor
               ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
               yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)]">
+            <section className="rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
               <div className="mb-2 flex items-center justify-end gap-2">
                 {!isOwnerTutor && hasActiveBooking && (
@@ -226,7 +226,7 @@ export default function TutorProfile() {
                     title="Mesaj Gönder"
                     aria-label="Mesaj Gönder"
                     onClick={() =>
-                      navigate(ROUTES.messageWith(tutor.id, tutor.full_name))
+                      navigate(ROUTES.messageWith(tutor.id, tutor.display_name))
                     }
                     className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 "
                   >
@@ -243,14 +243,14 @@ export default function TutorProfile() {
 
               <div className="flex flex-col items-center text-center">
                 <Avatar
-                  name={tutor.full_name}
+                  name={tutor.display_name}
                   avatar_url={tutor.avatar_url}
                   size="lg"
                   shape="square"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   <h1 className="text-xl font-bold text-slate-900 ">
-                    {tutor.full_name}
+                    {tutor.display_name}
                   </h1>
                 </div>
 
@@ -311,7 +311,7 @@ export default function TutorProfile() {
               <ReportModal
                 targetType="TUTOR"
                 targetId={tutorId}
-                targetLabel={tutor.full_name}
+                targetLabel={tutor.display_name}
                 onClose={() => setShowReport(false)}
               />
             )}
@@ -346,7 +346,7 @@ export default function TutorProfile() {
             {tutor.bio && (
               <section className="border-t border-slate-100 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
-                  {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
+                  {tutor.display_name} ile ilgili bilgiler
                 </h2>
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.bio}
@@ -387,7 +387,7 @@ export default function TutorProfile() {
                 <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
                   <iframe
                     src={embedUrl}
-                    title={`${tutor.full_name} tanıtım videosu`}
+                    title={`${tutor.display_name} tanıtım videosu`}
                     className="h-full w-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -443,7 +443,7 @@ export default function TutorProfile() {
       {showReviews && tutor && (
         <ReviewListModal
           tutorId={tutor.id}
-          tutorName={tutor.full_name}
+          tutorName={tutor.display_name}
           onClose={() => setShowReviews(false)}
         />
       )}

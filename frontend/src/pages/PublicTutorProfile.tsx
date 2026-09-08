@@ -83,12 +83,12 @@ export default function PublicTutorProfile() {
     tutor.bio ||
     tutor.headline ||
     (tutor.subjects?.length
-      ? `${tutor.full_name}, ${tutor.subjects.join(", ")} özel ders eğitmeni.`
-      : `${tutor.full_name} ile özel ders.`);
+      ? `${tutor.display_name}, ${tutor.subjects.join(", ")} özel ders eğitmeni.`
+      : `${tutor.display_name} ile özel ders.`);
   const personLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
-    name: tutor.full_name,
+    name: tutor.display_name,
     url: absoluteUrl(canonicalPath),
     jobTitle: "Özel Ders Eğitmeni",
     ...(tutor.avatar_url ? { image: tutor.avatar_url } : {}),
@@ -127,7 +127,7 @@ export default function PublicTutorProfile() {
   return (
     <PublicShell center={center} bottom={bottom}>
       <Seo
-        title={tutor.full_name}
+        title={tutor.display_name}
         description={seoDesc}
         canonicalPath={canonicalPath}
         type="profile"
@@ -154,8 +154,8 @@ export default function PublicTutorProfile() {
               tamamını görmek için SAYFAYI en aşağı kaydırmak zorunda kalıyordu.
               Artık yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar;
               kısa kaldığında hiçbir şey değişmez. */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)] lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-            <section className="relative rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)]">
+            <section className="relative rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
               {/* Favori + paylaş: sağ üst köşede DİKEY sütun (Superprof deseni,
                   kullanıcı kararı 8 Eyl). Önce fotoğrafın üstünde yatay bir
                   satırdaydılar ve kartın en değerli yerini —ismin hemen
@@ -173,35 +173,28 @@ export default function PublicTutorProfile() {
                 {/* Fotoğraf 64px'ten 128px'e çıktı. Kartın tek görseli o ve
                     eğitmen seçiminde yüz belirleyici; küçük hâli avatar değil
                     "yer tutucu" gibi duruyordu. */}
-                <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
+                <Avatar name={tutor.display_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
                 {/* İsim TAM ORTADA durur; rozet onu ittirmez.
                     `justify-center` ile ikisi birlikte ortalanınca isim
                     rozet kadar sola kayıyordu ve fotoğrafın merkeziyle
                     hizasını kaybediyordu. Rozet artık akışın dışında, ismin
                     sağ kenarına yaslı. */}
-                <div className="mt-3 flex w-full items-center justify-center">
-                  <h1 className="relative text-xl font-bold text-slate-900 ">
-                    {tutor.full_name}
-                  {/* Diploma artık YAYIN KAPISI değil, ayrıcalık (5 Eyl 2026):
-                      belgesiz eğitmen de yayında olur, belgesi admin tarafından
-                      e-Devlet üzerinden doğrulanmış olan bu rozeti alır. Rozet
-                      bugüne kadar tanımlıydı ama hiçbir ekrana bağlanmamıştı. */}
-                    {/* Rozet İSMİN sağ kenarına yaslı — `absolute` çıpası
-                        `h1`de, sarmalayıcıda DEĞİL. İlk denemede sarmalayıcıya
-                        bağlanmıştı ve o `w-full` olduğu için rozet kartın sağ
-                        kenarına, isimden metrelerce uzağa düştü. */}
-                    {hasVerifiedEducation(tutor.educations) && (
-                      <span className="absolute left-full top-1/2 ml-1.5 -translate-y-1/2">
-                        <DocumentedBadge />
-                      </span>
-                    )}
+                {/* İsim + rozet BİRLİKTE ortalanır. Daha önce rozet `absolute`
+                    ile ismin sağına asılmıştı ki isim tam merkezde kalsın; o
+                    çözüm rozeti akıştan çıkardığı için başlık dengesiz
+                    görünüyordu. Basit hizalama daha düzgün duruyor. */}
+                <div className="mt-3 flex items-center justify-center gap-1.5">
+                  <h1 className="text-xl font-bold text-slate-900 ">
+                    {tutor.display_name}
                   </h1>
+                  {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
                 </div>
 
+                <div className="mt-2 flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowReviews(true)}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
                 >
                   <StarRating value={tutor.rating_average} single={true} />
                   <span className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover ">
@@ -210,6 +203,7 @@ export default function PublicTutorProfile() {
                       : "Değerlendirme yok"}
                   </span>
                 </button>
+                </div>
 
                 {/* Ders mekânı (Uzaktan / Yüz yüze) buradan KALKTI ve sol
                     sütunda "Ders Mekânı" başlığı altına taşındı: kartın işi
@@ -272,7 +266,7 @@ export default function PublicTutorProfile() {
             {tutor.bio && (
               <section className="border-t border-slate-100 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
-                  {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
+                  {tutor.display_name} ile ilgili bilgiler
                 </h2>
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.bio}
@@ -345,7 +339,7 @@ export default function PublicTutorProfile() {
                 <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
                   <iframe
                     src={embedUrl}
-                    title={`${tutor.full_name} tanıtım videosu`}
+                    title={`${tutor.display_name} tanıtım videosu`}
                     className="h-full w-full border-0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
@@ -382,7 +376,7 @@ export default function PublicTutorProfile() {
       {showReviews && (
         <ReviewListModal
           tutorId={tutor.id}
-          tutorName={tutor.full_name}
+          tutorName={tutor.display_name}
           onClose={() => setShowReviews(false)}
         />
       )}

@@ -51,7 +51,7 @@ def _to_search_out(
 ) -> TutorSearchOut:
     return TutorSearchOut(
         id=tutor.id,
-        full_name=tutor.full_name,
+        display_name=tutor.display_name,
         avatar_url=tutor.avatar_url,
         headline=tutor.headline,
         bio=tutor.bio,
@@ -174,7 +174,11 @@ def _apply_tutor_filters(
         # Diakritik-duyarsız arama: hem indeks (generated tsvector / trigram)
         # hem sorgu `tr_normalize`'dan geçer. "matematık" → "matematik".
         like = f"%{normalize_tr(q.strip())}%"
-        norm_name = normalized(Tutor.full_name)
+        # Arama ADA göre yapılır, soyada göre DEĞİL (ÜK-9). Soyad arayüzden
+        # kaldırılıp burada bırakılsaydı gizli ama SORGULANABİLİR kalırdı:
+        # bir soyadı yazıp sonuç dönüp dönmediğine bakarak o kişinin platformda
+        # olup olmadığı öğrenilebilirdi (varlık sızıntısı).
+        norm_name = normalized(Tutor.first_name)
 
         tsquery = search_tsquery(q)
 
