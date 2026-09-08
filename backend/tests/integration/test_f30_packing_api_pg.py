@@ -29,6 +29,7 @@ from models.admin import Admin
 from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service, delivery_service
 from tests.integration.f30_factory import PaketFabrikasi
+from tests.integration.f30_yardim import bozuk_token
 
 VIEW, PACK, MANAGE = "packing.view", "packing.pack", "packing.manage"
 
@@ -301,7 +302,7 @@ async def test_KAPI_TARAMASI_TOKEN_MATRISI(client, kur, fab, bicim):
 
     gercek = paket["qr_payload"].split(":")[2]
     yukler = {
-        "yanlis_token": f"PKG1:{paket['id']}:{gercek[:-1]}x",
+        "yanlis_token": f"PKG1:{paket['id']}:{bozuk_token(gercek)}",
         "bos_token": f"PKG1:{paket['id']}:",
         "eksik_parca": f"PKG1:{paket['id']}",
         "ciplak_id": str(paket["id"]),
@@ -772,7 +773,7 @@ async def test_ZIMMET_404_GOVDELERI_AYNIDIR(client, kur, fab, bicim):
     yukler = {
         "yabanci_kurye": paket["qr_payload"],
         "olmayan_paket": f"PKG1:99999999:{gercek}",
-        "yanlis_token": f"PKG1:{paket['id']}:{gercek[:-1]}x",
+        "yanlis_token": f"PKG1:{paket['id']}:{bozuk_token(gercek)}",
         "paket_qr_degil": "7:duraktoken",
     }
     r = await client.post(

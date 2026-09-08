@@ -31,6 +31,7 @@ from sqlalchemy import text
 from core.database import AsyncSessionLocal
 from services import delivery_service
 from tests.integration.f30_factory import PaketFabrikasi
+from tests.integration.f30_yardim import bozuk_token
 
 VIEW, PACK, MANAGE = "packing.view", "packing.pack", "packing.manage"
 #: Saha router'ı (`/delivery/*`) admin için görev izni ister; kurye için rol.
@@ -446,7 +447,7 @@ async def test_DORT_RET_SEBEBI_DE_AYNI_404_GOVDESIYLE_YANITLANIR(client, kur, fa
     denemeler = {
         "yabanci_kurye": (token_b, paket_a["qr_payload"]),
         "gecmis_tur": (token_c, paket_c["qr_payload"]),
-        "bozuk_token": (token_b, f"PKG1:{paket_a['id']}:{gercek_token[:-1]}x"),
+        "bozuk_token": (token_b, f"PKG1:{paket_a['id']}:{bozuk_token(gercek_token)}"),
         "olmayan_paket": (token_b, f"PKG1:999000777:{gercek_token}"),
     }
     govdeler = {}
