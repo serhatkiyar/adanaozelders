@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { TutorAccountLayout } from "@/components/TutorAccountLayout";
+import { DashboardShell } from "@/components/DashboardShell";
 import {
   buyPromotion,
   fetchMyPromotions,
@@ -85,8 +85,8 @@ export default function TutorPromotion() {
   const onayli = profile?.status === "APPROVED";
 
   return (
-    <TutorAccountLayout active="promotion" title="İlanımı öne çıkar">
-      <div className="max-w-2xl">
+    <DashboardShell title="İlanımı öne çıkar" genislik="dar">
+      <div className="px-1 pb-16 pt-2 sm:px-2">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           İlanını öne çıkar
         </h1>
@@ -239,7 +239,7 @@ export default function TutorPromotion() {
           </div>
         )}
       </div>
-    </TutorAccountLayout>
+    </DashboardShell>
   );
 }
 

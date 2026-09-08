@@ -111,10 +111,23 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   const accountLinks = (onClick: () => void) => {
     return (
       <>
-        <NavLink to={ROUTES.profile} onClick={onClick} className={menuItemClass}>
-          <Icon name="profile" className="h-5 w-5" />
-          Hesabım
-        </NavLink>
+        {/* MENÜNÜN İLK SATIRI ROLE GÖRE DEĞİŞİR (kullanıcı kararı, 8 Eyl 2026).
+            Eğitmende "Panom" → `/pano`: şeridi olan tek rol odur ve ana
+            sayfada (Landing) şerit çizilmediği için panele dönüş yolu bu
+            satırdır. Kullanıcı: *"hesabım tıklamıcaz menüden Panom yazıcak
+            ona tıklayacağız."* Hesabım şeritte kendi sekmesi olarak duruyor.
+            Diğer rollerde şerit yok, giriş yine hesap sayfasıdır. */}
+        {user?.role_id === ROLE_IDS.TUTOR ? (
+          <NavLink to={ROUTES.bookings} onClick={onClick} className={menuItemClass}>
+            <Icon name="clipboard" className="h-5 w-5" />
+            Panom
+          </NavLink>
+        ) : (
+          <NavLink to={ROUTES.profile} onClick={onClick} className={menuItemClass}>
+            <Icon name="profile" className="h-5 w-5" />
+            Hesabım
+          </NavLink>
+        )}
         {/* Admin artık kökten panele ZORLA yönlendirilmiyor (29 Ağu: admin de
             özel ders yüzeyini gezebilmeli); panele dönüş yolu bu menüde durur. */}
         {user?.role_id === ROLE_IDS.ADMIN && (
@@ -170,9 +183,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           )}
         </NavLink>
 
+        {/* Etiket sayfanın kendi başlığıyla aynı ("Hesap ayarları").
+            Eğitmende bu satır artık hesabın TEK girişi: "Hesabım" sekmesi
+            şeritten kalktı ve içeriği gerçek sahiplerine dağıldı. */}
         <NavLink to={ROUTES.settings} onClick={onClick} className={menuItemClass}>
           <Icon name="settings" className="h-5 w-5" />
-          Ayarlar
+          Hesap ayarları
         </NavLink>
         <div className="my-1 border-t border-slate-100 " />
         <button

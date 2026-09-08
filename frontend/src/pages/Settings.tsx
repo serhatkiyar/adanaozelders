@@ -1,6 +1,7 @@
 import { FormEvent, ReactNode, useEffect, useState, useId } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
+import { useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { AddressSection } from "@/components/AddressSection";
 import { PayoutSection } from "@/components/PayoutSection";
@@ -28,6 +29,28 @@ import { alisverisYapabilir } from "@/lib/roles";
 import { Gender, ROLE_IDS } from "@/types";
 
 type CategoryKey = "personal" | "security" | "payments" | "appearance" | "addresses";
+
+/**
+ * URL slug'ları — sekmeler artık ADRESTE yaşıyor (kullanıcı kararı, 8 Eyl 2026).
+ *
+ * Eskiden sekme `useState`teydi. Sonucu: "ödeme bilgilerini şuradan gir" diye
+ * link atılamıyordu, tarayıcı geri tuşu sekme değiştirmiyordu ve sayfa
+ * yenilenince kullanıcı ilk sekmeye düşüyordu. Bunların hiçbiri hata mesajı
+ * üretmez — sessizce eksik kalan bir yetenekti.
+ *
+ * Slug'lar Türkçe: adres kullanıcıya gösterilen bir yüzeydir.
+ */
+const BOLUM_SLUG: Record<CategoryKey, string> = {
+  personal: "kisisel",
+  security: "guvenlik",
+  payments: "odeme",
+  appearance: "gorunum",
+  addresses: "adresler",
+};
+
+const SLUG_BOLUM = Object.fromEntries(
+  Object.entries(BOLUM_SLUG).map(([anahtar, slug]) => [slug, anahtar])
+) as Record<string, CategoryKey>;
 
 import { PhoneEditor } from "@/components/PhoneEditor";
 
@@ -93,7 +116,17 @@ interface CategoryDef {
 
 export default function Settings() {
   const { data: user, isLoading } = useCurrentUser();
-  const [active, setActive] = useState<CategoryKey>("personal");
+  const [aramaParam, setAramaParam] = useSearchParams();
+  // Tanınmayan ya da eksik slug sessizce ilk bölüme düşer — adres elle
+  // yazılabilen bir yüzeydir, hatalı değer 404 üretmemeli.
+  const active: CategoryKey = SLUG_BOLUM[aramaParam.get("bolum") ?? ""] ?? "personal";
+  const setActive = (bolum: CategoryKey, adresiDegistir = false) => {
+    const yeni = new URLSearchParams(aramaParam);
+    yeni.set("bolum", BOLUM_SLUG[bolum]);
+    // `replace`: kullanıcı sekmeye TIKLADIYSA geçmişe girsin (geri tuşu
+    // önceki sekmeye dönsün); otomatik düzeltmede girmesin.
+    setAramaParam(yeni, { replace: adresiDegistir });
+  };
 
   const roleNav = navForRole(user?.role_id);
 
@@ -127,15 +160,15 @@ export default function Settings() {
   useEffect(() => {
     if (!user) return;
     if (active === "addresses" && !alisverisYapabilir(user.role_id)) {
-      setActive("personal");
+      setActive("personal", true);
     } else if (active === "payments" && !showPayments) {
-      setActive("personal");
+      setActive("personal", true);
     }
   }, [active, user, showPayments]);
 
   return (
-    <DashboardShell title="Hesap Ayarları" navItems={roleNav}>
-      <div className="mx-auto max-w-5xl px-1 pb-16 pt-2 sm:px-2">
+    <DashboardShell title="Hesap Ayarları" navItems={roleNav} genislik="orta">
+      <div className="px-1 pb-16 pt-2 sm:px-2">
         <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Hesap ayarları
         </h1>

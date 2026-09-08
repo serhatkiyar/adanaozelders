@@ -37,7 +37,12 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { DashboardHeader } from "@/components/DashboardHeader";
-import { OPERATOR_NAV, UYE_NAV, TUTOR_NAV } from "@/lib/nav";
+import {
+  OPERATOR_NAV,
+  UYE_NAV,
+  TUTOR_NAV,
+  TUTOR_PANO_SEKMELERI,
+} from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { ROLE_IDS, type NavItem } from "@/types";
@@ -119,7 +124,19 @@ describe("üst bar · en fazla TEK kısayol", () => {
     // işi menünün DOLU olduğunu kanıtlamaktır, kaç kalem olduğunu dondurmak
     // değil — eşik kararla birlikte gerekçesiyle indi.
     expect(UYE_NAV.length).toBeGreaterThanOrEqual(3);
-    expect(TUTOR_NAV.length).toBeGreaterThanOrEqual(4);
+    /*
+     * EĞİTMENDE KAPI DEĞİŞTİ (8 Eyl 2026, kullanıcı kararı).
+     *
+     * Eskiden `TUTOR_NAV.length >= 3` yazıyordu. O kapı artık YANLIŞ bir şeyi
+     * ölçüyor: eğitmenin gezinmesi avatar menüsünden PANEL ŞERİDİNE taşındı
+     * (`TUTOR_PANO_SEKMELERI`), menüde yalnız şeride girmeyenler kaldı. Sayıyı
+     * eski yerinde tutmak, doğru yapılmış bir taşımayı kırmızıya düşürürdü.
+     *
+     * Ölçülmesi gereken şey değişmedi: eğitmenin gezinmesi BOŞ bir listeden
+     * gelmiyor olsun. Bu yüzden kapı iki yüzeyin BİRLEŞİMİNE bakar — hangisine
+     * yazıldığı bu düğümün işi değil, var olması onun işi.
+     */
+    expect(TUTOR_NAV.length + TUTOR_PANO_SEKMELERI.length).toBeGreaterThanOrEqual(6);
     expect(UYE_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
     // ÜK-6: eğitmen menüsünde de var (eskiden `false` çıpalıydı).
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);

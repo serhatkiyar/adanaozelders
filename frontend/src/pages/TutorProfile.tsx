@@ -5,6 +5,7 @@ import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
+import { EgitmenYanitAksiyonu } from "@/components/EgitmenYanitAksiyonu";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
 import { TutorOzetTablosu } from "@/components/TutorTrust";
@@ -20,8 +21,6 @@ import {
 import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { formatRate, parseMoney } from "@/lib/money";
-import { getErrorMessage } from "@/lib/errors";
-import { toast } from "@/store/toastStore";
 import { BookingStatus, ROLE_IDS, TeachingMode } from "@/types";
 import type { TutorSearchOut } from "@/types";
 import { BookingModal } from "@/components/BookingModal";
@@ -32,84 +31,6 @@ import { videoEmbedUrl } from "@/lib/video";
 import { useNavSearch } from "@/hooks/useNavSearch";
 
 // Removed constants
-
-/* ─── Eğitmen yanıtı aksiyonu (ReviewsSection kart-altı slotu) ─────────── */
-
-function OwnerReplyAction({
-  reviewId,
-  replyMutation,
-}: {
-  reviewId: number;
-  replyMutation: ReturnType<typeof useReplyToReview>;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState("");
-
-  const submitReply = () => {
-    if (!text.trim()) {
-      toast.error("Lütfen bir yanıt yaz.");
-      return;
-    }
-    replyMutation.mutate(
-      { reviewId, reply: text.trim() },
-      {
-        onSuccess: () => {
-          toast.success("Yanıtın eklendi.");
-          setEditing(false);
-          setText("");
-        },
-        onError: (err) =>
-          toast.error(getErrorMessage(err, "Yanıt eklenemedi.")),
-      }
-    );
-  };
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="mt-3 text-sm font-medium text-marka-metin transition hover:text-marka-metin-hover "
-      >
-        Yanıtla
-      </button>
-    );
-  }
-
-  return (
-    <div className="mt-3 space-y-2">
-      <textarea
-        rows={3}
-        maxLength={2000}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        autoFocus
-        placeholder="Değerlendirmeye yanıtını yaz…"
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-      />
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setEditing(false);
-            setText("");
-          }}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 "
-        >
-          Vazgeç
-        </button>
-        <button
-          type="button"
-          onClick={submitReply}
-          disabled={replyMutation.isPending}
-          className="rounded-lg bg-marka px-4 py-1.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
-        >
-          {replyMutation.isPending ? "Gönderiliyor…" : "Yanıtla"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /* ─── main page ─────────────────────────────────────────── */
 
@@ -156,7 +77,7 @@ export default function TutorProfile() {
 
   if (isError || !tutor) {
     return (
-      <DashboardShell title="Eğitmen" navItems={navItems}>
+      <DashboardShell title="Eğitmen" navItems={navItems} sekmeler={null}>
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
@@ -195,6 +116,7 @@ export default function TutorProfile() {
     <DashboardShell
       title="Eğitmen Detayı"
       navItems={navItems}
+      sekmeler={null}
       center={center}
       bottom={bottom}
     >
@@ -419,7 +341,7 @@ export default function TutorProfile() {
                   isOwnerTutor
                     ? (item) =>
                         item.reply ? null : (
-                          <OwnerReplyAction
+                          <EgitmenYanitAksiyonu
                             reviewId={item.id}
                             replyMutation={replyMutation}
                           />

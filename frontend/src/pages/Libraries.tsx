@@ -462,7 +462,7 @@ export default function Libraries() {
   );
 
   return token ? (
-    <DashboardShell title="Kütüphaneler" navItems={navItems} center={navCenter} bottom={navBottom}>
+    <DashboardShell title="Kütüphaneler" navItems={navItems} center={navCenter} bottom={navBottom} sekmeler={null}>
       {content}
     </DashboardShell>
   ) : (

@@ -1,8 +1,11 @@
 import { FormEvent, useEffect, useState, useId } from "react";
 import { Link } from "react-router-dom";
 import type { UseMutationResult } from "@tanstack/react-query";
-import { TutorAccountLayout } from "@/components/TutorAccountLayout";
+import { DashboardShell } from "@/components/DashboardShell";
 import { ProfileCompleteness } from "@/components/ProfileCompleteness";
+import { ProfilFotografi } from "@/components/ProfilFotografi";
+import { EducationSection } from "@/components/EducationSection";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { MapPicker } from "@/components/MapPicker";
 import { ADANA_DISTRICTS } from "@/lib/districts";
 import { ROUTES } from "@/lib/routes";
@@ -108,6 +111,7 @@ const labelCls =
 export default function TutorSettings() {
   const uid = useId();
   const { data, isLoading, isError, error } = useMyTutorProfile();
+  const { data: currentUser } = useCurrentUser();
   const updateProfile = useUpdateTutorProfile();
   const submitAction = useTutorListingAction("submit");
   const suspendAction = useTutorListingAction("suspend");
@@ -260,11 +264,12 @@ export default function TutorSettings() {
   const cfg = data ? STATUS_CFG[data.status] : null;
 
   return (
-    <TutorAccountLayout active="listing" title="İlan Ayarları">
-      <div className="max-w-2xl">
+    <DashboardShell title="İlan Ayarları" genislik="dar">
+      <div className="px-1 pt-2 sm:px-2">
         <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           İlan ayarları
         </h1>
+
         <div className="space-y-4 pb-12">
         {isLoading || !data ? (
           isError ? (
@@ -280,6 +285,24 @@ export default function TutorSettings() {
           )
         ) : (
           <>
+            {/* ── İlanın yüzü: fotoğraf + ad ──
+                8 Eyl 2026: fotoğraf "Hesabım" ekranındaydı ve o ekran şeritten
+                kalktı. Fotoğraf zaten ilana ait: öğrencinin arama sonucunda ve
+                ilan sayfasında gördüğü şey bu. Preply "Photo", Wyzant "Photos"
+                — ikisi de profil/ilan ekranında tutuyor. */}
+            <div className="flex items-center gap-5 rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100">
+              <ProfilFotografi />
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-slate-900">
+                  {currentUser?.full_name ?? ""}
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                  İlanının ve arama sonuçlarının yüzü bu fotoğraf. Üstüne
+                  gelip değiştirebilirsin.
+                </p>
+              </div>
+            </div>
+
             <ProfileCompleteness tutor={data} showLink={false} />
 
             {/* ── Status Card ── */}
@@ -310,16 +333,13 @@ export default function TutorSettings() {
                   <p className="mt-2 text-sm leading-relaxed text-slate-500 ">
                     {cfg!.help}
                   </p>
+                  {/* Eğitim bölümü ARTIK BU SAYFADA (8 Eyl 2026): eskiden
+                      başka bir ekrana ("Profil") link veriyordu. */}
                   {(data.status === TutorStatus.DRAFT ||
                     data.status === TutorStatus.REJECTED) && (
                     <p className="mt-2 text-xs leading-relaxed text-amber-600 ">
-                      ⚠ Onaya gönderebilmek için{" "}
-                      <Link
-                        to={ROUTES.profile}
-                        className="font-semibold underline underline-offset-2 hover:text-amber-700 "
-                      >
-                        Profil → Eğitim
-                      </Link>{" "}
+                      ⚠ Onaya gönderebilmek için aşağıdaki{" "}
+                      <strong className="font-semibold">Eğitim ve belgeler</strong>{" "}
                       bölümünden en az bir eğitime diploma/belge yüklemelisin.
                     </p>
                   )}
@@ -607,16 +627,20 @@ export default function TutorSettings() {
                   </div>
                 </div>
 
-                {/* Yaş ve cinsiyet artık profil bilgilerinde (Profil sayfası). */}
+                {/* KIRIK YÖNLENDİRME DÜZELTİLDİ (8 Eyl 2026).
+                    Burası eskiden "Profil" sayfasına yolluyordu; orada yaş ve
+                    cinsiyet SALT-OKUNURDU ve gerçek editör Ayarlar > Kişisel
+                    bilgiler'deydi. Kullanıcı iki sıçrama yapıyor, ikincisini
+                    kendi buluyordu. Artık doğrudan doğru sekmeye gidiyor. */}
                 <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 ">
                   Yaş ve cinsiyet bilgini{" "}
                   <Link
-                    to={ROUTES.profile}
+                    to={`${ROUTES.settings}?bolum=kisisel`}
                     className="font-semibold text-marka-metin hover:underline "
                   >
-                    Profil
+                    Hesap ayarları
                   </Link>{" "}
-                  sayfandan düzenleyebilirsin; profilinde ve aramada gösterilir.
+                  sayfandan düzenleyebilirsin; ilanında ve aramada gösterilir.
                 </div>
 
                 {/* Biyografi */}
@@ -696,10 +720,62 @@ export default function TutorSettings() {
                 </div>
               </form>
             </div>
+
+            {/* ── Eğitim ve belgeler ──
+                8 Eyl 2026: bu bölüm "Hesabım" ekranındaydı ve o ekran şeritten
+                kalktı. Buraya taşınmasının sebebi yalnız yer değişikliği değil:
+                profil doluluk ölçerinin sekiz maddesinden BİRİ (diploma/belge)
+                orada dolduruluyor, ölçerin kendisi ise burada duruyordu ve
+                "İlan Ayarları'na git" diyordu. Yani eksik olan tek madde
+                diplomaysa ölçer kullanıcıyı zaten bulunduğu sayfaya yolluyordu.
+                Sekiz maddenin sekizi de artık tek ekranda.
+
+                Belgenin ilanda GÖRÜNMEDİĞİ açıkça yazılı — Lessonface'in
+                "Credentials … not displayed publicly" deseni. */}
+            <div className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-slate-100">
+              <h2 className="text-base font-semibold text-slate-900">
+                Eğitim ve belgeler
+              </h2>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                Okulun ilanında görünür. Yüklediğin diploma veya belge{" "}
+                <strong className="font-semibold text-slate-700">
+                  ilanında gösterilmez
+                </strong>
+                ; yalnız doğrulama için kullanılır ve onaylanınca ilanında
+                "Diploması Doğrulandı" rozeti çıkar.
+              </p>
+              <div className="mt-5">
+                <EducationSection editable bare withDocument />
+              </div>
+            </div>
+
+          {/* ÖNE ÇIKAR — bu satır kaldırılamaz: `/ilanimi-one-cikar` sayfasının
+              TEK girişi burasıdır. Eskiden `TutorAccountLayout`'un sol
+              menüsündeydi; o kabuk kalkınca (panel şeridi geldi, sol menüde
+              şeritle çakışmayan tek öğe kalmıştı) buraya taşındı. Öne çıkarma
+              ilana ait bir eylemdir, hesaba değil — yeri de burasıdır.
+              Silinirse rota ayakta kalır, sayfa çalışır, hiçbir test kırılmaz;
+              yalnız eğitmen oraya gidemez. Nöbetçi: `panoSeridi.test.tsx`. */}
+          <Link
+            to={ROUTES.tutorPromotion}
+            className="mb-4 flex items-center justify-between gap-4 rounded-2xl px-5 py-4 ring-1 ring-slate-200 transition hover:bg-slate-50"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-900">
+                İlanını öne çıkar
+              </span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+                Arama sonuçlarının üstündeki blokta "Reklam" ibaresiyle görün.
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-medium text-marka-metin">
+              Paketler →
+            </span>
+          </Link>
           </>
         )}
         </div>
       </div>
-    </TutorAccountLayout>
+    </DashboardShell>
   );
 }

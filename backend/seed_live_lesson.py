@@ -127,7 +127,7 @@ async def main() -> None:
     print(f"    Eğitmen : {TUTOR_EMAIL}")
     print(f"    Öğrenci : {CLIENT_EMAIL}")
     print()
-    print(f"  Ders detayi: /panel/rezervasyonlar/{booking_id}  -> 'Canli Derse Katil'")
+    print(f"  Ders detayi: /ders-talepleri/{booking_id}  -> 'Canli Derse Katil'")
 
 
 if __name__ == "__main__":

@@ -29,7 +29,12 @@ import { dirname, join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { OPERATOR_NAV, TUTOR_NAV, UYE_NAV } from "@/lib/nav";
+import {
+  OPERATOR_NAV,
+  TUTOR_NAV,
+  TUTOR_PANO_SEKMELERI,
+  UYE_NAV,
+} from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 
 const KOK = resolve(
@@ -45,9 +50,17 @@ const KATEGORI_KAYNAGI = readFileSync(
   "utf8"
 );
 
+/*
+ * Eğitmen tarafı 8 Eyl 2026'da İKİ YÜZEYE bölündü: gezinme avatar menüsünden
+ * panel şeridine (`TUTOR_PANO_SEKMELERI`) taşındı, menüde yalnız şeride
+ * girmeyenler kaldı. Bu nöbetçinin iddiası ("Kütüphaneler ve Mağaza özel
+ * dersin yan panelinde DEĞİL") yüzeye değil KAPSAMA aittir — o yüzden iki
+ * yüzeyin birleşimi üzerinden ölçülür. Yalnız menüye bakmak, girdinin şeride
+ * kaçmasına sessizce izin verirdi.
+ */
 const OZEL_DERS_MENULERI: [string, typeof UYE_NAV][] = [
   ["UYE_NAV", UYE_NAV],
-  ["TUTOR_NAV", TUTOR_NAV],
+  ["TUTOR (menü + şerit)", [...TUTOR_NAV, ...TUTOR_PANO_SEKMELERI]],
 ];
 
 describe("yan panel · kapsam", () => {

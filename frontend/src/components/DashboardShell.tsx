@@ -8,10 +8,11 @@ import {
 } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/DashboardHeader";
+import { PanelSekmeleri } from "@/components/PanelSekmeleri";
 import { useAuthStore } from "@/store/authStore";
 import { resendEmailVerification } from "@/api/auth";
 import { toast } from "@/store/toastStore";
-import type { NavItem } from "@/lib/nav";
+import { navForRole, panoSekmeleriForRole, type NavItem } from "@/lib/nav";
 
 interface DashboardShellProps {
   title: string;
@@ -26,7 +27,50 @@ interface DashboardShellProps {
   center?: ReactNode;
   /** Navbar'ın alt satırına yerleşen içerik (ör. filtre çubuğu). */
   bottom?: ReactNode;
+  /**
+   * PANEL ŞERİDİ (üst barın altındaki kalıcı sekme satırı).
+   *
+   * `undefined` (varsayılan): kabuk şeridi role göre KENDİSİ türetir. Böylece
+   * ~40 panel sayfasının hiçbirine dokunmadan şerit her yerde görünür — aksi
+   * hâlde aynı prop kırk yerde tek tek geçilir ve bir tanesi mutlaka unutulur.
+   *
+   * `null`: şerit kapatılır. Mağaza yüzeyleri bunu geçer — eğitmen orada
+   * ALICI rolündedir ve mağazanın kendi gezinmesi (`StoreLayout`) vardır.
+   */
+  sekmeler?: NavItem[] | null;
+  /**
+   * İÇERİK GENİŞLİĞİ — adlandırılmış sınıf (kullanıcı kararı, 8 Eyl 2026).
+   *
+   * Ölçüm: panel şeridinin altı sekmesinde BEŞ farklı genişlik vardı
+   * (768 · 1536 · 672 · 768 · 1024 · 672) ve hiçbiri bir kurala bağlı değildi.
+   * Kullanıcı: *"ilanım, ders rezervasyonları falan gibi yerlerde sayfa
+   * genişliğinde bir standart yok gibi görünüyor."*
+   *
+   * Kusur farklı genişlik DEĞİL — taranan altı tasarım sisteminin hiçbiri tek
+   * sabit genişlik dayatmıyor (Atlassian 3 grid: 1296/864/fluid, GitLab
+   * 990/1280/full, Wix "layout intents", Polaris `narrowWidth`/`fullWidth`).
+   * Kusur, farkın KURALSIZ olmasıydı: 672 ile 768 arasındaki seçim tesadüftü.
+   *
+   *  • `dar`  (768) — form ve uzun metin. Satır uzunluğunu 50–75 karakterde
+   *    tutar (Baymard 50–60, GOV.UK ≤75, WCAG 1.4.8 ≤80). İlanım, Öne çıkar.
+   *  • `orta` (1152) — pano, liste, detay, ayarlar. Atlassian "fixed-wide",
+   *    GitLab 1280 sınıfının karşılığı.
+   *  • Tam genişlik ayrı bir eksen: `flush` (mesajlaşma).
+   *
+   * Geçilmezse kabuk sarmalayıcı KOYMAZ — kırk panel sayfasının mevcut
+   * yerleşimi bozulmasın diye. Şeridin sayfaları açıkça geçmek ZORUNDA;
+   * nöbetçisi `__guards__/panelGenisligi.test.ts`.
+   */
+  genislik?: PanelGenisligi;
 }
+
+export type PanelGenisligi = "dar" | "orta";
+
+/** Adlandırılmış genişlik sınıfları — tek kaynak. */
+export const PANEL_GENISLIKLERI: Record<PanelGenisligi, string> = {
+  dar: "mx-auto w-full max-w-3xl",
+  orta: "mx-auto w-full max-w-6xl",
+};
 
 export function DashboardShell({
   title,
@@ -35,8 +79,26 @@ export function DashboardShell({
   flush = false,
   center,
   bottom,
+  sekmeler,
+  genislik,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
+  const panelSekmeleri =
+    sekmeler === undefined ? panoSekmeleriForRole(user?.role_id) : sekmeler;
+  /*
+   * `navItems` geçilmediğinde ROLDEN türetilir.
+   *
+   * Eskiden geçilmeyen yerde menü boş kalıyordu ve bu sessizdi: sayfa açılır,
+   * hiçbir test kırılmaz, yalnız üst bardaki favori kısayolu ve açılır
+   * menüdeki rol satırları o ekranda YOK olur. Yeni yazılan üç eğitmen
+   * yüzeyinde (Değerlendirmeler, İlan Ayarları, Öne çıkar) tam da bu oldu —
+   * kusur gerçek tarayıcı turunda görüldü. Şerit zaten rolden türüyordu;
+   * iki türevin ayrı kurallarla çalışması kusurun kendisiydi.
+   *
+   * Açıkça geçilen değer her zaman kazanır (ör. `TutorProfile` oturum
+   * sahibinin rolüne göre geçer, `Demands` ekranına göre).
+   */
+  const menuOgeleri = navItems ?? navForRole(user?.role_id);
 
   const [verifyDismissed, setVerifyDismissed] = useState(false);
   const resendVerify = useMutation({
@@ -97,7 +159,16 @@ export function DashboardShell({
       {/* Başlık + şerit TEK yapışkan yığın: şerit akışta kalsaydı kaydırınca
           gider, yanındaki yapışkan kartı da peşinden sürüklerdi. */}
       <div ref={yiginRef} className="sticky top-0 z-40">
-        <DashboardHeader navItems={navItems} transparent center={center} bottom={bottom} expanded />
+        <DashboardHeader navItems={menuOgeleri} transparent center={center} bottom={bottom} expanded />
+
+        {/* Şerit yapışkan yığının İÇİNDE: akışta kalsaydı kaydırınca gider,
+            sayfa değiştikçe sekmeler kaybolurdu. Yığının yüksekliği zaten
+            ResizeObserver ile ölçülüp `--yapiskan-ust` olarak yayınlanıyor,
+            yani şerit eklenince yapışkan kartların hizası kendiliğinden
+            düzeltiliyor — hiçbir yere sabit piksel yazılmıyor. */}
+        {panelSekmeleri && panelSekmeleri.length > 0 && (
+          <PanelSekmeleri items={panelSekmeleri} />
+        )}
 
         {showVerifyBanner && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 sm:px-6">
@@ -156,7 +227,11 @@ export function DashboardShell({
       </div>
 
       <main className={flush ? "min-h-0 flex-1 overflow-hidden" : "p-4 sm:p-6"}>
-        {children}
+        {genislik ? (
+          <div className={PANEL_GENISLIKLERI[genislik]}>{children}</div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );

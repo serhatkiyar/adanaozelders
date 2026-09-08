@@ -9,6 +9,8 @@ charge/refund için kullanılır (booking Payment'tan bağımsız akış).
 
 from __future__ import annotations
 
+from core import frontend_yollari
+
 import datetime
 from decimal import Decimal
 
@@ -345,7 +347,7 @@ async def cancel_session(
                 user_id=reg.client_id,
                 role_id=ROLE_IDS[RoleType.CLIENT],
                 message=f"'{s.title}' oturumu iptal edildi; ödemen iade edildi.",
-                link="/rezervasyonlar",
+                link=frontend_yollari.PANO,
             )
 
         await escrow.refund_escrow(db, reg, escrow.EXAM_SPEC, notify=_notify)
@@ -1240,7 +1242,7 @@ async def publish_results(
                 user_id=reg.client_id,
                 role_id=ROLE_IDS[RoleType.CLIENT],
                 message=f"'{s.title}' deneme sınavı karnen açıklandı.",
-                link="/rezervasyonlar",
+                link=frontend_yollari.PANO,
             )
         count += 1
     await db.commit()
@@ -1466,7 +1468,7 @@ async def _attend_exam(
         user_id=reg.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
         message=f"'{reg.session.title}' oturumuna katılımın doğrulandı.",
-        link="/rezervasyonlar",
+        link=frontend_yollari.PANO,
     )
     await db.commit()
     # Karma puanlama: bu öğrenci daha önce bu kütüphaneye yorum yazdıysa artık yıldız

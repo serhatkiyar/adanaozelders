@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from core import frontend_yollari
+
 from fastapi import HTTPException, status
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -258,7 +260,7 @@ async def respond_to_demand(
         user_id=demand.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
         message=f"Bir eğitmen \"{demand.title}\" talebine yanıt verdi.",
-        link="/mesajlar",
+        link=frontend_yollari.MESAJLAR,
     )
 
     client = await db.get(Client, demand.client_id)

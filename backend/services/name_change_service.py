@@ -7,6 +7,8 @@ Kimlik bütünlüğü için bu alanlar serbestçe değiştirilemez:
 """
 from __future__ import annotations
 
+from core import frontend_yollari
+
 import datetime
 
 from fastapi import HTTPException, status
@@ -195,7 +197,7 @@ async def approve(
         user_id=req.user_id,
         role_id=req.role_id,
         message="Ad değişikliği talebin onaylandı.",
-        link="/hesabim",
+        link=frontend_yollari.HESABIM,
     )
     return req
 
@@ -214,6 +216,6 @@ async def reject(
         user_id=req.user_id,
         role_id=req.role_id,
         message="Ad değişikliği talebin reddedildi.",
-        link="/hesabim",
+        link=frontend_yollari.HESABIM,
     )
     return req

@@ -460,7 +460,7 @@ export default function Marketplace() {
   const navBottom = searchOpen ? bigSearchRow : filterBar;
 
   return (
-    <DashboardShell title="Eğitmen Bul" navItems={navItems} center={navCenter} bottom={navBottom}>
+    <DashboardShell title="Eğitmen Bul" navItems={navItems} center={navCenter} bottom={navBottom} sekmeler={null}>
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
         <div

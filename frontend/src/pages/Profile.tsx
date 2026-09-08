@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { TutorAccountLayout } from "@/components/TutorAccountLayout";
 import { EducationSection } from "@/components/EducationSection";
 import { navForRole } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -266,15 +265,15 @@ export default function Profile() {
 
   return (
     <>
-      {isTutor ? (
-        <TutorAccountLayout active="about" title="Hesabım">
-          <div className="max-w-2xl">{body}</div>
-        </TutorAccountLayout>
-      ) : (
-        <DashboardShell title="Profil" navItems={roleNav}>
-          <div className="mx-auto max-w-2xl px-1 pb-16 pt-2 sm:px-2">{body}</div>
-        </DashboardShell>
-      )}
+      {/* Eğitmenin sol menülü "Hesabım" kabuğu (TutorAccountLayout) kalktı:
+          içindeki üç bölümden ikisi (İlan ayarları, Öne çıkar) artık panel
+          şeridinde ya da ilan sayfasında yaşıyor, geriye tek öğe kalıyordu.
+          Şerit gezinmeyi taşıyor, sayfa yalnız kendi içeriğini çiziyor. */}
+      <DashboardShell title={isTutor ? "Hesabım" : "Profil"} navItems={roleNav} genislik="dar">
+        <div className="px-1 pb-16 pt-2 sm:px-2">
+          {body}
+        </div>
+      </DashboardShell>
 
       {avatar.cropImageSrc && (
         <ImageCropModal

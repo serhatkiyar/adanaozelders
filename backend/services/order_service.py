@@ -9,6 +9,8 @@ düşülerek) hesaplanıp kazanca yazılır (Balance sayfası ``payment_service`
 """
 from __future__ import annotations
 
+from core import frontend_yollari
+
 import dataclasses
 import datetime
 import logging
@@ -1195,7 +1197,7 @@ async def _finalize_paid(
                 user_id=item.tutor_id,
                 role_id=ROLE_IDS[RoleType.TUTOR],
                 message="Mağazada dijital ürünün satıldı; kazancına eklendi.",
-                link="/bakiyem",
+                link=frontend_yollari.BAKIYEM,
             )
 
     await _email_order(db, order, "PAID")

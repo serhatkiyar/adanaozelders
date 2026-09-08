@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from core import frontend_yollari
+
 import datetime
 import logging
 
@@ -113,7 +115,10 @@ async def _warn_iban_changed(db: AsyncSession, entity, *, email: str, name: str)
                 f"Ödeme hesabın güncellendi ({masked}). "
                 "Bu işlemi sen yapmadıysan hemen şifreni değiştir."
             ),
-            link="/panel/odeme-hesabi",
+            # `/panel/odeme-hesabi` diye bir yol HİÇ olmadı ve yönlendirmesi de
+            # yoktu: bu güvenlik bildirimi ("sen yapmadıysan şifreni değiştir")
+            # 404 açıyordu. Ödeme bilgileri Ayarlar sekmesindedir.
+            link=frontend_yollari.AYARLAR,
         )
     except Exception:  # noqa: BLE001
         logger.warning("IBAN değişikliği bildirimi yazılamadı", exc_info=True)

@@ -207,8 +207,8 @@ function BalanceView({
   const refundedNum = Number(refunded ?? 0);
 
   return (
-    <DashboardShell title="Bakiyem" navItems={navItems}>
-      <div className="mx-auto max-w-5xl space-y-6">
+    <DashboardShell title="Bakiyem" navItems={navItems} genislik="orta">
+      <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 ">
             Bakiyem

@@ -1,4 +1,4 @@
-import { ROUTES } from "@/lib/routes";
+import { PATHS, ROUTES } from "@/lib/routes";
 import { OGREN_ACIK, TALEPLER_ACIK } from "@/lib/ozellikBayraklari";
 
 export type NavIcon =
@@ -34,6 +34,14 @@ export interface NavItem {
    * alanı okumak ZORUNDADIR; okumayan yüzey donmuş bölüme tıklatır.
    */
   yakinda?: boolean;
+  /**
+   * Bu öğeyi AKTİF sayan ek yollar (panel şeridi).
+   *
+   * `NavLink` yalnız kendi `to`suna bakar; alt sayfalar (ör. ilanı öne
+   * çıkarma, ilan sihirbazı, ders detayı) hiçbir sekmeyi işaretlemiyordu ve
+   * kullanıcı "neredeyim"i kaybediyordu. Yol öneki olarak eşleşir.
+   */
+  altYollar?: string[];
 }
 
 /**
@@ -69,20 +77,82 @@ export const UYE_NAV: NavItem[] = [
   { to: ROUTES.bookings, label: "Rezervasyonlar", icon: "bookings" },
 ];
 
+/**
+ * EĞİTMENİN PANEL ŞERİDİ — kalıcı, yatay, altı sekme (kullanıcı, 8 Eyl 2026).
+ *
+ * Kullanıcı Superprof'un eğitmen panelini gösterdi: üst barın hemen altında
+ * duran, sayfa değişse de yerinde kalan bir sekme satırı.
+ *
+ * BEŞ SEKME (8 Eyl 2026, ikinci tur). "Hesabım" şeritten ÇIKTI. Sebebi
+ * ölçümdü: o ekranda fotoğraf, hiçbir yerden dolmayan bir "Hakkımda" ve
+ * eğitim/diploma vardı; gerçek hesap ayarları ise ayrı bir sayfadaydı. Yani
+ * panelde "Hesabım" ve "Ayarlar" diye iki jenerik etiket rakipti ve hangisinin
+ * neyi taşıdığı sezilmiyordu. Taranan on özel ders platformunun HİÇBİRİNDE bu
+ * ikisi eşit seviyede iki sekme değil: hesap ayarları ya profilin altında
+ * (Superprof "Profilim > Hesabım", Lessonface "Profile > Account") ya da
+ * avatar menüsünden açılan ayrı bir sayfa (Wyzant, Preply). Bizde ikincisi
+ * seçildi — şerit EĞİTMENİN İŞİNİ taşır, avatar menüsü hesabını.
+ *
+ * Fotoğraf ve eğitim/diploma "İlanım"a taşındı (ikisi de ilana ait), kimlik
+ * alanları zaten Ayarlar'daydı, "Hakkımda" ise ilandaki "Biyografi"nin
+ * ikiziydi ve eğitmen yüzeyinden kaldırıldı. İlk denemede bu
+ * yapılmadı — "Panom" avatar açılır menüsüne bir satır olarak eklendi, İlanım
+ * ve Bakiyem de panonun İÇİNE kısayol oldu. Sonuç: panele giriş hâlâ tek bir
+ * açılır menüydü ve gezinme üç ayrı yere dağılmıştı (menü + panonun içindeki
+ * kısayol satırı + `TutorAccountLayout`'un sol menüsü).
+ *
+ * Şerit o üçünün yerine geçer. Eğitmenin İŞİ buradadır; avatar menüsünde
+ * yalnız şeride girmeyenler (favoriler) ve her rolde ortak olanlar
+ * (bildirimler, ayarlar, çıkış) kalır.
+ *
+ * Metin-only: ikon yok. Şerit altı öğe taşıyor ve mobilde yatay kayıyor;
+ * ikon eklemek satırı kalabalıklaştırır, Superprof'ta da metindir.
+ *
+ * Nöbetçi: `__guards__/panoSeridi.test.tsx`.
+ */
+export const TUTOR_PANO_SEKMELERI: NavItem[] = [
+  // Rota `ROUTES.bookings`; o URL rol'e göre ayrışıyor (`App.tsx::
+  // BookingsHome`): eğitmene `TutorDashboard`, üyeye kendi rezervasyon
+  // listesi. İlk denemede buraya `to: "/"` yazılmıştı ve "Pano" eğitmen
+  // listesini açıyordu — nöbetçi bu düğümü çıpalar.
+  {
+    to: ROUTES.bookings,
+    label: "Pano",
+    end: true,
+    // Ders detayı panonun alt sayfasıdır (panodaki karttan açılır).
+    altYollar: [
+      PATHS.lesson.replace(":id", ""),
+      // Kütüphane rezervasyon detayı da panonun altındadır.
+      PATHS.libraryReservation.replace(":tur/:id", ""),
+    ],
+  },
+  { to: ROUTES.messages, label: "Mesajlarım" },
+  {
+    to: ROUTES.tutorListing,
+    label: "İlanım",
+    // Öne çıkarma ve ilan sihirbazı ilanın alt sayfalarıdır.
+    altYollar: [ROUTES.tutorPromotion, ROUTES.tutorOnboarding],
+  },
+  { to: ROUTES.tutorReviews, label: "Değerlendirmeler" },
+  { to: ROUTES.balance, label: "Bakiyem" },
+];
+
+/**
+ * Avatar açılır menüsü — şeride GİRMEYENLER.
+ *
+ * Panom ve Mesajlar buradan çıktı: ikisi de şeritte. Kalan tek canlı satır
+ * Favorilerim; menünün geri kalanı (Hesabım, Bildirimler, Ayarlar, Çıkış)
+ * `DashboardHeader` içinde her rol için sabittir.
+ *
+ * Favoriler eğitmene de açık (ÜK-6 · docs/urun-kararlari.md): eğitmen ders
+ * verdiği kütüphaneyi ve meslektaşını işaretleyebilir. Üst bardaki TEK
+ * kısayol da budur (ÜK-2) — üyeyle aynı davranış.
+ */
 export const TUTOR_NAV: NavItem[] = [
-  // Favoriler eğitmene de açık (ÜK-6 · docs/urun-kararlari.md): eğitmen ders
-  // verdiği kütüphaneyi ve meslektaşını işaretleyebilir. Üst bardaki TEK
-  // kısayol da budur (ÜK-2) — üyeyle aynı davranış.
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
-  // İlan, eğitmenin platformdaki tek ürünü — üst gezinmede yeri olmaması
-  // eğitmeni onu hesap menüsünün altında aramaya zorluyordu.
-  { to: ROUTES.tutorListing, label: "İlanım", icon: "tickets" },
-  { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
   ...(TALEPLER_ACIK
     ? [{ to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" } as NavItem]
     : []),
-  { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
-  { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   // Eğitmen de "Öğren" hub'ını görür (aralıklı tekrar, pomodoro,
   // grafik, alışkanlıklar…). Kendi kullanmadığı aracı öğrencisine
   // öneremez. Öğrenci verisine erişim açılmaz — K-6 sınırı (hiçbir admin/
@@ -128,4 +198,18 @@ export function navForRole(roleId: number | undefined | null): NavItem[] | undef
     default:
       return undefined;
   }
+}
+
+/**
+ * Role göre PANEL ŞERİDİ — `navForRole`'ün ikizi, ayrı yüzey.
+ *
+ * Şu an yalnız eğitmende var (kullanıcı kararı, 8 Eyl 2026): üye tarafı bu
+ * turda `AccountHub` + `Reservations` akışında bırakıldı, operatörün kendi
+ * kabuğu zaten `OPERATOR_NAV`. Yeni rol şeride girdiğinde tek yer değişsin
+ * diye dal burada durur; `DashboardShell` yalnız bunu çağırır.
+ */
+export function panoSekmeleriForRole(
+  roleId: number | undefined | null
+): NavItem[] | undefined {
+  return roleId === 2 ? TUTOR_PANO_SEKMELERI : undefined;
 }
