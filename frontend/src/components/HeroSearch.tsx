@@ -484,10 +484,18 @@ export function CompactSearch({
       type="button"
       onClick={onOpen}
       aria-label="Aramayı aç"
-      className="flex w-full items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-2.5 pr-1.5 shadow-[0_1px_8px_rgba(15,23,42,0.10)] transition hover:shadow-md md:w-[460px] md:max-w-[82vw] "
+      className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white py-4 pl-4 pr-4 shadow-[0_1px_8px_rgba(15,23,42,0.10)] transition hover:shadow-md md:w-[460px] md:max-w-[82vw] md:justify-start md:py-1.5 md:pl-2.5 md:pr-1.5 "
     >
-      {/* Seçili kategori ikonu */}
-      <img src={meta.icon} alt={meta.label} className="h-7 w-7 shrink-0 object-contain" />
+      {/* TELEFONDA yalnız büyüteç. Burada eskiden seçili kategorinin resmi
+          (`meta.icon`) duruyordu; referans alınan Airbnb hapında öyle bir şey
+          YOK ve kullanıcı bunu itiraz olarak bildirdi. Resim masaüstünde
+          kalıyor — orada hap zaten geniş ve kategori bilgisini taşıyor. */}
+      <SearchIconSvg className="h-5 w-5 shrink-0 text-slate-500 md:hidden" />
+      <img
+        src={meta.icon}
+        alt={meta.label}
+        className="hidden h-7 w-7 shrink-0 object-contain md:block"
+      />
 
       {/* İlçe etiketi — TELEFONDA yalnız gerçekten bir yer seçiliyken.
           "Tüm ilçeler" hiçbir şey söylemeyen bir varsayılandır ve 390px'te
@@ -506,13 +514,19 @@ export function CompactSearch({
         className={`${yerSecili ? "block" : "hidden"} h-5 w-px shrink-0 bg-slate-200 md:block`}
       />
 
-      {/* Arama yazısı */}
-      <span className={`flex-1 truncate text-left text-sm ${q ? "text-slate-800 " : "text-slate-400 "}`}>
+      {/* Arama yazısı — telefonda ortalı ve koyu (hapın tek içeriği o),
+          masaüstünde sola yaslı ve ikincil. */}
+      <span
+        className={`truncate text-center text-[15px] font-semibold text-slate-800 md:flex-1 md:text-left md:text-sm md:font-normal ${
+          q ? "md:text-slate-800 " : "md:text-slate-400 "
+        }`}
+      >
         {q || placeholder}
       </span>
 
-      {/* Arama butonu */}
-      <span className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg">
+      {/* Turuncu gönder düğmesi TELEFONDA YOK: hapın kendisi zaten düğme,
+          içine ikinci bir düğme koymak hem yanıltıcı hem de referansta yok. */}
+      <span className="ml-1 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg md:flex">
         <SearchIconSvg className="h-4 w-4" />
       </span>
     </button>
