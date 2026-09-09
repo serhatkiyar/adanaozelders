@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ROUTES } from "@/lib/routes";
+import { magazaAramaAdresi } from "@/lib/aramaUrl";
 import { searchProducts } from "@/api/store";
 import { useCategories } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -66,20 +67,14 @@ export function StoreSearch() {
   };
   const searchAll = () => {
     const t = q.trim();
-    const sp = new URLSearchParams();
-    if (t) {
-      setHistory(addSearchHistory(t));
-      sp.set("q", t);
-    }
-    if (catId) sp.set("category", catId);
-    const qs = sp.toString();
-    go(qs ? `${ROUTES.store}?${qs}` : ROUTES.store);
+    if (t) setHistory(addSearchHistory(t));
+    go(magazaAramaAdresi({ q: t, kategori: catId ? Number(catId) : undefined }));
   };
   // Geçmişten bir terime tıklama: kutuya yaz, başa taşı, aramayı çalıştır.
   const runHistory = (t: string) => {
     setQ(t);
     setHistory(addSearchHistory(t));
-    go(`${ROUTES.store}?q=${encodeURIComponent(t)}`);
+    go(magazaAramaAdresi({ q: t }));
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {

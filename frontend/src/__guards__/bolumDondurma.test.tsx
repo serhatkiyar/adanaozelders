@@ -105,22 +105,38 @@ describe("A — kategori çubuğu (gerçek DOM)", () => {
     expect(screen.queryByText("Denemeler")).toBeNull();
   });
 
-  it("'Mağaza' kapısı sekme kipinde bile bağlantı (onSelect'e düşmez)", () => {
-    const onSelect = vi.fn();
-    sar(<CategoryBar active="egitmenler" onSelect={onSelect} />);
-    expect(screen.getByRole("link", { name: /Mağaza/ }).getAttribute("href")).toBe(
-      "/magaza"
-    );
-    fireEvent.click(screen.getByText("Mağaza"));
-    expect(onSelect).not.toHaveBeenCalled();
+  /*
+   * SEKME KİPİ KALKTI (kullanıcı kararı, 9 Eyl 2026).
+   *
+   * `CategoryBar` eskiden iki kipte çalışıyordu: `onSelect` verilirse
+   * `<button>` (URL değişmez), verilmezse `<Link>`. Ana sayfa buton kipini
+   * kullanıyordu, yani sekmeye tıklamak adresi değiştirmiyordu — ekran
+   * paylaşılamıyor, geri tuşu sekmeyi geri almıyor, yenileyince ilk sekmeye
+   * düşülüyordu. Üstelik aynı çubukta Mağaza her zaman `<Link>`ti.
+   *
+   * Buradaki iki eski düğüm ("Mağaza onSelect'e düşmez", "Kütüphaneler
+   * seçilebilir") yerini DAHA GÜÇLÜ tek bir iddiaya bıraktı: çubukta
+   * hiç `button` yok, her kategori gerçek bir adrese gider.
+   */
+  it("çubukta BUTON YOK — her kategori gerçek bir bağlantı", () => {
+    sar(<CategoryBar active="egitmenler" />);
+    expect(
+      screen.queryAllByRole("button"),
+      "sekme kipi geri gelmiş: tıklanınca adres değişmez"
+    ).toEqual([]);
+
+    for (const [etiket, hedef] of [
+      ["Eğitmenler", "/egitmenler"],
+      ["Kütüphaneler", "/kutuphaneler"],
+      ["Mağaza", "/magaza"],
+    ] as const) {
+      expect(
+        screen.getByRole("link", { name: new RegExp(etiket) }).getAttribute("href"),
+        `${etiket} bağlantısı yanlış hedefte`
+      ).toBe(hedef);
+    }
   });
 
-  it("sekme kipinde Kütüphaneler artık SEÇİLEBİLİR", () => {
-    const onSelect = vi.fn();
-    sar(<CategoryBar active="egitmenler" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("Kütüphaneler"));
-    expect(onSelect).toHaveBeenCalledWith("kutuphaneler");
-  });
 });
 
 describe("B — rota kapısı (gerçek App + gerçek router)", () => {

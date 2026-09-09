@@ -1,10 +1,9 @@
-import { useNavigate } from "react-router-dom";
 import {
   useLibraryBookmarks,
   useToggleLibraryBookmark,
 } from "@/hooks/useLibraryBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { setPendingFavorite } from "@/lib/pendingFavorite";
+import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { alisverisYapabilir } from "@/lib/roles";
 
 interface LibraryBookmarkButtonProps {
@@ -19,7 +18,7 @@ export function LibraryBookmarkButton({
   size = "sm",
   withLabel = false,
 }: LibraryBookmarkButtonProps) {
-  const navigate = useNavigate();
+  const { girisGerekli } = useGirisKapisi();
   const { data: user } = useCurrentUser();
   const { data: bookmarks } = useLibraryBookmarks();
   const toggle = useToggleLibraryBookmark();
@@ -35,12 +34,8 @@ export function LibraryBookmarkButton({
   const click = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) {
-      // Niyeti sakla: giriş tamamlanınca PendingFavoriteApplier uygular.
-      setPendingFavorite({ type: "library", id: libraryId });
-      navigate("?modal=login");
-      return;
-    }
+    // Kapı niyeti saklar ve giriş penceresini MEVCUT ADRESE ekler.
+    if (girisGerekli({ tip: "favori", hedef: "kutuphane", id: libraryId })) return;
     toggle.mutate({ libraryId, bookmarked });
   };
 

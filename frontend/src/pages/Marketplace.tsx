@@ -1,5 +1,5 @@
 import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
@@ -7,19 +7,43 @@ import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
-import { SegmentedControl } from "@/components/SegmentedControl";
-import { useTutorSearch, useTutorPriceHistogram, useTutorGenderFacets } from "@/hooks/useTutorSearch";
+import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
-import { toast } from "@/store/toastStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
-import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
+import { ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yeriOku, yeriYaz, yerinArananKonumu, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
+import { yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
+import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
+import { useKonumStore } from "@/store/konumStore";
+import { bosDeger, filtreliMi } from "@/lib/urlSemasi";
+import {
+  EGITMEN_ARAMA,
+  egitmenIstegi,
+  type EgitmenAramasi,
+} from "@/lib/aramaUrl";
+
+/**
+ * Sayısal alanın kutu metni ↔ şema değeri çevirisi.
+ *
+ * Boş kutu = filtre YOK (`undefined`), "0" ise geçerli bir alt sınır. İkisini
+ * ayırmayan bir çeviri "0 TL üstü" filtresini sessizce siler.
+ */
+const sayiMetni = (n: number | undefined) => (n === undefined ? "" : String(n));
+const metinSayisi = (t: string): number | undefined => {
+  const kirpik = t.trim();
+  if (!kirpik) return undefined;
+  const n = Number(kirpik);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+};
+/** Adresten gelen değer kutudakinden farklıysa kutuyu güncelle. */
+const esitle = (kutu: string, deger: number | undefined) =>
+  metinSayisi(kutu) === deger ? kutu : sayiMetni(deger);
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -33,16 +57,8 @@ const SORT_OPTIONS: { value: TutorSort; label: string; kisa: string }[] = [
 ];
 
 const MODE_ALL = "ALL" as const;
-const MODE_SEGMENTS: { value: TeachingMode | typeof MODE_ALL; label: string }[] = [
-  { value: MODE_ALL, label: "Tümü" },
-  { value: TeachingMode.ONLINE, label: "Uzaktan" },
-  { value: TeachingMode.IN_PERSON, label: "Yüzyüze" },
-];
-
-const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: Gender.FEMALE, label: "Kadın" },
-  { value: Gender.MALE, label: "Erkek" },
-];
+/** Aramada yalnız iki şekil vardır; `BOTH` filtre olarak anlamsızdır. */
+type AramaSekli = EgitmenAramasi["sekil"][number];
 
 /* ─── icon helpers ─────────────────────────────────────── */
 
@@ -62,13 +78,42 @@ export default function Marketplace() {
       : currentUser?.role_id === ROLE_IDS.CLIENT
         ? UYE_NAV
         : undefined;
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
-  const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
-  // Mahalle çapası — `?mahalle=Reşatbey` paylaşılabilir bağlantıdır.
-  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
-  const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
-  const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
+  /*
+   * URL ↔ state `useAramaDurumu` üzerinden (Paket 2). Elle yazılmış senkron
+   * bloğu üç kararı burada yeniden veriyordu (varsayılan yazılsın mı, sayfa
+   * sıfırlansın mı, push mu replace mi) ve `?gender=abc` gibi çöp değerin
+   * API'ye ulaşmaması da elle yazılmıştı — ikisi de artık şemada.
+   */
+  const { degerler, ayarla } = useAramaDurumu(EGITMEN_ARAMA);
+  const {
+    konum,
+    ders: subjects,
+    sekil: modes,
+    sinav: exam,
+    cinsiyet: gender,
+    sirala,
+    yakinimda,
+  } = degerler;
+  const sort = sirala || TutorSort.RELEVANCE;
+  const district = konum.ilce;
+  const yer = konum.yer;
+
+  const setSubjects = (v: string[]) => ayarla({ ders: v });
+  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
+  const setYer = (v: YerSecimi | null) =>
+    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
+  const setExam = (v: string) => ayarla({ sinav: v });
+  const setModes = (v: AramaSekli[]) => ayarla({ sekil: v });
+  const setSort = (v: TutorSort) =>
+    // `RELEVANCE` varsayılan: adrese yazılmaz, boşa çekilir.
+    ayarla({ sirala: v === TutorSort.RELEVANCE ? "" : v });
+
+  // Serbest metin YEREL: her tuş vuruşunda adres yazmak geçmişi kirletir.
+  const [q, setQ] = useState(degerler.q);
+  useEffect(() => {
+    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
+  }, [degerler.q]);
+
   const [showFilters, setShowFilters] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const mobil = useMobil();
@@ -96,129 +141,101 @@ export default function Marketplace() {
     setPricePopoverOpen(true);
   };
 
-  // Dış navigasyon (geri/ileri, link) state'i günceller.
-  // Guard: yalnız farklıysa güncelle (state→URL sync ile döngü engeli).
-  useEffect(() => {
-    const qParam = searchParams.get("q") ?? "";
-    const subjectParams = searchParams.getAll("subject");
-    const examParam = searchParams.get("exam") ?? "";
-    const districtParams = searchParams.getAll("district");
-    const urlYer = yeriOku(searchParams).yer;
-    if (qParam !== q) setQ(qParam);
-    if (JSON.stringify(subjectParams) !== JSON.stringify(subjects))
-      setSubjects(subjectParams);
-    if (JSON.stringify(districtParams) !== JSON.stringify(district))
-      setDistrict(districtParams);
-    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
-    if (examParam !== exam) setExam(examParam);
-    // Elle yazılmış `?gender=abc` API'ye ULAŞMAMALI: enum üyesi değilse boşa
-    // düşer. (Sihirbazın `?adim=` için öğrendiği ders — doğrulanmamış bir URL
-    // parametresi doğrudan sunucuya geçirilmez.)
-    const genderParam = searchParams.get("gender") ?? "";
-    const gecerliGender = (Object.values(Gender) as string[]).includes(genderParam)
-      ? (genderParam as Gender)
-      : "";
-    if (gecerliGender !== gender) setGender(gecerliGender);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  const [minRate, setMinRate] = useState("");
-  const [maxRate, setMaxRate] = useState("");
-  const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
-  const [modes, setModes] = useState<TeachingMode[]>(() =>
-    searchParams
-      .getAll("mode")
-      .filter((m): m is TeachingMode => (Object.values(TeachingMode) as string[]).includes(m)) as TeachingMode[]
-  );
-  const [gender, setGender] = useState<Gender | "">("");
-  const [minAge, setMinAge] = useState("");
-  const [maxAge, setMaxAge] = useState("");
+  /*
+   * Dış navigasyon (geri/ileri, paylaşılan link) için AYRI bir efekt YOK:
+   * değerler doğrudan adresten türüyor. Eskiden burada bir "URL → state"
+   * efekti vardı ve karşısındaki "state → URL" efektiyle sonsuz döngüyü
+   * engellemek için elle JSON karşılaştırması yapıyordu. İki yönlü kopya
+   * ortadan kalkınca o guard da gereksizleşti.
+   *
+   * Elle yazılmış `?gender=abc` API'ye ULAŞMAZ: enum doğrulaması artık
+   * şemanın alanında (`cinsiyetAlani`), ekranda değil.
+   */
+  /*
+   * Sayısal aralıklar: değer ADRESTE, kutunun anlık metni YEREL.
+   *
+   * Serbest metinle aynı gerekçe — her tuş vuruşunda adres yazmak geçmişi
+   * kirletir ve "18" yazarken bir an "1" filtresi uygulanır. Yerel metin
+   * debounce'lanıp adrese `replace` ile iner; dışarıdan gelen adres
+   * değişimi (geri tuşu, paylaşılan link) kutuya geri yansır.
+   */
+  const [minRate, setMinRate] = useState(sayiMetni(degerler.minFiyat));
+  const [maxRate, setMaxRate] = useState(sayiMetni(degerler.maxFiyat));
+  const [minAge, setMinAge] = useState(sayiMetni(degerler.minYas));
+  const [maxAge, setMaxAge] = useState(sayiMetni(degerler.maxYas));
   const [limit, setLimit] = useState(20);
-  const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
-  const [radiusKm, setRadiusKm] = useState(25);
-  const [geoLoading, setGeoLoading] = useState(false);
 
-  const requestNearMe = () => {
-    if (!navigator.geolocation) {
-      toast.error("Tarayıcınız konum servisini desteklemiyor.");
-      return;
-    }
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setNearMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGeoLoading(false);
-      },
-      () => {
-        toast.error("Konum alınamadı. Lütfen izin verin.");
-        setGeoLoading(false);
-      },
-      { enableHighAccuracy: false, timeout: 8000 }
-    );
-  };
+  /*
+   * KOORDİNAT ADRESE YAZILMAZ — yalnız `yakinimda=1&yaricap=…` niyeti.
+   * Paylaşılan bir arama bağlantısı kullanıcının bulunduğu yeri taşımamalı.
+   * Bağlantıyı açan kişi için konum tarayıcıdan YENİDEN istenir.
+   */
+  // Konum artık `store/konumStore`da: YAZAN yer filtre penceresi (ortak
+  // bileşen), OKUYAN yer bu sayfa. Yerel state ile paylaşılamazdı.
+  const konumum = useKonumStore((s) => s.konum);
 
-  const modeSegment: TeachingMode | typeof MODE_ALL = modes[0] ?? MODE_ALL;
-  const selectMode = (v: TeachingMode | typeof MODE_ALL) =>
+  const modeSegment: AramaSekli | typeof MODE_ALL = modes[0] ?? MODE_ALL;
+  const selectMode = (v: AramaSekli | typeof MODE_ALL) =>
     setModes(v === MODE_ALL ? [] : [v]);
   const isAllMode = modes.length === 0;
 
   const removeSubject = (s: string) =>
-    setSubjects((prev) => prev.filter((x) => x !== s));
+    setSubjects(subjects.filter((x) => x !== s));
 
   const debouncedQ = useDebounce(q);
 
-  // ── URL ↔ state senkronizasyonu ──────────────────────────────────────
+  // Debounce'lu metin adrese `replace` ile yazılır.
   useEffect(() => {
-    const next = new URLSearchParams();
-    if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
-    subjects.forEach((s) => next.append("subject", s));
-    yeriYaz(next, yer, district);
-    modes.forEach((m) => next.append("mode", m));
-    if (exam.trim()) next.set("exam", exam.trim());
-    if (gender) next.set("gender", gender);
-    setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, yer, modes, exam, gender, setSearchParams]);
+    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
 
   const debouncedMin = useDebounce(minRate);
   const debouncedMax = useDebounce(maxRate);
   const debouncedMinAge = useDebounce(minAge);
   const debouncedMaxAge = useDebounce(maxAge);
 
-  const params = useMemo<TutorSearchParams>(() => {
-    const p: TutorSearchParams = { limit, offset: 0, sort };
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (subjects.length) p.subject = subjects;
-    if (district.length) p.district = district;
-    // Mahalle seçiliyse ÇEVRESİNDE aranır (konum çapası, eşitlik filtresi
-    // değil). "Yakınımdakiler" kullanıcının kendi konumunu kullanır ve
-    // mahalle çapasını geçersiz kılar — ikisi aynı anda anlamlı değil.
-    const yerKonumu = yerinArananKonumu(yer);
-    if (yerKonumu && !nearMe) {
-      p.lat = yerKonumu.lat;
-      p.lng = yerKonumu.lng;
-      p.radius_km = yerKonumu.radius_km;
-    }
-    if (exam.trim()) p.exam = exam.trim();
-    const min = Number(debouncedMin);
-    const max = Number(debouncedMax);
-    if (debouncedMin && !Number.isNaN(min) && min >= 0) p.min_rate = min;
-    if (debouncedMax && !Number.isNaN(max) && max >= 0) p.max_rate = max;
-    if (modes.length) p.mode = modes;
-    if (gender) p.gender = gender;
-    const minA = Number(debouncedMinAge);
-    const maxA = Number(debouncedMaxAge);
-    if (debouncedMinAge && !Number.isNaN(minA) && minA >= 0) p.min_age = minA;
-    if (debouncedMaxAge && !Number.isNaN(maxA) && maxA >= 0) p.max_age = maxA;
-    if (nearMe) {
-      p.lat = nearMe.lat;
-      p.lng = nearMe.lng;
-      p.radius_km = radiusKm;
-    }
-    return p;
-  }, [
-    subjects, exam, district, debouncedQ, debouncedMin, debouncedMax,
-    sort, modes, gender, debouncedMinAge, debouncedMaxAge, limit, nearMe, radiusKm,
-  ]);
+  // Kutu → adres (debounce'lu, `replace`: her rakam geçmişe girmesin).
+  useEffect(() => {
+    const yama = {
+      minFiyat: metinSayisi(debouncedMin),
+      maxFiyat: metinSayisi(debouncedMax),
+      minYas: metinSayisi(debouncedMinAge),
+      maxYas: metinSayisi(debouncedMaxAge),
+    };
+    const ayni =
+      yama.minFiyat === degerler.minFiyat &&
+      yama.maxFiyat === degerler.maxFiyat &&
+      yama.minYas === degerler.minYas &&
+      yama.maxYas === degerler.maxYas;
+    if (!ayni) ayarla(yama, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedMin, debouncedMax, debouncedMinAge, debouncedMaxAge]);
+
+  // Adres → kutu (geri tuşu, paylaşılan bağlantı).
+  useEffect(() => {
+    setMinRate((o) => esitle(o, degerler.minFiyat));
+    setMaxRate((o) => esitle(o, degerler.maxFiyat));
+    setMinAge((o) => esitle(o, degerler.minYas));
+    setMaxAge((o) => esitle(o, degerler.maxYas));
+  }, [degerler.minFiyat, degerler.maxFiyat, degerler.minYas, degerler.maxYas]);
+
+  /*
+   * Şema değeri → API isteği. Bu çeviri eskiden bu dosyada iki kez
+   * (arama + histogram), `PublicMarketplace`te bir kez daha yazılıydı ve
+   * ayrışmıştı. Artık `aramaUrl`de tek yerde yaşıyor.
+   *
+   * `debouncedQ` istisna: kutunun anlık metni adrese inmeden ÖNCE aramayı
+   * tetiklemeli, yoksa yazarken sonuçlar bir tur geriden gelir.
+   */
+  const params = useMemo<TutorSearchParams>(
+    () =>
+      egitmenIstegi(
+        { ...degerler, q: debouncedQ },
+        { limit, offset: 0, konumum }
+      ),
+    [degerler, debouncedQ, limit, konumum]
+  );
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
@@ -236,50 +253,41 @@ export default function Marketplace() {
   const [featuredIds, setFeaturedIds] = useState<number[]>([]);
   const organicTutors = (data ?? []).filter((t) => !featuredIds.includes(t.id));
 
+  /*
+   * Fiyat histogramı sonuç listesiyle AYNI kümeyi ölçmeli, yoksa çubuklar
+   * listede olmayan eğitmenleri sayar. Eskiden bu küme ELLE ikinci kez
+   * kuruluyordu ve mahalle çapası kuralı iki yere kopyalanmıştı. Artık
+   * listenin isteğinden ÇIKARARAK türetiliyor: kendi ekseni (fiyat) ve
+   * sayıyı etkilemeyen alanlar düşer.
+   */
   const histParams = useMemo(() => {
-    const p: Parameters<typeof useTutorPriceHistogram>[0] = {};
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (subjects.length) p.subject = subjects;
-    if (district.length) p.district = district;
-    // Histogram sonuç listesiyle AYNI kümeyi ölçmeli; mahalle çapası burada
-    // atlanırsa fiyat çubuğu listede olmayan eğitmenleri sayar.
-    const histYer = yerinArananKonumu(yer);
-    if (histYer && !nearMe) {
-      p.lat = histYer.lat;
-      p.lng = histYer.lng;
-      p.radius_km = histYer.radius_km;
-    }
-    if (modes.length) p.mode = modes;
-    if (gender) p.gender = gender;
-    const minA = Number(debouncedMinAge);
-    const maxA = Number(debouncedMaxAge);
-    if (debouncedMinAge && !Number.isNaN(minA) && minA >= 0) p.min_age = minA;
-    if (debouncedMaxAge && !Number.isNaN(maxA) && maxA >= 0) p.max_age = maxA;
-    if (nearMe) { p.lat = nearMe.lat; p.lng = nearMe.lng; p.radius_km = radiusKm; }
-    return p;
-  }, [debouncedQ, subjects, district, yer, modes, gender, debouncedMinAge, debouncedMaxAge, nearMe, radiusKm]);
+    const {
+      sort: _sort,
+      exam: _exam,
+      limit: _limit,
+      offset: _offset,
+      min_rate: _min,
+      max_rate: _max,
+      ...rest
+    } = params;
+    return rest;
+  }, [params]);
 
   const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(histParams, showFilters);
 
-  // Faset KENDİ eksenini saymaz: `gender` çıkarılır. Kalsaydı "Kadın" seçili
-  // iken "Erkek 0" görünür ve sayılar seçim yapmayı imkânsız kılardı.
-  const fasetParams = useMemo(() => {
-    const { gender: _atlandi, ...kalan } = histParams;
-    return kalan;
-  }, [histParams]);
-  const { data: fasetler } = useTutorGenderFacets(fasetParams, showFilters);
 
   const hasModalFilters =
-    !!minRate || !!maxRate || !!gender || !!minAge || !!maxAge || !!nearMe;
+    !!minRate || !!maxRate || !!gender || !!minAge || !!maxAge || yakinimda;
 
-  const hasFilters =
-    !!q || district.length > 0 || subjects.length > 0 || !!exam || !!minRate ||
-    !!maxRate || modes.length > 0 || !!gender || !!minAge || !!maxAge;
+  // "Filtre var mı" artık şemadan gelir: yeni bir alan eklendiğinde bu satırı
+  // güncellemeyi unutmak, temizle düğmesini sessizce yanlış gösterirdi.
+  const hasFilters = filtreliMi(EGITMEN_ARAMA, degerler) || !!q;
 
   const clearAll = () => {
-    setQ(""); setDistrict([]); setSubjects([]); setExam("");
-    setMinRate(""); setMaxRate(""); setSort(TutorSort.RELEVANCE);
-    setModes([]); setGender(""); setMinAge(""); setMaxAge("");
+    setQ("");
+    setMinRate(""); setMaxRate(""); setMinAge(""); setMaxAge("");
+    useKonumStore.getState().unut();
+    ayarla(bosDeger(EGITMEN_ARAMA));
     setLimit(20);
   };
 
@@ -467,16 +475,26 @@ export default function Marketplace() {
   const navBottom = searchOpen ? bigSearchRow : filterBar;
 
   /* ── TELEFON: geri · hap · filtre, altında yatay filtre şeridi ──
-     Anonim taraftaki (`PublicMarketplace`) ekranla AYNI görünüm; ortak
-     bileşen `AramaMobilBaslik`. İkisi aynı ekrandır, iki kez yazılsaydı
-     zamanla birbirine benzemez hâle gelirdi.
+     Anonim taraftaki (`PublicMarketplace`) ekranla AYNI görünüm; ortak bileşen
+     `AramaMobilBaslik`. İkisi aynı ekrandır, iki kez yazılsaydı zamanla
+     birbirine benzemez hâle gelirdi.
 
      Filtre modeli iki sayfada farklıdır ve bu yüzden çipleri her sayfa KENDİ
      durumundan üretir: burada ders şekli `modes` DİZİSİdir (`selectMode` tek
      değere indirger), anonim tarafta tek bir `sekil` değeridir. */
   const mobilAramaOzeti = [
-    yer ? yerEtiketi(yer) : district.length === 1 ? district[0] : district.length ? `${district.length} ilçe` : null,
-    modeSegment === TeachingMode.ONLINE ? "Uzaktan" : modeSegment === TeachingMode.IN_PERSON ? "Yüz yüze" : null,
+    yer
+      ? yerEtiketi(yer)
+      : district.length === 1
+        ? district[0]
+        : district.length
+          ? `${district.length} ilçe`
+          : null,
+    modeSegment === TeachingMode.ONLINE
+      ? "Uzaktan"
+      : modeSegment === TeachingMode.IN_PERSON
+        ? "Yüz yüze"
+        : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -494,9 +512,13 @@ export default function Marketplace() {
       etiket: "Yüz yüze",
       aktif: modeSegment === TeachingMode.IN_PERSON,
       onClick: () =>
-        selectMode(modeSegment === TeachingMode.IN_PERSON ? MODE_ALL : TeachingMode.IN_PERSON),
+        selectMode(
+          modeSegment === TeachingMode.IN_PERSON ? MODE_ALL : TeachingMode.IN_PERSON
+        ),
     },
-    ...(exam ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }] : []),
+    ...(exam
+      ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }]
+      : []),
     ...subjects.map((s) => ({
       id: `subject-${s}`,
       etiket: `${s} ✕`,
@@ -507,7 +529,14 @@ export default function Marketplace() {
 
   const mobilUst = mobil ? (
     <AramaMobilBaslik
-      baslik={q || (subjects.length === 1 ? subjects[0] : subjects.length ? `${subjects.length} ders` : "Eğitmen ara")}
+      baslik={
+        q ||
+        (subjects.length === 1
+          ? subjects[0]
+          : subjects.length
+            ? `${subjects.length} ders`
+            : "Eğitmen ara")
+      }
       ozet={mobilAramaOzeti || "Tüm Adana"}
       onHap={() => setSearchOpen(true)}
       onGeri={() => navigate(-1)}
@@ -610,132 +639,21 @@ export default function Marketplace() {
       </div>
 
       {/* ── Filtre Modalı ── */}
-      {showFilters && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
-          <div className="absolute inset-0" onClick={() => setShowFilters(false)} />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 duration-200 sm:zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
-              <h2 className="text-lg font-bold text-slate-900 ">Filtrele</h2>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-8 overflow-y-auto p-6">
-              {/* Ders işleme şekli */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Ders İşleme Şekli</h3>
-                <SegmentedControl options={MODE_SEGMENTS} value={modeSegment} onChange={selectMode} />
-              </div>
-
-              {/* Konum */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
-                <div className="relative">
-                  <select
-                    value={nearMe ? radiusKm : ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) { setNearMe(null); return; }
-                      setRadiusKm(Number(val));
-                      if (!nearMe) requestNearMe();
-                    }}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                  >
-                    <option value="">Farketmez (Her Yer)</option>
-                    <option value="5">En fazla 5 km</option>
-                    <option value="10">En fazla 10 km</option>
-                    <option value="25">En fazla 25 km</option>
-                    <option value="50">En fazla 50 km</option>
-                    <option value="100">En fazla 100 km</option>
-                  </select>
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </span>
-                </div>
-                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>}
-                {nearMe && !geoLoading && <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>}
-              </div>
-
-              {/* Fiyat aralığı */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900 ">Fiyat Aralığı</h3>
-                <p className="mb-4 mt-0.5 text-xs text-slate-500 ">Saatlik ders ücreti</p>
-                <PriceRangeHistogram
-                  rates={rateDist ?? []}
-                  loading={histLoading}
-                  minRate={minRate}
-                  maxRate={maxRate}
-                  onChange={(mn, mx) => { setMinRate(mn); setMaxRate(mx); }}
-                />
-              </div>
-
-              {/* Cinsiyet */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Cinsiyet</h3>
-                <div className="flex flex-wrap gap-2">
-                  {GENDER_OPTIONS.map((opt) => {
-                    const adet = fasetler?.[opt.value];
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
-                        className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                          gender === opt.value
-                            ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"
-                            : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
-                        }`}
-                      >
-                        {opt.label}
-                        {/* Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar —
-                            asıl düzeltme budur. */}
-                        {adet !== undefined && (
-                          <span className={gender === opt.value ? "ml-1.5 opacity-80" : "ml-1.5 text-slate-400"}>
-                            {adet}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* SESSİZ ELEME artık sessiz değil.
-                    `Tutor.gender == FEMALE` karşılaştırması hem NULL hem
-                    UNSPECIFIED satırları eler; öğrenci bugüne kadar bunu
-                    göremiyordu. Yalnız filtre ETKİNKEN gösterilir: filtre
-                    kapalıyken kimse elenmiyor. */}
-                {gender && !!fasetler?.gorunmeyen && (
-                  <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
-                    Cinsiyetini belirtmemiş {fasetler.gorunmeyen} eğitmen bu
-                    filtreyle görünmüyor.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
-              <button
-                onClick={clearAll}
-                className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
-              >
-                Temizle
-              </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
-              >
-                Sonuçları Göster
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/*
+        * Pencere `components/EgitmenFiltreModali`ye çıktı: anonim yüzeyle
+        * ORTAK. Ayrı yazılan ikinci yüzey ayrışmış ve boşalmıştı; ortak
+        * bileşen o kusurun tekrarını imkânsız kılıyor.
+        */}
+      <EgitmenFiltreModali
+        acik={showFilters}
+        kapat={() => setShowFilters(false)}
+        onTemizle={() => {
+          // Sayfanın KENDİ yerel durumu: "daha fazla göster" ile büyüyen
+          // liste sınırı ve serbest metin kutusu.
+          setQ("");
+          setLimit(20);
+        }}
+      />
     </DashboardShell>
   );
 }

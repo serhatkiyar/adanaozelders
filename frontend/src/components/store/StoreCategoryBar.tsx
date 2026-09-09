@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
+import { MAGAZA_ARAMA, magazaAramaAdresi } from "@/lib/aramaUrl";
+import { aramayiOku } from "@/lib/urlSemasi";
 import { useCategories } from "@/hooks/useStore";
 import type { ProductCategory } from "@/types";
 
 /**
  * Mağaza üst kategori şeridi (category navigation bar).
  * İlk öğe "Tümü" (catch-all) → /magaza; sonra backend'den gelen üst kategoriler
- * (`parent_id == null`) → /magaza?category=<id>. Çocuğu olan kategoriye hover'da
+ * (`parent_id == null`) → /magaza?kategori=<id>. Çocuğu olan kategoriye hover'da
  * mega menu açılır (alt kategoriler, gerçek veriden). Şerit full-bleed (arka plan
  * kenardan kenara), iç içerik boxed (max-w-[1464px]). Sakin/indigo aksan.
  *
@@ -17,7 +19,10 @@ import type { ProductCategory } from "@/types";
 export function StoreCategoryBar() {
   const { data: categories } = useCategories();
   const [searchParams] = useSearchParams();
-  const activeCategory = searchParams.get("category");
+  // Adres şemadan okunur, elle değil: 9 Eyl 2026'da anahtar `category` →
+  // `kategori` oldu ve elle okuyan bu satır aktifliği sessizce kaybediyordu
+  // (link doğru sayfaya gidiyor, ama hiçbir kategori koyu görünmüyordu).
+  const activeCategory = aramayiOku(MAGAZA_ARAMA, searchParams).kategori;
   const [openId, setOpenId] = useState<number | null>(null);
 
   const topCategories = useMemo(
@@ -86,11 +91,11 @@ export function StoreCategoryBar() {
           </Link>
 
           {topCategories.map((c) => {
-            const isActive = activeCategory === String(c.id);
+            const isActive = activeCategory === c.id;
             return (
               <Link
                 key={c.id}
-                to={`${ROUTES.store}?category=${c.id}`}
+                to={magazaAramaAdresi({ kategori: c.id })}
                 onMouseEnter={() => setOpenId(c.id)}
                 className={`${linkBase} ${
                   isActive
@@ -114,7 +119,7 @@ export function StoreCategoryBar() {
               {openKids.map((kid) => (
                 <Link
                   key={kid.id}
-                  to={`${ROUTES.store}?category=${kid.id}`}
+                  to={magazaAramaAdresi({ kategori: kid.id })}
                   onClick={() => setOpenId(null)}
                   className="rounded-lg px-2 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 hover:text-marka-metin "
                 >

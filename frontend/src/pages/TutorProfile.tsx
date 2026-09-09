@@ -29,6 +29,7 @@ import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
 import { videoEmbedUrl } from "@/lib/video";
 import { useNavSearch } from "@/hooks/useNavSearch";
+import { useBekleyenNiyet } from "@/hooks/useBekleyenNiyet";
 
 // Removed constants
 
@@ -70,6 +71,22 @@ export default function TutorProfile() {
   const replyMutation = useReplyToReview(tutorId);
   const isOwnerTutor =
     currentUser?.role_id === ROLE_IDS.TUTOR && currentUser.id === tutorId;
+  /*
+   * Anonimken "Ders Talep Et"e basan ziyaretçi giriş yapınca pencere
+   * KENDİLİĞİNDEN açılır (ÜK-10). `TutorProfilePage` token'a göre bu bileşenle
+   * `PublicTutorProfile` arasında takas yaptığı için burası girişten hemen
+   * sonra sıfırdan mount olur.
+   *
+   * `esler` şart: kullanıcı 42 numaralı eğitmende kapıyı açıp başka sekmeden
+   * 99'a geçtiyse, 99'un sayfası niyeti ne uygular ne de YER.
+   */
+  useBekleyenNiyet({
+    tip: "dersTalebi",
+    hazir: !!tutor && !isOwnerTutor,
+    esler: (n) => n.egitmenId === tutorId,
+    uygula: () => setShowBookingModal(true),
+  });
+
   const [showReport, setShowReport] = useState(false);
   const [showReviews, setShowReviews] = useState(false);
 

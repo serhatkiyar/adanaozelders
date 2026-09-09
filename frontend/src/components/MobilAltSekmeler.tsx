@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 
 import { Icon, type IconName } from "@/components/AppIcon";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useGirisAdresi } from "@/hooks/useGirisKapisi";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
@@ -117,6 +118,11 @@ export const ALT_SEKME_KAPLADIGI = ALT_SEKME_YUKSEKLIGI + 1;
 
 export function MobilAltSekmeler() {
   const token = useAuthStore((s) => s.token);
+  // Adres ELLE kurulmaz: `?modal=login` literali React Router'da mevcut
+  // sorguyu birleştirmez DEĞİŞTİRİR, yani arama sayfasından girişe basmak
+  // filtreleri uçururdu. Tek kapı: `lib/girisAdresi`
+  // (nöbetçi: `__guards__/korumaliEylemGezinmez.test.ts`).
+  const girisAdresiDegeri = useGirisAdresi();
   const { data: user } = useCurrentUser();
   const girisli = !!token && !!user;
 
@@ -167,7 +173,7 @@ export function MobilAltSekmeler() {
           {!girisli && (
             <li className="flex-1">
               <Link
-                to="?modal=login"
+                to={girisAdresiDegeri}
                 className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 py-2 text-slate-500 transition active:scale-95"
                 style={{ minHeight: ALT_SEKME_YUKSEKLIGI }}
               >

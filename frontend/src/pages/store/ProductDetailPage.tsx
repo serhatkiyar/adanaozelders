@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
+import { magazaAramaAdresi } from "@/lib/aramaUrl";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { StarRating } from "@/components/StarRating";
@@ -71,7 +72,7 @@ const ACIKLAMA_SINIFI = [
  *  kaynaktan üretsin diye tek yerde. Markup ile ekranın ayrışması Google'ın
  *  yapılandırılmış veri politikasının ihlali sayılır. */
 const categoryChipHref = (categoryId: number) =>
-  `${ROUTES.store}?category=${categoryId}`;
+  magazaAramaAdresi({ kategori: categoryId });
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();

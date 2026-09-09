@@ -437,7 +437,7 @@
         }
       ],
       "cakismalar": [],
-      "kucukHedefSayi": 25,
+      "kucukHedefSayi": 23,
       "kucukHedefler": [
         {
           "ad": "Adana Özel Ders ana sayfa",
@@ -455,14 +455,14 @@
           "h": 34
         },
         {
-          "ad": "Giriş Yap",
-          "w": 84,
-          "h": 32
+          "ad": "Favorilere ekle",
+          "w": 28,
+          "h": 28
         },
         {
-          "ad": "Kayıt Ol",
-          "w": 76,
-          "h": 32
+          "ad": "Favorilere ekle",
+          "w": 28,
+          "h": 28
         },
         {
           "ad": "Favorilere ekle",

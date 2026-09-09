@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -10,14 +9,27 @@ import {
   useInfiniteProducts,
 } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { MAGAZA_ARAMA, type MagazaSiralamasi } from "@/lib/aramaUrl";
+import { bosDeger, filtreliMi } from "@/lib/urlSemasi";
+
+/** Kutu metni <-> sema degeri: bos kutu = filtre YOK, "0" gecerli sinir. */
+const sayiMetni = (n: number | undefined) => (n === undefined ? "" : String(n));
+const metinSayisi = (t: string): number | undefined => {
+  const kirpik = t.trim();
+  if (!kirpik) return undefined;
+  const n = Number(kirpik);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+};
 import { AnaVitrin } from "@/pages/store/vitrin/AnaVitrin";
-import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
 const CONTAINER = "mx-auto max-w-[1464px] px-4 md:px-8";
 const GRID = "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4";
 
-type Sort = "" | "price_asc" | "price_desc" | "newest" | "rating";
+/** Sıralama değerleri artık şemadan gelir — iki ayrı liste tutmak, birini
+ *  güncelleyip diğerini unutmanın yoluydu. */
+type Sort = MagazaSiralamasi | "";
 
 const SORT_LABELS: Record<Sort, string> = {
   "": "Önerilen",
@@ -28,63 +40,103 @@ const SORT_LABELS: Record<Sort, string> = {
 };
 
 export default function StorePage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const urlQ = searchParams.get("q") || "";
-  const urlCat = searchParams.get("category");
-  const rawUrlKind = searchParams.get("kind");
-  const urlKind: "" | ProductKind =
-    rawUrlKind === "PHYSICAL" || rawUrlKind === "DIGITAL" ? rawUrlKind : "";
-  const rawUrlSort = searchParams.get("sort");
-  const urlSort: Sort =
-    rawUrlSort && rawUrlSort in SORT_LABELS ? (rawUrlSort as Sort) : "";
+  /*
+   * URL <-> state `useAramaDurumu` uzerinden (Paket 2). Burada dort ayri
+   * `useState` + dort ayri senkron efekti vardi; cop deger dogrulamasi
+   * (`kind`, `sort`) da elle yaziliydi. Ikisi de artik semada.
+   */
+  const { degerler, ayarla } = useAramaDurumu(MAGAZA_ARAMA);
+  const categoryId = degerler.kategori;
+  const kind = degerler.tur;
+  const sort = degerler.sirala as Sort;
+  const setSort = (v: Sort) => ayarla({ sirala: v });
 
-  const [q, setQ] = useState(urlQ);
-  const [categoryId, setCategoryId] = useState<number | undefined>(
-    urlCat ? Number(urlCat) : undefined,
-  );
-  const [kind, setKind] = useState<"" | ProductKind>(urlKind);
-  const [sort, setSort] = useState<Sort>(urlSort);
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [inStock, setInStock] = useState(false);
-  const [minRating, setMinRating] = useState<number | undefined>(undefined);
-  // Kitap künyesi daraltmaları (çoklu seçim).
-  const [publishers, setPublishers] = useState<string[]>([]);
-  const [authors, setAuthors] = useState<string[]>([]);
-  const [coverTypes, setCoverTypes] = useState<string[]>([]);
-  // Varyant eksen daraltmaları: eksen adı → seçili değerler. Eksen adları
-  // veriden gelir (book-facets → variant_axes); istemcide sözlük kopyası yok.
-  const [variantSel, setVariantSel] = useState<Record<string, string[]>>({});
+  // Serbest metin YEREL: her tus vurusunda adres yazmak gecmisi kirletir.
+  const [q, setQ] = useState(degerler.q);
+  useEffect(() => {
+    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
+  }, [degerler.q]);
+
+  /*
+   * Sekiz daraltma da ADRESTE (9 Eyl 2026).
+   *
+   * Bunlar yerel state'teyken "Tükenmez kalem, 4 yıldız üstü, stokta" bir
+   * liste paylaşılamıyor, yenilemede sıfırlanıyor ve geri tuşu onları geri
+   * almıyordu — oysa aynı ekranda `q`, kategori ve tür adreste yaşıyordu.
+   */
+  const inStock = degerler.stokta;
+  const minRating = degerler.minPuan;
+  const publishers = degerler.yayinevi;
+  const authors = degerler.yazar;
+  const coverTypes = degerler.kapak;
+
+  const setInStock = (v: boolean) => ayarla({ stokta: v });
+  const setMinRating = (v: number | undefined) => ayarla({ minPuan: v });
+  const setPublishers = (v: string[]) => ayarla({ yayinevi: v });
+  const setAuthors = (v: string[]) => ayarla({ yazar: v });
+  const setCoverTypes = (v: string[]) => ayarla({ kapak: v });
+
+  // Fiyat kutularının anlık metni YEREL, değeri adreste: her rakamda adres
+  // yazmak geçmişi kirletir ve "150" yazarken bir an "1 TL" filtresi uygular.
+  const [minPrice, setMinPrice] = useState(sayiMetni(degerler.minFiyat));
+  const [maxPrice, setMaxPrice] = useState(sayiMetni(degerler.maxFiyat));
 
   const debouncedQ = useDebounce(q, 350);
+  useEffect(() => {
+    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
+
   const debMin = useDebounce(minPrice, 400);
   const debMax = useDebounce(maxPrice, 400);
 
   useEffect(() => {
-    setQ(urlQ);
-  }, [urlQ]);
+    const min = metinSayisi(debMin);
+    const max = metinSayisi(debMax);
+    if (min !== degerler.minFiyat || max !== degerler.maxFiyat)
+      ayarla({ minFiyat: min, maxFiyat: max }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debMin, debMax]);
 
+  // Adres → kutu (geri tuşu, paylaşılan bağlantı).
   useEffect(() => {
-    setCategoryId(urlCat ? Number(urlCat) : undefined);
-  }, [urlCat]);
+    setMinPrice((o) => (metinSayisi(o) === degerler.minFiyat ? o : sayiMetni(degerler.minFiyat)));
+    setMaxPrice((o) => (metinSayisi(o) === degerler.maxFiyat ? o : sayiMetni(degerler.maxFiyat)));
+  }, [degerler.minFiyat, degerler.maxFiyat]);
 
-  useEffect(() => {
-    setKind(urlKind);
-  }, [urlKind]);
 
-  useEffect(() => {
-    setSort(urlSort);
-  }, [urlSort]);
+
+
 
   const { data: categories } = useCategories();
   // Seçenekler kategoriye göre daralır: "Kırtasiye"de yayınevi listesi
   // göstermek kullanıcıyı boş sonuca sürükler.
   const { data: bookFacets } = useBookFacets(categoryId);
 
-  // "Eksen:Değer" öğeleri — sunucunun `variant` parametre biçimi.
-  const variantParam = Object.entries(variantSel).flatMap(([eksen, degerler]) =>
-    degerler.map((d) => `${eksen}:${d}`),
-  );
+  /*
+   * Varyant daraltmaları adreste DÜZ liste olarak yaşar ("Eksen:Değer" —
+   * sunucunun `variant` parametre biçiminin aynısı), ekranda ise eksene göre
+   * gruplu. Adreste iç içe bir yapı taşımak (Airbnb'nin `[]`'si gibi) Google'ın
+   * kaçınılmasını istediği ayırıcıları gerektirirdi.
+   */
+  const variantParam = degerler.varyant;
+  const variantSel = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    for (const oge of variantParam) {
+      const i = oge.indexOf(":");
+      if (i <= 0) continue;
+      const eksen = oge.slice(0, i);
+      (m[eksen] ??= []).push(oge.slice(i + 1));
+    }
+    return m;
+  }, [variantParam]);
+  const setVariantAxis = (eksen: string, next: string[]) =>
+    ayarla({
+      varyant: [
+        ...variantParam.filter((o) => !o.startsWith(`${eksen}:`)),
+        ...next.map((d) => `${eksen}:${d}`),
+      ],
+    });
 
   // ── Kenar çubuğu kategori kaynağı (1 Eyl, Trendyol/Amazon paritesi) ──
   // ARAMA modunda liste "İlgili kategoriler"dir: sunucudan aramaya kapsamlı
@@ -137,27 +189,11 @@ export default function StorePage() {
   }, [listeKaynak, aramaModu]);
   const seciliKategori = categoryId ? kategoriById.get(categoryId) : undefined;
 
-  const kategoriSec = (id: number | undefined) => {
-    setCategoryId(id);
-    if (id === undefined) searchParams.delete("category");
-    else searchParams.set("category", String(id));
-    setSearchParams(searchParams);
-  };
+  const kategoriSec = (id: number | undefined) => ayarla({ kategori: id });
 
-  const isFiltering = !!(
-    debouncedQ ||
-    categoryId ||
-    kind ||
-    sort ||
-    debMin ||
-    debMax ||
-    inStock ||
-    minRating ||
-    publishers.length ||
-    authors.length ||
-    coverTypes.length ||
-    Object.values(variantSel).some((v) => v.length)
-  );
+  // Filtre görünümüne geçilsin mi: karar şemadan gelir, elle sayılan bir
+  // listeden değil.
+  const isFiltering = filtreliMi(MAGAZA_ARAMA, degerler) || !!debouncedQ;
 
 
   const searchInput: ProductSearchParams = {
@@ -182,18 +218,11 @@ export default function StorePage() {
 
   const resetFilters = () => {
     setQ("");
-    setCategoryId(undefined);
-    setKind("");
-    setSort("");
     setMinPrice("");
     setMaxPrice("");
-    setInStock(false);
-    setMinRating(undefined);
-    setPublishers([]);
-    setAuthors([]);
-    setCoverTypes([]);
-    setVariantSel({});
-    setSearchParams({});
+    // Tek yazım: alan alan temizlemek yeni bir filtre eklendiğinde burayı
+    // güncellemeyi unutturur ve "Temizle" sessizce eksik çalışır.
+    ayarla(bosDeger(MAGAZA_ARAMA));
   };
 
   return (
@@ -376,9 +405,7 @@ export default function StorePage() {
                       title={eksen}
                       options={secenekler}
                       selected={variantSel[eksen] ?? []}
-                      onToggle={(next) =>
-                        setVariantSel((s) => ({ ...s, [eksen]: next }))
-                      }
+                      onToggle={(next) => setVariantAxis(eksen, next)}
                     />
                   ),
                 )}
@@ -416,9 +443,7 @@ export default function StorePage() {
                       // paylaşılan/yer imlenen adresin farklı bir liste
                       // göstermesi demekti. Boş değer parametreyi SİLER —
                       // `?sort=` kuyruğu "seçim yapılmış" gibi görünür.
-                      if (secilen) searchParams.set("sort", secilen);
-                      else searchParams.delete("sort");
-                      setSearchParams(searchParams);
+                      ayarla({ sirala: secilen });
                     }}
                     className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-marka-mid "
                   >

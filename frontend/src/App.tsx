@@ -24,7 +24,7 @@ import { useWsStore } from "@/store/wsStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 // Landing kök (`/`) yüzeyidir + prerender/SEO hedefi → eager (kod bölünmez).
 import Landing from "@/pages/Landing";
-import { PendingFavoriteApplier } from "@/components/PendingFavoriteApplier";
+import { NiyetUygulayici } from "@/components/NiyetUygulayici";
 import { StoreFavoritesSync } from "@/components/StoreFavoritesSync";
 import { rtcManager } from "@/lib/rtcTransfer";
 
@@ -733,7 +733,7 @@ function App() {
         <Suspense fallback={null}>
           <AuthModal />
         </Suspense>
-        <PendingFavoriteApplier />
+        <NiyetUygulayici />
         <StoreFavoritesSync />
         {/* Pomodoro kartı rota tablosunun DIŞINDA, her sayfada mount ediliyor.
             Öğren donmuşken bu da kapanmalı: aksi hâlde çalışan bir zamanlayıcısı

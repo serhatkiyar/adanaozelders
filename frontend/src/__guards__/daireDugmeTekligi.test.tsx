@@ -9,7 +9,7 @@
  *
  * Haklıydı. Sitede AYNI işi yapan üç ayrı el yazımı vardı:
  *
- *   1. `Landing/RowHeader` "tümünü gör" oku — `h-7`, `bg-slate-100`, kenarsız
+ *   1. `VitrinSeridi/RowHeader` "tümünü gör" oku — `h-7`, `bg-slate-100`, kenarsız
  *   2. `HScroll` kaydırma okları — `h-8`, beyaz + `border-slate-200`
  *   3. `ScrollableRow` okları — `h-8`, beyaz + gölge + halka, üstelik ikon
  *      yerine `❮ ❯` KARAKTERİ
@@ -152,7 +152,11 @@ describe("dairesel ok düğmesi · tek kaynak", () => {
     const dosyalar: [string, string][] = [
       ["components/HScroll.tsx", oku("components", "HScroll.tsx")],
       ["components/ScrollableRow.tsx", oku("components", "ScrollableRow.tsx")],
-      ["pages/Landing.tsx", oku("pages", "Landing.tsx")],
+      // 9 Eyl 2026: "tümünü gör" oku Landing'de değil `VitrinSeridi`de —
+      // vitrin şeritleri ana sayfadan ortak bileşene taşındı (sekmeler gerçek
+      // gezinmeye dönünce ana sayfa tek vitrin oldu). Çağrı yeri taşındı,
+      // KURAL DEĞİŞMEDİ: ok düğmesi hâlâ tek kaynaktan.
+      ["components/VitrinSeridi.tsx", oku("components", "VitrinSeridi.tsx")],
     ];
     for (const [ad, kaynak] of dosyalar) {
       expect(kaynak, `${ad} DaireDugme'yi kullanmıyor`).toMatch(

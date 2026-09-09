@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { roleHome } from "@/lib/roles";
+import { guvenliDonusYolu } from "@/lib/guvenliDonus";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
@@ -41,7 +42,14 @@ export default function Login() {
     },
     onSuccess: (user) => {
       toast.success(buildWelcome(user.id, user.full_name));
-      navigate(roleHome(user.role_id), { replace: true });
+      /*
+       * Korumalı bir sayfadan yönlendirildiyse ORAYA döner (ÜK-10).
+       * `guvenliDonusYolu` ZORUNLU: ham `git` değerini doğrudan `navigate`e
+       * vermek açık yönlendirme (open redirect) olurdu — `//evil.example`
+       * gibi bir değer kullanıcıyı siteden dışarı atardı.
+       */
+      const git = guvenliDonusYolu(new URLSearchParams(location.search).get("git"));
+      navigate(git ?? roleHome(user.role_id), { replace: true });
     },
   });
 

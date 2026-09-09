@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useKayitAcik } from "@/hooks/useKayitAcik";
+import { useGirisAdresi } from "@/hooks/useGirisKapisi";
 
 // Anonim (oturumsuz) yüzeyin ortak üst barı — landing'de beğenilen navbar.
 // Hem Landing hem PublicShell (public arama/profil) kullanır; böylece sitenin
@@ -39,6 +40,11 @@ export function PublicNavbar({
   expanded?: boolean;
 }) {
   const kayitAcik = useKayitAcik();
+  // Gercek gezinme (niyet YOK) -> `<Link>` mesru. Adres mevcut sorguyu
+  // KORUYARAK uretilir: mağaza/arama sayfasindan "Giris Yap"a basmak
+  // kategoriyi ve filtreleri ucurmasin.
+  const girisAdresiDegeri = useGirisAdresi();
+  const egitmenKayitAdresi = useGirisAdresi("register", "tutor");
   return (
     // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md ">
@@ -100,14 +106,14 @@ export function PublicNavbar({
                 Düğme sayısı değişirse taşma yeniden ölçülmelidir. */}
             {kayitAcik && (
               <Link
-                to="?modal=register&role=tutor"
+                to={egitmenKayitAdresi}
                 className="btn-neon-hover rounded-full px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-marka-metin-hover active:scale-95 sm:px-5"
               >
                 Ders Ver
               </Link>
             )}
             <Link
-              to="?modal=login"
+              to={girisAdresiDegeri}
               className="btn-neon-hover rounded-full px-3 py-2.5 text-sm sm:px-5 font-semibold text-slate-700 transition hover:text-marka-metin-hover active:scale-95 "
             >
               Giriş Yap

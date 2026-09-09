@@ -1,10 +1,10 @@
 import { type CSSProperties, useMemo, useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import {Link} from "react-router-dom";
 import {
-  PAGE_PARAM,
+
   limitForPage,
   nextPageSearch,
-  pageFromParam,
+
 } from "@/lib/pagination";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
@@ -23,9 +23,11 @@ import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
 import { ROLE_IDS } from "@/types";
 import { CategoryBar } from "@/components/CategoryBar";
-import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
-import { LIBRARY_TRENDING_SEARCHES } from "@/lib/trendingSearches";
+import { CompactSearch, KutuphaneArama } from "@/components/HeroSearch";
+import { LibraryRow } from "@/components/VitrinSeridi";
+import { type YerSecimi } from "@/lib/yerArama";
+import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
 
 type ViewMode = "list" | "map";
@@ -59,36 +61,55 @@ export default function Libraries() {
         ? UYE_NAV
         : undefined;
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
-  const [view, setView] = useState<ViewMode>("list");
-  const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
-  // Mahalle çapası URL'den okunur: `?mahalle=Reşatbey` paylaşılabilir bir
-  // bağlantıdır ve geri dönüldüğünde kutuda yeniden görünür.
-  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
+  /*
+   * URL ↔ state artık `useAramaDurumu` üzerinden (Paket 2).
+   *
+   * Buradaki elle senkron bloğu bir bug taşıyordu: yazma efekti URL'i
+   * `new URLSearchParams()` ile SIFIRDAN kuruyordu, yani aynı dosyanın
+   * okuduğu `?sayfa=` parametresini siliyordu. `/kutuphaneler?sayfa=3`
+   * bağlantısı karşı tarafta 1. sayfaya düşüyordu — hata yok, sessiz kayıp.
+   * (Aynı kusur `PublicMarketplace`te de vardı; ikisi tek düzeltmeyle öldü.)
+   *
+   * `ayarla` tabanı KORUR: şemanın tanımadığı hiçbir anahtar kaybolmaz.
+   */
+  const { degerler, ayarla, filtreli, params: searchParams } = useAramaDurumu(KUTUPHANE_ARAMA);
+  const { konum, sayfa: page } = degerler;
+  const district = konum.ilce;
+  const yer = konum.yer;
+  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
+  const setYer = (v: YerSecimi | null) =>
+    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
 
-  // Dış navigasyon (geri/ileri tuşu, link ile gelme) state'i günceller.
-  // Guard: yalnız URL'deki değer mevcut state'ten farklıysa güncelle
-  // (state→URL sync effect'iyle sonsuz döngüyü engeller).
+  // Serbest metin YEREL kalır: her tuş vuruşunda adres yazmak geçmişi
+  // kirletir. Debounce sonrası `replace` ile tek girdi olarak yazılır.
+  const [q, setQ] = useState(degerler.q);
+  const [view, setView] = useState<ViewMode>("list");
+
+  // Dış navigasyon (geri/ileri, paylaşılan link) kutuyu günceller.
   useEffect(() => {
-    const qParam = searchParams.get("q") ?? "";
-    const districtParams = searchParams.getAll("district");
-    const urlYer = yeriOku(searchParams).yer;
-    if (qParam !== q) setQ(qParam);
-    if (JSON.stringify(districtParams) !== JSON.stringify(district))
-      setDistrict(districtParams);
-    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-  const [amenities, setAmenities] = useState<string[]>([]);
-  const [sort, setSort] = useState<LibrarySort>("");
+    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
+  }, [degerler.q]);
+
+  /*
+   * Olanaklar ve sıralama ADRESTE (9 Eyl 2026).
+   *
+   * Yerel state'teyken "Wi-Fi + otoparklı, puana göre" bir liste
+   * paylaşılamıyor, yenilemede sıfırlanıyor ve geri tuşu onları geri
+   * almıyordu — oysa `q` ve ilçe adreste yaşıyordu. Aynı ekranda bir filtre
+   * URL'de, ötekisi değil.
+   */
+  const amenities = degerler.olanaklar;
+  const sort = degerler.sirala;
+
+  /*
+   * KOORDİNAT ADRESE YAZILMAZ. Adres yalnız niyeti taşır
+   * (`sirala=mesafe`); konum bağlantıyı açan kişiden yeniden istenir.
+   */
   const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
-  const [radiusKm] = useState<number>(25);
   const [geoLoading, setGeoLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
   // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
-  const page = pageFromParam(searchParams.get(PAGE_PARAM));
   const limit = limitForPage(page, PER_PAGE);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — eğitmen aramasındaki davranışın aynısı.
@@ -102,15 +123,12 @@ export default function Libraries() {
     setSurface("discover");
   }, [setSurface]);
 
-  // ── URL ↔ state senkronizasyonu ──────────────────────────────────────
-  // debouncedQ veya district değişince URL'i güncelle; sayfa yenilenince
-  // güncel arama korunur. `replace` ile tarayıcı geçmişi spam'lenmez.
+  // Debounce'lu metin adrese yazılır — `replace`, çünkü her harf ayrı bir
+  // geçmiş girdisi olsaydı geri tuşu harf harf geri alırdı.
   useEffect(() => {
-    const next = new URLSearchParams();
-    if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
-    yeriYaz(next, yer, district);
-    setSearchParams(next, { replace: true });
-  }, [debouncedQ, district, yer, setSearchParams]);
+    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
 
   // "Yakınımda" sıralaması konum ister; reddedilirse sıralamayı geri al.
   const requestNearMe = (onFail?: () => void) => {
@@ -134,6 +152,8 @@ export default function Libraries() {
     );
   };
 
+  const setSort = (value: LibrarySort) => ayarla({ sirala: value });
+
   // Sıralama seçimi: "Yakınımda" ilk kez seçilince konum iste.
   const handleSortChange = (value: LibrarySort) => {
     setSort(value);
@@ -141,37 +161,25 @@ export default function Libraries() {
   };
 
   const toggleAmenity = (a: string) =>
-    setAmenities((prev) =>
-      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
-    );
+    ayarla({
+      olanaklar: amenities.includes(a)
+        ? amenities.filter((x) => x !== a)
+        : [...amenities, a],
+    });
 
-  const params = useMemo<LibrarySearchParams>(() => {
-    const p: LibrarySearchParams = { limit, offset: 0 };
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (district.length) p.district = district;
-    if (amenities.length) p.amenities = amenities;
-    // Mahalle seçiliyse ÇEVRESİNDE aranır: mahalle adı bir eşitlik filtresi
-    // değil, konum çapasıdır. İlçe filtresi de yanında kalır — yarıçap
-    // koordinatı olmayan kaydı eler, ilçe onları yakalamaya devam eder.
-    const yerKonumu = yerinArananKonumu(yer);
-    if (yerKonumu && sort !== "distance") {
-      p.lat = yerKonumu.lat;
-      p.lng = yerKonumu.lng;
-      p.radius_km = yerKonumu.radius_km;
-      p.sort = "distance";
-    }
-    // "Yakınımda" sıralaması kullanıcının KENDİ konumunu kullanır ve mahalle
-    // çapasını geçersiz kılar — ikisi aynı anda anlamlı değil.
-    if (sort === "distance" && nearMe) {
-      p.lat = nearMe.lat;
-      p.lng = nearMe.lng;
-      p.radius_km = radiusKm;
-      p.sort = "distance";
-    } else if (sort === "rating") {
-      p.sort = "rating";
-    }
-    return p;
-  }, [debouncedQ, district, yer, amenities, nearMe, radiusKm, sort, limit]);
+  /*
+   * Şema değeri → API isteği. Mahalle çapası ile "yakınımda" arasındaki
+   * öncelik kuralı burada değil `aramaUrl`de yaşar: aynı kural eğitmen
+   * aramasında da geçerliydi ve iki dosyaya kopyalanmıştı.
+   */
+  const params = useMemo<LibrarySearchParams>(
+    () =>
+      kutuphaneIstegi(
+        { ...degerler, q: debouncedQ },
+        { limit, offset: 0, konumum: nearMe }
+      ),
+    [degerler, debouncedQ, limit, nearMe]
+  );
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
 
@@ -218,18 +226,17 @@ export default function Libraries() {
      Açık: büyük arama hapı. Kapalı: sıralama + filtre chip çubuğu. */
   const bigSearchRow = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      <BigSearch
+      {/* Ana sayfadaki kütüphane hapının AYNISI (9 Eyl 2026).
+          `KutuphaneArama` ana sayfada yaşıyordu; sekmeler gerçek gezinmeye
+          dönünce orası tek vitrin oldu ve hap buraya taşındı. Üçüncü bir hap
+          tasarımı (`BigSearch`) kalmadı — ikizlik nöbetçisi
+          (`__guards__/aramaHapiIkizligi.test.ts`) artık bu dosyayı ölçüyor. */}
+      <KutuphaneArama
         q={q}
         setQ={setQ}
-        district={district}
-        setDistrict={setDistrict}
-        onSubmit={submitSearch}
-        placeholder={SEARCH_PLACEHOLDER}
         yer={yer}
         setYer={setYer}
-        solBaslik="Yer"
-        sagBaslik="Kütüphane"
-        trending={LIBRARY_TRENDING_SEARCHES}
+        onSubmit={submitSearch}
       />
     </div>
   );
@@ -279,7 +286,7 @@ export default function Libraries() {
       {district.map((d) => (
         <button
           key={d}
-          onClick={() => setDistrict((prev) => prev.filter((x) => x !== d))}
+          onClick={() => setDistrict(district.filter((x) => x !== d))}
           className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
         >
           {d}
@@ -319,6 +326,27 @@ export default function Libraries() {
           title="Kütüphaneler ve Etüt Merkezleri"
           description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet, değerlendirmeler, konum ve çalışma saatleriyle."
         />
+
+        {/* KEŞİF ŞERİTLERİ — ana sayfadan taşındı (9 Eyl 2026).
+            Sekmeler gerçek gezinmeye dönünce ana sayfa tek vitrin oldu ve
+            ilçe şeritleri buraya geldi.
+
+            YALNIZ FİLTRE YOKKEN görünür (kullanıcı kararı): Seyhan'a
+            filtrelenmiş bir listenin üstünde "Çukurova Kütüphaneleri" şeridi
+            hem çelişki hem de her tuş vuruşunda dört ek sorgu demek.
+            `filtreli`, sayfayı filtre saymaz — 2. sayfaya geçmek şeritleri
+            kaybettirmez. */}
+        {!filtreli && (
+          <div className="-mx-4 space-y-2 sm:-mx-6">
+            {["Çukurova", "Seyhan", "Yüreğir", "Sarıçam"].map((ilce) => (
+              <LibraryRow
+                key={ilce}
+                heading={`${ilce} Kütüphaneleri`}
+                params={{ limit: 20, offset: 0, district: [ilce] }}
+              />
+            ))}
+          </div>
+        )}
 
         {/* ── Liste/Harita geçişi ── */}
         <div className="flex flex-wrap items-end justify-end gap-3">
@@ -442,7 +470,7 @@ export default function Libraries() {
 
               <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
                 <button
-                  onClick={() => setAmenities([])}
+                  onClick={() => ayarla({ olanaklar: [] })}
                   className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
                 >
                   Temizle

@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+import { useGirisAdresi } from "@/hooks/useGirisKapisi";
+
 import { PublicShell } from "@/components/PublicShell";
 import { Seo } from "@/components/Seo";
 
@@ -24,6 +26,9 @@ import { Seo } from "@/components/Seo";
  * operatör ve kurye eskisi gibi kendi ana sayfasına yönlendirilir.
  */
 export default function FavorilerGirisDaveti() {
+  // Tek kapı (bkz. `lib/girisAdresi`): elle yazılan `?modal=login` mevcut
+  // sorguyu değiştirirdi.
+  const girisAdresiDegeri = useGirisAdresi();
   return (
     // `mobilSade`: telefonda üst bar boşalır ve gezinme alt sekme çubuğuna
     // kalır (referans ekranın kendisi de böyle). Aynı zamanda 390px'te logo
@@ -52,7 +57,7 @@ export default function FavorilerGirisDaveti() {
           favorilerinize ekleyebilir, listelerinizi buradan görüntüleyebilirsiniz.
         </p>
         <Link
-          to="?modal=login"
+          to={girisAdresiDegeri}
           className="mt-7 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-gradient-to-r from-marka to-marka-hover px-7 text-[15px] font-semibold text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95"
         >
           Giriş Yap

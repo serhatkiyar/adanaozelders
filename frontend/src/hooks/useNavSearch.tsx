@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
-import { yeriYaz, type YerSecimi } from "@/lib/yerArama";
+import { type YerSecimi } from "@/lib/yerArama";
+import { egitmenAramaAdresi, kutuphaneAramaAdresi } from "@/lib/aramaUrl";
 
 /* ─── useNavSearch ────────────────────────────────────────────────────────
    Detay sayfalarının (eğitmen/kütüphane ilanı) navbar'ına Marketplace'teki
@@ -26,11 +27,17 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const sp = new URLSearchParams();
-    if (q.trim()) sp.set("q", q.trim());
-    yeriYaz(sp, yer, district);
-    const base = active === "kutuphaneler" ? "/kutuphaneler" : "/egitmenler";
-    navigate(sp.toString() ? `${base}?${sp}` : base);
+    /*
+     * Taban yol eskiden ham string'di (`"/egitmenler"`), yani `ROUTES`
+     * sözleşmesinin dışındaydı; "yer yalnız yüz yüzede" kuralı da burada
+     * YOKTU (Landing'de vardı). İkisi de `lib/aramaUrl` şemasından geliyor.
+     */
+    const konum = { yer, ilce: district };
+    navigate(
+      active === "kutuphaneler"
+        ? kutuphaneAramaAdresi({ q, konum })
+        : egitmenAramaAdresi({ q, konum })
+    );
     setOpen(false);
   };
 

@@ -1,10 +1,8 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  PAGE_PARAM,
   limitForPage,
   nextPageSearch,
-  pageFromParam,
 } from "@/lib/pagination";
 import { PublicShell } from "@/components/PublicShell";
 import { Seo } from "@/components/Seo";
@@ -15,20 +13,23 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
 import { TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
-import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yeriOku, yeriYaz, yerinArananKonumu, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
-import { sekliCoz, type DersSekli } from "@/components/AramaSecicileri";
+import { type YerSecimi } from "@/lib/yerArama";
+import { type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
+import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { EGITMEN_ARAMA, egitmenIstegi } from "@/lib/aramaUrl";
+import { filtreliMi } from "@/lib/urlSemasi";
+import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
+import { useKonumStore } from "@/store/konumStore";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { yerEtiketi } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
 
 const SORT_OPTIONS: { value: TutorSort; label: string; kisa: string }[] = [
-  // `label` masaüstü açılır menüsü (orada yer bol ve "Sıralama:" öneki
-  // menünün ne olduğunu söylüyor), `kisa` telefon çipi.
   { value: TutorSort.RELEVANCE, label: "Sıralama: Önerilen", kisa: "Önerilen" },
   { value: TutorSort.RATING_DESC, label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
   { value: TutorSort.PRICE_ASC, label: "Sıralama: En Düşük Fiyat", kisa: "En düşük fiyat" },
@@ -42,89 +43,79 @@ const FilterIconSvg = () => (
   </svg>
 );
 
-
 /* ─── main page ─────────────────────────────────────────── */
 
 /** Sayfa başına eğitmen sayısı. */
 const PER_PAGE = 20;
 
 export default function PublicMarketplace() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
-  const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
-  // Mahalle çapası — `?mahalle=Reşatbey` paylaşılabilir bağlantıdır.
-  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
-  // Ders şekli TEK değer. Eskiden burada `remote` adında bir boolean vardı ve
-  // yalnız ONLINE'ı ifade edebiliyordu: ana sayfadan "yüz yüze" ile gelen
-  // ANONİM ziyaretçinin filtresi bu ekranda okunmuyor, aşağıdaki URL
-  // senkronunda da geri yazılmıyordu — yani sessizce BUHARLAŞIYORDU.
-  const [sekil, setSekil] = useState<DersSekli>(() => sekliCoz(searchParams.get("mode")));
-  const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
-  const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
-  const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
-  // Sayfa durumu URL'de: filtreler zaten query string'de tutuluyordu ama
-  // kaçıncı sayfada olunduğu state'teydi — paylaşılan bağlantı karşı tarafta
-  // ilk 20 sonuca dönüyordu (bkz. lib/pagination.ts).
-  const page = pageFromParam(searchParams.get(PAGE_PARAM));
+  /*
+   * URL ↔ state `useAramaDurumu` üzerinden (Paket 2).
+   *
+   * Buradaki elle senkron bloğu `Libraries` ile AYNI bug'ı taşıyordu: yazma
+   * efekti URL'i `new URLSearchParams()` ile sıfırdan kuruyor, dolayısıyla
+   * aynı dosyanın okuduğu `?sayfa=` parametresini siliyordu.
+   * `/egitmenler?sayfa=3` bağlantısı karşı tarafta ilk 20 sonuca dönüyordu.
+   * Tek kök, iki yüzey → tek düzeltme.
+   */
+  const { degerler, ayarla, params: searchParams } = useAramaDurumu(EGITMEN_ARAMA);
+  const { konum, ders: subjects, sinav: exam, sayfa: page } = degerler;
+  // Anonim yüzey ders şeklini TEK değer gibi kullanıyor (UI'da değiştirilmiyor,
+  // yalnız ana sayfadan gelen filtre korunuyor); şema çoklu tuttuğu için ilki
+  // alınır.
+  const sekil = (degerler.sekil[0] ?? "") as DersSekli;
+  const district = konum.ilce;
+  const yer = konum.yer;
   const limit = limitForPage(page, PER_PAGE);
+
+  const setSubjects = (v: string[]) => ayarla({ ders: v });
+  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
+  const setYer = (v: YerSecimi | null) =>
+    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
+  const setExam = (v: string) => ayarla({ sinav: v });
+
+  // Sıralama ADRESTE (9 Eyl 2026). Yerel state'teyken paylaşılamıyor,
+  // yenilemede sıfırlanıyor ve geri tuşu onu geri almıyordu — incelenen yedi
+  // platformun yedisinde de sıralama adreste.
+  const sort = degerler.sirala || TutorSort.RELEVANCE;
+  const setSort = (v: TutorSort) =>
+    ayarla({ sirala: v === TutorSort.RELEVANCE ? "" : v });
   const [showFilters, setShowFilters] = useState(false);
+  // Koordinat adrese YAZILMAZ; yalnız istekte kullanılır.
+  const konumum = useKonumStore((s) => s.konum);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
   const mobil = useMobil();
   const navigate = useNavigate();
 
-  // Dış navigasyon (geri/ileri, link) state'i günceller.
+  // Serbest metin YEREL: her tuş vuruşunda adres yazmak geçmişi kirletir.
+  const [q, setQ] = useState(degerler.q);
   useEffect(() => {
-    const qp = searchParams.get("q") ?? "";
-    const sp = searchParams.getAll("subject");
-    const dp = searchParams.getAll("district");
-    const urlYer = yeriOku(searchParams).yer;
-    const ep = searchParams.get("exam") ?? "";
-    const rp = sekliCoz(searchParams.get("mode"));
-    if (qp !== q) setQ(qp);
-    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
-    if (JSON.stringify(sp) !== JSON.stringify(subjects)) setSubjects(sp);
-    if (JSON.stringify(dp) !== JSON.stringify(district)) setDistrict(dp);
-    if (ep !== exam) setExam(ep);
-    if (rp !== sekil) setSekil(rp);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
+  }, [degerler.q]);
 
   const debouncedQ = useDebounce(q);
-
-  // ── URL ↔ state senkronizasyonu ──────────────────────────────────────
   useEffect(() => {
-    const next = new URLSearchParams();
-    if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
-    subjects.forEach((s) => next.append("subject", s));
-    yeriYaz(next, yer, district);
-    if (sekil) next.set("mode", sekil);
-    if (exam.trim()) next.set("exam", exam.trim());
-    setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, yer, sekil, exam, setSearchParams]);
+    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
 
   const removeSubject = (s: string) =>
-    setSubjects((p) => p.filter((x) => x !== s));
+    setSubjects(subjects.filter((x) => x !== s));
 
-  const params = useMemo<TutorSearchParams>(() => {
-    const p: TutorSearchParams = { limit, offset: 0, sort };
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (subjects.length) p.subject = subjects;
-    if (district.length) p.district = district;
-    // Mahalle seçiliyse ÇEVRESİNDE aranır (konum çapası, eşitlik filtresi
-    // değil). İlçe filtresi yanında kalır: yarıçap koordinatsız eğitmeni
-    // eler, ilçe onu yakalamaya devam eder.
-    const yerKonumu = yerinArananKonumu(yer);
-    if (yerKonumu) {
-      p.lat = yerKonumu.lat;
-      p.lng = yerKonumu.lng;
-      p.radius_km = yerKonumu.radius_km;
-    }
-    if (sekil) p.mode = [sekil];
-    if (exam.trim()) p.exam = exam.trim();
-    return p;
-  }, [debouncedQ, subjects, district, yer, sekil, exam, sort, limit]);
+  /*
+   * Şema değeri → API isteği: `Marketplace` ile AYNI fonksiyon.
+   *
+   * Bu çeviri burada elle yazılıyken bir kusur barındırıyordu: eski `remote:
+   * boolean` alanı seçilen ders şeklini sessizce buharlaştırıyordu. Aynı
+   * çevirinin dört kopyası olmasının bedeli buydu.
+   */
+  const params = useMemo<TutorSearchParams>(
+    () =>
+      egitmenIstegi({ ...degerler, q: debouncedQ }, { limit, offset: 0, konumum }),
+    [degerler, debouncedQ, limit, konumum]
+  );
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
@@ -133,13 +124,17 @@ export default function PublicMarketplace() {
   // alınmaz). Yalnız ilk sayfada çizilir: 2. sayfada reklam beklenmez ve
   // aynı kartın iki sayfada birden çıkması kafa karıştırır.
   const featuredParams = useMemo<FeaturedTutorParams>(() => {
-    const p: FeaturedTutorParams = {};
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (subjects.length) p.subject = subjects;
-    if (district.length) p.district = district;
-    if (sekil) p.mode = [sekil];
-    return p;
-  }, [debouncedQ, subjects, district, sekil]);
+    // Aramanın isteğinden ÇIKARARAK türetilir: elle ikinci kez kurulunca
+    // (bugüne kadar öyleydi) blok ile liste sessizce ayrışıyordu.
+    const {
+      sort: _sort,
+      exam: _exam,
+      limit: _limit,
+      offset: _offset,
+      ...rest
+    } = params;
+    return rest;
+  }, [params]);
 
   const featuredOnFirstPage = page === 1;
   const [featuredIds, setFeaturedIds] = useState<number[]>([]);
@@ -148,7 +143,10 @@ export default function PublicMarketplace() {
     (t) => !(featuredOnFirstPage && featuredIds.includes(t.id))
   );
 
-  const hasActiveFilters = sort !== TutorSort.RELEVANCE;
+  // Şemadan türer: yeni bir filtre eklendiğinde bu satırı güncellemeyi
+  // unutmak, rozeti sessizce yanlış gösterirdi. Eskiden yalnız `sort`a
+  // bakıyordu ve anonim yüzeyde başka filtre de yoktu.
+  const hasActiveFilters = filtreliMi(EGITMEN_ARAMA, degerler);
 
   const seoTitle = subjects.length
     ? `${subjects.join(", ")} Eğitmenleri`
@@ -277,37 +275,54 @@ export default function PublicMarketplace() {
 
   const navBottom = searchOpen ? bigSearchRow : filterBar;
 
-  /* ── TELEFON: geri + arama hapı + filtre ikonu, altında yatay filtreler ──
+  /* ── TELEFON: geri · hap · filtre, altında yatay filtre şeridi ──
      Kullanıcı kararı (9 Eyl 2026), referans Airbnb arama ekranı. Burada
      eskiden ana sayfanın kabuğu vardı: logo, "Ders Ver", "Giriş Yap",
-     kategori şeridi, ayrı bir "Filtreler" düğmesi ve turuncu kayıt afişi.
-     Kullanıcı: *"geri kalan şeylere gerek yok."* Sonuç ekranında gereken üç
-     şey var — nereden geldiğin, ne aradığın, nasıl daraltacağın. */
+     kategori şeridi ve ayrı bir "Filtreler" düğmesi. Sonuç ekranında gereken
+     üç şey var — nereden geldiğin, ne aradığın, nasıl daraltacağın.
+
+     Görünüm `Marketplace` (oturumlu) ile ORTAK bileşenden gelir; durum
+     değil — iki sayfanın filtre modeli farklıdır. */
   const mobilAramaOzeti = [
-    yer ? yerEtiketi(yer) : district.length === 1 ? district[0] : district.length ? `${district.length} ilçe` : null,
-    sekil === TeachingMode.ONLINE ? "Uzaktan" : sekil === TeachingMode.IN_PERSON ? "Yüz yüze" : null,
+    yer
+      ? yerEtiketi(yer)
+      : district.length === 1
+        ? district[0]
+        : district.length
+          ? `${district.length} ilçe`
+          : null,
+    sekil === TeachingMode.ONLINE
+      ? "Uzaktan"
+      : sekil === TeachingMode.IN_PERSON
+        ? "Yüz yüze"
+        : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
-  /* Çipler UYDURMA DEĞİL: hepsi zaten URL'de yaşayan ve arama isteğine giden
+  /* Çipler UYDURMA DEĞİL: hepsi zaten adreste yaşayan ve arama isteğine giden
      filtrelerdir. Ders şekli TEK seçimdir — aynı çipe tekrar dokunmak filtreyi
      kaldırır; iki çip birden seçili görünseydi kullanıcıya olmayan bir
-     kombinasyon vaat edilirdi (bkz. `__guards__/sekilYerSozlesmesi.test.tsx`). */
+     kombinasyon vaat edilirdi. */
+  const setSekil = (v: DersSekli) => ayarla({ sekil: v ? [v] : [] });
   const mobilCipler: FiltreCipi[] = [
     {
       id: "uzaktan",
       etiket: "Uzaktan",
       aktif: sekil === TeachingMode.ONLINE,
-      onClick: () => setSekil(sekil === TeachingMode.ONLINE ? "" : TeachingMode.ONLINE),
+      onClick: () =>
+        setSekil(sekil === TeachingMode.ONLINE ? "" : TeachingMode.ONLINE),
     },
     {
       id: "yuzyuze",
       etiket: "Yüz yüze",
       aktif: sekil === TeachingMode.IN_PERSON,
-      onClick: () => setSekil(sekil === TeachingMode.IN_PERSON ? "" : TeachingMode.IN_PERSON),
+      onClick: () =>
+        setSekil(sekil === TeachingMode.IN_PERSON ? "" : TeachingMode.IN_PERSON),
     },
-    ...(exam ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }] : []),
+    ...(exam
+      ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }]
+      : []),
     ...subjects.map((s) => ({
       id: `subject-${s}`,
       etiket: `${s} ✕`,
@@ -318,7 +333,14 @@ export default function PublicMarketplace() {
 
   const mobilUst = mobil ? (
     <AramaMobilBaslik
-      baslik={q || (subjects.length === 1 ? subjects[0] : subjects.length ? `${subjects.length} ders` : "Eğitmen ara")}
+      baslik={
+        q ||
+        (subjects.length === 1
+          ? subjects[0]
+          : subjects.length
+            ? `${subjects.length} ders`
+            : "Eğitmen ara")
+      }
       ozet={mobilAramaOzeti || "Tüm Adana"}
       onHap={() => setSearchOpen(true)}
       onGeri={() => navigate(-1)}
@@ -351,29 +373,21 @@ export default function PublicMarketplace() {
         />
       )}
       <div className="mx-auto max-w-[1050px] space-y-4 pt-4">
-        {/* Login CTA banner — TELEFONDA ÇİZİLMEZ (kullanıcı kararı, 9 Eyl
-            2026: *"geri kalan şeylere gerek yok"*). Sonuç ekranında ilk
-            görülen şey sonuç olmalı; giriş zaten alt sekme çubuğunda tek
-            dokunuş uzakta. */}
-        <div className="hidden flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-marka to-marka-hover px-5 py-3.5 text-marka-fg md:flex">
-          <p className="text-sm font-medium">
-            Eğitmenleri keşfet. Ders talebi ve mesaj için ücretsiz hesap aç.
-          </p>
-          <div className="flex shrink-0 gap-2">
-            <Link
-              to="?modal=login"
-              className="rounded-xl bg-white/15 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/25"
-            >
-              Giriş Yap
-            </Link>
-            <Link
-              to={ROUTES.register}
-              className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-marka-metin-hover transition hover:bg-marka-soft"
-            >
-              Kayıt Ol
-            </Link>
-          </div>
-        </div>
+        {/*
+          * KAYIT BANDI SÖKÜLDÜ (kullanıcı kararı, 9 Eyl 2026 · ÜK-10).
+          *
+          * Buradaki koşulsuz turuncu bant, ziyaretçi tek bir eğitmen bile
+          * görmeden hesap istiyordu — NN/g'nin "Login Walls" başlığında
+          * ölçtüğü kusur. Üstelik yanlış vaat veriyordu: "mesaj için hesap aç"
+          * diyordu ama mesajlaşma aktif rezervasyona bağlı
+          * (`TutorProfile` · `hasActiveBooking`), yani hesap açmak tek başına
+          * mesajlaşmayı AÇMIYOR.
+          *
+          * Kapı artık eylemde: kalbe ya da "Ders Talep Et"e basıldığında
+          * pencere açılıyor ve sayfa kaybolmuyor. Yerine hiçbir şey KONMADI —
+          * navbar'daki "Giriş Yap" zaten duruyor. Nöbetçi:
+          * `__guards__/anonimBantSokumu`.
+          */}
 
         {/* Sonuçlar */}
         <div>
@@ -436,57 +450,19 @@ export default function PublicMarketplace() {
         </div>
       </div>
 
-      {/* ── Filtre Modalı ── */}
-      {showFilters && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
-          <div className="absolute inset-0" onClick={() => setShowFilters(false)} />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 duration-200 sm:zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
-              <h2 className="text-lg font-bold text-slate-900 ">Filtrele ve Sırala</h2>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-8 overflow-y-auto p-6">
-              {/* Daha fazla filtre için kayıt CTA */}
-              <div className="rounded-2xl border border-marka-line bg-marka-soft/50 p-4 ">
-                <h3 className="text-sm font-semibold text-marka-soft-fg ">Daha fazla filtre mi arıyorsunuz?</h3>
-                <p className="mt-1 text-xs text-marka-metin-hover ">
-                  Konum, cinsiyet, fiyat aralığı ve daha fazlası için ücretsiz hesap oluşturun.
-                </p>
-                <Link
-                  to="?modal=register"
-                  className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-xs font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover"
-                  onClick={() => setShowFilters(false)}
-                >
-                  Kayıt Ol
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
-              <button
-                onClick={() => setSort(TutorSort.RELEVANCE)}
-                className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
-              >
-                Temizle
-              </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
-              >
-                Sonuçları Göster
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/*
+        * Boş "Filtrele ve Sırala" penceresi SÖKÜLDÜ (ÜK-10). Gövdesinde tek
+        * bir filtre yoktu, yalnız "ücretsiz hesap oluşturun" reklam kartı
+        * duruyordu: işlevsel görünen bir düğme pazarlama gösteriyordu.
+        *
+        * Yerine oturumlu yüzeyle AYNI pencere geliyor. Teknik engel yoktu —
+        * `/tutors/price-histogram` ve `/tutors/gender-facets` uçları anonime
+        * açık, yani sunucu bu sayıları zaten bedavaya veriyordu.
+        */}
+      <EgitmenFiltreModali
+        acik={showFilters}
+        kapat={() => setShowFilters(false)}
+      />
     </PublicShell>
   );
 }

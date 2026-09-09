@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { roleHome } from "@/lib/roles";
@@ -34,9 +34,26 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const token = useAuthStore((s) => s.token);
   const { data: user, isLoading, isError } = useCurrentUser();
+  const konum = useLocation();
+
+  /*
+   * Nereye gitmek istediği TAŞINIR (ÜK-10). Eskiden `/giris`e çıplak
+   * gidiliyordu ve `Login` başarıda `roleHome()`e götürüyordu: ödemeye gitmek
+   * isteyen kullanıcı giriş yapınca panosunda buluyordu kendini, hedefi
+   * sessizce kaybolmuştu.
+   *
+   * `git` anahtarı `guvenliDonus`ta zaten tanınıyor ve dönüş adresi
+   * üretilirken temizleniyor — yani bu parametre daha önce düşünülmüş.
+   */
+  const gitAdresi = `${ROUTES.login}?git=${encodeURIComponent(
+    konum.pathname + konum.search
+  )}`;
 
   if (!token) {
-    return anonimIcerik ? <>{anonimIcerik}</> : <Navigate to={ROUTES.login} replace />;
+    // İKİSİ BİRDEN: `anonimIcerik` verilmişse çizilir (kullanıcı bir sekmeye
+    // dokunup bambaşka ekranda bulmasın), verilmemişse ÜK-10'un hedef taşıyan
+    // adresine yönlendirilir (`gitAdresi`) — çıplak `/giris` değil.
+    return anonimIcerik ? <>{anonimIcerik}</> : <Navigate to={gitAdresi} replace />;
   }
 
   if (isLoading) {
@@ -45,7 +62,7 @@ export function ProtectedRoute({
 
   // 401 interceptor zaten logout yaptı; girişe yönlendir.
   if (isError || !user) {
-    return <Navigate to={ROUTES.login} replace />;
+    return <Navigate to={gitAdresi} replace />;
   }
 
   const allowed = new Set(

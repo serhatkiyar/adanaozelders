@@ -1,33 +1,28 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ROUTES } from "@/lib/routes";
+import {
+  dersSorgusu,
+  egitmenAramaAdresi,
+} from "@/lib/aramaUrl";
 import { ROLE_IDS, TeachingMode } from "@/types";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_NAME, siteUrl, absoluteUrl } from "@/lib/seo";
-import { TutorCard } from "@/components/TutorCard";
-import { LibraryCard } from "@/components/LibraryCard";
-import { HScroll } from "@/components/HScroll";
-import { DaireBaglanti } from "@/components/ui/DaireDugme";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PublicNavbar } from "@/components/PublicNavbar";
-import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
-import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
+import { CategoryBar } from "@/components/CategoryBar";
 import { SiteFooter } from "@/components/SiteFooter";
+import { DersArama, CompactSearch } from "@/components/HeroSearch";
+import type { DersSekli } from "@/components/AramaSecicileri";
+import { FeaturedTutorRow, TutorRow } from "@/components/VitrinSeridi";
 import { MobilAltSekmeler } from "@/components/MobilAltSekmeler";
 import { MobilAramaSheet } from "@/components/MobilAramaSheet";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
-import { DersArama, KutuphaneArama, CompactSearch } from "@/components/HeroSearch";
-import type { DersSekli } from "@/components/AramaSecicileri";
-import { yeriYaz, type YerSecimi } from "@/lib/yerArama";
-import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
-import { useLibrarySearch } from "@/hooks/useLibraries";
-import type { TutorSearchParams } from "@/api/tutors";
-import type { LibrarySearchParams } from "@/api/libraries";
+import { type YerSecimi } from "@/lib/yerArama";
 
 /* ─── ana sayfa ──────────────────────────────────────────
    Airbnb mantığı:
@@ -37,14 +32,8 @@ import type { LibrarySearchParams } from "@/api/libraries";
    • Kategoriye tıklayınca yeni sayfaya GİTMEZ; içerik yerinde değişir.
    • İçerik = yatay listeler (Öne çıkan eğitmenler, Ortaokul Matematik, …). */
 
-const HERO_PLACEHOLDER: Record<CategoryKey, string> = {
-  egitmenler: "Ders, eğitmen ya da konu ara…",
-  kutuphaneler: "Kütüphane adı veya semt ara…",
-  denemeler: "TYT, AYT, deneme oturumu ara…",
-};
-
 export default function Landing() {
-  const [active, setActive] = useState<CategoryKey>("egitmenler");
+
   // Yeni arama modeli (29 Ağu): serbest metin yerine ders kategorisi + mekân.
   const [ders, setDers] = useState("");
   const [dersEtiket, setDersEtiket] = useState("");
@@ -53,8 +42,6 @@ export default function Landing() {
   const [sekil, setSekil] = useState<DersSekli>("");
   const [yer, setYer] = useState<YerSecimi | null>(null);
   // Kütüphane sekmesinin KENDİ araması: ders şekli değil, ad + yer.
-  const [kutQ, setKutQ] = useState("");
-  const [kutYer, setKutYer] = useState<YerSecimi | null>(null);
   const [scrolled, setScrolled] = useState(false);
   // Daralmışken kompakt aramaya tıklayınca geniş navbar'ı YERİNDE aç (sayfa
   // kaymaz). Tekrar kaydırınca kapanır.
@@ -101,34 +88,26 @@ export default function Landing() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [mobil]);
 
-  const kutSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const sp = new URLSearchParams();
-    if (kutQ.trim()) sp.set("q", kutQ.trim());
-    yeriYaz(sp, kutYer, kutYer ? [kutYer.ilce] : []);
-    const qs = sp.toString();
-    navigate(`${ROUTES.libraries}${qs ? `?${qs}` : ""}`);
-  };
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const sp = new URLSearchParams();
-    if (ders) sp.append("subject", ders);
-    // Ders şekli TEK seçim: seçilmemişse ("" = fark etmez) filtre yazılmaz.
-    if (sekil) sp.set("mode", sekil);
-    // Yer YALNIZ yüz yüzede yazılır. Uzaktan ders arayan birine konum
-    // dayatmak, ilçesi tasarım gereği boş olan uzaktan eğitmenleri sessizce
-    // elerdi (bkz. tutorOnboarding/sozlesme.ts — ilçe yalnız yüz yüzede
-    // zorunlu).
-    if (sekil === TeachingMode.IN_PERSON && yer) {
-      yeriYaz(sp, yer.tur === "mahalle" ? yer : null, [yer.ilce]);
-    }
-    const qs = sp.toString();
-    navigate(`${ROUTES.tutors}${qs ? `?${qs}` : ""}`);
+    /*
+     * Adres artık `lib/aramaUrl`den gelir. Eskiden burada elle kuruluyordu ve
+     * iki kusur taşıyordu: (a) yalnız SEÇİLMİŞ ders yazılıyordu, yani kutuya
+     * "matematik" yazıp listeden seçmeden Ara'ya basan kullanıcı parametresiz
+     * `/egitmenler` görüyordu; (b) "yer yalnız yüz yüzede" kuralı burada
+     * vardı ama `useNavSearch`te yoktu. İkisi de şemaya taşındı.
+     */
+    navigate(
+      egitmenAramaAdresi({
+        ...dersSorgusu(ders, dersEtiket),
+        sekil: sekil ? [sekil] : [],
+        konum: { yer: yer?.tur === "mahalle" ? yer : null, ilce: yer ? [yer.ilce] : [] },
+      })
+    );
   };
 
   const expanded = !scrolled || searchOpen;
-  const placeholder = HERO_PLACEHOLDER[active];
+  const placeholder = "Ne öğrenmek istersin?";
 
   // key ile swap'te fade-in yeniden tetiklenir; sert geçiş yerine yumuşak.
   const center = (
@@ -136,22 +115,14 @@ export default function Landing() {
       {/* Telefonda swap YOK: kompakt arama `mobilUst` yuvasında kalıcı olarak
           durur, bu yuva her zaman kategori çiplerini taşır. */}
       {expanded || mobil ? (
-        <CategoryBar active={active} onSelect={setActive} />
+        <CategoryBar active="egitmenler" />
       ) : (
         <CompactSearch
-          active={active}
+          active="egitmenler"
           placeholder={placeholder}
-          q={active === "kutuphaneler" ? kutQ : dersEtiket}
-          district={
-            active === "kutuphaneler"
-              ? kutYer
-                ? [kutYer.ilce]
-                : []
-              : sekil === TeachingMode.IN_PERSON && yer
-                ? [yer.ilce]
-                : []
-          }
-          remote={active !== "kutuphaneler" && sekil === TeachingMode.ONLINE}
+          q={dersEtiket}
+          district={sekil === TeachingMode.IN_PERSON && yer ? [yer.ilce] : []}
+          remote={sekil === TeachingMode.ONLINE}
           onOpen={() => setSearchOpen(true)}
         />
       )}
@@ -169,30 +140,21 @@ export default function Landing() {
   // serbest metin; sekme değişince çubuğun kendisi değişiyordu. Artık ikisi de
   // aynı kabuk, aynı sıralama, aynı eşit bölmeler; fark yalnız sağ bölmenin
   // seçicisinde. Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`.
-  const hap =
-    active === "kutuphaneler" ? (
-        <KutuphaneArama
-          q={kutQ}
-          setQ={setKutQ}
-          yer={kutYer}
-          setYer={setKutYer}
-          onSubmit={kutSubmit}
-        />
-      ) : (
-        <DersArama
-          ders={ders}
-          dersEtiket={dersEtiket}
-          onDersChange={(qDeger, etiket) => {
-            setDers(qDeger);
-            setDersEtiket(etiket);
-          }}
-          sekil={sekil}
-          setSekil={setSekil}
-          yer={yer}
-          setYer={setYer}
-          onSubmit={submit}
-        />
-      );
+  const hap = (
+    <DersArama
+      ders={ders}
+      dersEtiket={dersEtiket}
+      onDersChange={(qDeger, etiket) => {
+        setDers(qDeger);
+        setDersEtiket(etiket);
+      }}
+      sekil={sekil}
+      setSekil={setSekil}
+      yer={yer}
+      setYer={setYer}
+      onSubmit={submit}
+    />
+  );
 
   /* Masaüstünün ikinci navbar satırı. Telefonda BU YUVA HİÇ DOLDURULMAZ:
      aynı hapın iki kopyası mount edilseydi `htmlFor` kimlikleri belgede
@@ -204,23 +166,13 @@ export default function Landing() {
 
   const mobilUst = mobil ? (
     <CompactSearch
-      active={active}
-      // Telefonda hap sekmeye göre değişen bir metin taşımaz (kullanıcı
-      // kararı, 9 Eyl 2026): kategori zaten hemen altındaki çip şeridinde
-      // seçili, hapın işi davet etmek. Masaüstünde kompakt hap kategori
-      // ikonunu da taşıdığı için orada sekmeye özel metin kalıyor.
+      active="egitmenler"
+      // Telefonda hap sekmeye göre değişen bir metin taşımaz: kategori zaten
+      // hemen altındaki çip şeridinde seçili, hapın işi davet etmek.
       placeholder="Aramaya başlayın"
-      q={active === "kutuphaneler" ? kutQ : dersEtiket}
-      district={
-        active === "kutuphaneler"
-          ? kutYer
-            ? [kutYer.ilce]
-            : []
-          : sekil === TeachingMode.IN_PERSON && yer
-            ? [yer.ilce]
-            : []
-      }
-      remote={active !== "kutuphaneler" && sekil === TeachingMode.ONLINE}
+      q={dersEtiket}
+      district={sekil === TeachingMode.IN_PERSON && yer ? [yer.ilce] : []}
+      remote={sekil === TeachingMode.ONLINE}
       onOpen={() => setMobilAramaAcik(true)}
     />
   ) : undefined;
@@ -264,7 +216,7 @@ export default function Landing() {
       {/* Mağaza çapraz tanıtım banner'ı KALDIRILDI (kullanıcı kararı, 29 Ağu):
           "kocaman hero" özel ders sayfasında yer kaplıyordu; mağazaya geçiş
           navbar'daki Mağaza linkinden yapılır. */}
-      <CategoryContent active={active} />
+      <CategoryContent />
       <SiteFooter />
       <MobilAramaSheet
         open={mobilAramaAcik}
@@ -330,7 +282,7 @@ function Navbar({
 
 /* ─── sekmeye göre değişen içerik = yatay listeler ──────── */
 
-function CategoryContent({ active }: { active: CategoryKey }) {
+function CategoryContent() {
   return (
     <main className="space-y-8 pb-8 pt-4 md:space-y-12 md:pb-24 md:pt-8">
       {/* ── EĞİTMENLER: TEK kuşak ──────────────────────────────────────────
@@ -354,39 +306,13 @@ function CategoryContent({ active }: { active: CategoryKey }) {
           yürürlükte bir paket varsa çizilir. Ana sayfa filtresiz olduğu için
           burada eşleşme daraltması yoktur, arama sayfasındaki blok ise
           aramanın filtrelerine tabidir. */}
-      {active === "egitmenler" && <FeaturedTutorRow />}
-
-      {active === "egitmenler" && (
-        <TutorRow heading="Eğitmenler" params={{ limit: 12, offset: 0 }} />
-      )}
-
-      {KUTUPHANELER_ACIK && active === "kutuphaneler" && (
-        <>
-          <LibraryRow
-            heading="Çukurova Kütüphaneleri"
-            params={{ limit: 20, offset: 0, district: ["Çukurova"] }}
-          />
-          <LibraryRow
-            heading="Seyhan Kütüphaneleri"
-            params={{ limit: 20, offset: 0, district: ["Seyhan"] }}
-          />
-          <LibraryRow
-            heading="Yüreğir Kütüphaneleri"
-            params={{ limit: 20, offset: 0, district: ["Yüreğir"] }}
-          />
-          <LibraryRow
-            heading="Sarıçam Kütüphaneleri"
-            params={{ limit: 20, offset: 0, district: ["Sarıçam"] }}
-          />
-        </>
-      )}
-
-      {DENEMELER_ACIK && active === "denemeler" && (
-        <LibraryRow
-          heading="Deneme oturumu olan kütüphaneler"
-          params={{ limit: 20, offset: 0 }}
-        />
-      )}
+      {/* TEK VİTRİN (9 Eyl 2026). Ana sayfa artık kategori sekmesine göre
+          içerik değiştirmiyor: sekmeler gerçek gezinme oldu, kütüphane
+          şeritleri `/kutuphaneler` sayfasına taşındı. Bayrak kontrolleri de
+          onlarla birlikte gitti — `/kutuphaneler` rotası zaten bayrakla
+          kapılı, ikinci kontrol ölü koddu. */}
+      <FeaturedTutorRow />
+      <TutorRow heading="Eğitmenler" params={{ limit: 12, offset: 0 }} />
     </main>
   );
 }
@@ -408,192 +334,3 @@ function CategoryContent({ active }: { active: CategoryKey }) {
  * kalır; sabit piksel kullanılsaydı ya dar ekranda taşar ya geniş ekranda
  * boşluk bırakırdı.
  */
-/**
- * Telefonda ölçü Airbnb'nin kendi ölçüsüdür (referans ekrandan ölçüldü: 24px
- * kenar boşluğu, ~165px kart, 12px boşluk, ~12px "peek"). Sabit `190px`
- * kalsaydı 390px'te ikinci kart 34px dışarıda kalıyor ve fiyat satırı yarıda
- * kesiliyordu; oran ise 360-414 bandının tamamında iki kart + peek verir.
- */
-const VITRIN_KART =
-  "shrink-0 snap-start w-[calc((100%-12px)/2)] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
-
-function RowHeader({ heading, href }: { heading: string; href: string }) {
-  // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
-  // yanında gri dairesel ok butonu — tamamına o götürür.
-  //
-  // 7 Eyl 2026: bu blok artık `HScroll`un `baslik` yuvasına giriyor; kaydırma
-  // okları aynı satırın SAĞ ucunda duruyor. Alt boşluk (`mb-4`) oraya taşındı.
-  // Ok düğmesi de elle yazılmayı bıraktı: `ui/DaireDugme` ile kaydırma
-  // oklarıyla AYNI kaynaktan geliyor (ölçü h-7 -> h-8 oldu, ikisi eşitlendi).
-  return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <h2 className="truncate text-xl font-bold tracking-tight text-slate-900 ">
-        {heading}
-      </h2>
-      <DaireBaglanti to={href} yon="ileri" aria-label={`${heading}, tümünü gör`} />
-    </div>
-  );
-}
-
-function RowSkeleton() {
-  return (
-    <div className="flex gap-3 overflow-hidden md:gap-5">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div
-          key={i}
-          // Genişlik gerçek kartla AYNI kaynaktan: 175px sabitken yükleme
-          // bitince satır 15px yana kayıyordu (CLS).
-          className={`${VITRIN_KART} h-60 animate-pulse rounded-2xl bg-slate-100`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function FeaturedTutorRow() {
-  const { data } = useFeaturedTutors({});
-  const tutors = data ?? [];
-  if (tutors.length === 0) return null;
-
-  return (
-    <section aria-label="Reklam" className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
-      <HScroll
-        className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
-        etiket="Reklam"
-        baslik={
-          <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
-            <h2 className="text-sm font-semibold tracking-wide text-slate-500">
-              Reklam
-            </h2>
-            <Link
-              to={ROUTES.rankingCriteria}
-              className="shrink-0 text-xs text-slate-400 underline-offset-2 transition hover:text-slate-600 hover:underline"
-            >
-              Sıralama nasıl belirleniyor?
-            </Link>
-          </div>
-        }
-      >
-        {tutors.map((tutor) => (
-          <div key={tutor.id} className={VITRIN_KART}>
-            <TutorCard tutor={tutor} featured />
-          </div>
-        ))}
-      </HScroll>
-      <div className="mt-8 h-px w-full bg-slate-200" />
-    </section>
-  );
-}
-
-function TutorRow({
-  heading,
-  params,
-}: {
-  heading: string;
-  params: TutorSearchParams;
-}) {
-  const { data, isLoading } = useTutorSearch(params);
-
-  // Boş satırı hiç gösterme (örn. o branşta eğitmen yoksa).
-  if (!isLoading && (!data || data.length === 0)) return null;
-
-  const sp = new URLSearchParams();
-  params.subject?.forEach((s) => sp.append("subject", s));
-  if (params.exam) sp.set("exam", params.exam);
-  const href = `${ROUTES.tutors}${sp.toString() ? `?${sp}` : ""}`;
-
-  return (
-    <section className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
-      {isLoading ? (
-        <>
-          <div className="mb-4">
-            <RowHeader heading={heading} href={href} />
-          </div>
-          <RowSkeleton />
-        </>
-      ) : (
-        <HScroll
-          className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
-          etiket={heading}
-          baslik={<RowHeader heading={heading} href={href} />}
-        >
-          {data!.map((tutor) => (
-            <div key={tutor.id} className={VITRIN_KART}>
-              <TutorCard tutor={tutor} />
-            </div>
-          ))}
-        </HScroll>
-      )}
-    </section>
-  );
-}
-
-function LibraryRow({
-  heading,
-  params,
-}: {
-  heading: string;
-  params: LibrarySearchParams;
-}) {
-  const { data, isLoading } = useLibrarySearch(params);
-
-  if (!isLoading && (!data || data.length === 0)) return null;
-
-  const sp = new URLSearchParams();
-  params.district?.forEach((d) => sp.append("district", d));
-  const href = `${ROUTES.libraries}${sp.toString() ? `?${sp}` : ""}`;
-
-  return (
-    <section className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
-      {isLoading ? (
-        <>
-          <div className="mb-4">
-            <RowHeader heading={heading} href={href} />
-          </div>
-          <RowSkeleton />
-        </>
-      ) : (
-        <HScroll
-          className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
-          etiket={heading}
-          baslik={<RowHeader heading={heading} href={href} />}
-        >
-          {data!.map((lib) => (
-            <div key={lib.id} className={VITRIN_KART}>
-              <LibraryCard library={lib} />
-            </div>
-          ))}
-        </HScroll>
-      )}
-    </section>
-  );
-}
-
-/* ─── announcement banner (başka yerden de kullanılabilir) ── */
-
-export function AnnouncementBanner() {
-  const [visible, setVisible] = useState(true);
-  if (!visible) return null;
-  return (
-    <div className="relative bg-marka px-4 py-2.5 text-center text-xs font-semibold text-marka-fg sm:text-sm">
-      <span>
-        🎓 YKS 2025 hazırlığına başla - uzman eğitmenlerle ilk dersin{" "}
-        <Link to={ROUTES.tutors} className="underline underline-offset-2 hover:text-marka-fg">
-          hemen randevu al →
-        </Link>
-      </span>
-      <button
-        onClick={() => setVisible(false)}
-        aria-label="Kapat"
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/70 transition hover:text-white"
-      >
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-  );
-}
-
-/* Footer artık ortak `components/SiteFooter.tsx` — mağaza ve PublicShell ile
-   aynı bileşen (linkler + iyzico ödeme rozeti tek yerden yönetilir). */
