@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -11,14 +12,31 @@ interface ProtectedRouteProps {
   // Birden çok role izin (ör. saha ekranı: ADMIN + COURIER). allowedRoleId ile
   // birlikte verilirse ikisi de kabul kümesine girer (geriye uyumlu).
   allowedRoleIds?: number[];
+  /**
+   * TOKENSİZ ziyaretçiye `/giris` yerine ÇİZİLECEK içerik.
+   *
+   * Varsayılan davranış (giriş ekranına yönlendir) çoğu panel yüzeyi için
+   * doğrudur: orada görülecek bir şey yoktur. Ama alt sekme çubuğundan
+   * gelinen `/favoriler` gibi yüzeylerde kullanıcı bir sekmeye dokunup
+   * bambaşka bir ekranda buluyordu kendini. Böyle rotalar kendi "oturum aç"
+   * davetini çizer.
+   *
+   * ROL KAPISINI DEĞİŞTİRMEZ: token varsa akış aynen devam eder, yani
+   * yetkisiz rol yine kendi ana sayfasına yönlendirilir.
+   */
+  anonimIcerik?: ReactNode;
 }
 
-export function ProtectedRoute({ allowedRoleId, allowedRoleIds }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  allowedRoleId,
+  allowedRoleIds,
+  anonimIcerik,
+}: ProtectedRouteProps) {
   const token = useAuthStore((s) => s.token);
   const { data: user, isLoading, isError } = useCurrentUser();
 
   if (!token) {
-    return <Navigate to={ROUTES.login} replace />;
+    return anonimIcerik ? <>{anonimIcerik}</> : <Navigate to={ROUTES.login} replace />;
   }
 
   if (isLoading) {

@@ -21,12 +21,23 @@ export function PublicShell({
   children,
   center,
   bottom,
+  mobilSade = false,
 }: {
   children: ReactNode;
   /** Navbar ortasına yerleşen içerik (ör. arama pill'i). */
   center?: ReactNode;
   /** Navbar'ın alt satırına yerleşen içerik (ör. filtre çubuğu). */
   bottom?: ReactNode;
+  /**
+   * Telefonda logo ve giriş/kayıt düğmelerini üst bardan kaldırır
+   * (bkz. `PublicNavbar`daki aynı adlı prop).
+   *
+   * Varsayılan `false` BİLİNÇLİDİR: bu kabuğu kullanan sayfaların çoğunda üst
+   * barda arama yoktur ve bayrak açılsaydı telefonda bomboş bir şerit
+   * kalırdı. Yalnız kendi başına ayakta duran, gezinmesini alt sekme
+   * çubuğuna bırakan yüzeyler açar.
+   */
+  mobilSade?: boolean;
 }) {
   /* Yapışkan üst boşluk — `DashboardShell` ile AYNI sözleşme. Yapışkan yan
    * kartlar (ör. eğitmen ilanı) üst boşluklarını sabit bir sayı yerine bu
@@ -56,7 +67,7 @@ export function PublicShell({
       style={{ "--yapiskan-ust": `${yapiskanUst}px` } as CSSProperties}
     >
       <div ref={yiginRef} className="sticky top-0 z-40">
-        <PublicNavbar center={center} bottom={bottom} expanded />
+        <PublicNavbar center={center} bottom={bottom} mobilSade={mobilSade} expanded />
       </div>
       <main className="flex-1 p-4 sm:p-6">{children}</main>
       <SiteFooter />

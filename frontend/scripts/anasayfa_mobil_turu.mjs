@@ -146,7 +146,18 @@ try {
       if (await ev(() => document.readyState === "complete")) break;
       await new Promise((r) => setTimeout(r, 250));
     }
-    await new Promise((r) => setTimeout(r, 2600));
+    await new Promise((r) => setTimeout(r, 1200));
+    // Sabit bekleme YETMIYOR: veri yavas gelirse "yalanci yesil nobetcisi"
+    // (kart var mi) kendisi yanlis alarm verir - olculdu, 768px'te bir tur
+    // boyle dustu. Kartlari BEKLE, sonra olc; sure dolarsa gercekten yok
+    // demektir ve kapi hakli olarak kirmizi duser.
+    for (let i = 0; i < 32; i++) {
+      const hazir = await ev(
+        () => document.querySelectorAll("main a[href^='/egitmenler/']").length > 0
+      );
+      if (hazir) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
 
     if (NEGATIF) {
       // Mutasyon: kapilarin gercekten olctugunu kanitlar.

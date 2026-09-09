@@ -205,7 +205,11 @@ export default function Landing() {
   const mobilUst = mobil ? (
     <CompactSearch
       active={active}
-      placeholder={placeholder}
+      // Telefonda hap sekmeye göre değişen bir metin taşımaz (kullanıcı
+      // kararı, 9 Eyl 2026): kategori zaten hemen altındaki çip şeridinde
+      // seçili, hapın işi davet etmek. Masaüstünde kompakt hap kategori
+      // ikonunu da taşıdığı için orada sekmeye özel metin kalıyor.
+      placeholder="Aramaya başlayın"
       q={active === "kutuphaneler" ? kutQ : dersEtiket}
       district={
         active === "kutuphaneler"

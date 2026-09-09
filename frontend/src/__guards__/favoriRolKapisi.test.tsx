@@ -36,7 +36,7 @@ import { dirname, join, resolve } from "node:path";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { BookmarkButton } from "@/components/BookmarkButton";
@@ -44,6 +44,8 @@ import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { OPERATOR_NAV, TUTOR_NAV, UYE_NAV } from "@/lib/nav";
 import { ALISVERIS_ROLLERI, alisverisYapabilir } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
+import { ProtectedRoute } from "@/routes/ProtectedRoute";
+import { useAuthStore } from "@/store/authStore";
 import { ROLE_IDS } from "@/types";
 
 const KOK = resolve(
@@ -215,5 +217,76 @@ describe("ÜK-6 · ölü uç yok — favorileyen listesini de görebilir", () =>
     const kapi = oncesi.slice(oncesi.lastIndexOf("<ProtectedRoute"));
     expect(kapi).toContain("ALISVERIS_ROLLERI");
     expect(kapi).not.toContain("allowedRoleId={ROLE_IDS.CLIENT}");
+  });
+
+  it("anonim ziyaretçi `/giris`e ATILMAZ, favoriler sayfasının kendisini görür", () => {
+    // Kullanıcı kararı, 9 Eyl 2026. Alt sekme çubuğundaki "Favoriler" anonim
+    // kullanıcıya da görünüyor; dokunduğunda giriş ekranına fırlatılmak
+    // dokunduğu sekmeyi ortadan kaldırıyordu. Referans (Airbnb) bunu sayfanın
+    // KENDİSİNDE çözer.
+    //
+    // Kaynak sözleşmesi: rotanın rol kapısı `anonimIcerik` taşımalı. Bu satır
+    // düşerse `ProtectedRoute` varsayılana döner ve sessizce eski yönlendirme
+    // geri gelir — ekranda hiçbir hata görünmez, yalnız akış bozulur.
+    const kaynak = readFileSync(join(KOK, "src", "App.tsx"), "utf8");
+    const i = kaynak.indexOf("PATHS.favorites");
+    const kapi = kaynak.slice(0, i).slice(kaynak.slice(0, i).lastIndexOf("<ProtectedRoute"));
+    expect(kapi, "favoriler rotası anonim içerik taşımıyor").toContain("anonimIcerik");
+  });
+});
+
+describe("ProtectedRoute · anonim içerik", () => {
+  /* `anonimIcerik` ROL KAPISINI GEVŞETMEZ — burada çıpalanan tam olarak bu.
+     Prop'un tek işi TOKENSİZ durumda yönlendirme yerine içerik çizmek; token
+     varken akış değişmemeli, yani yetkisiz rol yine yönlendirilmeli. */
+
+  function kabuk(roleId: number | null) {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    if (roleId != null) {
+      qc.setQueryData(["me"], { id: 1, email: "a@b.c", role_id: roleId });
+      useAuthStore.setState({ token: "t" });
+    } else {
+      useAuthStore.setState({ token: null, user: null });
+    }
+    return render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={["/favoriler"]}>
+          <Routes>
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedRoleIds={[...ALISVERIS_ROLLERI]}
+                  anonimIcerik={<p>ANONIM DAVET</p>}
+                />
+              }
+            >
+              <Route path="/favoriler" element={<p>GERCEK LISTE</p>} />
+            </Route>
+            <Route path="*" element={<p>BASKA SAYFA</p>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  it("tokensiz: davet çizilir, yönlendirme YOK", () => {
+    kabuk(null);
+    expect(screen.getByText("ANONIM DAVET")).toBeTruthy();
+    expect(screen.queryByText("BASKA SAYFA")).toBeNull();
+  });
+
+  it("alışveriş rolü: gerçek liste çizilir (davet DEĞİL)", () => {
+    kabuk(ROLE_IDS.TUTOR);
+    expect(screen.getByText("GERCEK LISTE")).toBeTruthy();
+    expect(screen.queryByText("ANONIM DAVET")).toBeNull();
+  });
+
+  it("yetkisiz rol HÂLÂ yönlendirilir — davet onu içeri almaz", () => {
+    // Bu düğüm olmasaydı `anonimIcerik` sessizce bir yetki deliği olabilirdi.
+    kabuk(ROLE_IDS.LIBRARY_OPERATOR);
+    expect(screen.queryByText("GERCEK LISTE")).toBeNull();
+    expect(screen.queryByText("ANONIM DAVET")).toBeNull();
   });
 });

@@ -142,6 +142,7 @@ const AdminTutorApplicationsPage = lazy(
 );
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
+const FavorilerGirisDaveti = lazy(() => import("@/pages/FavorilerGirisDaveti"));
 const UyeProfili = lazy(() => import("@/pages/UyeProfili"));
 const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
@@ -547,7 +548,14 @@ function App() {
           {/* ── Favoriler: öğrenci + eğitmen (ÜK-6) ──
               Eğitmen de eğitmen/kütüphane favoriler; sunucu tarafında gölge
               `Client`e çevrilir (docs/urun-kararlari.md). */}
-          <Route element={<ProtectedRoute allowedRoleIds={[...ALISVERIS_ROLLERI]} />}>
+          <Route
+            element={
+              <ProtectedRoute
+                allowedRoleIds={[...ALISVERIS_ROLLERI]}
+                anonimIcerik={<FavorilerGirisDaveti />}
+              />
+            }
+          >
             <Route path={PATHS.favorites} element={<Favorites />} />
           </Route>
 
