@@ -5,6 +5,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { MobilAltSekmeler } from "@/components/MobilAltSekmeler";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { SiteFooter } from "@/components/SiteFooter";
 
@@ -59,6 +60,10 @@ export function PublicShell({
       </div>
       <main className="flex-1 p-4 sm:p-6">{children}</main>
       <SiteFooter />
+      {/* Alt sekme çubuğu TÜM mobil sayfalarda durur (kullanıcı kararı,
+          9 Eyl 2026). Sayfaların tasarımına dokunmaz; kendi spacer'ını
+          çizdiği için içerik çubuğun altında kalmaz. */}
+      <MobilAltSekmeler />
     </div>
   );
 }

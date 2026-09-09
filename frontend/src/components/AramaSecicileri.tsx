@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 import { TeachingMode } from "@/types";
@@ -116,7 +116,7 @@ function Satir({
       type="button"
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
+      className="flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
     >
       <span className="shrink-0 text-slate-400">{ikon}</span>
       <span className="min-w-0 flex-1">
@@ -152,9 +152,38 @@ function useSecici(hizaRef?: React.RefObject<HTMLElement>) {
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLInputElement>(null);
 
-  const ac = () => {
+  const olc = useCallback(() => {
     const r = (hizaRef?.current ?? triggerRef.current)?.getBoundingClientRect();
     if (r) setPos({ top: r.bottom + 8, left: r.left, width: r.width });
+  }, [hizaRef]);
+
+  /**
+   * Konum YALNIZ açılışta ölçülüyordu ve bu telefonda gözle görülür bir
+   * kusurdu: girdiye dokununca yumuşak klavye açılır, görsel viewport küçülür
+   * ve sayfa kayar — panel ise eski koordinatında, tetikleyicisinden kopmuş
+   * biçimde havada asılı kalırdı. `fixed` olduğu için sayfa kaydırması da onu
+   * taşımaz. Açıkken yeniden ölçmek bunun tek çözümü.
+   *
+   * `visualViewport` masaüstünde de vardır ama orada olay üretmez; dinleyici
+   * yalnız klavye/zoom durumunda çalışır.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    window.addEventListener("scroll", olc, { passive: true, capture: true });
+    window.addEventListener("resize", olc);
+    vv?.addEventListener("resize", olc);
+    vv?.addEventListener("scroll", olc);
+    return () => {
+      window.removeEventListener("scroll", olc, { capture: true });
+      window.removeEventListener("resize", olc);
+      vv?.removeEventListener("resize", olc);
+      vv?.removeEventListener("scroll", olc);
+    };
+  }, [open, olc]);
+
+  const ac = () => {
+    olc();
     setOpen(true);
   };
 

@@ -9,6 +9,7 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PanelSekmeleri } from "@/components/PanelSekmeleri";
+import { MobilAltSekmeler } from "@/components/MobilAltSekmeler";
 import { useAuthStore } from "@/store/authStore";
 import { resendEmailVerification } from "@/api/auth";
 import { toast } from "@/store/toastStore";
@@ -233,6 +234,9 @@ export function DashboardShell({
           children
         )}
       </main>
+      {/* Yalnız CLIENT ve TUTOR'da çizilir; panel rolleri (ADMIN, operatör,
+          kurye) bileşenin kendi içinde elenir — bkz. tasarım dili §4.3. */}
+      <MobilAltSekmeler />
     </div>
   );
 }

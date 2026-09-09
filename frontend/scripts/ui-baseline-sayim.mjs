@@ -167,6 +167,13 @@ export const OLCUM_TABANI = [
   "src/components/LibraryMediaManager.tsx",
   "src/components/LibraryPayoutForm.tsx",
   "src/components/MapPicker.tsx",
+  // 9 Eyl 2026 · mobil alt sekme çubuğu. `DashboardShell`ten import edildiği
+  // için ölçüm ağacına GİRER — nöbetçi bunu kendisi yakaladı ve dosya ancak
+  // buraya yazıldıktan sonra yeşile döndü. Ham düğme: 1 (anonim kullanıcının
+  // "Giriş" sekmesi; bir rotaya gitmediği için `Link` olamaz), adsız kontrol
+  // yok (düğmenin görünür metni "Giriş"), etiketsiz overlay yok (hesap
+  // sayfası ortak `ui/Modal`ı kullanır).
+  "src/components/MobilAltSekmeler.tsx",
   "src/components/NavbarWidget.tsx",
   "src/components/NotificationsBell.tsx",
   // 8 Eyl 2026 · panel şeridi: eğitmenin kalıcı sekme satırı (bkz.

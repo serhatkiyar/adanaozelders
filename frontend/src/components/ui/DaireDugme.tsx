@@ -37,7 +37,7 @@ const YOL: Record<DaireYon, string> = {
 
 /** Ölçü, renk ve hover TEK yerde. Çağrı yerleri bu dizeyi kopyalamaz. */
 const TEMEL =
-  "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-full transition";
+  "inline-flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-full transition md:h-7 md:w-7";
 const ETKIN = "bg-slate-100 text-slate-700 hover:bg-slate-200";
 const PASIF = "bg-slate-50 text-slate-300 cursor-default";
 

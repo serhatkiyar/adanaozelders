@@ -73,7 +73,10 @@ const SOSYAL_HESAPLAR: { ad: string; url: string; ikon: React.ReactNode }[] = [
 
 export function SiteFooter() {
 
-  const linkCls = "transition hover:text-slate-900 ";
+  // Telefonda `py-1.5` + `min-h-[36px]`: bu linkler 20px yükseklikte ve 10px
+  // aralıkla duruyordu, parmakla yanlış satıra basmak kolaydı. Masaüstünde
+  // ölçü değişmez.
+  const linkCls = "min-h-[44px] py-2.5 transition hover:text-slate-900 md:min-h-0 md:py-0 ";
   const baslikCls = "text-sm font-semibold text-slate-900";
 
   // 29 Ağu (3. tur, kullanıcı kararı): footer'da SEKİZ sözleşme DEĞİL,
@@ -110,7 +113,7 @@ export function SiteFooter() {
       >
         Başa dön
       </button>
-      <div className="mx-auto max-w-[1216px] px-6 py-12">
+      <div className="mx-auto max-w-[1216px] px-6 py-8 md:py-12">
         <nav
           aria-label="Site bağlantıları"
           className="grid grid-cols-2 gap-x-10 gap-y-8 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14"
@@ -171,7 +174,7 @@ export function SiteFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={h.ad}
-                  className="text-slate-400 transition hover:text-slate-700"
+                  className="flex h-11 w-11 items-center justify-center text-slate-400 transition hover:text-slate-700 md:h-auto md:w-auto"
                 >
                   {h.ikon}
                 </a>
@@ -182,7 +185,11 @@ export function SiteFooter() {
             <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
             <p className="flex flex-wrap items-center gap-x-5 gap-y-1">
               {yasalBelgeler.map((doc) => (
-                <Link key={doc.id} to={doc.path} className="transition hover:text-slate-600">
+                <Link
+                  key={doc.id}
+                  to={doc.path}
+                  className="inline-flex min-h-[44px] items-center py-2.5 transition hover:text-slate-600 md:min-h-0 md:py-0"
+                >
                   {doc.kisaAd}
                 </Link>
               ))}

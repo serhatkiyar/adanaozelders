@@ -307,6 +307,7 @@ const KAPI_KAPSAMI = [
   "src/components/LibraryMediaManager.tsx",
   "src/components/LibraryPayoutForm.tsx",
   "src/components/MapPicker.tsx",
+  "src/components/MobilAltSekmeler.tsx",
   "src/components/NavbarWidget.tsx",
   "src/components/NotificationsBell.tsx",
   "src/components/PersonalizeModal.tsx",
@@ -441,6 +442,11 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/HScroll.tsx": "kosullu",
   "src/components/LibraryBookmarkButton.tsx": "sunum",
   "src/components/LibraryMediaManager.tsx": "kosullu",
+  // Alt sekme çubuğu yalnız `NavLink`/`Link` basar; hesap penceresi de
+  // bağlantılardan oluşur ve durumu URL'de yaşar (`?modal=hesap`). Form
+  // kontrolü yok — "adsız kontrol 0" burada totoloji DEĞİL, sözleşmedir:
+  // çubuğa bir gün girdi eklenirse bu kayıt yanlışlaşır ve kapı bağırır.
+  "src/components/MobilAltSekmeler.tsx": "kabuk",
   "src/components/NavbarWidget.tsx": "kabuk",
   "src/components/NotificationsBell.tsx": "sunum",
   "src/components/PersonalizeModal.tsx": "kosullu",

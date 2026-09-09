@@ -62,18 +62,22 @@ export function CategoryBar({
           İç sarmalayıcının mx-auto'su dar içerikte ortalar, geniş içerikte
           soldan kaydırmaya izin verir. */}
       <div
-        className="flex items-end overflow-x-auto px-4"
+        className="kategori-serit flex items-end gap-2 overflow-x-auto px-4 scroll-px-4 snap-x md:gap-6 lg:gap-8"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        <div className="mx-auto flex items-end gap-6 sm:gap-8">
         {CATEGORIES.filter((c) => !c.gizli).map((c) => {
           const isActive = active === c.key;
           // Airbnb düzeni (29 Ağu): ikon ETİKETİN YANINDA; yazı yarı-kalın ve
           // koyu gri, hover/aktifte tam siyah.
-          const cls = `group flex shrink-0 flex-row items-center gap-2 border-b-2 pb-2 pt-0 transition-colors duration-200 ${
+          // Telefonda Airbnb ÇİPİ (yuvarlak, kenarlıklı, hafif gölge), `md:`
+          // üstünde bugünkü alt-çizgili sekme. Aktif çip marka rengiyle
+          // DOLDURULMAZ: `__guards__/markaAksani.test.ts` aksanı aksiyona
+          // ayırır ve `text-marka`yı yasaklar; burada seçim durumu, aksiyon
+          // değil.
+          const cls = `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-full border px-3.5 py-2.5 shadow-sm transition-colors duration-200 md:rounded-none md:border-0 md:border-b-2 md:px-0 md:py-0 md:pb-2 md:shadow-none ${
             isActive
-              ? "border-slate-900 "
-              : "border-transparent hover:border-slate-200 "
+              ? "border-slate-900 bg-slate-900 md:bg-transparent "
+              : "border-slate-200 bg-white hover:border-slate-300 md:border-transparent md:bg-transparent md:hover:border-slate-200 "
           }`;
           const inner = (
             <>
@@ -87,14 +91,14 @@ export function CategoryBar({
                 width={40}
                 height={40}
                 decoding="async"
-                className={`h-10 w-10 object-contain transition-all duration-200 group-hover:scale-105 ${
+                className={`h-6 w-6 object-contain transition-all duration-200 group-hover:scale-105 md:h-10 md:w-10 ${
                   isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
                 }`}
               />
               <span
-                className={`whitespace-nowrap text-[15px] font-semibold transition-colors duration-200 ${
+                className={`whitespace-nowrap text-sm font-semibold transition-colors duration-200 md:text-[15px] ${
                   isActive
-                    ? "text-slate-900 "
+                    ? "text-white md:text-slate-900 "
                     : "text-slate-600 group-hover:text-slate-900 "
                 }`}
               >
@@ -139,8 +143,8 @@ export function CategoryBar({
             </Link>
           );
         })}
-        </div>
       </div>
+      <style>{`.kategori-serit::-webkit-scrollbar { display: none; }`}</style>
     </div>
   );
 }

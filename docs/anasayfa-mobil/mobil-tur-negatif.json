@@ -1,0 +1,419 @@
+{
+  "sonuclar": [
+    {
+      "genislik": 360,
+      "mobilBant": true,
+      "govde": 360,
+      "tasma": 540,
+      "suclular": [
+        {
+          "etiket": "section",
+          "sinif": "mx-auto w-full max-w-[1216px] px-4 md:px-6",
+          "genislik": 900
+        },
+        {
+          "etiket": "div",
+          "sinif": "w-full",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "mb-4 flex items-center justify-between gap-4",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-3 pb-2 md:snap-non",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        }
+      ],
+      "cakismalar": [
+        {
+          "a": "Adana Özel Ders ana sayfa",
+          "b": "Ders Ver",
+          "px": 57
+        },
+        {
+          "a": "IMG",
+          "b": "Ders Ver",
+          "px": 57
+        }
+      ],
+      "kucukHedefSayi": 9,
+      "kucukHedefler": [
+        {
+          "ad": "Adana Özel Ders ana sayfa",
+          "w": 229,
+          "h": 32
+        },
+        {
+          "ad": "İletişim",
+          "w": 136,
+          "h": 20
+        },
+        {
+          "ad": "Sıkça Sorulan Sorular",
+          "w": 136,
+          "h": 40
+        },
+        {
+          "ad": "Nasıl iade edebilirim",
+          "w": 136,
+          "h": 20
+        },
+        {
+          "ad": "Biz Kimiz",
+          "w": 136,
+          "h": 20
+        },
+        {
+          "ad": "Blog",
+          "w": 136,
+          "h": 20
+        },
+        {
+          "ad": "Gizlilik",
+          "w": 37,
+          "h": 16
+        },
+        {
+          "ad": "Şartlar",
+          "w": 37,
+          "h": 16
+        }
+      ],
+      "ustBar": 217,
+      "ustBarTavani": 140,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": -873,
+      "kartVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "genislik": 390,
+      "mobilBant": true,
+      "govde": 390,
+      "tasma": 510,
+      "suclular": [
+        {
+          "etiket": "section",
+          "sinif": "mx-auto w-full max-w-[1216px] px-4 md:px-6",
+          "genislik": 900
+        },
+        {
+          "etiket": "div",
+          "sinif": "w-full",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "mb-4 flex items-center justify-between gap-4",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-3 pb-2 md:snap-non",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        }
+      ],
+      "cakismalar": [
+        {
+          "a": "Adana Özel Ders ana sayfa",
+          "b": "Ders Ver",
+          "px": 42
+        },
+        {
+          "a": "IMG",
+          "b": "Ders Ver",
+          "px": 42
+        }
+      ],
+      "kucukHedefSayi": 9,
+      "kucukHedefler": [
+        {
+          "ad": "Adana Özel Ders ana sayfa",
+          "w": 229,
+          "h": 32
+        },
+        {
+          "ad": "İletişim",
+          "w": 151,
+          "h": 20
+        },
+        {
+          "ad": "Sıkça Sorulan Sorular",
+          "w": 151,
+          "h": 20
+        },
+        {
+          "ad": "Nasıl iade edebilirim",
+          "w": 151,
+          "h": 20
+        },
+        {
+          "ad": "Biz Kimiz",
+          "w": 151,
+          "h": 20
+        },
+        {
+          "ad": "Blog",
+          "w": 151,
+          "h": 20
+        },
+        {
+          "ad": "Gizlilik",
+          "w": 37,
+          "h": 16
+        },
+        {
+          "ad": "Şartlar",
+          "w": 37,
+          "h": 16
+        }
+      ],
+      "ustBar": 217,
+      "ustBarTavani": 140,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": -731,
+      "kartVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "genislik": 414,
+      "mobilBant": true,
+      "govde": 414,
+      "tasma": 486,
+      "suclular": [
+        {
+          "etiket": "section",
+          "sinif": "mx-auto w-full max-w-[1216px] px-4 md:px-6",
+          "genislik": 900
+        },
+        {
+          "etiket": "div",
+          "sinif": "w-full",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "mb-4 flex items-center justify-between gap-4",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-3 pb-2 md:snap-non",
+          "genislik": 868
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        }
+      ],
+      "cakismalar": [
+        {
+          "a": "Adana Özel Ders ana sayfa",
+          "b": "Ders Ver",
+          "px": 22
+        },
+        {
+          "a": "IMG",
+          "b": "Ders Ver",
+          "px": 22
+        }
+      ],
+      "kucukHedefSayi": 11,
+      "kucukHedefler": [
+        {
+          "ad": "Adana Özel Ders ana sayfa",
+          "w": 229,
+          "h": 32
+        },
+        {
+          "ad": "Ders Ver",
+          "w": 82,
+          "h": 40
+        },
+        {
+          "ad": "Giriş Yap",
+          "w": 84,
+          "h": 40
+        },
+        {
+          "ad": "İletişim",
+          "w": 163,
+          "h": 20
+        },
+        {
+          "ad": "Sıkça Sorulan Sorular",
+          "w": 163,
+          "h": 20
+        },
+        {
+          "ad": "Nasıl iade edebilirim",
+          "w": 163,
+          "h": 20
+        },
+        {
+          "ad": "Biz Kimiz",
+          "w": 163,
+          "h": 20
+        },
+        {
+          "ad": "Blog",
+          "w": 163,
+          "h": 20
+        }
+      ],
+      "ustBar": 197,
+      "ustBarTavani": 140,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": -638,
+      "kartVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "genislik": 768,
+      "mobilBant": false,
+      "govde": 768,
+      "tasma": 132,
+      "suclular": [
+        {
+          "etiket": "section",
+          "sinif": "mx-auto w-full max-w-[1216px] px-4 md:px-6",
+          "genislik": 900
+        },
+        {
+          "etiket": "div",
+          "sinif": "w-full",
+          "genislik": 852
+        },
+        {
+          "etiket": "div",
+          "sinif": "mb-4 flex items-center justify-between gap-4",
+          "genislik": 852
+        },
+        {
+          "etiket": "div",
+          "sinif": "hidden shrink-0 items-center gap-2 md:flex",
+          "genislik": 64
+        },
+        {
+          "etiket": "button",
+          "sinif": "inline-flex h-11 w-11 shrink-0 select-none items-center justify-center rounded-f",
+          "genislik": 28
+        },
+        {
+          "etiket": "svg",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 13
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 26,
+      "kucukHedefler": [
+        {
+          "ad": "Adana Özel Ders ana sayfa",
+          "w": 32,
+          "h": 32
+        },
+        {
+          "ad": "INPUT",
+          "w": 279,
+          "h": 20
+        },
+        {
+          "ad": "INPUT",
+          "w": 279,
+          "h": 20
+        },
+        {
+          "ad": "Eğitmenler, tümünü gör",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Eğitmenler: sola kaydır",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Eğitmenler: sağa kaydır",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Favorilere ekle",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Favorilere ekle",
+          "w": 28,
+          "h": 28
+        }
+      ],
+      "ustBar": 163,
+      "ustBarTavani": 140,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "kartVar": true,
+      "konsolHatalari": []
+    }
+  ],
+  "dusenler": [
+    "360px: yatay tasma 540px - ilk suclu {\"etiket\":\"section\",\"sinif\":\"mx-auto w-full max-w-[1216px] px-4 md:px-6\",\"genislik\":900}",
+    "360px: ust barda 2 cakisma - {\"a\":\"Adana Özel Ders ana sayfa\",\"b\":\"Ders Ver\",\"px\":57}",
+    "360px: 44px alti 9 dokunma hedefi - [{\"ad\":\"Adana Özel Ders ana sayfa\",\"w\":229,\"h\":32},{\"ad\":\"İletişim\",\"w\":136,\"h\":20},{\"ad\":\"Sıkça Sorulan Sorular\",\"w\":136,\"h\":40}]",
+    "360px: ust bar 217px (tavan 140)",
+    "360px: alt sekme cubugu cizilmedi",
+    "390px: yatay tasma 510px - ilk suclu {\"etiket\":\"section\",\"sinif\":\"mx-auto w-full max-w-[1216px] px-4 md:px-6\",\"genislik\":900}",
+    "390px: ust barda 2 cakisma - {\"a\":\"Adana Özel Ders ana sayfa\",\"b\":\"Ders Ver\",\"px\":42}",
+    "390px: 44px alti 9 dokunma hedefi - [{\"ad\":\"Adana Özel Ders ana sayfa\",\"w\":229,\"h\":32},{\"ad\":\"İletişim\",\"w\":151,\"h\":20},{\"ad\":\"Sıkça Sorulan Sorular\",\"w\":151,\"h\":20}]",
+    "390px: ust bar 217px (tavan 140)",
+    "390px: alt sekme cubugu cizilmedi",
+    "414px: yatay tasma 486px - ilk suclu {\"etiket\":\"section\",\"sinif\":\"mx-auto w-full max-w-[1216px] px-4 md:px-6\",\"genislik\":900}",
+    "414px: ust barda 2 cakisma - {\"a\":\"Adana Özel Ders ana sayfa\",\"b\":\"Ders Ver\",\"px\":22}",
+    "414px: 44px alti 11 dokunma hedefi - [{\"ad\":\"Adana Özel Ders ana sayfa\",\"w\":229,\"h\":32},{\"ad\":\"Ders Ver\",\"w\":82,\"h\":40},{\"ad\":\"Giriş Yap\",\"w\":84,\"h\":40}]",
+    "414px: ust bar 197px (tavan 140)",
+    "414px: alt sekme cubugu cizilmedi",
+    "768px: yatay tasma 132px - ilk suclu {\"etiket\":\"section\",\"sinif\":\"mx-auto w-full max-w-[1216px] px-4 md:px-6\",\"genislik\":900}"
+  ]
+}

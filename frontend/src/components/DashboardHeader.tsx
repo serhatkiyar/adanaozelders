@@ -37,13 +37,25 @@ interface DashboardHeaderProps {
   center?: ReactNode;
   /** Navbar'ın altına yerleşen ikinci satır (Landing'de arama çubuğu). */
   bottom?: ReactNode;
+  /**
+   * Telefonda (yalnız `<md`) EN ÜSTTE, kategori şeridinin de üstünde duran
+   * içerik — ana sayfada tek satırlık arama tetikleyicisi.
+   */
+  mobilUst?: ReactNode;
+  /**
+   * Telefonda logo ve hesap ikonlarını üst bardan KALDIR. Gerekçe ve sınırı
+   * için `PublicNavbar`daki aynı adlı prop'un notuna bakınız: bayrak yalnız
+   * `MobilAltSekmeler` çizen yüzeylerde açılabilir, yoksa hesaba giden yol
+   * kapanır. Bugün tek veren `Landing`dir.
+   */
+  mobilSade?: boolean;
   /** false iken alt arama satırı yumuşakça katlanır (Landing scroll daralması). */
   expanded?: boolean;
 }
 
 // Oturum içi üst bar: logo + rol bazlı nav ikonları + bildirim zili + hesap
 // menüsü (profil, ayarlar, tema, çıkış). Hem DashboardShell hem Landing kullanır.
-export function DashboardHeader({ navItems, transparent = false, center, bottom, expanded = true }: DashboardHeaderProps) {
+export function DashboardHeader({ navItems, transparent = false, center, bottom, mobilUst, mobilSade = false, expanded = true }: DashboardHeaderProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const home = roleHome(user?.role_id);
@@ -225,7 +237,11 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     <>
     <header className={headerClass}>
       <div className={innerPad}>
-      <div className="mx-auto flex w-full max-w-screen-2xl items-start justify-between gap-3">
+      <div
+        className={`mx-auto w-full max-w-screen-2xl items-start justify-between gap-3 ${
+          mobilSade ? "hidden md:flex" : "flex"
+        }`}
+      >
         <div className="flex-1 flex justify-start">
           <Link
             to={home}
@@ -334,8 +350,13 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
       </div>
       </div>{/* /innerPad */}
 
+      {/* Telefonda arama, kategorilerin ÜSTÜNDE (Airbnb sırası). */}
+      {mobilUst && <div className="px-4 pb-2 pt-3 md:hidden">{mobilUst}</div>}
+      {/* `justify-center` ve ikinci `px-4` KALDIRILDI — ilki içerik ekrandan
+          genişse sol ucu erişilemez kırpıyor, ikincisi CategoryBar'ın kendi
+          dolgusuyla üst üste biniyordu. Kaydırma artık tek kapta. */}
       {center && (
-        <div className="flex justify-center overflow-x-auto px-4 pb-3 lg:hidden" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div className="pb-3 lg:hidden">
           {center}
         </div>
       )}

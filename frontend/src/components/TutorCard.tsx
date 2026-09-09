@@ -75,8 +75,10 @@ export function TutorCard({
         )}
 
         {/* Bookmark top right */}
+        {/* `md:` öncesi 8px içeri: düğmenin dokunma alanı telefonda `p-2` ile
+            büyüdü, ikon görsel olarak aynı yerde kalsın. */}
         {showBookmark && (
-          <div className="absolute right-3 top-3 z-10">
+          <div className="absolute right-1 top-1 z-10 md:right-3 md:top-3">
             <BookmarkButton tutorId={tutor.id} size="md" />
           </div>
         )}
@@ -119,7 +121,9 @@ export function TutorCard({
         </h3>
 
         {/* Pricing */}
-        <div className="mt-auto flex items-center justify-between pt-1">
+        {/* `flex-wrap`: 165px'lik mobil kartta dört haneli ücret ile "İlk ders
+            ücretsiz" rozeti yan yana sığmıyor, sarmadan taşıyordu. */}
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 pt-1">
           <div className="flex items-baseline text-slate-900 ">
             <span className="text-sm font-bold">
               {rate !== null ? formatTRY(rate) : "Ücret belirtilmemiş"}

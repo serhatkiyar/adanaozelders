@@ -10,10 +10,31 @@ import { useKayitAcik } from "@/hooks/useKayitAcik";
 export function PublicNavbar({
   center,
   bottom,
+  mobilUst,
+  mobilSade = false,
   expanded = true,
 }: {
   center?: ReactNode;
   bottom?: ReactNode;
+  /**
+   * Telefonda (yalnız `<md`) EN ÜSTTE, kategori şeridinin de üstünde duran
+   * içerik — ana sayfada tek satırlık arama tetikleyicisi.
+   */
+  mobilUst?: ReactNode;
+  /**
+   * Telefonda logo ve giriş/kayıt düğmelerini üst bardan KALDIR.
+   *
+   * Yalnız ana sayfa verir. Gerekçe ölçülmüştür: 390px'te kelime logosu
+   * (229px) ile sağdaki iki düğme 42px çakışıyordu ve üst bar ekranın
+   * %27'sini yiyordu. Referans Airbnb mobil webi — orada da üst barda ne
+   * logo ne giriş vardır; kimlik alt sekme çubuğundadır
+   * (`MobilAltSekmeler`). Bu yüzden bayrak yalnız alt çubuğun bulunduğu
+   * yüzeylerde açılabilir: aksi hâlde girişe giden yol kapanır.
+   *
+   * Diğer public sayfalar bunu VERMEZ — orada arama hapı yok, üst bar
+   * tamamen boşalırdı.
+   */
+  mobilSade?: boolean;
   /** false iken alt arama satırı yumuşakça katlanır (Landing scroll daralması). */
   expanded?: boolean;
 }) {
@@ -22,7 +43,11 @@ export function PublicNavbar({
     // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
     <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md ">
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
-        <div className="flex w-full items-start justify-between gap-4 pt-5 pb-2">
+        <div
+          className={`w-full items-start justify-between gap-4 pt-5 pb-2 ${
+            mobilSade ? "hidden md:flex" : "flex"
+          }`}
+        >
           <div className="flex-1 flex justify-start">
             <Link
               to="/"
@@ -90,8 +115,15 @@ export function PublicNavbar({
           </div>
         </div>
       </div>
+      {/* Telefonda arama, kategorilerin ÜSTÜNDE (Airbnb sırası). Masaüstünde
+          bu blok hiç çizilmez; oradaki arama `bottom` yuvasındadır. */}
+      {mobilUst && <div className="px-4 pb-2 pt-3 md:hidden">{mobilUst}</div>}
+      {/* Kaydırma kabı: `justify-center` ve ikinci bir `px-4` KALDIRILDI.
+          İlki, içerik ekrandan genişse sol ucu erişilemez kırpar (CategoryBar
+          kendi yorumunda bu tuzağı anlatıyor); ikincisi dıştaki `px-4` ile
+          üst üste binip 390px'te şeridi 32px içeriden başlatıyordu. */}
       {center && (
-        <div className="flex justify-center overflow-x-auto px-4 pb-3 md:hidden" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div className="pb-3 md:hidden">
           {center}
         </div>
       )}

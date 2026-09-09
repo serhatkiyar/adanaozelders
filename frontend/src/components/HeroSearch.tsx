@@ -28,8 +28,11 @@ const BOLME = "flex min-w-0 flex-1 basis-0 flex-col justify-center py-1";
 // başlığı da 12px — girdi metninden (14px) ayrışacak kadar küçük, okunacak
 // kadar büyük.
 const ETIKET = "cursor-pointer text-xs font-semibold leading-tight text-slate-700";
+// `text-base md:text-sm`: iOS Safari 16px'ten KUCUK bir girdiye odaklaninca
+// sayfayi otomatik buyutur ve kullanici elle geri kucultmek zorunda kalir.
+// Masaustunde olcu degismedi.
 const GIRDI =
-  "w-full min-w-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400";
+  "w-full min-w-0 bg-transparent text-base text-slate-900 outline-none placeholder:text-slate-400 md:text-sm";
 
 /* ─── arama bileşenleri: büyük (açık) + kompakt (tetikleyici) ───────────
    Landing'in beğenilen Airbnb tarzı arama hapı. Hem ana sayfa hem de
@@ -103,7 +106,7 @@ export function BigSearch({
         onSubmit={onSubmit}
         // focus-within halkası: `outline-none` verilen girdide klavye
         // kullanıcısına "buradasın" işareti kalmıyordu; halka forma taşındı.
-        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
+        className="flex w-full flex-col items-stretch rounded-3xl border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] md:flex-row md:items-center md:rounded-full "
       >
         <div className="flex shrink-0 items-center gap-2 rounded-full py-1.5 pl-4 pr-3 transition hover:bg-slate-50 ">
           <PinIconSvg />
@@ -125,7 +128,7 @@ export function BigSearch({
           </div>
         </div>
 
-        <div className="h-7 w-px shrink-0 bg-slate-200 " />
+        <div className="h-px w-full shrink-0 bg-slate-200 md:h-7 md:w-px " />
 
         <div className="flex min-w-0 flex-1 flex-col justify-center px-5 py-1">
           <label htmlFor={qId} className={ETIKET}>
@@ -146,9 +149,10 @@ export function BigSearch({
         <button
           type="submit"
           aria-label="Ara"
-          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95"
+          className="mt-1.5 flex h-12 w-full shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95 md:ml-1 md:mt-0 md:h-11 md:w-11"
         >
           <SearchIconSvg />
+          <span className="ml-2 text-base font-semibold md:hidden">Ara</span>
         </button>
       </form>
 
@@ -246,13 +250,13 @@ export function DersArama({
       <form
         ref={formRef}
         onSubmit={onSubmit}
-        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
+        className="flex w-full flex-col items-stretch rounded-3xl border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] md:flex-row md:items-center md:rounded-full "
       >
         {/* İki bölme EŞİT genişlikte (flex-1 basis-0) — kullanıcı kararı.
             Sınıf artık INPUT'ta değil sarmalayıcıda: etiket ile girdi alt alta
             duruyor. Sayı bölme başına BİR kalmalı, `aramaHapiIkizligi`
             nöbetçisi bunu sayıyor. */}
-        <div className={BOLME + " pl-5 pr-3"}>
+        <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-5 md:pr-3"}>
           <label htmlFor={dersId} className={ETIKET}>
             Ders
           </label>
@@ -271,10 +275,10 @@ export function DersArama({
           />
         </div>
 
-        <div className="h-7 w-px shrink-0 bg-slate-200 " />
+        <div className="h-px w-full shrink-0 bg-slate-200 md:h-7 md:w-px " />
 
         {/* Ders girdisiyle AYNI his: hover zemini/hap yok, düz yazı alanı. */}
-        <div className={BOLME + " pl-3 pr-2"}>
+        <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-3 md:pr-2"}>
           <label htmlFor={sekilId} className={ETIKET}>
             Ders şekli
           </label>
@@ -291,7 +295,7 @@ export function DersArama({
             hizaRef={formRef}
             // cursor-pointer YOK: burası artık yazılabilir bir metin alanı,
             // el imleci "buraya yazılmaz" hissi veriyordu.
-            triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
+            triggerClassName="w-full min-w-0 bg-transparent text-base font-medium text-slate-700 outline-none md:text-sm"
           />
         </div>
 
@@ -299,8 +303,8 @@ export function DersArama({
             bölmeler kendi aralarında yeniden paylaşır. */}
         {yerGorunur && (
           <>
-            <div className="h-7 w-px shrink-0 bg-slate-200 " />
-            <div className={BOLME + " pl-3 pr-2"}>
+            <div className="h-px w-full shrink-0 bg-slate-200 md:h-7 md:w-px " />
+            <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-3 md:pr-2"}>
               <label htmlFor={yerId} className={ETIKET}>
                 Yer
               </label>
@@ -309,7 +313,7 @@ export function DersArama({
                 value={yer}
                 onChange={setYer}
                 hizaRef={formRef}
-                triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
+                triggerClassName="w-full min-w-0 bg-transparent text-base font-medium text-slate-700 outline-none md:text-sm"
               />
             </div>
           </>
@@ -318,9 +322,10 @@ export function DersArama({
         <button
           type="submit"
           aria-label="Ara"
-          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95"
+          className="mt-1.5 flex h-12 w-full shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95 md:ml-1 md:mt-0 md:h-11 md:w-11"
         >
           <SearchIconSvg />
+          <span className="ml-2 text-base font-semibold md:hidden">Ara</span>
         </button>
       </form>
 
@@ -401,10 +406,10 @@ export function KutuphaneArama({
       <form
         ref={formRef}
         onSubmit={onSubmit}
-        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] "
+        className="flex w-full flex-col items-stretch rounded-3xl border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] md:flex-row md:items-center md:rounded-full "
       >
         {/* İki bölme EŞİT genişlikte (flex-1 basis-0) — `DersArama` ile aynı. */}
-        <div className={BOLME + " pl-5 pr-3"}>
+        <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-5 md:pr-3"}>
           <label htmlFor={adId} className={ETIKET}>
             Kütüphane
           </label>
@@ -418,9 +423,9 @@ export function KutuphaneArama({
           />
         </div>
 
-        <div className="h-7 w-px shrink-0 bg-slate-200 " />
+        <div className="h-px w-full shrink-0 bg-slate-200 md:h-7 md:w-px " />
 
-        <div className={BOLME + " pl-3 pr-2"}>
+        <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-3 md:pr-2"}>
           <label htmlFor={ilceId} className={ETIKET}>
             Yer
           </label>
@@ -429,16 +434,17 @@ export function KutuphaneArama({
             value={yer}
             onChange={setYer}
             hizaRef={formRef}
-            triggerClassName="w-full min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none"
+            triggerClassName="w-full min-w-0 bg-transparent text-base font-medium text-slate-700 outline-none md:text-sm"
           />
         </div>
 
         <button
           type="submit"
           aria-label="Ara"
-          className="ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95"
+          className="mt-1.5 flex h-12 w-full shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg transition hover:from-marka-hover hover:to-marka-hover active:scale-95 md:ml-1 md:mt-0 md:h-11 md:w-11"
         >
           <SearchIconSvg />
+          <span className="ml-2 text-base font-semibold md:hidden">Ara</span>
         </button>
       </form>
     </div>
@@ -463,6 +469,7 @@ export function CompactSearch({
   onOpen: () => void;
 }) {
   const meta = categoryMeta(active);
+  const yerSecili = district.length > 0 || remote;
   const districtLabel =
     district.length > 0
       ? district.length === 1
@@ -477,18 +484,27 @@ export function CompactSearch({
       type="button"
       onClick={onOpen}
       aria-label="Aramayı aç"
-      className="flex w-[460px] max-w-[82vw] items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-2.5 pr-1.5 shadow-[0_1px_8px_rgba(15,23,42,0.10)] transition hover:shadow-md "
+      className="flex w-full items-center gap-2 rounded-full border border-slate-200 bg-white py-1.5 pl-2.5 pr-1.5 shadow-[0_1px_8px_rgba(15,23,42,0.10)] transition hover:shadow-md md:w-[460px] md:max-w-[82vw] "
     >
       {/* Seçili kategori ikonu */}
       <img src={meta.icon} alt={meta.label} className="h-7 w-7 shrink-0 object-contain" />
 
-      {/* İlçe etiketi */}
-      <span className={`shrink-0 text-sm ${district.length > 0 || remote ? "font-semibold text-slate-800 " : "text-slate-500 "}`}>
+      {/* İlçe etiketi — TELEFONDA yalnız gerçekten bir yer seçiliyken.
+          "Tüm ilçeler" hiçbir şey söylemeyen bir varsayılandır ve 390px'te
+          kalan yerin üçte birini yiyip asıl arama yazısını kesiyordu
+          ("Ders, eğitmen ya da ko…"). Masaüstünde ölçü bol, orada duruyor. */}
+      <span
+        className={`${yerSecili ? "inline" : "hidden"} shrink-0 text-sm md:inline ${
+          yerSecili ? "font-semibold text-slate-800 " : "text-slate-500 "
+        }`}
+      >
         {districtLabel}
       </span>
 
-      {/* Ayraç */}
-      <div className="h-5 w-px shrink-0 bg-slate-200 " />
+      {/* Ayraç — etiketle birlikte görünür/gizlenir. */}
+      <div
+        className={`${yerSecili ? "block" : "hidden"} h-5 w-px shrink-0 bg-slate-200 md:block`}
+      />
 
       {/* Arama yazısı */}
       <span className={`flex-1 truncate text-left text-sm ${q ? "text-slate-800 " : "text-slate-400 "}`}>

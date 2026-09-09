@@ -51,7 +51,7 @@ const GEREKCELI = [
   // Manuel vitrin sökümü 593'e, YakindaRozeti kayıtlarının silinmesi 581'e,
   // eğitmen ön başvuru ekranının kapı kayıtları 592'ye taşıdı; merge sonrası
   // gerçek değer aşağıdaki koşuyla doğrulanır.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:620 /src/**/*.tsx",
+  "src/__guards__/calismaZamaniKapisi.test.tsx:626 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

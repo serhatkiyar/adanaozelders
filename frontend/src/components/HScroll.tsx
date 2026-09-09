@@ -99,8 +99,12 @@ export function HScroll({
       {baslik !== undefined && (
         <div className="mb-4 flex items-center justify-between gap-4">
           {baslik}
+          {/* Oklar TELEFONDA GİZLİ — parmakla kaydırma zaten var, düğme yalnız
+              28px'lik yanlış bir dokunma hedefi üretiyordu. Gizleme YALNIZ CSS
+              ile: `__guards__/vitrinKaydirma.test.tsx` okların DOM'da ve başlık
+              satırında doğmasını sabitler. */}
           {kaydirilabilir && (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="hidden shrink-0 items-center gap-2 md:flex">
               <DaireDugme
                 yon="sol"
                 disabled={!canScrollLeft}

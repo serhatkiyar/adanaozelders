@@ -18,6 +18,9 @@ import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
+import { MobilAltSekmeler } from "@/components/MobilAltSekmeler";
+import { MobilAramaSheet } from "@/components/MobilAramaSheet";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { DersArama, KutuphaneArama, CompactSearch } from "@/components/HeroSearch";
 import type { DersSekli } from "@/components/AramaSecicileri";
 import { yeriYaz, type YerSecimi } from "@/lib/yerArama";
@@ -56,6 +59,9 @@ export default function Landing() {
   // Daralmışken kompakt aramaya tıklayınca geniş navbar'ı YERİNDE aç (sayfa
   // kaymaz). Tekrar kaydırınca kapanır.
   const [searchOpen, setSearchOpen] = useState(false);
+  // Telefonda tam ekran arama yüzeyi açık mı (`MobilAramaSheet`).
+  const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
+  const mobil = useMobil();
   const navigate = useNavigate();
   const setSurface = useSurfaceStore((s) => s.setSurface);
 
@@ -64,16 +70,36 @@ export default function Landing() {
     setSurface("discover");
   }, [setSurface]);
 
-  // Airbnb scroll davranışı: birazcık kaydırınca daralt (ve açık aramayı kapat).
+  /**
+   * Airbnb scroll davranışı: birazcık kaydırınca daralt (ve açık aramayı kapat).
+   *
+   * TELEFONDA ÇALIŞMAZ ve bu bilinçlidir. İki sebep: (1) mobil üst bar zaten
+   * kompakt — daraltacak bir şey yok; (2) yumuşak klavye açılınca sayfa kayar,
+   * bu dinleyici de her kaymada `setSearchOpen(false)` çağırdığı için kullanıcı
+   * yazmaya başlar başlamaz aramayı kendi üstüne kapatıyordu.
+   *
+   * Masaüstünde her scroll olayında setState yerine `requestAnimationFrame`
+   * ile tek kare başına bir güncelleme yapılır.
+   */
   useEffect(() => {
+    if (mobil) {
+      setScrolled(false);
+      return;
+    }
+    let bekleyen = false;
     const onScroll = () => {
-      setScrolled(window.scrollY > 56);
-      setSearchOpen(false);
+      if (bekleyen) return;
+      bekleyen = true;
+      requestAnimationFrame(() => {
+        bekleyen = false;
+        setScrolled(window.scrollY > 56);
+        setSearchOpen(false);
+      });
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [mobil]);
 
   const kutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +133,9 @@ export default function Landing() {
   // key ile swap'te fade-in yeniden tetiklenir; sert geçiş yerine yumuşak.
   const center = (
     <div key={expanded ? "cats" : "compact"} className="animate-in fade-in duration-300">
-      {expanded ? (
+      {/* Telefonda swap YOK: kompakt arama `mobilUst` yuvasında kalıcı olarak
+          durur, bu yuva her zaman kategori çiplerini taşır. */}
+      {expanded || mobil ? (
         <CategoryBar active={active} onSelect={setActive} />
       ) : (
         <CompactSearch
@@ -141,9 +169,8 @@ export default function Landing() {
   // serbest metin; sekme değişince çubuğun kendisi değişiyordu. Artık ikisi de
   // aynı kabuk, aynı sıralama, aynı eşit bölmeler; fark yalnız sağ bölmenin
   // seçicisinde. Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`.
-  const bottom = (
-    <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      {active === "kutuphaneler" ? (
+  const hap =
+    active === "kutuphaneler" ? (
         <KutuphaneArama
           q={kutQ}
           setQ={setKutQ}
@@ -165,9 +192,34 @@ export default function Landing() {
           setYer={setYer}
           onSubmit={submit}
         />
-      )}
-    </div>
+      );
+
+  /* Masaüstünün ikinci navbar satırı. Telefonda BU YUVA HİÇ DOLDURULMAZ:
+     aynı hapın iki kopyası mount edilseydi `htmlFor` kimlikleri belgede
+     ikilenir, etiket-girdi bağı belirsizleşirdi. Mobilde hap yalnız tam ekran
+     arama açıkken, tek kopya olarak yaşar. */
+  const bottom = mobil ? undefined : (
+    <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">{hap}</div>
   );
+
+  const mobilUst = mobil ? (
+    <CompactSearch
+      active={active}
+      placeholder={placeholder}
+      q={active === "kutuphaneler" ? kutQ : dersEtiket}
+      district={
+        active === "kutuphaneler"
+          ? kutYer
+            ? [kutYer.ilce]
+            : []
+          : sekil === TeachingMode.IN_PERSON && yer
+            ? [yer.ilce]
+            : []
+      }
+      remote={active !== "kutuphaneler" && sekil === TeachingMode.ONLINE}
+      onOpen={() => setMobilAramaAcik(true)}
+    />
+  ) : undefined;
 
   return (
     <div className="min-h-screen bg-white antialiased ">
@@ -198,12 +250,25 @@ export default function Landing() {
           ]}
         />
       </Seo>
-      <Navbar center={center} bottom={bottom} expanded={expanded} />
+      <Navbar
+        center={center}
+        bottom={bottom}
+        mobilUst={mobilUst}
+        mobilSade
+        expanded={expanded}
+      />
       {/* Mağaza çapraz tanıtım banner'ı KALDIRILDI (kullanıcı kararı, 29 Ağu):
           "kocaman hero" özel ders sayfasında yer kaplıyordu; mağazaya geçiş
           navbar'daki Mağaza linkinden yapılır. */}
       <CategoryContent active={active} />
       <SiteFooter />
+      <MobilAramaSheet
+        open={mobilAramaAcik}
+        onClose={() => setMobilAramaAcik(false)}
+      >
+        {hap}
+      </MobilAramaSheet>
+      <MobilAltSekmeler />
     </div>
   );
 }
@@ -214,10 +279,14 @@ export default function Landing() {
 function Navbar({
   center,
   bottom,
+  mobilUst,
+  mobilSade = false,
   expanded,
 }: {
   center: ReactNode;
   bottom?: ReactNode;
+  mobilUst?: ReactNode;
+  mobilSade?: boolean;
   expanded: boolean;
 }) {
   const token = useAuthStore((s) => s.token);
@@ -237,19 +306,29 @@ function Navbar({
         transparent
         center={center}
         bottom={bottom}
+        mobilUst={mobilUst}
+        mobilSade={mobilSade}
         expanded={expanded}
       />
     );
   }
 
-  return <PublicNavbar center={center} bottom={bottom} expanded={expanded} />;
+  return (
+    <PublicNavbar
+      center={center}
+      bottom={bottom}
+      mobilUst={mobilUst}
+      mobilSade={mobilSade}
+      expanded={expanded}
+    />
+  );
 }
 
 /* ─── sekmeye göre değişen içerik = yatay listeler ──────── */
 
 function CategoryContent({ active }: { active: CategoryKey }) {
   return (
-    <main className="space-y-12 pb-24 pt-8">
+    <main className="space-y-8 pb-8 pt-4 md:space-y-12 md:pb-24 md:pt-8">
       {/* ── EĞİTMENLER: TEK kuşak ──────────────────────────────────────────
           Burada eskiden "TYT'ye hazırlık" / "YKS Hazırlık" / "AYT'ye
           hazırlık" / "Ortaokul Matematik" / "LGS Matematik" diye SABİT
@@ -325,8 +404,14 @@ function CategoryContent({ active }: { active: CategoryKey }) {
  * kalır; sabit piksel kullanılsaydı ya dar ekranda taşar ya geniş ekranda
  * boşluk bırakırdı.
  */
+/**
+ * Telefonda ölçü Airbnb'nin kendi ölçüsüdür (referans ekrandan ölçüldü: 24px
+ * kenar boşluğu, ~165px kart, 12px boşluk, ~12px "peek"). Sabit `190px`
+ * kalsaydı 390px'te ikinci kart 34px dışarıda kalıyor ve fiyat satırı yarıda
+ * kesiliyordu; oran ise 360-414 bandının tamamında iki kart + peek verir.
+ */
 const VITRIN_KART =
-  "shrink-0 w-[190px] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
+  "shrink-0 snap-start w-[calc((100%-12px)/2)] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
 
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
@@ -348,11 +433,13 @@ function RowHeader({ heading, href }: { heading: string; href: string }) {
 
 function RowSkeleton() {
   return (
-    <div className="flex gap-5 overflow-hidden">
+    <div className="flex gap-3 overflow-hidden md:gap-5">
       {Array.from({ length: 7 }).map((_, i) => (
         <div
           key={i}
-          className="h-60 w-[175px] shrink-0 animate-pulse rounded-2xl bg-slate-100 "
+          // Genişlik gerçek kartla AYNI kaynaktan: 175px sabitken yükleme
+          // bitince satır 15px yana kayıyordu (CLS).
+          className={`${VITRIN_KART} h-60 animate-pulse rounded-2xl bg-slate-100`}
         />
       ))}
     </div>
@@ -365,9 +452,9 @@ function FeaturedTutorRow() {
   if (tutors.length === 0) return null;
 
   return (
-    <section aria-label="Reklam" className="mx-auto max-w-[1216px] px-6">
+    <section aria-label="Reklam" className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
       <HScroll
-        className="gap-5 pb-2"
+        className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
         etiket="Reklam"
         baslik={
           <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
@@ -412,7 +499,7 @@ function TutorRow({
   const href = `${ROUTES.tutors}${sp.toString() ? `?${sp}` : ""}`;
 
   return (
-    <section className="mx-auto max-w-[1216px] px-6">
+    <section className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
       {isLoading ? (
         <>
           <div className="mb-4">
@@ -422,7 +509,7 @@ function TutorRow({
         </>
       ) : (
         <HScroll
-          className="gap-5 pb-2"
+          className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
           etiket={heading}
           baslik={<RowHeader heading={heading} href={href} />}
         >
@@ -453,7 +540,7 @@ function LibraryRow({
   const href = `${ROUTES.libraries}${sp.toString() ? `?${sp}` : ""}`;
 
   return (
-    <section className="mx-auto max-w-[1216px] px-6">
+    <section className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
       {isLoading ? (
         <>
           <div className="mb-4">
@@ -463,7 +550,7 @@ function LibraryRow({
         </>
       ) : (
         <HScroll
-          className="gap-5 pb-2"
+          className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
           etiket={heading}
           baslik={<RowHeader heading={heading} href={href} />}
         >

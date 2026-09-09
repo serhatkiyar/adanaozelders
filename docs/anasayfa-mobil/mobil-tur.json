@@ -1,0 +1,246 @@
+{
+  "sonuclar": [
+    {
+      "genislik": 360,
+      "mobilBant": true,
+      "govde": 360,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 129,
+      "ustBarTavani": 140,
+      "cubukVar": true,
+      "cubukYuksek": 61,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "kartVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "genislik": 390,
+      "mobilBant": true,
+      "govde": 390,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 129,
+      "ustBarTavani": 140,
+      "cubukVar": true,
+      "cubukYuksek": 61,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "kartVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "genislik": 414,
+      "mobilBant": true,
+      "govde": 414,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 129,
+      "ustBarTavani": 140,
+      "cubukVar": true,
+      "cubukYuksek": 61,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "kartVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "genislik": 768,
+      "mobilBant": false,
+      "govde": 768,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 26,
+      "kucukHedefler": [
+        {
+          "ad": "Adana Özel Ders ana sayfa",
+          "w": 32,
+          "h": 32
+        },
+        {
+          "ad": "INPUT",
+          "w": 279,
+          "h": 20
+        },
+        {
+          "ad": "INPUT",
+          "w": 279,
+          "h": 20
+        },
+        {
+          "ad": "Eğitmenler, tümünü gör",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Eğitmenler: sola kaydır",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Eğitmenler: sağa kaydır",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Favorilere ekle",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Favorilere ekle",
+          "w": 28,
+          "h": 28
+        }
+      ],
+      "ustBar": 163,
+      "ustBarTavani": 140,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "kartVar": true,
+      "konsolHatalari": []
+    }
+  ],
+  "dusenler": []
+}
