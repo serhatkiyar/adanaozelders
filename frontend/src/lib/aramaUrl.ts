@@ -29,6 +29,7 @@ import {
   filtreliMi as filtreliMiMotor,
   metin,
   metinCoklu,
+  enumCoklu,
   sayfaAlani,
   type Alan,
   type Sema,
@@ -45,43 +46,31 @@ import {
 
 /* ─── Ortak alanlar ──────────────────────────────────────────────────── */
 
-/** Ders şekli — tek seçim; `""` = "fark etmez" (filtre yazılmaz). */
-const sekilAlani: Alan<TeachingMode | ""> = {
-  anahtarlar: ["mode"],
-  varsayilan: "",
-  oku: (sp) => {
-    const v = sp.get("mode");
-    return v && (Object.values(TeachingMode) as string[]).includes(v)
-      ? (v as TeachingMode)
-      : "";
-  },
-  yaz: (sp, d) => {
-    if (d) sp.set("mode", d);
-  },
-};
-
 /** Cinsiyet — `UNSPECIFIED` bir FİLTRE değil, "belirtilmemiş" verisidir. */
 const cinsiyetAlani: Alan<Gender | ""> = {
-  anahtarlar: ["gender"],
+  anahtarlar: ["cinsiyet"],
+  eskiAnahtarlar: ["gender"],
   varsayilan: "",
   oku: (sp) => {
-    const v = sp.get("gender");
+    const v = sp.get("cinsiyet") ?? sp.get("gender");
     return v === Gender.MALE || v === Gender.FEMALE ? v : "";
   },
   yaz: (sp, d) => {
-    if (d) sp.set("gender", d);
+    if (d) sp.set("cinsiyet", d);
   },
 };
 
 const turAlani: Alan<ProductKind | ""> = {
-  anahtarlar: ["kind"],
+  anahtarlar: ["tur"],
+  eskiAnahtarlar: ["kind"],
   varsayilan: "",
   oku: (sp) => {
-    const v = sp.get("kind");
+    // Kanonik → eski sırayla (göç yolu).
+    const v = sp.get("tur") ?? sp.get("kind");
     return v === "PHYSICAL" || v === "DIGITAL" ? v : "";
   },
   yaz: (sp, d) => {
-    if (d) sp.set("kind", d);
+    if (d) sp.set("tur", d);
   },
 };
 
@@ -97,7 +86,7 @@ const turAlani: Alan<ProductKind | ""> = {
 function yerAlaniOlustur(): Alan<KonumDegeri> {
   return {
     anahtarlar: ["mahalle", ILCE_PARAM],
-    eskiAnahtarlar: ILCE_PARAM === ILCE_PARAM_ESKI ? [] : [ILCE_PARAM_ESKI],
+    eskiAnahtarlar: [ILCE_PARAM_ESKI],
     varsayilan: { yer: null, ilce: [] },
     oku: (sp) => yeriOku(sp),
     yaz: (sp, d) => yeriYaz(sp, d.yer, d.ilce),
@@ -115,10 +104,12 @@ export interface EgitmenAramasi {
   /** Serbest metin. Katalogdan ders SEÇİLMEDİYSE yazılan şey buraya düşer. */
   q: string;
   /** Katalogdan seçilmiş ders(ler) — sert filtre. */
-  subject: string[];
+  ders: string[];
   konum: KonumDegeri;
-  sekil: TeachingMode | "";
-  exam: string;
+  /** Ders şekli — ÇOKLU. Oturumlu pazaryeri onay kutusuyla birden fazla
+   *  seçtiriyor; anonim yüzey ilk değeri tek seçim gibi okuyor. */
+  sekil: TeachingMode[];
+  sinav: string;
   cinsiyet: Gender | "";
   sayfa: number;
 }
@@ -143,10 +134,10 @@ export const EGITMEN_ARAMA: Sema<EgitmenAramasi> = {
   // filters always stays the same").
   alanlar: {
     q: metin("q"),
-    subject: metinCoklu("subject"),
+    ders: metinCoklu("ders", ["subject"]),
     konum: yerAlaniOlustur(),
-    sekil: sekilAlani,
-    exam: metin("exam"),
+    sekil: enumCoklu("sekil", Object.values(TeachingMode), ["mode"]),
+    sinav: metin("sinav", ["exam"]),
     cinsiyet: cinsiyetAlani,
     sayfa: sayfaAlani(),
   },
@@ -169,7 +160,9 @@ export const EGITMEN_ARAMA: Sema<EgitmenAramasi> = {
    * zorlamak anlamına gelirdi.
    */
   duzelt: (d) =>
-    d.sekil === TeachingMode.ONLINE
+    // YALNIZ uzaktan seçiliyken konum düşer. Karışık seçimde (uzaktan + yüz
+    // yüze) konum anlamlıdır: yüz yüze verenler arasında ilçe süzülür.
+    d.sekil.length === 1 && d.sekil[0] === TeachingMode.ONLINE
       ? { ...d, konum: { yer: null, ilce: [] } }
       : d,
   filtreDisi: ["sayfa"],
@@ -190,18 +183,19 @@ export const MAGAZA_ARAMA: Sema<MagazaAramasi> = {
   alanlar: {
     q: metin("q"),
     kategori: {
-      anahtarlar: ["category"],
+      anahtarlar: ["kategori"],
+      eskiAnahtarlar: ["category"],
       varsayilan: undefined,
       oku: (sp) => {
-        const n = Number(sp.get("category"));
+        const n = Number(sp.get("kategori") ?? sp.get("category"));
         return Number.isFinite(n) && n > 0 ? n : undefined;
       },
       yaz: (sp, d) => {
-        if (d !== undefined) sp.set("category", String(d));
+        if (d !== undefined) sp.set("kategori", String(d));
       },
     } satisfies Alan<number | undefined>,
     tur: turAlani,
-    sirala: metin("sort"),
+    sirala: metin("sirala", ["sort"]),
     sayfa: sayfaAlani(),
   },
   filtreDisi: ["sayfa"],
@@ -236,8 +230,8 @@ export const filtreliMi = filtreliMiMotor;
 export function dersSorgusu(
   secim: string,
   metinDegeri: string
-): Pick<EgitmenAramasi, "q" | "subject"> {
+): Pick<EgitmenAramasi, "q" | "ders"> {
   return secim
-    ? { subject: [secim], q: "" }
-    : { subject: [], q: metinDegeri.trim() };
+    ? { ders: [secim], q: "" }
+    : { ders: [], q: metinDegeri.trim() };
 }

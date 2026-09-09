@@ -142,14 +142,14 @@ export function mahalleyiCoz(
 /**
  * İlçe parametresinin KANONİK adı.
  *
- * Bugün `district`. Türkçeleşme (→ `ilce`) kararı verildi ama BİLEREK
- * ertelendi: yazma tarafı Türkçe yazıp okuma tarafı hâlâ `district` ararsa
- * paylaşılmış her bağlantı sessizce boş sonuç verir. Göç, okuma da şemadan
- * beslendiğinde (Paket 2) TEK HAMLEDE yapılır — o an burada `"ilce"` yazmak
- * ve `ILCE_PARAM_ESKI`yi `"district"` bırakmak yeter.
+ * 9 Eyl 2026'da `district` → `ilce` (kullanıcı kararı: public yollar zaten
+ * Türkçe, Google da hedef kitlenin dilini öneriyor). Göç, yazma ve okuma AYNI
+ * şemadan beslendiği an yapıldı — daha önce yapılsaydı yazma Türkçe yazıp
+ * okuma eski adı arardı ve paylaşılmış her bağlantı sessizce boş sonuç
+ * verirdi.
  */
-export const ILCE_PARAM = "district";
-/** Göç sonrası eski bağlantıların okunmaya devam edeceği ad. */
+export const ILCE_PARAM = "ilce";
+/** Eski bağlantılar okunmaya devam eder; yazarken YALNIZ kanonik üretilir. */
 export const ILCE_PARAM_ESKI = "district";
 
 /** Seçili yeri arama parametrelerine yazar. */

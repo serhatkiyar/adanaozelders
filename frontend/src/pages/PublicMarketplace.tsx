@@ -1,10 +1,8 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  PAGE_PARAM,
   limitForPage,
   nextPageSearch,
-  pageFromParam,
 } from "@/lib/pagination";
 import { PublicShell } from "@/components/PublicShell";
 import { Seo } from "@/components/Seo";
@@ -18,9 +16,11 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
-import { sekliCoz, type DersSekli } from "@/components/AramaSecicileri";
+import { yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
+import { type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
+import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { EGITMEN_ARAMA } from "@/lib/aramaUrl";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -44,61 +44,51 @@ const FilterIconSvg = () => (
 const PER_PAGE = 20;
 
 export default function PublicMarketplace() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
-  const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
-  // Mahalle çapası — `?mahalle=Reşatbey` paylaşılabilir bağlantıdır.
-  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
-  // Ders şekli TEK değer. Eskiden burada `remote` adında bir boolean vardı ve
-  // yalnız ONLINE'ı ifade edebiliyordu: ana sayfadan "yüz yüze" ile gelen
-  // ANONİM ziyaretçinin filtresi bu ekranda okunmuyor, aşağıdaki URL
-  // senkronunda da geri yazılmıyordu — yani sessizce BUHARLAŞIYORDU.
-  const [sekil, setSekil] = useState<DersSekli>(() => sekliCoz(searchParams.get("mode")));
-  const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
-  const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
-  const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
-  // Sayfa durumu URL'de: filtreler zaten query string'de tutuluyordu ama
-  // kaçıncı sayfada olunduğu state'teydi — paylaşılan bağlantı karşı tarafta
-  // ilk 20 sonuca dönüyordu (bkz. lib/pagination.ts).
-  const page = pageFromParam(searchParams.get(PAGE_PARAM));
+  /*
+   * URL ↔ state `useAramaDurumu` üzerinden (Paket 2).
+   *
+   * Buradaki elle senkron bloğu `Libraries` ile AYNI bug'ı taşıyordu: yazma
+   * efekti URL'i `new URLSearchParams()` ile sıfırdan kuruyor, dolayısıyla
+   * aynı dosyanın okuduğu `?sayfa=` parametresini siliyordu.
+   * `/egitmenler?sayfa=3` bağlantısı karşı tarafta ilk 20 sonuca dönüyordu.
+   * Tek kök, iki yüzey → tek düzeltme.
+   */
+  const { degerler, ayarla, params: searchParams } = useAramaDurumu(EGITMEN_ARAMA);
+  const { konum, ders: subjects, sinav: exam, sayfa: page } = degerler;
+  // Anonim yüzey ders şeklini TEK değer gibi kullanıyor (UI'da değiştirilmiyor,
+  // yalnız ana sayfadan gelen filtre korunuyor); şema çoklu tuttuğu için ilki
+  // alınır.
+  const sekil = (degerler.sekil[0] ?? "") as DersSekli;
+  const district = konum.ilce;
+  const yer = konum.yer;
   const limit = limitForPage(page, PER_PAGE);
+
+  const setSubjects = (v: string[]) => ayarla({ ders: v });
+  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
+  const setYer = (v: YerSecimi | null) =>
+    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
+  const setExam = (v: string) => ayarla({ sinav: v });
+
+  const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
   const [showFilters, setShowFilters] = useState(false);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // Dış navigasyon (geri/ileri, link) state'i günceller.
+  // Serbest metin YEREL: her tuş vuruşunda adres yazmak geçmişi kirletir.
+  const [q, setQ] = useState(degerler.q);
   useEffect(() => {
-    const qp = searchParams.get("q") ?? "";
-    const sp = searchParams.getAll("subject");
-    const dp = searchParams.getAll("district");
-    const urlYer = yeriOku(searchParams).yer;
-    const ep = searchParams.get("exam") ?? "";
-    const rp = sekliCoz(searchParams.get("mode"));
-    if (qp !== q) setQ(qp);
-    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
-    if (JSON.stringify(sp) !== JSON.stringify(subjects)) setSubjects(sp);
-    if (JSON.stringify(dp) !== JSON.stringify(district)) setDistrict(dp);
-    if (ep !== exam) setExam(ep);
-    if (rp !== sekil) setSekil(rp);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
+  }, [degerler.q]);
 
   const debouncedQ = useDebounce(q);
-
-  // ── URL ↔ state senkronizasyonu ──────────────────────────────────────
   useEffect(() => {
-    const next = new URLSearchParams();
-    if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
-    subjects.forEach((s) => next.append("subject", s));
-    yeriYaz(next, yer, district);
-    if (sekil) next.set("mode", sekil);
-    if (exam.trim()) next.set("exam", exam.trim());
-    setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, yer, sekil, exam, setSearchParams]);
+    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
 
   const removeSubject = (s: string) =>
-    setSubjects((p) => p.filter((x) => x !== s));
+    setSubjects(subjects.filter((x) => x !== s));
 
   const params = useMemo<TutorSearchParams>(() => {
     const p: TutorSearchParams = { limit, offset: 0, sort };

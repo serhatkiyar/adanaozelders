@@ -126,17 +126,17 @@ describe("ders kutusu · seçim ve metin birbirini ezmez", () => {
     expect(son, "öneri tıklaması hiç bildirim üretmedi").toBeTruthy();
     expect(
       son![0],
-      `öneri seçildi ama seçim boşa çekilmiş — arama ?subject= yerine ?q= ile gider`
+      `öneri seçildi ama seçim boşa çekilmiş — arama ?ders= yerine ?q= ile gider`
     ).toBe("Matematik");
   });
 
-  it("seçim → `subject`, serbest metin → `q` (iki katman birlikte)", () => {
+  it("seçim → `ders`, serbest metin → `q` (iki katman birlikte)", () => {
     // Kutunun ürettiği değerin şemada ne olduğunu bağlar: bu düğüm kırılırsa
     // ya kutu ya şema tarafı sapmıştır.
     expect(dersSorgusu("Matematik", "Matematik")).toEqual({
-      subject: ["Matematik"],
+      ders: ["Matematik"],
       q: "",
     });
-    expect(dersSorgusu("", "matemat")).toEqual({ subject: [], q: "matemat" });
+    expect(dersSorgusu("", "matemat")).toEqual({ ders: [], q: "matemat" });
   });
 });

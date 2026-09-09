@@ -1,5 +1,4 @@
 import { useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -10,6 +9,8 @@ import {
   useInfiniteProducts,
 } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { MAGAZA_ARAMA } from "@/lib/aramaUrl";
 import { AnaVitrin } from "@/pages/store/vitrin/AnaVitrin";
 import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
@@ -28,22 +29,24 @@ const SORT_LABELS: Record<Sort, string> = {
 };
 
 export default function StorePage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const urlQ = searchParams.get("q") || "";
-  const urlCat = searchParams.get("category");
-  const rawUrlKind = searchParams.get("kind");
-  const urlKind: "" | ProductKind =
-    rawUrlKind === "PHYSICAL" || rawUrlKind === "DIGITAL" ? rawUrlKind : "";
-  const rawUrlSort = searchParams.get("sort");
-  const urlSort: Sort =
-    rawUrlSort && rawUrlSort in SORT_LABELS ? (rawUrlSort as Sort) : "";
+  /*
+   * URL <-> state `useAramaDurumu` uzerinden (Paket 2). Burada dort ayri
+   * `useState` + dort ayri senkron efekti vardi; cop deger dogrulamasi
+   * (`kind`, `sort`) da elle yaziliydi. Ikisi de artik semada.
+   */
+  const { degerler, ayarla } = useAramaDurumu(MAGAZA_ARAMA);
+  const categoryId = degerler.kategori;
+  const kind = degerler.tur;
+  const sort = degerler.sirala as Sort;
+  const setKind = (v: "" | ProductKind) => ayarla({ tur: v });
+  const setSort = (v: Sort) => ayarla({ sirala: v });
 
-  const [q, setQ] = useState(urlQ);
-  const [categoryId, setCategoryId] = useState<number | undefined>(
-    urlCat ? Number(urlCat) : undefined,
-  );
-  const [kind, setKind] = useState<"" | ProductKind>(urlKind);
-  const [sort, setSort] = useState<Sort>(urlSort);
+  // Serbest metin YEREL: her tus vurusunda adres yazmak gecmisi kirletir.
+  const [q, setQ] = useState(degerler.q);
+  useEffect(() => {
+    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
+  }, [degerler.q]);
+
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [inStock, setInStock] = useState(false);
@@ -57,24 +60,17 @@ export default function StorePage() {
   const [variantSel, setVariantSel] = useState<Record<string, string[]>>({});
 
   const debouncedQ = useDebounce(q, 350);
+  useEffect(() => {
+    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
+
   const debMin = useDebounce(minPrice, 400);
   const debMax = useDebounce(maxPrice, 400);
 
-  useEffect(() => {
-    setQ(urlQ);
-  }, [urlQ]);
 
-  useEffect(() => {
-    setCategoryId(urlCat ? Number(urlCat) : undefined);
-  }, [urlCat]);
 
-  useEffect(() => {
-    setKind(urlKind);
-  }, [urlKind]);
 
-  useEffect(() => {
-    setSort(urlSort);
-  }, [urlSort]);
 
   const { data: categories } = useCategories();
   // Seçenekler kategoriye göre daralır: "Kırtasiye"de yayınevi listesi
@@ -137,12 +133,7 @@ export default function StorePage() {
   }, [listeKaynak, aramaModu]);
   const seciliKategori = categoryId ? kategoriById.get(categoryId) : undefined;
 
-  const kategoriSec = (id: number | undefined) => {
-    setCategoryId(id);
-    if (id === undefined) searchParams.delete("category");
-    else searchParams.set("category", String(id));
-    setSearchParams(searchParams);
-  };
+  const kategoriSec = (id: number | undefined) => ayarla({ kategori: id });
 
   const isFiltering = !!(
     debouncedQ ||
@@ -182,7 +173,7 @@ export default function StorePage() {
 
   const resetFilters = () => {
     setQ("");
-    setCategoryId(undefined);
+    ayarla({ kategori: undefined });
     setKind("");
     setSort("");
     setMinPrice("");
@@ -193,7 +184,7 @@ export default function StorePage() {
     setAuthors([]);
     setCoverTypes([]);
     setVariantSel({});
-    setSearchParams({});
+    ayarla({ q: "", kategori: undefined, tur: "", sirala: "" });
   };
 
   return (
@@ -416,9 +407,7 @@ export default function StorePage() {
                       // paylaşılan/yer imlenen adresin farklı bir liste
                       // göstermesi demekti. Boş değer parametreyi SİLER —
                       // `?sort=` kuyruğu "seçim yapılmış" gibi görünür.
-                      if (secilen) searchParams.set("sort", secilen);
-                      else searchParams.delete("sort");
-                      setSearchParams(searchParams);
+                      ayarla({ sirala: secilen });
                     }}
                     className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-marka-mid "
                   >

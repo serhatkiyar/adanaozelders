@@ -242,6 +242,34 @@ export function bayrak(
 }
 
 /**
+ * Çok seçimli enum — tekrarlı anahtar, tanınmayan üyeler sessizce elenir.
+ *
+ * Eğitmen aramasında ders şekli ÇOKLU (`?mode=ONLINE&mode=IN_PERSON`):
+ * oturumlu pazaryeri onay kutularıyla birden fazla şekil seçtiriyor. Anonim
+ * yüzey aynı anahtarı tek değer gibi okuyor — dizi biçimi ikisini de taşır.
+ */
+export function enumCoklu<E extends string>(
+  anahtar: string,
+  uyeler: readonly E[],
+  eskiAnahtarlar: readonly string[] = []
+): Alan<E[]> {
+  const gecerli = new Set<string>(uyeler);
+  return {
+    anahtarlar: [anahtar],
+    eskiAnahtarlar,
+    varsayilan: [],
+    oku: (sp) => {
+      for (const a of [anahtar, ...eskiAnahtarlar]) {
+        const hepsi = sp.getAll(a).filter((v) => gecerli.has(v)) as E[];
+        if (hepsi.length) return hepsi;
+      }
+      return [];
+    },
+    yaz: (sp, d) => d.filter((v) => gecerli.has(v)).forEach((v) => sp.append(anahtar, v)),
+  };
+}
+
+/**
  * Tek seçimli enum — URL'de TÜRKÇE slug, kodda ve API'de enum değeri.
  *
  * `etiketler` slug↔enum çevirisini tek yerde yapar: adres "hackable" olur

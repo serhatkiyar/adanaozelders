@@ -72,13 +72,16 @@ describe("bayrak AÇIK — kategori çubuğu eski hâline döner", () => {
     expect(screen.queryByText("Yakında")).toBeNull();
   });
 
-  it("sekme kipinde donmuş kategoriler yeniden seçilebilir", () => {
-    const onSelect = vi.fn();
-    sar(<CategoryBar active="hepsi" onSelect={onSelect} />);
-    fireEvent.click(screen.getByText("Kütüphaneler"));
-    expect(onSelect).toHaveBeenCalledWith("kutuphaneler");
-    fireEvent.click(screen.getByText("Denemeler"));
-    expect(onSelect).toHaveBeenCalledWith("denemeler");
+  it("bayrak açıkken donmuş kategoriler GERÇEK BAĞLANTI olur", () => {
+    // Sekme kipi 9 Eyl 2026'da kalktı (bkz. bolumDondurma.test.tsx). Bayrağın
+    // işi değişmedi: kapalıyken `<span aria-disabled>`, açıkken tıklanabilir
+    // bağlantı. Ölçülen artık "seçilebilir mi" değil "bir adrese gidiyor mu".
+    sar(<CategoryBar active="egitmenler" />);
+    for (const etiket of ["Kütüphaneler", "Denemeler"]) {
+      const bag = screen.getByRole("link", { name: new RegExp(etiket) });
+      expect(bag.getAttribute("href"), `${etiket} hedefsiz`).toBeTruthy();
+      expect(bag.getAttribute("aria-disabled")).toBeNull();
+    }
   });
 });
 

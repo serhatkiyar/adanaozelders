@@ -114,23 +114,23 @@ const ORNEK_DEGERLER: Record<string, unknown> = {
   q: "matematik",
   subject: ["matematik", "fizik"],
   konum: { yer: null, ilce: ["Seyhan", "Çukurova"] },
-  sekil: TeachingMode.IN_PERSON,
-  exam: "TYT",
+  sekil: [TeachingMode.IN_PERSON],
+  sinav: "TYT",
   cinsiyet: Gender.FEMALE,
   sayfa: 3,
   kategori: 12,
   tur: "PHYSICAL",
-  sirala: "fiyat",
+  sirala: "fiyat_artan",
 };
 
 describe("arama URL · eğitmen", () => {
   it("round-trip: yazılan her alan aynen okunuyor", () => {
     const deger = {
       q: "",
-      subject: ["matematik", "fizik"],
+      ders: ["matematik", "fizik"],
       konum: { yer: null, ilce: ["Seyhan"] },
-      sekil: TeachingMode.IN_PERSON,
-      exam: "TYT",
+      sekil: [TeachingMode.IN_PERSON],
+      sinav: "TYT",
       cinsiyet: Gender.FEMALE,
       sayfa: 3,
     };
@@ -143,7 +143,7 @@ describe("arama URL · eğitmen", () => {
     // (Google: "logical order of the filters always stays the same").
     const bir = egitmenAramaAdresi({
       subject: ["matematik"],
-      sekil: TeachingMode.IN_PERSON,
+      sekil: [TeachingMode.IN_PERSON],
       konum: { yer: null, ilce: ["Seyhan"] },
       sayfa: 2,
     });
@@ -154,44 +154,61 @@ describe("arama URL · eğitmen", () => {
   it("çoklu değer TEKRARLI ANAHTAR ile yazılır, virgülle değil", () => {
     // Mutasyon 3. Virgül, "Fen Bilimleri, Ortaokul" gibi ders adlarını bozar
     // ve Google'ın kaçınılmasını istediği ayırıcıdır.
-    const adres = egitmenAramaAdresi({ subject: ["matematik", "fizik"] });
-    expect(sorgu(adres).getAll("subject")).toEqual(["matematik", "fizik"]);
+    const adres = egitmenAramaAdresi({ ders: ["matematik", "fizik"] });
+    expect(sorgu(adres).getAll("ders")).toEqual(["matematik", "fizik"]);
     expect(adres).not.toContain("matematik,fizik");
   });
 
   it("KONUM uzaktan aramada düşer (şema kuralı, çağrı yerinde değil)", () => {
     // Mutasyon 6. Bu kural eskiden Landing'de vardı, useNavSearch'te yoktu.
     const uzaktan = egitmenAramaAdresi({
-      sekil: TeachingMode.ONLINE,
+      sekil: [TeachingMode.ONLINE],
       konum: { yer: null, ilce: ["Seyhan"] },
     });
     expect(uzaktan).not.toContain("Seyhan");
 
     const yuzYuze = egitmenAramaAdresi({
-      sekil: TeachingMode.IN_PERSON,
+      sekil: [TeachingMode.IN_PERSON],
       konum: { yer: null, ilce: ["Seyhan"] },
     });
-    expect(sorgu(yuzYuze).getAll("district")).toEqual(["Seyhan"]);
+    expect(sorgu(yuzYuze).getAll("ilce")).toEqual(["Seyhan"]);
+  });
+
+  it("ÇOKLU ders şekli tekrarlı anahtarla taşınır", () => {
+    // Oturumlu pazaryeri onay kutusuyla birden fazla şekil seçtiriyor;
+    // anonim yüzey aynı anahtarı tek değer gibi okuyor. Dizi ikisini de taşır.
+    const adres = egitmenAramaAdresi({
+      sekil: [TeachingMode.ONLINE, TeachingMode.IN_PERSON],
+    });
+    expect(sorgu(adres).getAll("sekil")).toEqual(["ONLINE", "IN_PERSON"]);
+  });
+
+  it("KARIŞIK seçimde konum KORUNUR (yalnız uzaktan seçiliyse düşer)", () => {
+    const karisik = egitmenAramaAdresi({
+      sekil: [TeachingMode.ONLINE, TeachingMode.IN_PERSON],
+      konum: { yer: null, ilce: ["Seyhan"] },
+    });
+    expect(sorgu(karisik).getAll("ilce")).toEqual(["Seyhan"]);
   });
 
   it("şekil BELİRTİLMEMİŞken konum korunur", () => {
     // Üst bar araması şekil sormuyor; katı kural burada kullanıcının
     // seçmediği bir filtreyi zorlardı.
     const adres = egitmenAramaAdresi({ konum: { yer: null, ilce: ["Seyhan"] } });
-    expect(sorgu(adres).getAll("district")).toEqual(["Seyhan"]);
-    expect(adres).not.toContain("mode=");
+    expect(sorgu(adres).getAll("ilce")).toEqual(["Seyhan"]);
+    expect(adres).not.toContain("sekil=");
   });
 
   it("KENDİNİ İYİLEŞTİRME: tanınmayan değer varsayılana düşer ve silinir", () => {
-    const sp = new URLSearchParams("mode=zirva&gender=xyz&sayfa=-3");
+    const sp = new URLSearchParams("sekil=zirva&cinsiyet=xyz&sayfa=-3");
     const okunan = aramayiOku(EGITMEN_ARAMA, sp);
-    expect(okunan.sekil).toBe("");
+    expect(okunan.sekil).toEqual([]);
     expect(okunan.cinsiyet).toBe("");
     expect(okunan.sayfa).toBe(1);
 
     const yeniden = egitmenAramaAdresi(okunan);
-    expect(yeniden).not.toContain("mode=");
-    expect(yeniden).not.toContain("gender=");
+    expect(yeniden).not.toContain("sekil=");
+    expect(yeniden).not.toContain("cinsiyet=");
     expect(yeniden).not.toContain("sayfa=");
   });
 
@@ -217,7 +234,7 @@ describe("arama URL · konum sözleşmesi", () => {
     });
     const sp = sorgu(adres);
     expect(sp.get("mahalle")).toBe("Reşatbey");
-    expect(sp.get("district")).toBe("Seyhan");
+    expect(sp.get("ilce")).toBe("Seyhan");
   });
 
   it("URL'de ham KOORDİNAT taşınmaz", () => {
@@ -262,14 +279,14 @@ describe("arama URL · kaybolan metin", () => {
    * sessiz kayıp. Kütüphane hapında aynı akış `?q=` ile zaten çalışıyordu.
    */
   it("SEÇİLMEDİYSE yazılan metin `q` olur", () => {
-    expect(dersSorgusu("", "matematik")).toEqual({ subject: [], q: "matematik" });
+    expect(dersSorgusu("", "matematik")).toEqual({ ders: [], q: "matematik" });
     expect(egitmenAramaAdresi(dersSorgusu("", "matematik"))).toContain("q=matematik");
   });
 
-  it("SEÇİLDİYSE `subject` olur, metin yazılmaz", () => {
-    expect(dersSorgusu("matematik", "mate")).toEqual({ subject: ["matematik"], q: "" });
+  it("SEÇİLDİYSE `ders` olur, metin yazılmaz", () => {
+    expect(dersSorgusu("matematik", "mate")).toEqual({ ders: ["matematik"], q: "" });
     const adres = egitmenAramaAdresi(dersSorgusu("matematik", "mate"));
-    expect(adres).toContain("subject=matematik");
+    expect(adres).toContain("ders=matematik");
     expect(adres).not.toContain("q=");
   });
 
@@ -280,14 +297,14 @@ describe("arama URL · kaybolan metin", () => {
 
 describe("arama URL · mağaza", () => {
   it("round-trip", () => {
-    const deger = { q: "roman", kategori: 12, tur: "PHYSICAL" as const, sirala: "fiyat", sayfa: 2 };
+    const deger = { q: "roman", kategori: 12, tur: "PHYSICAL" as const, sirala: "fiyat_artan", sayfa: 2 };
     expect(aramayiOku(MAGAZA_ARAMA, sorgu(
       `${MAGAZA_ARAMA.taban}?${aramayiYaz(MAGAZA_ARAMA, deger).toString()}`
     ))).toEqual(deger);
   });
 
   it("geçersiz kategori/tür düşer", () => {
-    const okunan = aramayiOku(MAGAZA_ARAMA, new URLSearchParams("category=abc&kind=ZIRVA"));
+    const okunan = aramayiOku(MAGAZA_ARAMA, new URLSearchParams("kategori=abc&tur=ZIRVA"));
     expect(okunan.kategori).toBeUndefined();
     expect(okunan.tur).toBe("");
   });

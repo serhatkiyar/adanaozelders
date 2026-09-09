@@ -1,5 +1,4 @@
 import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
@@ -16,8 +15,10 @@ import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
+import { yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
+import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { EGITMEN_ARAMA } from "@/lib/aramaUrl";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -57,13 +58,31 @@ export default function Marketplace() {
       : currentUser?.role_id === ROLE_IDS.CLIENT
         ? UYE_NAV
         : undefined;
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [q, setQ] = useState(() => searchParams.get("q") ?? "");
-  const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
-  // Mahalle çapası — `?mahalle=Reşatbey` paylaşılabilir bağlantıdır.
-  const [yer, setYer] = useState<YerSecimi | null>(() => yeriOku(searchParams).yer);
-  const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
-  const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
+  /*
+   * URL ↔ state `useAramaDurumu` üzerinden (Paket 2). Elle yazılmış senkron
+   * bloğu üç kararı burada yeniden veriyordu (varsayılan yazılsın mı, sayfa
+   * sıfırlansın mı, push mu replace mi) ve `?gender=abc` gibi çöp değerin
+   * API'ye ulaşmaması da elle yazılmıştı — ikisi de artık şemada.
+   */
+  const { degerler, ayarla } = useAramaDurumu(EGITMEN_ARAMA);
+  const { konum, ders: subjects, sekil: modes, sinav: exam, cinsiyet: gender } = degerler;
+  const district = konum.ilce;
+  const yer = konum.yer;
+
+  const setSubjects = (v: string[]) => ayarla({ ders: v });
+  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
+  const setYer = (v: YerSecimi | null) =>
+    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
+  const setExam = (v: string) => ayarla({ sinav: v });
+  const setModes = (v: TeachingMode[]) => ayarla({ sekil: v });
+  const setGender = (v: Gender | "") => ayarla({ cinsiyet: v });
+
+  // Serbest metin YEREL: her tuş vuruşunda adres yazmak geçmişi kirletir.
+  const [q, setQ] = useState(degerler.q);
+  useEffect(() => {
+    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
+  }, [degerler.q]);
+
   const [showFilters, setShowFilters] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pricePopoverOpen, setPricePopoverOpen] = useState(false);
@@ -89,41 +108,19 @@ export default function Marketplace() {
     setPricePopoverOpen(true);
   };
 
-  // Dış navigasyon (geri/ileri, link) state'i günceller.
-  // Guard: yalnız farklıysa güncelle (state→URL sync ile döngü engeli).
-  useEffect(() => {
-    const qParam = searchParams.get("q") ?? "";
-    const subjectParams = searchParams.getAll("subject");
-    const examParam = searchParams.get("exam") ?? "";
-    const districtParams = searchParams.getAll("district");
-    const urlYer = yeriOku(searchParams).yer;
-    if (qParam !== q) setQ(qParam);
-    if (JSON.stringify(subjectParams) !== JSON.stringify(subjects))
-      setSubjects(subjectParams);
-    if (JSON.stringify(districtParams) !== JSON.stringify(district))
-      setDistrict(districtParams);
-    if (JSON.stringify(urlYer) !== JSON.stringify(yer)) setYer(urlYer);
-    if (examParam !== exam) setExam(examParam);
-    // Elle yazılmış `?gender=abc` API'ye ULAŞMAMALI: enum üyesi değilse boşa
-    // düşer. (Sihirbazın `?adim=` için öğrendiği ders — doğrulanmamış bir URL
-    // parametresi doğrudan sunucuya geçirilmez.)
-    const genderParam = searchParams.get("gender") ?? "";
-    const gecerliGender = (Object.values(Gender) as string[]).includes(genderParam)
-      ? (genderParam as Gender)
-      : "";
-    if (gecerliGender !== gender) setGender(gecerliGender);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
+  /*
+   * Dış navigasyon (geri/ileri, paylaşılan link) için AYRI bir efekt YOK:
+   * değerler doğrudan adresten türüyor. Eskiden burada bir "URL → state"
+   * efekti vardı ve karşısındaki "state → URL" efektiyle sonsuz döngüyü
+   * engellemek için elle JSON karşılaştırması yapıyordu. İki yönlü kopya
+   * ortadan kalkınca o guard da gereksizleşti.
+   *
+   * Elle yazılmış `?gender=abc` API'ye ULAŞMAZ: enum doğrulaması artık
+   * şemanın alanında (`cinsiyetAlani`), ekranda değil.
+   */
   const [minRate, setMinRate] = useState("");
   const [maxRate, setMaxRate] = useState("");
   const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
-  const [modes, setModes] = useState<TeachingMode[]>(() =>
-    searchParams
-      .getAll("mode")
-      .filter((m): m is TeachingMode => (Object.values(TeachingMode) as string[]).includes(m)) as TeachingMode[]
-  );
-  const [gender, setGender] = useState<Gender | "">("");
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [limit, setLimit] = useState(20);
@@ -156,21 +153,15 @@ export default function Marketplace() {
   const isAllMode = modes.length === 0;
 
   const removeSubject = (s: string) =>
-    setSubjects((prev) => prev.filter((x) => x !== s));
+    setSubjects(subjects.filter((x) => x !== s));
 
   const debouncedQ = useDebounce(q);
 
-  // ── URL ↔ state senkronizasyonu ──────────────────────────────────────
+  // Debounce'lu metin adrese `replace` ile yazılır.
   useEffect(() => {
-    const next = new URLSearchParams();
-    if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
-    subjects.forEach((s) => next.append("subject", s));
-    yeriYaz(next, yer, district);
-    modes.forEach((m) => next.append("mode", m));
-    if (exam.trim()) next.set("exam", exam.trim());
-    if (gender) next.set("gender", gender);
-    setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, yer, modes, exam, gender, setSearchParams]);
+    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQ]);
 
   const debouncedMin = useDebounce(minRate);
   const debouncedMax = useDebounce(maxRate);
@@ -613,7 +604,7 @@ export default function Marketplace() {
                     return (
                       <button
                         key={opt.value}
-                        onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
+                        onClick={() => setGender(gender === opt.value ? "" : opt.value)}
                         className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                           gender === opt.value
                             ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"

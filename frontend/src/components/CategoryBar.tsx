@@ -20,8 +20,6 @@ type Category = {
   label: string;
   icon: string;
   to: string;
-  /** Sekme DEĞİL, düz bağlantı: onSelect kipinde de yeni sayfaya götürür (Mağaza). */
-  harici?: boolean;
   /** Bölüm donduruldu: görünür kalır ama tıklanamaz (bkz. ozellikBayraklari). */
   donuk?: boolean;
   /** Bölüm tamamen gizli: HİÇ render edilmez (kullanıcı kararı, 29 Ağu). */
@@ -35,7 +33,7 @@ const CATEGORIES: Category[] = [
   // olarak donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
   { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries, gizli: !DENEMELER_ACIK },
   // Mağaza: kategori sekmesi değil, mağazaya geçiş kapısı (kullanıcı isteği, 29 Ağu).
-  { key: "magaza", label: "Mağaza", icon: "/icons/categories/magaza.webp", to: ROUTES.store, harici: true },
+  { key: "magaza", label: "Mağaza", icon: "/icons/categories/magaza.webp", to: ROUTES.store },
 ];
 
 
@@ -50,10 +48,8 @@ export function categoryMeta(key: CategoryKey): Category {
  */
 export function CategoryBar({
   active,
-  onSelect,
 }: {
   active?: CategoryKey;
-  onSelect?: (key: CategoryKey) => void;
 }) {
   return (
     <div className="w-full">
@@ -118,17 +114,19 @@ export function CategoryBar({
             );
           }
 
-          return onSelect && !c.harici ? (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => onSelect(c.key as CategoryKey)}
-              aria-current={isActive ? "page" : undefined}
-              className={cls}
-            >
-              {inner}
-            </button>
-          ) : (
+          /*
+           * HER KATEGORİ BİR BAĞLANTIDIR (kullanıcı kararı, 9 Eyl 2026).
+           *
+           * Burada eskiden `onSelect` verilirse `<button>`, verilmezse
+           * `<Link>` basan ikinci bir kip vardı. Ana sayfa buton kipini
+           * kullanıyordu, yani sekmeye tıklamak adresi DEĞİŞTİRMİYORDU:
+           * "Kütüphaneler" seçili bir ekran paylaşılamıyor, geri tuşu
+           * sekmeyi geri almıyor, sayfa yenilenince ilk sekmeye düşülüyordu.
+           * Üstelik aynı çubukta Mağaza her zaman `<Link>`ti — bir çubuk,
+           * iki tür öğe. Kullanıcı: *"tıklayınca /egitmenler /kutuphaneler
+           * olsa daha mantıklı değil mi?"*
+           */
+          return (
             <Link
               key={c.key}
               to={c.to}
