@@ -32,6 +32,7 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 | **ÜK-7** | Arayüzde uzun tire (—) kullanılmaz | uygulandı | (kabul ölçütleri dört testte) |
 | **ÜK-8** | Sosyal giriş: Google EVET, Facebook HAYIR | uygulandı | `test_google_oidc_dogrulama.py`, `test_google_oauth_pg.py`, `test_parolasiz_hesap.py` |
 | **ÜK-9** | Soyad public yüzeylerde görünmez | uygulandı | `test_soyad_public_yuzeyde_yok.py` |
+| **ÜK-10** | Kapı gezinmede değil **eylemde** | uygulandı | `__guards__/kapiSorguyuKorur.test.tsx`, `korumaliEylemGezinmez.test.ts`, `eylemKapisiSayfayiKorur.test.tsx`, `anonimYuzeyGercek.test.tsx` |
 
 ---
 
@@ -408,3 +409,55 @@ DOĞRULANDIĞINI söyler, kimliğin ne olduğunu değil.
 - `docs/egitmen-alici-sozlesme.md` — eğitmenin alıcı kimliği (ÜK-5, ÜK-6)
 - `docs/ilan-ekrani-bulgular.md` — ilan düzenleme ekranı keşfi
 - `docs/ip-b1-rapor.md` — `Ç-n` açık sorularının sahibi
+
+---
+
+## ÜK-10 — Kapı gezinmede değil EYLEMDE
+
+**Karar (kullanıcı, 9 Eylül 2026):** giriş yapmamış ziyaretçi siteyi serbestçe
+gezer. Hesap yalnız korumalı bir EYLEM denendiğinde istenir ve istendiğinde
+kullanıcı bulunduğu sayfayı, filtrelerini ve seçimlerini KAYBETMEZ.
+
+Kullanıcının kendi sözleri:
+
+> *"Bir eğitmene mesaj atmak, favorilemek istediğimizde o zaman bir uyarı
+> versek daha iyi olmaz mı? Henüz hesap açmadan eğitmenlere bakmak isteyen bir
+> kişiyi çok daraltıyor gibiyiz."*
+
+### Dış referans
+
+- **NN/g, "Login Walls Stop Users in Their Tracks"** — hesap zorunluluğu ancak
+  nadir durumlarda haklıdır; insanlar duvarı aşmak yerine terk eder.
+- **Lazy Registration deseni** — "değeri önce ver, kaydı sonra iste". Klasik
+  örnek alışveriş sepeti: serbest gez, kapı ödemede.
+- **Superprof** (bu ürünün karşılaştırma noktası) — profilleri anonim
+  gezdiriyor, hesabı yalnız iletişim kurarken istiyor.
+
+### Sökülenler
+
+| Ne | Neden |
+|---|---|
+| Anonim listedeki kayıt bandı | Koşulsuz, sonuçların üstünde; ziyaretçi tek eğitmen görmeden duvara çarpıyordu. Ayrıca YANLIŞ VAAT: "mesaj için hesap aç" diyordu ama mesajlaşma aktif rezervasyona bağlı |
+| Boş "Filtrele ve Sırala" penceresi | Gövdesinde tek filtre yoktu, yalnız reklam kartı vardı. Yerine oturumlu yüzeyle ORTAK pencere geldi (faset/histogram uçları zaten anonime açıktı) |
+
+### Kurallar
+
+1. **Giriş penceresi mevcut adrese EKLENİR, adresi değiştirmez.** Tek kapı
+   `lib/girisAdresi.ts`; elle `"?modal=login"` yazmak yasak. Eski hâlinde
+   filtreler uçuyordu — React Router'da search-only `to` sorguyu değiştirir.
+2. **Korumalı eylem tıklaması tam sayfa `/giris`e GİTMEZ.** Auth akışının kendi
+   ekranları ve `ProtectedRoute` istisnadır; onlar da hedefi `?git=` ile taşır
+   ve `guvenliDonusYolu`ndan geçirir.
+3. **Niyet, para harcatan bir eylemi KENDİLİĞİNDEN tetiklemez.** Ders talebi
+   (yalnız pencere açar) niyet saklar; rezervasyon, deneme oturumu ve ödeme
+   saklamaz — kullanıcı giriş sonrası kendi onayıyla devam eder.
+4. **Bekleyen niyet TEKTİR** (`lib/bekleyenNiyet.ts`, tek `sessionStorage`
+   anahtarı). İki ayrı depo olsaydı tek girişten sonra iki niyet birden
+   ateşlenir, kullanıcı istemediği bir pencere görürdü. Tüketim TİP
+   KAPSAMLIDIR: global uygulayıcı sayfanın niyetini yiyemez.
+
+### Kapsam dışı (bilinçli)
+
+Mesajlaşmanın `hasActiveBooking` koşulu değişmedi. Bandı sökmek yanlış vaadi
+ortadan kaldırıyor; mesajlaşmayı rezervasyonsuz üyeye açmak ayrı bir ürün
+kararıdır.

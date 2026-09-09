@@ -58,6 +58,7 @@ const YUZEYLER: [string, RegExp][] = [
   ["pages/store/ProductDetailPage.tsx", /magazaAramaAdresi/],
   ["components/store/StoreSearch.tsx", /magazaAramaAdresi/],
   ["components/store/StoreCategoryBar.tsx", /magazaAramaAdresi/],
+  ["components/EgitmenFiltreModali.tsx", /useAramaDurumu/],
   ["hooks/useNavSearch.tsx", /egitmenAramaAdresi|kutuphaneAramaAdresi/],
 ];
 

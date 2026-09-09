@@ -4,24 +4,23 @@ import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
-import { SegmentedControl } from "@/components/SegmentedControl";
-import { useTutorSearch, useTutorPriceHistogram, useTutorGenderFacets } from "@/hooks/useTutorSearch";
+import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
-import { toast } from "@/store/toastStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
-import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
+import { ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
+import { useKonumStore } from "@/store/konumStore";
 import { bosDeger, filtreliMi } from "@/lib/urlSemasi";
 import {
   EGITMEN_ARAMA,
-  VARSAYILAN_YARICAP_KM,
   egitmenIstegi,
   type EgitmenAramasi,
 } from "@/lib/aramaUrl";
@@ -54,16 +53,6 @@ const SORT_OPTIONS: { value: TutorSort; label: string }[] = [
 const MODE_ALL = "ALL" as const;
 /** Aramada yalnız iki şekil vardır; `BOTH` filtre olarak anlamsızdır. */
 type AramaSekli = EgitmenAramasi["sekil"][number];
-const MODE_SEGMENTS: { value: AramaSekli | typeof MODE_ALL; label: string }[] = [
-  { value: MODE_ALL, label: "Tümü" },
-  { value: TeachingMode.ONLINE, label: "Uzaktan" },
-  { value: TeachingMode.IN_PERSON, label: "Yüzyüze" },
-];
-
-const GENDER_OPTIONS: { value: Gender.MALE | Gender.FEMALE; label: string }[] = [
-  { value: Gender.FEMALE, label: "Kadın" },
-  { value: Gender.MALE, label: "Erkek" },
-];
 
 /* ─── icon helpers ─────────────────────────────────────── */
 
@@ -100,7 +89,6 @@ export default function Marketplace() {
     yakinimda,
   } = degerler;
   const sort = sirala || TutorSort.RELEVANCE;
-  const radiusKm = degerler.yaricap ?? VARSAYILAN_YARICAP_KM;
   const district = konum.ilce;
   const yer = konum.yer;
 
@@ -110,11 +98,9 @@ export default function Marketplace() {
     ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
   const setExam = (v: string) => ayarla({ sinav: v });
   const setModes = (v: AramaSekli[]) => ayarla({ sekil: v });
-  const setGender = (v: EgitmenAramasi["cinsiyet"]) => ayarla({ cinsiyet: v });
   const setSort = (v: TutorSort) =>
     // `RELEVANCE` varsayılan: adrese yazılmaz, boşa çekilir.
     ayarla({ sirala: v === TutorSort.RELEVANCE ? "" : v });
-  const setRadiusKm = (v: number) => ayarla({ yaricap: v });
 
   // Serbest metin YEREL: her tuş vuruşunda adres yazmak geçmişi kirletir.
   const [q, setQ] = useState(degerler.q);
@@ -176,31 +162,9 @@ export default function Marketplace() {
    * Paylaşılan bir arama bağlantısı kullanıcının bulunduğu yeri taşımamalı.
    * Bağlantıyı açan kişi için konum tarayıcıdan YENİDEN istenir.
    */
-  const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoLoading, setGeoLoading] = useState(false);
-
-  const requestNearMe = () => {
-    if (!navigator.geolocation) {
-      toast.error("Tarayıcınız konum servisini desteklemiyor.");
-      return;
-    }
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setNearMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        ayarla({ yakinimda: true });
-        setGeoLoading(false);
-      },
-      () => {
-        toast.error("Konum alınamadı. Lütfen izin verin.");
-        // Niyet adreste kalmasın: izin verilmediyse "yakınımda" filtresi
-        // sessizce açık görünmemeli.
-        ayarla({ yakinimda: false });
-        setGeoLoading(false);
-      },
-      { enableHighAccuracy: false, timeout: 8000 }
-    );
-  };
+  // Konum artık `store/konumStore`da: YAZAN yer filtre penceresi (ortak
+  // bileşen), OKUYAN yer bu sayfa. Yerel state ile paylaşılamazdı.
+  const konumum = useKonumStore((s) => s.konum);
 
   const modeSegment: AramaSekli | typeof MODE_ALL = modes[0] ?? MODE_ALL;
   const selectMode = (v: AramaSekli | typeof MODE_ALL) =>
@@ -260,9 +224,9 @@ export default function Marketplace() {
     () =>
       egitmenIstegi(
         { ...degerler, q: debouncedQ },
-        { limit, offset: 0, konumum: nearMe }
+        { limit, offset: 0, konumum }
       ),
-    [degerler, debouncedQ, limit, nearMe]
+    [degerler, debouncedQ, limit, konumum]
   );
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
@@ -303,13 +267,6 @@ export default function Marketplace() {
 
   const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(histParams, showFilters);
 
-  // Faset KENDİ eksenini saymaz: `gender` çıkarılır. Kalsaydı "Kadın" seçili
-  // iken "Erkek 0" görünür ve sayılar seçim yapmayı imkânsız kılardı.
-  const fasetParams = useMemo(() => {
-    const { gender: _atlandi, ...kalan } = histParams;
-    return kalan;
-  }, [histParams]);
-  const { data: fasetler } = useTutorGenderFacets(fasetParams, showFilters);
 
   const hasModalFilters =
     !!minRate || !!maxRate || !!gender || !!minAge || !!maxAge || yakinimda;
@@ -321,7 +278,7 @@ export default function Marketplace() {
   const clearAll = () => {
     setQ("");
     setMinRate(""); setMaxRate(""); setMinAge(""); setMaxAge("");
-    setNearMe(null);
+    useKonumStore.getState().unut();
     ayarla(bosDeger(EGITMEN_ARAMA));
     setLimit(20);
   };
@@ -587,137 +544,21 @@ export default function Marketplace() {
       </div>
 
       {/* ── Filtre Modalı ── */}
-      {showFilters && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
-          <div className="absolute inset-0" onClick={() => setShowFilters(false)} />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 duration-200 sm:zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
-              <h2 className="text-lg font-bold text-slate-900 ">Filtrele</h2>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-8 overflow-y-auto p-6">
-              {/* Ders işleme şekli */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Ders İşleme Şekli</h3>
-                <SegmentedControl options={MODE_SEGMENTS} value={modeSegment} onChange={selectMode} />
-              </div>
-
-              {/* Konum */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
-                <div className="relative">
-                  <select
-                    value={yakinimda ? radiusKm : ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) {
-                        setNearMe(null);
-                        ayarla({ yakinimda: false, yaricap: undefined });
-                        return;
-                      }
-                      setRadiusKm(Number(val));
-                      // Niyet adreste; koordinat yalnız bellekte.
-                      if (!nearMe) requestNearMe();
-                    }}
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                  >
-                    <option value="">Farketmez (Her Yer)</option>
-                    <option value="5">En fazla 5 km</option>
-                    <option value="10">En fazla 10 km</option>
-                    <option value="25">En fazla 25 km</option>
-                    <option value="50">En fazla 50 km</option>
-                    <option value="100">En fazla 100 km</option>
-                  </select>
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </span>
-                </div>
-                {geoLoading && <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>}
-                {nearMe && !geoLoading && <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>}
-              </div>
-
-              {/* Fiyat aralığı */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900 ">Fiyat Aralığı</h3>
-                <p className="mb-4 mt-0.5 text-xs text-slate-500 ">Saatlik ders ücreti</p>
-                <PriceRangeHistogram
-                  rates={rateDist ?? []}
-                  loading={histLoading}
-                  minRate={minRate}
-                  maxRate={maxRate}
-                  onChange={(mn, mx) => { setMinRate(mn); setMaxRate(mx); }}
-                />
-              </div>
-
-              {/* Cinsiyet */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Cinsiyet</h3>
-                <div className="flex flex-wrap gap-2">
-                  {GENDER_OPTIONS.map((opt) => {
-                    const adet = fasetler?.[opt.value];
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setGender(gender === opt.value ? "" : opt.value)}
-                        className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                          gender === opt.value
-                            ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"
-                            : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
-                        }`}
-                      >
-                        {opt.label}
-                        {/* Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar —
-                            asıl düzeltme budur. */}
-                        {adet !== undefined && (
-                          <span className={gender === opt.value ? "ml-1.5 opacity-80" : "ml-1.5 text-slate-400"}>
-                            {adet}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* SESSİZ ELEME artık sessiz değil.
-                    `Tutor.gender == FEMALE` karşılaştırması hem NULL hem
-                    UNSPECIFIED satırları eler; öğrenci bugüne kadar bunu
-                    göremiyordu. Yalnız filtre ETKİNKEN gösterilir: filtre
-                    kapalıyken kimse elenmiyor. */}
-                {gender && !!fasetler?.gorunmeyen && (
-                  <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
-                    Cinsiyetini belirtmemiş {fasetler.gorunmeyen} eğitmen bu
-                    filtreyle görünmüyor.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
-              <button
-                onClick={clearAll}
-                className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
-              >
-                Temizle
-              </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
-              >
-                Sonuçları Göster
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/*
+        * Pencere `components/EgitmenFiltreModali`ye çıktı: anonim yüzeyle
+        * ORTAK. Ayrı yazılan ikinci yüzey ayrışmış ve boşalmıştı; ortak
+        * bileşen o kusurun tekrarını imkânsız kılıyor.
+        */}
+      <EgitmenFiltreModali
+        acik={showFilters}
+        kapat={() => setShowFilters(false)}
+        onTemizle={() => {
+          // Sayfanın KENDİ yerel durumu: "daha fazla göster" ile büyüyen
+          // liste sınırı ve serbest metin kutusu.
+          setQ("");
+          setLimit(20);
+        }}
+      />
     </DashboardShell>
   );
 }

@@ -13,7 +13,6 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
 import { TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
-import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { type YerSecimi } from "@/lib/yerArama";
@@ -21,6 +20,9 @@ import { type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EGITMEN_ARAMA, egitmenIstegi } from "@/lib/aramaUrl";
+import { filtreliMi } from "@/lib/urlSemasi";
+import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
+import { useKonumStore } from "@/store/konumStore";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -76,6 +78,8 @@ export default function PublicMarketplace() {
   const setSort = (v: TutorSort) =>
     ayarla({ sirala: v === TutorSort.RELEVANCE ? "" : v });
   const [showFilters, setShowFilters] = useState(false);
+  // Koordinat adrese YAZILMAZ; yalnız istekte kullanılır.
+  const konumum = useKonumStore((s) => s.konum);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
@@ -103,8 +107,9 @@ export default function PublicMarketplace() {
    * çevirinin dört kopyası olmasının bedeli buydu.
    */
   const params = useMemo<TutorSearchParams>(
-    () => egitmenIstegi({ ...degerler, q: debouncedQ }, { limit, offset: 0 }),
-    [degerler, debouncedQ, limit]
+    () =>
+      egitmenIstegi({ ...degerler, q: debouncedQ }, { limit, offset: 0, konumum }),
+    [degerler, debouncedQ, limit, konumum]
   );
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
@@ -133,7 +138,10 @@ export default function PublicMarketplace() {
     (t) => !(featuredOnFirstPage && featuredIds.includes(t.id))
   );
 
-  const hasActiveFilters = sort !== TutorSort.RELEVANCE;
+  // Şemadan türer: yeni bir filtre eklendiğinde bu satırı güncellemeyi
+  // unutmak, rozeti sessizce yanlış gösterirdi. Eskiden yalnız `sort`a
+  // bakıyordu ve anonim yüzeyde başka filtre de yoktu.
+  const hasActiveFilters = filtreliMi(EGITMEN_ARAMA, degerler);
 
   const seoTitle = subjects.length
     ? `${subjects.join(", ")} Eğitmenleri`
@@ -273,26 +281,21 @@ export default function PublicMarketplace() {
         />
       )}
       <div className="mx-auto max-w-[1050px] space-y-4 pt-4">
-        {/* Login CTA banner */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-marka to-marka-hover px-5 py-3.5 text-marka-fg">
-          <p className="text-sm font-medium">
-            Eğitmenleri keşfet. Ders talebi ve mesaj için ücretsiz hesap aç.
-          </p>
-          <div className="flex shrink-0 gap-2">
-            <Link
-              to="?modal=login"
-              className="rounded-xl bg-white/15 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/25"
-            >
-              Giriş Yap
-            </Link>
-            <Link
-              to={ROUTES.register}
-              className="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-marka-metin-hover transition hover:bg-marka-soft"
-            >
-              Kayıt Ol
-            </Link>
-          </div>
-        </div>
+        {/*
+          * KAYIT BANDI SÖKÜLDÜ (kullanıcı kararı, 9 Eyl 2026 · ÜK-10).
+          *
+          * Buradaki koşulsuz turuncu bant, ziyaretçi tek bir eğitmen bile
+          * görmeden hesap istiyordu — NN/g'nin "Login Walls" başlığında
+          * ölçtüğü kusur. Üstelik yanlış vaat veriyordu: "mesaj için hesap aç"
+          * diyordu ama mesajlaşma aktif rezervasyona bağlı
+          * (`TutorProfile` · `hasActiveBooking`), yani hesap açmak tek başına
+          * mesajlaşmayı AÇMIYOR.
+          *
+          * Kapı artık eylemde: kalbe ya da "Ders Talep Et"e basıldığında
+          * pencere açılıyor ve sayfa kaybolmuyor. Yerine hiçbir şey KONMADI —
+          * navbar'daki "Giriş Yap" zaten duruyor. Nöbetçi:
+          * `__guards__/anonimBantSokumu`.
+          */}
 
         {/* Sonuçlar */}
         <div>
@@ -355,57 +358,19 @@ export default function PublicMarketplace() {
         </div>
       </div>
 
-      {/* ── Filtre Modalı ── */}
-      {showFilters && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
-          <div className="absolute inset-0" onClick={() => setShowFilters(false)} />
-          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 duration-200 sm:zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
-              <h2 className="text-lg font-bold text-slate-900 ">Filtrele ve Sırala</h2>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-8 overflow-y-auto p-6">
-              {/* Daha fazla filtre için kayıt CTA */}
-              <div className="rounded-2xl border border-marka-line bg-marka-soft/50 p-4 ">
-                <h3 className="text-sm font-semibold text-marka-soft-fg ">Daha fazla filtre mi arıyorsunuz?</h3>
-                <p className="mt-1 text-xs text-marka-metin-hover ">
-                  Konum, cinsiyet, fiyat aralığı ve daha fazlası için ücretsiz hesap oluşturun.
-                </p>
-                <Link
-                  to="?modal=register"
-                  className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-xs font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover"
-                  onClick={() => setShowFilters(false)}
-                >
-                  Kayıt Ol
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
-              <button
-                onClick={() => setSort(TutorSort.RELEVANCE)}
-                className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
-              >
-                Temizle
-              </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
-              >
-                Sonuçları Göster
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/*
+        * Boş "Filtrele ve Sırala" penceresi SÖKÜLDÜ (ÜK-10). Gövdesinde tek
+        * bir filtre yoktu, yalnız "ücretsiz hesap oluşturun" reklam kartı
+        * duruyordu: işlevsel görünen bir düğme pazarlama gösteriyordu.
+        *
+        * Yerine oturumlu yüzeyle AYNI pencere geliyor. Teknik engel yoktu —
+        * `/tutors/price-histogram` ve `/tutors/gender-facets` uçları anonime
+        * açık, yani sunucu bu sayıları zaten bedavaya veriyordu.
+        */}
+      <EgitmenFiltreModali
+        acik={showFilters}
+        kapat={() => setShowFilters(false)}
+      />
     </PublicShell>
   );
 }
