@@ -20,6 +20,7 @@ import {
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useNavSearch } from "@/hooks/useNavSearch";
 import { useAuthStore } from "@/store/authStore";
+import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import { AmenityTagGrid } from "@/components/AmenityTagGrid";
@@ -106,6 +107,7 @@ export default function LibraryDetail() {
   const todayWeekday = jsDayToWeekday(new Date().getDay());
   const [showReviews, setShowReviews] = useState(false);
   const [showReserve, setShowReserve] = useState(false);
+  const { girisGerekli } = useGirisKapisi();
 
   const content = (() => {
     if (isLoading) {
@@ -219,7 +221,21 @@ export default function LibraryDetail() {
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowReserve(true)}
+                  /*
+                   * Kapı sihirbazın DIŞINDA (ÜK-10). Eskiden anonim ziyaretçi
+                   * de sihirbazı açabiliyordu; kapı `StudySpaceSection`ın
+                   * içindeydi, yani kullanıcı tarih/saat/süre seçip FİYATI
+                   * gördükten SONRA tam sayfa `/giris`e çarpıyordu. Emek
+                   * harcandıktan sonra bağlam imhası — listedeki en kötü yol.
+                   *
+                   * Niyet saklanmıyor: rezervasyon para harcatan bir eylem,
+                   * giriş sonrası kendiliğinden başlatılmamalı. Giriş penceresi
+                   * kardeş katman olduğu için sayfa da kaybolmuyor.
+                   */
+                  onClick={() => {
+                    if (girisGerekli()) return;
+                    setShowReserve(true);
+                  }}
                   className="inline-flex items-center gap-2 rounded-full bg-marka px-4 py-2 text-sm font-medium text-marka-fg shadow-md hover:bg-marka-hover focus:outline-none focus:ring-2 focus:ring-marka-focus focus:ring-offset-2 transition-transform hover:scale-105"
                 >
                   Rezervasyon Yap

@@ -2,15 +2,14 @@ import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
 import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
 import { isBranchOpen } from "@/lib/paymentAvailability";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useStudyQuote, useReserveStudy, usePayStudy } from "@/hooks/useStudy";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { useAuthStore } from "@/store/authStore";
 import { formatTRY } from "@/lib/money";
 import { istanbulInputToIso } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import { ROUTES } from "@/lib/routes";
 import { PaymentConsentNote } from "@/components/LegalConsent";
 import { DateStrip, buildUpcomingDays } from "@/components/booking/DateStrip";
 import { TimeStepper } from "@/components/booking/TimeStepper";
@@ -38,6 +37,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
   const { data: availability } = usePaymentAvailability();
   const payOpen = isBranchOpen(availability, "library_marketplace");
   const token = useAuthStore((s) => s.token);
+  const { girisGerekli } = useGirisKapisi();
   const { data: user } = useCurrentUser();
   const isClient = user?.role_id === ROLE_IDS.CLIENT;
 
@@ -171,12 +171,23 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
         </div>
 
         {!token ? (
-          <Link
-            to={ROUTES.login}
+          /*
+           * NİYETSİZ kapı (ÜK-10). Giriş penceresi App düzeyinde bir kardeş
+           * katman olduğu için bu bileşen unmount OLMAZ: kullanıcının seçtiği
+           * tarih/saat/süre ve hesaplanan fiyat yerinde durur, giriş sonrası
+           * aynı düğme "Rezerve et & Öde" olur.
+           *
+           * Niyet SAKLANMAZ çünkü niyet, para harcatan bir eylemi kendiliğinden
+           * tetiklememelidir. Eskiden burada tam sayfa `/giris` vardı ve
+           * kullanıcı seçimlerini kaybediyordu.
+           */
+          <button
+            type="button"
+            onClick={() => girisGerekli()}
             className="rounded-xl bg-marka px-4 py-2 text-center text-sm font-semibold text-marka-fg hover:bg-marka-hover"
           >
             Giriş yap & rezerve et
-          </Link>
+          </button>
         ) : !payOpen ? (
           // Giriş yapıp dönünce devre dışı buton bulmasın.
           <span

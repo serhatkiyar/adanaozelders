@@ -14,16 +14,17 @@ import { isSelected, selectedSubtotal, type CartItem } from "@/lib/cart";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { alisverisYapabilir } from "@/lib/roles";
+import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { toast } from "@/store/toastStore";
 
 export default function CartPage() {
   const navigate = useNavigate();
+  const { girisGerekli } = useGirisKapisi();
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const remove = useCartStore((s) => s.remove);
   const toggleSelected = useCartStore((s) => s.toggleSelected);
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.token);
   const [pickupOpen, setPickupOpen] = useState(false);
 
   const subtotal = selectedSubtotal(items);
@@ -47,11 +48,10 @@ export default function CartPage() {
       toast.info("Lütfen en az bir ürün seç");
       return;
     }
-    if (!token) {
-      toast.info("Ödeme için giriş yapmalısın");
-      navigate(ROUTES.login);
-      return;
-    }
+    // Giriş penceresi yerinde açılır; sepet ve seçimler kaybolmaz. Eskiden
+    // tam sayfa `/giris`e gidiliyordu ve `Login` başarıda `roleHome()`e
+    // götürüyordu — kullanıcı sepetine geri DÖNMÜYORDU.
+    if (girisGerekli()) return;
     if (!alisverisYapabilir(user?.role_id)) {
       toast.error("Bu hesap türüyle alışveriş yapılamıyor");
       return;

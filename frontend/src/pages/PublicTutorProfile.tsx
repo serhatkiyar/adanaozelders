@@ -1,4 +1,5 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { PublicShell } from "@/components/PublicShell";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
@@ -36,6 +37,7 @@ const MODE_LABEL: Partial<Record<TeachingMode, string>> = {
 export default function PublicTutorProfile() {
   const { slug } = useParams();
   const tutorId = parseTutorId(slug);
+  const { girisGerekli } = useGirisKapisi();
   const navigate = useNavigate();
   const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
     useNavSearch("egitmenler");
@@ -223,12 +225,22 @@ export default function PublicTutorProfile() {
                 tutor={tutor}
                 ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
               />
-              <Link
-                to="?modal=login"
+              {/*
+                * `<button>`, `<Link>` DEĞİL: niyet `sessionStorage`da saklanıyor
+                * ve o sekmeye özel. Bir bağlantı orta tıkla yeni sekmede
+                * açılabilir, niyet orada olmazdı — sessiz kayıp.
+                *
+                * Niyet sayesinde giriş sonrası rezervasyon penceresi
+                * kendiliğinden açılır; eskiden kullanıcı aynı düğmeye ikinci
+                * kez basmak zorundaydı ve kimse şikâyet etmiyordu.
+                */}
+              <button
+                type="button"
+                onClick={() => girisGerekli({ tip: "dersTalebi", egitmenId: tutor.id })}
                 className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
                 Ders Talep Et
-              </Link>
+              </button>
               {tutor.first_lesson_free !== false && (
                 <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
                   İlk ders ücretsiz
