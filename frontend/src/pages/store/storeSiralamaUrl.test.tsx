@@ -78,7 +78,7 @@ describe("sıralama URL'de yaşar", () => {
     const secici = await screen.findByRole("combobox", { name: /sırala/i });
     fireEvent.change(secici, { target: { value: "rating" } });
 
-    await waitFor(() => expect(adres()).toContain("sirala=rating"));
+    await waitFor(() => expect(adres()).toContain("sirala=puan"));
   });
 
   it("Önerilen'e dönülünce parametre SİLİNİR", async () => {

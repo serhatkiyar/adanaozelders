@@ -250,22 +250,35 @@ export function bayrak(
  */
 export function enumCoklu<E extends string>(
   anahtar: string,
-  uyeler: readonly E[],
+  etiketler: Readonly<Record<E, string>>,
   eskiAnahtarlar: readonly string[] = []
 ): Alan<E[]> {
-  const gecerli = new Set<string>(uyeler);
+  // `enumTek`in çoklu kardeşi: URL'de Türkçe slug, kodda ve API'de enum
+  // değeri. Eski ham enum biçimi de okunur — paylaşılmış `?mode=IN_PERSON`
+  // linki ölmemeli.
+  const slugdan = new Map<string, E>();
+  for (const [uye, slug] of Object.entries(etiketler) as [E, string][]) {
+    slugdan.set(slug, uye);
+    slugdan.set(uye, uye);
+  }
   return {
     anahtarlar: [anahtar],
     eskiAnahtarlar,
     varsayilan: [],
     oku: (sp) => {
       for (const a of [anahtar, ...eskiAnahtarlar]) {
-        const hepsi = sp.getAll(a).filter((v) => gecerli.has(v)) as E[];
+        const hepsi = sp
+          .getAll(a)
+          .map((v) => slugdan.get(v))
+          .filter((v): v is E => v !== undefined);
         if (hepsi.length) return hepsi;
       }
       return [];
     },
-    yaz: (sp, d) => d.filter((v) => gecerli.has(v)).forEach((v) => sp.append(anahtar, v)),
+    yaz: (sp, d) =>
+      d
+        .filter((v) => v in etiketler)
+        .forEach((v) => sp.append(anahtar, etiketler[v])),
   };
 }
 

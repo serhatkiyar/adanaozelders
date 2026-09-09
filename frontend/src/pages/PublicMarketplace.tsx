@@ -16,11 +16,11 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
+import { type YerSecimi } from "@/lib/yerArama";
 import { type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { EGITMEN_ARAMA } from "@/lib/aramaUrl";
+import { EGITMEN_ARAMA, egitmenIstegi } from "@/lib/aramaUrl";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -69,7 +69,12 @@ export default function PublicMarketplace() {
     ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
   const setExam = (v: string) => ayarla({ sinav: v });
 
-  const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
+  // Sıralama ADRESTE (9 Eyl 2026). Yerel state'teyken paylaşılamıyor,
+  // yenilemede sıfırlanıyor ve geri tuşu onu geri almıyordu — incelenen yedi
+  // platformun yedisinde de sıralama adreste.
+  const sort = degerler.sirala || TutorSort.RELEVANCE;
+  const setSort = (v: TutorSort) =>
+    ayarla({ sirala: v === TutorSort.RELEVANCE ? "" : v });
   const [showFilters, setShowFilters] = useState(false);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
@@ -90,24 +95,17 @@ export default function PublicMarketplace() {
   const removeSubject = (s: string) =>
     setSubjects(subjects.filter((x) => x !== s));
 
-  const params = useMemo<TutorSearchParams>(() => {
-    const p: TutorSearchParams = { limit, offset: 0, sort };
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (subjects.length) p.subject = subjects;
-    if (district.length) p.district = district;
-    // Mahalle seçiliyse ÇEVRESİNDE aranır (konum çapası, eşitlik filtresi
-    // değil). İlçe filtresi yanında kalır: yarıçap koordinatsız eğitmeni
-    // eler, ilçe onu yakalamaya devam eder.
-    const yerKonumu = yerinArananKonumu(yer);
-    if (yerKonumu) {
-      p.lat = yerKonumu.lat;
-      p.lng = yerKonumu.lng;
-      p.radius_km = yerKonumu.radius_km;
-    }
-    if (sekil) p.mode = [sekil];
-    if (exam.trim()) p.exam = exam.trim();
-    return p;
-  }, [debouncedQ, subjects, district, yer, sekil, exam, sort, limit]);
+  /*
+   * Şema değeri → API isteği: `Marketplace` ile AYNI fonksiyon.
+   *
+   * Bu çeviri burada elle yazılıyken bir kusur barındırıyordu: eski `remote:
+   * boolean` alanı seçilen ders şeklini sessizce buharlaştırıyordu. Aynı
+   * çevirinin dört kopyası olmasının bedeli buydu.
+   */
+  const params = useMemo<TutorSearchParams>(
+    () => egitmenIstegi({ ...degerler, q: debouncedQ }, { limit, offset: 0 }),
+    [degerler, debouncedQ, limit]
+  );
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
@@ -116,13 +114,17 @@ export default function PublicMarketplace() {
   // alınmaz). Yalnız ilk sayfada çizilir: 2. sayfada reklam beklenmez ve
   // aynı kartın iki sayfada birden çıkması kafa karıştırır.
   const featuredParams = useMemo<FeaturedTutorParams>(() => {
-    const p: FeaturedTutorParams = {};
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (subjects.length) p.subject = subjects;
-    if (district.length) p.district = district;
-    if (sekil) p.mode = [sekil];
-    return p;
-  }, [debouncedQ, subjects, district, sekil]);
+    // Aramanın isteğinden ÇIKARARAK türetilir: elle ikinci kez kurulunca
+    // (bugüne kadar öyleydi) blok ile liste sessizce ayrışıyordu.
+    const {
+      sort: _sort,
+      exam: _exam,
+      limit: _limit,
+      offset: _offset,
+      ...rest
+    } = params;
+    return rest;
+  }, [params]);
 
   const featuredOnFirstPage = page === 1;
   const [featuredIds, setFeaturedIds] = useState<number[]>([]);

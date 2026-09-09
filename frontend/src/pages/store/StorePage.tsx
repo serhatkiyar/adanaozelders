@@ -10,15 +10,26 @@ import {
 } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { MAGAZA_ARAMA } from "@/lib/aramaUrl";
+import { MAGAZA_ARAMA, type MagazaSiralamasi } from "@/lib/aramaUrl";
+import { bosDeger, filtreliMi } from "@/lib/urlSemasi";
+
+/** Kutu metni <-> sema degeri: bos kutu = filtre YOK, "0" gecerli sinir. */
+const sayiMetni = (n: number | undefined) => (n === undefined ? "" : String(n));
+const metinSayisi = (t: string): number | undefined => {
+  const kirpik = t.trim();
+  if (!kirpik) return undefined;
+  const n = Number(kirpik);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+};
 import { AnaVitrin } from "@/pages/store/vitrin/AnaVitrin";
-import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
 const CONTAINER = "mx-auto max-w-[1464px] px-4 md:px-8";
 const GRID = "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4";
 
-type Sort = "" | "price_asc" | "price_desc" | "newest" | "rating";
+/** Sıralama değerleri artık şemadan gelir — iki ayrı liste tutmak, birini
+ *  güncelleyip diğerini unutmanın yoluydu. */
+type Sort = MagazaSiralamasi | "";
 
 const SORT_LABELS: Record<Sort, string> = {
   "": "Önerilen",
@@ -38,7 +49,6 @@ export default function StorePage() {
   const categoryId = degerler.kategori;
   const kind = degerler.tur;
   const sort = degerler.sirala as Sort;
-  const setKind = (v: "" | ProductKind) => ayarla({ tur: v });
   const setSort = (v: Sort) => ayarla({ sirala: v });
 
   // Serbest metin YEREL: her tus vurusunda adres yazmak gecmisi kirletir.
@@ -47,17 +57,29 @@ export default function StorePage() {
     setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
   }, [degerler.q]);
 
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [inStock, setInStock] = useState(false);
-  const [minRating, setMinRating] = useState<number | undefined>(undefined);
-  // Kitap künyesi daraltmaları (çoklu seçim).
-  const [publishers, setPublishers] = useState<string[]>([]);
-  const [authors, setAuthors] = useState<string[]>([]);
-  const [coverTypes, setCoverTypes] = useState<string[]>([]);
-  // Varyant eksen daraltmaları: eksen adı → seçili değerler. Eksen adları
-  // veriden gelir (book-facets → variant_axes); istemcide sözlük kopyası yok.
-  const [variantSel, setVariantSel] = useState<Record<string, string[]>>({});
+  /*
+   * Sekiz daraltma da ADRESTE (9 Eyl 2026).
+   *
+   * Bunlar yerel state'teyken "Tükenmez kalem, 4 yıldız üstü, stokta" bir
+   * liste paylaşılamıyor, yenilemede sıfırlanıyor ve geri tuşu onları geri
+   * almıyordu — oysa aynı ekranda `q`, kategori ve tür adreste yaşıyordu.
+   */
+  const inStock = degerler.stokta;
+  const minRating = degerler.minPuan;
+  const publishers = degerler.yayinevi;
+  const authors = degerler.yazar;
+  const coverTypes = degerler.kapak;
+
+  const setInStock = (v: boolean) => ayarla({ stokta: v });
+  const setMinRating = (v: number | undefined) => ayarla({ minPuan: v });
+  const setPublishers = (v: string[]) => ayarla({ yayinevi: v });
+  const setAuthors = (v: string[]) => ayarla({ yazar: v });
+  const setCoverTypes = (v: string[]) => ayarla({ kapak: v });
+
+  // Fiyat kutularının anlık metni YEREL, değeri adreste: her rakamda adres
+  // yazmak geçmişi kirletir ve "150" yazarken bir an "1 TL" filtresi uygular.
+  const [minPrice, setMinPrice] = useState(sayiMetni(degerler.minFiyat));
+  const [maxPrice, setMaxPrice] = useState(sayiMetni(degerler.maxFiyat));
 
   const debouncedQ = useDebounce(q, 350);
   useEffect(() => {
@@ -68,6 +90,20 @@ export default function StorePage() {
   const debMin = useDebounce(minPrice, 400);
   const debMax = useDebounce(maxPrice, 400);
 
+  useEffect(() => {
+    const min = metinSayisi(debMin);
+    const max = metinSayisi(debMax);
+    if (min !== degerler.minFiyat || max !== degerler.maxFiyat)
+      ayarla({ minFiyat: min, maxFiyat: max }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debMin, debMax]);
+
+  // Adres → kutu (geri tuşu, paylaşılan bağlantı).
+  useEffect(() => {
+    setMinPrice((o) => (metinSayisi(o) === degerler.minFiyat ? o : sayiMetni(degerler.minFiyat)));
+    setMaxPrice((o) => (metinSayisi(o) === degerler.maxFiyat ? o : sayiMetni(degerler.maxFiyat)));
+  }, [degerler.minFiyat, degerler.maxFiyat]);
+
 
 
 
@@ -77,10 +113,30 @@ export default function StorePage() {
   // göstermek kullanıcıyı boş sonuca sürükler.
   const { data: bookFacets } = useBookFacets(categoryId);
 
-  // "Eksen:Değer" öğeleri — sunucunun `variant` parametre biçimi.
-  const variantParam = Object.entries(variantSel).flatMap(([eksen, degerler]) =>
-    degerler.map((d) => `${eksen}:${d}`),
-  );
+  /*
+   * Varyant daraltmaları adreste DÜZ liste olarak yaşar ("Eksen:Değer" —
+   * sunucunun `variant` parametre biçiminin aynısı), ekranda ise eksene göre
+   * gruplu. Adreste iç içe bir yapı taşımak (Airbnb'nin `[]`'si gibi) Google'ın
+   * kaçınılmasını istediği ayırıcıları gerektirirdi.
+   */
+  const variantParam = degerler.varyant;
+  const variantSel = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    for (const oge of variantParam) {
+      const i = oge.indexOf(":");
+      if (i <= 0) continue;
+      const eksen = oge.slice(0, i);
+      (m[eksen] ??= []).push(oge.slice(i + 1));
+    }
+    return m;
+  }, [variantParam]);
+  const setVariantAxis = (eksen: string, next: string[]) =>
+    ayarla({
+      varyant: [
+        ...variantParam.filter((o) => !o.startsWith(`${eksen}:`)),
+        ...next.map((d) => `${eksen}:${d}`),
+      ],
+    });
 
   // ── Kenar çubuğu kategori kaynağı (1 Eyl, Trendyol/Amazon paritesi) ──
   // ARAMA modunda liste "İlgili kategoriler"dir: sunucudan aramaya kapsamlı
@@ -135,20 +191,9 @@ export default function StorePage() {
 
   const kategoriSec = (id: number | undefined) => ayarla({ kategori: id });
 
-  const isFiltering = !!(
-    debouncedQ ||
-    categoryId ||
-    kind ||
-    sort ||
-    debMin ||
-    debMax ||
-    inStock ||
-    minRating ||
-    publishers.length ||
-    authors.length ||
-    coverTypes.length ||
-    Object.values(variantSel).some((v) => v.length)
-  );
+  // Filtre görünümüne geçilsin mi: karar şemadan gelir, elle sayılan bir
+  // listeden değil.
+  const isFiltering = filtreliMi(MAGAZA_ARAMA, degerler) || !!debouncedQ;
 
 
   const searchInput: ProductSearchParams = {
@@ -173,18 +218,11 @@ export default function StorePage() {
 
   const resetFilters = () => {
     setQ("");
-    ayarla({ kategori: undefined });
-    setKind("");
-    setSort("");
     setMinPrice("");
     setMaxPrice("");
-    setInStock(false);
-    setMinRating(undefined);
-    setPublishers([]);
-    setAuthors([]);
-    setCoverTypes([]);
-    setVariantSel({});
-    ayarla({ q: "", kategori: undefined, tur: "", sirala: "" });
+    // Tek yazım: alan alan temizlemek yeni bir filtre eklendiğinde burayı
+    // güncellemeyi unutturur ve "Temizle" sessizce eksik çalışır.
+    ayarla(bosDeger(MAGAZA_ARAMA));
   };
 
   return (
@@ -367,9 +405,7 @@ export default function StorePage() {
                       title={eksen}
                       options={secenekler}
                       selected={variantSel[eksen] ?? []}
-                      onToggle={(next) =>
-                        setVariantSel((s) => ({ ...s, [eksen]: next }))
-                      }
+                      onToggle={(next) => setVariantAxis(eksen, next)}
                     />
                   ),
                 )}

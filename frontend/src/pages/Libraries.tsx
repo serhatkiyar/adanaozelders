@@ -25,9 +25,9 @@ import { ROLE_IDS } from "@/types";
 import { CategoryBar } from "@/components/CategoryBar";
 import { CompactSearch, KutuphaneArama } from "@/components/HeroSearch";
 import { LibraryRow } from "@/components/VitrinSeridi";
-import { yerinArananKonumu, type YerSecimi} from "@/lib/yerArama";
+import { type YerSecimi } from "@/lib/yerArama";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { KUTUPHANE_ARAMA } from "@/lib/aramaUrl";
+import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
 
 type ViewMode = "list" | "map";
@@ -90,10 +90,22 @@ export default function Libraries() {
     setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
   }, [degerler.q]);
 
-  const [amenities, setAmenities] = useState<string[]>([]);
-  const [sort, setSort] = useState<LibrarySort>("");
+  /*
+   * Olanaklar ve sıralama ADRESTE (9 Eyl 2026).
+   *
+   * Yerel state'teyken "Wi-Fi + otoparklı, puana göre" bir liste
+   * paylaşılamıyor, yenilemede sıfırlanıyor ve geri tuşu onları geri
+   * almıyordu — oysa `q` ve ilçe adreste yaşıyordu. Aynı ekranda bir filtre
+   * URL'de, ötekisi değil.
+   */
+  const amenities = degerler.olanaklar;
+  const sort = degerler.sirala;
+
+  /*
+   * KOORDİNAT ADRESE YAZILMAZ. Adres yalnız niyeti taşır
+   * (`sirala=mesafe`); konum bağlantıyı açan kişiden yeniden istenir.
+   */
   const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
-  const [radiusKm] = useState<number>(25);
   const [geoLoading, setGeoLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
@@ -140,6 +152,8 @@ export default function Libraries() {
     );
   };
 
+  const setSort = (value: LibrarySort) => ayarla({ sirala: value });
+
   // Sıralama seçimi: "Yakınımda" ilk kez seçilince konum iste.
   const handleSortChange = (value: LibrarySort) => {
     setSort(value);
@@ -147,37 +161,25 @@ export default function Libraries() {
   };
 
   const toggleAmenity = (a: string) =>
-    setAmenities((prev) =>
-      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
-    );
+    ayarla({
+      olanaklar: amenities.includes(a)
+        ? amenities.filter((x) => x !== a)
+        : [...amenities, a],
+    });
 
-  const params = useMemo<LibrarySearchParams>(() => {
-    const p: LibrarySearchParams = { limit, offset: 0 };
-    if (debouncedQ.trim()) p.q = debouncedQ.trim();
-    if (district.length) p.district = district;
-    if (amenities.length) p.amenities = amenities;
-    // Mahalle seçiliyse ÇEVRESİNDE aranır: mahalle adı bir eşitlik filtresi
-    // değil, konum çapasıdır. İlçe filtresi de yanında kalır — yarıçap
-    // koordinatı olmayan kaydı eler, ilçe onları yakalamaya devam eder.
-    const yerKonumu = yerinArananKonumu(yer);
-    if (yerKonumu && sort !== "distance") {
-      p.lat = yerKonumu.lat;
-      p.lng = yerKonumu.lng;
-      p.radius_km = yerKonumu.radius_km;
-      p.sort = "distance";
-    }
-    // "Yakınımda" sıralaması kullanıcının KENDİ konumunu kullanır ve mahalle
-    // çapasını geçersiz kılar — ikisi aynı anda anlamlı değil.
-    if (sort === "distance" && nearMe) {
-      p.lat = nearMe.lat;
-      p.lng = nearMe.lng;
-      p.radius_km = radiusKm;
-      p.sort = "distance";
-    } else if (sort === "rating") {
-      p.sort = "rating";
-    }
-    return p;
-  }, [debouncedQ, district, yer, amenities, nearMe, radiusKm, sort, limit]);
+  /*
+   * Şema değeri → API isteği. Mahalle çapası ile "yakınımda" arasındaki
+   * öncelik kuralı burada değil `aramaUrl`de yaşar: aynı kural eğitmen
+   * aramasında da geçerliydi ve iki dosyaya kopyalanmıştı.
+   */
+  const params = useMemo<LibrarySearchParams>(
+    () =>
+      kutuphaneIstegi(
+        { ...degerler, q: debouncedQ },
+        { limit, offset: 0, konumum: nearMe }
+      ),
+    [degerler, debouncedQ, limit, nearMe]
+  );
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
 
@@ -468,7 +470,7 @@ export default function Libraries() {
 
               <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
                 <button
-                  onClick={() => setAmenities([])}
+                  onClick={() => ayarla({ olanaklar: [] })}
                   className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
                 >
                   Temizle

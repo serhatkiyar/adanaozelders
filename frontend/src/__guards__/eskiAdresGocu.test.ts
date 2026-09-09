@@ -8,6 +8,12 @@
  * `gender→cinsiyet`, `sort→sirala`, `category→kategori`, `kind→tur`.
  * `q`, `mahalle` ve `sayfa` değişmedi.
  *
+ * ADLARLA BİRLİKTE DEĞERLER de Türkçeleşti: `sekil=IN_PERSON` → `yuz-yuze`,
+ * `cinsiyet=FEMALE` → `kadin`, `tur=DIGITAL` → `dijital`,
+ * `sirala=rating_desc` → `puan`. Adres "hackable" olmalı (Nielsen, URL as
+ * UI). API'ye giden değer DEĞİŞMEZ — çeviri yalnız URL sınırında yaşar,
+ * backend'e dokunulmadı.
+ *
  * Gerekçe: public yollarımız zaten Türkçe (`/egitmenler`, `/kutuphaneler`) ve
  * Google'ın URL rehberi *"use words in your audience's language in the URL"*
  * diyor. Bugünkü karışıklık ölçülmüştü: `district` İngilizce ama `mahalle`
@@ -44,7 +50,7 @@ import {
   magazaAramaAdresi,
 } from "@/lib/aramaUrl";
 import { aramayiOku, type Sema } from "@/lib/urlSemasi";
-import { TeachingMode, Gender } from "@/types";
+import { TeachingMode, Gender, TutorSort } from "@/types";
 
 const sorgu = (adres: string) =>
   new URLSearchParams(adres.includes("?") ? adres.split("?")[1] : "");
@@ -67,11 +73,11 @@ describe("eski adres göçü · ESKİ AD OKUNUR", () => {
   it("mağaza: `?category=&kind=&sort=` okunur", () => {
     const okunan = aramayiOku(
       MAGAZA_ARAMA,
-      new URLSearchParams("q=roman&category=12&kind=PHYSICAL&sort=fiyat_artan")
+      new URLSearchParams("q=roman&category=12&kind=PHYSICAL&sort=price_asc")
     );
     expect(okunan.kategori).toBe(12);
     expect(okunan.tur).toBe("PHYSICAL");
-    expect(okunan.sirala).toBe("fiyat_artan");
+    expect(okunan.sirala).toBe("price_asc");
   });
 
   it("kütüphane: `?district=` + `?mahalle=` birlikte okunur", () => {
@@ -102,11 +108,11 @@ describe("eski adres göçü · YALNIZ YENİ AD YAZILIR", () => {
     const yeniAdres = egitmenAramaAdresi(aramayiOku(EGITMEN_ARAMA, eski));
     const sp = sorgu(yeniAdres);
 
-    // Yeni adlar var…
+    // Yeni adlar VE yeni değerler var…
     expect(sp.getAll("ders")).toEqual(["matematik"]);
-    expect(sp.getAll("sekil")).toEqual(["IN_PERSON"]);
+    expect(sp.getAll("sekil")).toEqual(["yuz-yuze"]);
     expect(sp.get("sinav")).toBe("TYT");
-    expect(sp.get("cinsiyet")).toBe("FEMALE");
+    expect(sp.get("cinsiyet")).toBe("kadin");
     expect(sp.getAll("ilce")).toEqual(["Seyhan"]);
 
     // …eskiler YOK. Kalsalardı aynı içerik iki adreste yaşardı.
@@ -117,11 +123,11 @@ describe("eski adres göçü · YALNIZ YENİ AD YAZILIR", () => {
 
   it("mağaza: eski adlar yazılan adreste kalmaz", () => {
     const yeni = magazaAramaAdresi(
-      aramayiOku(MAGAZA_ARAMA, new URLSearchParams("category=12&kind=DIGITAL&sort=yeni"))
+      aramayiOku(MAGAZA_ARAMA, new URLSearchParams("category=12&kind=DIGITAL&sort=newest"))
     );
     const sp = sorgu(yeni);
     expect(sp.get("kategori")).toBe("12");
-    expect(sp.get("tur")).toBe("DIGITAL");
+    expect(sp.get("tur")).toBe("dijital");
     expect(sp.get("sirala")).toBe("yeni");
     for (const eskiAd of ["category", "kind", "sort"]) {
       expect(sp.has(eskiAd), `${eskiAd} adreste kalmış`).toBe(false);
@@ -137,6 +143,36 @@ describe("eski adres göçü · YALNIZ YENİ AD YAZILIR", () => {
     // bu iddia o gün kendiliğinden doğru kalmalı — bu yüzden ADI değil
     // DEĞERİN taşındığı çıpalanıyor.
     expect([...sp.values()]).toContain("Çukurova");
+  });
+});
+
+describe("eski adres göçü · ESKİ DEĞER OKUNUR", () => {
+  it("eğitmen: ham enum değerleri hâlâ tanınıyor", () => {
+    // Paylaşılmış `?mode=IN_PERSON&gender=FEMALE&sort=rating_desc` linki
+    // ölmemeli: değer göçü ad göçüyle aynı sessiz kırılma sınıfı.
+    const okunan = aramayiOku(
+      EGITMEN_ARAMA,
+      new URLSearchParams("sekil=IN_PERSON&cinsiyet=FEMALE&sirala=rating_desc")
+    );
+    expect(okunan.sekil).toEqual([TeachingMode.IN_PERSON]);
+    expect(okunan.cinsiyet).toBe(Gender.FEMALE);
+    expect(okunan.sirala).toBe(TutorSort.RATING_DESC);
+  });
+
+  it("eğitmen: yeni Türkçe değerler de okunuyor", () => {
+    const okunan = aramayiOku(
+      EGITMEN_ARAMA,
+      new URLSearchParams("sekil=uzaktan&cinsiyet=erkek&sirala=fiyat-artan")
+    );
+    expect(okunan.sekil).toEqual([TeachingMode.ONLINE]);
+    expect(okunan.cinsiyet).toBe(Gender.MALE);
+    expect(okunan.sirala).toBe(TutorSort.PRICE_ASC);
+  });
+
+  it("mağaza: ham `kind` değeri okunur, Türkçesi yazılır", () => {
+    const okunan = aramayiOku(MAGAZA_ARAMA, new URLSearchParams("kind=PHYSICAL"));
+    expect(okunan.tur).toBe("PHYSICAL");
+    expect(magazaAramaAdresi(okunan)).toContain("tur=fiziksel");
   });
 });
 

@@ -36,16 +36,19 @@ import { describe, expect, it } from "vitest";
 
 import {
   EGITMEN_ARAMA,
+  type EgitmenAramasi,
   KUTUPHANE_ARAMA,
   MAGAZA_ARAMA,
+  type MagazaAramasi,
   dersSorgusu,
   egitmenAramaAdresi,
   filtreliMi,
   kutuphaneAramaAdresi,
+  magazaAramaAdresi,
 } from "@/lib/aramaUrl";
 import { aramayiOku, aramayiYaz, bosDeger, type Sema } from "@/lib/urlSemasi";
 import { ROUTES } from "@/lib/routes";
-import { TeachingMode, Gender } from "@/types";
+import { TeachingMode, Gender, TutorSort } from "@/types";
 
 const sorgu = (adres: string) =>
   new URLSearchParams(adres.includes("?") ? adres.split("?")[1] : "");
@@ -79,7 +82,6 @@ describe("arama URL · şema sözleşmesi", () => {
       const sp = new URLSearchParams();
       // Alanın varsayılan-dışı bir değerle ne yazdığını ölç.
       const ornek = ORNEK_DEGERLER[ad];
-      if (ornek === undefined) continue;
       alan.yaz(sp, ornek);
       const yazilan = new Set([...sp.keys()]);
       const bildirilen = new Set(alan.anahtarlar as string[]);
@@ -89,6 +91,16 @@ describe("arama URL · şema sözleşmesi", () => {
           `${ad} alanı "${k}" yazıyor ama anahtarlar listesinde bildirmiyor`
         ).toBe(true);
       }
+    }
+  });
+
+  it.each(SEMALAR)("%s: HER alanın bir örnek değeri var (doluluk)", (_ad, sema) => {
+    // Örneği olmayan alan yukarıdaki denetimden sessizce muaf kalırdı.
+    for (const ad of Object.keys(sema.alanlar)) {
+      expect(
+        ORNEK_DEGERLER[ad],
+        `"${ad}" alanı için ORNEK_DEGERLER'de karşılık yok — denetimsiz kalıyor`
+      ).not.toBeUndefined();
     }
   });
 
@@ -109,10 +121,16 @@ describe("arama URL · şema sözleşmesi", () => {
   });
 });
 
-/** Alan adı → varsayılan olmayan örnek değer (kümesi tam olmak zorunda değil). */
+/**
+ * Alan adı → varsayılan olmayan örnek değer.
+ *
+ * Küme TAM olmak zorunda: aşağıdaki "okunan = yazılan" iddiası örneği
+ * olmayan alanı atlıyordu, yani yeni bir alan eklendiğinde sessizce
+ * denetimsiz kalıyordu. Eksiklik artık ayrı bir düğümde kırılıyor.
+ */
 const ORNEK_DEGERLER: Record<string, unknown> = {
   q: "matematik",
-  subject: ["matematik", "fizik"],
+  ders: ["matematik", "fizik"],
   konum: { yer: null, ilce: ["Seyhan", "Çukurova"] },
   sekil: [TeachingMode.IN_PERSON],
   sinav: "TYT",
@@ -120,18 +138,38 @@ const ORNEK_DEGERLER: Record<string, unknown> = {
   sayfa: 3,
   kategori: 12,
   tur: "PHYSICAL",
-  sirala: "fiyat_artan",
+  sirala: TutorSort.PRICE_ASC,
+  minFiyat: 100,
+  maxFiyat: 400,
+  minYas: 20,
+  maxYas: 45,
+  yakinimda: true,
+  yaricap: 10,
+  olanaklar: ["wifi", "otopark"],
+  stokta: true,
+  minPuan: 4,
+  yayinevi: ["Palme"],
+  yazar: ["Ahmet Yılmaz"],
+  kapak: ["Karton"],
+  varyant: ["Renk:Mavi"],
 };
 
 describe("arama URL · eğitmen", () => {
   it("round-trip: yazılan her alan aynen okunuyor", () => {
-    const deger = {
+    const deger: EgitmenAramasi = {
       q: "",
       ders: ["matematik", "fizik"],
       konum: { yer: null, ilce: ["Seyhan"] },
       sekil: [TeachingMode.IN_PERSON],
       sinav: "TYT",
       cinsiyet: Gender.FEMALE,
+      sirala: TutorSort.RATING_DESC,
+      minFiyat: 150,
+      maxFiyat: 600,
+      minYas: 22,
+      maxYas: 50,
+      yakinimda: true,
+      yaricap: 10,
       sayfa: 3,
     };
     const geri = aramayiOku(EGITMEN_ARAMA, sorgu(egitmenAramaAdresi(deger)));
@@ -180,7 +218,8 @@ describe("arama URL · eğitmen", () => {
     const adres = egitmenAramaAdresi({
       sekil: [TeachingMode.ONLINE, TeachingMode.IN_PERSON],
     });
-    expect(sorgu(adres).getAll("sekil")).toEqual(["ONLINE", "IN_PERSON"]);
+    // Değerler de Türkçe: adres "hackable" olmalı (Nielsen, URL as UI).
+    expect(sorgu(adres).getAll("sekil")).toEqual(["uzaktan", "yuz-yuze"]);
   });
 
   it("KARIŞIK seçimde konum KORUNUR (yalnız uzaktan seçiliyse düşer)", () => {
@@ -297,10 +336,33 @@ describe("arama URL · kaybolan metin", () => {
 
 describe("arama URL · mağaza", () => {
   it("round-trip", () => {
-    const deger = { q: "roman", kategori: 12, tur: "PHYSICAL" as const, sirala: "fiyat_artan", sayfa: 2 };
+    const deger: MagazaAramasi = {
+      q: "roman",
+      kategori: 12,
+      tur: "PHYSICAL",
+      sirala: "price_asc",
+      minFiyat: 50,
+      maxFiyat: 250,
+      stokta: true,
+      minPuan: 4,
+      yayinevi: ["Palme", "Karekök"],
+      yazar: ["Ahmet Yılmaz"],
+      kapak: ["Karton"],
+      varyant: ["Renk:Mavi", "Ebat:A4"],
+      sayfa: 2,
+    };
     expect(aramayiOku(MAGAZA_ARAMA, sorgu(
       `${MAGAZA_ARAMA.taban}?${aramayiYaz(MAGAZA_ARAMA, deger).toString()}`
     ))).toEqual(deger);
+  });
+
+  it("varyant `Eksen:Değer` biçimi round-trip'te bozulmuyor", () => {
+    // `:` kodlanır ama okunurken aynen geri gelmeli — sunucunun beklediği
+    // biçim bu. Bozulursa varyant filtresi sessizce hiçbir şey eşleştirmez.
+    const adres = magazaAramaAdresi({ varyant: ["Renk:Açık Mavi"] });
+    expect(aramayiOku(MAGAZA_ARAMA, sorgu(adres)).varyant).toEqual([
+      "Renk:Açık Mavi",
+    ]);
   });
 
   it("geçersiz kategori/tür düşer", () => {
