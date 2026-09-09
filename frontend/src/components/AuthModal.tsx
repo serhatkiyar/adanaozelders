@@ -86,6 +86,7 @@ export function AuthModal() {
       onClose={close}
       ariaLabel={modal === "login" ? "Giriş yap" : "Kayıt ol"}
       hideCloseButton
+      mobilAltSeridiKoru
       // TELEFONDA TAM EKRAN, masaüstünde ortada pencere (kullanıcı kararı,
       // 9 Eyl 2026). Alttan açılan sheet biçimi telefonda kötü duruyordu:
       // klavye açılınca panel yarıya iniyor, arkadaki karartılmış sayfa
@@ -94,7 +95,7 @@ export function AuthModal() {
       //
       // `dvh` şart: `vh` mobil tarayıcılarda adres çubuğu gizliyken de aynı
       // değeri döndürür ve panel taşar.
-      panelClassName="flex h-[100dvh] w-full flex-col overflow-hidden bg-white sm:block sm:h-auto sm:max-w-md sm:scale-100 sm:rounded-2xl sm:shadow-2xl sm:ring-1 sm:ring-slate-100 sm:animate-in sm:zoom-in-95 sm:duration-200 "
+      panelClassName="flex h-full w-full flex-col overflow-hidden bg-white sm:block sm:h-auto sm:max-w-md sm:scale-100 sm:rounded-2xl sm:shadow-2xl sm:ring-1 sm:ring-slate-100 sm:animate-in sm:zoom-in-95 sm:duration-200 "
     >
         <button
           type="button"

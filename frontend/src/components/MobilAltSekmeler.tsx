@@ -146,6 +146,13 @@ export function MobilAltSekmeler() {
           height: `calc(${ALT_SEKME_KAPLADIGI}px + env(safe-area-inset-bottom))`,
         }}
       />
+      {/* Çubuğun kapladığı yüksekliği CSS'e YAYINLA.
+          Tüketicisi `ui/Modal`: telefonda tam ekran açılan bir pencerenin
+          çubuğu örtmemesi için o kadar boşluk bırakması gerekiyor ve sayıyı
+          ikinci kez yazmak iki kaynağın sessizce ayrışması demekti.
+          Değişken YALNIZ çubuk çizildiğinde tanımlanır; çubuğun olmadığı
+          yüzeylerde tüketici `var(--alt-serit, 0px)` ile 0 görür. */}
+      <style>{`:root { --alt-serit: 0px; } @media (max-width: 767.98px) { :root { --alt-serit: calc(${ALT_SEKME_KAPLADIGI}px + env(safe-area-inset-bottom)); } }`}</style>
       <nav
         aria-label="Alt gezinme"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md md:hidden"

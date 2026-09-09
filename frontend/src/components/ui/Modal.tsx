@@ -31,6 +31,26 @@ export interface ModalProps {
   panelClassName?: string;
   /** Kapatma düğmesini gizle (içerik kendi kapatma düğmesini çiziyorsa). */
   hideCloseButton?: boolean;
+  /**
+   * Telefondaki alt sekme çubuğunu ÖRTME — pencere onun üstünde biter.
+   *
+   * Varsayılan `false` ve bu doğru: çoğu pencere bir AKIŞ KESİNTİSİdir
+   * (onay, uyarı, seçim) ve arkasındaki gezinmeyi bilerek kapatır. İstisna,
+   * telefonda tam ekran açılan ve kendisi bir EKRAN gibi davranan
+   * yüzeylerdir — giriş/kayıt böyledir: kullanıcı bir sekmeye dokunup o
+   * ekrana geliyor, çubuğun kaybolması "uygulamadan çıktım" hissi veriyordu
+   * (kullanıcı itirazı, 9 Eyl 2026).
+   *
+   * Yükseklik `--alt-serit` değişkeninden okunur; onu `MobilAltSekmeler`
+   * yayınlar ve çubuk çizilmeyen yüzeylerde değişken 0'dır, yani bu bayrak
+   * oralarda hiçbir şeyi değiştirmez. Masaüstünde de 0'dır.
+   *
+   * SINIR: çubuk görünür olduğu için TIKLANABİLİRDİR de. Klavye odağı hâlâ
+   * pencerede tuzaklıdır (`useModalA11y`), yani bu yalnız dokunmatik bir
+   * çıkış yoludur — sekmeye dokunmak adresi değiştirir ve pencere zaten
+   * kapanır.
+   */
+  mobilAltSeridiKoru?: boolean;
 }
 
 export function Modal({
@@ -43,6 +63,7 @@ export function Modal({
   maxWidth = "max-w-md",
   panelClassName = "",
   hideCloseButton = false,
+  mobilAltSeridiKoru = false,
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -53,7 +74,10 @@ export function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4">
+    <div
+      className="fixed inset-x-0 top-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4"
+      style={{ bottom: mobilAltSeridiKoru ? "var(--alt-serit, 0px)" : 0 }}
+    >
       {/* Arka plan: tıklayınca kapanır. <button> olduğu için klavyeyle de
           erişilebilir; div + onClick sessizce klavyeye kapalı kalırdı. */}
       <button
