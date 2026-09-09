@@ -135,10 +135,17 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[1216px] px-6 py-5 md:py-12">
         <nav
           aria-label="Site bağlantıları"
-          // Telefonda TEK SÜTUN (kullanıcı kararı, 9 Eyl 2026). İki sütun,
-          // üçüncü hücreyi ("Güvenli Ödeme") tek başına ikinci satıra
-          // düşürüyor ve sağını boş bırakıyordu.
-          className="grid grid-cols-1 gap-x-10 gap-y-2 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8"
+          /* Telefonda BAŞLIKSIZ İKİ SÜTUN (kullanıcı kararı 9 Eyl 2026 +
+             ölçüm düzeltmesi). Önce tek sütun denendi ve ÖLÇÜLDÜ: footer 574
+             → 602px, yani UZADI — beş link tek sütunda beş satır demek. Aynı
+             sadelik (başlık yok) iki sütunda üç satıra iniyor.
+
+             "Güvenli Ödeme" hücresi telefonda TAM GENİŞLİK (`col-span-2`):
+             iki sütunlu ızgarada üçüncü hücre olarak kalsaydı tek başına
+             ikinci satıra düşüp sağını boş bırakırdı — ilk sürümün kusuru
+             tam olarak buydu. Ödeme rozeti zaten bir güven işaretidir, bir
+             sütuna sıkışması için sebep yok. */
+          className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8"
         >
             {/* 31 Ağu (kullanıcı kararları): Destek EN SOLDA, sonra Hakkımızda.
                 Destek linkleri — mesafeli satışta erişilebilir iletişim
@@ -175,7 +182,7 @@ export function SiteFooter() {
                 sütununda (iyzico bandı: iyzico+Visa+MC+Amex tek dosyada). */}
             {/* Ödeme rozeti bir GÜVEN İŞARETİdir; telefonda bir sütunun
                 içinde değil, linklerin altında kendi satırında durur. */}
-            <div className="pt-2 sm:space-y-2.5 sm:pt-0">
+            <div className="col-span-2 pt-2 sm:col-span-1 sm:space-y-2.5 sm:pt-0">
               <p className={baslikCls}>Güvenli Ödeme</p>
               <img
                 src="/odeme/iyzico-logo-band.svg"
