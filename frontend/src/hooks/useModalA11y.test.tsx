@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 /**
  * `useModalA11y` — odak sıfırlaması regresyonu (TB-A3c-1, İP-A4 · Görev 1).
  *
@@ -114,5 +116,47 @@ describe("useModalA11y · odak sıfırlaması (TB-A3c-1)", () => {
     son.focus();
     fireEvent.keyDown(document, { key: "Tab" });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "İlk düğme" }));
+  });
+});
+
+describe("odak taşıma sayfayı KAYDIRMAZ", () => {
+  /* Kaynak sözleşmesi. Davranış jsdom'da ölçülemez — orada kaydırma yoktur ve
+     `focus()` hiçbir zaman sayfayı oynatmaz, yani davranışsal bir test burada
+     BEDAVA geçerdi. Ölçülen şey çağrının biçimi.
+
+     Kusur gerçekti (kullanıcı, 9 Eyl 2026): telefonda alt sekme çubuğundan
+     giriş ekranı açılıp kapatılınca ana sayfa sonuna kadar kayıyordu. Sebep,
+     kapanışta odağın ekranın DİBİNDEKİ sabit çubuğa geri verilmesi ve
+     tarayıcının o öğeyi görünür kılmak için belgeyi kaydırmasıydı.
+
+     KAPSAM: yalnız pencereyi AÇAN ve KAPATAN iki odak taşıması. Odak
+     tuzağının Tab döngüsü (`first.focus()` / `last.focus()`) BİLEREK dışarıda:
+     orada odak panelin İÇİNDE dolaşır ve panel kendi kaydırma kabına sahip
+     olabilir — kaydırmayı engellemek odaklanan alanı görünmez bırakırdı. */
+  // YORUM SATIRLARI AYIKLANIR. İlk denemede nöbetçi kendi belgelendirmesini
+  // ölçtü: dosyanın yorumunda `returnFocusRef.current?.focus()` cümlesi
+  // geçiyor ve eşleşme oraya düşüyordu. Aynı tuzağı projenin kendi sayacı da
+  // yaşamıştı (bkz. `__guards__/sayim.test.ts`).
+  const HAM = readFileSync(
+    join(
+      dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")),
+      "useModalA11y.ts"
+    ),
+    "utf8"
+  );
+  const KAYNAK = HAM.split("\n")
+    .filter((satir) => {
+      const t = satir.trim();
+      return !t.startsWith("*") && !t.startsWith("//") && !t.startsWith("/*");
+    })
+    .join("\n");
+
+  it.each([
+    ["açılışta ilk odak", "focusTarget?.focus("],
+    ["kapanışta odağın iadesi", "returnFocusRef.current?.focus("],
+  ])("%s preventScroll taşır", (_ad, cagri) => {
+    const i = KAYNAK.indexOf(cagri);
+    expect(i, `${cagri} bulunamadı`).toBeGreaterThan(0);
+    expect(KAYNAK.slice(i, i + 120)).toContain("preventScroll: true");
   });
 });

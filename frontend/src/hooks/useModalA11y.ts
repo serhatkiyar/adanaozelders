@@ -186,7 +186,16 @@ export function useModalA11y({
     const panel = panelRef.current;
     const focusTarget =
       initialFocusRef?.current ?? panel?.querySelector<HTMLElement>(FOCUSABLE);
-    focusTarget?.focus();
+    // `preventScroll` ZORUNLU, kozmetik değil. Tarayıcı odaklanan öğeyi
+    // "görünür kılmak" için en yakın kaydırılabilir atayı kaydırır ve bu,
+    // öğe `position: fixed` bir kabın içinde olsa bile bazı mobil
+    // tarayıcılarda (ölçüldü: Firefox Android) ALTTAKİ BELGEYİ kaydırır.
+    // Kullanıcı şikâyeti (9 Eyl 2026): telefonda alt sekme çubuğundan giriş
+    // ekranı açılıp kapatılınca ana sayfa sonuna kadar kayıyordu — kapanışta
+    // odak, ekranın DİBİNDEKİ sabit çubuğun bağlantısına geri veriliyor.
+    // `html { scroll-behavior: smooth }` yürürlükte olduğu için kayma ayrıca
+    // gözle görülüyordu.
+    focusTarget?.focus({ preventScroll: true });
 
     const onKeyDown = (event: KeyboardEvent) => {
       // Yalnız EN ÜSTTEKİ pencere klavyeyi işler (B-3). Alttakiler sessiz
@@ -220,7 +229,9 @@ export function useModalA11y({
       if (sira >= 0) MODAL_YIGINI.splice(sira, 1);
       document.removeEventListener("keydown", onKeyDown);
       if (lockScroll) kaydirmaKilidiBirak(kimlik);
-      returnFocusRef.current?.focus();
+      // Aynı sebeple `preventScroll`: pencereyi AÇAN öğeye dönerken sayfanın
+      // kaydırma konumu kullanıcının bıraktığı yerde kalmalı.
+      returnFocusRef.current?.focus({ preventScroll: true });
     };
     // `onClose` BİLEREK yok: ref üzerinden okunuyor (yukarıdaki nota bak).
     // eslint-disable-next-line react-hooks/exhaustive-deps
