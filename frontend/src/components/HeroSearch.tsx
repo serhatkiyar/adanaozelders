@@ -459,6 +459,7 @@ export function CompactSearch({
   q,
   district,
   remote = false,
+  altSatir,
   onOpen,
 }: {
   active: CategoryKey;
@@ -466,6 +467,13 @@ export function CompactSearch({
   q: string;
   district: string[];
   remote?: boolean;
+  /**
+   * Telefonda hapın ikinci satırı — aramanın özeti (ör. "Çukurova · Yüz
+   * yüze"). Arama SONUÇ sayfasında kullanıcı ne aradığını hapın kendisinden
+   * okuyabilmeli; ana sayfada verilmez, orada henüz bir arama yoktur.
+   * Masaüstünde çizilmez: orada hap zaten geniş ve filtre çubuğu ayrı durur.
+   */
+  altSatir?: string;
   onOpen: () => void;
 }) {
   const meta = categoryMeta(active);
@@ -517,11 +525,16 @@ export function CompactSearch({
       {/* Arama yazısı — telefonda ortalı ve koyu (hapın tek içeriği o),
           masaüstünde sola yaslı ve ikincil. */}
       <span
-        className={`truncate text-center text-[15px] font-semibold text-slate-800 md:flex-1 md:text-left md:text-sm md:font-normal ${
+        className={`min-w-0 truncate text-center text-[15px] font-semibold text-slate-800 md:flex-1 md:text-left md:text-sm md:font-normal ${
           q ? "md:text-slate-800 " : "md:text-slate-400 "
         }`}
       >
         {q || placeholder}
+        {altSatir && (
+          <span className="block truncate text-[13px] font-normal text-slate-500 md:hidden">
+            {altSatir}
+          </span>
+        )}
       </span>
 
       {/* Turuncu gönder düğmesi TELEFONDA YOK: hapın kendisi zaten düğme,

@@ -43,11 +43,33 @@ const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome
 const PORT = Number(ARGS.port ?? 9493);
 const NEGATIF = ARGS.negatif === "1";
 const GENISLIKLER = [360, 390, 414, 768];
+/**
+ * Olculen yuzeyler. Ana sayfa ile arama SONUCU ayni kabugu paylasmaz ve
+ * ikisi de mobil icin ayri ayri tasarlandi; birini olcup otekini birakmak
+ * "kapi var" duygusu verir ama borcun yarisini serbest birakir.
+ */
+const ROTALAR = [
+  { yol: "/", ad: "anasayfa" },
+  { yol: "/egitmenler", ad: "arama" },
+];
 
 /** Dokunma hedefi esigi - `scripts/sihirbaz_mobil_turu.mjs` ile AYNI sayi. */
 const HEDEF_EN_AZ = 44;
-/** Ust bar tavani: 224px olculmustu; hedef Airbnb'nin ~120px'i, pay birakildi. */
-const UST_BAR_TAVANI = 140;
+/**
+ * Ust bar tavani ROTA BASINADIR ve sebebi yapisaldir, kozmetik degil:
+ *
+ *   anasayfa  — arama hapi + kategori cip seridi                  → 140
+ *   arama     — geri/hap/filtre satiri + YATAY FILTRE SERIDI      → 160
+ *
+ * Arama sonucu ekrani bir satir DAHA tasir; tek bir tavan koymak ya ana
+ * sayfayi gereksiz gevsetir ya arama sayfasini yalancı yere kirmizi dusurur.
+ *
+ * Sayilar keyfi degil: bu tur ilk kosuldugunda ana sayfanin ust bari 224px'ti
+ * (844px ekranin %27'si) ve sikayetin kaynagi oydu. Bugunku olcumler 136 ve
+ * 153; tavanlar olculen degerin hemen ustunde durur ki bir satir daha eklenmesi
+ * SESSIZ kalmasin. Tavani yukseltmek bir KARARDIR — gerekcesi buraya yazilir.
+ */
+const UST_BAR_TAVANLARI = { anasayfa: 140, arama: 160 };
 /** Alt cubuk taban yuksekligi (bilesendeki ALT_SEKME_YUKSEKLIGI ile ayni fikir). */
 const ALT_CUBUK_EN_AZ = 56;
 
@@ -131,6 +153,7 @@ try {
     return r.result.value;
   };
 
+  for (const { yol, ad } of ROTALAR)
   for (const genislik of GENISLIKLER) {
     konsolHatalari.length = 0;
     // TAZE yukleme: once daraltip SONRA gitmek sart. Genis yukleyip daraltmak
@@ -141,7 +164,7 @@ try {
       deviceScaleFactor: 1,
       mobile: genislik < 700,
     });
-    await send("Page.navigate", { url: `${FRONTEND}/` });
+    await send("Page.navigate", { url: `${FRONTEND}${yol}` });
     for (let i = 0; i < 120; i++) {
       if (await ev(() => document.readyState === "complete")) break;
       await new Promise((r) => setTimeout(r, 250));
@@ -182,6 +205,7 @@ try {
       await new Promise((r) => setTimeout(r, 400));
     }
 
+    const UST_BAR_TAVANI = UST_BAR_TAVANLARI[ad];
     const olcum = await ev(
       (esikler) => {
         const { HEDEF_EN_AZ, UST_BAR_TAVANI, ALT_CUBUK_EN_AZ } = esikler;
@@ -318,7 +342,7 @@ try {
     // 768px `md` bandidir: orada masaustu duzeni yururlukte, alt cubuk
     // BILEREK cizilmez ve ust bar dogal olarak daha yuksektir.
     const mobilBant = genislik < 768;
-    sonuclar.push({ genislik, mobilBant, ...olcum, konsolHatalari: [...konsolHatalari] });
+    sonuclar.push({ rota: ad, genislik, mobilBant, ...olcum, konsolHatalari: [...konsolHatalari] });
 
     const kapilar = [
       ["tasma", olcum.tasma === 0],
@@ -332,7 +356,7 @@ try {
     ];
     const dusenKapi = kapilar.filter(([, ok]) => !ok).map(([ad]) => ad);
     console.log(
-      `${dusenKapi.length === 0 ? "GECTI" : "DUSTU"}  ${genislik}px  ` +
+      `${dusenKapi.length === 0 ? "GECTI" : "DUSTU"}  ${ad.padEnd(9)} ${genislik}px  ` +
         `tasma=${olcum.tasma} cakisma=${olcum.cakismalar.length} ` +
         `kucukHedef=${olcum.kucukHedefSayi} ustBar=${olcum.ustBar}px ` +
         `cubuk=${olcum.cubukVar ? olcum.cubukYuksek + "px" : "yok"}` +
@@ -341,36 +365,39 @@ try {
 
     if (olcum.tasma > 0)
       dusenler.push(
-        `${genislik}px: yatay tasma ${olcum.tasma}px - ilk suclu ${JSON.stringify(olcum.suclular[0] ?? null)}`
+        `${ad} ${genislik}px: yatay tasma ${olcum.tasma}px - ilk suclu ${JSON.stringify(olcum.suclular[0] ?? null)}`
       );
     if (olcum.cakismalar.length)
       dusenler.push(
-        `${genislik}px: ust barda ${olcum.cakismalar.length} cakisma - ${JSON.stringify(olcum.cakismalar[0])}`
+        `${ad} ${genislik}px: ust barda ${olcum.cakismalar.length} cakisma - ${JSON.stringify(olcum.cakismalar[0])}`
       );
     if (mobilBant && olcum.kucukHedefSayi > 0)
       dusenler.push(
-        `${genislik}px: ${HEDEF_EN_AZ}px alti ${olcum.kucukHedefSayi} dokunma hedefi - ${JSON.stringify(olcum.kucukHedefler.slice(0, 3))}`
+        `${ad} ${genislik}px: ${HEDEF_EN_AZ}px alti ${olcum.kucukHedefSayi} dokunma hedefi - ${JSON.stringify(olcum.kucukHedefler.slice(0, 3))}`
       );
     if (mobilBant && olcum.ustBar > UST_BAR_TAVANI)
-      dusenler.push(`${genislik}px: ust bar ${olcum.ustBar}px (tavan ${UST_BAR_TAVANI})`);
+      dusenler.push(`${ad} ${genislik}px: ust bar ${olcum.ustBar}px (tavan ${UST_BAR_TAVANI})`);
     if (mobilBant && !olcum.cubukVar)
-      dusenler.push(`${genislik}px: alt sekme cubugu cizilmedi`);
+      dusenler.push(`${ad} ${genislik}px: alt sekme cubugu cizilmedi`);
     if (mobilBant && olcum.cubukVar && olcum.cubukYuksek < ALT_CUBUK_EN_AZ)
       dusenler.push(
-        `${genislik}px: alt cubuk ${olcum.cubukYuksek}px (taban ${ALT_CUBUK_EN_AZ})`
+        `${ad} ${genislik}px: alt cubuk ${olcum.cubukYuksek}px (taban ${ALT_CUBUK_EN_AZ})`
       );
     if (mobilBant && olcum.cubukOrtuyor)
       dusenler.push(
-        `${genislik}px: alt cubuk sayfanin son icerigini ${olcum.ortmePx}px ortuyor (spacer yuksekligi?)`
+        `${ad} ${genislik}px: alt cubuk sayfanin son icerigini ${olcum.ortmePx}px ortuyor (spacer yuksekligi?)`
       );
     if (!olcum.kartVar)
-      dusenler.push(`${genislik}px: egitmen karti hic basilmadi (veri gelmedi mi? CORS?)`);
+      dusenler.push(`${ad} ${genislik}px: egitmen karti hic basilmadi (veri gelmedi mi? CORS?)`);
     if (konsolHatalari.length)
-      dusenler.push(`${genislik}px: konsol hatasi - ${konsolHatalari[0]?.slice(0, 120)}`);
+      dusenler.push(`${ad} ${genislik}px: konsol hatasi - ${konsolHatalari[0]?.slice(0, 120)}`);
 
     if (genislik === 390) {
       const ss = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true });
-      writeFileSync(join(OUT, `kapi-390${NEGATIF ? "-negatif" : ""}.png`), Buffer.from(ss.data, "base64"));
+      writeFileSync(
+        join(OUT, `kapi-${ad}-390${NEGATIF ? "-negatif" : ""}.png`),
+        Buffer.from(ss.data, "base64")
+      );
     }
   }
   writeFileSync(
@@ -397,4 +424,4 @@ if (dusenler.length) {
   for (const d of dusenler) console.error("  - " + d);
   process.exit(1);
 }
-console.log("\nKAPI GECTI: ana sayfa hicbir mobil genislikte tasma, cakisma veya kucuk dokunma hedefi uretmiyor.");
+console.log("\nKAPI GECTI: olculen yuzeylerin hicbiri mobil genisliklerde tasma, cakisma veya kucuk dokunma hedefi uretmiyor.");

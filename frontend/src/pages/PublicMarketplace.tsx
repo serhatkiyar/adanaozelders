@@ -1,5 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   PAGE_PARAM,
   limitForPage,
@@ -18,9 +18,10 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
+import { yeriOku, yeriYaz, yerinArananKonumu, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 import { sekliCoz, type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -37,6 +38,110 @@ const FilterIconSvg = () => (
     <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
   </svg>
 );
+
+
+/* ─── telefon: yatay filtre şeridi ───────────────────────────────────────
+   Referans (Airbnb arama ekranı) hapın hemen altında yatay kaydırılan çipler
+   taşır. Buradaki çipler UYDURMA DEĞİL: hepsi zaten URL'de yaşayan ve arama
+   isteğine giden filtrelerdir (`mode`, `sort`, `exam`, `subject`). Yeni bir
+   filtre icat edilmedi — yalnız var olanların bir kısmı tek dokunuşluk hâle
+   getirildi; geri kalanı sağ üstteki filtre penceresinde durmaya devam eder. */
+function MobilFiltreSeridi({
+  sekil,
+  setSekil,
+  sort,
+  setSort,
+  exam,
+  setExam,
+  subjects,
+  removeSubject,
+}: {
+  sekil: DersSekli;
+  setSekil: (v: DersSekli) => void;
+  sort: TutorSort;
+  setSort: (v: TutorSort) => void;
+  exam: string;
+  setExam: (v: string) => void;
+  subjects: string[];
+  removeSubject: (s: string) => void;
+}) {
+  const cip = (aktif: boolean) =>
+    `flex min-h-[44px] shrink-0 snap-start items-center gap-1 rounded-full border px-4 text-sm font-medium transition active:scale-95 ${
+      aktif
+        ? "border-slate-900 bg-slate-900 text-white"
+        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+    }`;
+
+  return (
+    <div
+      className="mobil-filtre flex snap-x items-center gap-2 overflow-x-auto pb-1"
+      style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as CSSProperties}
+    >
+      {/* Sıralama — açılır menü çipi. `select` görünür etiketini kendisi
+          taşır, ayrı bir <label> gerekmez (erişilebilir adı seçili seçenek). */}
+      <div className="relative shrink-0 snap-start">
+        <select
+          value={sort}
+          aria-label="Sıralama"
+          onChange={(e) => setSort(e.target.value as TutorSort)}
+          className={`${cip(sort !== TutorSort.RELEVANCE)} appearance-none pr-9 outline-none focus:ring-2 focus:ring-marka-focus/20`}
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 ${
+            sort !== TutorSort.RELEVANCE ? "text-white" : "text-slate-400"
+          }`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
+      </div>
+
+      {/* Ders şekli TEK seçimdir: aynı çipe tekrar dokunmak filtreyi kaldırır
+          ("fark etmez"e döner). İki ayrı açık/kapalı kutu olsaydı ikisi birden
+          seçili görünebilir ve kullanıcıya olmayan bir kombinasyon vaat
+          ederdi (bkz. `__guards__/sekilYerSozlesmesi.test.tsx`). */}
+      <button
+        type="button"
+        onClick={() => setSekil(sekil === TeachingMode.ONLINE ? "" : TeachingMode.ONLINE)}
+        aria-pressed={sekil === TeachingMode.ONLINE}
+        className={cip(sekil === TeachingMode.ONLINE)}
+      >
+        Uzaktan
+      </button>
+      <button
+        type="button"
+        onClick={() => setSekil(sekil === TeachingMode.IN_PERSON ? "" : TeachingMode.IN_PERSON)}
+        aria-pressed={sekil === TeachingMode.IN_PERSON}
+        className={cip(sekil === TeachingMode.IN_PERSON)}
+      >
+        Yüz yüze
+      </button>
+
+      {/* Etkin sınav ve ders çipleri — dokunmak kaldırır. */}
+      {exam && (
+        <button type="button" onClick={() => setExam("")} className={cip(true)}>
+          {exam}
+          <span aria-hidden className="ml-0.5 text-xs">✕</span>
+        </button>
+      )}
+      {subjects.map((s) => (
+        <button key={s} type="button" onClick={() => removeSubject(s)} className={cip(true)}>
+          {s}
+          <span aria-hidden className="ml-0.5 text-xs">✕</span>
+        </button>
+      ))}
+      <style>{`.mobil-filtre::-webkit-scrollbar { display: none; }`}</style>
+    </div>
+  );
+}
 
 /* ─── main page ─────────────────────────────────────────── */
 
@@ -66,6 +171,8 @@ export default function PublicMarketplace() {
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
+  const mobil = useMobil();
+  const navigate = useNavigate();
 
   // Dış navigasyon (geri/ileri, link) state'i günceller.
   useEffect(() => {
@@ -270,8 +377,76 @@ export default function PublicMarketplace() {
 
   const navBottom = searchOpen ? bigSearchRow : filterBar;
 
+  /* ── TELEFON: geri + arama hapı + filtre ikonu, altında yatay filtreler ──
+     Kullanıcı kararı (9 Eyl 2026), referans Airbnb arama ekranı. Burada
+     eskiden ana sayfanın kabuğu vardı: logo, "Ders Ver", "Giriş Yap",
+     kategori şeridi, ayrı bir "Filtreler" düğmesi ve turuncu kayıt afişi.
+     Kullanıcı: *"geri kalan şeylere gerek yok."* Sonuç ekranında gereken üç
+     şey var — nereden geldiğin, ne aradığın, nasıl daraltacağın. */
+  const mobilAramaOzeti = [
+    yer ? yerEtiketi(yer) : district.length === 1 ? district[0] : district.length ? `${district.length} ilçe` : null,
+    sekil === TeachingMode.ONLINE ? "Uzaktan" : sekil === TeachingMode.IN_PERSON ? "Yüz yüze" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const mobilUst = mobil ? (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          aria-label="Geri"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 active:scale-95"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="min-w-0 flex-1">
+          <CompactSearch
+            active="egitmenler"
+            placeholder={q || "Eğitmen ara"}
+            q={q}
+            district={district}
+            remote={sekil === TeachingMode.ONLINE}
+            altSatir={mobilAramaOzeti || "Tüm Adana"}
+            onOpen={() => setSearchOpen(true)}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(true)}
+          aria-label="Filtreler"
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
+            hasActiveFilters
+              ? "border-slate-900 bg-slate-900 text-white"
+              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+          }`}
+        >
+          <FilterIconSvg />
+        </button>
+      </div>
+      <MobilFiltreSeridi
+        sekil={sekil}
+        setSekil={setSekil}
+        sort={sort}
+        setSort={setSort}
+        exam={exam}
+        setExam={setExam}
+        subjects={subjects}
+        removeSubject={removeSubject}
+      />
+    </div>
+  ) : undefined;
+
   return (
-    <PublicShell center={navCenter} bottom={navBottom}>
+    <PublicShell
+      center={mobil ? undefined : navCenter}
+      bottom={mobil ? undefined : navBottom}
+      mobilUst={mobilUst}
+      mobilSade={mobil}
+    >
       <Seo title={seoTitle} description={seoDesc} canonicalPath="/egitmenler" />
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
@@ -281,8 +456,11 @@ export default function PublicMarketplace() {
         />
       )}
       <div className="mx-auto max-w-[1050px] space-y-4 pt-4">
-        {/* Login CTA banner */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-marka to-marka-hover px-5 py-3.5 text-marka-fg">
+        {/* Login CTA banner — TELEFONDA ÇİZİLMEZ (kullanıcı kararı, 9 Eyl
+            2026: *"geri kalan şeylere gerek yok"*). Sonuç ekranında ilk
+            görülen şey sonuç olmalı; giriş zaten alt sekme çubuğunda tek
+            dokunuş uzakta. */}
+        <div className="hidden flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-marka to-marka-hover px-5 py-3.5 text-marka-fg md:flex">
           <p className="text-sm font-medium">
             Eğitmenleri keşfet. Ders talebi ve mesaj için ücretsiz hesap aç.
           </p>

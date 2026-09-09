@@ -21,6 +21,7 @@ export function PublicShell({
   children,
   center,
   bottom,
+  mobilUst,
   mobilSade = false,
   altBilgiGizli = false,
 }: {
@@ -29,6 +30,8 @@ export function PublicShell({
   center?: ReactNode;
   /** Navbar'ın alt satırına yerleşen içerik (ör. filtre çubuğu). */
   bottom?: ReactNode;
+  /** Telefonda (yalnız `<md`) en üstte duran içerik — bkz. `PublicNavbar`. */
+  mobilUst?: ReactNode;
   /**
    * Telefonda logo ve giriş/kayıt düğmelerini üst bardan kaldırır
    * (bkz. `PublicNavbar`daki aynı adlı prop).
@@ -78,7 +81,7 @@ export function PublicShell({
       style={{ "--yapiskan-ust": `${yapiskanUst}px` } as CSSProperties}
     >
       <div ref={yiginRef} className="sticky top-0 z-40">
-        <PublicNavbar center={center} bottom={bottom} mobilSade={mobilSade} expanded />
+        <PublicNavbar center={center} bottom={bottom} mobilUst={mobilUst} mobilSade={mobilSade} expanded />
       </div>
       <main className="flex-1 p-4 sm:p-6">{children}</main>
       {!altBilgiGizli && <SiteFooter />}
