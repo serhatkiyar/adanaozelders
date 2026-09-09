@@ -12,10 +12,11 @@
  *      eğitmen kaydı hiçbir yerden açılamaz hâle gelir ve hiçbir şey itiraz
  *      etmez — aynı kusur sınıfı `__guards__/ustBarSadeligi.test.tsx`te de
  *      çıpalı.
- *   2. **Yanlış role çizilen çubuk.** `docs/tasarim-dili.md` §4.3 panel
- *      kabuğunda (ADMIN, kütüphane operatörü, kurye) alt çubuğu sayısal bir
- *      gerekçeyle YASAKLAR. Çubuk `DashboardShell`e takılı olduğu için o
- *      rollere sızması bir satırlık bir hatayla mümkündür.
+ *   2. **ÇIKMAZ SOKAK.** Bu üretimde YAŞANDI (9 Eyl 2026): panel rolleri için
+ *      çubuk bilerek çizilmiyordu ve ana sayfa `mobilSade` ile üst bardan
+ *      logoyu, giriş ve hesap düğmelerini kaldırıyor. İkisi üst üste gelince
+ *      admin telefonda ana sayfada HİÇBİR gezinme göremedi. Aşağıdaki
+ *      "her rolde en az iki sekme" düğümü tam olarak o günü yakalar.
  *
  * ## Gücü ve sınırı (kök CLAUDE.md §C)
  *
@@ -124,14 +125,41 @@ describe("mobil alt sekme çubuğu", () => {
     ]);
   });
 
+  it("yönetici: Keşfet · Yönetim · Ayarlar (favori/mesaj YOK)", () => {
+    // Favoriler ve Mesajlar bilerek yok: bu roller alıcı değildir, favori
+    // düğmesi onlara gösterilmez ve sunucu 403 döner (ÜK-6). Ölü sekme,
+    // olmayan bir yüzey vaat etmektir.
+    girisYap(ROLE_IDS.ADMIN);
+    sar();
+    expect(sekmeAdlari()).toEqual(["Keşfet", "Yönetim", "Ayarlar"]);
+  });
+
   it.each([
+    ["LIBRARY_OPERATOR", ROLE_IDS.LIBRARY_OPERATOR],
+    ["COURIER", ROLE_IDS.COURIER],
+  ])("%s: Keşfet · Mesajlar · Ayarlar", (_ad, roleId) => {
+    girisYap(roleId);
+    sar();
+    expect(sekmeAdlari()).toEqual(["Keşfet", "Mesajlar", "Ayarlar"]);
+  });
+
+  it.each([
+    ["anonim", null],
+    ["CLIENT", ROLE_IDS.CLIENT],
+    ["TUTOR", ROLE_IDS.TUTOR],
     ["ADMIN", ROLE_IDS.ADMIN],
     ["LIBRARY_OPERATOR", ROLE_IDS.LIBRARY_OPERATOR],
     ["COURIER", ROLE_IDS.COURIER],
-  ])("panel rolü %s çubuğu HİÇ görmez (tasarım dili §4.3)", (_ad, roleId) => {
-    girisYap(roleId);
+  ])("ÇIKMAZ SOKAK YOK: %s en az iki sekme görür", (_ad, roleId) => {
+    /* ASIL DÜĞÜM. Kusur üretimde yaşandı: panel rolleri için çubuk
+       çizilmiyordu ve ana sayfa `mobilSade` ile üst bardan logoyu, girişi ve
+       hesabı kaldırıyor — admin telefonda ana sayfada hiçbir yere
+       gidemiyordu. Bir rol için çubuğu susturmak isteyen biri bu düğümü
+       görecek. */
+    if (roleId != null) girisYap(roleId);
     sar();
-    expect(screen.queryByRole("navigation", { name: "Alt gezinme" })).toBeNull();
+    const cubuk = screen.getByRole("navigation", { name: "Alt gezinme" });
+    expect(within(cubuk).getAllByRole("link").length).toBeGreaterThanOrEqual(2);
   });
 
   it("her sekmenin görünür bir adı ve gerçek bir hedefi var", () => {

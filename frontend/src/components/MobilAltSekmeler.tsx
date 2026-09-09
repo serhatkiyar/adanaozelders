@@ -19,15 +19,21 @@ import { ROLE_IDS } from "@/types";
  * Airbnb'nin mobil webi alındı: orada üst barda ne logo ne giriş vardır —
  * yalnız arama; kimlik ve kişisel yüzeyler alt çubuktadır.
  *
- * ## Bu bir "panel alt çubuğu" DEĞİLDİR
+ * ## Panel rolleri de görür (kullanıcı kararı, 9 Eyl 2026)
  *
- * `docs/tasarim-dili.md` §4.3 alt gezinme çubuğunu açıkça YASAKLAR — ama o
- * yasak yönetim kabuğu içindir ve gerekçesi sayısaldır: yönetim gezinmesi beş
- * grupta 20 öğedir, bir alt çubuk en fazla 5 yuva taşır. Burası public keşif
- * yüzeyidir ve en fazla 5 öğesi vardır; aynı doküman alt çubuğu "3-5 öğeli rol
- * panellerinin deseni olarak doğrudur" diye kaydeder. Bu yüzden ADMIN,
- * LIBRARY_OPERATOR ve COURIER için çubuk HİÇ çizilmez — onlar `DashboardShell`
- * kabuğunu kullanır ve yasağın kapsamındadır.
+ * İlk sürümde ADMIN / LIBRARY_OPERATOR / COURIER için çubuk HİÇ çizilmiyordu;
+ * gerekçe `docs/tasarim-dili.md` §4.3'ün alt çubuk yasağıydı. İKİ HATA vardı:
+ *
+ *   1. O yasak YÜZEYE göre yazılmış (yönetim kabuğu), ben ROLE göre
+ *      uygulamıştım. Admin ana sayfayı gezerken de çubuğu kaybediyordu — orası
+ *      panel değil, herkesin gezdiği public yüzey.
+ *   2. Sonuç ÇIKMAZ SOKAKtı ve üretimde yaşandı: ana sayfada `mobilSade` üst
+ *      bardan logoyu ve giriş/hesap düğmelerini kaldırır, çubuk da çizilmezse
+ *      telefonda HİÇBİR gezinme kalmaz. Kullanıcı bunu canlıda buldu.
+ *
+ * Kullanıcı kararı: çubuk her rolde ve her yerde görünür. Panel rolleri için
+ * sekmeler kendi işlerine göre daraltılır (favori/mesaj onlarda yok; sunucu
+ * zaten 403 döner).
  *
  * ## Neden `DashboardHeader`ın içinde değil
  *
@@ -101,8 +107,30 @@ const EGITMEN_SEKMELERI: Sekme[] = [
   HESABIM,
 ];
 
-/** Anonim kullanıcıda son yuva bir bağlantı değil, hesap sayfasını açan düğmedir. */
+/** Anonim kullanıcıda son yuva bir bağlantı değil, giriş ekranını açar. */
 const ANONIM_SEKMELERI: Sekme[] = [KESFET, FAVORILER];
+
+/**
+ * Panel rolleri (ADMIN · LIBRARY_OPERATOR · COURIER).
+ *
+ * Favoriler ve Mesajlar YOK: bu roller alıcı değildir, favori düğmesi onlara
+ * gösterilmez ve sunucu 403 döner (ÜK-6 · `__guards__/favoriRolKapisi`).
+ * Ölü bir sekme koymak, olmayan bir yüzey vaat etmek olurdu.
+ */
+const PANEL_SEKMELERI: Sekme[] = [
+  KESFET,
+  { key: "panel", to: ROUTES.admin, label: "Yönetim", icon: "dashboard" },
+  { key: "ayarlar", to: ROUTES.settings, label: "Ayarlar", icon: "settings" },
+];
+
+const OPERATOR_KURYE_SEKMELERI: Sekme[] = [
+  KESFET,
+  // Operatör ve kuryenin paneli kökte (`/`) açılır — `roleHome` her rol için
+  // `/` döndürür ve kabuk rolüne göre farklı ekran çizer. Bu yüzden ayrı bir
+  // "panel" sekmesi Keşfet'in İKİZİ olurdu; onun yerine kendi işleri.
+  { key: "mesajlar", to: ROUTES.messages, label: "Mesajlar", icon: "messages", rozet: true },
+  { key: "ayarlar", to: ROUTES.settings, label: "Ayarlar", icon: "settings" },
+];
 
 /**
  * Çubuğun İÇERİK yüksekliği (sekmelerin `min-height`i).
@@ -126,20 +154,15 @@ export function MobilAltSekmeler() {
   const { data: user } = useCurrentUser();
   const girisli = !!token && !!user;
 
-  // ADMIN / LIBRARY_OPERATOR / COURIER: panel kabuğu, alt çubuk yok (§4.3).
-  if (
-    girisli &&
-    user.role_id !== ROLE_IDS.CLIENT &&
-    user.role_id !== ROLE_IDS.TUTOR
-  ) {
-    return null;
-  }
-
   const sekmeler = !girisli
     ? ANONIM_SEKMELERI
     : user.role_id === ROLE_IDS.TUTOR
       ? EGITMEN_SEKMELERI
-      : UYE_SEKMELERI;
+      : user.role_id === ROLE_IDS.CLIENT
+        ? UYE_SEKMELERI
+        : user.role_id === ROLE_IDS.ADMIN
+          ? PANEL_SEKMELERI
+          : OPERATOR_KURYE_SEKMELERI;
 
   return (
     <>
