@@ -1,7 +1,6 @@
-import { useNavigate } from "react-router-dom";
 import { useBookmarks, useToggleBookmark } from "@/hooks/useBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { setPendingFavorite } from "@/lib/pendingFavorite";
+import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { alisverisYapabilir } from "@/lib/roles";
 
 interface BookmarkButtonProps {
@@ -20,7 +19,7 @@ export function BookmarkButton({
   size = "sm",
   onSolid = false,
 }: BookmarkButtonProps) {
-  const navigate = useNavigate();
+  const { girisGerekli } = useGirisKapisi();
   const { data: user } = useCurrentUser();
   const { data: bookmarks } = useBookmarks();
   const toggle = useToggleBookmark();
@@ -90,12 +89,9 @@ export function BookmarkButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!user) {
-          // Niyeti sakla: giriş tamamlanınca PendingFavoriteApplier uygular.
-          setPendingFavorite({ type: "tutor", id: tutorId });
-          navigate("?modal=login");
-          return;
-        }
+        // Kapı niyeti saklar ve giriş penceresini MEVCUT ADRESE ekler:
+        // filtreli listede kalp, filtreleri artık uçurmuyor.
+        if (girisGerekli({ tip: "favori", hedef: "egitmen", id: tutorId })) return;
         toggle.mutate({ tutorId, bookmarked });
       }}
       disabled={toggle.isPending}

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { useLogout } from "@/hooks/useLogout";
+import { useGirisAdresi } from "@/hooks/useGirisKapisi";
 import { alisverisYapabilir } from "@/lib/roles";
 
 /**
@@ -21,6 +22,9 @@ export function StoreAccountMenu() {
   // tetik ile panel arasındaki 8px boşluğu geçerken menü sönmesin.
   const kapanisZamanlayici = useRef<number | undefined>(undefined);
   const location = useLocation();
+  // Mevcut sorgu korunur: `/magaza?kategori=3&sirala=fiyat-artan` sayfasindan
+  // giris penceresini acmak kategoriyi silmemeli.
+  const girisAdresiDegeri = useGirisAdresi();
 
   const hoverAc = () => {
     window.clearTimeout(kapanisZamanlayici.current);
@@ -48,7 +52,7 @@ export function StoreAccountMenu() {
   if (!token || !user) {
     return (
       <Link
-        to="?modal=login"
+        to={girisAdresiDegeri}
         className="group flex items-center gap-2 text-slate-600 transition-colors hover:text-[#F09A38] "
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

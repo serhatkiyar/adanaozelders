@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
@@ -18,6 +18,7 @@ import {
   useRemoveFromCollection,
 } from "@/hooks/useStore";
 import { alisverisYapabilir } from "@/lib/roles";
+import { useGirisAdresi, useGirisKapisi } from "@/hooks/useGirisKapisi";
 import type { Collection, ProductSearchOut } from "@/types";
 import { toast } from "@/store/toastStore";
 
@@ -31,7 +32,8 @@ const tr = (s: string) => s.toLocaleLowerCase("tr");
 type Selection = { kind: "favorites" } | { kind: "collection"; id: number };
 
 export default function FavoritesPage() {
-  const navigate = useNavigate();
+  const { girisGerekli } = useGirisKapisi();
+  const girisAdresiDegeri = useGirisAdresi();
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const alisverisAcik = !!token && alisverisYapabilir(user?.role_id);
@@ -68,9 +70,10 @@ export default function FavoritesPage() {
           <aside className="md:border-r md:border-slate-100 md:pr-6 ">
             <button
               type="button"
-              onClick={() =>
-                alisverisAcik ? setNameModal({ mode: "create" }) : navigate("?modal=login")
-              }
+              onClick={() => {
+                if (!alisverisAcik && girisGerekli()) return;
+                setNameModal({ mode: "create" });
+              }}
               className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-marka-metin transition-colors hover:text-marka-metin-hover "
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -108,7 +111,7 @@ export default function FavoritesPage() {
             {!alisverisAcik && (
               <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 ">
                 Kendi listelerini oluşturmak için{" "}
-                <Link to="?modal=login" className="font-semibold text-marka-metin hover:underline ">
+                <Link to={girisAdresiDegeri} className="font-semibold text-marka-metin hover:underline ">
                   giriş yap
                 </Link>
                 .
@@ -208,7 +211,7 @@ function EmptyBox({ title, desc, cta }: { title: string; desc: string; cta?: Rea
 
 /* ── Sağ panel: Favori Listem (kalp favorileri, localStorage) ── */
 function FavoritesPane({ alisverisAcik }: { alisverisAcik: boolean }) {
-  const navigate = useNavigate();
+  const { girisGerekli } = useGirisKapisi();
   const items = useFavoritesStore((s) => s.items);
   const removeFav = useFavoritesStore((s) => s.remove);
   const [q, setQ] = useState("");
@@ -259,7 +262,10 @@ function FavoritesPane({ alisverisAcik }: { alisverisAcik: boolean }) {
                       {
                         label: "Listelerime ekle",
                         // Koleksiyonlar oturum ister — anonim tıklamada giriş modalı.
-                        onClick: () => (alisverisAcik ? setAddTarget(p) : navigate("?modal=login")),
+                        onClick: () => {
+                          if (!alisverisAcik && girisGerekli()) return;
+                          setAddTarget(p);
+                        },
                       },
                       { label: "Sil", danger: true, onClick: () => removeFav(p.id) },
                     ]}

@@ -35,11 +35,15 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { apiClient } from "@/api/axios";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { NiyetUygulayici } from "@/components/NiyetUygulayici";
+import { niyetiGozle, niyetiSakla, niyetiTemizle } from "@/lib/bekleyenNiyet";
+import { useAuthStore } from "@/store/authStore";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { OPERATOR_NAV, TUTOR_NAV, UYE_NAV } from "@/lib/nav";
 import { ALISVERIS_ROLLERI, alisverisYapabilir } from "@/lib/roles";
@@ -76,12 +80,52 @@ function sar(roleId: number | null) {
   );
 }
 
+/** `NiyetUygulayici`yı tek başına, verilen rolde çizer. */
+function ciz(roleId: number) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+  useAuthStore.setState({
+    token: "t",
+    user: { id: 7, role_id: roleId, display_name: "Test", email: "t@example.com" },
+  } as never);
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <NiyetUygulayici />
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+}
+
+/** Giden istek yollarını toplar; ağ yok. */
+function adapteriSahtele(): string[] {
+  const yollar: string[] = [];
+  apiClient.defaults.adapter = async (config) => {
+    yollar.push(String(config.url));
+    return {
+      data: null,
+      status: 204,
+      statusText: "No Content",
+      headers: {},
+      config,
+    } as never;
+  };
+  return yollar;
+}
+
 /** Favori düğmesi DOM'da var mı (iki düğme de `button` basar). */
 function dugmeSayisi(): number {
   return screen.queryAllByRole("button").length;
 }
 
-afterEach(() => cleanup());
+const eskiAdapter = apiClient.defaults.adapter;
+afterEach(() => {
+  cleanup();
+  niyetiTemizle();
+  apiClient.defaults.adapter = eskiAdapter;
+  useAuthStore.setState({ token: null, user: null } as never);
+});
 
 describe("ÜK-6 · favori düğmesi doğru rollere görünür", () => {
   it("EĞİTMEN oturumunda düğmeler RENDER OLUR", () => {
@@ -182,25 +226,51 @@ describe("ÜK-6 · ölü uç yok — favorileyen listesini de görebilir", () =>
     expect(OPERATOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(false);
   });
 
-  it("giriş sonrası favori niyeti eğitmende de UYGULANIR", () => {
-    // Beşinci katman. `PendingFavoriteApplier` niyeti `takePendingFavorite`
-    // ile TÜKETİYOR; rol kapısı unutulursa niyet sessizce kayboluyor —
-    // kullanıcı kalbe tıklıyor, giriş yapıyor, kalp boş kalıyor ve hiçbir
-    // hata görünmüyor. Diğer dört katman açıkken bu kapalı kalabilirdi.
-    const kaynak = readFileSync(
-      join(KOK, "src", "components", "PendingFavoriteApplier.tsx"),
-      "utf8"
+  it("giriş sonrası favori niyeti EĞİTMENDE de uygulanır", async () => {
+    /*
+     * Beşinci katman — 9 Eyl 2026'da KAYNAK TARAMASINDAN DAVRANIŞA yükseltildi.
+     *
+     * Eski hâli `PendingFavoriteApplier.tsx`i okuyup erken dönüşün koşul
+     * METNİNİ ölçüyordu. Kendi yorumu bile yaklaşımın zayıflığını itiraf
+     * ediyordu: ilk yazımda `toContain("alisverisYapabilir")` mutasyon
+     * provasında YAKALAMAMIŞTI, çünkü `import` satırı ifadeyi ayakta
+     * tutuyordu. Metin ölçmek, dosya yeniden adlandırıldığı anda da kırılır.
+     *
+     * Artık ölçülen şey isteğin GERÇEKTEN GİDİP GİTMEDİĞİ. Rol kapısı
+     * eğitmeni dışarıda bırakırsa niyet tüketilmiştir ama kalp dolmaz ve
+     * kullanıcı neden olmadığını göremez — bu düğüm o sessizliği kırar.
+     */
+    niyetiSakla({ tip: "favori", hedef: "egitmen", id: 42 });
+    const yollar = adapteriSahtele();
+
+    ciz(ROLE_IDS.TUTOR);
+    await waitFor(() =>
+      expect(yollar.some((u) => u.includes("/bookmarks/42"))).toBe(true)
     );
-    // Dosyada geçmesi YETMEZ: ilk yazımda `toContain("alisverisYapabilir")`
-    // denmişti ve mutasyon provası bunu YAKALAMADI — koşul geri alınsa bile
-    // `import` satırı ifadeyi ayakta tutuyordu. Ölçülen şey artık ERKEN
-    // DÖNÜŞÜN KOŞULU.
-    const kosul = kaynak
-      .split(/\r?\n/)
-      .find((satir) => satir.includes("if (!pending"));
-    expect(kosul, "erken dönüş koşulu bulunamadı — dosya yeniden yazılmış").toBeTruthy();
-    expect(kosul).toContain("alisverisYapabilir(user.role_id)");
-    expect(kosul).not.toContain("role_id !==");
+  });
+
+  it("OPERATÖRDE favori niyeti uygulanmaz", async () => {
+    // Kapsam çıpası: yukarıdaki iddia "herkese uygula" biçiminde geri
+    // alınırsa sunucu 403 dönerdi.
+    niyetiSakla({ tip: "favori", hedef: "egitmen", id: 42 });
+    const yollar = adapteriSahtele();
+
+    ciz(ROLE_IDS.LIBRARY_OPERATOR);
+    await Promise.resolve();
+    expect(yollar.some((u) => u.includes("/bookmarks/42"))).toBe(false);
+  });
+
+  it("BAŞKA tipteki niyet global uygulayıcıda TÜKETİLMEZ", async () => {
+    // Ders talebi niyeti kendi sayfasında uygulanır. Global uygulayıcı onu
+    // yerse kullanıcı giriş yapar, rezervasyon penceresi hiç açılmaz ve
+    // hiçbir hata görünmez — ÜK-6'nın dersinin birebir tekrarı.
+    niyetiSakla({ tip: "dersTalebi", egitmenId: 42 });
+    const yollar = adapteriSahtele();
+
+    ciz(ROLE_IDS.CLIENT);
+    await Promise.resolve();
+    expect(yollar).toEqual([]);
+    expect(niyetiGozle()).toEqual({ tip: "dersTalebi", egitmenId: 42 });
   });
 
   it("`/favoriler` rotası alışveriş rollerine açık — CLIENT'a kilitli DEĞİL", async () => {
