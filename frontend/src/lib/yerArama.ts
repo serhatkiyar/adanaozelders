@@ -139,6 +139,19 @@ export function mahalleyiCoz(
    tazelenip bir mahalle adı değişirse ya da URL elle kurcalanırsa arama
    tamamen boşa düşmez, en azından ilçe filtresi çalışır. */
 
+/**
+ * İlçe parametresinin KANONİK adı.
+ *
+ * Bugün `district`. Türkçeleşme (→ `ilce`) kararı verildi ama BİLEREK
+ * ertelendi: yazma tarafı Türkçe yazıp okuma tarafı hâlâ `district` ararsa
+ * paylaşılmış her bağlantı sessizce boş sonuç verir. Göç, okuma da şemadan
+ * beslendiğinde (Paket 2) TEK HAMLEDE yapılır — o an burada `"ilce"` yazmak
+ * ve `ILCE_PARAM_ESKI`yi `"district"` bırakmak yeter.
+ */
+export const ILCE_PARAM = "district";
+/** Göç sonrası eski bağlantıların okunmaya devam edeceği ad. */
+export const ILCE_PARAM_ESKI = "district";
+
 /** Seçili yeri arama parametrelerine yazar. */
 export function yeriYaz(
   sp: URLSearchParams,
@@ -147,20 +160,23 @@ export function yeriYaz(
 ): void {
   if (yer?.tur === "mahalle") {
     sp.set("mahalle", yer.mahalle);
-    sp.set("district", yer.ilce);
+    sp.set(ILCE_PARAM, yer.ilce);
     return;
   }
-  ilceler.forEach((d) => sp.append("district", d));
+  ilceler.forEach((d) => sp.append(ILCE_PARAM, d));
 }
 
 /** URL'den yeri okur: mahalle çapası + ilçe listesi. */
 export function yeriOku(sp: URLSearchParams): {
   yer: YerSecimi | null;
-  district: string[];
+  ilce: string[];
 } {
-  const district = sp.getAll("district");
-  const yer = mahalleyiCoz(sp.get("mahalle"), district[0] ?? null);
-  return { yer, district };
+  // Kanonik → eski sırayla. Eski ad yalnız yenisi boşken devreye girer;
+  // ikisi birden yazılı bir adres (elle kurcalama) kanoniği kazandırır.
+  const kanonik = sp.getAll(ILCE_PARAM).filter(Boolean);
+  const ilce = kanonik.length ? kanonik : sp.getAll(ILCE_PARAM_ESKI).filter(Boolean);
+  const yer = mahalleyiCoz(sp.get("mahalle"), ilce[0] ?? null);
+  return { yer, ilce };
 }
 
 /** Mahalle seçiliyse arama API'sine gidecek konum parametreleri. */

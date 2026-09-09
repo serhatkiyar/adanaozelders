@@ -4,6 +4,11 @@ import { useAuthStore } from "@/store/authStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROUTES } from "@/lib/routes";
+import {
+  dersSorgusu,
+  egitmenAramaAdresi,
+  kutuphaneAramaAdresi,
+} from "@/lib/aramaUrl";
 import { ROLE_IDS, TeachingMode } from "@/types";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Seo } from "@/components/Seo";
@@ -20,7 +25,7 @@ import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
 import { DersArama, KutuphaneArama, CompactSearch } from "@/components/HeroSearch";
 import type { DersSekli } from "@/components/AramaSecicileri";
-import { yeriYaz, type YerSecimi } from "@/lib/yerArama";
+import { type YerSecimi } from "@/lib/yerArama";
 import { useFeaturedTutors, useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import type { TutorSearchParams } from "@/api/tutors";
@@ -77,28 +82,30 @@ export default function Landing() {
 
   const kutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const sp = new URLSearchParams();
-    if (kutQ.trim()) sp.set("q", kutQ.trim());
-    yeriYaz(sp, kutYer, kutYer ? [kutYer.ilce] : []);
-    const qs = sp.toString();
-    navigate(`${ROUTES.libraries}${qs ? `?${qs}` : ""}`);
+    navigate(
+      kutuphaneAramaAdresi({
+        q: kutQ,
+        konum: { yer: kutYer, ilce: kutYer ? [kutYer.ilce] : [] },
+      })
+    );
   };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const sp = new URLSearchParams();
-    if (ders) sp.append("subject", ders);
-    // Ders şekli TEK seçim: seçilmemişse ("" = fark etmez) filtre yazılmaz.
-    if (sekil) sp.set("mode", sekil);
-    // Yer YALNIZ yüz yüzede yazılır. Uzaktan ders arayan birine konum
-    // dayatmak, ilçesi tasarım gereği boş olan uzaktan eğitmenleri sessizce
-    // elerdi (bkz. tutorOnboarding/sozlesme.ts — ilçe yalnız yüz yüzede
-    // zorunlu).
-    if (sekil === TeachingMode.IN_PERSON && yer) {
-      yeriYaz(sp, yer.tur === "mahalle" ? yer : null, [yer.ilce]);
-    }
-    const qs = sp.toString();
-    navigate(`${ROUTES.tutors}${qs ? `?${qs}` : ""}`);
+    /*
+     * Adres artık `lib/aramaUrl`den gelir. Eskiden burada elle kuruluyordu ve
+     * iki kusur taşıyordu: (a) yalnız SEÇİLMİŞ ders yazılıyordu, yani kutuya
+     * "matematik" yazıp listeden seçmeden Ara'ya basan kullanıcı parametresiz
+     * `/egitmenler` görüyordu; (b) "yer yalnız yüz yüzede" kuralı burada
+     * vardı ama `useNavSearch`te yoktu. İkisi de şemaya taşındı.
+     */
+    navigate(
+      egitmenAramaAdresi({
+        ...dersSorgusu(ders, dersEtiket),
+        sekil,
+        konum: { yer: yer?.tur === "mahalle" ? yer : null, ilce: yer ? [yer.ilce] : [] },
+      })
+    );
   };
 
   const expanded = !scrolled || searchOpen;
@@ -406,10 +413,10 @@ function TutorRow({
   // Boş satırı hiç gösterme (örn. o branşta eğitmen yoksa).
   if (!isLoading && (!data || data.length === 0)) return null;
 
-  const sp = new URLSearchParams();
-  params.subject?.forEach((s) => sp.append("subject", s));
-  if (params.exam) sp.set("exam", params.exam);
-  const href = `${ROUTES.tutors}${sp.toString() ? `?${sp}` : ""}`;
+  const href = egitmenAramaAdresi({
+    subject: params.subject ?? [],
+    exam: params.exam ?? "",
+  });
 
   return (
     <section className="mx-auto max-w-[1216px] px-6">
@@ -448,9 +455,9 @@ function LibraryRow({
 
   if (!isLoading && (!data || data.length === 0)) return null;
 
-  const sp = new URLSearchParams();
-  params.district?.forEach((d) => sp.append("district", d));
-  const href = `${ROUTES.libraries}${sp.toString() ? `?${sp}` : ""}`;
+  const href = kutuphaneAramaAdresi({
+    konum: { yer: null, ilce: params.district ?? [] },
+  });
 
   return (
     <section className="mx-auto max-w-[1216px] px-6">

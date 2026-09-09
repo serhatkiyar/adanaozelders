@@ -203,6 +203,15 @@ export function DersArama({
   ders: string;
   /** Seçili dersin görünen adı (özet ve input değeri için). */
   dersEtiket: string;
+  /**
+   * Seçim değişti. `label` aynı zamanda kutuda GÖRÜNEN metindir.
+   *
+   * Ham metin de yukarı çıkar (kontrollü bileşen): eskiden burada yerel bir
+   * `text` state'i vardı ve dışarı hiç sızmıyordu; yazmaya başlayınca seçim
+   * bozulduğu için (`onDersChange("","")`) sayfa yalnız SEÇİLMİŞ dersi
+   * yazabiliyordu. Sonuç: "matematik" yazıp listeden seçmeden Ara'ya basan
+   * kullanıcının yazdığı şey hiçbir yere gitmiyordu.
+   */
   onDersChange: (q: string, label: string) => void;
   /** Ders şekli — TEK seçim, `""` = fark etmez. */
   sekil: DersSekli;
@@ -212,7 +221,9 @@ export function DersArama({
   setYer: (v: YerSecimi | null) => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
-  const [text, setText] = useState(dersEtiket);
+  // Kutunun metni = `dersEtiket`. Seçim yapılınca etiket, yazılırken ham
+  // metin — ikisi de yukarıda tek state'te tutulur (kontrollü bileşen).
+  const text = dersEtiket;
   const [focused, setFocused] = useState(false);
   const dersId = useId();
   const sekilId = useId();
@@ -260,10 +271,9 @@ export function DersArama({
             id={dersId}
             type="text"
             value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              if (ders) onDersChange("", ""); // yazmaya başlayınca seçim bozulur
-            }}
+            // Yazmaya başlayınca SEÇİM bozulur ama METİN korunur: yazılan
+            // şey artık `q=` olarak aramaya gidiyor (bkz. aramaUrl.dersSorgusu).
+            onChange={(e) => onDersChange("", e.target.value)}
             onFocus={odaklan}
             onBlur={() => setFocused(false)}
             placeholder="Matematik, İngilizce…"
@@ -342,8 +352,12 @@ export function DersArama({
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
+                    // `setText` ÇAĞRILMAZ: kutu artık kontrollü ve `setText`
+                    // "seçimi boşalt" anlamına geliyor — hemen ardından
+                    // çağrılsaydı bu satırda yazılan seçimi siler, aramaya
+                    // `?subject=` yerine `?q=` giderdi (gerçek tarayıcı
+                    // turunda böyle yakalandı).
                     onDersChange(s.name, s.name);
-                    setText(s.name);
                     setFocused(false);
                   }}
                   className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
