@@ -22,6 +22,7 @@ export function PublicShell({
   center,
   bottom,
   mobilSade = false,
+  altBilgiGizli = false,
 }: {
   children: ReactNode;
   /** Navbar ortasına yerleşen içerik (ör. arama pill'i). */
@@ -38,6 +39,16 @@ export function PublicShell({
    * çubuğuna bırakan yüzeyler açar.
    */
   mobilSade?: boolean;
+  /**
+   * Sayfanın altındaki `SiteFooter`ı çizme.
+   *
+   * Varsayılan `false`: footer sitenin her public sayfasında durur ve yasal
+   * bağlantıları oradan taşınır. İstisna, KISA BOŞ DURUM ekranlarıdır —
+   * orada footer içeriğin hemen dibinde bitiyor ve sayfanın asıl mesajıyla
+   * (tek bir eylem) yarışıyor. Yasal bağlantılar kaybolmaz: aynı ekrandan
+   * bir dokunuşla ulaşılan her sayfada footer duruyor.
+   */
+  altBilgiGizli?: boolean;
 }) {
   /* Yapışkan üst boşluk — `DashboardShell` ile AYNI sözleşme. Yapışkan yan
    * kartlar (ör. eğitmen ilanı) üst boşluklarını sabit bir sayı yerine bu
@@ -70,7 +81,7 @@ export function PublicShell({
         <PublicNavbar center={center} bottom={bottom} mobilSade={mobilSade} expanded />
       </div>
       <main className="flex-1 p-4 sm:p-6">{children}</main>
-      <SiteFooter />
+      {!altBilgiGizli && <SiteFooter />}
       {/* Alt sekme çubuğu TÜM mobil sayfalarda durur (kullanıcı kararı,
           9 Eyl 2026). Sayfaların tasarımına dokunmaz; kendi spacer'ını
           çizdiği için içerik çubuğun altında kalmaz. */}

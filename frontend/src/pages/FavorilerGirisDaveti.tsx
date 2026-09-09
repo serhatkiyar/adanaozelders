@@ -29,7 +29,10 @@ export default function FavorilerGirisDaveti() {
     // kalır (referans ekranın kendisi de böyle). Aynı zamanda 390px'te logo
     // ile "Ders Ver" düğmesi arasındaki 42px'lik çakışmayı bu sayfada da
     // kapatır.
-    <PublicShell mobilSade>
+    // `altBilgiGizli`: kısa bir boş durumun hemen dibinde footer, sayfanın tek
+    // mesajıyla (oturum aç) yarışıyor ve referans ekranda da yok. Yasal
+    // bağlantılar kaybolmaz — giriş sonrası her sayfada footer duruyor.
+    <PublicShell mobilSade altBilgiGizli>
       <Seo
         canonicalPath="/favoriler"
         title="Favoriler"
