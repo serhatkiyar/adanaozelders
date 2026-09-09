@@ -56,20 +56,21 @@ const ROTALAR = [
 /** Dokunma hedefi esigi - `scripts/sihirbaz_mobil_turu.mjs` ile AYNI sayi. */
 const HEDEF_EN_AZ = 44;
 /**
- * Ust bar tavani ROTA BASINADIR ve sebebi yapisaldir, kozmetik degil:
- *
- *   anasayfa  — arama hapi + kategori cip seridi                  → 140
- *   arama     — geri/hap/filtre satiri + YATAY FILTRE SERIDI      → 160
- *
- * Arama sonucu ekrani bir satir DAHA tasir; tek bir tavan koymak ya ana
- * sayfayi gereksiz gevsetir ya arama sayfasini yalancı yere kirmizi dusurur.
+ * Ust bar tavani ROTA BASINADIR.
  *
  * Sayilar keyfi degil: bu tur ilk kosuldugunda ana sayfanin ust bari 224px'ti
- * (844px ekranin %27'si) ve sikayetin kaynagi oydu. Bugunku olcumler 136 ve
- * 153; tavanlar olculen degerin hemen ustunde durur ki bir satir daha eklenmesi
- * SESSIZ kalmasin. Tavani yukseltmek bir KARARDIR — gerekcesi buraya yazilir.
+ * (844px ekranin %27'si) ve sikayetin kaynagi oydu. Bugunku olcumler:
+ *
+ *   anasayfa — arama hapi + kategori cip seridi              → 136 (tavan 140)
+ *   arama    — geri/hap/filtre satiri + filtre cip seridi    → 125 (tavan 140)
+ *
+ * Tavan olculen degerin HEMEN ustunde durur: bir satir daha eklenmesi sessiz
+ * kalmasin. Arama sayfasi bir ara 153px'ti ve tavan gecici olarak 160'a
+ * cikarilmisti; cipler inceltilince (kullanici itirazi) olcum 125'e dustu ve
+ * tavan geri sikilastirildi — yukseltilmis bir tavani geri indirmemek, kapiyi
+ * sessizce ise yaramaz hale getirir.
  */
-const UST_BAR_TAVANLARI = { anasayfa: 140, arama: 160 };
+const UST_BAR_TAVANLARI = { anasayfa: 140, arama: 140 };
 /** Alt cubuk taban yuksekligi (bilesendeki ALT_SEKME_YUKSEKLIGI ile ayni fikir). */
 const ALT_CUBUK_EN_AZ = 56;
 

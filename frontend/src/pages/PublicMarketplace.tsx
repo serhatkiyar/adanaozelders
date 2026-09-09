@@ -25,10 +25,12 @@ import { useMobil } from "@/hooks/useMedyaSorgusu";
 
 /* ─── options ─────────────────────────────────────────── */
 
-const SORT_OPTIONS: { value: TutorSort; label: string }[] = [
-  { value: TutorSort.RELEVANCE, label: "Sıralama: Önerilen" },
-  { value: TutorSort.RATING_DESC, label: "Sıralama: En Yüksek Puan" },
-  { value: TutorSort.PRICE_ASC, label: "Sıralama: En Düşük Fiyat" },
+const SORT_OPTIONS: { value: TutorSort; label: string; kisa: string }[] = [
+  // `label` masaüstü açılır menüsü (orada yer bol ve "Sıralama:" öneki
+  // menünün ne olduğunu söylüyor), `kisa` telefon çipi.
+  { value: TutorSort.RELEVANCE, label: "Sıralama: Önerilen", kisa: "Önerilen" },
+  { value: TutorSort.RATING_DESC, label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
+  { value: TutorSort.PRICE_ASC, label: "Sıralama: En Düşük Fiyat", kisa: "En düşük fiyat" },
 ];
 
 /* ─── icon helpers ─────────────────────────────────────── */
@@ -39,6 +41,41 @@ const FilterIconSvg = () => (
   </svg>
 );
 
+
+/* ─── telefon: arama SONUCU hapı ──────────────────────────────────────────
+   Bu hap ana sayfanın hapı DEĞİLDİR ve olmamalıdır. Orada hap bir DAVETtir:
+   "Aramaya başlayın" der, büyüteç taşır, boştur. Burada ise bir ÖZETtir:
+   kullanıcı zaten aramış, hapın işi ne aradığını geri okutmak. İlk sürümde
+   ana sayfanınki olduğu gibi buraya taşınmıştı; kalın duruyordu ve içeriği
+   bu ekrana ait değildi (kullanıcı itirazı, 9 Eyl 2026).
+
+   Referansta (Airbnb arama ekranı) hap iki satır METİNden ibarettir: kalın
+   başlık + gri özet, ortalı, ikon YOK. */
+function AramaOzetiHapi({
+  baslik,
+  ozet,
+  onClick,
+}: {
+  baslik: string;
+  ozet: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Aramayı değiştir"
+      className="flex h-[52px] w-full min-w-0 flex-col items-center justify-center rounded-full border border-slate-200 bg-white px-4 shadow-[0_1px_6px_rgba(15,23,42,0.08)] transition hover:shadow-md active:scale-[0.99]"
+    >
+      <span className="w-full truncate text-[15px] font-semibold leading-tight text-slate-900">
+        {baslik}
+      </span>
+      <span className="w-full truncate text-[13px] leading-tight text-slate-500">
+        {ozet}
+      </span>
+    </button>
+  );
+}
 
 /* ─── telefon: yatay filtre şeridi ───────────────────────────────────────
    Referans (Airbnb arama ekranı) hapın hemen altında yatay kaydırılan çipler
@@ -65,44 +102,60 @@ function MobilFiltreSeridi({
   subjects: string[];
   removeSubject: (s: string) => void;
 }) {
+  /* GÖRÜNEN yükseklik ile DOKUNMA alanı ayrıdır.
+     İlk sürümde çipin kendisi 44px yapılmıştı (proje dokunma eşiği) ve şerit
+     kalın duruyordu — kullanıcı itirazı. Referanstaki çipler ~34px'tir.
+     Doğrusu: dış kabuk 44px ama ZEMİNSİZ (`py-[5px]` saydam pay), görünen
+     hap içerideki 34px'lik yuvarlak. Parmak aynı alanı bulur, göz ince bir
+     çip görür — `ui/DaireDugme`de de aynı ayrım var. */
+  const kabuk = "flex h-11 shrink-0 snap-start items-center py-[5px]";
   const cip = (aktif: boolean) =>
-    `flex min-h-[44px] shrink-0 snap-start items-center gap-1 rounded-full border px-4 text-sm font-medium transition active:scale-95 ${
+    `flex h-[34px] items-center gap-1 rounded-full border px-3.5 text-sm transition active:scale-95 ${
       aktif
-        ? "border-slate-900 bg-slate-900 text-white"
+        ? "border-slate-900 bg-slate-900 font-medium text-white"
         : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
     }`;
 
   return (
     <div
-      className="mobil-filtre flex snap-x items-center gap-2 overflow-x-auto pb-1"
+      className="mobil-filtre flex snap-x items-center gap-2 overflow-x-auto"
       style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as CSSProperties}
     >
-      {/* Sıralama — açılır menü çipi. `select` görünür etiketini kendisi
-          taşır, ayrı bir <label> gerekmez (erişilebilir adı seçili seçenek). */}
-      <div className="relative shrink-0 snap-start">
+      {/* Sıralama. Etiket "Sıralama: Önerilen" değil sadece DEĞERdir:
+          yanındaki ok zaten bunun bir seçim olduğunu söylüyor ve uzun etiket
+          390px'te şeridin yarısını yiyordu. */}
+      {/* GÖRÜNEN çip bir `span`, DOKUNULAN öğe onun üstüne serilmiş şeffaf
+          `select`. Doğrudan `select`i çip gibi biçimlendirmek ikisini
+          birbirine kilitliyordu: çipi 34px'e inceltince dokunma hedefi de
+          34px'e düşüyor ve 44px eşiği kırılıyordu. Şeffaf select kabuğun
+          tamamını (44px) kaplar, görünen hap içeride ince kalır. */}
+      <span className={`relative ${kabuk}`}>
+        <span aria-hidden className={`${cip(sort !== TutorSort.RELEVANCE)} pr-8`}>
+          {SORT_OPTIONS.find((o) => o.value === sort)?.kisa}
+        </span>
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
+            sort !== TutorSort.RELEVANCE ? "text-white" : "text-slate-400"
+          }`}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
         <select
           value={sort}
           aria-label="Sıralama"
           onChange={(e) => setSort(e.target.value as TutorSort)}
-          className={`${cip(sort !== TutorSort.RELEVANCE)} appearance-none pr-9 outline-none focus:ring-2 focus:ring-marka-focus/20`}
+          className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 outline-none"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {opt.kisa}
             </option>
           ))}
         </select>
-        <span
-          aria-hidden
-          className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 ${
-            sort !== TutorSort.RELEVANCE ? "text-white" : "text-slate-400"
-          }`}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </span>
-      </div>
+      </span>
 
       {/* Ders şekli TEK seçimdir: aynı çipe tekrar dokunmak filtreyi kaldırır
           ("fark etmez"e döner). İki ayrı açık/kapalı kutu olsaydı ikisi birden
@@ -112,30 +165,34 @@ function MobilFiltreSeridi({
         type="button"
         onClick={() => setSekil(sekil === TeachingMode.ONLINE ? "" : TeachingMode.ONLINE)}
         aria-pressed={sekil === TeachingMode.ONLINE}
-        className={cip(sekil === TeachingMode.ONLINE)}
+        className={kabuk}
       >
-        Uzaktan
+        <span className={cip(sekil === TeachingMode.ONLINE)}>Uzaktan</span>
       </button>
       <button
         type="button"
         onClick={() => setSekil(sekil === TeachingMode.IN_PERSON ? "" : TeachingMode.IN_PERSON)}
         aria-pressed={sekil === TeachingMode.IN_PERSON}
-        className={cip(sekil === TeachingMode.IN_PERSON)}
+        className={kabuk}
       >
-        Yüz yüze
+        <span className={cip(sekil === TeachingMode.IN_PERSON)}>Yüz yüze</span>
       </button>
 
       {/* Etkin sınav ve ders çipleri — dokunmak kaldırır. */}
       {exam && (
-        <button type="button" onClick={() => setExam("")} className={cip(true)}>
-          {exam}
-          <span aria-hidden className="ml-0.5 text-xs">✕</span>
+        <button type="button" onClick={() => setExam("")} className={kabuk}>
+          <span className={cip(true)}>
+            {exam}
+            <span aria-hidden className="ml-0.5 text-xs">✕</span>
+          </span>
         </button>
       )}
       {subjects.map((s) => (
-        <button key={s} type="button" onClick={() => removeSubject(s)} className={cip(true)}>
-          {s}
-          <span aria-hidden className="ml-0.5 text-xs">✕</span>
+        <button key={s} type="button" onClick={() => removeSubject(s)} className={kabuk}>
+          <span className={cip(true)}>
+            {s}
+            <span aria-hidden className="ml-0.5 text-xs">✕</span>
+          </span>
         </button>
       ))}
       <style>{`.mobil-filtre::-webkit-scrollbar { display: none; }`}</style>
@@ -404,14 +461,10 @@ export default function PublicMarketplace() {
           </svg>
         </button>
         <div className="min-w-0 flex-1">
-          <CompactSearch
-            active="egitmenler"
-            placeholder={q || "Eğitmen ara"}
-            q={q}
-            district={district}
-            remote={sekil === TeachingMode.ONLINE}
-            altSatir={mobilAramaOzeti || "Tüm Adana"}
-            onOpen={() => setSearchOpen(true)}
+          <AramaOzetiHapi
+            baslik={q || (subjects.length === 1 ? subjects[0] : subjects.length ? `${subjects.length} ders` : "Eğitmen ara")}
+            ozet={mobilAramaOzeti || "Tüm Adana"}
+            onClick={() => setSearchOpen(true)}
           />
         </div>
         <button
