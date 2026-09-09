@@ -1,0 +1,224 @@
+import { type CSSProperties, type ReactNode } from "react";
+
+/**
+ * Eğitmen arama SONUÇ ekranının telefon başlığı — geri · hap · filtre, altında
+ * yatay filtre şeridi (kullanıcı kararı, 9 Eyl 2026; referans Airbnb arama
+ * ekranı).
+ *
+ * ## Neden ortak bileşen
+ *
+ * `/egitmenler` iki ayrı sayfadan çizilir: anonim ziyaretçiye
+ * `PublicMarketplace`, oturumlu kullanıcıya `Marketplace` (bkz.
+ * `MarketplacePage` delegatörü). İkisi AYNI ekrandır; başlığı iki kez yazmak,
+ * birinin öbürüne sessizce benzemez hâle gelmesi demekti — sitede tam olarak
+ * bu sınıftan bir kusur zaten yaşandı ve `__guards__/aramaHapiIkizligi.test.ts`
+ * ile çıpalandı.
+ *
+ * Bu yüzden GÖRÜNÜM burada tek yerdedir; her sayfa yalnız KENDİ durumunu
+ * çiplere çevirir. Bu ayrım gerekli: iki sayfanın filtre modeli farklıdır
+ * (anonim tarafta ders şekli TEK değer, oturumlu tarafta çoklu `modes`
+ * dizisi). Ortak bir "şekil" varsayımı ikisinden birini bozardı.
+ *
+ * ## Görünen ölçü ile dokunma alanı AYRIDIR
+ *
+ * İlk sürümde çipler 44px'ti (proje dokunma eşiği,
+ * `scripts/sihirbaz_mobil_turu.mjs`) ve şerit kalın duruyordu — kullanıcı
+ * itirazı. Doğrusu: dış kabuk 44px ama ZEMİNSİZ, görünen hap içerideki 34px.
+ * Parmak aynı alanı bulur, göz ince bir çip görür. Aynı ayrım
+ * `ui/DaireDugme`de de var.
+ */
+
+/** Şeritteki tek bir filtre çipi. `aktif` çipi doldurur (seçili filtre). */
+export type FiltreCipi = {
+  id: string;
+  etiket: string;
+  aktif: boolean;
+  onClick: () => void;
+};
+
+export type SiralamaSecenegi = { value: string; kisa: string };
+
+/** Dokunma kabuğu — 44px, zeminsiz. */
+const KABUK = "flex h-11 shrink-0 snap-start items-center py-[5px]";
+
+/** Görünen hap — 34px. */
+export function cipSinifi(aktif: boolean): string {
+  return `flex h-[34px] items-center gap-1 rounded-full border px-3.5 text-sm transition active:scale-95 ${
+    aktif
+      ? "border-slate-900 bg-slate-900 font-medium text-white"
+      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+  }`;
+}
+
+/**
+ * Arama özeti hapı.
+ *
+ * Ana sayfanın hapı (`HeroSearch/CompactSearch`) DEĞİLDİR ve olmamalıdır.
+ * Orada hap bir DAVETtir: "Aramaya başlayın" der, büyüteç taşır, boştur.
+ * Burada bir ÖZETtir: kullanıcı zaten aramış, hapın işi ne aradığını geri
+ * okutmak. İlk sürümde ana sayfanınki olduğu gibi taşınmıştı; kalın duruyordu
+ * ve içeriği bu ekrana ait değildi (kullanıcı itirazı).
+ */
+function AramaOzetiHapi({
+  baslik,
+  ozet,
+  onClick,
+}: {
+  baslik: string;
+  ozet: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Aramayı değiştir"
+      className="flex h-[52px] w-full min-w-0 flex-col items-center justify-center rounded-full border border-slate-200 bg-white px-4 shadow-[0_1px_6px_rgba(15,23,42,0.08)] transition hover:shadow-md active:scale-[0.99]"
+    >
+      <span className="w-full truncate text-[15px] font-semibold leading-tight text-slate-900">
+        {baslik}
+      </span>
+      <span className="w-full truncate text-[13px] leading-tight text-slate-500">
+        {ozet}
+      </span>
+    </button>
+  );
+}
+
+export function AramaMobilBaslik({
+  baslik,
+  ozet,
+  onHap,
+  onGeri,
+  onFiltre,
+  filtreAktif,
+  siralama,
+  cipler,
+  filtreIkonu,
+}: {
+  /** Hapın üst satırı — aranan şey. */
+  baslik: string;
+  /** Hapın alt satırı — yer/şekil özeti. */
+  ozet: string;
+  onHap: () => void;
+  onGeri: () => void;
+  onFiltre: () => void;
+  /** Filtre penceresinde etkin bir filtre var mı (ikonu doldurur). */
+  filtreAktif: boolean;
+  siralama: {
+    deger: string;
+    secenekler: SiralamaSecenegi[];
+    onChange: (v: string) => void;
+    /** Varsayılan (nötr) değer — çip yalnız bundan farklıysa dolu çizilir. */
+    varsayilan: string;
+  };
+  cipler: FiltreCipi[];
+  filtreIkonu: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onGeri}
+          aria-label="Geri"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 active:scale-95"
+        >
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <div className="min-w-0 flex-1">
+          <AramaOzetiHapi baslik={baslik} ozet={ozet} onClick={onHap} />
+        </div>
+        <button
+          type="button"
+          onClick={onFiltre}
+          aria-label="Filtreler"
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
+            filtreAktif
+              ? "border-slate-900 bg-slate-900 text-white"
+              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+          }`}
+        >
+          {filtreIkonu}
+        </button>
+      </div>
+      <FiltreSeridi siralama={siralama} cipler={cipler} />
+    </div>
+  );
+}
+
+function FiltreSeridi({
+  siralama,
+  cipler,
+}: {
+  siralama: {
+    deger: string;
+    secenekler: SiralamaSecenegi[];
+    onChange: (v: string) => void;
+    varsayilan: string;
+  };
+  cipler: FiltreCipi[];
+}) {
+  const siralamaAktif = siralama.deger !== siralama.varsayilan;
+
+  return (
+    <div
+      className="arama-filtre-serit flex snap-x items-center gap-2 overflow-x-auto"
+      style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as CSSProperties}
+    >
+      {/* GÖRÜNEN çip bir `span`, DOKUNULAN öğe onun üstüne serilmiş şeffaf
+          `select`. Doğrudan `select`i çip gibi biçimlendirmek ikisini
+          birbirine kilitliyordu: çipi 34px'e inceltince dokunma hedefi de
+          34px'e düşüyor ve 44px eşiği kırılıyordu. */}
+      <span className={`relative ${KABUK}`}>
+        <span aria-hidden className={`${cipSinifi(siralamaAktif)} pr-8`}>
+          {siralama.secenekler.find((o) => o.value === siralama.deger)?.kisa}
+        </span>
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
+            siralamaAktif ? "text-white" : "text-slate-400"
+          }`}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </span>
+        <select
+          value={siralama.deger}
+          aria-label="Sıralama"
+          onChange={(e) => siralama.onChange(e.target.value)}
+          className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 outline-none"
+        >
+          {siralama.secenekler.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.kisa}
+            </option>
+          ))}
+        </select>
+      </span>
+
+      {cipler.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={c.onClick}
+          aria-pressed={c.aktif}
+          className={KABUK}
+        >
+          <span className={cipSinifi(c.aktif)}>{c.etiket}</span>
+        </button>
+      ))}
+      <style>{`.arama-filtre-serit::-webkit-scrollbar { display: none; }`}</style>
+    </div>
+  );
+}

@@ -63,6 +63,13 @@ interface DashboardShellProps {
    * nöbetçisi `__guards__/panelGenisligi.test.ts`.
    */
   genislik?: PanelGenisligi;
+  /** Telefonda (yalnız `<md`) en üstte duran içerik — bkz. `PublicNavbar`. */
+  mobilUst?: ReactNode;
+  /**
+   * Telefonda logo ve hesap ikonlarını üst bardan kaldırır. Yalnız kendi
+   * gezinmesini taşıyan (geri düğmesi + alt sekme çubuğu) yüzeyler açar.
+   */
+  mobilSade?: boolean;
 }
 
 export type PanelGenisligi = "dar" | "orta";
@@ -80,6 +87,8 @@ export function DashboardShell({
   flush = false,
   center,
   bottom,
+  mobilUst,
+  mobilSade = false,
   sekmeler,
   genislik,
 }: DashboardShellProps) {
@@ -160,7 +169,15 @@ export function DashboardShell({
       {/* Başlık + şerit TEK yapışkan yığın: şerit akışta kalsaydı kaydırınca
           gider, yanındaki yapışkan kartı da peşinden sürüklerdi. */}
       <div ref={yiginRef} className="sticky top-0 z-40">
-        <DashboardHeader navItems={menuOgeleri} transparent center={center} bottom={bottom} expanded />
+        <DashboardHeader
+          navItems={menuOgeleri}
+          transparent
+          center={center}
+          bottom={bottom}
+          mobilUst={mobilUst}
+          mobilSade={mobilSade}
+          expanded
+        />
 
         {/* Şerit yapışkan yığının İÇİNDE: akışta kalsaydı kaydırınca gider,
             sayfa değiştikçe sekmeler kaybolurdu. Yığının yüksekliği zaten

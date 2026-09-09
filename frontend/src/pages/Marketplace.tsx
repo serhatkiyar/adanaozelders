@@ -1,6 +1,8 @@
 import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
+import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
@@ -16,15 +18,18 @@ import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { yeriOku, yeriYaz, yerinArananKonumu, type YerSecimi } from "@/lib/yerArama";
+import { yeriOku, yeriYaz, yerinArananKonumu, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 
 /* ─── options ─────────────────────────────────────────── */
 
-const SORT_OPTIONS: { value: TutorSort; label: string }[] = [
-  { value: TutorSort.RELEVANCE, label: "Sıralama: Önerilen" },
-  { value: TutorSort.RATING_DESC, label: "Sıralama: En Yüksek Puan" },
-  { value: TutorSort.PRICE_ASC, label: "Sıralama: En Düşük Fiyat" },
+const SORT_OPTIONS: { value: TutorSort; label: string; kisa: string }[] = [
+  // `label` masaüstü açılır menüsü (orada yer bol ve "Sıralama:" öneki menünün
+  // ne olduğunu söylüyor), `kisa` telefon çipi — yanındaki ok zaten bunun bir
+  // seçim olduğunu söylüyor ve uzun etiket 390px'te şeridin yarısını yiyor.
+  { value: TutorSort.RELEVANCE, label: "Sıralama: Önerilen", kisa: "Önerilen" },
+  { value: TutorSort.RATING_DESC, label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
+  { value: TutorSort.PRICE_ASC, label: "Sıralama: En Düşük Fiyat", kisa: "En düşük fiyat" },
 ];
 
 const MODE_ALL = "ALL" as const;
@@ -66,6 +71,8 @@ export default function Marketplace() {
   const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
   const [showFilters, setShowFilters] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const mobil = useMobil();
+  const navigate = useNavigate();
   const [pricePopoverOpen, setPricePopoverOpen] = useState(false);
   const [pricePopoverPos, setPricePopoverPos] = useState<{top: number, left: number} | null>(null);
   const pricePopoverRef = useRef<HTMLButtonElement>(null);
@@ -459,8 +466,74 @@ export default function Marketplace() {
 
   const navBottom = searchOpen ? bigSearchRow : filterBar;
 
+  /* ── TELEFON: geri · hap · filtre, altında yatay filtre şeridi ──
+     Anonim taraftaki (`PublicMarketplace`) ekranla AYNI görünüm; ortak
+     bileşen `AramaMobilBaslik`. İkisi aynı ekrandır, iki kez yazılsaydı
+     zamanla birbirine benzemez hâle gelirdi.
+
+     Filtre modeli iki sayfada farklıdır ve bu yüzden çipleri her sayfa KENDİ
+     durumundan üretir: burada ders şekli `modes` DİZİSİdir (`selectMode` tek
+     değere indirger), anonim tarafta tek bir `sekil` değeridir. */
+  const mobilAramaOzeti = [
+    yer ? yerEtiketi(yer) : district.length === 1 ? district[0] : district.length ? `${district.length} ilçe` : null,
+    modeSegment === TeachingMode.ONLINE ? "Uzaktan" : modeSegment === TeachingMode.IN_PERSON ? "Yüz yüze" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const mobilCipler: FiltreCipi[] = [
+    {
+      id: "uzaktan",
+      etiket: "Uzaktan",
+      aktif: modeSegment === TeachingMode.ONLINE,
+      onClick: () =>
+        selectMode(modeSegment === TeachingMode.ONLINE ? MODE_ALL : TeachingMode.ONLINE),
+    },
+    {
+      id: "yuzyuze",
+      etiket: "Yüz yüze",
+      aktif: modeSegment === TeachingMode.IN_PERSON,
+      onClick: () =>
+        selectMode(modeSegment === TeachingMode.IN_PERSON ? MODE_ALL : TeachingMode.IN_PERSON),
+    },
+    ...(exam ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }] : []),
+    ...subjects.map((s) => ({
+      id: `subject-${s}`,
+      etiket: `${s} ✕`,
+      aktif: true,
+      onClick: () => removeSubject(s),
+    })),
+  ];
+
+  const mobilUst = mobil ? (
+    <AramaMobilBaslik
+      baslik={q || (subjects.length === 1 ? subjects[0] : subjects.length ? `${subjects.length} ders` : "Eğitmen ara")}
+      ozet={mobilAramaOzeti || "Tüm Adana"}
+      onHap={() => setSearchOpen(true)}
+      onGeri={() => navigate(-1)}
+      onFiltre={() => setShowFilters(true)}
+      filtreAktif={hasModalFilters}
+      siralama={{
+        deger: sort,
+        secenekler: SORT_OPTIONS.map((o) => ({ value: o.value, kisa: o.kisa })),
+        onChange: (v) => setSort(v as TutorSort),
+        varsayilan: TutorSort.RELEVANCE,
+      }}
+      cipler={mobilCipler}
+      filtreIkonu={<FilterIconSvg />}
+    />
+  ) : undefined;
+
   return (
-    <DashboardShell title="Eğitmen Bul" navItems={navItems} center={navCenter} bottom={navBottom} sekmeler={null}>
+    <DashboardShell
+      title="Eğitmen Bul"
+      navItems={navItems}
+      center={mobil ? undefined : navCenter}
+      bottom={mobil ? undefined : navBottom}
+      mobilUst={mobilUst}
+      mobilSade={mobil}
+      sekmeler={null}
+    >
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
         <div
