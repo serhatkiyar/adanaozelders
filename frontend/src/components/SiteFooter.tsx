@@ -77,7 +77,10 @@ export function SiteFooter() {
   // aralıkla duruyordu, parmakla yanlış satıra basmak kolaydı. Masaüstünde
   // ölçü değişmez.
   const linkCls = "min-h-[44px] py-2.5 transition hover:text-slate-900 md:min-h-0 md:py-0 ";
-  const baslikCls = "text-sm font-semibold text-slate-900";
+  // Başlıklar TELEFONDA GİZLİ: beş linki iki başlıkla bölmek tek sütunda
+  // bilgi vermeden ~50px yiyordu. Masaüstünde sütunları ayıran şey onlar,
+  // orada duruyor.
+  const baslikCls = "hidden text-sm font-semibold text-slate-900 sm:block";
 
   // 29 Ağu (3. tur, kullanıcı kararı): footer'da SEKİZ sözleşme DEĞİL,
   // Amazon paritesinde ÜÇ link durur (Kullanım Koşulları · Gizlilik · Çerez).
@@ -109,19 +112,38 @@ export function SiteFooter() {
           const az = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           window.scrollTo({ top: 0, behavior: az ? "auto" : "smooth" });
         }}
-        className="block w-full bg-slate-100 py-3.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900"
+        // Telefonda ŞERİT DEĞİL, ince bir satır (kullanıcı: *"kalsın ama çok
+        // kalın"*). Alt sekme çubuğu geldiğinden beri ekranın altında iki tam
+        // genişlik dolgu üst üste duruyordu. Dokunma yüksekliği 44px KORUNUR
+        // (proje eşiği); düşen tek şey görsel ağırlık: zemin kalkar, yerine
+        // saç-teli çizgi gelir, yazı küçülür. Masaüstünde bugünkü şerit aynen
+        // durur — orada alt çubuk yok ve sayfa uzun.
+        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-t border-slate-100 text-center text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 md:block md:border-0 md:bg-slate-100 md:py-3.5 md:text-sm md:text-slate-600 md:hover:bg-slate-200"
       >
+        <svg
+          className="h-3.5 w-3.5 md:hidden"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.2}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m-7 7 7-7 7 7" />
+        </svg>
         Başa dön
       </button>
-      <div className="mx-auto max-w-[1216px] px-6 py-8 md:py-12">
+      <div className="mx-auto max-w-[1216px] px-6 py-5 md:py-12">
         <nav
           aria-label="Site bağlantıları"
-          className="grid grid-cols-2 gap-x-10 gap-y-8 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14"
+          // Telefonda TEK SÜTUN (kullanıcı kararı, 9 Eyl 2026). İki sütun,
+          // üçüncü hücreyi ("Güvenli Ödeme") tek başına ikinci satıra
+          // düşürüyor ve sağını boş bırakıyordu.
+          className="grid grid-cols-1 gap-x-10 gap-y-2 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8"
         >
             {/* 31 Ağu (kullanıcı kararları): Destek EN SOLDA, sonra Hakkımızda.
                 Destek linkleri — mesafeli satışta erişilebilir iletişim
                 kanalı zorunlu. */}
-            <div className="space-y-2.5">
+            <div className="sm:space-y-2.5">
               <p className={baslikCls}>Destek</p>
               {/* Kısa "İletişim" iki uzun satır arasında güdük kalıyordu — en üste. */}
               <Link to={ROUTES.contact} className={`block ${linkCls}`}>
@@ -135,7 +157,7 @@ export function SiteFooter() {
               </Link>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="sm:space-y-2.5">
               <p className={baslikCls}>Hakkımızda</p>
               {hakkimizda && (
                 <Link to={hakkimizda.path} className={`block ${linkCls}`}>
@@ -151,7 +173,9 @@ export function SiteFooter() {
 
             {/* Güvenli ödeme — Trendyol'daki "Güvenli Alışveriş" gibi kendi
                 sütununda (iyzico bandı: iyzico+Visa+MC+Amex tek dosyada). */}
-            <div className="space-y-2.5">
+            {/* Ödeme rozeti bir GÜVEN İŞARETİdir; telefonda bir sütunun
+                içinde değil, linklerin altında kendi satırında durur. */}
+            <div className="pt-2 sm:space-y-2.5 sm:pt-0">
               <p className={baslikCls}>Güvenli Ödeme</p>
               <img
                 src="/odeme/iyzico-logo-band.svg"
