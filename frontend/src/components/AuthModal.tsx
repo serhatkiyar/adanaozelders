@@ -86,7 +86,15 @@ export function AuthModal() {
       onClose={close}
       ariaLabel={modal === "login" ? "Giriş yap" : "Kayıt ol"}
       hideCloseButton
-      panelClassName="w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200 "
+      // TELEFONDA TAM EKRAN, masaüstünde ortada pencere (kullanıcı kararı,
+      // 9 Eyl 2026). Alttan açılan sheet biçimi telefonda kötü duruyordu:
+      // klavye açılınca panel yarıya iniyor, arkadaki karartılmış sayfa
+      // kullanıcının "hangi ekrandayım" hissini bozuyordu. Giriş bir ARA
+      // İŞLEM değil, kendi başına bir ekrandır.
+      //
+      // `dvh` şart: `vh` mobil tarayıcılarda adres çubuğu gizliyken de aynı
+      // değeri döndürür ve panel taşar.
+      panelClassName="flex h-[100dvh] w-full flex-col overflow-hidden bg-white sm:block sm:h-auto sm:max-w-md sm:scale-100 sm:rounded-2xl sm:shadow-2xl sm:ring-1 sm:ring-slate-100 sm:animate-in sm:zoom-in-95 sm:duration-200 "
     >
         <button
           type="button"
@@ -99,7 +107,7 @@ export function AuthModal() {
           </svg>
         </button>
 
-        <div className="p-8 max-h-[90vh] overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-6 pt-16 sm:max-h-[90vh] sm:p-8">
           {modal === "login" ? <LoginForm onSuccess={close} googleHatasi={googleHatasi} /> : <RegisterForm initialRole={roleParam || "client"} onSuccess={close} googleHatasi={googleHatasi} />}
         </div>
     </Modal>
@@ -222,11 +230,30 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
         <button
           onClick={() => {
             searchParams.set("modal", "register");
+            searchParams.delete("role");
             setSearchParams(searchParams, { replace: true });
           }}
           className="font-semibold text-marka-metin hover:text-marka-metin-hover "
         >
           Kayıt ol
+        </button>
+      </p>
+
+      {/* ARZ TARAFININ KAPISI — buradan silinemez.
+          "Ders Ver" bağlantısı telefonda üst bardan kaldırıldı (mobil yeniden
+          tasarımı, 9 Eyl 2026) ve eğitmen kaydına giden başka bir yol yok.
+          Kaldırılırsa eğitmen hiç kaydolamaz; nöbetçi
+          `__guards__/mobilAltSekmeler.test.tsx` bu bağlantıyı arar. */}
+      <p className="mt-2 text-center text-sm text-slate-500 md:hidden">
+        <button
+          onClick={() => {
+            searchParams.set("modal", "register");
+            searchParams.set("role", "tutor");
+            setSearchParams(searchParams, { replace: true });
+          }}
+          className="font-semibold text-marka-metin hover:text-marka-metin-hover "
+        >
+          Ders vermek istiyorum
         </button>
       </p>
     </>

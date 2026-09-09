@@ -1,9 +1,7 @@
-import { Link, NavLink, useSearchParams } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
 import { Icon, type IconName } from "@/components/AppIcon";
-import { Modal } from "@/components/ui/Modal";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useKayitAcik } from "@/hooks/useKayitAcik";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
@@ -36,16 +34,14 @@ import { ROLE_IDS } from "@/types";
  * olmamasını, orada EN FAZLA TEK kısayol bulunmasını sabitler. Çubuk üst barın
  * içine konsaydı o iddia sessizce çürürdü. Ayrı bir bileşen olması bilinçlidir.
  *
- * ## Hesap sayfası neden `useState` ile açılmıyor
+ * ## "Giriş" sekmesi neden doğrudan giriş ekranını açıyor
  *
- * İlk yazımda anonim kullanıcının "Giriş" sekmesi bir `<button>` + `useState`
- * ikilisiydi. `__guards__/uiBaseline.test.ts` bunu iki ayrı düğümden yakaladı:
- * ham düğme sayısı tavanı aştı ve "ekranda yaşayan pencere durumu SIFIR"
- * tabanı kırıldı (bileşen `DashboardShell`ten import edildiği için ölçüm
- * ağacındadır). Doğrusu sitenin zaten kullandığı sözleşmeydi: pencere URL'de
- * yaşar (`?modal=hesap`, bkz. `AuthModal`ın `?modal=login`i). Kazanç yalnız
- * nöbetçiyi memnun etmek değil — telefonda GERİ tuşu artık sayfayı değil
- * pencereyi kapatıyor.
+ * Ara bir adım denendi ve KALDIRILDI: sekme önce üç seçenekli küçük bir hesap
+ * penceresi açıyordu (giriş / kayıt / ders ver), ondan sonra asıl giriş
+ * ekranı geliyordu. Telefonda bu, üst üste iki pencere demekti ve kullanıcı
+ * itiraz etti. Artık sekme doğrudan `?modal=login`i açar; giriş ekranı zaten
+ * "Kayıt ol" ve "Ders vermek istiyorum" kapılarını kendi üzerinde taşır
+ * (`AuthModal`). Pencere URL'de yaşadığı için GERİ tuşu da onu kapatır.
  *
  * Nöbetçi: `__guards__/mobilAltSekmeler.test.tsx`.
  */
@@ -164,7 +160,7 @@ export function MobilAltSekmeler() {
           {!girisli && (
             <li className="flex-1">
               <Link
-                to="?modal=hesap"
+                to="?modal=login"
                 className="flex h-full w-full flex-col items-center justify-center gap-1 px-1 py-2 text-slate-500 transition active:scale-95"
                 style={{ minHeight: ALT_SEKME_YUKSEKLIGI }}
               >
@@ -175,7 +171,6 @@ export function MobilAltSekmeler() {
           )}
         </ul>
       </nav>
-      {!girisli && <HesapSayfasi />}
     </>
   );
 }
@@ -209,52 +204,5 @@ function SekmeBaglantisi({ sekme }: { sekme: Sekme }) {
       </span>
       <span className="text-[11px] font-medium leading-none">{sekme.label}</span>
     </NavLink>
-  );
-}
-
-/**
- * Anonim kullanıcının "Giriş" sekmesi.
- *
- * "Ders Ver" burada yaşar (kullanıcı kararı): üst bardan çıkarıldı ama SİTEDE
- * eğitmen kaydının tek kapısıdır — kaybolursa eğitmen hiç kaydolamaz.
- */
-function HesapSayfasi() {
-  const kayitAcik = useKayitAcik();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const open = searchParams.get("modal") === "hesap";
-
-  const onClose = () => {
-    searchParams.delete("modal");
-    setSearchParams(searchParams, { replace: true });
-  };
-
-  const satir =
-    "flex w-full items-center justify-between rounded-2xl px-4 py-3.5 text-left text-[15px] font-semibold text-slate-800 transition hover:bg-slate-50 active:scale-[0.99]";
-
-  return (
-    <Modal open={open} onClose={onClose} title="Hesap">
-      <div className="mt-4 flex flex-col gap-1">
-        <Link to="?modal=login" onClick={onClose} className={satir}>
-          Giriş yap
-        </Link>
-        {kayitAcik && (
-          <>
-            <Link to="?modal=register" onClick={onClose} className={satir}>
-              Kayıt ol
-            </Link>
-            {/* Kutu değil saç-teli çizgi (tasarım dili §3.2): "hesabım" ile
-                "ders vermek" ayrı cümlelerdir, ayrı kartlar değil. */}
-            <div className="my-2 h-px bg-slate-100" />
-            <Link
-              to="?modal=register&role=tutor"
-              onClick={onClose}
-              className={satir}
-            >
-              Ders vermek istiyorum
-            </Link>
-          </>
-        )}
-      </div>
-    </Modal>
   );
 }
