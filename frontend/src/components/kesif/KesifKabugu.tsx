@@ -6,6 +6,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
 import { MobilAramaSheet } from "@/components/MobilAramaSheet";
+import { AramaAdimlari } from "@/components/kesif/AramaAdimlari";
 import { FullScreenSpinner } from "@/components/Spinner";
 import type { DersSekli } from "@/components/AramaSecicileri";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -176,8 +177,9 @@ export function KesifKabugu() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
-  const submitEgitmen = (e: React.FormEvent) => {
-    e.preventDefault();
+  /* Gezinme kısmı olaydan AYRI: adımlı arama yüzeyinde `form` yok, düğme
+     doğrudan çağırıyor. */
+  const araEgitmen = () => {
     navigate(
       egitmenAramaAdresi({
         ...dersSorgusu(ders, dersEtiket),
@@ -189,6 +191,11 @@ export function KesifKabugu() {
       })
     );
     setMobilAramaAcik(false);
+  };
+
+  const submitEgitmen = (e: React.FormEvent) => {
+    e.preventDefault();
+    araEgitmen();
   };
 
   const submitKutuphane = (e: React.FormEvent) => {
@@ -298,8 +305,43 @@ export function KesifKabugu() {
       <Suspense key={pathname} fallback={<FullScreenSpinner />}>
         <Outlet />
       </Suspense>
-      <MobilAramaSheet open={mobilAramaAcik} onClose={() => setMobilAramaAcik(false)}>
-        {hap}
+      {/* Telefonda ADIMLI arama (Airbnb deseni) — masaüstündeki hap değil.
+          Gerekçe `AramaAdimlari` dosyasının başında. */}
+      <MobilAramaSheet
+        open={mobilAramaAcik}
+        onClose={() => setMobilAramaAcik(false)}
+        ust={<CategoryBar active={kategori} />}
+      >
+        <AramaAdimlari
+          kutuphaneMi={kutuphaneMi}
+          ders={ders}
+          dersEtiket={dersEtiket}
+          onDersChange={(qDeger, etiket) => {
+            setDers(qDeger);
+            setDersEtiket(etiket);
+          }}
+          sekil={sekil}
+          setSekil={setSekil}
+          yer={kutuphaneMi ? kYer : yer}
+          setYer={kutuphaneMi ? setKYer : setYer}
+          kutuphaneQ={kQ}
+          setKutuphaneQ={setKQ}
+          onAra={() => {
+            setMobilAramaAcik(false);
+            if (!kutuphaneMi) araEgitmen();
+          }}
+          onTemizle={() => {
+            if (kutuphaneMi) {
+              setKQ("");
+              setKYer(null);
+            } else {
+              setDers("");
+              setDersEtiket("");
+              setSekil("");
+              setYer(null);
+            }
+          }}
+        />
       </MobilAramaSheet>
     </>
   );

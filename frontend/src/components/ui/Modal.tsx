@@ -29,6 +29,16 @@ export interface ModalProps {
   maxWidth?: string;
   /** Panel için ek sınıflar (tam ekran harita gibi istisnalar). */
   panelClassName?: string;
+  /**
+   * Çocukları saran kabın sınıfı.
+   *
+   * Varsayılan boştur ve o kap flex zincirine KATILMAZ: `panelClassName` ile
+   * tam ekran (`flex flex-col`) bir panel kurulduğunda bu kap içeriğe göre
+   * büyüyüp paneli taşırıyordu — ölçüldü (10 Eyl 2026): panel 800px, kap
+   * 825px, alttaki birincil düğme 9px ekranın dışında kalıyordu.
+   * Tam ekran yüzeyler buraya `flex min-h-0 flex-1 flex-col` geçer.
+   */
+  icerikClassName?: string;
   /** Kapatma düğmesini gizle (içerik kendi kapatma düğmesini çiziyorsa). */
   hideCloseButton?: boolean;
   /**
@@ -62,6 +72,7 @@ export function Modal({
   ariaLabel,
   maxWidth = "max-w-md",
   panelClassName = "",
+  icerikClassName = "",
   hideCloseButton = false,
   mobilAltSeridiKoru = false,
 }: ModalProps) {
@@ -136,7 +147,9 @@ export function Modal({
             )}
           </div>
         )}
-        <div className={title ? "mt-5" : ""}>{children}</div>
+        <div className={`${title ? "mt-5" : ""} ${icerikClassName}`.trim()}>
+          {children}
+        </div>
       </div>
     </div>,
     document.body
