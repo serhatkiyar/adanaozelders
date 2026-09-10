@@ -84,7 +84,7 @@ export function TutorCard({
         )}
 
         {/* Gradient Mask at bottom */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
         
         {/* Text Container over image */}
         <div className="absolute bottom-4 left-4 right-4 flex flex-col">

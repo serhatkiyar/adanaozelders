@@ -255,32 +255,43 @@ export default function Libraries() {
           {filterBar}
         </div>
       )}
+      <Seo
+        title="Kütüphaneler ve Etüt Merkezleri"
+        description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet, değerlendirmeler, konum ve çalışma saatleriyle."
+      />
+
+      {/* KEŞİF ŞERİTLERİ — ana sayfadaki eğitmen vitriniyle AYNI ÖLÇEK.
+          Şeritler `max-w-[1100px]` kabının ve `-mx-4` negatif margin'inin
+          DIŞINDA durur; ikisi de kartı küçültüp/büyütüp ana sayfayla ayrışmaya
+          yol açıyordu.
+
+          ÖLÇÜLDÜ (gerçek Chrome, 10 Eyl 2026 — kullanıcı: *"kütüphanelerde
+          farklı ölçek kullanılıyor, eğitmenlerde farklı"*):
+
+            telefon   eğitmen kartı 157px · kütüphane kartı 173px
+            masaüstü  eğitmen kartı 218px · kütüphane kartı 204px
+
+          Kart sınıfı (`VITRIN_KART`) ve boşluklar İKİSİNDE DE AYNIYDI; ayrışan
+          şey KAPTI. Genişlik kaptan yüzde hesabıyla türediği için farklı taban
+          = farklı kart. `VitrinSeridi` zaten kendi `max-w-[1216px] px-4`ünü
+          uyguluyor; sayfanın ikinci bir kap koymaması yeter.
+
+          YALNIZ FİLTRE YOKKEN görünür (kullanıcı kararı): Seyhan'a
+          filtrelenmiş bir listenin üstünde "Çukurova Kütüphaneleri" şeridi hem
+          çelişki hem de her tuş vuruşunda dört ek sorgu demek. */}
+      {!filtreli && (
+        <div className="space-y-2">
+          {["Çukurova", "Seyhan", "Yüreğir", "Sarıçam"].map((ilce) => (
+            <LibraryRow
+              key={ilce}
+              heading={`${ilce} Kütüphaneleri`}
+              params={{ limit: 20, offset: 0, district: [ilce] }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="mx-auto max-w-[1100px] space-y-5">
-        <Seo
-          title="Kütüphaneler ve Etüt Merkezleri"
-          description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet, değerlendirmeler, konum ve çalışma saatleriyle."
-        />
-
-        {/* KEŞİF ŞERİTLERİ — ana sayfadan taşındı (9 Eyl 2026).
-            Sekmeler gerçek gezinmeye dönünce ana sayfa tek vitrin oldu ve
-            ilçe şeritleri buraya geldi.
-
-            YALNIZ FİLTRE YOKKEN görünür (kullanıcı kararı): Seyhan'a
-            filtrelenmiş bir listenin üstünde "Çukurova Kütüphaneleri" şeridi
-            hem çelişki hem de her tuş vuruşunda dört ek sorgu demek.
-            `filtreli`, sayfayı filtre saymaz — 2. sayfaya geçmek şeritleri
-            kaybettirmez. */}
-        {!filtreli && (
-          <div className="-mx-4 space-y-2 sm:-mx-6">
-            {["Çukurova", "Seyhan", "Yüreğir", "Sarıçam"].map((ilce) => (
-              <LibraryRow
-                key={ilce}
-                heading={`${ilce} Kütüphaneleri`}
-                params={{ limit: 20, offset: 0, district: [ilce] }}
-              />
-            ))}
-          </div>
-        )}
 
         {/* ── ARAMA SONUÇLARI — yalnız arama/filtre varken ──
             Filtre yokken bu blok HİÇ çizilmez: kategori değişimi ana sayfanın
