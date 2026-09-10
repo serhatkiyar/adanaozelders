@@ -5,8 +5,7 @@ import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
-import { MobilAramaSheet } from "@/components/MobilAramaSheet";
-import { AramaAdimlari } from "@/components/kesif/AramaAdimlari";
+import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { FullScreenSpinner } from "@/components/Spinner";
 import type { DersSekli } from "@/components/AramaSecicileri";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -110,12 +109,20 @@ export function KesifKabugu() {
      state: biri ötekini ezmesin. Eğitmen tarafı SUBMIT'te gezinir (ana sayfada
      canlı filtrelenecek bir liste yok); kütüphane tarafı yazdıkça adrese
      yazar, çünkü altındaki liste onu canlı okuyor. */
+  /* Buradaki durum MASAÜSTÜ hapınındır; telefonun adımlı yüzeyi kendi
+     taslağını `MobilAramaAkisi` içinde tutuyor. İkisi aynı anda ekranda
+     olmadığı için ayrışmaları görünür değil. "Yakınımda" yalnız adımlı
+     yüzeyde sorulduğu için burada karşılığı YOK. */
   const [ders, setDers] = useState("");
   const [dersEtiket, setDersEtiket] = useState("");
   const [sekil, setSekil] = useState<DersSekli>("");
   const [yer, setYer] = useState<YerSecimi | null>(null);
 
-  const { degerler: kDegerler, ayarla: kAyarla } = useAramaDurumu(KUTUPHANE_ARAMA);
+  const {
+    degerler: kDegerler,
+    ayarla: kAyarla,
+    filtreli: kFiltreli,
+  } = useAramaDurumu(KUTUPHANE_ARAMA);
   const [kQ, setKQ] = useState(kDegerler.q);
   const kDebounced = useDebounce(kQ);
 
@@ -169,7 +176,13 @@ export function KesifKabugu() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [mobil]);
 
-  const expanded = !scrolled || searchOpen;
+  /* SONUÇ ekranında hap DARALMIŞ açılır (11 Eyl 2026). Kütüphane listesi
+     filtreliyken ekranın işi keşif değil sonuç göstermek; eğitmen sonuç
+     ekranı da tam olarak böyle davranıyor (daralmış hap + filtre şeridi).
+     Açık hap orada 90px yer kaplayıp ilk kartı katlamanın altına itiyordu ve
+     iki sonuç ekranı yan yana konunca ayrışıyordu. Dokununca yine açılır. */
+  const sonucEkrani = kutuphaneMi && kFiltreli;
+  const expanded = searchOpen || (!scrolled && !sonucEkrani);
 
   /* Kategori değişince başa dön. `location.search`e BAĞLANMAZ: her filtre
      değişimi ve `?sayfa=` sayfayı başa fırlatırdı. */
@@ -306,45 +319,13 @@ export function KesifKabugu() {
         <Outlet />
       </Suspense>
       {/* Telefonda ADIMLI arama (Airbnb deseni) — masaüstündeki hap değil.
-          Gerekçe `AramaAdimlari` dosyasının başında. */}
-      <MobilAramaSheet
-        open={mobilAramaAcik}
-        onClose={() => setMobilAramaAcik(false)}
-        /* Tam ekran arama yüzeyinde şerit SEKME kipinde: çip, altındaki
-           beyaz kartlarla yarışan ikinci bir kart dili üretiyordu. */
-        ust={<CategoryBar active={kategori} sekmeKipi />}
-      >
-        <AramaAdimlari
-          kutuphaneMi={kutuphaneMi}
-          ders={ders}
-          dersEtiket={dersEtiket}
-          onDersChange={(qDeger, etiket) => {
-            setDers(qDeger);
-            setDersEtiket(etiket);
-          }}
-          sekil={sekil}
-          setSekil={setSekil}
-          yer={kutuphaneMi ? kYer : yer}
-          setYer={kutuphaneMi ? setKYer : setYer}
-          kutuphaneQ={kQ}
-          setKutuphaneQ={setKQ}
-          onAra={() => {
-            setMobilAramaAcik(false);
-            if (!kutuphaneMi) araEgitmen();
-          }}
-          onTemizle={() => {
-            if (kutuphaneMi) {
-              setKQ("");
-              setKYer(null);
-            } else {
-              setDers("");
-              setDersEtiket("");
-              setSekil("");
-              setYer(null);
-            }
-          }}
-        />
-      </MobilAramaSheet>
+          Akışın tamamı (taslak seçimler, kategori, "Ara"nın nereye gittiği)
+          `MobilAramaAkisi`nde: aynı yüzey eğitmen SONUÇ ekranından da
+          açılıyor ve o ekran bu kabuğun çocuğu değil. */}
+      <MobilAramaAkisi
+        acik={mobilAramaAcik}
+        onKapat={() => setMobilAramaAcik(false)}
+      />
     </>
   );
 
@@ -365,6 +346,10 @@ export function KesifKabugu() {
       bottom={bottom}
       mobilUst={mobilUst}
       mobilSade={mobil}
+      /* Kütüphane SONUÇ ekranı telefonda kendi başlığını çiziyor (geri · hap ·
+         filtre + filtre şeridi), bkz. `Libraries.tsx`. Kabuğun hapı ve
+         kategori şeridi orada ikinci bir başlık olurdu. */
+      mobilUstGizle={sonucEkrani}
       expanded={expanded}
       icerikSiki
     >
@@ -376,6 +361,10 @@ export function KesifKabugu() {
       bottom={bottom}
       mobilUst={mobilUst}
       mobilSade={mobil}
+      /* Kütüphane SONUÇ ekranı telefonda kendi başlığını çiziyor (geri · hap ·
+         filtre + filtre şeridi), bkz. `Libraries.tsx`. Kabuğun hapı ve
+         kategori şeridi orada ikinci bir başlık olurdu. */
+      mobilUstGizle={sonucEkrani}
       expanded={expanded}
       icerikSiki
     >
