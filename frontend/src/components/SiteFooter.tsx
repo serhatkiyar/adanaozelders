@@ -118,7 +118,15 @@ export function SiteFooter() {
         // (proje eşiği); düşen tek şey görsel ağırlık: zemin kalkar, yerine
         // saç-teli çizgi gelir, yazı küçülür. Masaüstünde bugünkü şerit aynen
         // durur — orada alt çubuk yok ve sayfa uzun.
-        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-t border-slate-100 text-center text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 md:block md:border-0 md:bg-slate-100 md:py-3.5 md:text-sm md:text-slate-600 md:hover:bg-slate-200"
+        /* Çizgi ALTTA, üstte DEĞİL (ölçüldü, 10 Eyl 2026): `footer`ın kendi
+           `border-t`si zaten bu düğmenin bir piksel üstünde duruyor ve ikisi
+           üst üste binince telefonda çift saç-teli görünüyordu (551px ve
+           552px). Alta alınınca çizgi tek kalır ve asıl işini yapar: "Başa
+           dön" satırını aşağıdaki bağlantı bloğundan ayırmak.
+
+           Renk masaüstüyle AYNI (`slate-600`): telefonda `slate-500`di, yani
+           aynı düğme iki bantta iki farklı tonda çıkıyordu. */
+        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-b border-slate-100 text-center text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 md:block md:border-0 md:bg-slate-100 md:py-3.5 md:text-sm md:hover:bg-slate-200"
       >
         <svg
           className="h-3.5 w-3.5 md:hidden"
