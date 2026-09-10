@@ -322,6 +322,7 @@ export function KesifKabugu() {
       mobilUst={mobilUst}
       mobilSade={mobil}
       expanded={expanded}
+      icerikSiki
     >
       {govde}
     </DashboardShell>
@@ -332,6 +333,7 @@ export function KesifKabugu() {
       mobilUst={mobilUst}
       mobilSade={mobil}
       expanded={expanded}
+      icerikSiki
     >
       {govde}
     </PublicShell>

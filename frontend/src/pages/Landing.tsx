@@ -49,7 +49,14 @@ export default function Landing() {
           ]}
         />
       </Seo>
-    <main className="space-y-8 pb-8 pt-4 md:space-y-12 md:pb-24 md:pt-8">
+    {/* Üst boşluk BURADA DEĞİL, kabukta (`icerikSiki`): `/kutuphaneler` ile
+        aynı ritmi paylaşabilmek için tek yerden yönetiliyor. */}
+    {/* Satır arası boşluk `/kutuphaneler` ile AYNI (`space-y-2`): şeritler
+        kendi dikey padding'ini zaten taşıyor, kap üstüne 32px daha eklerse
+        iki yüzey ayrışır. Bugün burada tek şerit görünüyor (öne çıkarma
+        paketi yoksa `FeaturedTutorRow` kendini gizler), yani fark gözle
+        görünmüyordu — ama kural ayrışmıştı. */}
+    <main className="space-y-2 pb-8 md:pb-24">
       {/* ── EĞİTMENLER: TEK kuşak ──────────────────────────────────────────
           Burada eskiden "TYT'ye hazırlık" / "YKS Hazırlık" / "AYT'ye
           hazırlık" / "Ortaokul Matematik" / "LGS Matematik" diye SABİT

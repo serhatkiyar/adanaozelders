@@ -87,6 +87,19 @@ interface DashboardShellProps {
    * yüzeyde bir şey değişmez.
    */
   expanded?: boolean;
+  /**
+   * KEŞİF YÜZEYİ RİTMİ — vitrin şeritleri üst bara YAKIN başlar.
+   *
+   * `true` iken `main` yatay padding'ini korur ama üstte yalnız 8px bırakır;
+   * dikey ritmi şeritlerin kendisi taşır. Ölçülmüş kusur (10 Eyl 2026,
+   * kullanıcı: *"kütüphaneler vitrini daha yukarı"*): üst barın altındaki
+   * boşluk `/`de 40px (telefon) / 56px (masaüstü), `/kutuphaneler`de 24px'ti
+   * — aynı dilin iki yüzeyi iki farklı ritim kullanıyordu. Referans
+   * (Airbnb, 390px) ~27px.
+   *
+   * Sayı TEK yerde: iki yüzey de bu bayrağı geçtiği için ayrışamazlar.
+   */
+  icerikSiki?: boolean;
 }
 
 export type PanelGenisligi = "dar" | "orta";
@@ -110,6 +123,7 @@ export function DashboardShell({
   genislik,
   mobilDetayEkrani = false,
   expanded = true,
+  icerikSiki = false,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
   const panelSekmeleri =
@@ -278,7 +292,9 @@ export function DashboardShell({
             ? "min-h-0 flex-1 overflow-hidden"
             : mobilDetayEkrani
               ? "p-0 md:p-6"
-              : "p-4 sm:p-6"
+              : icerikSiki
+                ? "px-4 pb-8 pt-2 sm:px-6"
+                : "p-4 sm:p-6"
         }
       >
         {genislik ? (

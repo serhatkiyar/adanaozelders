@@ -26,6 +26,7 @@ export function PublicShell({
   altBilgiGizli = false,
   mobilDetayEkrani = false,
   expanded = true,
+  icerikSiki = false,
 }: {
   children: ReactNode;
   /** Navbar ortasına yerleşen içerik (ör. arama pill'i). */
@@ -77,6 +78,19 @@ export function PublicShell({
    * yüzeyde bir şey değişmez.
    */
   expanded?: boolean;
+  /**
+   * KEŞİF YÜZEYİ RİTMİ — vitrin şeritleri üst bara YAKIN başlar.
+   *
+   * `true` iken `main` yatay padding'ini korur ama üstte yalnız 8px bırakır;
+   * dikey ritmi şeritlerin kendisi taşır. Ölçülmüş kusur (10 Eyl 2026,
+   * kullanıcı: *"kütüphaneler vitrini daha yukarı"*): üst barın altındaki
+   * boşluk `/`de 40px (telefon) / 56px (masaüstü), `/kutuphaneler`de 24px'ti
+   * — aynı dilin iki yüzeyi iki farklı ritim kullanıyordu. Referans
+   * (Airbnb, 390px) ~27px.
+   *
+   * Sayı TEK yerde: iki yüzey de bu bayrağı geçtiği için ayrışamazlar.
+   */
+  icerikSiki?: boolean;
 }) {
   /* Yapışkan üst boşluk — `DashboardShell` ile AYNI sözleşme. Yapışkan yan
    * kartlar (ör. eğitmen ilanı) üst boşluklarını sabit bir sayı yerine bu
@@ -127,7 +141,15 @@ export function PublicShell({
           expanded={expanded}
         />
       </div>
-      <main className={mobilDetayEkrani ? "flex-1 p-0 md:p-6" : "flex-1 p-4 sm:p-6"}>
+      <main
+        className={
+          mobilDetayEkrani
+            ? "flex-1 p-0 md:p-6"
+            : icerikSiki
+              ? "flex-1 px-4 pb-8 pt-2 sm:px-6"
+              : "flex-1 p-4 sm:p-6"
+        }
+      >
         {children}
       </main>
       {!altBilgiGizli && <SiteFooter />}
