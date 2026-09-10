@@ -48,9 +48,50 @@ const GENISLIKLER = [360, 390, 414, 768];
  * ikisi de mobil icin ayri ayri tasarlandi; birini olcup otekini birakmak
  * "kapi var" duygusu verir ama borcun yarisini serbest birakir.
  */
+const KART_SECICI = "main a[href^='/egitmenler/']";
 const ROTALAR = [
-  { yol: "/", ad: "anasayfa" },
-  { yol: "/egitmenler", ad: "arama" },
+  {
+    yol: "/",
+    ad: "anasayfa",
+    cubukBekleniyor: true,
+    ustBarTavani: 140,
+    hazir: KART_SECICI,
+    veri: [KART_SECICI],
+  },
+  {
+    yol: "/egitmenler",
+    ad: "arama",
+    cubukBekleniyor: true,
+    ustBarTavani: 140,
+    hazir: KART_SECICI,
+    veri: [KART_SECICI],
+  },
+  /*
+   * EGITMEN PROFILI — mobil DETAY ekrani (kullanici karari, 10 Eyl 2026).
+   *
+   * Ust bar da alt sekme cubugu da CIZILMEZ; sayfanin tek eylemi alttaki sabit
+   * seritdir. Kapilar bu yuzden otekilerin TERSINI dogrular: cubugun YOKLUGU,
+   * ust barin YOKLUGU (tavan 0) ve seridin VARLIGI.
+   *
+   * Yol SABIT YAZILMAZ: gercek bir egitmen id'si gerekiyor ve sabit yazilirsa
+   * veri degisince kapi bir 404 sayfasini olcup YALANCI YESIL verir (bos sayfa
+   * tasmaz, bos sayfada kucuk dokunma hedefi de yoktur). Adres arama
+   * ekranindaki ilk karttan turetilir; bulunamazsa tur FIRLATIR.
+   */
+  {
+    yol: null,
+    ad: "profil",
+    coz: true,
+    cubukBekleniyor: false,
+    seritBekleniyor: true,
+    ustBarTavani: 0,
+    hazir: '[data-serit="ders-talep"] button',
+    veri: ['[data-hero="egitmen"]', "main h1", '[data-serit="ders-talep"] button'],
+    // 768px `md` bandinda sayfa MASAUSTU dalini mount eder (`useMobil()`):
+    // hero da sabit serit de YOKTUR ve olmamalidir. Kanit orada karttir.
+    hazirMasaustu: "main h1",
+    veriMasaustu: ["main h1"],
+  },
 ];
 
 /** Dokunma hedefi esigi - `scripts/sihirbaz_mobil_turu.mjs` ile AYNI sayi. */
@@ -70,9 +111,10 @@ const HEDEF_EN_AZ = 44;
  * tavan geri sikilastirildi — yukseltilmis bir tavani geri indirmemek, kapiyi
  * sessizce ise yaramaz hale getirir.
  */
-const UST_BAR_TAVANLARI = { anasayfa: 140, arama: 140 };
 /** Alt cubuk taban yuksekligi (bilesendeki ALT_SEKME_YUKSEKLIGI ile ayni fikir). */
 const ALT_CUBUK_EN_AZ = 56;
+/** Sabit CTA seridi taban yuksekligi (`DersTalepSeridi.SERIT_YUKSEKLIGI` fikri). */
+const SERIT_EN_AZ = 56;
 
 async function chromeBaslat() {
   const profil = join(tmpdir(), `anasayfa-mobil-turu-${process.pid}`);
@@ -105,6 +147,8 @@ async function chromeBaslat() {
 
 const chrome = await chromeBaslat();
 const dusenler = [];
+/** Mutasyon provasinin muhasebesi: "rota:kapi" biciminde dusen kapilar. */
+const dusenKapiKumesi = new Set();
 const sonuclar = [];
 try {
   mkdirSync(OUT, { recursive: true });
@@ -154,8 +198,36 @@ try {
     return r.result.value;
   };
 
-  for (const { yol, ad } of ROTALAR)
+  /**
+   * Profil adresini ARAMA EKRANINDAN turetir. Sabit slug yazmak, veri
+   * degisince kapiyi bir 404 sayfasina baktirir ve yalanci yesil verir.
+   */
+  const profilYoluCoz = async () => {
+    await send("Emulation.setDeviceMetricsOverride", {
+      width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
+    });
+    await send("Page.navigate", { url: `${FRONTEND}/egitmenler` });
+    for (let i = 0; i < 60; i++) {
+      const yol = await ev((sec) => {
+        const a = document.querySelector(sec);
+        return a ? new URL(a.href).pathname : null;
+      }, KART_SECICI);
+      if (yol) return yol;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    throw new Error(
+      "Profil rotasi cozulemedi: arama ekraninda hic egitmen karti yok " +
+        "(backend ayakta mi? CORS icin adres localhost mu?)"
+    );
+  };
+
+  for (const rota of ROTALAR) {
+    if (rota.coz) rota.yol = await profilYoluCoz();
+  }
+
+  for (const rota of ROTALAR)
   for (const genislik of GENISLIKLER) {
+    const { yol, ad } = rota;
     konsolHatalari.length = 0;
     // TAZE yukleme: once daraltip SONRA gitmek sart. Genis yukleyip daraltmak
     // yeniden duzenlemeyi olcer, gercek telefonu degil.
@@ -175,41 +247,91 @@ try {
     // (kart var mi) kendisi yanlis alarm verir - olculdu, 768px'te bir tur
     // boyle dustu. Kartlari BEKLE, sonra olc; sure dolarsa gercekten yok
     // demektir ve kapi hakli olarak kirmizi duser.
+    const mobilBantMi = genislik < 768;
+    const hazirSecici =
+      (!mobilBantMi && rota.hazirMasaustu) || rota.hazir;
+    const veriSecicileri =
+      (!mobilBantMi && rota.veriMasaustu) || rota.veri;
     for (let i = 0; i < 32; i++) {
       const hazir = await ev(
-        () => document.querySelectorAll("main a[href^='/egitmenler/']").length > 0
+        (sec) => document.querySelectorAll(sec).length > 0,
+        hazirSecici
       );
       if (hazir) break;
       await new Promise((r) => setTimeout(r, 250));
     }
 
     if (NEGATIF) {
-      // Mutasyon: kapilarin gercekten olctugunu kanitlar.
-      await ev(() => {
+      /*
+       * Mutasyon: kapilarin gercekten olctugunu kanitlar.
+       *
+       * ROTA BASINA ayri: profil rotasinda kapilarin YONU tersine dondu
+       * (cubugun YOKLUGU dogrulaniyor) ve orada `nav{display:none}` kapiyi
+       * KIRMAZ, tersine DOGRULAR. Kopyala-yapistir tek bir mutasyon, yeni
+       * kapilarin hicbirini kanitlamazdi.
+       */
+      await ev((profilMi) => {
         const st = document.createElement("style");
-        // Her kapi ICIN bir mutasyon: biri eksik kalirsa o kapinin gercekten
-        // olctugunu kimse kanitlamamis olur.
-        st.textContent = `
-          /* tasma kapisi: kaydirma kabinin DISINDA bir oge ekrandan tasar */
-          main section { min-width: 900px !important; }
-          /* cakisma + ust bar kapilari: mobilde gizlenen logo/dugme satirini
-             geri ac - duzeltmeden onceki 42px'lik binisme geri gelir */
-          header > div > div:first-child { display: flex !important; }
-          /* alt cubuk kapisi */
-          nav[aria-label="Alt gezinme"] { display: none !important; }
-          /* dokunma hedefi kapisi */
-          footer a { min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
-        `;
+        st.textContent = profilMi
+          ? `
+            /* sabitSerit: seridi ezici sekilde kucult. GIZLEMEK yanlis olurdu:
+               gizli serit "ekranin dibine yapisan oge" olmaktan cikar ve
+               ortme (cubukOrtmuyor) kapisi hic olculmeden gecerdi. */
+            [data-serit="ders-talep"] { min-height: 0 !important; height: 8px !important;
+              padding: 0 !important; overflow: hidden !important; }
+            /* cubukOrtmuyor: kabugun serit icin BIRAKTIGI bosluğu sifirla.
+               Gercek kusur buydu (10 Eyl 2026): serit sayfanin son icerigini
+               73px ortuyordu. */
+            :root { --sabit-serit: 0px !important; }
+            /* veriGeldi: hero'yu yok et */
+            [data-hero="egitmen"] { display: none !important; }
+            /* dokunmaHedefi */
+            main button, footer a { min-height: 0 !important; height: 8px !important;
+              padding-top: 0 !important; padding-bottom: 0 !important; }
+          `
+          : `
+            /* cakisma + ust bar kapilari: mobilde gizlenen logo/dugme satirini
+               geri ac - duzeltmeden onceki 42px'lik binisme geri gelir */
+            header > div > div:first-child { display: flex !important; }
+            /* alt cubuk kapisi */
+            nav[aria-label="Alt gezinme"] { display: none !important; }
+            /* dokunma hedefi kapisi */
+            footer a { min-height: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+          `;
         document.head.appendChild(st);
+
+        // tasma kapisi: kaydirma kabinin DISINDA, her rotada AYNI sekilde
+        // tasan bir kutu. Sinifa/yapiya dayanan bir seciciyle yapilamaz -
+        // sayfalarin markup'i ayni degil ve bir rotada sessizce bos kalir.
+        const govde = document.querySelector("main");
+        if (govde) {
+          const tasan = document.createElement("div");
+          tasan.style.cssText = "width:900px;height:8px;background:transparent";
+          govde.appendChild(tasan);
+        }
+
+        if (profilMi) {
+          // altCubuk (YOKLUK iddiasi) ancak bir cubuk ENJEKTE edilirse kirilir.
+          const n = document.createElement("nav");
+          n.setAttribute("aria-label", "Alt gezinme");
+          n.style.cssText =
+            "position:fixed;left:0;right:0;bottom:0;height:60px;background:#fff;z-index:50";
+          document.body.appendChild(n);
+          // ustBarYuksekligi (tavan 0) ancak bir ust bar ENJEKTE edilirse kirilir.
+          const h = document.createElement("header");
+          h.style.cssText = "height:120px;background:#fff";
+          document.body.prepend(h);
+        }
         return true;
-      });
+      }, ad === "profil");
       await new Promise((r) => setTimeout(r, 400));
     }
 
-    const UST_BAR_TAVANI = UST_BAR_TAVANLARI[ad];
+    const UST_BAR_TAVANI = rota.ustBarTavani;
     const olcum = await ev(
       (esikler) => {
-        const { HEDEF_EN_AZ, UST_BAR_TAVANI, ALT_CUBUK_EN_AZ } = esikler;
+        const { HEDEF_EN_AZ, UST_BAR_TAVANI, ALT_CUBUK_EN_AZ, VERI_SECICILERI } =
+          esikler;
         const kok = document.documentElement;
         const gorunur = (el) => {
           const s = getComputedStyle(el);
@@ -293,32 +415,57 @@ try {
         /* ── 4. Ust bar yuksekligi ──────────────────────────────────── */
         const ustBar = bas ? Math.round(bas.getBoundingClientRect().height) : 0;
 
-        /* ── 5. Alt sekme cubugu ────────────────────────────────────── */
+        /* ── 5. Alt sekme cubugu + sabit CTA seridi ─────────────────── */
         const cubuk = document.querySelector('nav[aria-label="Alt gezinme"]');
         const cubukR = cubuk ? cubuk.getBoundingClientRect() : null;
         const cubukVar = !!cubuk && gorunur(cubuk);
         const cubukYuksek = cubukR ? Math.round(cubukR.height) : 0;
-        // Cubuk sayfanin SON icerigini ortuyor mu: spacer dogru calisiyorsa
-        // footer'in alti cubugun ustunde biter.
-        const alt = document.querySelector("footer");
+
+        const serit = document.querySelector('[data-serit="ders-talep"]');
+        const seritVar = !!serit && gorunur(serit);
+        const seritYuksek = serit
+          ? Math.round(serit.getBoundingClientRect().height)
+          : 0;
+
+        // Ekranin dibine YAPISAN oge hangisiyse ortme onunla olculur: eskiden
+        // yalniz alt sekme cubugu bakiliyordu ve sabit CTA seridi hicbir sey
+        // olcmuyordu (spacer'i sifirlansa kapi sessiz kalirdi).
+        const sabitAlt = cubukVar ? cubuk : seritVar ? serit : null;
+        const sabitR = sabitAlt ? sabitAlt.getBoundingClientRect() : null;
+        // `footer` yoksa (girisli kabukta yok) sayfanin SON gorunur icerigi.
+        let alt = document.querySelector("footer");
+        if (!alt || !gorunur(alt)) {
+          const govde = document.querySelector("main");
+          alt = null;
+          if (govde) {
+            const cocuklar = Array.from(govde.querySelectorAll("*")).filter(gorunur);
+            alt = cocuklar[cocuklar.length - 1] ?? govde;
+          }
+        }
         let ortuyor = false;
         let ortmePx = 0;
-        if (cubukR && alt) {
+        if (sabitR && alt) {
           // KAYDIRMADAN olculur. `scrollTo` ile en alta inip okumak yanlisti:
           // `html { scroll-behavior: smooth }` yururlukte oldugu icin kaydirma
           // animasyonludur ve hemen sonraki `getBoundingClientRect` HALA eski
           // konumu dondurur - kapi hayali bir ortme raporluyordu.
           const altDip = alt.getBoundingClientRect().bottom + window.scrollY;
-          const sayfaDibi = kok.scrollHeight - Math.round(cubukR.height);
+          const sayfaDibi = kok.scrollHeight - Math.round(sabitR.height);
           ortmePx = Math.round(altDip - sayfaDibi);
           ortuyor = ortmePx > 0;
         }
 
         /* ── 6. Yalanci yesil nobetcisi ─────────────────────────────── */
-        const kartVar =
-          Array.from(document.querySelectorAll("main a[href^='/egitmenler/']")).filter(
-            gorunur
-          ).length > 0;
+        // Kanit ROTA BASINA: profil rotasinda egitmen karti YOKTUR, orada
+        // kanit hero + baslik + sabit serittir. Tek bir "kart var mi"
+        // kontrolu o rotada ya hep kirmizi olurdu ya da kaldirilip kapiyi
+        // tamamen bosa dusururdu.
+        const veriVar = VERI_SECICILERI.every((sec) => {
+          const el = document.querySelector(sec);
+          if (!el || !gorunur(el)) return false;
+          // Baslik gorunur ama BOS olabilir (iskelet/yukleniyor hali).
+          return el.tagName !== "H1" || el.textContent.trim().length > 0;
+        });
 
         return {
           govde: kok.clientWidth,
@@ -332,17 +479,24 @@ try {
           cubukVar,
           cubukYuksek,
           cubukEnAz: ALT_CUBUK_EN_AZ,
+          seritVar,
+          seritYuksek,
           cubukOrtuyor: ortuyor,
           ortmePx,
-          kartVar,
+          veriVar,
         };
       },
-      { HEDEF_EN_AZ, UST_BAR_TAVANI, ALT_CUBUK_EN_AZ }
+      {
+        HEDEF_EN_AZ,
+        UST_BAR_TAVANI,
+        ALT_CUBUK_EN_AZ,
+        VERI_SECICILERI: veriSecicileri,
+      }
     );
 
     // 768px `md` bandidir: orada masaustu duzeni yururlukte, alt cubuk
     // BILEREK cizilmez ve ust bar dogal olarak daha yuksektir.
-    const mobilBant = genislik < 768;
+    const mobilBant = mobilBantMi;
     sonuclar.push({ rota: ad, genislik, mobilBant, ...olcum, konsolHatalari: [...konsolHatalari] });
 
     const kapilar = [
@@ -350,17 +504,34 @@ try {
       ["cakisma", olcum.cakismalar.length === 0],
       ["dokunmaHedefi", !mobilBant || olcum.kucukHedefSayi === 0],
       ["ustBarYuksekligi", !mobilBant || olcum.ustBar <= UST_BAR_TAVANI],
-      ["altCubuk", !mobilBant || (olcum.cubukVar && olcum.cubukYuksek >= ALT_CUBUK_EN_AZ)],
+      // Kapi ROTA BASINA IKI YONLU: cubuk beklenen yuzeyde VARLIGI, mobil
+      // detay ekraninda YOKLUGU dogrulanir. Kapiyi "ya var ya yok" diye
+      // gevsetmek, ana sayfa ve aramanin korumasini da dusururdu.
+      [
+        "altCubuk",
+        !mobilBant ||
+          (rota.cubukBekleniyor
+            ? olcum.cubukVar && olcum.cubukYuksek >= ALT_CUBUK_EN_AZ
+            : !olcum.cubukVar),
+      ],
+      [
+        "sabitSerit",
+        !mobilBant ||
+          !rota.seritBekleniyor ||
+          (olcum.seritVar && olcum.seritYuksek >= SERIT_EN_AZ),
+      ],
       ["cubukOrtmuyor", !mobilBant || !olcum.cubukOrtuyor],
-      ["veriGeldi", olcum.kartVar],
+      ["veriGeldi", olcum.veriVar],
       ["konsolTemiz", konsolHatalari.length === 0],
     ];
     const dusenKapi = kapilar.filter(([, ok]) => !ok).map(([ad]) => ad);
+    for (const k of dusenKapi) dusenKapiKumesi.add(`${ad}:${k}`);
     console.log(
       `${dusenKapi.length === 0 ? "GECTI" : "DUSTU"}  ${ad.padEnd(9)} ${genislik}px  ` +
         `tasma=${olcum.tasma} cakisma=${olcum.cakismalar.length} ` +
         `kucukHedef=${olcum.kucukHedefSayi} ustBar=${olcum.ustBar}px ` +
-        `cubuk=${olcum.cubukVar ? olcum.cubukYuksek + "px" : "yok"}` +
+        `cubuk=${olcum.cubukVar ? olcum.cubukYuksek + "px" : "yok"} ` +
+        `serit=${olcum.seritVar ? olcum.seritYuksek + "px" : "yok"}` +
         (dusenKapi.length ? `  -> ${dusenKapi.join(",")}` : "")
     );
 
@@ -378,8 +549,24 @@ try {
       );
     if (mobilBant && olcum.ustBar > UST_BAR_TAVANI)
       dusenler.push(`${ad} ${genislik}px: ust bar ${olcum.ustBar}px (tavan ${UST_BAR_TAVANI})`);
-    if (mobilBant && !olcum.cubukVar)
+    if (mobilBant && rota.cubukBekleniyor && !olcum.cubukVar)
       dusenler.push(`${ad} ${genislik}px: alt sekme cubugu cizilmedi`);
+    if (mobilBant && !rota.cubukBekleniyor && olcum.cubukVar)
+      dusenler.push(
+        `${ad} ${genislik}px: mobil detay ekraninda alt sekme cubugu CIZILDI ` +
+          `(${olcum.cubukYuksek}px) - kabuga mobilDetayEkrani gecilmis mi?`
+      );
+    if (mobilBant && rota.seritBekleniyor && !olcum.seritVar)
+      dusenler.push(`${ad} ${genislik}px: sabit "Ders talep et" seridi cizilmedi`);
+    if (
+      mobilBant &&
+      rota.seritBekleniyor &&
+      olcum.seritVar &&
+      olcum.seritYuksek < SERIT_EN_AZ
+    )
+      dusenler.push(
+        `${ad} ${genislik}px: sabit serit ${olcum.seritYuksek}px (taban ${SERIT_EN_AZ})`
+      );
     if (mobilBant && olcum.cubukVar && olcum.cubukYuksek < ALT_CUBUK_EN_AZ)
       dusenler.push(
         `${ad} ${genislik}px: alt cubuk ${olcum.cubukYuksek}px (taban ${ALT_CUBUK_EN_AZ})`
@@ -388,8 +575,11 @@ try {
       dusenler.push(
         `${ad} ${genislik}px: alt cubuk sayfanin son icerigini ${olcum.ortmePx}px ortuyor (spacer yuksekligi?)`
       );
-    if (!olcum.kartVar)
-      dusenler.push(`${ad} ${genislik}px: egitmen karti hic basilmadi (veri gelmedi mi? CORS?)`);
+    if (!olcum.veriVar)
+      dusenler.push(
+        `${ad} ${genislik}px: sayfa dolmadi - beklenen ogeler ` +
+          `${JSON.stringify(veriSecicileri)} (veri gelmedi mi? CORS?)`
+      );
     if (konsolHatalari.length)
       dusenler.push(`${ad} ${genislik}px: konsol hatasi - ${konsolHatalari[0]?.slice(0, 120)}`);
 
@@ -410,13 +600,42 @@ try {
 }
 
 if (NEGATIF) {
-  // Ters prova: mutasyon altinda kapi GECERSE olcmuyordur.
-  if (dusenler.length === 0) {
-    console.error("\nMUTASYON PROVASI BASARISIZ: bozulmus sayfada kapi GECTI.");
+  /*
+   * Ters prova: mutasyon altinda kapi GECERSE olcmuyordur.
+   *
+   * "Hic dusen var mi" TEK BASINA YETMIYOR: yeni bir kapi hicbir sey olcmese
+   * bile ESKI kapilardan biri dustugu icin prova yesil gecerdi - yani yeni
+   * kapilar sessizce bos olabilirdi. Muhasebe bu yuzden ROTA+KAPI bazinda:
+   * her kapinin kendi mutasyonu tarafindan kirildigi ISIMLE dogrulanir.
+   */
+  const BEKLENEN_MUTASYON = [
+    "anasayfa:tasma",
+    "anasayfa:altCubuk",
+    "anasayfa:dokunmaHedefi",
+    "arama:tasma",
+    "arama:altCubuk",
+    "arama:dokunmaHedefi",
+    "profil:tasma",
+    "profil:altCubuk",
+    "profil:ustBarYuksekligi",
+    "profil:sabitSerit",
+    "profil:cubukOrtmuyor",
+    "profil:veriGeldi",
+    "profil:dokunmaHedefi",
+  ];
+  console.log("\nMUTASYONDA DUSEN KAPILAR:");
+  for (const k of [...dusenKapiKumesi].sort()) console.log("  - " + k);
+  const kacan = BEKLENEN_MUTASYON.filter((k) => !dusenKapiKumesi.has(k));
+  if (kacan.length) {
+    console.error(
+      "\nMUTASYON PROVASI BASARISIZ: su kapilar bozulmus sayfada GECTI -> " +
+        kacan.join(", ")
+    );
     process.exit(1);
   }
-  console.log(`\nMUTASYON PROVASI GECTI: kapi ${dusenler.length} kusuru yakaladi.`);
-  for (const d of dusenler) console.log("  - " + d);
+  console.log(
+    `\nMUTASYON PROVASI GECTI: beklenen ${BEKLENEN_MUTASYON.length} kapinin hepsi kirildi.`
+  );
   process.exit(0);
 }
 

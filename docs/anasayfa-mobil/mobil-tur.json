@@ -46,9 +46,11 @@
       "cubukVar": true,
       "cubukYuksek": 61,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
       "konsolHatalari": []
     },
     {
@@ -97,9 +99,11 @@
       "cubukVar": true,
       "cubukYuksek": 61,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
       "konsolHatalari": []
     },
     {
@@ -148,9 +152,11 @@
       "cubukVar": true,
       "cubukYuksek": 61,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
       "konsolHatalari": []
     },
     {
@@ -240,9 +246,11 @@
       "cubukVar": false,
       "cubukYuksek": 0,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
       "konsolHatalari": []
     },
     {
@@ -291,9 +299,11 @@
       "cubukVar": true,
       "cubukYuksek": 61,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
       "konsolHatalari": []
     },
     {
@@ -342,9 +352,11 @@
       "cubukVar": true,
       "cubukYuksek": 61,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
       "konsolHatalari": []
     },
     {
@@ -393,9 +405,11 @@
       "cubukVar": true,
       "cubukYuksek": 61,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
       "konsolHatalari": []
     },
     {
@@ -485,9 +499,264 @@
       "cubukVar": false,
       "cubukYuksek": 0,
       "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
       "cubukOrtuyor": false,
       "ortmePx": 0,
-      "kartVar": true,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "rota": "profil",
+      "genislik": 360,
+      "mobilBant": true,
+      "govde": 360,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 0,
+      "ustBarTavani": 0,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "seritVar": true,
+      "seritYuksek": 73,
+      "cubukOrtuyor": false,
+      "ortmePx": -3,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "rota": "profil",
+      "genislik": 390,
+      "mobilBant": true,
+      "govde": 390,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 0,
+      "ustBarTavani": 0,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "seritVar": true,
+      "seritYuksek": 73,
+      "cubukOrtuyor": false,
+      "ortmePx": -3,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "rota": "profil",
+      "genislik": 414,
+      "mobilBant": true,
+      "govde": 414,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 0,
+      "ustBarTavani": 0,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "seritVar": true,
+      "seritYuksek": 73,
+      "cubukOrtuyor": false,
+      "ortmePx": -3,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "rota": "profil",
+      "genislik": 768,
+      "mobilBant": false,
+      "govde": 768,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 18,
+      "kucukHedefler": [
+        {
+          "ad": "Adana Özel Ders ana sayfa",
+          "w": 32,
+          "h": 32
+        },
+        {
+          "ad": "Favorilere ekle",
+          "w": 36,
+          "h": 36
+        },
+        {
+          "ad": "Paylaş",
+          "w": 36,
+          "h": 36
+        },
+        {
+          "ad": "4.7 (3)",
+          "w": 82,
+          "h": 28
+        },
+        {
+          "ad": "Ders Talep Et",
+          "w": 680,
+          "h": 40
+        },
+        {
+          "ad": "İletişim",
+          "w": 203,
+          "h": 20
+        },
+        {
+          "ad": "Sıkça Sorulan Sorular",
+          "w": 203,
+          "h": 20
+        },
+        {
+          "ad": "Nasıl iade edebilirim",
+          "w": 203,
+          "h": 20
+        }
+      ],
+      "ustBar": 89,
+      "ustBarTavani": 0,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "veriVar": true,
       "konsolHatalari": []
     }
   ],
