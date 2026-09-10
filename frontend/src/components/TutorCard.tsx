@@ -25,17 +25,32 @@ export function TutorCard({
   const hasRatings = tutor.rating_count > 0;
   const rate = parseMoney(tutor.hourly_rate);
   
-  const locationText = tutor.distance_km != null
-    ? `~${tutor.distance_km} km`
-    : tutor.teaching_mode === "ONLINE"
-      ? "Uzaktan"
-      : tutor.district || "Yüzyüze & Uzaktan";
-    
-  // Cinsiyet listede YAZILMAZ (kullanıcı kararı, 7 Eyl 2026). Bir süre meta
-  // satırının parçasıydı; kartta demografik bir öznitelik taşımanın karşılığı
+  // Kartta iki ayrı soru var ve ikisi ayrı yerde cevaplanıyor (11 Eyl 2026):
+  //
+  //   NASIL işleniyor → fotoğrafın üstünde, adın altında (hep orada duruyordu)
+  //   NEREDE          → yıldız satırının sağ ucu (orası boştu)
+  //
+  // Bir süre ikisi tek satıra sıkıştırılmıştı ("Yüzyüze & Uzaktan" ancak ilçe
+  // YOKSA yazılıyordu); ders şekli ilçesi bilinen eğitmende hiç görünmüyordu
+  // ve yıldız satırına konduğunda 157px'lik telefon kartında kesiliyordu
+  // (ölçüldü). Ayrıldılar: ikisi de tam görünüyor, ikisi de tekrar etmiyor.
+  //
+  // Cinsiyet listede YAZILMAZ (kullanıcı kararı, 7 Eyl 2026). Bir süre bu
+  // satırın parçasıydı; kartta demografik bir öznitelik taşımanın karşılığı
   // yok. Arama tarafı DEĞİŞMEDİ: cinsiyet filtresi ve faset sayıları yerinde,
   // değer eğitmen profilinde (`PublicTutorProfile`) görünmeye devam ediyor.
-  const metaSatiri = locationText;
+  const sekilMetni =
+    tutor.teaching_mode === "ONLINE"
+      ? "Uzaktan"
+      : tutor.teaching_mode === "IN_PERSON"
+        ? "Yüz yüze"
+        : "Yüzyüze & Uzaktan";
+
+  // Mesafe, ilçeden ÖNCE gelir: "yakınımda" araması yapan için ilçe adından
+  // daha bilgilendirici. İkisi de yoksa slot boş kalır — uydurma bilgi yerine
+  // boşluk.
+  const konumMetni =
+    tutor.distance_km != null ? `~${tutor.distance_km} km` : tutor.district || "";
 
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
   // Ad SUNUCUDAN kesilmiş geliyor (ÜK-9). Burada `split(" ")[0]` yapılıyordu ve
@@ -94,7 +109,7 @@ export function TutorCard({
             {gorunenAd}
           </p>
           <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">
-            <span>{metaSatiri}</span>
+            <span className="truncate">{sekilMetni}</span>
           </div>
         </div>
       </div>
@@ -103,7 +118,7 @@ export function TutorCard({
       <div className="flex flex-1 flex-col pt-3 pb-1 px-1">
         {/* Badges: Rating & Status */}
         <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 ">
-          <li className="flex items-center gap-1">
+          <li className="flex shrink-0 items-center gap-1">
             <StarRating value={tutor.rating_average ?? 0} single={true} />
             <span className="font-bold text-slate-900 text-xs">
               {hasRatings ? (tutor.rating_average ?? 0).toFixed(1) : "Yeni"}
@@ -114,9 +129,23 @@ export function TutorCard({
               </span>
             )}
           </li>
+          {/* Konum satırın SAĞ ucunda (kullanıcı kararı, 11 Eyl 2026).
+              Önce fotoğrafın üstünde, degradenin üzerinde küçük beyaz puntoyla
+              duruyordu; yıldız satırının sağı ise bomboştu. Aynı bilgi iki
+              yerde yazılmasın diye TAŞINDI, kopyalanmadı. */}
+          {konumMetni && (
+            <li className="ml-auto min-w-0 truncate text-slate-500">
+              {konumMetni}
+            </li>
+          )}
         </ul>
         
-        <h3 className="mt-1 line-clamp-2 min-h-[40px] text-sm leading-snug text-slate-800 ">
+        {/* İlan başlığı 14px'ten 13px'e indi (kullanıcı kararı, 11 Eyl 2026):
+            iki satırlık blok kartın alt yarısını tek başına dolduruyordu.
+            `min-h` de birlikte iner — iki satırın yeri boş kalsa bile ayrılır,
+            yoksa başlığı kısa olan kartın fiyat satırı yukarı kayıp ızgarayı
+            tırtıklı gösterir. */}
+        <h3 className="mt-1 line-clamp-2 min-h-[36px] text-[13px] leading-snug text-slate-800 ">
           {tutor.headline || tutor.bio || `${mainSubject} alanında uzman eğitmen ile derslere hemen başlayın.`}
         </h3>
 
