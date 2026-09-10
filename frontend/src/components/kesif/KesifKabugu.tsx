@@ -310,7 +310,9 @@ export function KesifKabugu() {
       <MobilAramaSheet
         open={mobilAramaAcik}
         onClose={() => setMobilAramaAcik(false)}
-        ust={<CategoryBar active={kategori} />}
+        /* Tam ekran arama yüzeyinde şerit SEKME kipinde: çip, altındaki
+           beyaz kartlarla yarışan ikinci bir kart dili üretiyordu. */
+        ust={<CategoryBar active={kategori} sekmeKipi />}
       >
         <AramaAdimlari
           kutuphaneMi={kutuphaneMi}

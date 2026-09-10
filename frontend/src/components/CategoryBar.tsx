@@ -105,8 +105,24 @@ export function categoryMeta(key: CategoryKey): Category {
  */
 export function CategoryBar({
   active,
+  sekmeKipi = false,
 }: {
   active?: CategoryKey;
+  /**
+   * SEKME kipini HER genişlikte zorla (alt çizgili), telefonda bile.
+   *
+   * Şeridin iki sunumu var ve normalde kırılım noktası seçiyor: telefonda
+   * yuvarlak çip, `md:` üstünde alt çizgili sekme. Tam ekran arama
+   * yüzeyinde (`MobilAramaSheet`) doğru olan İKİNCİSİ — kullanıcı kararı,
+   * 10 Eyl 2026: *"masaüstündeki kategori seçimi... onun gibi bir mekanik
+   * var o ekranda"*. Orada çip, altındaki beyaz kartlarla yarışan ikinci bir
+   * kart dili üretiyordu; sekme ise başlık gibi davranıp kartlara yer
+   * bırakıyor.
+   *
+   * Sunum YENİDEN YAZILMADI: aynı sınıflar `md:` öneki olmadan uygulanıyor,
+   * yani iki yüzey tek kaynaktan besleniyor ve ayrışamaz.
+   */
+  sekmeKipi?: boolean;
 }) {
   return (
     <div className="w-full">
@@ -127,11 +143,17 @@ export function CategoryBar({
           // DOLDURULMAZ: `__guards__/markaAksani.test.ts` aksanı aksiyona
           // ayırır ve `text-marka`yı yasaklar; burada seçim durumu, aksiyon
           // değil.
-          const cls = `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-full border px-3.5 py-2.5 shadow-sm transition-colors duration-200 md:rounded-none md:border-0 md:border-b-2 md:px-0 md:py-0 md:pb-2 md:shadow-none ${
-            isActive
-              ? "border-slate-900 bg-slate-900 md:bg-transparent "
-              : "border-slate-200 bg-white hover:border-slate-300 md:border-transparent md:bg-transparent md:hover:border-slate-200 "
-          }`;
+          const cls = sekmeKipi
+            ? `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-none border-0 border-b-2 px-0 py-0 pb-2 shadow-none transition-colors duration-200 ${
+                isActive
+                  ? "border-slate-900 bg-transparent "
+                  : "border-transparent bg-transparent hover:border-slate-200 "
+              }`
+            : `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-full border px-3.5 py-2.5 shadow-sm transition-colors duration-200 md:rounded-none md:border-0 md:border-b-2 md:px-0 md:py-0 md:pb-2 md:shadow-none ${
+                isActive
+                  ? "border-slate-900 bg-slate-900 md:bg-transparent "
+                  : "border-slate-200 bg-white hover:border-slate-300 md:border-transparent md:bg-transparent md:hover:border-slate-200 "
+              }`;
           const inner = (
             <>
               {/* 96px WebP (48px'te 2x retina). Kaynaklar 1024px PNG'ydi:
@@ -144,14 +166,18 @@ export function CategoryBar({
                 width={40}
                 height={40}
                 decoding="async"
-                className={`h-6 w-6 object-contain transition-all duration-200 group-hover:scale-105 md:h-10 md:w-10 ${
-                  isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
-                }`}
+                className={`object-contain transition-all duration-200 group-hover:scale-105 ${
+                  sekmeKipi ? "h-9 w-9" : "h-6 w-6 md:h-10 md:w-10"
+                } ${isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"}`}
               />
               <span
-                className={`whitespace-nowrap text-sm font-semibold transition-colors duration-200 md:text-[15px] ${
+                className={`whitespace-nowrap font-semibold transition-colors duration-200 ${
+                  sekmeKipi ? "text-[15px]" : "text-sm md:text-[15px]"
+                } ${
                   isActive
-                    ? "text-white md:text-slate-900 "
+                    ? sekmeKipi
+                      ? "text-slate-900 "
+                      : "text-white md:text-slate-900 "
                     : "text-slate-600 group-hover:text-slate-900 "
                 }`}
               >
