@@ -24,14 +24,23 @@ const SIZES = {
   xl: "h-32 w-32 text-4xl",
 };
 
-function initials(name: string): string {
+/**
+ * Baş harfler — fotoğrafsız kullanıcının görsel kimliği.
+ *
+ * Dışa aktarılıyor çünkü eğitmen profilinin mobil hero'su fotoğrafsız dalda
+ * AYNI harfleri ve AYNI rengi basmak zorunda: orada avatar 32px değil tam
+ * genişlik bir alan, yani `Avatar` bileşeni doğrudan kullanılamıyor. İkinci bir
+ * üretim yazılsaydı aynı kişi iki ekranda iki farklı renkte görünürdü.
+ */
+export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function colorFor(name: string): string {
+/** İsme göre deterministik palet seçimi — bkz. `initials`. */
+export function colorFor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = (hash * 31 + name.charCodeAt(i)) >>> 0;

@@ -198,6 +198,56 @@ export function hasVerifiedEducation(
    Veri yoksa satır BASILMAZ — "Belirtilmemiş" yazmak yokluğu ilan etmektir.
    ──────────────────────────────────────────────────────────────────────── */
 
+export type OzetSatiri = {
+  anahtar: "ucret" | "yanit" | "ders";
+  /** Masaüstü tablosunun etiketi. */
+  etiket: string;
+  /** Mobil üç sütunlu kutunun etiketi — dar sütunda sarmasın diye tek sözcük. */
+  kisaEtiket: string;
+  deger: string;
+};
+
+/**
+ * HANGİ SATIRLARIN BASILACAĞI — tek kaynak.
+ *
+ * Masaüstü tablosu ve mobil üç sütunlu kutu iki ayrı yerleşimdir ama aynı
+ * kurala uyar: **veri yoksa satır BASILMAZ**. Kural iki yerde ayrı ayrı
+ * yazılsaydı biri güncellenip öteki unutulurdu; ayrışan şey yerleşim değil
+ * "boş ücreti nasıl gösteriyoruz" olurdu. Etiket metni yerleşime ait olduğu
+ * için iki sürümü de burada duruyor.
+ */
+export function ozetSatirlari(
+  tutor: TutorSearchOut,
+  ucret: string | null
+): OzetSatiri[] {
+  const satirlar: OzetSatiri[] = [];
+
+  if (ucret) {
+    satirlar.push({ anahtar: "ucret", etiket: "Ücret", kisaEtiket: "Ücret", deger: ucret });
+  }
+
+  if (tutor.avg_response_seconds != null) {
+    satirlar.push({
+      anahtar: "yanit",
+      etiket: "Yanıt süresi",
+      kisaEtiket: "Yanıt",
+      deger: formatResponseTime(tutor.avg_response_seconds),
+    });
+  }
+
+  const tamamlanan = tutor.completed_lessons ?? 0;
+  if (tamamlanan > 0) {
+    satirlar.push({
+      anahtar: "ders",
+      etiket: "Tamamlanan ders",
+      kisaEtiket: "Ders",
+      deger: String(tamamlanan),
+    });
+  }
+
+  return satirlar;
+}
+
 export function TutorOzetTablosu({
   tutor,
   ucret,
@@ -206,28 +256,14 @@ export function TutorOzetTablosu({
   /** Biçimlendirilmiş saatlik ücret; `null` ise satır basılmaz. */
   ucret: string | null;
 }) {
-  const satirlar: { etiket: string; deger: string }[] = [];
-
-  if (ucret) satirlar.push({ etiket: "Ücret", deger: ucret });
-
-  if (tutor.avg_response_seconds != null) {
-    satirlar.push({
-      etiket: "Yanıt süresi",
-      deger: formatResponseTime(tutor.avg_response_seconds),
-    });
-  }
-
-  const tamamlanan = tutor.completed_lessons ?? 0;
-  if (tamamlanan > 0) {
-    satirlar.push({ etiket: "Tamamlanan ders", deger: String(tamamlanan) });
-  }
+  const satirlar = ozetSatirlari(tutor, ucret);
 
   if (satirlar.length === 0) return null;
 
   return (
     <dl className="mt-4 divide-y divide-slate-100 border-y border-slate-100 ">
       {satirlar.map((s) => (
-        <div key={s.etiket} className="flex items-center justify-between gap-3 py-2.5">
+        <div key={s.anahtar} className="flex items-center justify-between gap-3 py-2.5">
           <dt className="text-sm text-slate-500 ">{s.etiket}</dt>
           <dd className="text-sm font-semibold text-slate-900 ">{s.deger}</dd>
         </div>

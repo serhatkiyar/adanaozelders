@@ -70,6 +70,13 @@ interface DashboardShellProps {
    * gezinmesini taşıyan (geri düğmesi + alt sekme çubuğu) yüzeyler açar.
    */
   mobilSade?: boolean;
+  /**
+   * MOBİL DETAY EKRANI — `PublicShell`deki aynı adlı propla AYNI sözleşme.
+   * `<md` bandında üst barı ve alt sekme çubuğunu çizmez, `main` padding'ini
+   * sıfırlar. Rotanın iki kabuğu (anonim/girişli) ayrışmasın diye ikisinde de
+   * var: eğitmen profili girişte `DashboardShell`e düşüyor.
+   */
+  mobilDetayEkrani?: boolean;
 }
 
 export type PanelGenisligi = "dar" | "orta";
@@ -91,6 +98,7 @@ export function DashboardShell({
   mobilSade = false,
   sekmeler,
   genislik,
+  mobilDetayEkrani = false,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
   const panelSekmeleri =
@@ -164,11 +172,20 @@ export function DashboardShell({
           ? "flex h-screen flex-col overflow-hidden bg-slate-50 "
           : "min-h-screen bg-slate-50 "
       }
-      style={{ "--yapiskan-ust": `${yapiskanUst}px` } as CSSProperties}
+      /* `--sabit-serit` — bkz. `PublicShell`deki aynı satırın gerekçesi. */
+      style={
+        {
+          "--yapiskan-ust": `${yapiskanUst}px`,
+          paddingBottom: "var(--sabit-serit, 0px)",
+        } as CSSProperties
+      }
     >
       {/* Başlık + şerit TEK yapışkan yığın: şerit akışta kalsaydı kaydırınca
           gider, yanındaki yapışkan kartı da peşinden sürüklerdi. */}
-      <div ref={yiginRef} className="sticky top-0 z-40">
+      <div
+        ref={yiginRef}
+        className={`sticky top-0 z-40 ${mobilDetayEkrani ? "hidden md:block" : ""}`}
+      >
         <DashboardHeader
           navItems={menuOgeleri}
           transparent
@@ -244,16 +261,25 @@ export function DashboardShell({
         )}
       </div>
 
-      <main className={flush ? "min-h-0 flex-1 overflow-hidden" : "p-4 sm:p-6"}>
+      <main
+        className={
+          flush
+            ? "min-h-0 flex-1 overflow-hidden"
+            : mobilDetayEkrani
+              ? "p-0 md:p-6"
+              : "p-4 sm:p-6"
+        }
+      >
         {genislik ? (
           <div className={PANEL_GENISLIKLERI[genislik]}>{children}</div>
         ) : (
           children
         )}
       </main>
-      {/* Yalnız CLIENT ve TUTOR'da çizilir; panel rolleri (ADMIN, operatör,
-          kurye) bileşenin kendi içinde elenir — bkz. tasarım dili §4.3. */}
-      <MobilAltSekmeler />
+      {/* Çubuk HER rolde çizilir (ea4724c): panel rolleri de telefonda
+          gezinmesiz kalıyordu. Tek istisna `mobilDetayEkrani` — bkz. propun
+          açıklaması ve `PublicShell`deki eşi. */}
+      {!mobilDetayEkrani && <MobilAltSekmeler />}
     </div>
   );
 }
