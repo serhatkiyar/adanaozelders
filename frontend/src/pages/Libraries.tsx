@@ -286,7 +286,10 @@ export default function Libraries() {
       {/* Filtreler (olanaklar) butonu */}
       <button
         onClick={() => setShowFilters(true)}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
+        /* `min-h-[44px] md:min-h-0`: şerit telefonda gövdeye indi ve gerçek
+           Chrome turu çipleri 34px ölçtü (eşik 44). Masaüstünde şerit
+           bugünkü inceliğini korur — büyüyen yalnız parmak alanı. */
+        className={`flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
           amenities.length > 0
             ? "border-slate-900 bg-slate-900 text-white "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
@@ -308,7 +311,7 @@ export default function Libraries() {
         <button
           key={opt.value || "default"}
           onClick={() => handleSortChange(opt.value)}
-          className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+          className={`min-h-[44px] shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition md:min-h-0 ${
             sort === opt.value
               ? "border-slate-900 bg-slate-900 text-white "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
@@ -368,6 +371,26 @@ export default function Libraries() {
           }}
         />
       </MobilAramaSheet>
+      {/* FİLTRE ŞERİDİ TELEFONDA GÖVDEDE (10 Eyl 2026).
+          Navbar'ın `bottom` yuvasının `md:hidden`ı YOKTUR, yani şerit orada
+          telefonda da çiziliyordu. Ama telefon kromu artık ana sayfayla aynı
+          (hap + kategori çipleri) ve şeridi o yığına eklemek üst barı 136'dan
+          ~181 piksele çıkarıyordu — iki rota ikiz olmaktan çıkardı ve tavan
+          (140) aşılırdı.
+
+          Çözüm: telefonda şerit üst barın PARÇASI değil, içeriğin ilk
+          yapışkan satırı. Kaydırınca üst barın altına yapışır; `--yapiskan-ust`
+          kabuklar tarafından yayınlanıyor (`PublicShell`, `DashboardShell`) ve
+          bu onun ilk gerçek tüketicisi. Zemin ve alt çizgi `PublicNavbar` ile
+          bilerek aynı: göz onu üst barın devamı olarak okur. */}
+      {mobil && (
+        <div
+          className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 md:hidden"
+          style={{ top: "var(--yapiskan-ust, 0px)" }}
+        >
+          {filterBar}
+        </div>
+      )}
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
         <div
