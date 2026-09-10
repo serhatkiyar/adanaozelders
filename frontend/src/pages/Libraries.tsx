@@ -1,4 +1,4 @@
-import { type CSSProperties, useMemo, useState, useEffect } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import {Link} from "react-router-dom";
 import {
 
@@ -6,28 +6,15 @@ import {
   nextPageSearch,
 
 } from "@/lib/pagination";
-import { DashboardShell } from "@/components/DashboardShell";
-import { PublicShell } from "@/components/PublicShell";
-import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
 import { useLibrarySearch } from "@/hooks/useLibraries";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useDebounce } from "@/hooks/useDebounce";
-import { useAuthStore } from "@/store/authStore";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import { useSurfaceStore } from "@/store/surfaceStore";
 import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
-import { ROLE_IDS } from "@/types";
-import { CategoryBar } from "@/components/CategoryBar";
-import { CompactSearch, KutuphaneArama } from "@/components/HeroSearch";
-import { MobilAramaSheet } from "@/components/MobilAramaSheet";
-import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { LibraryRow } from "@/components/VitrinSeridi";
-import { type YerSecimi } from "@/lib/yerArama";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
@@ -41,9 +28,6 @@ const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
   { value: "distance", label: "📍 Yakınımda" },
 ];
 
-// Alan başlığı ("Kütüphane") ne aradığını söylüyor; ipucu yalnız ÖRNEK verir.
-const SEARCH_PLACEHOLDER = "Kütüphane adı";
-
 const FilterIconSvg = () => (
   <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
     <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
@@ -53,15 +37,17 @@ const FilterIconSvg = () => (
 /** Sayfa başına kütüphane sayısı. */
 const PER_PAGE = 30;
 
+/* ────────────────────────────────────────────────────────────────────────────
+   KÜTÜPHANE LİSTESİ — artık yalnız GÖVDE.
+
+   Üst bar, kategori şeridi, arama hapı ve tam ekran arama yüzeyi
+   `components/kesif/KesifKabugu.tsx`e taşındı (10 Eyl 2026). Bu sayfa kendi
+   kabuğunu basarken `/` ile buradaki her geçiş üst barı söküp yeniden
+   kuruyordu; gerçek Chrome'la ölçüldü (tıklamadan önce ve sonra `header`
+   FARKLI DOM nesneleriydi). Serbest metin ve yer artık kabuktaki hapta yaşıyor
+   ve adrese yazılıyor; bu dosya onları YALNIZCA adresten OKUR.
+   ──────────────────────────────────────────────────────────────────────── */
 export default function Libraries() {
-  const token = useAuthStore((s) => s.token);
-  const { data: currentUser } = useCurrentUser();
-  const navItems =
-    currentUser?.role_id === ROLE_IDS.TUTOR
-      ? TUTOR_NAV
-      : currentUser?.role_id === ROLE_IDS.CLIENT
-        ? UYE_NAV
-        : undefined;
 
   /*
    * URL ↔ state artık `useAramaDurumu` üzerinden (Paket 2).
@@ -77,20 +63,9 @@ export default function Libraries() {
   const { degerler, ayarla, filtreli, params: searchParams } = useAramaDurumu(KUTUPHANE_ARAMA);
   const { konum, sayfa: page } = degerler;
   const district = konum.ilce;
-  const yer = konum.yer;
   const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
-  const setYer = (v: YerSecimi | null) =>
-    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
 
-  // Serbest metin YEREL kalır: her tuş vuruşunda adres yazmak geçmişi
-  // kirletir. Debounce sonrası `replace` ile tek girdi olarak yazılır.
-  const [q, setQ] = useState(degerler.q);
   const [view, setView] = useState<ViewMode>("list");
-
-  // Dış navigasyon (geri/ileri, paylaşılan link) kutuyu günceller.
-  useEffect(() => {
-    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
-  }, [degerler.q]);
 
   /*
    * Olanaklar ve sıralama ADRESTE (9 Eyl 2026).
@@ -113,41 +88,6 @@ export default function Libraries() {
   // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
   // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
   const limit = limitForPage(page, PER_PAGE);
-  // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
-  // arama) yerinde açar — eğitmen aramasındaki davranışın aynısı.
-  const [searchOpen, setSearchOpen] = useState(false);
-  /*
-   * TELEFON KROMU — ana sayfayla AYNI (kullanıcı kararı, 10 Eyl 2026).
-   *
-   * Bu sayfa `useMobil()`i hiç çağırmıyordu: telefonda tam masaüstü
-   * navbar'ı (logo + "Ders Ver" + "Giriş Yap") basılıyordu. Ana sayfada ise
-   * `mobilSade` yüzünden o satır yok, yerinde kompakt arama hapı + kategori
-   * çip şeridi duruyor. Sonuç: kategori şeridinden "Kütüphaneler"e basınca
-   * üst bar bambaşka bir şeye dönüşüyor ve ekran "başka siteye gittim" gibi
-   * okunuyordu. Kullanıcı: *"Airbnb'de diğer kategoriye tıklayınca sayfa
-   * yenilenmiyor."*
-   *
-   * `Landing.tsx:167-178` ile bilinçli olarak BİREBİR aynı çağrı; iki yüzey
-   * ortak keşif kabuğunda birleşene kadar bu ikizlik korunmalı.
-   */
-  const mobil = useMobil();
-  const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
-
-  const debouncedQ = useDebounce(q);
-  const setSurface = useSurfaceStore((s) => s.setSurface);
-
-  // /hesabim bağlama duyarlı navbar: son yüzey = keşif.
-  useEffect(() => {
-    setSurface("discover");
-  }, [setSurface]);
-
-  // Debounce'lu metin adrese yazılır — `replace`, çünkü her harf ayrı bir
-  // geçmiş girdisi olsaydı geri tuşu harf harf geri alırdı.
-  useEffect(() => {
-    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ]);
-
   // "Yakınımda" sıralaması konum ister; reddedilirse sıralamayı geri al.
   const requestNearMe = (onFail?: () => void) => {
     if (!navigator.geolocation) {
@@ -193,10 +133,10 @@ export default function Libraries() {
   const params = useMemo<LibrarySearchParams>(
     () =>
       kutuphaneIstegi(
-        { ...degerler, q: debouncedQ },
+        degerler,
         { limit, offset: 0, konumum: nearMe }
       ),
-    [degerler, debouncedQ, limit, nearMe]
+    [degerler, limit, nearMe]
   );
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
@@ -212,71 +152,11 @@ export default function Libraries() {
     view === "map"
   );
 
-  // Geniş aramada arama butonuna basınca (q/district zaten canlı state'i
-  // sürdüğü için) yalnızca geniş paneli kapat.
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchOpen(false);
-  };
 
-  /* ── Navbar ortası ──
-     Kapalı: kompakt arama pill'i (tıklayınca geniş hali açar).
-     Açık:  kategori çubuğu (sekmeler başka sayfaya götürür). */
-  const navCenter = (
-    <div key={searchOpen ? "cats" : "compact"} className="w-full animate-in fade-in duration-300">
-      {/* Telefonda swap YOK: kompakt hap `mobilUst` yuvasında kalıcı durur,
-          bu yuva her zaman kategori çiplerini taşır. İkisi birden basılsaydı
-          aynı hapın iki kopyası mount edilir, `htmlFor` kimlikleri belgede
-          ikilenirdi (bkz. `hooks/useMedyaSorgusu.ts`). */}
-      {searchOpen || mobil ? (
-        <CategoryBar active="kutuphaneler" />
-      ) : (
-        <div className="flex w-full justify-center">
-          <CompactSearch
-            active="kutuphaneler"
-            placeholder={SEARCH_PLACEHOLDER}
-            q={q}
-            district={district}
-            onOpen={() => setSearchOpen(true)}
-          />
-        </div>
-      )}
-    </div>
-  );
-
-  /* ── Navbar altı ──
-     Açık: büyük arama hapı. Kapalı: sıralama + filtre chip çubuğu. */
-  const bigSearchRow = (
-    <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      {/* Ana sayfadaki kütüphane hapının AYNISI (9 Eyl 2026).
-          `KutuphaneArama` ana sayfada yaşıyordu; sekmeler gerçek gezinmeye
-          dönünce orası tek vitrin oldu ve hap buraya taşındı. Üçüncü bir hap
-          tasarımı (`BigSearch`) kalmadı — ikizlik nöbetçisi
-          (`__guards__/aramaHapiIkizligi.test.ts`) artık bu dosyayı ölçüyor. */}
-      <KutuphaneArama
-        q={q}
-        setQ={setQ}
-        yer={yer}
-        setYer={setYer}
-        onSubmit={submitSearch}
-      />
-    </div>
-  );
-
-  /* Telefonun üst satırı: tek kompakt hap. Ana sayfadakiyle AYNI bileşen ve
-     AYNI davranış — dokununca tam ekran arama yüzeyi açılır. */
-  const mobilUst = mobil ? (
-    <CompactSearch
-      active="kutuphaneler"
-      // Telefonda hap kategoriye göre değişen bir metin taşımaz: kategori
-      // zaten hemen altındaki çip şeridinde seçili, hapın işi davet etmek.
-      placeholder="Aramaya başlayın"
-      q={q}
-      district={district}
-      onOpen={() => setMobilAramaAcik(true)}
-    />
-  ) : undefined;
-
+  /* Filtre şeridi — üst barın PARÇASI DEĞİL, içeriğin ilk yapışkan satırı
+     (10 Eyl 2026). Şerit eskiden navbar'ın `bottom` yuvasındaydı; o yuva artık
+     keşif kabuğunun (arama hapının) ve şerit kategoriye ÖZEL olduğu için
+     kabuğa çıkarılamıyor — kabuğa üç ayrı filtre modelini öğretmek demekti. */
   const filterBar = (
     <div className="flex justify-center w-full">
       <div
@@ -349,28 +229,8 @@ export default function Libraries() {
     </div>
   );
 
-  const navBottom = searchOpen ? bigSearchRow : filterBar;
-
   const content = (
     <>
-      {/* Telefonda tam ekran arama yüzeyi — ana sayfayla AYNI bileşen.
-          Hap tek kopya olarak yalnız burada yaşar; navbar'ın alt yuvası
-          telefonda bilerek boş bırakılıyor (bkz. `mobilUst`). */}
-      <MobilAramaSheet
-        open={mobilAramaAcik}
-        onClose={() => setMobilAramaAcik(false)}
-      >
-        <KutuphaneArama
-          q={q}
-          setQ={setQ}
-          yer={yer}
-          setYer={setYer}
-          onSubmit={(e) => {
-            e.preventDefault();
-            setMobilAramaAcik(false);
-          }}
-        />
-      </MobilAramaSheet>
       {/* FİLTRE ŞERİDİ TELEFONDA GÖVDEDE (10 Eyl 2026).
           Navbar'ın `bottom` yuvasının `md:hidden`ı YOKTUR, yani şerit orada
           telefonda da çiziliyordu. Ama telefon kromu artık ana sayfayla aynı
@@ -383,21 +243,12 @@ export default function Libraries() {
           kabuklar tarafından yayınlanıyor (`PublicShell`, `DashboardShell`) ve
           bu onun ilk gerçek tüketicisi. Zemin ve alt çizgi `PublicNavbar` ile
           bilerek aynı: göz onu üst barın devamı olarak okur. */}
-      {mobil && (
-        <div
-          className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 md:hidden"
-          style={{ top: "var(--yapiskan-ust, 0px)" }}
-        >
-          {filterBar}
-        </div>
-      )}
-      {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
-      {searchOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-slate-900/10 animate-in fade-in duration-200"
-          onClick={() => setSearchOpen(false)}
-        />
-      )}
+      <div
+        className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 sm:-mx-6"
+        style={{ top: "var(--yapiskan-ust, 0px)" }}
+      >
+        {filterBar}
+      </div>
       <div className="mx-auto max-w-[1100px] space-y-5">
         <Seo
           title="Kütüphaneler ve Etüt Merkezleri"
@@ -569,26 +420,5 @@ export default function Libraries() {
     </>
   );
 
-  return token ? (
-    <DashboardShell
-      title="Kütüphaneler"
-      navItems={navItems}
-      center={navCenter}
-      bottom={mobil ? undefined : navBottom}
-      mobilUst={mobilUst}
-      mobilSade={mobil}
-      sekmeler={null}
-    >
-      {content}
-    </DashboardShell>
-  ) : (
-    <PublicShell
-      center={navCenter}
-      bottom={mobil ? undefined : navBottom}
-      mobilUst={mobilUst}
-      mobilSade={mobil}
-    >
-      {content}
-    </PublicShell>
-  );
+  return content;
 }

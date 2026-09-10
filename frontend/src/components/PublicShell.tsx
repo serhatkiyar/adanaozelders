@@ -25,6 +25,7 @@ export function PublicShell({
   mobilSade = false,
   altBilgiGizli = false,
   mobilDetayEkrani = false,
+  expanded = true,
 }: {
   children: ReactNode;
   /** Navbar ortasına yerleşen içerik (ör. arama pill'i). */
@@ -66,6 +67,16 @@ export function PublicShell({
    * geri düğmesi. Nöbetçi: `__guards__/egitmenProfiliMobil.test.tsx`.
    */
   mobilDetayEkrani?: boolean;
+  /**
+   * Üst barın ALT SATIRI (arama hapı) açık mı?
+   *
+   * `true` (varsayılan) bugünkü davranıştır: satır her zaman açık. Ana sayfa
+   * bunu scroll'a bağlı olarak kapatıyor (kaydırınca hap kompakta iner) ama o
+   * mantık bugün `Landing`in KENDİ navbar kopyasında yaşıyor. Prop, o
+   * davranışın ortak kabuğa taşınabilmesi için var; geçilmediğinde hiçbir
+   * yüzeyde bir şey değişmez.
+   */
+  expanded?: boolean;
 }) {
   /* Yapışkan üst boşluk — `DashboardShell` ile AYNI sözleşme. Yapışkan yan
    * kartlar (ör. eğitmen ilanı) üst boşluklarını sabit bir sayı yerine bu
@@ -108,7 +119,13 @@ export function PublicShell({
         ref={yiginRef}
         className={`sticky top-0 z-40 ${mobilDetayEkrani ? "hidden md:block" : ""}`}
       >
-        <PublicNavbar center={center} bottom={bottom} mobilUst={mobilUst} mobilSade={mobilSade} expanded />
+        <PublicNavbar
+          center={center}
+          bottom={bottom}
+          mobilUst={mobilUst}
+          mobilSade={mobilSade}
+          expanded={expanded}
+        />
       </div>
       <main className={mobilDetayEkrani ? "flex-1 p-0 md:p-6" : "flex-1 p-4 sm:p-6"}>
         {children}

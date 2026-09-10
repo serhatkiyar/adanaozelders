@@ -77,6 +77,16 @@ interface DashboardShellProps {
    * var: eğitmen profili girişte `DashboardShell`e düşüyor.
    */
   mobilDetayEkrani?: boolean;
+  /**
+   * Üst barın ALT SATIRI (arama hapı) açık mı?
+   *
+   * `true` (varsayılan) bugünkü davranıştır: satır her zaman açık. Ana sayfa
+   * bunu scroll'a bağlı olarak kapatıyor (kaydırınca hap kompakta iner) ama o
+   * mantık bugün `Landing`in KENDİ navbar kopyasında yaşıyor. Prop, o
+   * davranışın ortak kabuğa taşınabilmesi için var; geçilmediğinde hiçbir
+   * yüzeyde bir şey değişmez.
+   */
+  expanded?: boolean;
 }
 
 export type PanelGenisligi = "dar" | "orta";
@@ -99,6 +109,7 @@ export function DashboardShell({
   sekmeler,
   genislik,
   mobilDetayEkrani = false,
+  expanded = true,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
   const panelSekmeleri =
@@ -193,7 +204,7 @@ export function DashboardShell({
           bottom={bottom}
           mobilUst={mobilUst}
           mobilSade={mobilSade}
-          expanded
+          expanded={expanded}
         />
 
         {/* Şerit yapışkan yığının İÇİNDE: akışta kalsaydı kaydırınca gider,

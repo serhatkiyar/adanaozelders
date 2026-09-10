@@ -33,7 +33,7 @@
  * taşıyorlar" der. Piksel eşitliğinin kanıtı değildir; ikisinin ayrı ayrı
  * evrilmesinin önündeki engeldir.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -46,11 +46,27 @@ const KOK = resolve(
 
 const oku = (...parcalar: string[]) => readFileSync(join(KOK, ...parcalar), "utf8");
 
+/** `src` altındaki tüm `.tsx` dosyaları (test dosyaları hariç), POSIX yolla. */
+function tsxDosyalari(dizin = "src", biriken: string[] = []): string[] {
+  for (const girdi of readdirSync(join(KOK, dizin), { withFileTypes: true })) {
+    const yol = `${dizin}/${girdi.name}`;
+    if (girdi.isDirectory()) tsxDosyalari(yol, biriken);
+    else if (girdi.name.endsWith(".tsx") && !girdi.name.includes(".test."))
+      biriken.push(yol);
+  }
+  return biriken;
+}
+
 const HERO = oku("src", "components", "HeroSearch.tsx");
 const SECICILER = oku("src", "components", "AramaSecicileri.tsx");
-const LANDING = oku("src", "pages", "Landing.tsx");
-/** Kütüphane hapı 9 Eyl 2026'da ana sayfadan buraya taşındı. */
-const KUTUPHANELER = oku("src", "pages", "Libraries.tsx");
+/**
+ * İKİ HAP DA 10 Eyl 2026'da KEŞİF KABUĞUNA taşındı.
+ *
+ * Önce ders hapı ana sayfada, kütüphane hapı `/kutuphaneler`deydi; her sayfa
+ * kendi üst barını basıyordu ve bu yüzden kategori değişimi ekranın tamamını
+ * yeniden kuruyordu. Üst bar ortak kabuğa çıkınca haplar da onunla gitti.
+ */
+const KABUK = oku("src", "components", "kesif", "KesifKabugu.tsx");
 
 /** `export function <ad>(` ile başlayan bloğu bir sonraki `export function`a kadar alır. */
 function govde(kaynak: string, ad: string): string {
@@ -227,28 +243,51 @@ describe("ana sayfa arama hapları ikizdir", () => {
 
   it("iki hap da CANLI ve üçüncü bir tasarım yok", () => {
     /*
-     * İDDİA 9 Eyl 2026'da YER DEĞİŞTİRDİ, zayıflamadı.
+     * İDDİA İKİ KEZ YER DEĞİŞTİRDİ, İKİSİNDE DE ZAYIFLAMADI — bu kez GÜÇLENDİ.
      *
-     * Eskiden iki hap da ana sayfadaydı (sekme değişince biri diğerinin
-     * yerine geçiyordu). Sekmeler gerçek gezinmeye dönünce ana sayfa TEK
-     * VİTRİN oldu: ders hapı orada kaldı, kütüphane hapı `/kutuphaneler`e
-     * taşındı ve oradaki ÜÇÜNCÜ tasarımın (`BigSearch`) yerini aldı.
+     * 9 Eyl: iki hap ana sayfadaydı; sekmeler gerçek gezinmeye dönünce
+     * kütüphane hapı `/kutuphaneler`e taşındı.
+     * 10 Eyl: üst bar ortak keşif kabuğuna çıktı, iki hap da onunla gitti.
      *
-     * Dosya değiştirilmeseydi bu düğüm sessizce yalana dönerdi:
-     * `<KutuphaneArama` Landing'de bulunamayınca "ikizlik bozuldu" sanılırdı
-     * — oysa ikizlik duruyor, yalnız hap başka sayfada.
+     * Hedef dosya güncellenmeseydi düğüm sessizce yalana dönerdi: haplar
+     * eski dosyalarda bulunamayınca "ikizlik bozuldu" sanılırdı — oysa
+     * ikizlik duruyor, yalnız ikisi de başka dosyada.
+     *
+     * GÜÇLENME: "üçüncü tasarım yok" iddiası artık iki dosyayı değil TÜM
+     * `src` ağacını tarıyor. `BigSearch` yalnız `useNavSearch` (detay
+     * sayfalarının navbar'ı) içinde kalabilir; oraya da bir gün ikiz haplar
+     * girmelidir.
      */
-    expect(LANDING, "ders hapı ana sayfadan kaybolmuş").toContain("<DersArama");
-    expect(KUTUPHANELER, "kütüphane hapı taşındığı sayfada yok").toContain(
-      "<KutuphaneArama"
+    expect(KABUK, "ders hapı kabukta yok").toContain("<DersArama");
+    expect(KABUK, "kütüphane hapı kabukta yok").toContain("<KutuphaneArama");
+    expect(KABUK, "kabuk hâlâ BigSearch basıyor — ikizlik bozuldu").not.toContain(
+      "<BigSearch"
     );
-    for (const [ad, kaynak] of [
-      ["ana sayfa", LANDING],
-      ["/kutuphaneler", KUTUPHANELER],
-    ] as const) {
-      expect(kaynak, `${ad} hâlâ BigSearch basıyor — ikizlik bozuldu`).not.toContain(
-        "<BigSearch"
-      );
-    }
+
+    /*
+     * İZİNLİ LİSTE = BİLİNEN BORÇ, isimle sabit.
+     *
+     * `useNavSearch`: detay sayfalarının navbar'ı; oraya da bir gün ikiz
+     * haplar girmelidir.
+     * `/egitmenler` ikizi (Marketplace + PublicMarketplace): bu iki yüzey
+     * 10 Eyl'de keşif kabuğuna ALINMADI — kullanıcı telefondaki sonuç
+     * başlığına (`AramaMobilBaslik`) dokunulmamasını istedi, o başlık da
+     * kabuğun kromuyla aynı değil. Kabuğa girdikleri gün hapları da
+     * `KesifKabugu`ya devredecek ve bu iki satır silinecek.
+     *
+     * Liste isimle sabit: yeni bir dosya `BigSearch` basarsa test kırılır ve
+     * bu DOĞRU davranıştır — üçüncü tasarım sessizce yayılmasın.
+     */
+    const izinli = new Set([
+      "src/hooks/useNavSearch.tsx",
+      "src/pages/Marketplace.tsx",
+      "src/pages/PublicMarketplace.tsx",
+    ]);
+    const suclular = tsxDosyalari()
+      .filter((yol) => !izinli.has(yol) && oku(yol).includes("<BigSearch"));
+    expect(
+      suclular,
+      `üçüncü hap tasarımı geri gelmiş: ${suclular.join(", ")}`
+    ).toEqual([]);
   });
 });

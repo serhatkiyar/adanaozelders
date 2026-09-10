@@ -37,6 +37,44 @@ const CATEGORIES: Category[] = [
 ];
 
 
+/* ─── KATEGORİNİN KODUNU ÖNDEN YÜKLE ──────────────────────────────────────
+ *
+ * Kullanıcı: *"kütüphaneler butonuna bastığımızda sayfa tamamen değişiyor.
+ * Airbnb'de diğer kategoriye tıklayınca sayfa yenilenmiyor."*
+ *
+ * Şikâyetin en somut yarısı buydu ve `<Link>` ile ilgisi yoktu: kategori
+ * sayfaları `App.tsx`te `lazy()` ile bölünmüş ve tek `&lt;Suspense&gt;` sınırı
+ * `&lt;Routes&gt;`un DIŞINDA, `FullScreenSpinner` ile duruyor (`App.tsx:395`).
+ * Yani kütüphane parçası daha indirilmemişken tıklamak, üst bar dahil TÜM
+ * ekranı bir spinner'a çeviriyordu. "Sayfa tamamen değişiyor" tam olarak bu.
+ *
+ * Parmak düğmeye değdiği anda (masaüstünde imleç üstüne gelince, telefonda
+ * dokunuş başlangıcında) parça arka planda inmeye başlar; tıklama geldiğinde
+ * modül çoktan hazırdır ve geçiş anında olur. İnternet yavaşsa kazanç azalır
+ * ama hiçbir şey bozulmaz — sadece bugünkü davranışa döner.
+ *
+ * Yollar `ROUTES` üzerinden eşlenir; `import()` yolları `App.tsx`teki
+ * `lazy()` çağrılarıyla BİREBİR aynı olmalıdır, yoksa Vite ikinci bir parça
+ * üretir ve ön yükleme boşa gider.
+ */
+const ONYUKLEYICILER: Record<string, () => Promise<unknown>> = {
+  [ROUTES.tutors]: () => import("@/pages/MarketplacePage"),
+  [ROUTES.libraries]: () => import("@/pages/Libraries"),
+  [ROUTES.store]: () => import("@/pages/store/StorePage"),
+};
+
+/** Aynı parçayı iki kez istemeyelim; `import()` zaten önbellekli ama ağ
+ *  panelini gereksiz satırla doldurmanın da anlamı yok. */
+const onYuklendi = new Set<string>();
+
+function onYukle(yol: string) {
+  if (onYuklendi.has(yol)) return;
+  onYuklendi.add(yol);
+  // Hata YUTULUR: ön yükleme bir iyileştirmedir, başarısızlığı kullanıcıya
+  // yansımamalı — tıklama anında normal yükleme yolu zaten devreye girer.
+  ONYUKLEYICILER[yol]?.().catch(() => onYuklendi.delete(yol));
+}
+
 /** Tek bir kategorinin meta'sı (ikon/label) — kompakt arama çubuğu için. */
 export function categoryMeta(key: CategoryKey): Category {
   return CATEGORIES.find((c) => c.key === key)!;
@@ -136,6 +174,9 @@ export function CategoryBar({
               to={c.to}
               aria-current={isActive ? "page" : undefined}
               className={cls}
+              onPointerEnter={() => onYukle(c.to)}
+              onTouchStart={() => onYukle(c.to)}
+              onFocus={() => onYukle(c.to)}
             >
               {inner}
             </Link>

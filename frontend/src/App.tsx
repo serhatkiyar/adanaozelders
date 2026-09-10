@@ -7,6 +7,7 @@ import { trackPageview } from "@/lib/analytics";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
+import { KesifKabugu } from "@/components/kesif/KesifKabugu";
 import { ALISVERIS_ROLLERI } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
@@ -394,17 +395,30 @@ function App() {
         <RouteErrorBoundary>
         <Suspense fallback={<FullScreenSpinner />}>
         <Routes>
-          {/* ── Kök dağıtıcı + public (SEO) — oturumdan bağımsız ── */}
-          <Route path={PATHS.home} element={<RootDispatcher />} />
+          {/* ── KEŞİF KABUĞU ────────────────────────────────────────────
+              `/` ve `/kutuphaneler` TEK ebeveyn altında: adres değişir, üst bar
+              YERİNDE KALIR. React Router çocuk eşleşmesi değişse de aynı
+              ebeveyni aynı konumda, aynı tipte reconcile eder — kabuk mount
+              kalır, yalnız `<Outlet/>`in çözdüğü gövde değişir.
+
+              `KesifKabugu` MODÜL KAPSAMINDA tanımlıdır (burada satır içi
+              DEĞİL): satır içi tanımlansaydı her render'da yeni bir bileşen
+              tipi doğar ve kabuk yine remount olurdu.
+
+              `/egitmenler` bilerek DIŞARIDA: telefonda kendi sonuç başlığını
+              taşıyor ve kullanıcı ona dokunulmamasını istedi (10 Eyl 2026).
+              Nöbetçi: `__guards__/kesifKabuguKalir.test.tsx`. */}
+          <Route element={<KesifKabugu />}>
+            <Route path={PATHS.home} element={<RootDispatcher />} />
+            {/* Donmuş bölüm (bkz. lib/ozellikBayraklari.ts): doğrudan URL yazan
+                kullanıcı gerçek sayfayı değil "Yakında" ekranını görür. */}
+            <Route
+              path={PATHS.libraries}
+              element={KUTUPHANELER_ACIK ? <Libraries /> : <Yakinda />}
+            />
+          </Route>
           <Route path={PATHS.tutors} element={<MarketplacePage />} />
           <Route path={PATHS.tutor} element={<TutorProfilePage />} />
-          {/* Donmuş bölüm (bkz. lib/ozellikBayraklari.ts): doğrudan URL yazan
-              kullanıcı gerçek sayfayı değil "Yakında" ekranını görür. Bayrak
-              `true` yapılınca üç rota da eski hâline döner. */}
-          <Route
-            path={PATHS.libraries}
-            element={KUTUPHANELER_ACIK ? <Libraries /> : <Yakinda />}
-          />
           <Route
             path={PATHS.library}
             element={KUTUPHANELER_ACIK ? <LibraryDetail /> : <Yakinda />}

@@ -704,12 +704,22 @@
         }
       ],
       "cakismalar": [],
-      "kucukHedefSayi": 117,
+      "kucukHedefSayi": 119,
       "kucukHedefler": [
         {
           "ad": "Adana Özel Ders ana sayfa",
           "w": 32,
           "h": 32
+        },
+        {
+          "ad": "INPUT",
+          "w": 279,
+          "h": 20
+        },
+        {
+          "ad": "INPUT",
+          "w": 279,
+          "h": 20
         },
         {
           "ad": "Filtreler",
@@ -735,19 +745,9 @@
           "ad": "Çukurova Kütüphaneleri, tümünü",
           "w": 28,
           "h": 28
-        },
-        {
-          "ad": "Çukurova Kütüphaneleri: sola k",
-          "w": 28,
-          "h": 28
-        },
-        {
-          "ad": "Çukurova Kütüphaneleri: sağa k",
-          "w": 28,
-          "h": 28
         }
       ],
-      "ustBar": 145,
+      "ustBar": 163,
       "ustBarTavani": 140,
       "cubukVar": false,
       "cubukYuksek": 0,
