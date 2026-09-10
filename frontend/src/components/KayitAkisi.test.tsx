@@ -71,13 +71,37 @@ describe("KayitAkisi — ilk ekran", () => {
 
   it("başlık role göre değişir", async () => {
     kur();
-    expect(screen.getByRole("heading", { name: "Kayıt Ol" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Üye kaydı" })).toBeTruthy();
   });
 
   it("eğitmen yolundan gelince başlık bunu söyler", async () => {
     kur("tutor");
+    expect(screen.getByRole("heading", { name: "Eğitmen kaydı" })).toBeTruthy();
+  });
+
+  /* Rol, adres parametresinde yaşayan ve sonradan DEĞİŞTİRİLEMEYEN bir hesap
+     özelliği. Başlık bir adımda rolü, sonraki adımlarda ilerlemeyi söylerken
+     eğitmen adayı ikinci ekranda "Üyelik" görüyordu — yani başka bir rolün
+     adını. Bu iki düğüm o bağlam kaybının geri gelmesini engeller. */
+  it("ROL KAYBOLMAZ: sonraki adımlarda da başlık eğitmen kaydı der", async () => {
+    const kullanici = userEvent.setup();
+    kur("tutor");
+
+    await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
+    await kullanici.click(
+      screen.getByRole("button", { name: "E-posta ile kaydol" })
+    );
+
+    expect(await screen.findByLabelText(/^Adınız/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Eğitmen kaydı" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /Üye/ })).toBeNull();
+  });
+
+  it("ilk adımda rol GÖRÜNÜR ve öteki role geçiş sunulur", async () => {
+    kur("tutor");
+    expect(screen.getByText(/Eğitmen olarak kaydoluyorsun/)).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: /Eğitmen olarak kaydolun/i })
+      screen.getByRole("button", { name: "Üye olarak kaydol" })
     ).toBeTruthy();
   });
 

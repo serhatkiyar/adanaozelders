@@ -2,6 +2,7 @@ import { useBookmarks, useToggleBookmark } from "@/hooks/useBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { alisverisYapabilir } from "@/lib/roles";
+import { GORSEL_USTU_DAIRE } from "@/components/egitmen/gorselUstuDaire";
 
 interface BookmarkButtonProps {
   tutorId: number;
@@ -12,12 +13,23 @@ interface BookmarkButtonProps {
    * yarı-saydam dolgu + beyaz kenar + gölge.
    */
   onSolid?: boolean;
+  /**
+   * Fotoğrafın üstünde duran BEYAZ DAİRE varyantı (mobil detay ekranı hero'su).
+   *
+   * `onSolid=false` dalından farkı: orada kalp zeminsizdir ve okunurluğunu
+   * kendi gölgesinden alır — kart kapağının üstünde doğru olan budur. Hero'da
+   * ise düğme ekranın tek çıkış/eylem takımının parçası ve fotoğrafın rengi
+   * ne olursa olsun aynı ağırlıkta görünmesi gerekiyor; daire zemini bunu
+   * garanti eder. Daire tanımı `gorselUstuDaire.ts`te, paylaş düğmesiyle ORTAK.
+   */
+  gorselUstu?: boolean;
 }
 
 export function BookmarkButton({
   tutorId,
   size = "sm",
   onSolid = false,
+  gorselUstu = false,
 }: BookmarkButtonProps) {
   const { girisGerekli } = useGirisKapisi();
   const { data: user } = useCurrentUser();
@@ -31,7 +43,9 @@ export function BookmarkButton({
   // Anonim ziyaretçiye gösterilir → tıklayınca giriş modalı açılır.
   if (user && !alisverisYapabilir(user.role_id)) return null;
 
-  const icon = onSolid
+  const icon = gorselUstu
+    ? "h-5 w-5"
+    : onSolid
     ? size === "md"
       ? "h-5 w-5"
       : "h-4 w-4"
@@ -55,7 +69,9 @@ export function BookmarkButton({
   // `group`: hover DÜĞMEDE oluyor ama dolgu SVG'de değişmeli. `hover:` doğrudan
   // svg'ye yazılsaydı yalnız ikonun kendi üstüne gelince tetiklenir, düğmenin
   // boş kenarında sessiz kalırdı.
-  const kap = onSolid
+  const kap = gorselUstu
+    ? `group ${GORSEL_USTU_DAIRE} ${bookmarked ? "text-rose-500" : "text-slate-900"}`
+    : onSolid
     ? `group flex ${size === "md" ? "h-9 w-9" : "h-8 w-8"} shrink-0 items-center justify-center rounded-full transition active:scale-90 disabled:opacity-50 ${
         bookmarked
           ? "text-rose-500 hover:bg-rose-50"
@@ -75,7 +91,11 @@ export function BookmarkButton({
   // Düz zeminde kalp SİYAH ÇİZGİdir; üstüne gelince içi kırmızı dolar ve çizgi
   // de kırmızıya döner (kullanıcı kararı, 8 Eyl). Önizleme niteliğinde: tıklayınca
   // ne olacağını basmadan gösteriyor.
-  const fillCls = onSolid
+  const fillCls = gorselUstu
+    ? bookmarked
+      ? "fill-current stroke-current"
+      : "fill-none stroke-current group-hover:fill-rose-500 group-hover:stroke-rose-500"
+    : onSolid
     ? bookmarked
       ? "fill-current stroke-current"
       : "fill-none stroke-current group-hover:fill-rose-500 group-hover:stroke-rose-500"
@@ -102,7 +122,7 @@ export function BookmarkButton({
     >
       <svg
         viewBox="0 0 24 24"
-        strokeWidth={onSolid ? 1.8 : 1.5}
+        strokeWidth={onSolid || gorselUstu ? 1.8 : 1.5}
         className={`${icon} transition-colors ${fillCls}`}
       >
         <path

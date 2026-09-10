@@ -96,6 +96,11 @@ describe("mobil alt sekme çubuğu", () => {
 
   it("anonim: Keşfet · Favoriler · Giriş — mesaj/hesap sekmesi YOK", () => {
     sar();
+    /* "Ders Ver" DENENDİ ve GERİ ALINDI (kullanıcı kararı, 11 Eyl 2026):
+       *"biraz kafa karıştırıcı oldu, dönüşümü düşürür gibi"*. Alıcı yüzeyinde
+       arz çağrısı, satın alma niyetiyle gelen kullanıcıyı bölüyordu. Eğitmen
+       kaydının kapısı yine giriş ekranında (`AuthModal`) — yukarıdaki 1. madde
+       bu yüzden hâlâ geçerli bir risk. */
     expect(sekmeAdlari()).toEqual(["Keşfet", "Favoriler", "Giriş"]);
     // Oturumsuz kullanıcıya mesaj kutusu vaat edilmez.
     expect(screen.queryByText("Mesajlar")).toBeNull();
@@ -197,14 +202,18 @@ describe("mobil alt sekme çubuğu", () => {
       join(KOK, "src", "components", "AuthModal.tsx"),
       "utf8"
     );
-    expect(kaynak, "giriş ekranında ders verme kapısı yok").toContain(
-      "Ders vermek istiyorum"
-    );
-    const i = kaynak.indexOf("Ders vermek istiyorum");
-    const blok = kaynak.slice(Math.max(0, i - 600), i);
-    expect(blok, "ders verme kapısı eğitmen rolünü geçmiyor").toContain(
+    // Çıpa PAZARLAMA METNİ DEĞİL, ROL: kapının etiketi değişebilir (11 Eyl
+    // 2026'da "Ders vermek istiyorum" → "Eğitmen misin?" oldu), değişemeyecek
+    // olan `role=tutor` ile açılan bir kayıt yolunun VARLIĞI.
+    expect(kaynak, "giriş ekranında eğitmen kaydı kapısı yok").toContain(
       '"role", "tutor"'
     );
+    const i = kaynak.indexOf('"role", "tutor"');
+    // Pencere İKİ YÖNE bakar: `<button` rolü yazan `onClick`ten ÖNCE, görünür
+    // etiket ise sonra gelir.
+    const blok = kaynak.slice(Math.max(0, i - 400), i + 900);
+    expect(blok, "kapı tıklanabilir bir denetim değil").toContain("<button");
+    expect(blok, "kapının görünür bir etiketi yok").toMatch(/Eğitmen/);
   });
 
   it("favoriler ve mesajlar rota kaynağından gelir (elle yazılmış yol yok)", () => {

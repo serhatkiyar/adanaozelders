@@ -50,7 +50,14 @@ const kodSatirlari = (kaynak: string) =>
 
 /** Arama adresi ÜRETEN ekranlar — hepsi tek kapıyı import etmek zorunda. */
 const YUZEYLER: [string, RegExp][] = [
-  ["pages/Landing.tsx", /egitmenAramaAdresi/],
+  /*
+   * Ana sayfanın arama hapı 10 Eyl 2026'da KEŞİF KABUĞUNA taşındı: `/` ve
+   * `/kutuphaneler` artık tek bir üst bar paylaşıyor (kategori değişiminde
+   * ekran yeniden kurulmasın diye). Adres üretimi de hapla birlikte gitti;
+   * `Landing.tsx` artık yalnız vitrin şeritlerini basıyor ve hiçbir arama
+   * adresi üretmiyor — bu yüzden listeden ÇIKTI, yerine kabuk girdi.
+   */
+  ["components/kesif/KesifKabugu.tsx", /egitmenAramaAdresi|useAramaDurumu/],
   ["pages/Marketplace.tsx", /useAramaDurumu/],
   ["pages/PublicMarketplace.tsx", /useAramaDurumu/],
   ["pages/Libraries.tsx", /useAramaDurumu/],

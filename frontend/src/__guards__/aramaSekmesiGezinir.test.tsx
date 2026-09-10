@@ -71,10 +71,22 @@ describe("kategori sekmesi · gerçek gezinme", () => {
     expect(adres()).toBe(ROUTES.libraries);
   });
 
-  it("Eğitmenler'e tıklamak adresi `/egitmenler` yapar", () => {
-    sar();
+  it("Eğitmenler'e tıklamak KEŞİF yüzeyine (`/`) götürür, arama sonucuna DEĞİL", () => {
+    /*
+     * HEDEF 10 Eyl 2026'da DEĞİŞTİ (kullanıcı kararı), iddia zayıflamadı.
+     *
+     * Eskiden `/egitmenler`e, yani sorgusuz bir ARAMA SONUÇLARI ekranına
+     * gidiyordu. Kullanıcı: *"ana sayfadayken kategori değiştirirken arama
+     * sonucu gösterilmeyecek."* Kategori değiştirmek arama yapmak değildir;
+     * hedef artık kökteki eğitmen vitrini. `/egitmenler` aramanın kendi
+     * adresi olarak durur ve oraya arama hapından gidilir.
+     */
+    sar("kutuphaneler");
     fireEvent.click(screen.getByText("Eğitmenler"));
-    expect(adres()).toBe(ROUTES.tutors);
+    expect(adres()).toBe(ROUTES.home);
+    expect(adres(), "kategori hâlâ arama sonucuna götürüyor").not.toBe(
+      ROUTES.tutors
+    );
   });
 
   it("aktif sekme `aria-current=page` taşır (görsel değil anlamsal)", () => {

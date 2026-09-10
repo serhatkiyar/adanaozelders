@@ -41,15 +41,17 @@ describe("yerAra · eşleşme", () => {
     expect(sonuc.every((o) => o.secim.tur === "ilce")).toBe(true);
   });
 
-  it("mahalle adıyla bulur ve koordinatını taşır", () => {
-    const sonuc = yerAra("Reşatbey");
-    const r = sonuc.find((o) => o.baslik === "Reşatbey");
-    expect(r, "Reşatbey bulunamadı").toBeTruthy();
-    expect(r!.secim.tur).toBe("mahalle");
-    if (r!.secim.tur === "mahalle") {
-      expect(r!.secim.ilce).toBe("Seyhan");
-      expect(Number.isFinite(r!.secim.lat)).toBe(true);
-    }
+  /* MAHALLE ÖNERİSİ KAPALI (kullanıcı kararı, 10 Eyl 2026 — gerekçe
+     `yerArama.ts`teki bayrağın başında). Kapanan tek şey ÖNERİ SUNMAK:
+     mahalle verisi, koordinatı ve `?mahalle=` okuması yerinde duruyor ve
+     aşağıdaki `mahalleyiCoz` düğümleri onu sınamaya devam ediyor.
+
+     Bayrak yeniden `true` yapıldığı gün bu düğüm kırmızıya döner; yani karar
+     sessizce değil, bilerek geri alınır. */
+  it("mahalle ÖNERİLMEZ: liste yalnız ilçelerden oluşur", () => {
+    // Hiçbir ilçe "Reşatbey"e benzemiyor; mahalle açık olsaydı dolu dönerdi.
+    expect(yerAra("Reşatbey")).toEqual([]);
+    expect(yerAra("res").every((o) => o.secim.tur === "ilce")).toBe(true);
   });
 
   it("AKSANSIZ yazım da bulur — asıl mesele bu", () => {
@@ -72,21 +74,26 @@ describe("yerAra · eşleşme", () => {
   });
 
   it("önek eşleşmesi öne alınır", () => {
-    const sonuc = yerAra("res").filter((o) => o.secim.tur === "mahalle");
-    if (sonuc.length > 1) {
-      // İlk sonuç "res" ile BAŞLAMALI; içinde geçenler sonra gelir.
-      const ilk = sonuc[0].baslik.toLocaleLowerCase("tr-TR");
-      expect(ilk.startsWith("reş") || ilk.startsWith("res")).toBe(true);
-    }
+    // Sorgu ilçeler üzerinden kuruldu: mahalleler kapalıyken eski hâli
+    // (mahalleleri süzüp `length > 1` kontrolüne bırakma) BOŞ kümede bedava
+    // geçen ölü bir iddiaya dönmüştü.
+    const sonuc = yerAra("s");
+    const adlar = sonuc.map((o) => o.baslik);
+    // DOLULUK: hem önekle başlayan hem yalnız içinde geçen ilçeler var.
+    expect(adlar).toContain("Seyhan");
+    expect(adlar).toContain("Karataş");
+    expect(sonuc[0].baslik.toLocaleLowerCase("tr-TR").startsWith("s")).toBe(true);
   });
 
   it("eşleşmeyen sorgu boş döner", () => {
     expect(yerAra("zzzyokboyleyer")).toEqual([]);
   });
 
-  it("mahalle önerisi ilçesini alt başlıkta gösterir", () => {
-    const r = yerAra("Reşatbey").find((o) => o.baslik === "Reşatbey")!;
-    expect(r.altBaslik).toBe("Seyhan, Adana");
+  it("ilçe önerisi ilini alt başlıkta taşır", () => {
+    // Alt başlık VERİDE durur; telefon yüzeyi onu bilerek çizmiyor (hepsinde
+    // aynı "Adana" yazıyordu), masaüstü seçicisi çiziyor.
+    const r = yerAra("Seyhan").find((o) => o.baslik === "Seyhan")!;
+    expect(r.altBaslik).toBe("Adana");
   });
 });
 

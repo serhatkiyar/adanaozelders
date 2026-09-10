@@ -20,7 +20,10 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
   return (
     <Link
       to={ROUTES.library(library.slug)}
-      className="group mx-auto flex w-full max-w-[310px] flex-col transition duration-300"
+      // `h-full`: eğitmen kartında VARDI, burada YOKTU. Aynı satırdaki
+      // kartlar içeriğe göre farklı yükseklikte bitiyordu; ızgarada alt
+      // kenarlar hizasız kalıyordu.
+      className="group mx-auto flex h-full w-full max-w-[310px] flex-col transition duration-300"
     >
       {/* ── Görsel alanı ── */}
       <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-marka-soft to-marka-line ">
@@ -32,8 +35,21 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-4xl">
-            📚
+          /* Kapak yokken EĞİTMEN KARTIYLA AYNI çözüm: baş harf bloğu
+             (11 Eyl 2026). Burada 📚 emojisi duruyordu ve 310px'lik kartın
+             ortasında 36px'lik bir emoji, kapağın yüklenmediği izlenimi
+             veriyordu — kullanıcı: *"kütüphane arama sonucu sayfası
+             eğitmenlerdeki kadar düzgün değil"*. Emoji ayrıca her platformda
+             başka çiziliyor.
+
+             Harf YUKARIDA durur: ortalanmışken iki satırlık kütüphane adının
+             tam arkasına geliyor ve ikisi birbirini okunmaz kılıyordu
+             (ölçüldü, 10 Eyl 2026). Alt %35 başlığa ayrılmış durumda. */
+          <div
+            aria-hidden
+            className="flex h-[65%] w-full items-center justify-center text-4xl font-semibold text-marka-metin"
+          >
+            {library.name.charAt(0).toLocaleUpperCase("tr")}
           </div>
         )}
 
@@ -55,7 +71,7 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
         </div>
 
         {/* Alt gradyan maskesi */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
 
         {/* Görsel üstündeki metin. Eğitmen kartındaki xl, KISA bir ön ad
             içindir; kütüphanenin uzun tam adı aynı boyutta kart kaplıyordu.

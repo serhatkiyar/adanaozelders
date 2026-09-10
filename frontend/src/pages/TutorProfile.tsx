@@ -8,7 +8,11 @@ import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
 import { EgitmenYanitAksiyonu } from "@/components/EgitmenYanitAksiyonu";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
-import { TutorOzetTablosu } from "@/components/TutorTrust";
+import {
+  DocumentedBadge,
+  TutorOzetTablosu,
+  hasVerifiedEducation,
+} from "@/components/TutorTrust";
 import { ReportModal } from "@/components/ReportModal";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
@@ -30,6 +34,10 @@ import { recordViewedTutor } from "@/lib/recentlyViewed";
 import { videoEmbedUrl } from "@/lib/video";
 import { useNavSearch } from "@/hooks/useNavSearch";
 import { useBekleyenNiyet } from "@/hooks/useBekleyenNiyet";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
+import { useGeriDonus } from "@/hooks/useGeriDonus";
+import { EgitmenMobilUst } from "@/components/egitmen/EgitmenMobilUst";
+import { DersTalepSeridi } from "@/components/egitmen/DersTalepSeridi";
 
 // Removed constants
 
@@ -69,6 +77,10 @@ export default function TutorProfile() {
   const [showBookingModal, setShowBookingModal] = useState(false);
 
   const replyMutation = useReplyToReview(tutorId);
+  /* Anonim kabukla AYNI karar — bkz. `PublicTutorProfile`. Rotanın iki kabuğu
+     ayrışmasın diye mobil düzen ortak bileşende. */
+  const mobil = useMobil();
+  const geriDon = useGeriDonus(ROUTES.tutors);
   const isOwnerTutor =
     currentUser?.role_id === ROLE_IDS.TUTOR && currentUser.id === tutorId;
   /*
@@ -136,6 +148,7 @@ export default function TutorProfile() {
       sekmeler={null}
       center={center}
       bottom={bottom}
+      mobilDetayEkrani
     >
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
@@ -149,12 +162,36 @@ export default function TutorProfile() {
             kendi geri düğmesi zaten var ve bağlantı, kartı bir satır aşağı
             itiyordu. Hata dalındaki kopyası KALIR — orada sayfanın tek
             çıkışı odur. */}
-        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
+        <div
+          className={
+            mobil
+              ? "flex flex-col"
+              : "flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6"
+          }
+        >
+          {mobil && (
+            <EgitmenMobilUst
+              tutor={tutor}
+              ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              rozet={hasVerifiedEducation(tutor.educations) ? <DocumentedBadge /> : undefined}
+              favoriGizli={isOwnerTutor}
+              ilkDersMetni={
+                tutor.first_lesson_free !== false
+                  ? canRequestFreeLesson
+                    ? "İlk dersin ücretsiz"
+                    : "İlk ders ücretsiz"
+                  : null
+              }
+              onGeri={geriDon}
+              onYorumlar={() => setShowReviews(true)}
+            />
+          )}
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
           {/* Kart ekrandan TAŞMASIN (kullanıcı kararı, 7 Eyl 2026): sticky kart
               viewport'tan uzunsa alt kısmı (fiyat + birincil düğme) görünmüyor
               ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
               yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
+          {!mobil && (
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)]">
             <section className="rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
@@ -255,9 +292,16 @@ export default function TutorProfile() {
               />
             )}
           </aside>
+          )}
 
           {/* ── Sol: akan içerik (kartsız, alt alta) ── */}
-          <div className="space-y-8 lg:col-start-1 lg:row-start-1">
+          <div
+            className={
+              mobil
+                ? "space-y-8 bg-white px-4 pb-8 pt-6"
+                : "space-y-8 lg:col-start-1 lg:row-start-1"
+            }
+          >
             {/* Verdiği Dersler — ilan başlığının üstünde */}
             {tutor.subjects && tutor.subjects.length > 0 && (
               <section>
@@ -370,6 +414,13 @@ export default function TutorProfile() {
           </div>
         </div>
       </div>
+
+      {/* Telefonda sayfanın TEK eylemi. Eğitmen KENDİ profiline bakıyorsa
+          şerit hiç basılmaz — karttaki düğmenin `!isOwnerTutor` kapısı burada
+          da geçerli. */}
+      {mobil && !isOwnerTutor && (
+        <DersTalepSeridi onTalep={() => setShowBookingModal(true)} />
+      )}
 
       {showBookingModal && tutor && (
         <BookingModal

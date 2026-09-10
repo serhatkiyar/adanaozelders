@@ -1,0 +1,5 @@
+# Mutasyon provasının çıktısı: kasıtlı BOZULMUŞ düzenin ekran görüntüleri.
+# Kapının yeşil tabanı (`kapi-*-390.png`, `mobil-tur.json`) izlenir, bozulmuş
+# hâli izlenmez — her provada değişir ve depoya kırık bir ekran yazar.
+*-negatif.png
+mobil-tur-negatif.json

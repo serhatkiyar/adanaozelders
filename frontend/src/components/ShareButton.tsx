@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ShareModal } from "./ShareModal";
+import { GORSEL_USTU_DAIRE } from "@/components/egitmen/gorselUstuDaire";
 
 interface ShareButtonProps {
   size?: "sm" | "md";
@@ -12,6 +13,13 @@ interface ShareButtonProps {
   withLabel?: boolean;
   /** Görsel üzerinde duran buzlu (frosted) stil — kart kapağı overlay'i için. */
   overlay?: boolean;
+  /**
+   * Fotoğrafın üstünde duran BEYAZ DAİRE varyantı — `BookmarkButton`daki aynı
+   * adlı propla ORTAK daireyi (`gorselUstuDaire.ts`) kullanır. `overlay`dan
+   * farkı zemin: orası zeminsiz beyaz çizgidir (kart kapağı), burası dolu
+   * daire (mobil detay ekranı hero'su).
+   */
+  gorselUstu?: boolean;
   className?: string;
 }
 
@@ -22,12 +30,13 @@ export function ShareButton({
   heading,
   withLabel = false,
   overlay = false,
+  gorselUstu = false,
   className = "",
 }: ShareButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const dim = size === "md" ? "h-9 w-9" : "h-8 w-8";
-  const iconSize = size === "md" ? "h-5 w-5" : "h-4 w-4";
+  const iconSize = gorselUstu ? "h-5 w-5" : size === "md" ? "h-5 w-5" : "h-4 w-4";
   // Zeminsiz overlay'de ikon tek başına durur → yanındaki kalp glifiyle aynı boy.
   const overlayGlyph = size === "md" ? "h-7 w-7" : "h-6 w-6";
 
@@ -107,7 +116,11 @@ export function ShareButton({
           onClick={open}
           // 8 Eyl 2026: daire ZEMİN kalktı — yanındaki kalple aynı karar.
           // İkincil iki eylem için gri dolu daireler fazla ağırlıktı.
-          className={`relative flex ${dim} shrink-0 items-center justify-center rounded-full text-slate-900 transition hover:bg-slate-100 active:scale-90 ${className}`}
+          className={
+            gorselUstu
+              ? `${GORSEL_USTU_DAIRE} ${className}`
+              : `relative flex ${dim} shrink-0 items-center justify-center rounded-full text-slate-900 transition hover:bg-slate-100 active:scale-90 ${className}`
+          }
         >
           {icon}
         </button>

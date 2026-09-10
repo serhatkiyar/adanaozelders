@@ -7,6 +7,22 @@ interface Props {
   children: ReactNode;
   /** Verilirse varsayılan tam ekran görünüm yerine bu çizilir. */
   fallback?: ReactNode;
+  /**
+   * Değeri değişince sınır KENDİNİ sıfırlar (hata varsa temizler).
+   *
+   * `key` yerine bunun olmasının sebebi ÖLÇÜLMÜŞ bir kusurdur, üslup tercihi
+   * değil: `RouteErrorBoundary` eskiden `key={location.pathname}` taşıyordu ve
+   * `key` değişimi React'e "bu ağacı SÖK, yenisini kur" demektir. Sınır tüm
+   * `<Routes>`u sardığı için HER gezinme uygulamanın tamamını remount
+   * ediyordu — üst bar, kabuk, her şey. Kategori şeridinden geçerken ekranın
+   * baştan çizilmesinin ve `KesifKabugu` gibi bir layout route'un HİÇBİR ETKİ
+   * ETMEMESİNİN sebebi buydu (gerçek Chrome'la ölçüldü, 10 Eyl 2026: kök
+   * düğüm, yığın ve `main` üçü de her geçişte YENİ nesneydi).
+   *
+   * Sıfırlama artık yalnız GERÇEKTEN hata varken yapılıyor; hatasız gezinmede
+   * ağaç yerinde kalır.
+   */
+  resetKey?: string;
 }
 
 interface State {
@@ -22,6 +38,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(): State {
     return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    // Yalnız hata VARKEN ve anahtar DEĞİŞMİŞKEN sıfırla. Koşulsuz
+    // `setState` sonsuz döngü olurdu; koşulsuz `key` ise yukarıdaki kusur.
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -69,7 +93,8 @@ export class ErrorBoundary extends Component<Props, State> {
  * ağaçtan düşüyordu: kullanıcıya kalan tek çare tam sayfa yenilemeydi ve
  * uygulama durumu (oturum önbelleği, açık ders penceresi) sıfırlanıyordu.
  * Bu sınır rota değişiminde kendini sıfırlar — kullanıcı gezinerek toparlanır,
- * sayfa yeniden yüklenmez.
+ * sayfa yeniden yüklenmez. Sıfırlama `resetKey` ile yapılır, `key` ile DEĞİL;
+ * gerekçesi `Props.resetKey` açıklamasında.
  */
 function RouteErrorFallback() {
   const navigate = useNavigate();
@@ -94,11 +119,9 @@ function RouteErrorFallback() {
 }
 
 export function RouteErrorBoundary({ children }: Props) {
-  // `key` rota değişince sınırı sıfırlar: hata veren sayfadan çıkınca
-  // uygulama kendiliğinden toparlanır.
   const location = useLocation();
   return (
-    <ErrorBoundary key={location.pathname} fallback={<RouteErrorFallback />}>
+    <ErrorBoundary resetKey={location.pathname} fallback={<RouteErrorFallback />}>
       {children}
     </ErrorBoundary>
   );

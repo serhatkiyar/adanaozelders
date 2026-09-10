@@ -84,7 +84,13 @@ export function LibraryBookmarkButton({
       aria-label={bookmarked ? "Favorilerden çıkar" : "Favorilere ekle"}
       title={bookmarked ? "Favorilerden çıkar" : "Favorilere ekle"}
       aria-pressed={bookmarked}
-      className="shrink-0 transition active:scale-90 hover:scale-110 disabled:opacity-50"
+      // Telefonda `p-2`: ikon 28px, dokunma hedefi 44px olur (proje eşiği).
+      // `BookmarkButton`daki AYNI telafi — orada vardı, burada YOKTU ve
+      // gerçek Chrome turu bunu 10 Eyl 2026'da 28x28 olarak ölçtü (tek
+      // sayfada 88 küçük hedef). `LibraryCard` konumunu zaten
+      // `md:right-3 md:top-3` ile telafi ediyordu; düzeltmenin yalnız yarısı
+      // uygulanmış, düğme tarafı unutulmuştu.
+      className="shrink-0 p-2 transition active:scale-90 hover:scale-110 disabled:opacity-50 md:p-0"
     >
       {/* Airbnb tarzı kalp: dolgu (pasif: yarı saydam siyah / aktif: rose) +
           beyaz kenar + görsel üzerinde okunurluk için gölge.

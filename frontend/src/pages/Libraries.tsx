@@ -1,31 +1,25 @@
-import { type CSSProperties, useMemo, useState, useEffect } from "react";
-import {Link} from "react-router-dom";
+import { type CSSProperties, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
 
   limitForPage,
   nextPageSearch,
 
 } from "@/lib/pagination";
-import { DashboardShell } from "@/components/DashboardShell";
-import { PublicShell } from "@/components/PublicShell";
-import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
 import { useLibrarySearch } from "@/hooks/useLibraries";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useDebounce } from "@/hooks/useDebounce";
-import { useAuthStore } from "@/store/authStore";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import { useSurfaceStore } from "@/store/surfaceStore";
 import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
-import { ROLE_IDS } from "@/types";
-import { CategoryBar } from "@/components/CategoryBar";
-import { CompactSearch, KutuphaneArama } from "@/components/HeroSearch";
 import { LibraryRow } from "@/components/VitrinSeridi";
-import { type YerSecimi } from "@/lib/yerArama";
+import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
+import { useGeriDonus } from "@/hooks/useGeriDonus";
+import { ROUTES } from "@/lib/routes";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
@@ -33,14 +27,17 @@ import type { LibrarySearchParams } from "@/api/libraries";
 type ViewMode = "list" | "map";
 type LibrarySort = "rating" | "distance" | "";
 
-const SORT_OPTIONS: { value: LibrarySort; label: string }[] = [
-  { value: "", label: "Önerilen" },
-  { value: "rating", label: "★ Puan" },
-  { value: "distance", label: "📍 Yakınımda" },
+/* `label` masaüstü açılır menüsü için ("Sıralama:" öneki menü kapalıyken ne
+   seçildiğini söyler), `kisa` telefon şeridindeki çip için — orada yer dar ve
+   önek her çipte tekrar ederdi. Eğitmen ekranındaki ayrımın aynısı. */
+const SORT_OPTIONS: { value: LibrarySort; label: string; kisa: string }[] = [
+  { value: "", label: "Sıralama: Önerilen", kisa: "Önerilen" },
+  /* "Sıralama:" öneki menü KAPALIYKEN ne seçildiğini söyler — eğitmen
+     ekranındaki kuralın aynısı. Emoji YOK: her platformda başka çiziliyor ve
+     kendi rengini getiriyor. */
+  { value: "rating", label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
+  { value: "distance", label: "Sıralama: Yakınımda", kisa: "Yakınımda" },
 ];
-
-// Alan başlığı ("Kütüphane") ne aradığını söylüyor; ipucu yalnız ÖRNEK verir.
-const SEARCH_PLACEHOLDER = "Kütüphane adı";
 
 const FilterIconSvg = () => (
   <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
@@ -51,15 +48,17 @@ const FilterIconSvg = () => (
 /** Sayfa başına kütüphane sayısı. */
 const PER_PAGE = 30;
 
+/* ────────────────────────────────────────────────────────────────────────────
+   KÜTÜPHANE LİSTESİ — artık yalnız GÖVDE.
+
+   Üst bar, kategori şeridi, arama hapı ve tam ekran arama yüzeyi
+   `components/kesif/KesifKabugu.tsx`e taşındı (10 Eyl 2026). Bu sayfa kendi
+   kabuğunu basarken `/` ile buradaki her geçiş üst barı söküp yeniden
+   kuruyordu; gerçek Chrome'la ölçüldü (tıklamadan önce ve sonra `header`
+   FARKLI DOM nesneleriydi). Serbest metin ve yer artık kabuktaki hapta yaşıyor
+   ve adrese yazılıyor; bu dosya onları YALNIZCA adresten OKUR.
+   ──────────────────────────────────────────────────────────────────────── */
 export default function Libraries() {
-  const token = useAuthStore((s) => s.token);
-  const { data: currentUser } = useCurrentUser();
-  const navItems =
-    currentUser?.role_id === ROLE_IDS.TUTOR
-      ? TUTOR_NAV
-      : currentUser?.role_id === ROLE_IDS.CLIENT
-        ? UYE_NAV
-        : undefined;
 
   /*
    * URL ↔ state artık `useAramaDurumu` üzerinden (Paket 2).
@@ -75,20 +74,19 @@ export default function Libraries() {
   const { degerler, ayarla, filtreli, params: searchParams } = useAramaDurumu(KUTUPHANE_ARAMA);
   const { konum, sayfa: page } = degerler;
   const district = konum.ilce;
-  const yer = konum.yer;
   const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
-  const setYer = (v: YerSecimi | null) =>
-    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
 
-  // Serbest metin YEREL kalır: her tuş vuruşunda adres yazmak geçmişi
-  // kirletir. Debounce sonrası `replace` ile tek girdi olarak yazılır.
-  const [q, setQ] = useState(degerler.q);
   const [view, setView] = useState<ViewMode>("list");
-
-  // Dış navigasyon (geri/ileri, paylaşılan link) kutuyu günceller.
-  useEffect(() => {
-    setQ((onceki: string) => (degerler.q !== onceki ? degerler.q : onceki));
-  }, [degerler.q]);
+  const mobil = useMobil();
+  /* Geri: geçmiş varsa bir adım geri, YOKSA filtresiz kütüphane listesine.
+     Paylaşılan bir `?ilce=` bağlantısıyla gelen kullanıcıda `navigate(-1)`
+     siteden ÇIKARIYOR — aynı tuzak eğitmen profilinde ölçülmüştü. */
+  const geriDon = useGeriDonus(ROUTES.libraries);
+  /* Telefon başlığındaki hap adımlı arama yüzeyini açar. Yüzey kendi kendine
+     yeten bir bileşen (`MobilAramaAkisi`); eğitmen sonuç ekranı da onu böyle
+     açıyor. Kabuktaki kopyası bu ekranda gizli üst barla birlikte erişilemez
+     olduğu için sayfa kendi örneğini çiziyor. */
+  const [aramaAcik, setAramaAcik] = useState(false);
 
   /*
    * Olanaklar ve sıralama ADRESTE (9 Eyl 2026).
@@ -111,25 +109,6 @@ export default function Libraries() {
   // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
   // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
   const limit = limitForPage(page, PER_PAGE);
-  // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
-  // arama) yerinde açar — eğitmen aramasındaki davranışın aynısı.
-  const [searchOpen, setSearchOpen] = useState(false);
-
-  const debouncedQ = useDebounce(q);
-  const setSurface = useSurfaceStore((s) => s.setSurface);
-
-  // /hesabim bağlama duyarlı navbar: son yüzey = keşif.
-  useEffect(() => {
-    setSurface("discover");
-  }, [setSurface]);
-
-  // Debounce'lu metin adrese yazılır — `replace`, çünkü her harf ayrı bir
-  // geçmiş girdisi olsaydı geri tuşu harf harf geri alırdı.
-  useEffect(() => {
-    if (debouncedQ.trim() !== degerler.q) ayarla({ q: debouncedQ }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedQ]);
-
   // "Yakınımda" sıralaması konum ister; reddedilirse sıralamayı geri al.
   const requestNearMe = (onFail?: () => void) => {
     if (!navigator.geolocation) {
@@ -175,10 +154,10 @@ export default function Libraries() {
   const params = useMemo<LibrarySearchParams>(
     () =>
       kutuphaneIstegi(
-        { ...degerler, q: debouncedQ },
+        degerler,
         { limit, offset: 0, konumum: nearMe }
       ),
-    [degerler, debouncedQ, limit, nearMe]
+    [degerler, limit, nearMe]
   );
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
@@ -194,64 +173,34 @@ export default function Libraries() {
     view === "map"
   );
 
-  // Geniş aramada arama butonuna basınca (q/district zaten canlı state'i
-  // sürdüğü için) yalnızca geniş paneli kapat.
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearchOpen(false);
-  };
 
-  /* ── Navbar ortası ──
-     Kapalı: kompakt arama pill'i (tıklayınca geniş hali açar).
-     Açık:  kategori çubuğu (sekmeler başka sayfaya götürür). */
-  const navCenter = (
-    <div key={searchOpen ? "cats" : "compact"} className="w-full animate-in fade-in duration-300">
-      {searchOpen ? (
-        <CategoryBar active="kutuphaneler" />
-      ) : (
-        <div className="flex w-full justify-center">
-          <CompactSearch
-            active="kutuphaneler"
-            placeholder={SEARCH_PLACEHOLDER}
-            q={q}
-            district={district}
-            onOpen={() => setSearchOpen(true)}
-          />
-        </div>
-      )}
-    </div>
-  );
-
-  /* ── Navbar altı ──
-     Açık: büyük arama hapı. Kapalı: sıralama + filtre chip çubuğu. */
-  const bigSearchRow = (
-    <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      {/* Ana sayfadaki kütüphane hapının AYNISI (9 Eyl 2026).
-          `KutuphaneArama` ana sayfada yaşıyordu; sekmeler gerçek gezinmeye
-          dönünce orası tek vitrin oldu ve hap buraya taşındı. Üçüncü bir hap
-          tasarımı (`BigSearch`) kalmadı — ikizlik nöbetçisi
-          (`__guards__/aramaHapiIkizligi.test.ts`) artık bu dosyayı ölçüyor. */}
-      <KutuphaneArama
-        q={q}
-        setQ={setQ}
-        yer={yer}
-        setYer={setYer}
-        onSubmit={submitSearch}
-      />
-    </div>
-  );
-
+  /* Filtre şeridi — üst barın PARÇASI DEĞİL, içeriğin ilk yapışkan satırı
+     (10 Eyl 2026). Şerit eskiden navbar'ın `bottom` yuvasındaydı; o yuva artık
+     keşif kabuğunun (arama hapının) ve şerit kategoriye ÖZEL olduğu için
+     kabuğa çıkarılamıyor — kabuğa üç ayrı filtre modelini öğretmek demekti. */
   const filterBar = (
     <div className="flex justify-center w-full">
+      {/* `justify-center` + `overflow-x-auto` telefonda ŞERİDİ İKİ UCUNDAN
+          KIRPIYORDU: içerik kaptan genişse ortalama taşmayı iki yana eşit
+          dağıtır, yani şerit ortasından açılır — soldaki "Filtreler" düğmesi
+          yarım görünüyordu (ölçüldü, 11 Eyl 2026). Telefonda soldan başlar
+          (eğitmen sonuç ekranındaki çip şeridi gibi), sığdığı genişlikten
+          itibaren yine ortalanır. */}
       <div
-        className="flex items-center justify-center gap-2 overflow-x-auto px-6 pb-2.5 pt-3"
+        className="flex items-center justify-start gap-2 overflow-x-auto px-4 pb-2.5 pt-3 md:justify-center md:px-6"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as CSSProperties}
       >
       {/* Filtreler (olanaklar) butonu */}
       <button
         onClick={() => setShowFilters(true)}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
-          amenities.length > 0
+        /* `min-h-[44px] md:min-h-0`: şerit telefonda gövdeye indi ve gerçek
+           Chrome turu çipleri 34px ölçtü (eşik 44). Masaüstünde şerit
+           bugünkü inceliğini korur — büyüyen yalnız parmak alanı. */
+        /* Dolgu kuralı eğitmen ekranıyla AYNI: yalnız "olanaklar" değil,
+           aramada etkin BİR filtre varsa düğme dolu çizilir. Eskiden ilçeye
+           göre filtrelenmiş bir listede bile boş görünüyordu. */
+        className={`flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
+          filtreli
             ? "border-slate-900 bg-slate-900 text-white "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
@@ -267,20 +216,40 @@ export default function Libraries() {
 
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
-      {/* Sıralama chip'leri */}
-      {SORT_OPTIONS.map((opt) => (
-        <button
-          key={opt.value || "default"}
-          onClick={() => handleSortChange(opt.value)}
-          className={`shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-            sort === opt.value
+      {/* Sıralama AÇILIR MENÜ — eğitmen sonuç ekranıyla birebir aynı bileşen
+          dili (11 Eyl 2026). Burada üç ayrı çip vardı: aynı şeridin içinde
+          "Filtreler" bir düğme, sıralama üç çip, aktif filtreler yine çip
+          oluyordu — üç ayrı anlam tek bir görsel dille yazılınca hangisinin ne
+          yaptığı okunmuyordu. Sıralama tek bir yerden seçilen TEK değerdir,
+          açılır menü tam olarak bunu söyler ve şeridin genişliğini de üç
+          çipten tek kutuya indirir. */}
+      <div className="relative shrink-0">
+        <select
+          value={sort}
+          onChange={(e) => handleSortChange(e.target.value as LibrarySort)}
+          aria-label="Sıralama"
+          className={`min-h-[44px] appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 md:min-h-0 ${
+            sort
               ? "border-slate-900 bg-slate-900 text-white "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
-          {opt.label}
-        </button>
-      ))}
+          {SORT_OPTIONS.map((opt) => (
+            <option key={opt.value || "default"} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <div
+          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
+            sort ? "text-white " : "text-slate-400 "
+          }`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </div>
+      </div>
 
       {/* Aktif ilçe chip'leri */}
       {district.map((d) => (
@@ -310,59 +279,157 @@ export default function Libraries() {
     </div>
   );
 
-  const navBottom = searchOpen ? bigSearchRow : filterBar;
+  /* ── TELEFON BAŞLIĞI — eğitmen sonuç ekranıyla AYNI bileşen ──
+     Kullanıcı kararı, 11 Eyl 2026: *"arama çubuğunun altında direkt filtreler
+     olması gerekiyor, burada tekrar kategoriler gösteriyor… geri çıkma butonu
+     yok arama çubuğunun solunda ve filtre butonu da sağında olmalı."*
+
+     Kabuğun telefon üst barı (hap + kategori şeridi) bu ekranda GİZLENİR
+     (`mobilUstGizle`) ve sayfa kendi başlığını çizer. Çipler ve sıralama
+     `AramaMobilBaslik`in kendi şeridinde; masaüstündeki geniş filtre şeridi
+     `md:` altında çizilmez, ikisi aynı anda görünmez. */
+  const mobilCipler: FiltreCipi[] = [
+    ...district.map((d) => ({
+      id: `ilce-${d}`,
+      etiket: `${d} ✕`,
+      aktif: true,
+      onClick: () => setDistrict(district.filter((x) => x !== d)),
+    })),
+    ...amenities.map((a) => ({
+      id: `olanak-${a}`,
+      etiket: `${amenityLabel(a)} ✕`,
+      aktif: true,
+      onClick: () => toggleAmenity(a),
+    })),
+  ];
+
+  const mobilBaslik = (
+    <div
+      className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
+      style={{ top: "var(--yapiskan-ust, 0px)" }}
+    >
+      <AramaMobilBaslik
+        baslik={degerler.q || "Kütüphane ara"}
+        ozet={district.length ? district.join(", ") : "Tüm Adana"}
+        onHap={() => setAramaAcik(true)}
+        onGeri={geriDon}
+        onFiltre={() => setShowFilters(true)}
+        filtreAktif={amenities.length > 0}
+        siralama={{
+          deger: sort,
+          secenekler: SORT_OPTIONS.map((o) => ({ value: o.value, kisa: o.kisa })),
+          onChange: (v) => handleSortChange(v as LibrarySort),
+          varsayilan: "",
+        }}
+        cipler={mobilCipler}
+        filtreIkonu={<FilterIconSvg />}
+      />
+    </div>
+  );
 
   const content = (
     <>
-      {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
-      {searchOpen && (
+      {/* FİLTRE ŞERİDİ — YALNIZ ARAMA/FİLTRE VARKEN (kullanıcı kararı,
+          10 Eyl 2026).
+
+          > *"filtre işlemi arama yapılınca olur, kütüphane kategorisine
+          >  geçince değil."*
+
+          Kategori değiştirmek bir arama DEĞİLDİR. Ana sayfadan Kütüphaneler'e
+          geçen kişi keşfe gelmiştir; önüne sıralama ve olanak filtreleri
+          koymak, sormadığı bir sorunun cevabını göstermektir. Şerit bir
+          arama/filtre adreste yaşadığı anda belirir.
+
+          Şerit üst barın PARÇASI DEĞİL, içeriğin ilk yapışkan satırı: navbar'ın
+          `bottom` yuvasını keşif kabuğu (arama hapı) devraldı, ayrıca şeridi o
+          yığına koymak üst barı 136'dan ~181 piksele çıkarıp `/` ile ikizliği
+          bozuyordu. Konumunu `--yapiskan-ust`tan alır; zemin ve alt çizgi
+          `PublicNavbar` ile bilerek aynı — göz onu üst barın devamı okur. */}
+      {filtreli && mobil && mobilBaslik}
+      {filtreli && (
         <div
-          className="fixed inset-0 z-30 bg-slate-900/10 animate-in fade-in duration-200"
-          onClick={() => setSearchOpen(false)}
-        />
+          className="-mx-4 mb-3 hidden border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 sm:-mx-6 md:block"
+          style={{ top: "var(--yapiskan-ust, 0px)" }}
+        >
+          {filterBar}
+        </div>
       )}
+      {/* Başlıktaki hapın açtığı adımlı arama yüzeyi. */}
+      {mobil && (
+        <MobilAramaAkisi acik={aramaAcik} onKapat={() => setAramaAcik(false)} />
+      )}
+      <Seo
+        title="Kütüphaneler ve Etüt Merkezleri"
+        description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet, değerlendirmeler, konum ve çalışma saatleriyle."
+      />
+
+      {/* KEŞİF ŞERİTLERİ — ana sayfadaki eğitmen vitriniyle AYNI ÖLÇEK.
+          Şeritler `max-w-[1100px]` kabının ve `-mx-4` negatif margin'inin
+          DIŞINDA durur; ikisi de kartı küçültüp/büyütüp ana sayfayla ayrışmaya
+          yol açıyordu.
+
+          ÖLÇÜLDÜ (gerçek Chrome, 10 Eyl 2026 — kullanıcı: *"kütüphanelerde
+          farklı ölçek kullanılıyor, eğitmenlerde farklı"*):
+
+            telefon   eğitmen kartı 157px · kütüphane kartı 173px
+            masaüstü  eğitmen kartı 218px · kütüphane kartı 204px
+
+          Kart sınıfı (`VITRIN_KART`) ve boşluklar İKİSİNDE DE AYNIYDI; ayrışan
+          şey KAPTI. Genişlik kaptan yüzde hesabıyla türediği için farklı taban
+          = farklı kart. `VitrinSeridi` zaten kendi `max-w-[1216px] px-4`ünü
+          uyguluyor; sayfanın ikinci bir kap koymaması yeter.
+
+          YALNIZ FİLTRE YOKKEN görünür (kullanıcı kararı): Seyhan'a
+          filtrelenmiş bir listenin üstünde "Çukurova Kütüphaneleri" şeridi hem
+          çelişki hem de her tuş vuruşunda dört ek sorgu demek. */}
+      {!filtreli && (
+        <div className="space-y-2">
+          {["Çukurova", "Seyhan", "Yüreğir", "Sarıçam"].map((ilce) => (
+            <LibraryRow
+              key={ilce}
+              heading={`${ilce} Kütüphaneleri`}
+              params={{ limit: 20, offset: 0, district: [ilce] }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="mx-auto max-w-[1100px] space-y-5">
-        <Seo
-          title="Kütüphaneler ve Etüt Merkezleri"
-          description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet, değerlendirmeler, konum ve çalışma saatleriyle."
-        />
 
-        {/* KEŞİF ŞERİTLERİ — ana sayfadan taşındı (9 Eyl 2026).
-            Sekmeler gerçek gezinmeye dönünce ana sayfa tek vitrin oldu ve
-            ilçe şeritleri buraya geldi.
-
-            YALNIZ FİLTRE YOKKEN görünür (kullanıcı kararı): Seyhan'a
-            filtrelenmiş bir listenin üstünde "Çukurova Kütüphaneleri" şeridi
-            hem çelişki hem de her tuş vuruşunda dört ek sorgu demek.
-            `filtreli`, sayfayı filtre saymaz — 2. sayfaya geçmek şeritleri
-            kaybettirmez. */}
-        {!filtreli && (
-          <div className="-mx-4 space-y-2 sm:-mx-6">
-            {["Çukurova", "Seyhan", "Yüreğir", "Sarıçam"].map((ilce) => (
-              <LibraryRow
-                key={ilce}
-                heading={`${ilce} Kütüphaneleri`}
-                params={{ limit: 20, offset: 0, district: [ilce] }}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* ── Liste/Harita geçişi ── */}
-        <div className="flex flex-wrap items-end justify-end gap-3">
-          {/* Liste / Harita geçişi */}
-          <div className="flex rounded-full bg-slate-100 p-1 ">
+        {/* ── ARAMA SONUÇLARI — yalnız arama/filtre varken ──
+            Filtre yokken bu blok HİÇ çizilmez: kategori değişimi ana sayfanın
+            eğitmen vitrini gibi bir KEŞİF yüzeyi açar, arama sonucu değil.
+            Liste/Harita anahtarı, sayaç, ızgara ve sayfalama sonuca aittir;
+            ortada sonuç yokken hepsi anlamsızdır. */}
+        {filtreli && (
+        <>
+        {/* ── Sonuç satırı: solda sayaç, sağda Liste/Harita ──
+            Anahtar eskiden TEK BAŞINA sağa yaslı bir satırdaydı: 64px boş yer
+            yiyor, hiçbir şeye tutunmuyor ve ilk kartı katlamanın altına
+            itiyordu (eğitmen sonuç ekranında böyle bir satır yok). Sayaç
+            aşağıdan buraya çıktı; ikisi tek satırda dengeleniyor. */}
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 truncate text-xs text-slate-400">
+            {view === "list" && data && data.length > 0
+              ? `${data.length} kütüphane listeleniyor`
+              : ""}
+            {isFetching && <span className="animate-pulse"> Güncelleniyor…</span>}
+          </p>
+          <div className="flex shrink-0 rounded-full bg-slate-100 p-1 ">
             {(["list", "map"] as ViewMode[]).map((m) => (
               <button
                 key={m}
                 onClick={() => setView(m)}
-                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                /* `min-h-[44px]` telefonda: gerçek Chrome turu bu iki
+                   düğmeyi 32px ölçtü. `md:min-h-0` ile masaüstünde şerit
+                   bugünkü inceliğini korur — büyüyen yalnız parmak alanı. */
+                className={`min-h-[44px] rounded-full px-4 py-1.5 text-sm font-semibold transition md:min-h-0 ${
                   view === m
                     ? "bg-white text-marka-metin shadow-sm "
                     : "text-slate-500 hover:text-slate-700 "
                 }`}
               >
-                {m === "list" ? "☰ Liste" : "🗺️ Harita"}
+                {m === "list" ? "Liste" : "Harita"}
               </button>
             ))}
           </div>
@@ -401,11 +468,9 @@ export default function Libraries() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>{data.length} kütüphane listeleniyor</span>
-              {isFetching && <span className="animate-pulse">Güncelleniyor…</span>}
-            </div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Izgara boşluğu eğitmen sonuç ekranıyla AYNI (`gap-8`);
+                `gap-6`ydı ve iki liste yan yana konunca ayrışıyordu. */}
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {data.map((lib) => (
                 <LibraryCard key={lib.id} library={lib} />
               ))}
@@ -416,13 +481,15 @@ export default function Libraries() {
                     sekmede açabilsin. Tıklama SPA içinde kalır. */}
                 <Link
                   to={nextPageSearch(searchParams, page)}
-                  className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft disabled:opacity-60 "
+                  className="inline-flex min-h-[44px] items-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft disabled:opacity-60 "
                 >
                   {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                 </Link>
               </div>
             )}
           </>
+        )}
+        </>
         )}
 
         {/* ── Filtre modalı (olanaklar) ── */}
@@ -489,13 +556,5 @@ export default function Libraries() {
     </>
   );
 
-  return token ? (
-    <DashboardShell title="Kütüphaneler" navItems={navItems} center={navCenter} bottom={navBottom} sekmeler={null}>
-      {content}
-    </DashboardShell>
-  ) : (
-    <PublicShell center={navCenter} bottom={navBottom}>
-      {content}
-    </PublicShell>
-  );
+  return content;
 }

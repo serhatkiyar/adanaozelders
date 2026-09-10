@@ -76,11 +76,16 @@ export function SiteFooter() {
   // Telefonda `py-1.5` + `min-h-[36px]`: bu linkler 20px yükseklikte ve 10px
   // aralıkla duruyordu, parmakla yanlış satıra basmak kolaydı. Masaüstünde
   // ölçü değişmez.
-  const linkCls = "min-h-[44px] py-2.5 transition hover:text-slate-900 md:min-h-0 md:py-0 ";
-  // Başlıklar TELEFONDA GİZLİ: beş linki iki başlıkla bölmek tek sütunda
-  // bilgi vermeden ~50px yiyordu. Masaüstünde sütunları ayıran şey onlar,
-  // orada duruyor.
-  const baslikCls = "hidden text-sm font-semibold text-slate-900 sm:block";
+  const linkCls = "min-h-[44px] py-2.5 font-light transition hover:text-slate-900 md:min-h-0 md:py-0 ";
+  // Başlıklar TELEFONDA DA GÖRÜNÜR (kullanıcı kararı, 11 Eyl 2026). 9 Eyl'de
+  // gizlenmişlerdi çünkü o gün footer TEK SÜTUNDU ve başlıklar yer yiyordu;
+  // aynı turda düzen iki sütuna geçince gerekçe düştü ama başlıklar geri
+  // gelmedi — sonuç: sütunları olan ama neyin nesi olduğu yazmayan bir liste.
+  // Şimdi telefonda da tek sütun + başlık: gruplama görünür.
+  // Telefonda başlığın altındaki boşluk YOK: bağlantı satırları zaten 44px
+  // (dokunma hedefi tabanı) ve kendi nefeslerini taşıyorlar; başlığa ayrıca
+  // boşluk vermek listeyi gereksiz uzatıyordu.
+  const baslikCls = "text-sm font-semibold text-slate-900 sm:mb-0";
 
   // 29 Ağu (3. tur, kullanıcı kararı): footer'da SEKİZ sözleşme DEĞİL,
   // Amazon paritesinde ÜÇ link durur (Kullanım Koşulları · Gizlilik · Çerez).
@@ -118,7 +123,15 @@ export function SiteFooter() {
         // (proje eşiği); düşen tek şey görsel ağırlık: zemin kalkar, yerine
         // saç-teli çizgi gelir, yazı küçülür. Masaüstünde bugünkü şerit aynen
         // durur — orada alt çubuk yok ve sayfa uzun.
-        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 border-t border-slate-100 text-center text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 md:block md:border-0 md:bg-slate-100 md:py-3.5 md:text-sm md:text-slate-600 md:hover:bg-slate-200"
+        /* Çizgi ALTTA, üstte DEĞİL (ölçüldü, 10 Eyl 2026): `footer`ın kendi
+           `border-t`si zaten bu düğmenin bir piksel üstünde duruyor ve ikisi
+           üst üste binince telefonda çift saç-teli görünüyordu (551px ve
+           552px). Alta alınınca çizgi tek kalır ve asıl işini yapar: "Başa
+           dön" satırını aşağıdaki bağlantı bloğundan ayırmak.
+
+           Renk masaüstüyle AYNI (`slate-600`): telefonda `slate-500`di, yani
+           aynı düğme iki bantta iki farklı tonda çıkıyordu. */
+        className="flex min-h-[44px] w-full items-center justify-center gap-1.5 bg-slate-100 text-center text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200 hover:text-slate-900 md:block md:py-3.5 md:text-sm"
       >
         <svg
           className="h-3.5 w-3.5 md:hidden"
@@ -135,22 +148,23 @@ export function SiteFooter() {
       <div className="mx-auto max-w-[1216px] px-6 py-5 md:py-12">
         <nav
           aria-label="Site bağlantıları"
-          /* Telefonda BAŞLIKSIZ İKİ SÜTUN (kullanıcı kararı 9 Eyl 2026 +
-             ölçüm düzeltmesi). Önce tek sütun denendi ve ÖLÇÜLDÜ: footer 574
-             → 602px, yani UZADI — beş link tek sütunda beş satır demek. Aynı
-             sadelik (başlık yok) iki sütunda üç satıra iniyor.
+          /* Telefonda TEK SÜTUN + BAŞLIK (kullanıcı kararı, 11 Eyl 2026).
+             Kullanıcı: *"mobilde birkaç yerde gördüğümde sütunlar ikişerli
+             değildi, bizde iki sütun birden gösteriliyor ve sütun başlıkları
+             da yok."*
 
-             "Güvenli Ödeme" hücresi telefonda TAM GENİŞLİK (`col-span-2`):
-             iki sütunlu ızgarada üçüncü hücre olarak kalsaydı tek başına
-             ikinci satıra düşüp sağını boş bırakırdı — ilk sürümün kusuru
-             tam olarak buydu. Ödeme rozeti zaten bir güven işaretidir, bir
-             sütuna sıkışması için sebep yok. */
-          className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8"
+             9 Eyl'de iki sütun seçilmişti çünkü tek sütun footer'ı 574 →
+             602px uzatıyordu. O ölçüm hâlâ doğru; bu bir SADELIK/UZUNLUK
+             takasıdır ve kullanıcı sadeliği seçti. Yan yana iki başlıksız
+             sütun, hangi bağlantının hangi gruba ait olduğunu gizliyordu.
+
+             Masaüstü DEĞİŞMEDİ: `sm:` üstünde hâlâ üç sütun. */
+          className="grid grid-cols-1 gap-y-0 divide-y divide-slate-100 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8 sm:divide-y-0"
         >
             {/* 31 Ağu (kullanıcı kararları): Destek EN SOLDA, sonra Hakkımızda.
                 Destek linkleri — mesafeli satışta erişilebilir iletişim
                 kanalı zorunlu. */}
-            <div className="sm:space-y-2.5">
+            <div className="pb-2 sm:space-y-2.5 sm:pb-0">
               <p className={baslikCls}>Destek</p>
               {/* Kısa "İletişim" iki uzun satır arasında güdük kalıyordu — en üste. */}
               <Link to={ROUTES.contact} className={`block ${linkCls}`}>
@@ -164,7 +178,7 @@ export function SiteFooter() {
               </Link>
             </div>
 
-            <div className="sm:space-y-2.5">
+            <div className="py-2 sm:space-y-2.5 sm:py-0">
               <p className={baslikCls}>Hakkımızda</p>
               {hakkimizda && (
                 <Link to={hakkimizda.path} className={`block ${linkCls}`}>
@@ -182,7 +196,7 @@ export function SiteFooter() {
                 sütununda (iyzico bandı: iyzico+Visa+MC+Amex tek dosyada). */}
             {/* Ödeme rozeti bir GÜVEN İŞARETİdir; telefonda bir sütunun
                 içinde değil, linklerin altında kendi satırında durur. */}
-            <div className="col-span-2 pt-2 sm:col-span-1 sm:space-y-2.5 sm:pt-0">
+            <div className="pt-3 sm:col-span-1 sm:space-y-2.5 sm:pt-0">
               <p className={baslikCls}>Güvenli Ödeme</p>
               <img
                 src="/odeme/iyzico-logo-band.svg"

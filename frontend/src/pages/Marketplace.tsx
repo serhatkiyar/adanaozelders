@@ -16,6 +16,7 @@ import { ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
@@ -116,6 +117,7 @@ export default function Marketplace() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
   const mobil = useMobil();
   const navigate = useNavigate();
   const [pricePopoverOpen, setPricePopoverOpen] = useState(false);
@@ -538,7 +540,7 @@ export default function Marketplace() {
             : "Eğitmen ara")
       }
       ozet={mobilAramaOzeti || "Tüm Adana"}
-      onHap={() => setSearchOpen(true)}
+      onHap={() => setMobilAramaAcik(true)}
       onGeri={() => navigate(-1)}
       onFiltre={() => setShowFilters(true)}
       filtreAktif={hasModalFilters}
@@ -570,6 +572,16 @@ export default function Marketplace() {
           onClick={() => setSearchOpen(false)}
         />
       )}
+      {/* Telefonda arama çubuğuna dokununca adımlı arama yüzeyi (kullanıcı
+          kararı, 11 Eyl 2026). Önceden `searchOpen` telefonda yalnız ekranı
+          karartıyordu: geniş hap `center`/`bottom` yuvalarına basılıyor, o
+          yuvalar da telefonda hiç çizilmiyor — yani dokunuşun görünür
+          karşılığı YOKTU. */}
+      <MobilAramaAkisi
+        acik={mobilAramaAcik}
+        onKapat={() => setMobilAramaAcik(false)}
+      />
+
       <div className="mx-auto max-w-[1050px] pt-4">
         {/* ── Sonuçlar ── */}
         <div>

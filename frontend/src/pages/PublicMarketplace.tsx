@@ -15,6 +15,7 @@ import { TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { type YerSecimi } from "@/lib/yerArama";
 import { type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
@@ -86,6 +87,7 @@ export default function PublicMarketplace() {
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
   const mobil = useMobil();
   const navigate = useNavigate();
 
@@ -342,7 +344,7 @@ export default function PublicMarketplace() {
             : "Eğitmen ara")
       }
       ozet={mobilAramaOzeti || "Tüm Adana"}
-      onHap={() => setSearchOpen(true)}
+      onHap={() => setMobilAramaAcik(true)}
       onGeri={() => navigate(-1)}
       onFiltre={() => setShowFilters(true)}
       filtreAktif={hasActiveFilters}
@@ -372,6 +374,16 @@ export default function PublicMarketplace() {
           onClick={() => setSearchOpen(false)}
         />
       )}
+      {/* Telefonda arama çubuğuna dokununca adımlı arama yüzeyi (kullanıcı
+          kararı, 11 Eyl 2026). Önceden `searchOpen` telefonda yalnız ekranı
+          karartıyordu: geniş hap `center`/`bottom` yuvalarına basılıyor, o
+          yuvalar da telefonda hiç çizilmiyor — yani dokunuşun görünür
+          karşılığı YOKTU. */}
+      <MobilAramaAkisi
+        acik={mobilAramaAcik}
+        onKapat={() => setMobilAramaAcik(false)}
+      />
+
       <div className="mx-auto max-w-[1050px] space-y-4 pt-4">
         {/*
           * KAYIT BANDI SÖKÜLDÜ (kullanıcı kararı, 9 Eyl 2026 · ÜK-10).

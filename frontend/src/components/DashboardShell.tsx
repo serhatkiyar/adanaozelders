@@ -70,6 +70,51 @@ interface DashboardShellProps {
    * gezinmesini taşıyan (geri düğmesi + alt sekme çubuğu) yüzeyler açar.
    */
   mobilSade?: boolean;
+  /**
+   * MOBİL DETAY EKRANI — `PublicShell`deki aynı adlı propla AYNI sözleşme.
+   * `<md` bandında üst barı ve alt sekme çubuğunu çizmez, `main` padding'ini
+   * sıfırlar. Rotanın iki kabuğu (anonim/girişli) ayrışmasın diye ikisinde de
+   * var: eğitmen profili girişte `DashboardShell`e düşüyor.
+   */
+  mobilDetayEkrani?: boolean;
+  /**
+   * Telefonda YALNIZ üst barı gizle; alt sekme çubuğu ve altbilgi kalır.
+   *
+   * `mobilDetayEkrani`den farkı bu: orada ekranı tek bir ilan doldurur ve alt
+   * çubuk da kalkar. Burada sayfa hâlâ bir listedir, yalnız KENDİ başlığını
+   * çiziyordur — kütüphane sonuç ekranı böyle (kullanıcı kararı, 11 Eyl
+   * 2026): eğitmen sonuç ekranındaki gibi geri · hap · filtre başlığı ve
+   * hemen altında filtre şeridi. Kabuğun hapı + kategori şeridi orada ikinci
+   * bir başlık olurdu.
+   *
+   * Üst bar gizlenince `--yapiskan-ust` kendiliğinden 0 olur (yükseklik
+   * ölçülen düğümden gelir), yani sayfanın kendi yapışkan başlığı `top: 0`a
+   * oturur.
+   */
+  mobilUstGizle?: boolean;
+  /**
+   * Üst barın ALT SATIRI (arama hapı) açık mı?
+   *
+   * `true` (varsayılan) bugünkü davranıştır: satır her zaman açık. Ana sayfa
+   * bunu scroll'a bağlı olarak kapatıyor (kaydırınca hap kompakta iner) ama o
+   * mantık bugün `Landing`in KENDİ navbar kopyasında yaşıyor. Prop, o
+   * davranışın ortak kabuğa taşınabilmesi için var; geçilmediğinde hiçbir
+   * yüzeyde bir şey değişmez.
+   */
+  expanded?: boolean;
+  /**
+   * KEŞİF YÜZEYİ RİTMİ — vitrin şeritleri üst bara YAKIN başlar.
+   *
+   * `true` iken `main` yatay padding'ini korur ama üstte yalnız 8px bırakır;
+   * dikey ritmi şeritlerin kendisi taşır. Ölçülmüş kusur (10 Eyl 2026,
+   * kullanıcı: *"kütüphaneler vitrini daha yukarı"*): üst barın altındaki
+   * boşluk `/`de 40px (telefon) / 56px (masaüstü), `/kutuphaneler`de 24px'ti
+   * — aynı dilin iki yüzeyi iki farklı ritim kullanıyordu. Referans
+   * (Airbnb, 390px) ~27px.
+   *
+   * Sayı TEK yerde: iki yüzey de bu bayrağı geçtiği için ayrışamazlar.
+   */
+  icerikSiki?: boolean;
 }
 
 export type PanelGenisligi = "dar" | "orta";
@@ -91,6 +136,10 @@ export function DashboardShell({
   mobilSade = false,
   sekmeler,
   genislik,
+  mobilDetayEkrani = false,
+  mobilUstGizle = false,
+  expanded = true,
+  icerikSiki = false,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
   const panelSekmeleri =
@@ -164,11 +213,22 @@ export function DashboardShell({
           ? "flex h-screen flex-col overflow-hidden bg-slate-50 "
           : "min-h-screen bg-slate-50 "
       }
-      style={{ "--yapiskan-ust": `${yapiskanUst}px` } as CSSProperties}
+      /* `--sabit-serit` — bkz. `PublicShell`deki aynı satırın gerekçesi. */
+      style={
+        {
+          "--yapiskan-ust": `${yapiskanUst}px`,
+          paddingBottom: "var(--sabit-serit, 0px)",
+        } as CSSProperties
+      }
     >
       {/* Başlık + şerit TEK yapışkan yığın: şerit akışta kalsaydı kaydırınca
           gider, yanındaki yapışkan kartı da peşinden sürüklerdi. */}
-      <div ref={yiginRef} className="sticky top-0 z-40">
+      <div
+        ref={yiginRef}
+        className={`sticky top-0 z-40 ${
+          mobilDetayEkrani || mobilUstGizle ? "hidden md:block" : ""
+        }`}
+      >
         <DashboardHeader
           navItems={menuOgeleri}
           transparent
@@ -176,7 +236,7 @@ export function DashboardShell({
           bottom={bottom}
           mobilUst={mobilUst}
           mobilSade={mobilSade}
-          expanded
+          expanded={expanded}
         />
 
         {/* Şerit yapışkan yığının İÇİNDE: akışta kalsaydı kaydırınca gider,
@@ -244,16 +304,27 @@ export function DashboardShell({
         )}
       </div>
 
-      <main className={flush ? "min-h-0 flex-1 overflow-hidden" : "p-4 sm:p-6"}>
+      <main
+        className={
+          flush
+            ? "min-h-0 flex-1 overflow-hidden"
+            : mobilDetayEkrani
+              ? "p-0 md:p-6"
+              : icerikSiki
+                ? "px-4 pb-8 pt-2 sm:px-6"
+                : "p-4 sm:p-6"
+        }
+      >
         {genislik ? (
           <div className={PANEL_GENISLIKLERI[genislik]}>{children}</div>
         ) : (
           children
         )}
       </main>
-      {/* Yalnız CLIENT ve TUTOR'da çizilir; panel rolleri (ADMIN, operatör,
-          kurye) bileşenin kendi içinde elenir — bkz. tasarım dili §4.3. */}
-      <MobilAltSekmeler />
+      {/* Çubuk HER rolde çizilir (ea4724c): panel rolleri de telefonda
+          gezinmesiz kalıyordu. Tek istisna `mobilDetayEkrani` — bkz. propun
+          açıklaması ve `PublicShell`deki eşi. */}
+      {!mobilDetayEkrani && <MobilAltSekmeler />}
     </div>
   );
 }

@@ -15,6 +15,10 @@ import { formatRate, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { useNavSearch } from "@/hooks/useNavSearch";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
+import { useGeriDonus } from "@/hooks/useGeriDonus";
+import { EgitmenMobilUst } from "@/components/egitmen/EgitmenMobilUst";
+import { DersTalepSeridi } from "@/components/egitmen/DersTalepSeridi";
 import {
   DocumentedBadge,
   TutorOzetTablosu,
@@ -41,6 +45,11 @@ export default function PublicTutorProfile() {
   const navigate = useNavigate();
   const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
     useNavSearch("egitmenler");
+  /* Telefonda ekran BAŞKA bir şeydir (kullanıcı kararı, 10 Eyl 2026) ve seçim
+     görünürlük değil MONTAJ meselesi: iki dal da basılsaydı sayfada iki `<h1>`
+     ve iki "Ders talep et" düğmesi olurdu. Bkz. `EgitmenMobilUst`. */
+  const mobil = useMobil();
+  const geriDon = useGeriDonus(ROUTES.tutors);
   const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);
   useCanonicalTutorSlug(tutor);
   // "Son görüntülenen ilanlar" için bu eğitmeni kaydet.
@@ -127,7 +136,7 @@ export default function PublicTutorProfile() {
   };
 
   return (
-    <PublicShell center={center} bottom={bottom}>
+    <PublicShell center={center} bottom={bottom} mobilDetayEkrani>
       <Seo
         title={tutor.display_name}
         description={seoDesc}
@@ -149,13 +158,32 @@ export default function PublicTutorProfile() {
             kendi geri düğmesi zaten var ve bağlantı, kartı bir satır aşağı
             itiyordu. Hata ekranındaki kopyası KALIR — orada sayfanın tek
             çıkışı odur. */}
-        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
+        <div
+          className={
+            mobil
+              ? /* Tek beyaz yüzey: hero'nun paneli ile akan içerik arasında
+                   dikiş görünmesin diye ne boşluk ne ızgara var. */
+                "flex flex-col"
+              : "flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6"
+          }
+        >
+          {mobil && (
+            <EgitmenMobilUst
+              tutor={tutor}
+              ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              rozet={hasVerifiedEducation(tutor.educations) ? <DocumentedBadge /> : undefined}
+              ilkDersMetni={tutor.first_lesson_free !== false ? "İlk ders ücretsiz" : null}
+              onGeri={geriDon}
+              onYorumlar={() => setShowReviews(true)}
+            />
+          )}
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
           {/* Kart ekrandan TAŞMASIN (kullanıcı kararı, 7 Eyl 2026): sticky kart
               viewport'tan uzunsa alt kısmı görünmüyordu ve kullanıcı kartın
               tamamını görmek için SAYFAYI en aşağı kaydırmak zorunda kalıyordu.
               Artık yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar;
               kısa kaldığında hiçbir şey değişmez. */}
+          {!mobil && (
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)]">
             <section className="relative rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
               {/* Favori + paylaş: sağ üst köşede DİKEY sütun (Superprof deseni,
@@ -248,9 +276,16 @@ export default function PublicTutorProfile() {
               )}
             </section>
           </aside>
+          )}
 
           {/* ── Sol: akan içerik (kartsız, alt alta) ── */}
-          <div className="space-y-8 lg:col-start-1 lg:row-start-1">
+          <div
+            className={
+              mobil
+                ? "space-y-8 bg-white px-4 pb-8 pt-6"
+                : "space-y-8 lg:col-start-1 lg:row-start-1"
+            }
+          >
             {/* Verdiği Dersler — ilan başlığının üstünde */}
             {tutor.subjects && tutor.subjects.length > 0 && (
               <section>
@@ -384,6 +419,14 @@ export default function PublicTutorProfile() {
           </div>
         </div>
       </div>
+
+      {/* Telefonda sayfanın TEK eylemi. Karttaki düğmenin aynısını çağırır:
+          niyet saklanır, giriş penceresi MEVCUT adrese eklenir. */}
+      {mobil && (
+        <DersTalepSeridi
+          onTalep={() => girisGerekli({ tip: "dersTalebi", egitmenId: tutor.id })}
+        />
+      )}
 
       {showReviews && (
         <ReviewListModal
