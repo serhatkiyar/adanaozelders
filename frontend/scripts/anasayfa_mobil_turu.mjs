@@ -85,6 +85,24 @@ const ROTALAR = [
     veri: ["main a[href^='/kutuphaneler/']"],
   },
   /*
+   * KUTUPHANE SONUC ekrani — kesif ekraninin AYNISI DEGIL (11 Eyl 2026).
+   *
+   * Filtre varken kabugun telefon ust bari gizlenir (`mobilUstGizle`) ve sayfa
+   * KENDI yapiskan basligini cizer: geri . hap . filtre + filtre seridi, yani
+   * egitmen sonuc ekraninin anatomisi. Iki risk bu yuzden olculur: (1) kabuk
+   * bari gizlendigi icin `ustBar` 0 olmali - degilse iki baslik ust uste
+   * biniyor demektir; (2) sayfanin kendi baslgi yapiskan ve tam genislikte,
+   * yani tasma/cakisma uretmeye en musait yer.
+   */
+  {
+    yol: "/kutuphaneler?ilce=Seyhan",
+    ad: "kutuphane-sonuc",
+    cubukBekleniyor: true,
+    ustBarTavani: 0,
+    hazir: "main a[href^='/kutuphaneler/']",
+    veri: ["main a[href^='/kutuphaneler/']"],
+  },
+  /*
    * EGITMEN PROFILI — mobil DETAY ekrani (kullanici karari, 10 Eyl 2026).
    *
    * Ust bar da alt sekme cubugu da CIZILMEZ; sayfanin tek eylemi alttaki sabit

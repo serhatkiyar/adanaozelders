@@ -35,16 +35,21 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
             loading="lazy"
           />
         ) : (
-          /* Kapak yokken simge YUKARIDA durur. Ortalanmışken iki satırlık
-             kütüphane adının tam arkasına geliyordu ve ikisi birbirini
-             okunmaz kılıyordu (ölçüldü, 10 Eyl 2026 — kullanıcı: *"tutarsızlık
-             vardı"*). Alt %35 başlığa ayrılmış durumda; simge kalan alanın
-             ortasına oturur. */
+          /* Kapak yokken EĞİTMEN KARTIYLA AYNI çözüm: baş harf bloğu
+             (11 Eyl 2026). Burada 📚 emojisi duruyordu ve 310px'lik kartın
+             ortasında 36px'lik bir emoji, kapağın yüklenmediği izlenimi
+             veriyordu — kullanıcı: *"kütüphane arama sonucu sayfası
+             eğitmenlerdeki kadar düzgün değil"*. Emoji ayrıca her platformda
+             başka çiziliyor.
+
+             Harf YUKARIDA durur: ortalanmışken iki satırlık kütüphane adının
+             tam arkasına geliyor ve ikisi birbirini okunmaz kılıyordu
+             (ölçüldü, 10 Eyl 2026). Alt %35 başlığa ayrılmış durumda. */
           <div
             aria-hidden
-            className="flex h-[65%] w-full items-center justify-center text-4xl"
+            className="flex h-[65%] w-full items-center justify-center text-4xl font-semibold text-marka-metin"
           >
-            📚
+            {library.name.charAt(0).toLocaleUpperCase("tr")}
           </div>
         )}
 

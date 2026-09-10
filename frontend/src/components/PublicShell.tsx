@@ -25,6 +25,7 @@ export function PublicShell({
   mobilSade = false,
   altBilgiGizli = false,
   mobilDetayEkrani = false,
+  mobilUstGizle = false,
   expanded = true,
   icerikSiki = false,
 }: {
@@ -68,6 +69,21 @@ export function PublicShell({
    * geri düğmesi. Nöbetçi: `__guards__/egitmenProfiliMobil.test.tsx`.
    */
   mobilDetayEkrani?: boolean;
+  /**
+   * Telefonda YALNIZ üst barı gizle; alt sekme çubuğu ve altbilgi kalır.
+   *
+   * `mobilDetayEkrani`den farkı bu: orada ekranı tek bir ilan doldurur ve alt
+   * çubuk da kalkar. Burada sayfa hâlâ bir listedir, yalnız KENDİ başlığını
+   * çiziyordur — kütüphane sonuç ekranı böyle (kullanıcı kararı, 11 Eyl
+   * 2026): eğitmen sonuç ekranındaki gibi geri · hap · filtre başlığı ve
+   * hemen altında filtre şeridi. Kabuğun hapı + kategori şeridi orada ikinci
+   * bir başlık olurdu.
+   *
+   * Üst bar gizlenince `--yapiskan-ust` kendiliğinden 0 olur (yükseklik
+   * ölçülen düğümden gelir), yani sayfanın kendi yapışkan başlığı `top: 0`a
+   * oturur.
+   */
+  mobilUstGizle?: boolean;
   /**
    * Üst barın ALT SATIRI (arama hapı) açık mı?
    *
@@ -131,7 +147,9 @@ export function PublicShell({
     >
       <div
         ref={yiginRef}
-        className={`sticky top-0 z-40 ${mobilDetayEkrani ? "hidden md:block" : ""}`}
+        className={`sticky top-0 z-40 ${
+          mobilDetayEkrani || mobilUstGizle ? "hidden md:block" : ""
+        }`}
       >
         <PublicNavbar
           center={center}
