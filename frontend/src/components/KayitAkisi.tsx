@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
@@ -62,9 +62,28 @@ export function KayitAkisi({
   girisBaglantisi,
 }: Props) {
   const [adim, setAdim] = useState<Adim>("eposta");
-  // Rol EKRANDA sorulmaz; kullanıcının geldiği yoldan belli olur
-  // ("Ders Ver" düğmesi `?role=tutor` gönderir, diğer her yol üye).
+  /* Rol kullanıcının geldiği yoldan belli olur ("Ders Ver" düğmesi
+     `?role=tutor` gönderir, diğer her yol üye) — ama artık EKRANDA GÖRÜNÜR ve
+     ilk adımda değiştirilebilir (kullanıcı kararı, 11 Eyl 2026).
+
+     Ölçülen kusur: rol yalnız adresteydi. Birinci adımın başlığı "Eğitmen
+     olarak kaydolun" diyordu, ikinci ve üçüncü adımda başlık "Üyelik"e
+     dönüyordu — hem eğitmen hem üye akışında AYNI. Eğitmen adayı ikinci
+     ekranda kendi rolünün adını değil BAŞKA BİR ROLÜN adını görüyordu
+     ("Üye" bu sitede CLIENT'ın adıdır, `lib/roles`). Rol hesabın kalıcı bir
+     özelliği ve sonradan değiştirilemiyor; yanlış kapıdan giren kullanıcının
+     dönüş yolu yoktu.
+
+     Hem pencere hem `/kayit` sayfası rolü aynı adres parametresinden
+     okuduğu için değiştirme de tek yerde: parametreyi yaz, iki yüzey de
+     kendiliğinden doğru rolü görür. */
   const role = baslangicRolu;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rolDegistir = (yeni: RegisterRole) => {
+    if (yeni === "tutor") searchParams.set("role", "tutor");
+    else searchParams.delete("role");
+    setSearchParams(searchParams, { replace: true });
+  };
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -151,14 +170,39 @@ export function KayitAkisi({
             </svg>
           </button>
         )}
+        {/* Başlık HER ADIMDA rolü söyler. İlerlemeyi başlığın taşıması
+            (adım 1'de rol, adım 2-3'te "Üyelik") bağlamı yok ediyordu; geri
+            oku zaten hangi adımda olduğumuzu gösteriyor. */}
         <h1 className="text-2xl font-bold text-slate-900">
-          {adim !== "eposta"
-            ? "Üyelik"
-            : role === "tutor"
-              ? "Eğitmen olarak kaydolun"
-              : "Kayıt Ol"}
+          {role === "tutor" ? "Eğitmen kaydı" : "Üye kaydı"}
         </h1>
       </div>
+
+      {/* ROL SATIRI — yalnız ilk adımda.
+          Ne olduğunu söyler ve öteki kapıyı açar. Kutu DEĞİL, tek satır: rol
+          bu ekranın konusu değil, bir ÖN KABULÜ; kutuya alınsaydı e-posta
+          alanıyla dikkat için yarışırdı. Renk de nötr — marka rengi bu
+          ekranda birincil eylemin (kaydol) işareti.
+
+          Son adımlarda çizilmez: rolü artık başlık taşıyor ve kullanıcı
+          e-postasını girdikten sonra rol değiştirmek formu baştan kurmak
+          anlamına gelirdi. */}
+      {adim === "eposta" && (
+        <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
+          <span>
+            {role === "tutor"
+              ? "Eğitmen olarak kaydoluyorsun."
+              : "Üye olarak kaydoluyorsun."}
+          </span>
+          <button
+            type="button"
+            onClick={() => rolDegistir(role === "tutor" ? "client" : "tutor")}
+            className="font-semibold text-slate-700 underline underline-offset-2 transition hover:text-slate-900"
+          >
+            {role === "tutor" ? "Üye olarak kaydol" : "Eğitmen olarak kaydol"}
+          </button>
+        </p>
+      )}
 
       <form onSubmit={ilerle} className="mt-6 space-y-4">
         {adim === "eposta" && (
