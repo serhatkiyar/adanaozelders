@@ -231,24 +231,30 @@ export default function Libraries() {
 
   const content = (
     <>
-      {/* FİLTRE ŞERİDİ TELEFONDA GÖVDEDE (10 Eyl 2026).
-          Navbar'ın `bottom` yuvasının `md:hidden`ı YOKTUR, yani şerit orada
-          telefonda da çiziliyordu. Ama telefon kromu artık ana sayfayla aynı
-          (hap + kategori çipleri) ve şeridi o yığına eklemek üst barı 136'dan
-          ~181 piksele çıkarıyordu — iki rota ikiz olmaktan çıkardı ve tavan
-          (140) aşılırdı.
+      {/* FİLTRE ŞERİDİ — YALNIZ ARAMA/FİLTRE VARKEN (kullanıcı kararı,
+          10 Eyl 2026).
 
-          Çözüm: telefonda şerit üst barın PARÇASI değil, içeriğin ilk
-          yapışkan satırı. Kaydırınca üst barın altına yapışır; `--yapiskan-ust`
-          kabuklar tarafından yayınlanıyor (`PublicShell`, `DashboardShell`) ve
-          bu onun ilk gerçek tüketicisi. Zemin ve alt çizgi `PublicNavbar` ile
-          bilerek aynı: göz onu üst barın devamı olarak okur. */}
-      <div
-        className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 sm:-mx-6"
-        style={{ top: "var(--yapiskan-ust, 0px)" }}
-      >
-        {filterBar}
-      </div>
+          > *"filtre işlemi arama yapılınca olur, kütüphane kategorisine
+          >  geçince değil."*
+
+          Kategori değiştirmek bir arama DEĞİLDİR. Ana sayfadan Kütüphaneler'e
+          geçen kişi keşfe gelmiştir; önüne sıralama ve olanak filtreleri
+          koymak, sormadığı bir sorunun cevabını göstermektir. Şerit bir
+          arama/filtre adreste yaşadığı anda belirir.
+
+          Şerit üst barın PARÇASI DEĞİL, içeriğin ilk yapışkan satırı: navbar'ın
+          `bottom` yuvasını keşif kabuğu (arama hapı) devraldı, ayrıca şeridi o
+          yığına koymak üst barı 136'dan ~181 piksele çıkarıp `/` ile ikizliği
+          bozuyordu. Konumunu `--yapiskan-ust`tan alır; zemin ve alt çizgi
+          `PublicNavbar` ile bilerek aynı — göz onu üst barın devamı okur. */}
+      {filtreli && (
+        <div
+          className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 sm:-mx-6"
+          style={{ top: "var(--yapiskan-ust, 0px)" }}
+        >
+          {filterBar}
+        </div>
+      )}
       <div className="mx-auto max-w-[1100px] space-y-5">
         <Seo
           title="Kütüphaneler ve Etüt Merkezleri"
@@ -276,6 +282,13 @@ export default function Libraries() {
           </div>
         )}
 
+        {/* ── ARAMA SONUÇLARI — yalnız arama/filtre varken ──
+            Filtre yokken bu blok HİÇ çizilmez: kategori değişimi ana sayfanın
+            eğitmen vitrini gibi bir KEŞİF yüzeyi açar, arama sonucu değil.
+            Liste/Harita anahtarı, sayaç, ızgara ve sayfalama sonuca aittir;
+            ortada sonuç yokken hepsi anlamsızdır. */}
+        {filtreli && (
+        <>
         {/* ── Liste/Harita geçişi ── */}
         <div className="flex flex-wrap items-end justify-end gap-3">
           {/* Liste / Harita geçişi */}
@@ -354,6 +367,8 @@ export default function Libraries() {
               </div>
             )}
           </>
+        )}
+        </>
         )}
 
         {/* ── Filtre modalı (olanaklar) ── */}

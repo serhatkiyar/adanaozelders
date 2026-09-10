@@ -87,9 +87,12 @@ describe("ÖN KOŞUL — bayrak değerleri", () => {
 describe("A — kategori çubuğu (gerçek DOM)", () => {
   it("NÖBETÇİ: çubuk render oluyor; Eğitmenler ve Kütüphaneler GERÇEK bağlantı", () => {
     sar(<CategoryBar />);
+    // Eğitmenler hedefi 10 Eyl 2026'da `/egitmenler`den `/`e çekildi:
+    // kategori değiştirmek arama yapmak değildir, hedef o kategorinin KEŞİF
+    // yüzeyidir (kullanıcı kararı — bkz. `CategoryBar` içindeki gerekçe).
     expect(
       screen.getByRole("link", { name: /Eğitmenler/ }).getAttribute("href")
-    ).toBe("/egitmenler");
+    ).toBe("/");
     expect(
       screen.getByRole("link", { name: /Kütüphaneler/ }).getAttribute("href")
     ).toBe("/kutuphaneler");
@@ -126,7 +129,7 @@ describe("A — kategori çubuğu (gerçek DOM)", () => {
     ).toEqual([]);
 
     for (const [etiket, hedef] of [
-      ["Eğitmenler", "/egitmenler"],
+      ["Eğitmenler", "/"],
       ["Kütüphaneler", "/kutuphaneler"],
       ["Mağaza", "/magaza"],
     ] as const) {

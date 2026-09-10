@@ -26,8 +26,25 @@ type Category = {
   gizli?: boolean;
 };
 
+/*
+ * KATEGORİ HEDEFLERİ = O KATEGORİNİN KEŞİF YÜZEYİ (kullanıcı kararı,
+ * 10 Eyl 2026).
+ *
+ * > *"eğitmenlere tıklayınca arama sonuçları gözüküyor; ana sayfadayken
+ * >  kategori değiştirirken arama sonucu gösterilmeyecek."*
+ *
+ * "Eğitmenler" eskiden `/egitmenler`e, yani ARAMA SONUÇLARI ekranına
+ * gidiyordu. Kategori değiştirmek bir arama değildir: kullanıcı keşfe
+ * geliyor, sorgusuz bir sonuç listesine değil. Hedef artık kökteki eğitmen
+ * vitrini; `/egitmenler` aramanın kendi adresi olarak kalır ve oraya arama
+ * hapından gidilir.
+ *
+ * Yan kazanç: `/` ve `/kutuphaneler` aynı keşif kabuğunun çocukları olduğu
+ * için iki yön de artık üst barı yerinde bırakıyor.
+ * Nöbetçi: `__guards__/aramaSekmesiGezinir.test.tsx`.
+ */
 const CATEGORIES: Category[] = [
-  { key: "egitmenler", label: "Eğitmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.tutors },
+  { key: "egitmenler", label: "Eğitmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.home },
   { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries, donuk: !KUTUPHANELER_ACIK },
   // Deneme oturumları kütüphane profillerinde yer alır. Kütüphaneler'den farklı
   // olarak donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
@@ -58,6 +75,8 @@ const CATEGORIES: Category[] = [
  * üretir ve ön yükleme boşa gider.
  */
 const ONYUKLEYICILER: Record<string, () => Promise<unknown>> = {
+  // `ROUTES.home` YOK: `Landing` eager import edilir (prerender/SEO hedefi),
+  // ön yüklenecek ayrı bir parça da yoktur.
   [ROUTES.tutors]: () => import("@/pages/MarketplacePage"),
   [ROUTES.libraries]: () => import("@/pages/Libraries"),
   [ROUTES.store]: () => import("@/pages/store/StorePage"),
