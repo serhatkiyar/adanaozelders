@@ -24,6 +24,8 @@ import { amenityIcon } from "@/lib/amenityIcons";
 import { ROLE_IDS } from "@/types";
 import { CategoryBar } from "@/components/CategoryBar";
 import { CompactSearch, KutuphaneArama } from "@/components/HeroSearch";
+import { MobilAramaSheet } from "@/components/MobilAramaSheet";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { LibraryRow } from "@/components/VitrinSeridi";
 import { type YerSecimi } from "@/lib/yerArama";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
@@ -114,6 +116,22 @@ export default function Libraries() {
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — eğitmen aramasındaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
+  /*
+   * TELEFON KROMU — ana sayfayla AYNI (kullanıcı kararı, 10 Eyl 2026).
+   *
+   * Bu sayfa `useMobil()`i hiç çağırmıyordu: telefonda tam masaüstü
+   * navbar'ı (logo + "Ders Ver" + "Giriş Yap") basılıyordu. Ana sayfada ise
+   * `mobilSade` yüzünden o satır yok, yerinde kompakt arama hapı + kategori
+   * çip şeridi duruyor. Sonuç: kategori şeridinden "Kütüphaneler"e basınca
+   * üst bar bambaşka bir şeye dönüşüyor ve ekran "başka siteye gittim" gibi
+   * okunuyordu. Kullanıcı: *"Airbnb'de diğer kategoriye tıklayınca sayfa
+   * yenilenmiyor."*
+   *
+   * `Landing.tsx:167-178` ile bilinçli olarak BİREBİR aynı çağrı; iki yüzey
+   * ortak keşif kabuğunda birleşene kadar bu ikizlik korunmalı.
+   */
+  const mobil = useMobil();
+  const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
 
   const debouncedQ = useDebounce(q);
   const setSurface = useSurfaceStore((s) => s.setSurface);
@@ -206,7 +224,11 @@ export default function Libraries() {
      Açık:  kategori çubuğu (sekmeler başka sayfaya götürür). */
   const navCenter = (
     <div key={searchOpen ? "cats" : "compact"} className="w-full animate-in fade-in duration-300">
-      {searchOpen ? (
+      {/* Telefonda swap YOK: kompakt hap `mobilUst` yuvasında kalıcı durur,
+          bu yuva her zaman kategori çiplerini taşır. İkisi birden basılsaydı
+          aynı hapın iki kopyası mount edilir, `htmlFor` kimlikleri belgede
+          ikilenirdi (bkz. `hooks/useMedyaSorgusu.ts`). */}
+      {searchOpen || mobil ? (
         <CategoryBar active="kutuphaneler" />
       ) : (
         <div className="flex w-full justify-center">
@@ -240,6 +262,20 @@ export default function Libraries() {
       />
     </div>
   );
+
+  /* Telefonun üst satırı: tek kompakt hap. Ana sayfadakiyle AYNI bileşen ve
+     AYNI davranış — dokununca tam ekran arama yüzeyi açılır. */
+  const mobilUst = mobil ? (
+    <CompactSearch
+      active="kutuphaneler"
+      // Telefonda hap kategoriye göre değişen bir metin taşımaz: kategori
+      // zaten hemen altındaki çip şeridinde seçili, hapın işi davet etmek.
+      placeholder="Aramaya başlayın"
+      q={q}
+      district={district}
+      onOpen={() => setMobilAramaAcik(true)}
+    />
+  ) : undefined;
 
   const filterBar = (
     <div className="flex justify-center w-full">
@@ -314,6 +350,24 @@ export default function Libraries() {
 
   const content = (
     <>
+      {/* Telefonda tam ekran arama yüzeyi — ana sayfayla AYNI bileşen.
+          Hap tek kopya olarak yalnız burada yaşar; navbar'ın alt yuvası
+          telefonda bilerek boş bırakılıyor (bkz. `mobilUst`). */}
+      <MobilAramaSheet
+        open={mobilAramaAcik}
+        onClose={() => setMobilAramaAcik(false)}
+      >
+        <KutuphaneArama
+          q={q}
+          setQ={setQ}
+          yer={yer}
+          setYer={setYer}
+          onSubmit={(e) => {
+            e.preventDefault();
+            setMobilAramaAcik(false);
+          }}
+        />
+      </MobilAramaSheet>
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
         <div
@@ -356,7 +410,10 @@ export default function Libraries() {
               <button
                 key={m}
                 onClick={() => setView(m)}
-                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                /* `min-h-[44px]` telefonda: gerçek Chrome turu bu iki
+                   düğmeyi 32px ölçtü. `md:min-h-0` ile masaüstünde şerit
+                   bugünkü inceliğini korur — büyüyen yalnız parmak alanı. */
+                className={`min-h-[44px] rounded-full px-4 py-1.5 text-sm font-semibold transition md:min-h-0 ${
                   view === m
                     ? "bg-white text-marka-metin shadow-sm "
                     : "text-slate-500 hover:text-slate-700 "
@@ -416,7 +473,7 @@ export default function Libraries() {
                     sekmede açabilsin. Tıklama SPA içinde kalır. */}
                 <Link
                   to={nextPageSearch(searchParams, page)}
-                  className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft disabled:opacity-60 "
+                  className="inline-flex min-h-[44px] items-center rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-marka-soft-fg shadow-sm ring-1 ring-slate-200 transition hover:bg-marka-soft disabled:opacity-60 "
                 >
                   {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
                 </Link>
@@ -490,11 +547,24 @@ export default function Libraries() {
   );
 
   return token ? (
-    <DashboardShell title="Kütüphaneler" navItems={navItems} center={navCenter} bottom={navBottom} sekmeler={null}>
+    <DashboardShell
+      title="Kütüphaneler"
+      navItems={navItems}
+      center={navCenter}
+      bottom={mobil ? undefined : navBottom}
+      mobilUst={mobilUst}
+      mobilSade={mobil}
+      sekmeler={null}
+    >
       {content}
     </DashboardShell>
   ) : (
-    <PublicShell center={navCenter} bottom={navBottom}>
+    <PublicShell
+      center={navCenter}
+      bottom={mobil ? undefined : navBottom}
+      mobilUst={mobilUst}
+      mobilSade={mobil}
+    >
       {content}
     </PublicShell>
   );

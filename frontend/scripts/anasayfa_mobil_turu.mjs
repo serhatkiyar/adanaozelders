@@ -67,6 +67,24 @@ const ROTALAR = [
     veri: [KART_SECICI],
   },
   /*
+   * KUTUPHANELER — `/` ile AYNI telefon kromunu paylasir (kullanici karari,
+   * 10 Eyl 2026). Bu sayfa `useMobil()`i hic cagirmiyordu ve telefonda tam
+   * masaustu navbar'ini (logo + "Ders Ver" + "Giris Yap") basiyordu; ana
+   * sayfada ise o satir yok. Kategori seridinden gecerken ust bar bambaska
+   * bir seye donusuyordu.
+   *
+   * Tavan `anasayfa` ile AYNI ve bu tesadufi degil, SOZLESME: iki rota ayni
+   * kromu paylasiyor. Ayrisirlarsa biri tavani asar ve kapi soyler.
+   */
+  {
+    yol: "/kutuphaneler",
+    ad: "kutuphane",
+    cubukBekleniyor: true,
+    ustBarTavani: 140,
+    hazir: "main a[href^='/kutuphaneler/']",
+    veri: ["main a[href^='/kutuphaneler/']"],
+  },
+  /*
    * EGITMEN PROFILI — mobil DETAY ekrani (kullanici karari, 10 Eyl 2026).
    *
    * Ust bar da alt sekme cubugu da CIZILMEZ; sayfanin tek eylemi alttaki sabit
@@ -615,6 +633,9 @@ if (NEGATIF) {
     "arama:tasma",
     "arama:altCubuk",
     "arama:dokunmaHedefi",
+    "kutuphane:tasma",
+    "kutuphane:altCubuk",
+    "kutuphane:dokunmaHedefi",
     "profil:tasma",
     "profil:altCubuk",
     "profil:ustBarYuksekligi",

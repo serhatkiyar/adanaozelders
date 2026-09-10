@@ -507,6 +507,259 @@
       "konsolHatalari": []
     },
     {
+      "rota": "kutuphane",
+      "genislik": 360,
+      "mobilBant": true,
+      "govde": 360,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 136,
+      "ustBarTavani": 140,
+      "cubukVar": true,
+      "cubukYuksek": 61,
+      "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "rota": "kutuphane",
+      "genislik": 390,
+      "mobilBant": true,
+      "govde": 390,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 136,
+      "ustBarTavani": 140,
+      "cubukVar": true,
+      "cubukYuksek": 61,
+      "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "rota": "kutuphane",
+      "genislik": 414,
+      "mobilBant": true,
+      "govde": 414,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 0,
+      "kucukHedefler": [],
+      "ustBar": 136,
+      "ustBarTavani": 140,
+      "cubukVar": true,
+      "cubukYuksek": 61,
+      "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
+      "rota": "kutuphane",
+      "genislik": 768,
+      "mobilBant": false,
+      "govde": 768,
+      "tasma": 0,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ],
+      "cakismalar": [],
+      "kucukHedefSayi": 117,
+      "kucukHedefler": [
+        {
+          "ad": "Adana Özel Ders ana sayfa",
+          "w": 32,
+          "h": 32
+        },
+        {
+          "ad": "Filtreler",
+          "w": 104,
+          "h": 34
+        },
+        {
+          "ad": "Önerilen",
+          "w": 87,
+          "h": 34
+        },
+        {
+          "ad": "★ Puan",
+          "w": 79,
+          "h": 34
+        },
+        {
+          "ad": "📍 Yakınımda",
+          "w": 122,
+          "h": 34
+        },
+        {
+          "ad": "Çukurova Kütüphaneleri, tümünü",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Çukurova Kütüphaneleri: sola k",
+          "w": 28,
+          "h": 28
+        },
+        {
+          "ad": "Çukurova Kütüphaneleri: sağa k",
+          "w": 28,
+          "h": 28
+        }
+      ],
+      "ustBar": 145,
+      "ustBarTavani": 140,
+      "cubukVar": false,
+      "cubukYuksek": 0,
+      "cubukEnAz": 56,
+      "seritVar": false,
+      "seritYuksek": 0,
+      "cubukOrtuyor": false,
+      "ortmePx": 0,
+      "veriVar": true,
+      "konsolHatalari": []
+    },
+    {
       "rota": "profil",
       "genislik": 360,
       "mobilBant": true,
