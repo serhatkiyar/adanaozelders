@@ -131,7 +131,15 @@ export function CategoryBar({
           İç sarmalayıcının mx-auto'su dar içerikte ortalar, geniş içerikte
           soldan kaydırmaya izin verir. */}
       <div
-        className="kategori-serit flex items-end gap-2 overflow-x-auto px-4 scroll-px-4 snap-x md:gap-6 lg:gap-8"
+        className={`kategori-serit flex items-end overflow-x-auto scroll-px-4 snap-x ${
+          sekmeKipi
+            ? /* Sekmeler ORTALI: referans ekranda şerit ekranın ortasında
+                 duruyor. `justify-center` normalde yasak (içerik ekrandan
+                 genişse sol uç kesilir) ama sekme kipinde en çok üç öge var
+                 ve 360px'te bile sığıyor — ölçüldü. */
+              "justify-center gap-7 px-4"
+            : "gap-2 px-4 md:gap-6 lg:gap-8"
+        }`}
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {CATEGORIES.filter((c) => !c.gizli).map((c) => {
@@ -144,7 +152,11 @@ export function CategoryBar({
           // ayırır ve `text-marka`yı yasaklar; burada seçim durumu, aksiyon
           // değil.
           const cls = sekmeKipi
-            ? `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-none border-0 border-b-2 px-0 py-0 pb-2 shadow-none transition-colors duration-200 ${
+            ? /* İkon ETİKETİN ÜSTÜNDE (referans ekran). Masaüstü şeridinde
+                 yan yana duruyor çünkü orada şerit dar bir satır; tam ekran
+                 arama yüzeyinde dikey yığın hem referansın hem de dokunma
+                 hedefinin lehine. */
+              `group flex shrink-0 snap-start flex-col items-center gap-1 rounded-none border-0 border-b-2 px-1 py-0 pb-2 shadow-none transition-colors duration-200 ${
                 isActive
                   ? "border-slate-900 bg-transparent "
                   : "border-transparent bg-transparent hover:border-slate-200 "
@@ -167,12 +179,15 @@ export function CategoryBar({
                 height={40}
                 decoding="async"
                 className={`object-contain transition-all duration-200 group-hover:scale-105 ${
-                  sekmeKipi ? "h-9 w-9" : "h-6 w-6 md:h-10 md:w-10"
+                  sekmeKipi ? "h-[30px] w-[30px]" : "h-6 w-6 md:h-10 md:w-10"
                 } ${isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"}`}
               />
               <span
                 className={`whitespace-nowrap font-semibold transition-colors duration-200 ${
-                  sekmeKipi ? "text-[15px]" : "text-sm md:text-[15px]"
+                  /* Sekme kipinde 13px: bizim etiketlerimiz referanstakinden
+                     UZUN ("Kütüphaneler" vs "Evler"), 15px'te üçü ekranı
+                     doldurup ikona baskın çıkıyordu. */
+                  sekmeKipi ? "text-[13px]" : "text-sm md:text-[15px]"
                 } ${
                   isActive
                     ? sekmeKipi

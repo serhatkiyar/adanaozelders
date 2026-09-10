@@ -21,9 +21,13 @@ export type AdanaDistrict = (typeof ADANA_DISTRICTS)[number];
 // ilçe adına baktığı için seçildiğinde GARANTİLİ 0 sonuç veriyordu — hata
 // vermeden, sessizce. Kullanıcının "merkez" dediği yer Seyhan/Çukurova/
 // Yüreğir/Sarıçam'dır; onlar zaten listenin başında.
+// SIRA ÜRÜN KARARIDIR (kullanıcı, 10 Eyl 2026): Çukurova başa alındı. Liste
+// nüfusa göre değil, PLATFORMUN ARZINA göre sıralı — arz ve talebin yoğun
+// olduğu ilçe önce görünmeli, çünkü arama yüzeyi yalnız ilk üçünü gösteriyor
+// ve altı katlamanın altında kalıyor.
 export const SEARCH_PRIMARY_DISTRICTS = [
-  "Seyhan",
   "Çukurova",
+  "Seyhan",
   "Yüreğir",
   "Sarıçam",
   "Ceyhan",

@@ -77,12 +77,27 @@ const mahalleOnerisi = (y: AdanaYer): YerOnerisi => ({
  *      görmeli.
  *   3. Alfabetik (Türkçe sıralama).
  */
+/**
+ * MAHALLE ÖNERİSİ ŞİMDİLİK KAPALI (kullanıcı kararı, 10 Eyl 2026).
+ *
+ * Bayrak; özellik SİLİNMEDİ. Mahalle verisi, koordinatı, `?mahalle=` adres
+ * parametresi ve `mahalleyiCoz` okuması olduğu gibi duruyor — paylaşılmış
+ * eski bağlantılar çalışmaya devam ediyor. Kapanan tek şey ÖNERİ SUNMAK.
+ *
+ * Gerekçe: arz henüz ilçe düzeyinde bile seyrek; 440 mahalleden birini seçen
+ * kullanıcı büyük ihtimalle boş liste görüyordu. Arz yoğunlaşınca `true`
+ * yapmak yeter, başka hiçbir yere dokunmaya gerek yok.
+ */
+const MAHALLE_ONERISI_ACIK = false;
+
 export function yerAra(sorgu: string, limit = 40): YerOnerisi[] {
   const q = normalize(sorgu);
   if (!q) return TUM_ILCELER.map(ilceOnerisi);
 
   const ilceler = TUM_ILCELER.filter((d) => normalize(d).includes(q));
-  const mahalleler = ADANA_YERLER.filter((y) => normalize(y.mahalle).includes(q));
+  const mahalleler = MAHALLE_ONERISI_ACIK
+    ? ADANA_YERLER.filter((y) => normalize(y.mahalle).includes(q))
+    : [];
 
   const onekOnce = <T,>(dizi: T[], ad: (x: T) => string) =>
     [...dizi].sort((a, b) => {
