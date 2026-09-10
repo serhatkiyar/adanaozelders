@@ -49,6 +49,74 @@ function RowHeader({ heading, href }: { heading: string; href: string }) {
   );
 }
 
+/**
+ * Şeridin SON kartı: üst üste binmiş bir kart destesi + altında ortalanmış
+ * "Tümünü Görüntüle" (kullanıcı kararı, 11 Eyl 2026).
+ *
+ * Şeridin sonuna kadar kaydıran kullanıcı zaten "devamı var mı" diye
+ * bakıyordu; oysa tamamına giden tek kapı başlığın yanındaki küçük ok
+ * düğmesiydi — yani kaydırmayı bitiren kişi en uzak noktadaydı. Deste
+ * gerçek eğitmen fotoğraflarından kurulur: arkada daha çok kişi olduğunu
+ * boş bir kutu değil, yüzler söyler.
+ */
+function TumunuGorKarti({
+  href,
+  gorseller,
+  etiket,
+}: {
+  href: string;
+  /** Destedeki kareler — üstteki üç kaydın görseli (yoksa baş harfi). */
+  gorseller: { anahtar: string | number; src: string | null; harf: string }[];
+  etiket: string;
+}) {
+  return (
+    <Link
+      to={href}
+      aria-label={etiket}
+      className="group mx-auto flex h-full w-full max-w-[310px] flex-col"
+    >
+      {/* Kare alan gerçek kartın fotoğraf alanıyla AYNI: deste ortada durur,
+          satırın hizası bozulmaz. */}
+      <div className="relative aspect-square w-full">
+        {gorseller.map((g, i) => {
+          /* Yelpaze: ortadaki düz ve ÜSTTE, yanlar dışa doğru dönük. Sıra
+             ortadan başlamazsa üstteki kare kenardakinin altında kalıyor. */
+          const orta = (gorseller.length - 1) / 2;
+          const sapma = i - orta;
+          return (
+            <span
+              key={g.anahtar}
+              className="absolute left-1/2 top-1/2 grid h-[58%] w-[58%] place-items-center overflow-hidden rounded-2xl bg-marka-soft text-2xl font-semibold text-marka-metin shadow-md ring-2 ring-white transition-transform duration-300 group-hover:scale-[1.03]"
+              style={{
+                /* Kaydırma YÜZDE: `px` verilseydi yelpaze 157px'lik telefon
+                   kartında geniş, 250px'lik masaüstü kartında dar görünürdü —
+                   yüzde karenin kendi boyutuna göre ölçekleniyor. */
+                transform: `translate(-50%, -50%) translateX(${sapma * 30}%) rotate(${sapma * 9}deg)`,
+                zIndex: 10 - Math.abs(Math.round(sapma * 2)),
+              }}
+            >
+              {g.src ? (
+                <img
+                  src={g.src}
+                  alt=""
+                  aria-hidden
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                g.harf
+              )}
+            </span>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-center text-sm font-semibold text-slate-900 underline-offset-4 group-hover:underline">
+        Tümünü Görüntüle
+      </p>
+    </Link>
+  );
+}
+
 function RowSkeleton() {
   return (
     <div className="flex gap-3 overflow-hidden md:gap-5">
@@ -136,6 +204,17 @@ export function TutorRow({
               <TutorCard tutor={tutor} />
             </div>
           ))}
+          <div className={VITRIN_KART}>
+            <TumunuGorKarti
+              href={href}
+              etiket={`${heading}, tümünü görüntüle`}
+              gorseller={data!.slice(-3).map((t: TutorSearchOut) => ({
+                anahtar: t.id,
+                src: t.avatar_url ?? null,
+                harf: t.display_name.charAt(0).toLocaleUpperCase("tr"),
+              }))}
+            />
+          </div>
         </HScroll>
       )}
     </section>
@@ -177,6 +256,19 @@ export function LibraryRow({
               <LibraryCard library={lib} />
             </div>
           ))}
+          {/* Eğitmen şeridiyle AYNI kapanış: iki şerit tasarımı ayrışamaz
+              (bkz. dosya başlığı). */}
+          <div className={VITRIN_KART}>
+            <TumunuGorKarti
+              href={href}
+              etiket={`${heading}, tümünü görüntüle`}
+              gorseller={data!.slice(-3).map((lib) => ({
+                anahtar: lib.id,
+                src: lib.cover_url ?? null,
+                harf: lib.name.charAt(0).toLocaleUpperCase("tr"),
+              }))}
+            />
+          </div>
         </HScroll>
       )}
     </section>
