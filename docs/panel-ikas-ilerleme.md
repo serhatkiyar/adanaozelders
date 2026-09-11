@@ -1,6 +1,6 @@
 # /yonetim-yeni ilerleme (feat/panel-ikas)
 
-Son güncelleme: 11 Eyl 2026.
+Son güncelleme: 12 Eyl 2026.
 
 ## Tamamlanan modüller
 
@@ -20,12 +20,13 @@ Son güncelleme: 11 Eyl 2026.
 
 1. Gösterge paneli — tamamlandı (`0b04b18`).
 2. Envanter · Stok Sayımı listesi + detayı — tamamlandı; liste `/yonetim-yeni/urunler/stok-sayimi` (`StokSayimiListesi.tsx`, `YeniSayimCekmecesi.tsx`), detay `/yonetim-yeni/urunler/stok-sayimi/:id` (`StokSayimiDetayi.tsx`, `StokSayimiPencereleri.tsx`).
-3. Envanter: genel bakış, hasarlı stok, stok hareketleri
-4. Kategoriler, tedarikçi, kuponlar
-5. Ayarlar, yetkiler, denetim kayıtları
-6. Sipariş detayı, müşteri detayı, iadeler
-7. Paketleme · 8. Dağıtım · 9. Eğitmen yönetimi · 10. Kütüphane/deneme/rezervasyon/
-   talep · 11. Moderasyon, hak edişler, kalan rotalar
+3. Envanter · Stok Hareketleri — tamamlandı; `/yonetim-yeni/urunler/stok-hareketleri` (`StokHareketleriListesi.tsx`, salt okunur defter + denetim).
+4. Envanter: genel bakış, hasarlı stok
+5. Kategoriler, tedarikçi, kuponlar
+6. Ayarlar, yetkiler, denetim kayıtları
+7. Sipariş detayı, müşteri detayı, iadeler
+8. Paketleme · 9. Dağıtım · 10. Eğitmen yönetimi · 11. Kütüphane/deneme/rezervasyon/
+   talep · 12. Moderasyon, hak edişler, kalan rotalar
 
 ## Notlar
 

@@ -175,6 +175,10 @@ export type ListePageProps<T> = {
    * notudur (bkz. aşağıdaki render'daki kaynak yorumu).
    */
   uyari?: ReactNode;
+  /** Başlık satırının altında tek satır ikincil açıklama (ör. "defter salt okunurdur"). */
+  aciklama?: ReactNode;
+  /** Araç çubuğu ile tablo arasında çizilen serbest içerik (ör. denetim sonucu yüzeyi). */
+  ustIcerik?: ReactNode;
   toplam?: number;
   sayfa: number;
   sayfaBoyutu: number;
@@ -215,7 +219,7 @@ export function ListePage<T extends object>({
   kolonAyariTiklandi, kolonAyariIcerigi, kolonAyariAcik, kolonAyariAcikDegisti, gorunum = "liste",
   listeGorunumuTiklandi, izgaraGorunumuTiklandi,
   satirSecimi, kolonlar, govde, veri, yukleniyor,
-  hata, hataAksiyon, uyari, toplam, sayfa, sayfaBoyutu, sayfaDegisti, birimEtiket = "kayıt",
+  hata, hataAksiyon, uyari, aciklama, ustIcerik, toplam, sayfa, sayfaBoyutu, sayfaDegisti, birimEtiket = "kayıt",
   bosBaslik, bosAciklama, bosAksiyon, rowKey,
   tabloDegisti,
 }: ListePageProps<T>) {
@@ -273,6 +277,11 @@ export function ListePage<T extends object>({
         </Flex>
         <Flex gap={8} wrap>{aksiyonlar}</Flex>
       </Flex>
+      {aciklama ? (
+        <Typography.Text type="secondary" style={{ marginTop: -24, marginBottom: 24, display: "block" }}>
+          {aciklama}
+        </Typography.Text>
+      ) : null}
 
       {/* ikas referansı §2: içerik kartın İÇİNDE değil, düz beyaz yüzeyde
           durur (renk kartın kendi border/shadow'unu değil, `theme.ts`'in
@@ -416,6 +425,7 @@ export function ListePage<T extends object>({
           ) : null}
         </Flex>
 
+        {ustIcerik ? <div style={{ marginBottom: 16 }}>{ustIcerik}</div> : null}
         {hata ? (
           <HataDurumu hata={hata} hataAksiyon={hataAksiyon} />
         ) : bos ? (

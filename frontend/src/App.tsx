@@ -96,6 +96,9 @@ const StokSayimiListesi = lazy(() =>
 const StokSayimiDetayi = lazy(() =>
   import("@/panel/pages/urunler/StokSayimiDetayi").then((m) => ({ default: m.StokSayimiDetayi })),
 );
+const StokHareketleriListesi = lazy(() =>
+  import("@/panel/pages/urunler/StokHareketleriListesi").then((m) => ({ default: m.StokHareketleriListesi })),
+);
 const UrunListesi = lazy(() =>
   import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
 );
@@ -694,6 +697,7 @@ function App() {
               <Route path="urunler/yeni" element={<UrunFormu />} />
               <Route path="urunler/stok-sayimi" element={<StokSayimiListesi />} />
               <Route path="urunler/stok-sayimi/:id" element={<StokSayimiDetayi />} />
+              <Route path="urunler/stok-hareketleri" element={<StokHareketleriListesi />} />
               <Route path="urunler/:id" element={<UrunFormu />} />
               <Route path="siparisler" element={<SiparisListesi />} />
               <Route path="musteriler" element={<MusteriListesi />} />

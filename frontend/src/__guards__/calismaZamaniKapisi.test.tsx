@@ -484,6 +484,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/urunler/UrunAracCubugu.tsx",
   // Stok sayımı listesi: propsuz mount olur, `useCountSessions` boş veri döner,
   // arama kutusu `ListePage`den ADLI gelir (`UrunListesi.tsx` ile aynı sınıf).
+  // Stok hareketleri: propsuz mount olur, arama kutusu `ListePage`den ADLI gelir.
+  "src/panel/pages/urunler/StokHareketleriListesi.tsx",
   // Sayım detayı: propsuz mount olur (`id` yok), sorgu yanıtsız → yükleniyor; kontroller veri dalında.
   "src/panel/pages/urunler/StokSayimiDetayi.tsx",
   // Sayım pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).

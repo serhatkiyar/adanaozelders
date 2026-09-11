@@ -99,7 +99,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
       },
       // Bize özgü (ikas'ta karşılığı yok) — spec §4'te onaylı, ikas'ın
       // Stok Sayımı öğesinden hemen sonra, Tanımlamalar'dan önce durur.
-      { key: "stok-hareketleri", label: "Stok Hareketleri" },
+      {
+        key: "stok-hareketleri",
+        label: "Stok Hareketleri",
+        path: PATHS.adminNewStockMovements,
+        requiredPermission: "products",
+      },
       { key: "hasarli-stok", label: "Hasarlı Stok" },
       { key: "tanimlamalar", label: "Tanımlamalar" },
       { key: "fiyat-listesi", label: "Fiyat Listesi" },
