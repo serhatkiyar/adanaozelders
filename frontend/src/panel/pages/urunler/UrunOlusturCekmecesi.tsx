@@ -49,16 +49,17 @@
  *    placeholder üretim verisi olurdu — bu yüzden alan sorulmadan
  *    atlanmadı, forma eklendi. Aynı `lib/tax.ts::yuzdedenOran` (tek
  *    dönüşüm kaynağı) kullanılır, `UrunFormu` ile birebir aynı kural.
- * 2. **"Stoksuz satmaya izin ver" onay kutusu GÖRSEL OLARAK durur ama
- *    GÖVDEYE HİÇ GİRMEZ.** Backend'de bu kavramın (stok sıfırken satışa
- *    izin veren bir "oversell" bayrağı) karşılığı YOK —
- *    `backend/schemas/store.py`/`store_service.py::create_product`
- *    böyle bir alan okumuyor, `stock` PHYSICAL üründe her zaman 0 ile
- *    kurulup deftere `INITIAL` hareketiyle yazılıyor. Kutuya sahte bir
- *    `stock` değeri (ör. `1`) yazmak UYDURMA VERİ olurdu. Bu yüzden kutu
- *    etkileşimlidir (referansla birebir görünür/işlenir) ama isteğe hiçbir
- *    alan eklemez — gerçek bir "sınırsız satış" sunucu kavramı doğana
- *    kadar bilinçli bir boşluk (rapora yazıldı).
+ * 2. **"Stoksuz satmaya izin ver" onay kutusu KOPYALANMADI.** Backend'de bu
+ *    kavramın (stok sıfırken satışa izin veren bir "oversell" bayrağı)
+ *    karşılığı YOK — `backend/schemas/store.py`/`store_service.py::
+ *    create_product` böyle bir alan okumuyor, `stock` PHYSICAL üründe her
+ *    zaman 0 ile kurulup deftere `INITIAL` hareketiyle yazılıyor. Kutuya
+ *    sahte bir `stock` değeri yazmak uydurma veri olurdu; kutuyu görünür
+ *    bırakıp isteğe hiç koymamak ise kullanıcıya YALAN bir denetim
+ *    gösterirdi (işaretler, hiçbir şey olmaz). İkisi de kabul edilmez, bu
+ *    yüzden kutu HİÇ RENDER EDİLMEZ. Sunucuda gerçek bir "sınırsız satış"
+ *    kavramı doğduğunda eklenir — panelin başka yerlerinde de uygulanan
+ *    kural: karşılığı olmayan denetim konmaz.
  * 3. **Açıklama düz `Input.TextArea`.** Depoda TipTap tabanlı bir editör
  *    VAR (`components/admin/content/BlogBodyEditor.tsx`) ama Tailwind +
  *    eski admin tasarım diline (`@/components/admin/ui`) bağlı — saf AntD
@@ -145,8 +146,6 @@ type CekmeceDegerleri = {
   tax_rate_yuzde: number;
   indirimli_fiyat_isteniyor: boolean;
   compare_at_price?: number | null;
-  /** Referansla birebir görünür ama gövdeye girmez — bkz. dosya başı Madde 2. */
-  stoksuz_satis: boolean;
   category_id?: number;
 };
 
@@ -287,7 +286,7 @@ export function UrunOlusturCekmecesi({ acik, kapat }: { acik: boolean; kapat: ()
       kaydediyor={olusturMutasyonu.isPending || gorselYukleniyor}
       kaydetMetni="Kaydet ve Satışa Aç"
     >
-      <Form form={form} layout="vertical" initialValues={{ indirimli_fiyat_isteniyor: false, stoksuz_satis: false }}>
+      <Form form={form} layout="vertical" initialValues={{ indirimli_fiyat_isteniyor: false }}>
         <Bolum baslik="Ürün Detayları" aciklama="Ürünün özelliklerini ve önemli bilgilerini buradan yönetin.">
           <Form.Item label="Ürün Görseli">
             <Upload.Dragger
@@ -370,9 +369,6 @@ export function UrunOlusturCekmecesi({ acik, kapat }: { acik: boolean; kapat: ()
             ]}
           >
             <InputNumber min={0} max={99.99} suffix="%" style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="stoksuz_satis" valuePropName="checked">
-            <Checkbox>Stoksuz satmaya izin ver</Checkbox>
           </Form.Item>
         </Bolum>
 

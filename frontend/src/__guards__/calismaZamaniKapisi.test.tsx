@@ -476,6 +476,7 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/siparisler/SiparisListesi.tsx",
   "src/panel/pages/urunler/UrunFormu.tsx",
   "src/panel/pages/urunler/UrunListesi.tsx",
+  "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
   "src/panel/pages/urunler/VaryantPenceresi.tsx",
 ];
 
@@ -654,6 +655,10 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // `open` olana dek gövdeyi mount etmez) — `ConfirmDialog`/`Dialog` ile
   // aynı sınıf.
   "src/panel/components/YanPencere.tsx": "pencere-kabugu",
+  // "Ürün Oluştur" çekmecesi (commit `15c218d`): `YanPencere` üstüne
+  // kurulu, kapalıyken gövdeyi mount etmez — `YanPencere.tsx` ve
+  // `VaryantPenceresi.tsx` ile BİREBİR aynı sınıf.
+  "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/VaryantPenceresi.tsx": "pencere-kabugu",
 };
 

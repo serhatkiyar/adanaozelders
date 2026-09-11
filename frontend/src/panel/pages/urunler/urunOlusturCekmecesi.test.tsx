@@ -90,7 +90,9 @@ describe("UrunOlusturCekmecesi", () => {
     expect(screen.getByText("Satış Ayarları")).toBeInTheDocument();
     expect(screen.getByText("Satışa başlamak için gerekli temel bilgileri girin.")).toBeInTheDocument();
     expect(screen.getByLabelText("İndirimli fiyat girmek istiyorum")).toBeInTheDocument();
-    expect(screen.getByLabelText("Stoksuz satmaya izin ver")).toBeInTheDocument();
+    // "Stoksuz satmaya izin ver" BİLİNÇLİ olarak yok: sunucuda karşılığı
+    // olmadığı için işaretlense hiçbir şey değişmezdi (bkz. bileşen başı, 2).
+    expect(screen.queryByLabelText("Stoksuz satmaya izin ver")).toBeNull();
 
     expect(screen.getByText("Kategori Seçimi")).toBeInTheDocument();
     expect(screen.getByText("Ürünün ait olduğu kategoriyi belirleyin.")).toBeInTheDocument();
