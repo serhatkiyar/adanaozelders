@@ -21,7 +21,14 @@ export function Matris({
   degisti,
 }: {
   satirlar: MatrisSatiri[];
-  degisti: (anahtar: string, alan: keyof MatrisSatiri, deger: string | number) => void;
+  /**
+   * `deger` temizlenen bir alan için `undefined` taşır — `0` DEĞİL. Boş ile
+   * `0` aynı şey değildir: boş "ana üründen devral" demek (backend
+   * `VariantMatrixRowIn.price`/`stock` `default=None`), `0` ise gerçek bir
+   * değer ("bedava"/"stok yok"). Çağıran bu ayrımı gövdeye taşımalı —
+   * `undefined` alanları JSON'da hiç görünmez, `0` görünür.
+   */
+  degisti: (anahtar: string, alan: keyof MatrisSatiri, deger: string | number | undefined) => void;
 }) {
   return (
     <Table<MatrisSatiri>
@@ -38,9 +45,14 @@ export function Matris({
             <InputNumber
               aria-label={`Fiyat ${k.kombinasyon}`}
               value={k.price}
-              min={0}
+              // Backend `price: Decimal | None = Field(default=None, gt=0, ...)`
+              // (backend/schemas/store.py:579) — 0 GEÇERSİZ, en küçük geçerli
+              // değer kuruş hassasiyetiyle 0.01. Alan temizlenince `v` `null`
+              // olur; bunu `0`a değil `undefined`a çeviriyoruz ki "devral"
+              // davranışı bozulmasın.
+              min={0.01}
               addonAfter="TL"
-              onChange={(v) => degisti(k.anahtar, "price", Number(v ?? 0))}
+              onChange={(v) => degisti(k.anahtar, "price", v ?? undefined)}
             />
           ),
         },
@@ -63,8 +75,12 @@ export function Matris({
             <InputNumber
               aria-label={`Stok ${k.kombinasyon}`}
               value={k.stock}
+              // Backend `stock: int | None = Field(default=None, ge=0)`
+              // (backend/schemas/store.py:580) — 0 burada GEÇERLİDİR ("stok
+              // yok" demektir), boş olmaktan farklıdır ("devral"). `null` →
+              // `undefined`, yazılan `0` → `0` olarak kalır.
               min={0}
-              onChange={(v) => degisti(k.anahtar, "stock", Number(v ?? 0))}
+              onChange={(v) => degisti(k.anahtar, "stock", v ?? undefined)}
             />
           ),
         },

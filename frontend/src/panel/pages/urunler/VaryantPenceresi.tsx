@@ -117,7 +117,7 @@ export function VaryantPenceresi({
     };
   });
 
-  function satirDegisti(anahtar: string, alan: keyof MatrisSatiri, deger: string | number) {
+  function satirDegisti(anahtar: string, alan: keyof MatrisSatiri, deger: string | number | undefined) {
     setSatirlar((onceki) => ({
       ...onceki,
       [anahtar]: { ...onceki[anahtar], barcode: onceki[anahtar]?.barcode ?? "", [alan]: deger },
