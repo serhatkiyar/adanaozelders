@@ -318,14 +318,18 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   }
 
   // Gövde shell'den ayrı: Mesaj Merkezi (embedded) kendi yüksekliğini verir.
+  //
+  // Telefonda yatay padding YOK: ekran tek bir listeye veriliyor, satır
+  // ayraçları kenardan kenara uzuyor ve başlık kendi `px-5`ini taşıyor.
+  // Dıştaki `px-4` kalsaydı telefonda 36px'lik bir sol boşluk çıkardı.
   const body = (
-      <div className="mx-auto flex h-full w-full max-w-screen-2xl overflow-hidden bg-white px-4 md:px-8 ">
+      <div className="mx-auto flex h-full w-full max-w-screen-2xl overflow-hidden bg-white md:px-8 ">
         {/* ── Sohbet listesi ── */}
         <aside
           aria-label="Konuşma listesi"
           className={`${
             showChat ? "hidden md:flex" : "flex"
-          } w-full shrink-0 flex-col border-r border-slate-200 md:w-[380px] lg:w-[460px]`}
+          } w-full shrink-0 flex-col md:w-[380px] md:border-r md:border-slate-200 lg:w-[460px]`}
         >
           <div className="space-y-3 border-b border-slate-100 px-5 pb-3 pt-5 ">
             {/* Başlık ↔ arama (Airbnb gibi: ikona tıklayınca animasyonla açılır) */}
@@ -372,23 +376,53 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 <h1 className="text-2xl font-semibold tracking-tight text-slate-900 ">
                   Mesajlar
                 </h1>
-                <button
-                  type="button"
-                  onClick={() => setSearchOpen(true)}
-                  aria-label="Ara"
-                  className="rounded-full p-2 text-slate-600 transition hover:bg-slate-100 "
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"
-                    />
-                  </svg>
-                </button>
+                {/* Başlığın sağındaki iki yuvarlak: ara · arşiv. Arşiv eskiden
+                    çip satırındaydı; oradaki tek "ikon" filtre çipleriyle aynı
+                    satırı paylaşıp iki farklı şeyi (filtre ↔ ayrı kutu) tek
+                    ritimde gösteriyordu. Telefonda üst bar kalkınca bu satır
+                    ekranın kendi başlığı oldu; eylemler de oraya taşındı. */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(true)}
+                    aria-label="Ara"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 "
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="m21 21-4.35-4.35M17 11a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFilter(filter === "archived" ? "all" : "archived")
+                    }
+                    aria-pressed={filter === "archived"}
+                    aria-label={filter === "archived" ? "Arşivden çık" : "Arşiv"}
+                    title={filter === "archived" ? "Arşivden çık" : "Arşiv"}
+                    className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${
+                      filter === "archived"
+                        ? "bg-slate-900 text-white "
+                        : "text-slate-600 hover:bg-slate-100 "
+                    }`}
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                    </svg>
+                    {archivedUnread > 0 && (
+                      <span className="absolute right-0.5 top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[10px] font-bold text-marka-fg ring-2 ring-white ">
+                        {archivedUnread > 9 ? "9+" : archivedUnread}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
-            {/* Filtre çipleri + arşiv ikonu (sağda) */}
+            {/* Filtre çipleri */}
             <div className="flex items-center gap-2">
               {([
                 { key: "all", label: "Tümü" },
@@ -421,29 +455,6 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   </button>
                 );
               })}
-              <button
-                type="button"
-                onClick={() =>
-                  setFilter(filter === "archived" ? "all" : "archived")
-                }
-                aria-pressed={filter === "archived"}
-                aria-label={filter === "archived" ? "Arşivden çık" : "Arşiv"}
-                title={filter === "archived" ? "Arşivden çık" : "Arşiv"}
-                className={`relative ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition ${
-                  filter === "archived"
-                    ? "bg-slate-900 text-white "
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
-                }`}
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-                </svg>
-                {archivedUnread > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[10px] font-bold text-marka-fg ring-2 ring-white ">
-                    {archivedUnread > 9 ? "9+" : archivedUnread}
-                  </span>
-                )}
-              </button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -528,7 +539,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               filter === "archived" ? (
                 <EmptyArchived />
               ) : (
-                <EmptyInbox />
+                <EmptyInbox role={role} />
               )
             ) : !filteredConversations || filteredConversations.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center px-6 text-center">
@@ -778,7 +789,20 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
 
   if (embedded) return body;
   return (
-    <DashboardShell title="Mesajlar" navItems={navItems} flush>
+    /*
+     * `mobilUstGizle` — telefonda üst bar ve panel şeridi çizilmez.
+     *
+     * Ölçülmüş kusur (11 Eyl 2026, kullanıcı: *"navbar falan gereksiz yer
+     * kaplıyor"*): üst bar + şerit, 390px'lik bir ekranın tepesinden ~120px
+     * alıyordu ve hemen altında sayfanın KENDİ "Mesajlar" başlığı geliyordu —
+     * yani iki başlık, üst üste. Gezinme kaybolmuyor: alt sekme çubuğunda
+     * "Mesajlar" sekmesi zaten var (`MobilAltSekmeler`). Referans (Airbnb,
+     * 390px) da bu ekranda üst barı çizmiyor.
+     *
+     * Masaüstünde hiçbir şey değişmez; prop yalnız `<md` bandında iş yapar.
+     * Kütüphane sonuç ekranıyla aynı sözleşme — bkz. `Libraries.tsx`.
+     */
+    <DashboardShell title="Mesajlar" navItems={navItems} flush mobilUstGizle>
       {body}
     </DashboardShell>
   );
@@ -927,7 +951,7 @@ function MessageRow({
 // Liste yükleme iskeleti (gözatma + arama ortak).
 function ListSkeleton() {
   return (
-    <div className="space-y-2 p-3">
+    <div className="space-y-2 px-5 py-3">
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
@@ -968,7 +992,7 @@ function ConversationRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition ${
+      className={`flex w-full items-center gap-3.5 px-5 py-3.5 text-left transition ${
         active
           ? "bg-marka-soft "
           : "hover:bg-slate-50 "
@@ -1020,7 +1044,7 @@ function MessageHitRow({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-start gap-3.5 px-4 py-3 text-left transition ${
+      className={`flex w-full items-start gap-3.5 px-5 py-3 text-left transition ${
         active
           ? "bg-marka-soft "
           : "hover:bg-slate-50 "
@@ -1059,40 +1083,58 @@ function MessageHitRow({
   );
 }
 
-// Boş durum: arşiv sekmesi.
+// Boş durum: arşiv sekmesi. Ölçeği `EmptyInbox` ile AYNI — ikisi aynı yerde,
+// aynı düğmeyle değişiyor; farklı boyutta olmaları geçişi zıplatıyordu.
 function EmptyArchived() {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
-        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+    <div className="flex h-full flex-col items-center justify-center px-8 py-16 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 text-marka-metin ">
+        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
         </svg>
       </div>
-      <p className="mt-3 text-sm font-medium text-slate-700 ">
+      <p className="mt-5 text-lg font-semibold text-slate-900 ">
         Arşiv boş
       </p>
-      <p className="mt-1 text-xs text-slate-400 ">
+      <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-500 ">
         Arşivlediğin sohbetler burada görünür.
       </p>
     </div>
   );
 }
 
-// Boş durum: hiç sohbet yok.
-function EmptyInbox() {
+/*
+ * Boş durum: hiç sohbet yok.
+ *
+ * Eylem düğmesi YALNIZ üyede var: sohbeti o başlatır (bir eğitmen ilanından
+ * "Mesaj Gönder"). Eğitmende ve operatörde karşılığı olan bir eylem yok —
+ * mesaj onlara gelir — ve olmayan bir yere düğme koymak boş durumu
+ * açıklamak yerine yanıltırdı.
+ */
+function EmptyInbox({ role }: { role: Role }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 ">
-        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+    <div className="flex h-full flex-col items-center justify-center px-8 py-16 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 text-marka-metin ">
+        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
         </svg>
       </div>
-      <p className="mt-3 text-sm font-medium text-slate-700 ">
+      <p className="mt-5 text-lg font-semibold text-slate-900 ">
         Henüz mesajın yok
       </p>
-      <p className="mt-1 text-xs text-slate-400 ">
-        Bir profilden "Mesaj Gönder" ile başlat.
+      <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-500 ">
+        {role === "CLIENT"
+          ? "Bir eğitmenin ilanındaki “Mesaj Gönder” ile sohbet başlatabilirsin."
+          : "Sana yazıldığında sohbetler burada görünür."}
       </p>
+      {role === "CLIENT" && (
+        <Link
+          to={ROUTES.tutors}
+          className="mt-6 rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
+        >
+          Eğitmenleri keşfet
+        </Link>
+      )}
     </div>
   );
 }
