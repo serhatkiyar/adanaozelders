@@ -1,4 +1,4 @@
-import { Card, Empty, Flex, Input, Table, Typography } from "antd";
+import { Alert, Card, Empty, Flex, Input, Table, Typography } from "antd";
 import type { TableProps } from "antd";
 import type { ReactNode } from "react";
 
@@ -10,6 +10,8 @@ export type ListePageProps<T> = {
   kolonlar: TableProps<T>["columns"];
   veri: T[] | undefined;
   yukleniyor: boolean;
+  hata?: string | null;
+  hataAksiyon?: ReactNode;
   toplam?: number;
   sayfa: number;
   sayfaBoyutu: number;
@@ -22,9 +24,9 @@ export type ListePageProps<T> = {
 
 export function ListePage<T extends object>({
   baslik, aksiyonlar, aramaDegeri, aramaDegisti, kolonlar, veri, yukleniyor,
-  toplam, sayfa, sayfaBoyutu, sayfaDegisti, bosBaslik, bosAciklama, bosAksiyon, rowKey,
+  hata, hataAksiyon, toplam, sayfa, sayfaBoyutu, sayfaDegisti, bosBaslik, bosAciklama, bosAksiyon, rowKey,
 }: ListePageProps<T>) {
-  const bos = !yukleniyor && (veri?.length ?? 0) === 0;
+  const bos = !hata && !yukleniyor && (veri?.length ?? 0) === 0;
 
   return (
     <Flex vertical gap={16}>
@@ -46,7 +48,9 @@ export function ListePage<T extends object>({
           />
         </Flex>
 
-        {bos ? (
+        {hata ? (
+          <Alert type="error" showIcon message={hata} action={hataAksiyon} />
+        ) : bos ? (
           <Empty
             description={
               <Flex vertical gap={4} align="center">
