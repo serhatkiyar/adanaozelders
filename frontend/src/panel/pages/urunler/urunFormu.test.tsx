@@ -20,6 +20,12 @@ const createVariantGroup = vi.fn();
 // gövdesi, barkod doğrulaması) `varyant.test.tsx`te.
 const previewVariantMatrix = vi.fn();
 const createVariantMatrix = vi.fn();
+// Madde 1 (kritik): Kategori seçici `useCategories()` → `fetchCategories`
+// tüketir. Varsayılan tek leaf kategori — "kategori yok" durumunu ayrıca
+// sınayan testler kendi `mockResolvedValueOnce([])`unu koyar.
+const fetchCategories = vi.fn().mockResolvedValue([
+  { id: 1, slug: "kirtasiye", name: "Kırtasiye", parent_id: null, sort_order: 0, is_active: true },
+]);
 vi.mock("@/api/store", () => ({
   createProduct: (...a: unknown[]) => createProduct(...a),
   updateProduct: (...a: unknown[]) => updateProduct(...a),
@@ -29,6 +35,7 @@ vi.mock("@/api/store", () => ({
   createVariantGroup: (...a: unknown[]) => createVariantGroup(...a),
   previewVariantMatrix: (...a: unknown[]) => previewVariantMatrix(...a),
   createVariantMatrix: (...a: unknown[]) => createVariantMatrix(...a),
+  fetchCategories: (...a: unknown[]) => fetchCategories(...a),
 }));
 
 afterEach(() => {
@@ -115,6 +122,10 @@ describe("UrunFormu", () => {
   // (`ProductCreate.tax_rate`) KDV oranının sunucuda varsayılanı YOK ve
   // formda da sessizce doldurulmuyor (eski panelle aynı kural) — bu yüzden
   // üçüncü alan da girilmeden istek atılmıyor.
+  //
+  // `tax_rate` bir STRING olarak gider ("0.2000") — `lib/tax.ts::yuzdedenOran`
+  // sabit 4 ondalıklı bir dize üretir (Madde 3); eski kod `d.tax_rate_yuzde /
+  // 100` ile kayan nokta SAYISI üretiyordu.
   it("ad, fiyat ve KDV oranı girilince createProduct çağrılır", async () => {
     kur();
     await userEvent.type(screen.getByLabelText("Ürün Adı"), "Deneme Kalem Seti");
@@ -122,8 +133,132 @@ describe("UrunFormu", () => {
     await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
     expect(createProduct).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Deneme Kalem Seti", price: 120, tax_rate: 0.2 }),
+      expect.objectContaining({ title: "Deneme Kalem Seti", price: 120, tax_rate: "0.2000" }),
     );
+  });
+
+  // Madde 1 (kritik): Durum + Kategori formda yoksa panelde yaratılan ürün
+  // hiçbir zaman yayına alınamıyordu (`status` varsayılanı sunucuda DRAFT).
+  describe("durum ve kategori", () => {
+    it("Durum ve Kategori alanları formda görünür", () => {
+      kur();
+      expect(screen.getByLabelText("Durum")).toBeInTheDocument();
+      expect(screen.getByLabelText("Kategori")).toBeInTheDocument();
+    });
+
+    it("durum seçilmezse gövde varsayılan olarak DRAFT taşır", async () => {
+      kur();
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Taslak Ürün");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "80");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "18");
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+      await waitFor(() => expect(createProduct).toHaveBeenCalled());
+      expect(createProduct.mock.calls[0][0]).toMatchObject({ status: "DRAFT" });
+    });
+
+    it("durum ACTIVE seçilip kategori seçilmezse kaydedilemez (backend kuralının istemci aynası)", async () => {
+      kur();
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Yeni Ürün");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "100");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+
+      await userEvent.click(screen.getByLabelText("Durum"));
+      await userEvent.click(await screen.findByTitle("Yayında"));
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      expect(await screen.findByText("Aktif ürün için kategori zorunludur.")).toBeInTheDocument();
+      expect(createProduct).not.toHaveBeenCalled();
+    });
+
+    it("durum ACTIVE ve kategori seçilince gövde status ve category_id taşır", async () => {
+      kur();
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Yeni Ürün");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "100");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+
+      await userEvent.click(screen.getByLabelText("Durum"));
+      await userEvent.click(await screen.findByTitle("Yayında"));
+      await userEvent.click(screen.getByLabelText("Kategori"));
+      await userEvent.click(await screen.findByTitle("Kırtasiye"));
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      await waitFor(() => expect(createProduct).toHaveBeenCalled());
+      expect(createProduct.mock.calls[0][0]).toMatchObject({ status: "ACTIVE", category_id: 1 });
+    });
+
+    it("düzenlemede dokunulmayan durum ve kategori mevcut değeriyle gövdeye gider", async () => {
+      fetchProductAdmin.mockResolvedValueOnce({ ...DUZENLENECEK_URUN, status: "HIDDEN", category_id: 1 });
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+      expect(updateProduct.mock.calls[0][1]).toMatchObject({ status: "HIDDEN", category_id: 1 });
+    });
+  });
+
+  // Madde 2 (önemli): boş bırakılan "Eski Fiyat" sessizce DB'de kalıyordu
+  // (`undefined` → JSON'dan düşer → backend `exclude_unset` eski değeri korur).
+  describe("eski fiyat (compare_at_price)", () => {
+    it("dolu eski fiyat silinip kaydedilince gövde compare_at_price: null taşır", async () => {
+      fetchProductAdmin.mockResolvedValueOnce({ ...DUZENLENECEK_URUN, compare_at_price: "60.00" });
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+
+      const eskiFiyatAlani = screen.getByLabelText("Eski Fiyat");
+      expect(eskiFiyatAlani).toHaveValue("60");
+      await userEvent.clear(eskiFiyatAlani);
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+      expect(updateProduct.mock.calls[0][1]).toMatchObject({ compare_at_price: null });
+    });
+
+    it("eski fiyat satış fiyatından küçük ya da eşitse kaydedilemez", async () => {
+      kur();
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Test Ürün");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "100");
+      await userEvent.type(screen.getByLabelText("Eski Fiyat"), "80");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      expect(
+        await screen.findByText("Eski fiyat satış fiyatından büyük olmalı."),
+      ).toBeInTheDocument();
+      expect(createProduct).not.toHaveBeenCalled();
+    });
+  });
+
+  // Madde 3 (önemli): `lib/tax.ts` atlanmış — yüklerken kayan nokta artığı.
+  describe("KDV oranı dönüşümü (lib/tax.ts)", () => {
+    it("%7'lik oran forma artıksız (\"7\") yüklenir", async () => {
+      fetchProductAdmin.mockResolvedValueOnce({ ...DUZENLENECEK_URUN, tax_rate: "0.0700" });
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+      expect(screen.getByLabelText("KDV Oranı (%)")).toHaveValue("7");
+    });
+  });
+
+  // Madde 4 (önemli): `lib/errors.ts::getErrorDetail` atlanmış — sunucunun
+  // anlamlı mesajı jenerik "Ürün kaydedilemedi." ile eziliyordu.
+  it("sunucunun anlamlı hata mesajı jenerik metin yerine gösterilir", async () => {
+    fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN);
+    updateProduct.mockRejectedValueOnce({
+      response: { data: { detail: "İndirimli fiyat eski fiyattan küçük olmalı" } },
+    });
+    kurDuzenleme();
+    await screen.findByDisplayValue("Kırmızı Defter");
+
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    expect(
+      await screen.findByText("İndirimli fiyat eski fiyattan küçük olmalı"),
+    ).toBeInTheDocument();
   });
 
   it("?tip=varyantli ile açılınca varyant sekmesi görünür", () => {

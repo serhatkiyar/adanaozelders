@@ -41,8 +41,15 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormPage, type FormBolumu } from "@/panel/components/FormPage";
 import { VaryantPenceresi } from "@/panel/pages/urunler/VaryantPenceresi";
 import { createProduct, updateProduct } from "@/api/store";
-import { useAdminProduct, useCreateVariantGroup, useVariantConfig, useVariantGroups } from "@/hooks/useStore";
+import {
+  useAdminProduct,
+  useCategories,
+  useCreateVariantGroup,
+  useVariantConfig,
+  useVariantGroups,
+} from "@/hooks/useStore";
 import { ROUTES } from "@/lib/routes";
+import { getErrorDetail } from "@/lib/errors";
 import {
   ADMIN_REASON_OPTIONS,
   requiresNote,
@@ -50,15 +57,42 @@ import {
   type AdminReasonCode,
   type StockEditResult,
 } from "@/lib/stockMovements";
-import type { ProductCreate, ProductDetailOut, ProductKind, ProductUpdate, VariantGroup } from "@/types";
+import { orandanYuzde, yuzdedenOran } from "@/lib/tax";
+import type {
+  ProductCreate,
+  ProductDetailOut,
+  ProductKind,
+  ProductStatus,
+  ProductUpdate,
+  VariantGroup,
+} from "@/types";
+
+/**
+ * Durum seçenekleri — `ProductStatus`ün GERÇEK değerlerinden (uydurma yok).
+ * `ProductCreate.status` yalnız ACTIVE/HIDDEN/DRAFT kabul eder
+ * (`backend/schemas/store.py:328`); `PENDING` (eğitmen dijital ürününün admin
+ * onayı beklediği durum) yalnız `ProductUpdate.status`ta var — admin yeni bir
+ * ürünü PENDING olarak YARATAMAZ, bu yüzden iki liste ayrı.
+ */
+const DURUM_SECENEKLERI: { value: ProductStatus; label: string }[] = [
+  { value: "ACTIVE", label: "Yayında" },
+  { value: "HIDDEN", label: "Gizli" },
+  { value: "DRAFT", label: "Taslak" },
+];
+const DURUM_SECENEKLERI_DUZENLEME: { value: ProductStatus; label: string }[] = [
+  ...DURUM_SECENEKLERI,
+  { value: "PENDING", label: "Onay Bekliyor" },
+];
 
 type UrunFormDegerleri = {
   title: string;
   kind: ProductKind;
   price: number;
   compare_at_price?: number | null;
-  /** Formda YÜZDE tutulur, istekte ORAN gider (`tax_rate = deger / 100`). */
+  /** Formda YÜZDE tutulur, istekte ORAN gider (bkz. `lib/tax.ts`). */
   tax_rate_yuzde: number;
+  status: ProductStatus;
+  category_id?: number | null;
   stock?: number | null;
   barcode?: string | null;
   /** Yalnız düzenlemede ve stok değiştiğinde anlamlı; bkz. dosya başı yorumu. */
@@ -80,12 +114,31 @@ function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
     title: d.title,
     kind: d.kind,
     price: d.price,
-    compare_at_price: d.compare_at_price ?? undefined,
-    tax_rate: d.tax_rate_yuzde / 100,
+    compare_at_price: compareAtPriceGovdesi(d),
+    tax_rate: yuzdedenOran(String(d.tax_rate_yuzde)).oran,
     stock: d.kind === "PHYSICAL" ? (d.stock ?? undefined) : undefined,
     barcode: d.barcode || undefined,
+    // `status` burada YENİ kayıt formunun kendi alanı — Select seçenekleri
+    // yalnız DURUM_SECENEKLERI'nden gelir (PENDING orada YOK, bkz. dosya
+    // başı), bu yüzden değer her zaman `ProductCreate.status`ün kabul ettiği
+    // üç değerden biridir; tip daraltması burada güvenlidir.
+    status: d.status as ProductCreate["status"],
+    category_id: d.category_id ?? null,
     ...varyantUyelikGovdesi(d),
   };
+}
+
+/**
+ * `compare_at_price` — Madde 2 (dördüncü sessiz veri kaybı): bu alan
+ * `title`/`price` gibi HER ZAMAN gövdededir, "dokunulmadı" durumu (stok/
+ * varyant alanlarının aksine) yoktur. Ama boşsa `undefined` DEĞİL açıkça
+ * `null` gider: `undefined` JSON.stringify'da anahtarı düşürür, backend
+ * `exclude_unset=True` kullandığından (güncellemede) eski indirim fiyatı
+ * sessizce DB'de kalırdı. `null` ise "bu alanı temizle" niyetini AÇIKÇA
+ * taşır — sunucu `Decimal | None` kabul ediyor (`schemas/store.py:347`).
+ */
+function compareAtPriceGovdesi(d: UrunFormDegerleri): number | null {
+  return d.compare_at_price ?? null;
 }
 
 /**
@@ -149,9 +202,11 @@ function guncelleGovdesi(d: UrunFormDegerleri, stokSonuc: StockEditResult): Prod
   return {
     title: d.title,
     price: d.price,
-    compare_at_price: d.compare_at_price ?? undefined,
-    tax_rate: d.tax_rate_yuzde / 100,
+    compare_at_price: compareAtPriceGovdesi(d),
+    tax_rate: yuzdedenOran(String(d.tax_rate_yuzde)).oran,
     barcode: d.barcode || undefined,
+    status: d.status,
+    category_id: d.category_id ?? null,
     ...varyantUyelikGovdesi(d),
     ...(stokSonuc.submitStock ? stokSonuc.payload : {}),
   };
@@ -223,7 +278,12 @@ export function UrunFormu() {
       kind: urun.kind,
       price: Number(urun.price),
       compare_at_price: urun.compare_at_price != null ? Number(urun.compare_at_price) : undefined,
-      tax_rate_yuzde: urun.tax_rate != null ? Number(urun.tax_rate) * 100 : undefined,
+      // `orandanYuzde` kayan nokta artığını kapatır (bkz. `lib/tax.ts`) —
+      // eski `Number(urun.tax_rate) * 100` "%7" ürününü "7.000000000000001"
+      // olarak gösteriyordu (Madde 3).
+      tax_rate_yuzde: urun.tax_rate != null ? Number(orandanYuzde(urun.tax_rate)) : undefined,
+      status: (urun.status as ProductStatus | undefined) ?? "DRAFT",
+      category_id: urun.category_id ?? undefined,
       stock: urun.stock ?? undefined,
       barcode: urun.barcode ?? undefined,
       variant_group_id: urun.variant_group_id ?? undefined,
@@ -231,6 +291,17 @@ export function UrunFormu() {
       option2_value: urun.option2_value ?? undefined,
     });
   }, [urun, form]);
+
+  const { data: kategoriler, isPending: kategorilerYukleniyor } = useCategories();
+  // Eski panelin deseni (`components/admin/store/ProductForm.tsx`): yalnız
+  // YAPRAK kategoriler seçilebilir — ürün, alt kategorisi olan bir üst
+  // kategoriye doğrudan bağlanmaz. İki panel aynı iş kuralını göstersin diye
+  // aynı filtre.
+  const secilebilirKategoriler = (kategoriler ?? []).filter(
+    (k) =>
+      k.is_active !== false &&
+      !(kategoriler ?? []).some((cocuk) => cocuk.parent_id === k.id && cocuk.is_active !== false),
+  );
 
   const kaydetMutasyonu = useMutation({
     mutationFn: (govde: ProductCreate | ProductUpdate) =>
@@ -272,8 +343,12 @@ export function UrunFormu() {
       );
       message.success("Ürün kaydedildi.");
       navigate(ROUTES.adminNewProducts);
-    } catch {
-      message.error("Ürün kaydedilemedi.");
+    } catch (hata) {
+      // Madde 4: sunucunun ALANI OLMAYAN 409/422 mesajları ("indirimli fiyat
+      // eski fiyattan küçük olmalı" vb.) burada jenerik metne eziliyordu —
+      // `getErrorDetail` sunucu `detail`ini KORUYARAK gösterir, yoksa yedek
+      // Türkçe metne düşer.
+      message.error(getErrorDetail(hata, "Ürün kaydedilemedi."));
     }
   }
 
@@ -314,16 +389,78 @@ export function UrunFormu() {
               />
             </Form.Item>
           )}
+          {/* Madde 1 (kritik): panelde yaratılan ürün `status`/`category_id`
+              hiç gitmediği için sunucuda `status` DRAFT varsayılana düşüyor
+              ve yönetici ürünü asla yayına alamıyordu (bkz. `schemas/store.py`
+              satır 328/339). Etiketler `ProductStatus`ün gerçek değerleri. */}
+          <Form.Item label="Durum" name="status" rules={[{ required: true, message: "Durum zorunludur." }]}>
+            <Select options={duzenlemeModu ? DURUM_SECENEKLERI_DUZENLEME : DURUM_SECENEKLERI} />
+          </Form.Item>
+          <Form.Item
+            label="Kategori"
+            name="category_id"
+            dependencies={["status"]}
+            rules={[
+              {
+                validator: (_rule, value: number | undefined) => {
+                  // Sunucu kuralının aynısı (`schemas/store.py:339`): yalnız
+                  // ACTIVE'te kategori zorunlu — HIDDEN/DRAFT/PENDING'te
+                  // kategori boş kalabilir.
+                  if (form.getFieldValue("status") === "ACTIVE" && value == null) {
+                    return Promise.reject(new Error("Aktif ürün için kategori zorunludur."));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
+            <Select
+              allowClear
+              placeholder="Kategori seçin"
+              loading={kategorilerYukleniyor}
+              options={secilebilirKategoriler.map((k) => ({ value: k.id, label: k.name }))}
+            />
+          </Form.Item>
           <Form.Item label="Satış Fiyatı" name="price" rules={[{ required: true, message: "Fiyat zorunludur." }]}>
             <InputNumber min={0} suffix="TL" style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item label="Eski Fiyat" name="compare_at_price">
+          <Form.Item
+            label="Eski Fiyat"
+            name="compare_at_price"
+            dependencies={["price"]}
+            rules={[
+              {
+                // Sunucu kuralının aynısı (`schemas/store.py:336`): eski
+                // fiyat satış fiyatından büyük olmalı (indirim iddiası).
+                validator: (_rule, value: number | undefined | null) => {
+                  if (value == null) return Promise.resolve();
+                  const fiyat = form.getFieldValue("price");
+                  if (fiyat != null && Number(value) <= Number(fiyat)) {
+                    return Promise.reject(new Error("Eski fiyat satış fiyatından büyük olmalı."));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+          >
             <InputNumber min={0} suffix="TL" style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item
             label="KDV Oranı (%)"
             name="tax_rate_yuzde"
-            rules={[{ required: true, message: "KDV oranı zorunludur." }]}
+            rules={[
+              { required: true, message: "KDV oranı zorunludur." },
+              {
+                // `lib/tax.ts::yuzdedenOran` TEK kaynak — kendi dönüşümü
+                // yazılmaz (Madde 3). Aynı fonksiyon `oran`ı 4 ondalığa
+                // yuvarlar, `decimal_places=4` sınırını aşan 422'yi de önler.
+                validator: (_rule, value: number | undefined) => {
+                  if (value == null) return Promise.resolve();
+                  const sonuc = yuzdedenOran(String(value));
+                  return sonuc.ok ? Promise.resolve() : Promise.reject(new Error(sonuc.hata ?? "Geçersiz KDV oranı."));
+                },
+              },
+            ]}
           >
             {/* Sunucuda `tax_rate` KESİN küçüktür 1 (`ge=0, lt=1`) — yüzde 100
                 tam oran 1.0 üretir ve 422 alır; üst sınır bu yüzden 100
@@ -399,7 +536,7 @@ export function UrunFormu() {
     <Form
       form={form}
       layout="vertical"
-      initialValues={{ kind: "PHYSICAL" }}
+      initialValues={{ kind: "PHYSICAL", status: "DRAFT" }}
       disabled={duzenlemeModu && urunYukleniyor}
     >
       <FormPage
