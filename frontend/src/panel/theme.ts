@@ -55,7 +55,10 @@ export const panelTheme: ThemeConfig = {
       'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
   components: {
-    Layout: { siderBg: PANEL_SIDER_BG, headerBg: "#ffffff" },
+    // `headerBg` yok: kabuğun üst barı kaldırıldı (ikas referansı §5/4).
+    // `bodyBg`: içerik zemini beyaz — referans §5/5 ("gri zemin + beyaz kart"
+    // yerine "düz beyaz yüzey"). Panelin TEK renk kaynağı burasıdır.
+    Layout: { siderBg: PANEL_SIDER_BG, bodyBg: "#ffffff" },
     // Koyu menünün yazı renkleri AÇIKÇA verilir: global bir token bunları
     // ele geçirip koyu-üstü-koyu yaparsa menü okunamaz hale gelir (bir kez oldu).
     Menu: {

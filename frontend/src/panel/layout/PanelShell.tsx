@@ -1,32 +1,98 @@
-import { useState, type ReactNode } from "react";
-import { Layout, Menu, Drawer, Button } from "antd";
+import { useState, type ComponentType, type ReactNode } from "react";
+import { Avatar, Layout, Menu, Drawer, Button } from "antd";
 import type { MenuProps } from "antd";
-import { MenuOutlined } from "@ant-design/icons";
+import {
+  AppstoreAddOutlined,
+  AppstoreOutlined,
+  AuditOutlined,
+  BarChartOutlined,
+  BarcodeOutlined,
+  BookOutlined,
+  CarOutlined,
+  ContainerOutlined,
+  DollarOutlined,
+  HomeOutlined,
+  InboxOutlined,
+  MenuOutlined,
+  NotificationOutlined,
+  PercentageOutlined,
+  ReadOutlined,
+  SafetyOutlined,
+  SettingOutlined,
+  ShopOutlined,
+  ShoppingCartOutlined,
+  ShoppingOutlined,
+  SolutionOutlined,
+  SwapOutlined,
+  TagOutlined,
+  TeamOutlined,
+  UserOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AccessDenied } from "@/components/admin/AccessState";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { adminAreaAccess } from "@/lib/adminAccess";
+import { rolEtiketi } from "@/lib/roles";
 import { PanelProvider } from "@/panel/PanelProvider";
 import {
   PANEL_MENU,
   menuyuIzneGoreSuz,
   rotaIzniBul,
   seciliMenuDurumu,
+  type PanelMenuIconKey,
   type PanelMenuItem,
 } from "@/panel/layout/menu";
 import { YukleniyorDurumu } from "@/panel/components/Durum";
 import { PANEL_SIDER_BG } from "@/panel/theme";
 import { useAuthStore } from "@/store/authStore";
+import type { UserOut } from "@/types";
 
-const { Sider, Header, Content } = Layout;
+const { Sider, Content } = Layout;
+
+/**
+ * `menu.ts`teki `PanelMenuIconKey` → gerçek `@ant-design/icons` bileşeni.
+ * Çeviri BURADA yapılır: menü verisi (`menu.ts`) AntD'yi hiç bilmez, `.ts`
+ * dosyasında JSX kurulamaz — bkz. `menu.ts` dosya başı notu.
+ */
+const PANEL_MENU_ICONS: Record<PanelMenuIconKey, ComponentType> = {
+  home: HomeOutlined,
+  shopping: ShoppingOutlined,
+  appstore: AppstoreOutlined,
+  cart: ShoppingCartOutlined,
+  swap: SwapOutlined,
+  audit: AuditOutlined,
+  tag: TagOutlined,
+  dollar: DollarOutlined,
+  barcode: BarcodeOutlined,
+  container: ContainerOutlined,
+  team: TeamOutlined,
+  percentage: PercentageOutlined,
+  inbox: InboxOutlined,
+  notification: NotificationOutlined,
+  barchart: BarChartOutlined,
+  "appstore-add": AppstoreAddOutlined,
+  setting: SettingOutlined,
+  shop: ShopOutlined,
+  car: CarOutlined,
+  read: ReadOutlined,
+  solution: SolutionOutlined,
+  book: BookOutlined,
+  safety: SafetyOutlined,
+  wallet: WalletOutlined,
+};
 
 function menuyuAntdyeCevir(items: PanelMenuItem[]): MenuProps["items"] {
-  return items.map((m) => ({
-    key: m.key,
-    label: m.label,
-    disabled: !m.path && !m.children,
-    children: m.children ? menuyuAntdyeCevir(m.children) : undefined,
-  }));
+  return items.map((m) => {
+    const Icon = PANEL_MENU_ICONS[m.icon];
+    return {
+      key: m.key,
+      label: m.label,
+      icon: <Icon />,
+      disabled: !m.path && !m.children,
+      children: m.children ? menuyuAntdyeCevir(m.children) : undefined,
+    };
+  });
 }
 
 function yolBul(items: PanelMenuItem[], key: string): string | undefined {
@@ -38,6 +104,49 @@ function yolBul(items: PanelMenuItem[], key: string): string | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * Sider altındaki sabit kullanıcı kartı (referans §1: "yuvarlak avatar + ad +
+ * mağaza/rol satırı"). Bizde mağaza kavramı yok (admin panelinde hesap bir
+ * mağazaya değil bir role bağlı) — ikinci satır GERÇEK oturumun rol etiketi
+ * (`rolEtiketi`, `lib/roles.ts` tek kaynağı). "Hak Edişler" bloğu bilinçli
+ * olarak YOK: admin panelinde karşılığı olan bir tutar yok, uydurma veri
+ * eklenmez (referans §6).
+ */
+function PanelKullaniciKarti({ user }: { user: UserOut }) {
+  return (
+    <div
+      data-testid="panel-kullanici-karti"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "12px 16px",
+        borderTop: "1px solid rgba(255, 255, 255, 0.12)",
+        flexShrink: 0,
+      }}
+    >
+      <Avatar src={user.avatar_url ?? undefined} icon={<UserOutlined />} />
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            color: "#ffffff",
+            fontSize: 13,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {user.full_name}
+        </div>
+        <div style={{ color: "rgba(255, 255, 255, 0.65)", fontSize: 12 }}>
+          {rolEtiketi(user.role_id)}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function PanelShell() {
@@ -115,37 +224,39 @@ export function PanelShell() {
   return (
     <PanelProvider>
       <Layout style={{ minHeight: "100vh" }}>
+        {/* ikas referansı §5/4: üst bar yok. §1/§5-3: Sider dar (~172px) ve
+            menünün altına sabit kullanıcı kartı (gerçek oturum, uydurma yok). */}
         {!mobil && (
           <Sider
-            width={224}
+            width={172}
             role="navigation"
-            style={{ position: "sticky", top: 0, height: "100vh", overflow: "auto" }}
+            style={{
+              position: "sticky",
+              top: 0,
+              height: "100vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
           >
-            {menu}
+            <div style={{ flex: 1, overflow: "auto" }}>{menu}</div>
+            {user && <PanelKullaniciKarti user={user} />}
           </Sider>
         )}
         <Layout>
-          <Header
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              position: "sticky",
-              top: 0,
-              zIndex: 1,
-            }}
-          >
-            {mobil && (
-              <Button
-                aria-label="Menü"
-                icon={<MenuOutlined />}
-                size="large"
-                onClick={() => setMobilAcik(true)}
-              />
-            )}
-            <span style={{ fontWeight: 600 }}>Adana Özel Ders</span>
-          </Header>
           <Content style={{ padding: mobil ? 16 : 24 }}>
+            {/* ikas referansı §5/4: üst bar kaldırıldı, ama mobil çekmeceyi
+                açan TEK giriş (menü düğmesi) kalmalı — içeriğin üstünde, sol
+                üstte. */}
+            {mobil && (
+              <div style={{ marginBottom: 16 }}>
+                <Button
+                  aria-label="Menü"
+                  icon={<MenuOutlined />}
+                  size="large"
+                  onClick={() => setMobilAcik(true)}
+                />
+              </div>
+            )}
             {icerik}
           </Content>
         </Layout>
@@ -154,9 +265,21 @@ export function PanelShell() {
           onClose={() => setMobilAcik(false)}
           placement="left"
           width={240}
-          styles={{ body: { padding: 0, background: PANEL_SIDER_BG, overflow: "auto" } }}
+          styles={{
+            body: {
+              padding: 0,
+              background: PANEL_SIDER_BG,
+              overflow: "auto",
+              display: "flex",
+              flexDirection: "column",
+              height: "100%",
+            },
+          }}
         >
-          <nav role="navigation">{menu}</nav>
+          <nav role="navigation" style={{ flex: 1, overflow: "auto" }}>
+            {menu}
+          </nav>
+          {user && <PanelKullaniciKarti user={user} />}
         </Drawer>
       </Layout>
     </PanelProvider>

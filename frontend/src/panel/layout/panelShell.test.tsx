@@ -91,14 +91,66 @@ describe("PanelShell", () => {
     expect(container.querySelector(".ant-menu-submenu-open")).not.toBeNull();
   });
 
-  it("üst şeritte marka adı görünür", () => {
-    setViewport(1280);
+  it("üst bar kaldırıldı: marka adı artık kabukta yok, mobilde menü düğmesi duruyor", () => {
+    // ikas referansı §5/4: üst bar yok, sayfa başlığı içeriğin içinde. Bilinçli
+    // davranış değişikliği (eskiden `Header`de "Adana Özel Ders" vardı) —
+    // mobil çekmeceyi açan TEK giriş (menü düğmesi) hâlâ durmalı, artık
+    // içeriğin üstünde.
+    setViewport(390);
     render(
       <MemoryRouter>
         <PanelShell />
       </MemoryRouter>,
     );
-    expect(screen.getByText("Adana Özel Ders")).toBeVisible();
+    expect(screen.queryByText("Adana Özel Ders")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /menü/i })).toBeInTheDocument();
+  });
+
+  it("her menü öğesi (kök ve alt) bir ikon taşır", () => {
+    function dogrula(items: typeof PANEL_MENU) {
+      for (const item of items) {
+        expect(item.icon, `"${item.label}" ikon taşımıyor`).toBeTruthy();
+        if (item.children) dogrula(item.children);
+      }
+    }
+    dogrula(PANEL_MENU);
+  });
+
+  it("masaüstünde menü öğeleri AntD ikonlarıyla render olur", () => {
+    setViewport(1280);
+    const { container } = render(
+      <MemoryRouter>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    // Görünür kök öğe sayısı kadar (en az) `.anticon` beklenir — alt öğeler
+    // kapalı submenu'de DOM'da olsa da olmasa da bu alt sınırı bozmaz.
+    expect(container.querySelectorAll(".anticon").length).toBeGreaterThanOrEqual(
+      PANEL_MENU.length,
+    );
+  });
+
+  it("Sider altında kullanıcı kartı gerçek oturum verisinden gelir (uydurma yok)", () => {
+    setViewport(1280);
+    useAuthStore.setState({
+      token: "test-token",
+      isAuthenticated: true,
+      user: {
+        id: 1,
+        role_id: 1,
+        full_name: "Test Kullanıcı Adı",
+        admin_permissions: [...TAM_ADMIN_IZINLERI],
+      } as never,
+    });
+    render(
+      <MemoryRouter>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    const kart = screen.getByTestId("panel-kullanici-karti");
+    expect(kart).toHaveTextContent("Test Kullanıcı Adı");
+    // Rol etiketi `lib/roles.ts` TEK kaynağından: admin (role_id 1) → "Yönetici".
+    expect(kart).toHaveTextContent("Yönetici");
   });
 
   it("767px genişlikte mobil dala geçer: menü düğmesi var, Sider yok", () => {

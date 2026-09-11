@@ -1,11 +1,47 @@
 import { adminAreaAccess } from "@/lib/adminAccess";
 import { PATHS } from "@/lib/routes";
 
+/**
+ * Menü ikonları — `docs/ikas-panel-referans.md` §1 "her öğe ikonlu" kuralı.
+ * Bu dosya `.ts` (JSX yok, `panel/layout/PanelShell.tsx`in aksine): ikon
+ * BİLEŞENİ değil, ANAHTARI taşınır. Gerçek `@ant-design/icons` bileşenine
+ * çevirme işi `PanelShell.tsx`teki `PANEL_MENU_ICONS` sözlüğünündür — menü
+ * verisi AntD'yi hiç bilmez (mevcut mimari: bu dosya saf veri, dönüşüm
+ * `menuyuAntdyeCevir`de).
+ */
+export type PanelMenuIconKey =
+  | "home"
+  | "shopping"
+  | "appstore"
+  | "cart"
+  | "swap"
+  | "audit"
+  | "tag"
+  | "dollar"
+  | "barcode"
+  | "container"
+  | "team"
+  | "percentage"
+  | "inbox"
+  | "notification"
+  | "barchart"
+  | "appstore-add"
+  | "setting"
+  | "shop"
+  | "car"
+  | "read"
+  | "solution"
+  | "book"
+  | "safety"
+  | "wallet";
+
 export type PanelMenuItem = {
   key: string;
   label: string;
   path?: string;
   children?: PanelMenuItem[];
+  /** ikas referansı gereği HER öğe ikonlu — bkz. `PanelMenuIconKey`. */
+  icon: PanelMenuIconKey;
   /**
    * İzin alanı öneki — `lib/adminAccess.ts`teki `adminAreaAccess`e aynen
    * geçer (`"products"` → `products.view`/`products.manage`). Yalnız gerçek
@@ -21,23 +57,36 @@ export type PanelMenuItem = {
   requiredPermission?: string;
 };
 
+/**
+ * `docs/ikas-panel-referans.md` §1 — ikas'ın 11 kök öğesi BİREBİR bu sırayla
+ * ve bu adlarla, ardından bizim projemize özgü 6 modül (Dağıtım, Dersler,
+ * Eğitmenler, Kütüphaneler, Moderasyon, Finans) kendi grubu olarak altına
+ * eklenir (referans §5/1 ve görev metni: "onları ikas öğelerinin altına,
+ * kendi grubu olarak ekle"). Karşılığı bugün var olan üç modül (Ürünler,
+ * Siparişler, Müşteriler) gerçek yola + izne bağlanır; ikas'a özgü, bizde
+ * karşılığı olmayanlar (Gelen Kutusu, Pazarlama, Uygulamalar, Satış
+ * Kanalları) yolsuz yer tutucu kalır (referans §6).
+ */
 export const PANEL_MENU: PanelMenuItem[] = [
-  { key: "giris", label: "Giriş", path: PATHS.adminNew },
+  { key: "giris", label: "Giriş", path: PATHS.adminNew, icon: "home" },
   {
     key: "urunler",
     label: "Ürünler",
+    icon: "shopping",
     children: [
       {
         key: "urun-listesi",
         label: "Ürünler",
         path: PATHS.adminNewProducts,
         requiredPermission: "products",
+        icon: "appstore",
       },
-      { key: "satin-alma", label: "Satın Alma" },
-      { key: "stok-sayimi", label: "Stok Sayımı" },
-      { key: "stok-hareketleri", label: "Stok Hareketleri" },
-      { key: "hasarli-stok", label: "Hasarlı Stok" },
-      { key: "tanimlamalar", label: "Tanımlamalar" },
+      { key: "satin-alma", label: "Satın Alma", icon: "cart" },
+      { key: "transferler", label: "Transferler", icon: "swap" },
+      { key: "stok-sayimi", label: "Stok Sayımı", icon: "audit" },
+      { key: "tanimlamalar", label: "Tanımlamalar", icon: "tag" },
+      { key: "fiyat-listesi", label: "Fiyat Listesi", icon: "dollar" },
+      { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi", icon: "barcode" },
     ],
   },
   {
@@ -45,8 +94,8 @@ export const PANEL_MENU: PanelMenuItem[] = [
     label: "Siparişler",
     path: PATHS.adminNewOrders,
     requiredPermission: "orders",
+    icon: "container",
   },
-  { key: "dagitim", label: "Dağıtım" },
   {
     key: "musteriler",
     label: "Müşteriler",
@@ -54,16 +103,22 @@ export const PANEL_MENU: PanelMenuItem[] = [
     // Eski panelin `adminNavigation.ts`teki "Kullanıcılar" girdisiyle AYNI
     // izin öneki (`users.view`/`users.manage`) — bkz. `AdminUsersPage.tsx`.
     requiredPermission: "users",
+    icon: "team",
   },
-  { key: "dersler", label: "Dersler" },
-  { key: "egitmenler", label: "Eğitmenler" },
-  { key: "kutuphaneler", label: "Kütüphaneler" },
-  { key: "indirimler", label: "İndirimler" },
-  { key: "moderasyon", label: "Moderasyon" },
-  { key: "finans", label: "Finans" },
-  { key: "raporlar", label: "Raporlar" },
-  { key: "satis-kanali", label: "Satış Kanalı" },
-  { key: "ayarlar", label: "Ayarlar" },
+  { key: "indirimler", label: "İndirimler", icon: "percentage" },
+  { key: "gelen-kutusu", label: "Gelen Kutusu", icon: "inbox" },
+  { key: "pazarlama", label: "Pazarlama", icon: "notification" },
+  { key: "raporlar", label: "Raporlar", icon: "barchart" },
+  { key: "uygulamalar", label: "Uygulamalar", icon: "appstore-add" },
+  { key: "ayarlar", label: "Ayarlar", icon: "setting" },
+  { key: "satis-kanallari", label: "Satış Kanalları", icon: "shop" },
+  // ── Bizim projemize özgü modüller (ikas'ta karşılığı yok) ──
+  { key: "dagitim", label: "Dağıtım", icon: "car" },
+  { key: "dersler", label: "Dersler", icon: "read" },
+  { key: "egitmenler", label: "Eğitmenler", icon: "solution" },
+  { key: "kutuphaneler", label: "Kütüphaneler", icon: "book" },
+  { key: "moderasyon", label: "Moderasyon", icon: "safety" },
+  { key: "finans", label: "Finans", icon: "wallet" },
 ];
 
 type MenuYapragi = {
