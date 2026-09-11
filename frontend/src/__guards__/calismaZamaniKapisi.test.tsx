@@ -458,8 +458,18 @@ const KAPI_KAPSAMI = [
   "src/panel/components/Durum.tsx",
   "src/panel/components/ListePage.tsx",
   "src/panel/components/Matris.tsx",
+  // Ürün medya sekmesi (kapak + galeri). Propsuz mount olur (`productId`
+  // undefined iken `BosDurumu` basar — throw ETMEZ), bu yüzden `KAPI_DISI`'na
+  // yazılamaz (oranın ters provası "propsuz mount EDİLEMİYOR" der). Gerçek
+  // prop `ZORUNLU_PROPLAR`'da veriliyor ki yükleme/sıralama/silme UI'ı
+  // gerçekten mount olsun.
+  "src/panel/components/MedyaSekmesi.tsx",
   "src/panel/components/YanPencere.tsx",
   "src/panel/layout/PanelShell.tsx",
+  // Müşteriler modülünün ilk ekranı: propsuz mount olur, `useAdminUsers` boş
+  // veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
+  // `MusteriListesi.tsx`in kardeşleri `SiparisListesi.tsx`/`UrunListesi.tsx`).
+  "src/panel/pages/musteriler/MusteriListesi.tsx",
   // Siparişler modülü (commit `06ab4d2`): propsuz mount olur, `useAdminOrders`
   // boş veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
   // `UrunListesi.tsx`) — `KONTROLSUZ_EKRANLAR`a değil kapıya girer.
@@ -627,6 +637,19 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // Kardeş varyant matrisi: satırlar (`satirlar`) olmadan tablo boş —
   // fiyat/barkod/stok girdileri yalnız veri gelince doğar.
   "src/panel/components/Matris.tsx": "kosullu",
+  // Ürün medya sekmesi: gerçek bir ürünle (`ZORUNLU_PROPLAR`) ölçüldü —
+  // `productId`/`urun` verilince BosDurumu KAPISI açılır ve kapak + galeri
+  // gerçekten mount olur (44 DOM düğümü). Ama bu ekranın TEK "form kontrolü"
+  // (`input`/`select`/`textarea`) adayı iki `type="file" hidden"` seçicidir
+  // ve ikisi de sayaçtan ÖLÇÜM DIŞI: `hidden` özniteliği taşıyan kontrol
+  // erişilebilirlik ağacında yoktur, görünen tetikleyici (`Button`) kendi
+  // metnini taşır — `scripts/ui-baseline-sayim.mjs`teki sanksiyonlu istisnanın
+  // AYNISI ("ref ile tetiklenen dosya seçicileri"), `LibraryMediaManager.tsx`
+  // ile aynı desen. Yükleme/sıralama/silme aksiyonları `Button`dur, bu
+  // sayacın kapsamındaki tip değildir (`KONTROL = "input, select, textarea"`,
+  // `test-utils/alanAdlari.ts`). Ölçüldü: `toplam:0, dugumSayisi:44` — sunum,
+  // form kontrolü taşımaz.
+  "src/panel/components/MedyaSekmesi.tsx": "sunum",
   // Kapalı pencere hiçbir şey render etmez (AntD `Drawer` varsayılanı
   // `open` olana dek gövdeyi mount etmez) — `ConfirmDialog`/`Dialog` ile
   // aynı sınıf.
@@ -689,6 +712,31 @@ const ZORUNLU_PROPLAR: Record<string, Record<string, unknown>> = {
     gruplar: [],
     etkin: 0,
     onEtkin: () => {},
+  },
+  // `MedyaSekmesi`: `productId` undefined iken `BosDurumu` basar (yükleme/
+  // silme/sıralama UI'ı hiç mount olmaz). Gerçek ölçüm için KAYITLI bir ürün
+  // verilir — şekil `urunFormu.test.tsx`teki `DUZENLENECEK_URUN` fixture'ıyla
+  // AYNI (id/title/kind/price/cover_url/images), buraya `images` bir kayıtla
+  // dolduruldu ki sıralama/silme düğmeleri de gerçekten render edilsin.
+  "src/panel/components/MedyaSekmesi.tsx": {
+    productId: 9,
+    urun: {
+      id: 9,
+      slug: "kirmizi-defter",
+      title: "Kırmızı Defter",
+      kind: "PHYSICAL",
+      seller_type: "PLATFORM",
+      price: "45.50",
+      compare_at_price: null,
+      tax_rate: "0.20",
+      currency: "TRY",
+      cover_url: null,
+      in_stock: true,
+      stock: 12,
+      images: [
+        { id: 101, url: "https://cdn.example.com/1.jpg", sort_order: 0, alt_text: null, caption: null },
+      ],
+    },
   },
 };
 
