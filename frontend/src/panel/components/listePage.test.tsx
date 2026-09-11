@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ListePage } from "@/panel/components/ListePage";
 import { PanelProvider } from "@/panel/PanelProvider";
+import { panelTheme } from "@/panel/theme";
 
 type Satir = { id: number; ad: string };
 
@@ -376,6 +377,25 @@ describe("ListePage", () => {
       expect(tabloDegisti).toHaveBeenCalledTimes(1);
       const [, , sorter] = tabloDegisti.mock.calls[0];
       expect(sorter).toMatchObject({ order: "ascend", columnKey: "ad" });
+    });
+  });
+
+  describe("ikas liste kroması (referans §7 'Liste — İKİNCİ TUR ÖLÇÜM')", () => {
+    it("panelTheme.components.Table ölçülen değerleri taşıyor", () => {
+      // Değerler tahmin değil: `docs/ikas-panel-referans.md` §7'de canlı
+      // ikas panelinden `getComputedStyle` ile okundu. Başlık hücresine özgü
+      // fark (dolgu `0 12px`, 40px, `fontWeight 500`) burada DEĞİL —
+      // `ListePage.tsx`teki `onHeaderCell` satır-içi stilinde; bu token'lar
+      // başlık ve veri hücreleri arasında paylaşıldığı için veri satırına
+      // göre ayarlı (bkz. dosyadaki yorum).
+      expect(panelTheme.components?.Table).toMatchObject({
+        headerBg: "#EEF2F6",
+        headerColor: "#4B5565",
+        borderColor: "transparent",
+        headerBorderRadius: 0,
+        cellPaddingBlock: 16,
+        cellPaddingInline: 12,
+      });
     });
   });
 });

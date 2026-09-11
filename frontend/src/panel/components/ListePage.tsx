@@ -8,8 +8,56 @@ import {
 } from "@ant-design/icons";
 import { Alert, Button, Flex, Input, Pagination, Select, Table, theme as antdTheme, Tooltip, Typography } from "antd";
 import type { TableProps } from "antd";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useMemo } from "react";
 import { BosDurumu, HataDurumu } from "@/panel/components/Durum";
+
+/**
+ * ikas referansı §7 "Liste — İKİNCİ TUR ÖLÇÜM": başlık hücresi dolgusu
+ * `0 12px`, yüksekliği 40px, `fontWeight 500` — veri hücresinden (16px 12px,
+ * organik yükseklik) FARKLI. AntD `Table`in `cellPaddingBlock`/
+ * `cellPaddingInline` component token'ları (`theme.ts` → `components.Table`)
+ * ise başlık ve veri hücreleri arasında PAYLAŞILIR (rc-table aynı
+ * `tablePaddingVertical/Horizontal`ı `thead > tr > th`ye de `tbody > tr >
+ * td`ye de uygular) — token'lar bu yüzden veri satırına göre ayarlı, başlık
+ * farkı burada `onHeaderCell` ile satır-içi (`style`) eklenir.
+ *
+ * Bir CSS sınıfı/`<style>` yerine `onHeaderCell` (rc-table'ın kendi genişleme
+ * noktası) seçildi: `PanelProvider` `StyleProvider hashPriority="high"`
+ * kullanıyor (Tailwind preflight'ına karşı) — bu mod AntD'nin kendi hash
+ * sınıfını özgüllüğe katıyor, yani panel içinde yazılacak bir
+ * `.sinifAdi .ant-table-thead > tr > th` kuralı AntD'nin kendi kuralına
+ * özgüllükte YENİLEBİLİR (ve `!important` bu paket için yasak). Satır içi
+ * stil özgüllük tartışmasından bağımsız kazanır.
+ */
+function basligaOlcumStiliEkle<T>(
+  kolonlar: TableProps<T>["columns"],
+): TableProps<T>["columns"] {
+  // `ColumnGroupType<T> | ColumnType<T>` birleşimi `onHeaderCell`in kolon
+  // parametresini spread sonrası union'a geri sokamıyor (rc-table'ın kendi
+  // `title: ReactNode | ColumnTitle<T>` çatallanması yüzünden) — dönüş tipi
+  // zaten yukarıda `TableProps<T>["columns"]` olarak sabitlendiği için tek
+  // noktada güvenli bir daralatma (cast) yapılıyor, satır içindeki mantık
+  // (önceki `onHeaderCell`i koru + ölçülen stili ekle) tam tipli kalıyor.
+  return kolonlar?.map((kolon) => ({
+    ...kolon,
+    onHeaderCell: (col: typeof kolon) => {
+      // rc-table'ın `ColumnGroupType | ColumnType` birleşimi `title` alanında
+      // çatallandığı için `kolon.onHeaderCell`i union'un KENDİ parametresiyle
+      // çağırmak tip denetiminde çakışıyor — burada TEK noktada, yalnızca
+      // çağrılan fonksiyon referansı gevşetiliyor (davranış aynı: varsa
+      // önceki `onHeaderCell`i çağır, sonucu koru).
+      const onceki = kolon.onHeaderCell as
+        | ((...args: unknown[]) => { style?: CSSProperties } & Record<string, unknown>)
+        | undefined;
+      const oncekiProps = onceki?.(col) ?? {};
+      return {
+        ...oncekiProps,
+        style: { padding: "0 12px", height: 40, fontWeight: 500, ...oncekiProps.style },
+      };
+    },
+  })) as TableProps<T>["columns"];
+}
 
 /**
  * Sayfa boyutu seçicide her zaman görünecek sabit seçenekler — ikas'ın
@@ -140,6 +188,7 @@ export function ListePage<T extends object>({
   const { token } = antdTheme.useToken();
   const bos = !hata && !yukleniyor && (veri?.length ?? 0) === 0;
   const gorunumDugmesiVar = Boolean(kolonAyariTiklandi || listeGorunumuTiklandi || izgaraGorunumuTiklandi);
+  const olculenKolonlar = useMemo(() => basligaOlcumStiliEkle(kolonlar), [kolonlar]);
 
   // Tüketicinin geçtiği `sayfaBoyutu` sabit listede yoksa (ör. 45) seçiciye
   // eklenir — yoksa AntD `Select` seçili değeri gösteremez.
@@ -169,9 +218,11 @@ export function ListePage<T extends object>({
       {/* ikas referansı §2: içerik kartın İÇİNDE değil, düz beyaz yüzeyde
           durur (renk kartın kendi border/shadow'unu değil, `theme.ts`'in
           `token.colorBgContainer`ını kullanır — dosyaya yeni bir hex
-          YAZILMADI, AntD'nin kendi tema token'ı okunuyor). Satır ayırıcıları
-          AntD `Table`in varsayılan (bordered=false) satır-altı çizgisinden
-          gelir, ayrıca bir stil eklenmedi. */}
+          YAZILMADI, AntD'nin kendi tema token'ı okunuyor). Satır ayırıcı
+          çizgisi §7 "Liste — İKİNCİ TUR ÖLÇÜM"e göre GÖRÜNMEZ (ikas'ta
+          `border-bottom: 0.8px solid transparent`) — `theme.ts` →
+          `components.Table.borderColor: "transparent"` bunu karşılıyor,
+          burada ayrıca bir stil eklenmedi. */}
       <div
         style={{
           background: token.colorBgContainer,
@@ -280,7 +331,7 @@ export function ListePage<T extends object>({
               />
             ) : null}
             <Table<T>
-              columns={kolonlar}
+              columns={olculenKolonlar}
               dataSource={veri}
               loading={yukleniyor}
               rowKey={rowKey}

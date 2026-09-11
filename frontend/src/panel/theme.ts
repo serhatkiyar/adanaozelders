@@ -99,5 +99,34 @@ export const panelTheme: ThemeConfig = {
       defaultBorderColor: "#E3E8EF",
       defaultColor: "#121926",
     },
+    // ikas'ın listesi AntD `Table` DEĞİL (div/Row/Col yapısı) — bizde
+    // sıralama/sayfalama `Table`dan geldiği için bileşen kalıyor, yalnız
+    // GÖRÜNÜMÜ ikas'a çekiliyor. Değerler `docs/ikas-panel-referans.md`
+    // §7 "Liste — İKİNCİ TUR ÖLÇÜM" tablosundan (canlı DOM'dan ikinci turda
+    // düzeltilen ölçüm; ilk tablodaki "başlık zemini yok" / "40px satır" /
+    // "ince ayırıcı çizgi" iddiaları YANLIŞTI, bunlar onun yerine geçer).
+    Table: {
+      // Başlık satırı zemini: açık gri, AntD varsayılanı (#FAFAFA'ya yakın
+      // `colorFillAlterSolid`) DEĞİL.
+      headerBg: "#EEF2F6",
+      headerColor: "#4B5565",
+      // `borderColor` rc-table'da HEM başlığın alt çizgisini HEM veri
+      // satırlarının ayırıcısını üretir (`tableBorder` tek değişken, ikisine
+      // de uygulanıyor — `node_modules/antd/es/table/style/index.js`
+      // doğrulandı). ikas'ta ikisi de YOK (başlık ayrımını zemin rengi
+      // sağlıyor, satır ayırıcısı `border-bottom: 0.8px solid transparent`) —
+      // bu yüzden tek token'la ikisi birden kapatılıyor.
+      borderColor: "transparent",
+      // Satır/tablo köşe yarıçapı 0 — tablo bir kartın içinde değil.
+      headerBorderRadius: 0,
+      // Veri hücresi dolgusu: satır yüksekliği (ölçülen 69px) BURADAN,
+      // sabit bir yükseklik token'ından DEĞİL doğuyor (ikas'ta da öyle).
+      // Başlık hücresinin dolgusu/yüksekliği/`fontWeight`ı farklı (`0 12px`,
+      // 40px, 500) ama bu token'lar başlıkla veri arasında PAYLAŞILIR —
+      // başlığa özgü fark `ListePage.tsx`te `onHeaderCell` satır-içi stiliyle
+      // uygulanıyor (bkz. oradaki yorum).
+      cellPaddingBlock: 16,
+      cellPaddingInline: 12,
+    },
   },
 };
