@@ -131,6 +131,39 @@ describe("ListePage", () => {
     expect(sayfaDegisti).toHaveBeenCalledWith(2, 20);
   });
 
+  describe("uyari (hata değil — liste ile BİRLİKTE görünen şerit)", () => {
+    it("verilmediğinde hiçbir şey değişmiyor (geriye dönük uyum)", () => {
+      kur([{ id: 1, ad: "9. Sınıf Matematik" }]);
+      expect(screen.getByText("9. Sınıf Matematik")).toBeInTheDocument();
+      expect(screen.queryAllByRole("alert")).toHaveLength(0);
+    });
+
+    it("verildiğinde liste ile birlikte görünüyor (hatanın aksine gövdenin yerine geçmiyor)", () => {
+      render(
+        <PanelProvider>
+          <ListePage<Satir>
+            baslik="Ürünler"
+            aramaDegeri=""
+            aramaDegisti={() => {}}
+            kolonlar={[{ title: "Ürün", dataIndex: "ad", key: "ad" }]}
+            veri={[{ id: 1, ad: "9. Sınıf Matematik" }]}
+            yukleniyor={false}
+            uyari="Test uyarı metni"
+            toplam={1}
+            sayfa={1}
+            sayfaBoyutu={20}
+            sayfaDegisti={() => {}}
+            bosBaslik="İlk Ürününüzü Yükleyin!"
+            bosAciklama="Ürünlerinizi yükleyin ve satışa başlayın."
+            rowKey={(k) => k.id}
+          />
+        </PanelProvider>,
+      );
+      expect(screen.getByText("9. Sınıf Matematik")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent("Test uyarı metni");
+    });
+  });
+
   describe("sıralama/filtre kanalı (tabloDegisti)", () => {
     function kurSiralanabilir(tabloDegisti?: (...args: unknown[]) => void) {
       return render(

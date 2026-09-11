@@ -41,18 +41,37 @@ const TON_RENK: Record<ReturnType<typeof orderStatusTone>, string> = {
  *    dilimler (AntD `Table`'ın kendi dahili sayfalaması) — sahte bir "sonraki
  *    sayfa sunucudan yeni veri getirir" izlenimi YARATILMAZ, `toplam` her
  *    zaman gerçekten elde tutulan (ve aramadan geçen) satır sayısını yansıtır.
- *    Sunucudaki gerçek toplam bu sayıyı aşarsa (fetch `limit`'i doldurduysa)
- *    ekran bunu bildirmez — eski panelin `OrdersPanel`indeki "kesilme
- *    uyarısı" şeridine karşılık gelen bir slot `ListePage`de yok (bkz. rapor).
+ *  - Sunucudaki gerçek toplam elde tutulan partiyi aşarsa (fetch `limit`'i
+ *    doldurduysa) ekran artık bunu BİLDİRİR: `ListePage`in `uyari` şeridi —
+ *    eski panelin `OrdersPanel`indeki "kesilme uyarısı" şeridinin emsali
+ *    (bkz. `KESILME_TAVANI` altındaki yorum ve rapor).
  */
+/**
+ * Sunucudan tek seferde çekilen parti tavanı. `useAdminOrders`e AÇIKÇA
+ * geçilir — `api/store.ts`teki `listOrdersAdmin`in kendi varsayılanı da
+ * 100'dür (bkz. o dosyadaki yorum), ama burada sihirli bir sayıya
+ * GÜVENİLMEZ: tavan bu ekranın kendi adlandırılmış sabitinden gelir, ki
+ * aşağıdaki `partiTavaniDoldu` karşılaştırması iki dosyada birbirinden
+ * bağımsız sürüklenen bir sayıya bağlı kalmasın.
+ */
+const KESILME_TAVANI = 100;
+
 export function SiparisListesi() {
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
 
-  const { data, isPending, isError, refetch } = useAdminOrders();
+  const { data, isPending, isError, refetch } = useAdminOrders(undefined, KESILME_TAVANI);
 
   const siparisler = data?.items ?? [];
+  // Elde tutulan parti TAM tavanı doldurduysa (== KESILME_TAVANI kadar
+  // kayıt döndüyse) sunucuda muhtemelen daha fazlası var ve bu ekran onu
+  // hiç görmüyor. `filtrelenmis` DEĞİL `siparisler` (ham, aramadan ÖNCEki
+  // parti) kullanılır — arama yalnız zaten çekilmiş partiyi süzer, sunucuya
+  // gitmez, dolayısıyla kesilmeyi etkilemez. Eski panelin
+  // `OrdersPanel`indeki "kesilme uyarısı" şeridinin emsali (bkz.
+  // `components/admin/store/OrdersPanel.tsx`).
+  const partiTavaniDoldu = siparisler.length >= KESILME_TAVANI;
 
   const filtrelenmis = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase("tr-TR");
@@ -109,6 +128,11 @@ export function SiparisListesi() {
       yukleniyor={isPending}
       hata={isError ? "Siparişler yüklenemedi." : null}
       hataAksiyon={<Button onClick={() => refetch()}>Tekrar dene</Button>}
+      uyari={
+        partiTavaniDoldu
+          ? `İlk ${siparisler.length} sipariş gösteriliyor; sunucuda muhtemelen daha fazlası var, listenin tamamı bu olmayabilir.`
+          : undefined
+      }
       toplam={filtrelenmis.length}
       sayfa={sayfa}
       sayfaBoyutu={boyut}

@@ -1,4 +1,4 @@
-import { Card, Flex, Input, Table, Typography } from "antd";
+import { Alert, Card, Flex, Input, Table, Typography } from "antd";
 import type { TableProps } from "antd";
 import type { ReactNode } from "react";
 import { BosDurumu, HataDurumu } from "@/panel/components/Durum";
@@ -23,6 +23,25 @@ export type ListePageProps<T> = {
    */
   hata?: string | null;
   hataAksiyon?: ReactNode;
+  /**
+   * `hata`dan FARKLI bir kanal — karıştırılmasın: `hata` doluyken gövdenin
+   * YERİNE geçer (tablo hiç render edilmez, yukarıdaki `hata` yorumuna
+   * bkz.); `uyari` ise gövdeyle BİRLİKTE görünür — liste yine render
+   * edilir, üstüne bir bilgi şeridi eklenir. Örnek: tüketici sunucudan
+   * `q`/`offset` desteği olmadan elinde tuttuğu bir PARTİ gösteriyor ve o
+   * parti sunucu tavanını doldurduysa (bkz. `SiparisListesi`) — bu bir HATA
+   * değildir, liste yine doğru ve kullanılabilir, yalnız TAM olmayabilir.
+   * Yalnız veri render edilirken gösterilir (hata/yükleniyor/boş dallarında
+   * DEĞİL) — "uyarı, gösterilen bir şeyin yanına eklenir" sözleşmesi bunu
+   * gerektirir. Opsiyonel — verilmezse davranış hiç değişmez (geriye dönük
+   * uyum, 15 modülün 13'ü bunu vermez).
+   *
+   * Gösterim `Durum.tsx`'e DEĞİL burada AntD `Alert type="warning"
+   * showIcon`e konur: bu dosyayı yazan ajanın kapsamı `Durum.tsx`'i
+   * kapsamıyordu (eşzamanlı başka bir ajan orada çalışıyordu) — üçüncü bir
+   * tüketici çıkarsa oraya (bir `UyariDurumu` olarak) taşınabilir.
+   */
+  uyari?: ReactNode;
   toplam?: number;
   sayfa: number;
   sayfaBoyutu: number;
@@ -52,7 +71,7 @@ export type ListePageProps<T> = {
 
 export function ListePage<T extends object>({
   baslik, aksiyonlar, aramaDegeri, aramaDegisti, kolonlar, veri, yukleniyor,
-  hata, hataAksiyon, toplam, sayfa, sayfaBoyutu, sayfaDegisti, bosBaslik, bosAciklama, bosAksiyon, rowKey,
+  hata, hataAksiyon, uyari, toplam, sayfa, sayfaBoyutu, sayfaDegisti, bosBaslik, bosAciklama, bosAksiyon, rowKey,
   tabloDegisti,
 }: ListePageProps<T>) {
   const bos = !hata && !yukleniyor && (veri?.length ?? 0) === 0;
@@ -90,22 +109,35 @@ export function ListePage<T extends object>({
         ) : bos ? (
           <BosDurumu baslik={bosBaslik} aciklama={bosAciklama} aksiyon={bosAksiyon} />
         ) : (
-          <Table<T>
-            columns={kolonlar}
-            dataSource={veri}
-            loading={yukleniyor}
-            rowKey={rowKey}
-            scroll={{ x: "max-content" }}
-            onChange={tabloDegisti}
-            pagination={{
-              current: sayfa,
-              pageSize: sayfaBoyutu,
-              total: toplam,
-              showSizeChanger: true,
-              onChange: sayfaDegisti,
-              showTotal: (t, [bas, son]) => `${bas}-${son} / ${t} kayıt`,
-            }}
-          />
+          <>
+            {/* `Alert` (5.29.3) kök `div`'e koşulsuz `role="alert"` bağlar
+                (bkz. `Durum.tsx`'teki aynı doğrulama) — ikinci bir rol
+                sarmalayıcı EKLENMEZ, çakışır. */}
+            {uyari ? (
+              <Alert
+                type="warning"
+                showIcon
+                message={uyari}
+                style={{ marginBottom: 16 }}
+              />
+            ) : null}
+            <Table<T>
+              columns={kolonlar}
+              dataSource={veri}
+              loading={yukleniyor}
+              rowKey={rowKey}
+              scroll={{ x: "max-content" }}
+              onChange={tabloDegisti}
+              pagination={{
+                current: sayfa,
+                pageSize: sayfaBoyutu,
+                total: toplam,
+                showSizeChanger: true,
+                onChange: sayfaDegisti,
+                showTotal: (t, [bas, son]) => `${bas}-${son} / ${t} kayıt`,
+              }}
+            />
+          </>
         )}
       </Card>
     </Flex>

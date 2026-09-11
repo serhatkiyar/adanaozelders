@@ -137,6 +137,40 @@ describe("SiparisListesi", () => {
     expect(screen.getByText("Henüz sipariş yok")).toBeInTheDocument();
   });
 
+  describe("kesilme uyarısı (parti sunucu tavanını doldurunca)", () => {
+    it("elde tutulan parti tavanı dolduğunda uyarı gösterir", () => {
+      const tavan = 100;
+      const doluParti = Array.from({ length: tavan }, (_, i) =>
+        siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
+      );
+      mockUseAdminOrders.mockReturnValue({
+        data: { items: doluParti, total: -1, limit: tavan },
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAdminOrders>);
+
+      kur();
+
+      expect(screen.getByRole("alert")).toHaveTextContent(String(tavan));
+    });
+
+    it("parti tavanı dolmadığında uyarı göstermez", () => {
+      mockUseAdminOrders.mockReturnValue({
+        data: { items: [siparis()], total: 1, limit: 100 },
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAdminOrders>);
+
+      kur();
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+  });
+
   describe("arama (istemci tarafında, sunucu q desteklemiyor)", () => {
     beforeEach(() => {
       mockUseAdminOrders.mockReturnValue({
