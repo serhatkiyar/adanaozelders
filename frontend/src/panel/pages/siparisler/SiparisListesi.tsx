@@ -25,62 +25,53 @@ const TON_RENK: Record<ReturnType<typeof orderStatusTone>, string> = {
 /**
  * Siparişler modülünün ilk ekranı — yalnız liste (bkz. spec §4/§5).
  *
- * ## `useAdminOrders`in gerçek sözleşmesi — Ürünler'den FARKLI
+ * ## Sunucu sayfalaması GERÇEK (bu paketle eklendi)
  *
- * `useAdminOrders(statusFilter?, limit?)` `q`/`offset` desteklemez (bkz.
- * `api/store.ts` `listOrdersAdmin` — yalnız `status` + `limit`, sunucuda
- * OFFSET YOK). Bu yüzden:
+ * Backend `list_orders_admin` (bkz. `backend/api/routers/store.py`) baştan
+ * beri `offset` destekliyordu; eksik olan tek şey istemci sarmalayıcısının
+ * onu hiç göndermemesiydi (bkz. `api/store.ts` `listOrdersAdmin`in `offset`
+ * yorumu). `sayfa`/`boyut` artık gerçekten `useAdminOrders`e `offset =
+ * (sayfa-1)*boyut` olarak gider ve `toplam` sunucunun GERÇEK
+ * `X-Total-Count`unu yansıtır — eskiden bu ekranda elde tutulan tek bir
+ * "parti" AntD `Table`ın kendi dahili sayfalamasıyla dilimleniyordu ve 100
+ * siparişin üstünde sessizce kesiliyordu (bkz. eski `KESILME_TAVANI`); o
+ * mekanizma tamamen kaldırıldı — sayfalama artık gerçek olduğu için
+ * kesilme kaynaklı bir kesilme YOK.
  *
- *  - **Arama** sunucuya gitmez: zaten alınmış `items` dizisi istemcide
- *    `order_no`/müşteri adına göre süzülür. Sunucu tarafı bir `q` eklenene
- *    kadar bu ekranın arama kutusu YALNIZCA elde tutulan (limit kadar) satırı
- *    süzer — az sayıda sipariş için doğru, ama sunucudaki TÜM siparişleri
- *    aramaz. Bu bilinçli ve raporlanmış bir sınırdır.
- *  - **Sayfalama** de sunucuya gitmez: `ListePage`in sayfa/sayfaBoyutu/
- *    sayfaDegisti'si yalnız zaten çekilmiş `items` dizisini İSTEMCİDE
- *    dilimler (AntD `Table`'ın kendi dahili sayfalaması) — sahte bir "sonraki
- *    sayfa sunucudan yeni veri getirir" izlenimi YARATILMAZ, `toplam` her
- *    zaman gerçekten elde tutulan (ve aramadan geçen) satır sayısını yansıtır.
- *  - Sunucudaki gerçek toplam elde tutulan partiyi aşarsa (fetch `limit`'i
- *    doldurduysa) ekran artık bunu BİLDİRİR: `ListePage`in `uyari` şeridi —
- *    eski panelin `OrdersPanel`indeki "kesilme uyarısı" şeridinin emsali
- *    (bkz. `KESILME_TAVANI` altındaki yorum ve rapor).
+ * ## `useAdminOrders`in gerçek sözleşmesi — Ürünler'den hâlâ FARKLI: `q` YOK
+ *
+ * `listOrdersAdmin`/`list_orders_admin` bir arama parametresi (`q`)
+ * sunmuyor — ürünler ucundan (`/store/admin/products`) farklı olarak
+ * siparişler ucunda arama backend'de YOK (bunu eklemek bu paketin kapsamı
+ * dışı). Bu yüzden **arama** hâlâ sunucuya gitmez: yalnızca o an sunucudan
+ * çekilmiş TEK SAYFAdaki `items` dizisi istemcide `order_no`/müşteri adına
+ * göre süzülür. Bu, sayfalamadan FARKLI bir sınırdır ve gerçek sayfalama
+ * onu ORTADAN KALDIRMAZ — arama kutusuna bir şey yazıldığında ekran bunu
+ * `ListePage`in `uyari` şeridiyle AÇIKÇA bildirir ("bu arama yalnızca bu
+ * sayfada"); sahte bir "tüm siparişlerde arıyor" izlenimi YARATILMAZ.
+ * Arama metni değiştiğinde sayfa NUMARASI sıfırlanmaz — arama zaten
+ * sunucuya gitmediği için sıfırlamak yalnız gereksiz bir yeniden çekime
+ * yol açardı.
  */
-/**
- * Sunucudan tek seferde çekilen parti tavanı. `useAdminOrders`e AÇIKÇA
- * geçilir — `api/store.ts`teki `listOrdersAdmin`in kendi varsayılanı da
- * 100'dür (bkz. o dosyadaki yorum), ama burada sihirli bir sayıya
- * GÜVENİLMEZ: tavan bu ekranın kendi adlandırılmış sabitinden gelir, ki
- * aşağıdaki `partiTavaniDoldu` karşılaştırması iki dosyada birbirinden
- * bağımsız sürüklenen bir sayıya bağlı kalmasın.
- */
-const KESILME_TAVANI = 100;
-
 export function SiparisListesi() {
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
 
-  const { data, isPending, isError, refetch } = useAdminOrders(undefined, KESILME_TAVANI);
+  const { data, isPending, isError, refetch } = useAdminOrders(
+    undefined,
+    boyut,
+    (sayfa - 1) * boyut,
+  );
 
   const siparisler = data?.items ?? [];
-  // GERÇEK sinyal `X-Total-Count`tan gelen `data.total`dır (bkz.
-  // `api/store.ts` `listOrdersAdmin` — header sunucuda bu commit'lerden
-  // ÖNCE de dönüyordu). Başlık okunabiliyorsa (`total >= 0`) kesilme
-  // `total > siparisler.length` ile KESİN olarak bilinir — parti tam
-  // `KESILME_TAVANI` kadarsa (== 100) ve `total` de 100 ise kesilme YOKTUR,
-  // sınırda yanlış alarm vermez. `total === -1` ise (header hiç gelmedi)
-  // eskisi gibi heuristiğe (parti tavanı doldu mu) düşülür — geriye dönük
-  // emniyet. `filtrelenmis` DEĞİL `siparisler` (ham, aramadan ÖNCEki parti)
-  // kullanılır — arama yalnız zaten çekilmiş partiyi süzer, sunucuya
-  // gitmez, dolayısıyla kesilmeyi etkilemez. Eski panelin
-  // `OrdersPanel`indeki "kesilme uyarısı" şeridinin emsali (bkz.
-  // `components/admin/store/OrdersPanel.tsx` `kesilmisOlabilir`).
-  const toplamBilgisi = data?.total ?? -1;
-  const kesilmeSinyaliGuvenilir = toplamBilgisi >= 0;
-  const partiTavaniDoldu = kesilmeSinyaliGuvenilir
-    ? toplamBilgisi > siparisler.length
-    : siparisler.length >= KESILME_TAVANI;
+  // Sunucu toplamı bilinmiyorsa (`X-Total-Count` hiç gelmediyse, `total ===
+  // -1`) `ListePage`e toplam VERİLMEZ — bir sayı uydurup yanlış "N kayıt"
+  // göstermektense hiç göstermemek daha dürüst (bkz. `UrunListesi`teki
+  // aynı emsal).
+  const toplam = data && data.total >= 0 ? data.total : undefined;
+
+  const aramaAktif = arama.trim().length > 0;
 
   const filtrelenmis = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase("tr-TR");
@@ -128,23 +119,21 @@ export function SiparisListesi() {
     <ListePage<OrderOut>
       baslik="Siparişler"
       aramaDegeri={arama}
-      aramaDegisti={(v) => {
-        setArama(v);
-        setSayfa(1);
-      }}
+      // Sayfa NUMARASI burada sıfırlanmaz: arama sunucuya gitmiyor (yalnız
+      // o an elde tutulan sayfayı süzüyor), sıfırlamak yalnız gereksiz bir
+      // server round-trip'e yol açardı — bkz. yukarıdaki modül yorumu.
+      aramaDegisti={setArama}
       kolonlar={kolonlar}
       veri={filtrelenmis}
       yukleniyor={isPending}
       hata={isError ? "Siparişler yüklenemedi." : null}
       hataAksiyon={<Button onClick={() => refetch()}>Tekrar dene</Button>}
       uyari={
-        partiTavaniDoldu
-          ? kesilmeSinyaliGuvenilir
-            ? `Toplam ${toplamBilgisi} siparişin ilk ${siparisler.length} tanesi gösteriliyor; listenin tamamı bu değil.`
-            : `İlk ${siparisler.length} sipariş gösteriliyor; sunucuda muhtemelen daha fazlası var, listenin tamamı bu olmayabilir.`
+        aramaAktif
+          ? `Bu arama yalnızca bu sayfadaki ${siparisler.length} siparişte yapılıyor; sunucuda \`q\` desteği olmadığından diğer sayfalardaki siparişleri kapsamaz.`
           : undefined
       }
-      toplam={filtrelenmis.length}
+      toplam={toplam}
       sayfa={sayfa}
       sayfaBoyutu={boyut}
       sayfaDegisti={(s, b) => {

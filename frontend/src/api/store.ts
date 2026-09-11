@@ -595,13 +595,27 @@ export interface AdminOrderPage {
  * Sonuç: 130 siparişten 100'ü dönüyor, uyarı ASLA tetiklenmiyordu (P1-5).
  * Tavanı istemcinin bilmesi şart — yoksa "hepsini gördüm mü" sorusu
  * cevaplanamaz.
+ *
+ * `offset` — EKLENTİ (bkz. `backend/api/routers/store.py` `list_orders_admin`,
+ * uç bunu baştan beri destekliyordu; eksik olan tek şey istemcinin onu hiç
+ * göndermemesiydi, bkz. `SiparisListesi` sunucu sayfalaması). Opsiyoneldir
+ * ve `undefined` bırakıldığında isteğe HİÇ eklenmez — eski çağrı yerleri
+ * (ör. `OrdersPanel.tsx`nin `useAdminOrders(durum)` çağrısı) birebir eski
+ * davranışı korur. `0` özel olarak "verilmedi" ile KARIŞTIRILMAZ (ilk sayfa
+ * da açıkça `offset=0` gönderir) — kontrol `undefined` kontrolüdür, `!offset`
+ * değil.
  */
 export async function listOrdersAdmin(
   statusFilter?: string,
-  limit = 100
+  limit = 100,
+  offset?: number
 ): Promise<AdminOrderPage> {
   const response = await apiClient.get<OrderOut[]>("/store/admin/orders", {
-    params: { ...(statusFilter ? { status: statusFilter } : {}), limit },
+    params: {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      limit,
+      ...(offset !== undefined ? { offset } : {}),
+    },
   });
   const ham = response.headers["x-total-count"];
   const total = ham === undefined ? -1 : Number(ham);

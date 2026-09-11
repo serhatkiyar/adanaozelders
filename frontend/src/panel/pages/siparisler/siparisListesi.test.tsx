@@ -137,14 +137,43 @@ describe("SiparisListesi", () => {
     expect(screen.getByText("Henüz sipariş yok")).toBeInTheDocument();
   });
 
-  describe("kesilme uyarısı (parti sunucu tavanını doldurunca)", () => {
-    it("X-Total-Count yoksa (total: -1) heuristiğe düşer: parti tavanı dolduğunda uyarı gösterir", () => {
-      const tavan = 100;
-      const doluParti = Array.from({ length: tavan }, (_, i) =>
-        siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
-      );
+  // Eski "kesilme uyarısı" bloğu (partiTavaniDoldu heuristiği, KESILME_TAVANI)
+  // BU PAKETLE kaldırıldı: sayfalama artık sunucudan gerçek `offset` ile
+  // gelir, dolayısıyla client tarafında biriken bir "parti"nin tavanı
+  // doldu mu diye bakmaya gerek kalmadı — bkz. aşağıdaki "sunucu
+  // sayfalaması" bloğu. `uyari` şeridi artık yalnız arama kapsamını
+  // bildirmek için kullanılıyor (bkz. "arama" bloğu).
+  describe("sunucu sayfalaması (gerçek offset)", () => {
+    // 45 kayıt / sayfa boyutu 20 → en az iki sayfa, AntD Pagination "2"
+    // bağlantısını render eder.
+    const birinciSayfa = Array.from({ length: 20 }, (_, i) =>
+      siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
+    );
+
+    it("2. sayfaya geçilince useAdminOrders'a GERÇEK offset ile (yeni bir istek şekliyle) çağrılır", () => {
       mockUseAdminOrders.mockReturnValue({
-        data: { items: doluParti, total: -1, limit: tavan },
+        data: { items: birinciSayfa, total: 45, limit: 20 },
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAdminOrders>);
+
+      kur();
+      mockUseAdminOrders.mockClear();
+
+      fireEvent.click(screen.getByTitle("2"));
+
+      // Argümanın ŞEKLİ iddia edilir ("çağrıldı mı" değil): statusFilter
+      // hâlâ undefined, limit hâlâ sayfa boyutu (20), offset artık
+      // (sayfa-1)*boyut = 20 — bkz. `api/store.ts` `listOrdersAdmin`in
+      // `offset` yorumu.
+      expect(mockUseAdminOrders).toHaveBeenCalledWith(undefined, 20, 20);
+    });
+
+    it("`toplam` sunucunun GERÇEK X-Total-Count değerini yansıtır — mevcut sayfadaki satır sayısını değil", () => {
+      mockUseAdminOrders.mockReturnValue({
+        data: { items: birinciSayfa, total: 130, limit: 20 },
         isPending: false,
         isError: false,
         error: null,
@@ -153,52 +182,15 @@ describe("SiparisListesi", () => {
 
       kur();
 
-      // `role="status"` — bkz. `ListePage.tsx`: uyarı bir hata değil, polite
-      // duyurulur (`role="alert"` DEĞİL).
-      expect(screen.getByRole("status")).toHaveTextContent(String(tavan));
+      // `ListePage`in AntD `showTotal`ı `${bas}-${son} / ${t} kayıt` basar;
+      // `t` burada 130 olmalı (sunucu toplamı), 20 (bu sayfadaki satır
+      // sayısı) DEĞİL.
+      expect(screen.getByText(/130/)).toBeInTheDocument();
     });
 
-    it("tam sınırda (total === items.length === tavan) GERÇEK sinyal kesilme OLMADIĞINI söyler — uyarı çıkmaz", () => {
-      const tavan = 100;
-      const tamDoluAmaKesilmemis = Array.from({ length: tavan }, (_, i) =>
-        siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
-      );
+    it("gerçek sayfalamayla artık kesilme uyarısı ÇIKMAZ (arama da aktif değilken)", () => {
       mockUseAdminOrders.mockReturnValue({
-        data: { items: tamDoluAmaKesilmemis, total: tavan, limit: tavan },
-        isPending: false,
-        isError: false,
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useAdminOrders>);
-
-      kur();
-
-      expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    });
-
-    it("total > items.length ise (GERÇEK sinyal) uyarı gösterir ve kesin sayıları içerir", () => {
-      const tavan = 100;
-      const doluParti = Array.from({ length: tavan }, (_, i) =>
-        siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
-      );
-      mockUseAdminOrders.mockReturnValue({
-        data: { items: doluParti, total: 130, limit: tavan },
-        isPending: false,
-        isError: false,
-        error: null,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useAdminOrders>);
-
-      kur();
-
-      const uyariElementi = screen.getByRole("status");
-      expect(uyariElementi).toHaveTextContent("130");
-      expect(uyariElementi).toHaveTextContent(String(tavan));
-    });
-
-    it("parti tavanı dolmadığında (küçük liste) uyarı göstermez", () => {
-      mockUseAdminOrders.mockReturnValue({
-        data: { items: [siparis()], total: 1, limit: 100 },
+        data: { items: birinciSayfa, total: 130, limit: 20 },
         isPending: false,
         isError: false,
         error: null,
@@ -211,7 +203,7 @@ describe("SiparisListesi", () => {
     });
   });
 
-  describe("arama (istemci tarafında, sunucu q desteklemiyor)", () => {
+  describe("arama (istemci tarafında, sunucu `q` desteklemiyor — dürüst kapsam uyarısı)", () => {
     beforeEach(() => {
       mockUseAdminOrders.mockReturnValue({
         data: {
@@ -246,6 +238,38 @@ describe("SiparisListesi", () => {
       fireEvent.change(kutu, { target: { value: "olmayan-birisi" } });
 
       expect(screen.getByText("Sonuç bulunamadı")).toBeInTheDocument();
+    });
+
+    it("arama kutusuna yazılınca kapsamın YALNIZCA bu sayfa olduğunu söyleyen bir uyarı çıkar — sahte 'tüm siparişlerde arıyor' izlenimi YOK", () => {
+      kur();
+      const kutu = screen.getByPlaceholderText("Tabloda arama yapın");
+
+      fireEvent.change(kutu, { target: { value: "zeynep" } });
+
+      const uyari = screen.getByRole("status");
+      expect(uyari).toHaveTextContent("sayfa");
+    });
+
+    it("arama kutusu boşken kapsam uyarısı ÇIKMAZ", () => {
+      kur();
+
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("arama sırasında sayfa numarası SIFIRLANMAZ — arama sunucuya gitmediği için gereksiz yeniden çekime yol açmaz", () => {
+      kur();
+      mockUseAdminOrders.mockClear();
+      const kutu = screen.getByPlaceholderText("Tabloda arama yapın");
+
+      fireEvent.change(kutu, { target: { value: "zeynep" } });
+
+      // Arama metin değişince bileşen yeniden render olur (`useAdminOrders`
+      // tekrar çağrılır) ama offset hâlâ ilk sayfaya (0) karşılık gelmeli —
+      // arama metne göre sayfayı YENİDEN 1'e atıp sunucuya gereksiz bir
+      // istek attırmaz, çünkü zaten sunucuya hiç gitmiyor, yalnız elde
+      // tutulan sayfayı süzer.
+      const sonCagri = mockUseAdminOrders.mock.calls.at(-1);
+      expect(sonCagri).toEqual([undefined, 20, 0]);
     });
   });
 });

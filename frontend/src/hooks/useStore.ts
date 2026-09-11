@@ -439,10 +439,26 @@ export function useDeriveVariant() {
   });
 }
 
-export function useAdminOrders(statusFilter?: string, limit?: number) {
+/**
+ * `offset` — EKLENTİ (bkz. `api/store.ts` `listOrdersAdmin` yorumu). Opsiyonel
+ * üçüncü parametre; verilmediğinde `storeApi.listOrdersAdmin`e `undefined`
+ * geçer ve istek eskisi gibi `offset` İÇERMEZ — eski panelin
+ * `useAdminOrders(durum)` (tek argümanlı) çağrısı birebir eskisi gibi
+ * çalışmaya devam eder. `queryKey`e dahil edilmesi şart: dahil olmasaydı
+ * sayfa değişince React Query aynı anahtarı görür ve önbellekteki ilk
+ * sayfayı döndürürdü (yeni istek atılmazdı).
+ */
+export function useAdminOrders(statusFilter?: string, limit?: number, offset?: number) {
   return useQuery({
-    queryKey: ["store", "admin", "orders", statusFilter ?? "all", limit ?? 100],
-    queryFn: () => storeApi.listOrdersAdmin(statusFilter, limit),
+    queryKey: [
+      "store",
+      "admin",
+      "orders",
+      statusFilter ?? "all",
+      limit ?? 100,
+      offset ?? 0,
+    ],
+    queryFn: () => storeApi.listOrdersAdmin(statusFilter, limit, offset),
   });
 }
 
