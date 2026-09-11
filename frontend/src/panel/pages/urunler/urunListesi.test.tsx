@@ -2,13 +2,21 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PanelProvider } from "@/panel/PanelProvider";
 import { UrunListesi } from "@/panel/pages/urunler/UrunListesi";
-import { useAdminProducts } from "@/hooks/useStore";
+import { useAdminProducts, useCategories } from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 
+// `useCategories` burada mocklanıyor çünkü `UrunListesi` artık HER ZAMAN
+// (kapalıyken de) `UrunOlusturCekmecesi`yi mount ediyor — o da kategori
+// seçiciyi önceden hazırlamak için `useCategories()` çağırıyor (bkz. o
+// dosyanın başı). Varsayılan dönüş boş olmayan bir liste: "kategori yok" boş
+// durumunu ayrıca sınayan bir test yoksa bu dosyanın testleri onunla
+// ilgilenmiyor (bkz. `urunOlusturCekmecesi.test.tsx`).
 vi.mock("@/hooks/useStore", () => ({
   useAdminProducts: vi.fn(),
+  useCategories: vi.fn(),
 }));
 
 const navigateMock = vi.fn();
@@ -19,14 +27,17 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 const mockUseAdminProducts = vi.mocked(useAdminProducts);
+const mockUseCategories = vi.mocked(useCategories);
 
 function kur() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
-        <UrunListesi />
-      </MemoryRouter>
+      <PanelProvider>
+        <MemoryRouter>
+          <UrunListesi />
+        </MemoryRouter>
+      </PanelProvider>
     </QueryClientProvider>,
   );
 }
@@ -34,6 +45,10 @@ function kur() {
 describe("UrunListesi", () => {
   beforeEach(() => {
     navigateMock.mockClear();
+    mockUseCategories.mockReturnValue({
+      data: [{ id: 1, slug: "kirtasiye", name: "Kırtasiye", parent_id: null, sort_order: 0, is_active: true }],
+      isPending: false,
+    } as unknown as ReturnType<typeof useCategories>);
   });
 
   it("ürün adını ve fiyatını listeler", () => {
@@ -61,6 +76,29 @@ describe("UrunListesi", () => {
 
     kur();
     expect(screen.getByRole("button", { name: /Ürün Ekle/i })).toBeInTheDocument();
+  });
+
+  it("Ürün Ekle'ye tıklanınca 'Ürün Oluştur' çekmecesi açılır (tip seçimi modalı DEĞİL)", async () => {
+    mockUseAdminProducts.mockReturnValue({
+      data: { items: [{ id: 1, title: "9. Sınıf Matematik Soru Bankası", price: 250, stock: 50 }], total: 1 },
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAdminProducts>);
+
+    kur();
+    // Çekmece kapalıyken de mount'tur (`YanPencere` her zaman DOM'da durur,
+    // `open` prop'uyla görünürlüğü değişir) — bu yüzden önce KAPALI olduğunu,
+    // tıklandıktan SONRA "Ürün Oluştur" başlığının GÖRÜNÜR olduğunu sınıyoruz.
+    expect(screen.queryByText("Ürün Oluştur")).not.toBeInTheDocument();
+    // Eski tip seçimi modalının kendi başlığı hiç render edilmemeli.
+    expect(screen.queryByText("Basit Ürün")).not.toBeInTheDocument();
+    expect(screen.queryByText("Varyantlı Ürün")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole("button", { name: /Ürün Ekle/i })[0]);
+
+    expect(await screen.findByText("Ürün Oluştur")).toBeInTheDocument();
   });
 
   it("yüklenirken (henüz veri/hata yokken) boş durumu göstermez", () => {

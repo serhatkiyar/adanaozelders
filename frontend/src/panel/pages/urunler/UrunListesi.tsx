@@ -4,7 +4,7 @@ import type { TableProps } from "antd";
 import { PlusOutlined, MoreOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { ListePage } from "@/panel/components/ListePage";
-import { TipSecimi } from "@/panel/components/TipSecimi";
+import { UrunOlusturCekmecesi } from "@/panel/pages/urunler/UrunOlusturCekmecesi";
 import { useAdminProducts } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatTL } from "@/lib/money";
@@ -21,7 +21,12 @@ export function UrunListesi() {
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
-  const [tipAcik, setTipAcik] = useState(false);
+  // `TipSecimi` (Basit/Varyantlı seçim modalı) KALDIRILDI — ikas referansında
+  // (`docs/ikas-panel-referans.md` §4) böyle bir soru YOK, "Ürün Ekle"
+  // doğrudan "Ürün Oluştur" çekmecesini açar. `TipSecimi.tsx` dosyası
+  // SİLİNMEDİ (components/** dışarıda kalıyor) ama artık burada tüketilmiyor
+  // — bu ekran onun tek tüketicisiydi.
+  const [olusturAcik, setOlusturAcik] = useState(false);
   const [siralama, setSiralama] = useState<UrunSiralama>(undefined);
   const navigate = useNavigate();
 
@@ -139,7 +144,7 @@ export function UrunListesi() {
       <ListePage<ProductSearchOut>
         baslik="Ürünler"
         aksiyonlar={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setTipAcik(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOlusturAcik(true)}>
             Ürün Ekle
           </Button>
         }
@@ -164,25 +169,13 @@ export function UrunListesi() {
         bosBaslik="İlk Ürününüzü Yükleyin!"
         bosAciklama="Ürünlerinizi yükleyin ve hemen satışa başlayın."
         bosAksiyon={
-          <Button type="primary" onClick={() => setTipAcik(true)}>
+          <Button type="primary" onClick={() => setOlusturAcik(true)}>
             Ürün Ekle
           </Button>
         }
         rowKey={(k) => k.id}
       />
-      <TipSecimi
-        acik={tipAcik}
-        baslik="Ürün Ekle"
-        secenekler={[
-          { anahtar: "basit", baslik: "Basit Ürün", aciklama: "Tek parça olarak bir ürün ekleyin" },
-          { anahtar: "varyantli", baslik: "Varyantlı Ürün", aciklama: "Renk, boyut gibi seçeneklerle ekleyin" },
-        ]}
-        kapat={() => setTipAcik(false)}
-        secildi={(anahtar) => {
-          setTipAcik(false);
-          navigate(`${ROUTES.adminNewProductNew}?tip=${anahtar}`);
-        }}
-      />
+      <UrunOlusturCekmecesi acik={olusturAcik} kapat={() => setOlusturAcik(false)} />
     </>
   );
 }

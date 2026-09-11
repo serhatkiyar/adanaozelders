@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AxiosError } from "axios";
+import { PanelProvider } from "@/panel/PanelProvider";
 import { UrunListesi } from "@/panel/pages/urunler/UrunListesi";
 import * as storeApi from "@/api/store";
 import { apiClient } from "@/api/axios";
@@ -17,11 +18,22 @@ import { useAuthStore } from "@/store/authStore";
 // gösteriyor, "gerçek bir başarısız istekte isError gerçekten true olur mu
 // ve o ana kadar boş durum hiç görünmez mi"yi değil. Bu dosya HTTP katmanını
 // taklit ederek gerçek `useQuery` durum makinesini çalıştırıyor.)
+//
+// `fetchCategories` de burada taklit edilir: `UrunListesi` artık HER ZAMAN
+// (kapalıyken de) `UrunOlusturCekmecesi`yi mount ediyor ve o
+// `useCategories()` çağırıyor — taklit edilmezse gerçek bir HTTP isteği
+// jsdom'da hedefsiz gider (bu dosyanın konusu bu değil).
 let actualListProductsAdmin: typeof storeApi.listProductsAdmin;
 
 vi.mock("@/api/store", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/api/store")>();
-  return { ...actual, listProductsAdmin: vi.fn() };
+  return {
+    ...actual,
+    listProductsAdmin: vi.fn(),
+    fetchCategories: vi.fn().mockResolvedValue([
+      { id: 1, slug: "kirtasiye", name: "Kırtasiye", parent_id: null, sort_order: 0, is_active: true },
+    ]),
+  };
 });
 
 beforeAll(async () => {
@@ -36,9 +48,11 @@ function kur() {
   });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
-        <UrunListesi />
-      </MemoryRouter>
+      <PanelProvider>
+        <MemoryRouter>
+          <UrunListesi />
+        </MemoryRouter>
+      </PanelProvider>
     </QueryClientProvider>,
   );
 }

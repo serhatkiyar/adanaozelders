@@ -379,6 +379,14 @@ export const OLCUM_TABANI = [
   "src/panel/pages/urunler/UrunFormu.tsx",
   "src/panel/pages/urunler/UrunListesi.tsx",
   "src/panel/pages/urunler/VaryantPenceresi.tsx",
+  // "Ürün Oluştur" çekmecesi (ikas referansı §4) — `TipSecimi` modalının
+  // yerini alan yeni hızlı-ekleme akışı. AntD kullanıyor (`Form`, `Upload`,
+  // `Select`…), ham `<button>`/`<input>` yazmıyor — `rawButton`/
+  // `adsızKontrol`a katkısı `UrunFormu.tsx`/`UrunListesi.tsx` gibi sıfır.
+  // Ayrı dosya (VaryantPenceresi/eski TipSecimi ile aynı desen) BİLEREK:
+  // `uiBaseline.test.ts::modalDurumu` yalnız AYNI DOSYADAKİ yerel bileşenleri
+  // izliyor, cross-file akış görünmez — bkz. o dosyadaki dosya başı notu.
+  "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
 ];
 
 /**

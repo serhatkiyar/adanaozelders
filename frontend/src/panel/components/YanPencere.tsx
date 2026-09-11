@@ -9,10 +9,22 @@ export type YanPencereProps = {
   kaydet: () => void;
   /** Kaydet düğmesinde yükleme göstergesi — bkz. `FormPage`'in `kaydediyor`u. */
   kaydediyor?: boolean;
+  /**
+   * Kaydet düğmesinin etiketi — opsiyonel, varsayılanı `"Kaydet"`.
+   *
+   * İkinci tüketici (Ürün Oluştur çekmecesi, ikas referansı §4) kendi eylem
+   * adını istedi: `"Kaydet ve Satışa Aç"`. Bu, tek çekmece kabuğunu paylaşan
+   * 15 modülün her birinin kendi eylem adını taşıyacağı GERÇEK bir ortak
+   * ihtiyaç — `ListePage`in `uyari?` slotuyla aynı gerekçe. `VaryantPenceresi`
+   * (bugünkü tek tüketici) bu propu HİÇ geçmiyor ve varsayılanla değişmeden
+   * çalışmaya devam eder — bkz. `varyant.test.tsx`teki mevcut "Kaydet"
+   * iddiaları (yedi çağrı yeri).
+   */
+  kaydetMetni?: string;
   children: ReactNode;
 };
 
-export function YanPencere({ acik, baslik, kapat, kaydet, kaydediyor, children }: YanPencereProps) {
+export function YanPencere({ acik, baslik, kapat, kaydet, kaydediyor, kaydetMetni, children }: YanPencereProps) {
   // AntD'nin `Grid.useBreakpoint()` yerine deponun kendi hook'u kullanılıyor:
   // useBreakpoint ilk senkron render'da `{}` döner (md === undefined), bu da
   // dar ekranda ilk render'ın yanlışlıkla masaüstü (480px) dalını seçmesine
@@ -31,7 +43,7 @@ export function YanPencere({ acik, baslik, kapat, kaydet, kaydediyor, children }
         <Flex justify="flex-end" gap={8}>
           <Button onClick={kapat}>Vazgeç</Button>
           <Button type="primary" loading={kaydediyor} onClick={kaydet}>
-            Kaydet
+            {kaydetMetni ?? "Kaydet"}
           </Button>
         </Flex>
       }
