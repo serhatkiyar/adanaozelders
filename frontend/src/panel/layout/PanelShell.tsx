@@ -58,12 +58,25 @@ export function PanelShell() {
     <PanelProvider>
       <Layout style={{ minHeight: "100vh" }}>
         {!mobil && (
-          <Sider width={224} role="navigation">
+          <Sider
+            width={224}
+            role="navigation"
+            style={{ position: "sticky", top: 0, height: "100vh", overflow: "auto" }}
+          >
             {menu}
           </Sider>
         )}
         <Layout>
-          <Header style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Header
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              position: "sticky",
+              top: 0,
+              zIndex: 1,
+            }}
+          >
             {mobil && (
               <Button aria-label="Menü" icon={<MenuOutlined />} onClick={() => setMobilAcik(true)} />
             )}
@@ -78,7 +91,7 @@ export function PanelShell() {
           onClose={() => setMobilAcik(false)}
           placement="left"
           width={240}
-          styles={{ body: { padding: 0, background: PANEL_SIDER_BG } }}
+          styles={{ body: { padding: 0, background: PANEL_SIDER_BG, overflow: "auto" } }}
         >
           <nav role="navigation">{menu}</nav>
         </Drawer>
