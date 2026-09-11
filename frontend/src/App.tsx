@@ -90,6 +90,9 @@ const PanelShell = lazy(() => import("@/panel/layout/PanelShell").then((m) => ({
 const UrunListesi = lazy(() =>
   import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
 );
+const UrunFormu = lazy(() =>
+  import("@/panel/pages/urunler/UrunFormu").then((m) => ({ default: m.UrunFormu })),
+);
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
 const AdminOperationsPage = lazy(() => import("@/pages/admin/AdminOperationsPage"));
@@ -673,6 +676,8 @@ function App() {
             <Route path={PATHS.adminNew} element={<PanelShell />}>
               <Route index element={<div>Panel kuruldu.</div>} />
               <Route path="urunler" element={<UrunListesi />} />
+              <Route path="urunler/yeni" element={<UrunFormu />} />
+              <Route path="urunler/:id" element={<UrunFormu />} />
             </Route>
           </Route>
 
