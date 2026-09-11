@@ -346,6 +346,30 @@ export const OLCUM_TABANI = [
   "src/pages/dashboards/OperatorHome.tsx",
   "src/pages/dashboards/OperatorLibrary.tsx",
   "src/pages/dashboards/OperatorSessions.tsx",
+  // ── İ9 · Boşluk 1: `src/panel/**` (ikas tarzı yeni panel) ──
+  //
+  // Bağımsız denetimin bulduğu ölçüm boşluğu: bu ağaç `OLCUM_TABANI`nın DIŞINDA
+  // doğdu, dört eşik de onu hiç ölçmeden yeşil kaldı. `kesfedilenTaban()`
+  // artık `src/panel`i DİZİN KURALIYLA yürüyor (yukarıdaki not), bu liste onun
+  // BUGÜNKÜ karşılığı. Panel AntD kullanıyor (`<Button>`, `<Input.Search>`,
+  // `<Modal>`…) — ham `<button>`/`<input>` JSX etiketi YAZMIYOR, bu yüzden
+  // `rawButton`/`adsizKontrol`a (kaynak AST metrikleri) katkısı sıfırdır; bu
+  // ikisinin doğruluk kaynağı zaten çalışma zamanı kapısıdır (bkz. dosya başı
+  // BULGU-1 notu) — `calismaZamaniKapisi.test.tsx` panel ekranlarını GERÇEK
+  // DOM üzerinden ölçer.
+  "src/panel/PanelProvider.tsx",
+  "src/panel/theme.ts",
+  "src/panel/layout/menu.ts",
+  "src/panel/layout/PanelShell.tsx",
+  "src/panel/components/Durum.tsx",
+  "src/panel/components/FormPage.tsx",
+  "src/panel/components/ListePage.tsx",
+  "src/panel/components/Matris.tsx",
+  "src/panel/components/TipSecimi.tsx",
+  "src/panel/components/YanPencere.tsx",
+  "src/panel/pages/urunler/UrunFormu.tsx",
+  "src/panel/pages/urunler/UrunListesi.tsx",
+  "src/panel/pages/urunler/VaryantPenceresi.tsx",
 ];
 
 /**
@@ -487,9 +511,27 @@ export function tsHamButonlari() {
     .sort();
 }
 
-/** Dizin kuralıyla BULUNAN taban adayları — artık ölçümün kaynağı DEĞİL, denetleyicisi. */
+/**
+ * Dizin kuralıyla BULUNAN taban adayları — artık ölçümün kaynağı DEĞİL,
+ * denetleyicisi.
+ *
+ * `src/panel/**` (İ9 · Boşluk 1) buraya eklendi. Bağımsız denetim ölçtü:
+ * `ikas` tarzı yeni panel `OLCUM_TABANI`nın (isimle sabit liste) DIŞINDA
+ * doğdu ve dört eşiğin dördü de onu hiç görmeden yeşil kaldı — TB-A5-1'in
+ * aynısı, yeni ağaçta. `admin/`/`pages/admin` gibi elle her dosyayı listeye
+ * eklemek yerine tüm alt ağaç DİZİN KURALINA bağlandı: yeni bir panel
+ * modülü doğduğu an `fazlaDosyalar`a düşer ve nöbetçi kırılır — yani 15
+ * modül boyunca bu satır bir daha ELLE güncellenmesi gerekmez, yalnız
+ * `OLCUM_TABANI` listesi (aşağıda) her yeni dosyada güncellenir. Bu, depoda
+ * zaten `components/admin`/`pages/admin` için kurulu olan ikinci-denetleyici
+ * desenin AYNISI — yeni bir mekanizma icat edilmedi.
+ */
 export function kesfedilenTaban() {
-  const files = [...walk("src/components/admin"), ...walk("src/pages/admin")];
+  const files = [
+    ...walk("src/components/admin"),
+    ...walk("src/pages/admin"),
+    ...walk("src/panel"),
+  ];
   for (const f of walk("src/pages/dashboards")) {
     if (/\/Admin[^/]*\.tsx$/.test(f)) files.push(f);
   }

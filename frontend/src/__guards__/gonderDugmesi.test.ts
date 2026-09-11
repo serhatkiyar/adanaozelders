@@ -178,6 +178,23 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> busy || note.trim().length < 3": "gecerlilik-borc",
   "src/pages/DeliveryRunHandover.tsx <button> !kod.trim() || scan.isPending": "gecerlilik-borc",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> !kod.trim()": "gecerlilik-borc",
+  // ── İ9 · Boşluk 1: `src/panel/**` ölçüme girer girmez bulunan İKİ yeni üye ──
+  //
+  // "Grubu Oluştur" (yeni varyant grubu): eski panelin `ProductForm.tsx`
+  // <Button> !newTitle.trim() || !newAxis1 || createGroup.isPending`
+  // kaydıyla AYNI SINIF, aynı akışın panel karşılığı — düğmenin yanında
+  // "başlık/eksen gerekli" diye DİNAMİK bir metin yok, yalnız statik
+  // `placeholder`lar var.
+  "src/panel/pages/urunler/UrunFormu.tsx <Button> !yeniBaslik.trim() || !yeniEksen1":
+    "gecerlilik-borc",
+  // "Önizle" (kardeş varyant üretimi): `VariantMatrixPanel`in AYNI ADLI
+  // düğmesi `onkosul` sınıfındaydı çünkü DEVRE DIŞI sebebini düğmenin
+  // yanındaki canlı sayaç anlık yazıyordu ("her eksene en az bir değer
+  // girin"). Burada öyle bir metin YOK — `Form.Item help=…` yalnız statik
+  // bir BİÇİM ipucu (`"Virgülle ayırın: ör. Kırmızı,Mavi"`), boş alan
+  // yüzünden düğmenin neden kapalı olduğunu SÖYLEMİYOR. Bu yüzden
+  // `onkosul` değil `gecerlilik-borc`.
+  "src/panel/pages/urunler/VaryantPenceresi.tsx <Button> onizleDisabled": "gecerlilik-borc",
 };
 
 /**

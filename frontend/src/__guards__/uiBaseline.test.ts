@@ -72,6 +72,35 @@
  * Eşiklerin hepsi gerçek JSX mutasyonuyla sınandı
  * (`docs/ip-a2-rapor.md` → Görev 6, `docs/ip-a3a-rapor.md` → Görev 5,
  * `docs/ip-a3c-rapor.md` → Görev 9).
+ *
+ * ## İ9 · Boşluk 1: `src/panel/**` (ikas tarzı yeni panel) ölçüme eklendi
+ *
+ * Bağımsız denetim: yeni panel `OLCUM_TABANI`nın (bu dosyanın kaynağı,
+ * `scripts/ui-baseline-sayim.mjs`) DIŞINDA doğdu, dört eşik de onu hiç
+ * ölçmeden yeşil kaldı — TB-A5-1'in (bkz. yukarıdaki İP-A6 notu) aynısı, yeni
+ * ağaçta. `kesfedilenTaban()` artık `src/panel`i de DİZİN KURALIYLA yürüyor
+ * (elle güncellenen tek yer aşağıdaki `OLCUM_TABANI` listesidir — yeni bir
+ * panel dosyası doğduğunda `fazlaDosyalar` kırılır, bu satır bir daha
+ * değişmez).
+ *
+ * Panel AntD kullanıyor (`<Button>`, `<Input.Search>`, `<Modal>`…), ham
+ * `<button>`/`<input>` JSX etiketi YAZMIYOR — bu yüzden `rawButton`
+ * (bugün 100, eşik değişmedi) ve `adsizKontrol`e (bugün 7, eşik değişmedi)
+ * katkısı sıfır. Bu ikisinin doğruluk kaynağı zaten çalışma zamanı kapısıdır
+ * (bkz. İP-A6b notu); panel orada GERÇEK DOM üzerinden ölçülüyor
+ * (`calismaZamaniKapisi.test.tsx`) ve orada gerçek bir borç bulundu:
+ * `ListePage`/`UrunListesi`nin arama kutusunun erişilebilir adı yok
+ * (kayıt: o dosyadaki `CALISMA_ZAMANI_ADSIZ`).
+ *
+ * `modalDurumu` İSE panelde GERÇEK bir ihlal buldu ve bu dosyadaki iki test
+ * BİLEREK KIRMIZI bırakıldı (eşik gevşetilmedi): `PanelShell.tsx`in mobil
+ * gezinme çekmecesi `const [mobilAcik, setMobilAcik] = useState(false)`u
+ * `<Drawer open={mobilAcik}>`e veriyor — bileşen adı (`Drawer`) + öznitelik
+ * (`open`) deseni tam eşleşiyor. Bu mekanik olarak doğru bir yakalama; ekranın
+ * KENDİSİ `src/panel/**` altında olduğu için bu paket panel kodunu
+ * DEĞİŞTİRMEDİ — düzeltme (ya panel koduna dokunmak ya da bunun bir
+ * gezinme-çekmecesi olup CRUD-pencere borcuyla aynı sınıf olmadığını
+ * belgeleyip nöbetçiyi bilinçli olarak ayarlamak) ayrı bir kararın konusu.
  */
 import { describe, expect, it } from "vitest";
 import {

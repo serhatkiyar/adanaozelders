@@ -177,6 +177,19 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "bilesen-yok",
     gerekce: "yalniz useKirliFormBekcisi hook'u",
   },
+  // ── İ9 · Boşluk 1: `src/panel/**` (ikas tarzı yeni panel) ──
+  //
+  // İkisi de EMPİRİK olarak sınandı: propsuz mount gerçekten TypeError
+  // fırlatıyor (`bolumler.map`/`secenekler.map` — `Array.prototype.map`
+  // `undefined` üzerinde).
+  "src/panel/components/FormPage.tsx": {
+    tur: "props",
+    gerekce: "zorunlu bolumler (sekme listesi) + geriTiklandi/kaydet",
+  },
+  "src/panel/components/TipSecimi.tsx": {
+    tur: "props",
+    gerekce: "zorunlu secenekler (dizi) + acik/baslik/kapat/secildi",
+  },
 };
 
 /**
@@ -278,6 +291,23 @@ const CALISMA_ZAMANI_ADSIZ: Record<string, number> = {
   // düşüşü RAPORLATIR (aksi hâlde "sayı düştü" ile "ekran ölçümden çıktı"
   // ayırt edilemez).
   "src/components/ImageCropModal.tsx": 1, // yakınlaştırma kaydırağı (type=range)
+  // ── İ9 · Boşluk 1: GERÇEK borç, panel ölçüme girer girmez bulundu ──
+  //
+  // `ListePage`in arama kutusu (`Input.Search`) `placeholder` DIŞINDA ad
+  // taşımıyor — `aria-label` yok, `htmlFor`lu bir `<label>` yok. `placeholder`
+  // bu depoda BİLİNÇLİ OLARAK ad sayılmaz (`test-utils/alanAdlari.ts` başı).
+  // `Durum.tsx`in kendi notu bunu doğruluyor: "15 modül bu dosyadaki üç
+  // bileşeni kopyalayacak" — yani `ListePage` her yeni liste ekranına
+  // KOPYALANACAK, borç da onunla birlikte çoğalacak. `UrunListesi` bunun
+  // BUGÜNKÜ tek tüketicisi ve aynı 1 kontrolü miras alıyor (ayrı JSX yazmıyor,
+  // `ListePage`i çağırıyor — iki kayıt aynı kaynağın iki görünümü).
+  //
+  // DÜZELTİLMEDİ: nöbetçi koruduğu kodu değiştirmez (`ListePage`
+  // `src/panel/**` altında, bu görevde DOKUNULMAZ). Kayıt burada GERÇEK
+  // borcu raporlar; kapanınca (ör. `aria-label="Tabloda ara"`) sayı
+  // bilinçli olarak düşürülür.
+  "src/panel/components/ListePage.tsx": 1,
+  "src/panel/pages/urunler/UrunListesi.tsx": 1,
 };
 
 /**
@@ -404,6 +434,17 @@ const KAPI_KAPSAMI = [
   "src/pages/dashboards/OperatorHome.tsx",
   "src/pages/dashboards/OperatorLibrary.tsx",
   "src/pages/dashboards/OperatorSessions.tsx",
+  // ── İ9 · Boşluk 1: `src/panel/**` — dokuzu propsuz mount ediliyor ──
+  // (ikisi — `FormPage`/`TipSecimi` — propsuz ATIYOR, `KAPI_DISI`'nda).
+  "src/panel/PanelProvider.tsx",
+  "src/panel/components/Durum.tsx",
+  "src/panel/components/ListePage.tsx",
+  "src/panel/components/Matris.tsx",
+  "src/panel/components/YanPencere.tsx",
+  "src/panel/layout/PanelShell.tsx",
+  "src/panel/pages/urunler/UrunFormu.tsx",
+  "src/panel/pages/urunler/UrunListesi.tsx",
+  "src/panel/pages/urunler/VaryantPenceresi.tsx",
 ];
 
 /**
@@ -553,6 +594,22 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/pages/dashboards/OperatorHome.tsx": "kosullu",
   "src/pages/dashboards/OperatorLibrary.tsx": "kosullu",
   "src/pages/dashboards/OperatorSessions.tsx": "kosullu",
+  // ── İ9 · Boşluk 1: `src/panel/**` ──
+  // `PanelProvider`/`PanelShell`: sağlayıcı + gezinme kabuğu, kendi form
+  // alanı yok (masaüstünde hamburger düğmesi de basmaz — yalnız mobilde).
+  "src/panel/PanelProvider.tsx": "kabuk",
+  "src/panel/layout/PanelShell.tsx": "kabuk",
+  // `Durum` modülünün ilk büyük harfli export'u `HataDurumu` (AntD `Alert`) —
+  // sunum, form kontrolü taşımaz.
+  "src/panel/components/Durum.tsx": "sunum",
+  // Kardeş varyant matrisi: satırlar (`satirlar`) olmadan tablo boş —
+  // fiyat/barkod/stok girdileri yalnız veri gelince doğar.
+  "src/panel/components/Matris.tsx": "kosullu",
+  // Kapalı pencere hiçbir şey render etmez (AntD `Drawer` varsayılanı
+  // `open` olana dek gövdeyi mount etmez) — `ConfirmDialog`/`Dialog` ile
+  // aynı sınıf.
+  "src/panel/components/YanPencere.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/VaryantPenceresi.tsx": "pencere-kabugu",
 };
 
 /**
