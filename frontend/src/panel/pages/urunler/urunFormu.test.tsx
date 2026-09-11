@@ -604,6 +604,43 @@ describe("UrunFormu", () => {
     });
   });
 
+  // Denetim bulgusu: varyant alanları (`VaryantAlanlari`) panelin geri
+  // kalanından FARKLI bir dil konuşuyordu (düz `Typography.Text`, "Tekrar
+  // dene" yok) — artık paneldeki tek dili (`HataDurumu`/`YukleniyorDurumu`,
+  // bkz. `panel/components/Durum.tsx`) kullanıyor.
+  describe("varyant bilgileri yükleniyor/hata durumu", () => {
+    it("varyant bilgileri yüklenirken panelin geri kalanıyla tutarlı bir yükleniyor göstergesi gösterir", async () => {
+      let cozGetir: (v: { axes: string[]; book_root_slugs: string[] }) => void = () => {};
+      fetchVariantConfig.mockImplementationOnce(
+        () => new Promise((resolve) => { cozGetir = resolve; }),
+      );
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+
+      expect(screen.getByText("Varyant bilgileri yükleniyor…")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Varyant Grubu")).not.toBeInTheDocument();
+
+      cozGetir({ axes: ["Renk"], book_root_slugs: [] });
+      expect(await screen.findByLabelText("Varyant Grubu")).toBeInTheDocument();
+    });
+
+    it("varyant bilgileri yüklenemediğinde diğer hatalarla aynı gösterim + Tekrar dene aksiyonu görünür, tıklanınca yeniden denenir", async () => {
+      fetchVariantConfig.mockRejectedValueOnce(new Error("ağ hatası"));
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+
+      expect(await screen.findByText("Varyant bilgileri yüklenemedi.")).toBeInTheDocument();
+      const tekrarDugmesi = screen.getByRole("button", { name: "Tekrar dene" });
+
+      fetchVariantConfig.mockResolvedValueOnce({ axes: ["Renk"], book_root_slugs: [] });
+      await userEvent.click(tekrarDugmesi);
+
+      expect(await screen.findByLabelText("Varyant Grubu")).toBeInTheDocument();
+    });
+  });
+
   // Task 8b — toplu kardeş matrisi yalnız DÜZENLEME modunda VE ürün zaten
   // bir gruba bağlıyken açılır (karar belgesi, Faz 2). Matrisin kendi
   // davranışı `varyant.test.tsx`te; burada yalnız KAPI sınanır.

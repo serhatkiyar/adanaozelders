@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Alert, App, Button, Divider, Form, Input, Typography } from "antd";
+import { App, Button, Divider, Form, Input, Typography } from "antd";
 import { YanPencere } from "@/panel/components/YanPencere";
+import { HataDurumu } from "@/panel/components/Durum";
 import { Matris, type MatrisSatiri } from "@/panel/components/Matris";
 import { useVariantMatrix } from "@/hooks/useStore";
 import type { VariantMatrixRow } from "@/types";
@@ -199,7 +200,11 @@ export function VaryantPenceresi({
         </Button>
       </Form>
 
-      {preview.isError && <Alert type="error" showIcon message="Önizleme alınamadı." style={{ marginTop: 16 }} />}
+      {preview.isError && (
+        <div style={{ marginTop: 16 }}>
+          <HataDurumu hata="Önizleme alınamadı." />
+        </div>
+      )}
 
       {preview.data && (
         <div style={{ marginTop: 16 }}>
@@ -224,7 +229,11 @@ export function VaryantPenceresi({
         </div>
       )}
 
-      {gonderimHatasi && <Alert type="error" showIcon message={gonderimHatasi} style={{ marginTop: 16 }} />}
+      {gonderimHatasi && (
+        <div style={{ marginTop: 16 }}>
+          <HataDurumu hata={gonderimHatasi} />
+        </div>
+      )}
     </YanPencere>
   );
 }

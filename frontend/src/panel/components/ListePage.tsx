@@ -1,6 +1,7 @@
-import { Alert, Card, Empty, Flex, Input, Table, Typography } from "antd";
+import { Card, Flex, Input, Table, Typography } from "antd";
 import type { TableProps } from "antd";
 import type { ReactNode } from "react";
+import { BosDurumu, HataDurumu } from "@/panel/components/Durum";
 
 export type ListePageProps<T> = {
   baslik: string;
@@ -10,6 +11,16 @@ export type ListePageProps<T> = {
   kolonlar: TableProps<T>["columns"];
   veri: T[] | undefined;
   yukleniyor: boolean;
+  /**
+   * `hata` doluyken bunun anlamı "liste VERİSİ hiç gelmedi" (ör. sorgu
+   * başarısız oldu) — bir SATIR AKSİYONUNUN (silme, durum değiştirme,
+   * dışa aktarma vb.) başarısız olması DEĞİLDİR. `hata` doluyken tablo
+   * ve boş durum hiç render edilmez (aşağıdaki `bos` hesaplamasına bkz.),
+   * yalnız `HataDurumu` durur; `hataAksiyon` genelde "Tekrar dene"
+   * düğmesidir. Satır aksiyonu hataları kendi geri bildirimini
+   * (bildirim/toast) modülün kendisi gösterir — bu prop'a KONMAZ (aynı
+   * ayrım `FormPage.hata`'da da var: "kaydetme hatası buraya konmaz").
+   */
   hata?: string | null;
   hataAksiyon?: ReactNode;
   toplam?: number;
@@ -49,20 +60,9 @@ export function ListePage<T extends object>({
         </Flex>
 
         {hata ? (
-          <Alert type="error" showIcon message={hata} action={hataAksiyon} />
+          <HataDurumu hata={hata} hataAksiyon={hataAksiyon} />
         ) : bos ? (
-          <div role="status" aria-live="polite">
-            <Empty
-              description={
-                <Flex vertical gap={4} align="center">
-                  <Typography.Text strong>{bosBaslik}</Typography.Text>
-                  <Typography.Text type="secondary">{bosAciklama}</Typography.Text>
-                </Flex>
-              }
-            >
-              {bosAksiyon}
-            </Empty>
-          </div>
+          <BosDurumu baslik={bosBaslik} aciklama={bosAciklama} aksiyon={bosAksiyon} />
         ) : (
           <Table<T>
             columns={kolonlar}

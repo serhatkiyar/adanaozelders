@@ -39,6 +39,7 @@ import { App, Button, Divider, Flex, Form, Input, InputNumber, Select, Typograph
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormPage, type FormBolumu } from "@/panel/components/FormPage";
+import { HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
 import { VaryantPenceresi } from "@/panel/pages/urunler/VaryantPenceresi";
 import { createProduct, updateProduct } from "@/api/store";
 import {
@@ -580,8 +581,18 @@ function VaryantAlanlari({
   urun?: ProductDetailOut;
 }) {
   const { message } = App.useApp();
-  const { data: config, isPending: configYukleniyor, isError: configHataVar } = useVariantConfig();
-  const { data: gruplar, isPending: gruplarYukleniyor, isError: gruplarHataVar } = useVariantGroups();
+  const {
+    data: config,
+    isPending: configYukleniyor,
+    isError: configHataVar,
+    refetch: configTekrarCek,
+  } = useVariantConfig();
+  const {
+    data: gruplar,
+    isPending: gruplarYukleniyor,
+    isError: gruplarHataVar,
+    refetch: gruplarTekrarCek,
+  } = useVariantGroups();
   const olusturMutasyonu = useCreateVariantGroup();
   const [matrisAcik, setMatrisAcik] = useState(false);
 
@@ -596,11 +607,28 @@ function VaryantAlanlari({
   // değerin eksen adlarını hemen göstermek için ayrıca tutulur.
   const [sonOlusturulan, setSonOlusturulan] = useState<VariantGroup | null>(null);
 
+  // Panelin geri kalanıyla AYNI dil (bkz. `panel/components/Durum.tsx`) —
+  // önceden bu iki durum düz `Typography.Text` ile yazılıyordu ve hata
+  // durumunda "Tekrar dene" aksiyonu hiç yoktu (denetim bulgusu).
   if (configYukleniyor || gruplarYukleniyor) {
-    return <Typography.Text type="secondary">Varyant bilgileri yükleniyor…</Typography.Text>;
+    return <YukleniyorDurumu etiket="Varyant bilgileri yükleniyor…" />;
   }
   if (configHataVar || gruplarHataVar) {
-    return <Typography.Text type="danger">Varyant bilgileri yüklenemedi.</Typography.Text>;
+    return (
+      <HataDurumu
+        hata="Varyant bilgileri yüklenemedi."
+        hataAksiyon={
+          <Button
+            onClick={() => {
+              configTekrarCek();
+              gruplarTekrarCek();
+            }}
+          >
+            Tekrar dene
+          </Button>
+        }
+      />
+    );
   }
 
   const tumGruplar =

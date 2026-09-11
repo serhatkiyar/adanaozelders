@@ -1,6 +1,7 @@
-import { Alert, Button, Card, Flex, Tabs, Typography } from "antd";
+import { Button, Card, Flex, Tabs, Typography } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import type { ReactNode } from "react";
+import { HataDurumu } from "@/panel/components/Durum";
 
 export type FormBolumu = { anahtar: string; baslik: string; icerik: ReactNode };
 
@@ -63,7 +64,7 @@ export function FormPage({
       </Flex>
 
       {hata ? (
-        <Alert type="error" showIcon message={hata} action={hataAksiyon} />
+        <HataDurumu hata={hata} hataAksiyon={hataAksiyon} />
       ) : (
         <Tabs
           items={bolumler.map((b) => ({
