@@ -231,6 +231,12 @@ export const PATHS = {
   adminStoreHero: "/yonetim/vitrin-gorselleri",
   /** @deprecated Eski ad yalnız mevcut çağrı yerlerini kırmamak için tutulur. */
   adminAnnouncements: "/yonetim/vitrin-gorselleri",
+
+  /** Yeni ikas-tarzı panel (geçici kök; tamamlanınca /yonetim devralınır). */
+  adminNew: "/yonetim-yeni",
+  adminNewProducts: "/yonetim-yeni/urunler",
+  adminNewProductNew: "/yonetim-yeni/urunler/yeni",
+  adminNewProductEdit: "/yonetim-yeni/urunler/:id",
 } as const;
 
 export const ROUTES = {
@@ -383,6 +389,11 @@ export const ROUTES = {
   adminSettings: PATHS.adminSettings,
   adminStoreHero: PATHS.adminStoreHero,
   adminAnnouncements: PATHS.adminAnnouncements,
+
+  adminNew: PATHS.adminNew,
+  adminNewProducts: PATHS.adminNewProducts,
+  adminNewProductNew: PATHS.adminNewProductNew,
+  adminNewProductEdit: (id: string | number) => `/yonetim-yeni/urunler/${id}`,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve

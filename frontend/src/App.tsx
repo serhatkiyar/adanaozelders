@@ -86,6 +86,7 @@ const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const GoogleDonus = lazy(() => import("@/pages/GoogleDonus"));
 const HesapSilmeOnayi = lazy(() => import("@/pages/HesapSilmeOnayi"));
 const AdminLayout = lazy(() => import("@/components/admin/layout/AdminLayout"));
+const PanelShell = lazy(() => import("@/panel/layout/PanelShell").then((m) => ({ default: m.PanelShell })));
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
 const AdminOperationsPage = lazy(() => import("@/pages/admin/AdminOperationsPage"));
@@ -665,6 +666,9 @@ function App() {
               <Route path="ayarlar" element={<AdminSettingsPage />} />
               <Route path="vitrin-gorselleri" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
               <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+            </Route>
+            <Route path={PATHS.adminNew} element={<PanelShell />}>
+              <Route index element={<div>Panel kuruldu.</div>} />
             </Route>
           </Route>
 
