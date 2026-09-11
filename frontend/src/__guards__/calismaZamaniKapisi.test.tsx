@@ -291,23 +291,25 @@ const CALISMA_ZAMANI_ADSIZ: Record<string, number> = {
   // düşüşü RAPORLATIR (aksi hâlde "sayı düştü" ile "ekran ölçümden çıktı"
   // ayırt edilemez).
   "src/components/ImageCropModal.tsx": 1, // yakınlaştırma kaydırağı (type=range)
-  // ── İ9 · Boşluk 1: GERÇEK borç, panel ölçüme girer girmez bulundu ──
+  // ── İ9 · Boşluk 1 KAPANDI: `ListePage`in arama kutusu (11 Eyl, 4b2bcc9) ──
   //
   // `ListePage`in arama kutusu (`Input.Search`) `placeholder` DIŞINDA ad
-  // taşımıyor — `aria-label` yok, `htmlFor`lu bir `<label>` yok. `placeholder`
-  // bu depoda BİLİNÇLİ OLARAK ad sayılmaz (`test-utils/alanAdlari.ts` başı).
-  // `Durum.tsx`in kendi notu bunu doğruluyor: "15 modül bu dosyadaki üç
-  // bileşeni kopyalayacak" — yani `ListePage` her yeni liste ekranına
-  // KOPYALANACAK, borç da onunla birlikte çoğalacak. `UrunListesi` bunun
-  // BUGÜNKÜ tek tüketicisi ve aynı 1 kontrolü miras alıyor (ayrı JSX yazmıyor,
-  // `ListePage`i çağırıyor — iki kayıt aynı kaynağın iki görünümü).
+  // taşımıyordu — `aria-label` yok, `htmlFor`lu bir `<label>` yoktu.
+  // `placeholder` bu depoda BİLİNÇLİ OLARAK ad sayılmaz
+  // (`test-utils/alanAdlari.ts` başı). Bu satırlar bir süre (`ListePage`: 1,
+  // `UrunListesi`: 1) burada GERÇEK borç olarak durdu.
   //
-  // DÜZELTİLMEDİ: nöbetçi koruduğu kodu değiştirmez (`ListePage`
-  // `src/panel/**` altında, bu görevde DOKUNULMAZ). Kayıt burada GERÇEK
-  // borcu raporlar; kapanınca (ör. `aria-label="Tabloda ara"`) sayı
-  // bilinçli olarak düşürülür.
-  "src/panel/components/ListePage.tsx": 1,
-  "src/panel/pages/urunler/UrunListesi.tsx": 1,
+  // Düzeltme aynı zamanda ikinci bir borcu da kapattı: kutu `Input.Search`
+  // olduğu için `onSearch` verilmeyince tıklanabilir ama hiçbir şey yapmayan
+  // ölü bir büyüteç düğmesi basıyordu — `Input`e indirildi (arama zaten her
+  // tuşta tüketiciye gidiyordu, ayrı bir "ara" eylemine ihtiyaç yoktu).
+  // `aria-label` başlıktan türetildi (`"${baslik} içinde ara"`), yani
+  // `ListePage`i kopyalayacak 15 modülün hepsi bu adı miras alıyor.
+  //
+  // Bu paket panel koduna DOKUNMADI (nöbetçi koruduğu kodu değiştirmez);
+  // kapanış ayrı bir committen (4b2bcc9) geldi. Kayıt kaldırılınca satır
+  // kaybolur — "sayı düştü" ile "ekran ölçümden çıktı" ayrımı için bu not
+  // burada duruyor.
 };
 
 /**

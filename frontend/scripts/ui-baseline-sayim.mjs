@@ -685,6 +685,60 @@ const PENCERE_OZNITELIKLERI = new Set([
   "yuzey",
 ]);
 
+/**
+ * ── İ9 · Boşluk 1 kapanışı: GEZİNME ÇEKMECESİ, KAYIT DÜZENLEME'den AYRI KATEGORİ ──
+ *
+ * `PanelShell.tsx`'in mobil gezinme çekmecesi (`<Drawer open={mobilAcik}>`)
+ * yukarıdaki `PENCERE_BILESENI` deseniyle MEKANİK olarak eşleşiyor — bileşen
+ * adı `Drawer`, öznitelik `open`. Eşleşme YANLIŞ değil: sayaç sözdizimsel bir
+ * PENCERE durumu buluyor, tam istendiği gibi. Ama bu pencere
+ * `useDuzenlemeYuzeyi`nin ölçtüğü sınıftan (bir KAYIT düzenleme/yeni kayıt
+ * açma yüzeyi — `hedef: {tur:"kayit"|"yeni"}`, bkz.
+ * `components/admin/ui2/yuzeyDurumu.ts`) FARKLI bir şey: bir gezinme menüsü.
+ * Kaydı yok, "yeni" hâli yok, kapanırken kirli form onayı gerekmez.
+ *
+ * Çözüm eşiği gevşetmek DEĞİL (o korumayı değersizleştirirdi) ve pencereyi
+ * `useDuzenlemeYuzeyi`ye taşımak da DEĞİL (hook'un anlamını bozardı — bir
+ * gezinme menüsünü "düzenlenen kayıt" gibi göstermek yanlış olurdu). Yerine:
+ * bu BİLİNEN gezinme çekmecelerini isimle sabit bir listeyle KENDİ
+ * KATEGORİSİNE ayırmak — tıpkı `PRINT_LAYERS`in baskı katmanlarını overlay
+ * sayımından ayırdığı gibi, deponun zaten kullandığı desenin bir örneği daha.
+ *
+ * ## Eşleşme KATI'dır (yanlış tarafa kaçamaz)
+ *
+ * Bir bağ ancak HEM dosyası HEM adı HEM DE bağlandığı TEK bileşen adı bu
+ * listedeki bir kayıtla `dosya`+`ad`+`bilesen` olarak TAM eşleşirse gezinme
+ * çekmecesi sayılır. Varsayılan yön "kayıt düzenleme durumu"dur (katı, sıfır
+ * toleranslı `modalDurumu` kovası) — yeni/bilinmeyen bir bağ HER ZAMAN önce
+ * bu sert kovaya düşer:
+ *
+ *   - Başka bir dosyada aynı adla bir `Drawer` doğarsa → dosya eşleşmez →
+ *     KAYIT DÜZENLEME kovasına düşer, `modalDurumu` KIRILIR.
+ *   - Aynı dosyada farklı adla İKİNCİ bir gezinme çekmecesi doğarsa → ad
+ *     eşleşmez → aynı şekilde KIRILIR; insan listeye ekleyip bilinçli
+ *     onaylamadan geçemez.
+ *   - `mobilAcik` aynı dosyada GERÇEK bir düzenleme penceresine de
+ *     (`<KayitDialog open={mobilAcik}>` gibi) verilirse bağın bağlandığı
+ *     bileşen kümesi `{Drawer, KayitDialog}` olur — TEK bileşen şartı
+ *     bozulur, bağ yine KAYIT DÜZENLEME kovasına düşer.
+ *
+ * Yani liste bir "affet" listesi değil, dar bir eşleşmeyle çalışan İKİNCİ bir
+ * sınıflandırıcıdır; varsayılanı her zaman daha katı kovadır (aynı gerekçe
+ * `OLCUM_TABANI`/`PRINT_LAYERS`'ta da geçerli: bilinmeyen borç önce en sert
+ * kovaya düşer, listeye girmeden asla yumuşamaz). Kendi doğruluğu
+ * `uiBaseline.test.ts`teki iki mutasyon provasıyla sınanır (kayıt düzenleme
+ * kaçamaz / ikinci çekmece kaçamaz).
+ */
+export const GEZINME_CEKMECELERI = [
+  {
+    dosya: "src/panel/layout/PanelShell.tsx",
+    ad: "mobilAcik",
+    bilesen: "Drawer",
+    gerekce:
+      'mobil gezinme menüsü — kaydı yok, "yeni" hâli yok, kirli form onayı gerekmez',
+  },
+];
+
 /** Bir kontrolü "adlandırılmış" sayan sarmalayıcı bileşenler. */
 const KONTROL_SARMALAYICILARI = new Set(["Form.Control"]);
 
@@ -729,8 +783,12 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
     adsizKontrol: 0,
     adsizKontrolSatirlari: [],
     olcumDisiKontrol: 0,
-    // İP-A4: ekranda yaşayan pencere durumu (bağ adları).
+    // İP-A4: ekranda yaşayan pencere durumu (bağ adları) — KAYIT DÜZENLEME
+    // kovası (katı, sıfır toleranslı).
     modalDurumAdlari: [],
+    // İ9 · Boşluk 1 kapanışı: GEZİNME ÇEKMECESİ kovası — `GEZINME_CEKMECELERI`
+    // ile dosya+ad+bileşen TAM eşleşen bağlar (bkz. sabitin yanındaki not).
+    gezinmeCekmecesiAdlari: [],
   };
 
   // Kontrol ↔ etiket bağı DOSYA ÖLÇEĞİNDE kurulur: `<label htmlFor={x}>` ile
@@ -1109,7 +1167,10 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
     }
   }
 
-  const modalBaglari = new Set();
+  // Bağ → bağlandığı PENCERE bileşenlerinin adları (Set). Kategori ayrımı
+  // (kayıt düzenleme / gezinme çekmecesi) bu kümenin TEK bir bileşene mi
+  // indiğine bakar (bkz. `GEZINME_CEKMECELERI`nin yanındaki not).
+  const modalBagEtiketleri = new Map();
   const modalAra = (n) => {
     if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
       const etiket = n.tagName.getText(sf);
@@ -1132,16 +1193,39 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
         gezIfade(ifade.expression);
         for (const t of tanimlayicilar) {
           const bag = bagiCozumle(n, t);
-          if (bag) modalBaglari.add(bag);
+          if (!bag) continue;
+          if (!modalBagEtiketleri.has(bag)) modalBagEtiketleri.set(bag, new Set());
+          modalBagEtiketleri.get(bag).add(etiket);
         }
       }
     }
     ts.forEachChild(n, modalAra);
   };
   modalAra(sf);
+
+  // ── İ9 · Boşluk 1 kapanışı: KAYIT DÜZENLEME vs GEZİNME ÇEKMECESİ ──
+  //
+  // Varsayılan kova KAYIT DÜZENLEME'dir (katı, sıfır toleranslı). Bir bağ
+  // ancak `GEZINME_CEKMECELERI`nde dosya+ad eşleşen bir kayıt varsa VE o
+  // bağın bağlandığı bileşen kümesi TAM OLARAK o kaydın `bilesen`inden
+  // ibaretse (başka hiçbir pencereye de akmıyorsa) gezinme çekmecesi
+  // kovasına düşer. Aksi hâlde — dosya farklı, ad farklı, ya da bağ aynı
+  // zamanda başka bir pencereye de akıyorsa — KAYIT DÜZENLEME kovasında
+  // kalır. Gerekçe ve üç kaçamama senaryosu sabitin yanındaki yorumda.
+  const kayitBaglari = [];
+  const gezinmeBaglari = [];
+  for (const [bag, etiketler] of modalBagEtiketleri) {
+    const izinli = GEZINME_CEKMECELERI.find((g) => g.dosya === dosyaAdi && g.ad === bag.ad);
+    if (izinli && etiketler.size === 1 && etiketler.has(izinli.bilesen)) {
+      gezinmeBaglari.push(bag);
+    } else {
+      kayitBaglari.push(bag);
+    }
+  }
   // Çıktı hâlâ ADLARDIR (mevcut nöbetçiler ada bakıyor), ama artık BAĞ
   // sayısı kadar eleman taşır: aynı adlı iki ayrı bağ iki kez listelenir.
-  o.modalDurumAdlari = [...modalBaglari].map((b) => b.ad).sort();
+  o.modalDurumAdlari = kayitBaglari.map((b) => b.ad).sort();
+  o.gezinmeCekmecesiAdlari = gezinmeBaglari.map((b) => b.ad).sort();
 
   return o;
 }
@@ -1161,6 +1245,8 @@ export function sayim() {
   const adsizKontrolDosyalari = [];
   let modalDurumu = 0;
   const modalDurumDosyalari = [];
+  let gezinmeCekmecesiDurumu = 0;
+  const gezinmeCekmecesiDosyalari = [];
 
   for (const f of base) {
     const o = dosyaOlcumu(read(f), f);
@@ -1173,6 +1259,10 @@ export function sayim() {
     if (o.modalDurumAdlari.length > 0) {
       modalDurumu += o.modalDurumAdlari.length;
       modalDurumDosyalari.push({ dosya: f, adlar: o.modalDurumAdlari });
+    }
+    if (o.gezinmeCekmecesiAdlari.length > 0) {
+      gezinmeCekmecesiDurumu += o.gezinmeCekmecesiAdlari.length;
+      gezinmeCekmecesiDosyalari.push({ dosya: f, adlar: o.gezinmeCekmecesiAdlari });
     }
     olcumDisiKontrol += o.olcumDisiKontrol;
     if (o.adsizKontrol > 0) {
@@ -1234,9 +1324,15 @@ export function sayim() {
     adsizKontrol,
     olcumDisiKontrol,
     adsizKontrolDosyalari,
-    // İP-A4 nöbetçi metriği: ekranda yaşayan pencere (modal) durumu.
+    // İP-A4 nöbetçi metriği: ekranda yaşayan KAYIT DÜZENLEME pencere durumu
+    // (katı kova — gezinme çekmecesi hariç, bkz. `GEZINME_CEKMECELERI`).
     modalDurumu,
     modalDurumDosyalari,
+    // İ9 · Boşluk 1 kapanışı: ayrı kategori — bilinen gezinme çekmeceleri.
+    // Tavan değil KİMLİK: listeye yeni bir çekmece elle eklenmeden büyümez
+    // (`GEZINME_CEKMECELERI`nin uzunluğuyla aynı olması beklenir).
+    gezinmeCekmecesiDurumu,
+    gezinmeCekmecesiDosyalari,
     medusaDirectImports,
     unlabeledOverlays,
     overlayOffenders: overlayOffenders.sort(),
