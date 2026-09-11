@@ -4,6 +4,7 @@ import type { TableProps } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { ListePage } from "@/panel/components/ListePage";
+import { TipSecimi } from "@/panel/components/TipSecimi";
 import { useAdminProducts } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatTL } from "@/lib/money";
@@ -14,6 +15,7 @@ export function UrunListesi() {
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
+  const [tipAcik, setTipAcik] = useState(false);
   const navigate = useNavigate();
 
   // Girdi anında güncellenir (aramaDegeri); API'ye giden değer gecikmelidir —
@@ -57,38 +59,53 @@ export function UrunListesi() {
   );
 
   return (
-    <ListePage<ProductSearchOut>
-      baslik="Ürünler"
-      aksiyonlar={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(ROUTES.adminNewProductNew)}>
-          Ürün Ekle
-        </Button>
-      }
-      aramaDegeri={arama}
-      aramaDegisti={(v) => {
-        setArama(v);
-        setSayfa(1);
-      }}
-      kolonlar={kolonlar}
-      veri={satirlar}
-      yukleniyor={isPending}
-      hata={isError ? "Ürünler yüklenemedi." : null}
-      hataAksiyon={<Button onClick={() => refetch()}>Tekrar dene</Button>}
-      toplam={toplam}
-      sayfa={sayfa}
-      sayfaBoyutu={boyut}
-      sayfaDegisti={(s, b) => {
-        setSayfa(s);
-        setBoyut(b);
-      }}
-      bosBaslik="İlk Ürününüzü Yükleyin!"
-      bosAciklama="Ürünlerinizi yükleyin ve hemen satışa başlayın."
-      bosAksiyon={
-        <Button type="primary" onClick={() => navigate(ROUTES.adminNewProductNew)}>
-          Ürün Ekle
-        </Button>
-      }
-      rowKey={(k) => k.id}
-    />
+    <>
+      <ListePage<ProductSearchOut>
+        baslik="Ürünler"
+        aksiyonlar={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setTipAcik(true)}>
+            Ürün Ekle
+          </Button>
+        }
+        aramaDegeri={arama}
+        aramaDegisti={(v) => {
+          setArama(v);
+          setSayfa(1);
+        }}
+        kolonlar={kolonlar}
+        veri={satirlar}
+        yukleniyor={isPending}
+        hata={isError ? "Ürünler yüklenemedi." : null}
+        hataAksiyon={<Button onClick={() => refetch()}>Tekrar dene</Button>}
+        toplam={toplam}
+        sayfa={sayfa}
+        sayfaBoyutu={boyut}
+        sayfaDegisti={(s, b) => {
+          setSayfa(s);
+          setBoyut(b);
+        }}
+        bosBaslik="İlk Ürününüzü Yükleyin!"
+        bosAciklama="Ürünlerinizi yükleyin ve hemen satışa başlayın."
+        bosAksiyon={
+          <Button type="primary" onClick={() => setTipAcik(true)}>
+            Ürün Ekle
+          </Button>
+        }
+        rowKey={(k) => k.id}
+      />
+      <TipSecimi
+        acik={tipAcik}
+        baslik="Ürün Ekle"
+        secenekler={[
+          { anahtar: "basit", baslik: "Basit Ürün", aciklama: "Tek parça olarak bir ürün ekleyin" },
+          { anahtar: "varyantli", baslik: "Varyantlı Ürün", aciklama: "Renk, boyut gibi seçeneklerle ekleyin" },
+        ]}
+        kapat={() => setTipAcik(false)}
+        secildi={(anahtar) => {
+          setTipAcik(false);
+          navigate(`${ROUTES.adminNewProductNew}?tip=${anahtar}`);
+        }}
+      />
+    </>
   );
 }
