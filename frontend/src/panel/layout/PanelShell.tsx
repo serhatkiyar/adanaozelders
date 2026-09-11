@@ -11,6 +11,7 @@ import {
   CarOutlined,
   ContainerOutlined,
   DollarOutlined,
+  HistoryOutlined,
   HomeOutlined,
   InboxOutlined,
   MenuOutlined,
@@ -28,6 +29,7 @@ import {
   TeamOutlined,
   UserOutlined,
   WalletOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AccessDenied } from "@/components/admin/AccessState";
@@ -80,6 +82,8 @@ const PANEL_MENU_ICONS: Record<PanelMenuIconKey, ComponentType> = {
   book: BookOutlined,
   safety: SafetyOutlined,
   wallet: WalletOutlined,
+  history: HistoryOutlined,
+  warning: WarningOutlined,
 };
 
 function menuyuAntdyeCevir(items: PanelMenuItem[]): MenuProps["items"] {

@@ -57,6 +57,17 @@ describe("PanelShell", () => {
     );
   });
 
+  it("Ürünler alt menüsü bizim iki modülümüzü (Stok Hareketleri, Hasarlı Stok) kaybetmez", () => {
+    // Spec §4 (docs/superpowers/specs/2026-09-11-admin-panel-ikas-yeniden-
+    // tasarim-design.md): ikas'ta karşılığı olmayan bu iki öğe bilinçli
+    // olarak eklendi (▲) — bir daha sessizce düşmesinler.
+    const urunlerGrubu = PANEL_MENU.find((m) => m.key === "urunler");
+    const altEtiketler = urunlerGrubu?.children?.map((c) => c.label) ?? [];
+    expect(altEtiketler).toEqual(
+      expect.arrayContaining(["Stok Hareketleri", "Hasarlı Stok"]),
+    );
+  });
+
   it("masaüstünde sol menü görünür", () => {
     setViewport(1280);
     render(

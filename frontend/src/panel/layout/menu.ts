@@ -33,7 +33,9 @@ export type PanelMenuIconKey =
   | "solution"
   | "book"
   | "safety"
-  | "wallet";
+  | "wallet"
+  | "history"
+  | "warning";
 
 export type PanelMenuItem = {
   key: string;
@@ -66,6 +68,14 @@ export type PanelMenuItem = {
  * Siparişler, Müşteriler) gerçek yola + izne bağlanır; ikas'a özgü, bizde
  * karşılığı olmayanlar (Gelen Kutusu, Pazarlama, Uygulamalar, Satış
  * Kanalları) yolsuz yer tutucu kalır (referans §6).
+ *
+ * Kural: **ikas'ın öğeleri + bizim öğelerimiz = menü**, hiçbir yetenek
+ * düşmez. Ürünler alt menüsünde de aynı kural: ikas'ta olup bizde olmayanlar
+ * (Transferler, Fiyat Listesi, Ürün Barkod Etiketi) yer tutucu kalır;
+ * bizde olup ikas'ta olmayanlar (Stok Hareketleri — append-only defter,
+ * Hasarlı Stok) `docs/superpowers/specs/2026-09-11-admin-panel-ikas-yeniden-
+ * tasarim-design.md` §4'teki onaylı yerlerinde durur (Stok Sayımı'ndan
+ * sonra, Tanımlamalar'dan önce).
  */
 export const PANEL_MENU: PanelMenuItem[] = [
   { key: "giris", label: "Giriş", path: PATHS.adminNew, icon: "home" },
@@ -84,6 +94,10 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "satin-alma", label: "Satın Alma", icon: "cart" },
       { key: "transferler", label: "Transferler", icon: "swap" },
       { key: "stok-sayimi", label: "Stok Sayımı", icon: "audit" },
+      // Bize özgü (ikas'ta karşılığı yok) — spec §4'te onaylı, ikas'ın
+      // Stok Sayımı öğesinden hemen sonra, Tanımlamalar'dan önce durur.
+      { key: "stok-hareketleri", label: "Stok Hareketleri", icon: "history" },
+      { key: "hasarli-stok", label: "Hasarlı Stok", icon: "warning" },
       { key: "tanimlamalar", label: "Tanımlamalar", icon: "tag" },
       { key: "fiyat-listesi", label: "Fiyat Listesi", icon: "dollar" },
       { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi", icon: "barcode" },
