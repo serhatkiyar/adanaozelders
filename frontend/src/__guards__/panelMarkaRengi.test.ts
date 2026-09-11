@@ -76,12 +76,29 @@ describe("panel aksan rengi · index.css ile theme.ts arasındaki köprü", () =
     ).toBe(true);
   });
 
-  it("colorTextLightSolid === --marka-fg (dolgu PARLAK + üstündeki yazı KOYU kuralı AntD birincil düğmede de geçerli)", () => {
+  it("Button.primaryColor === --marka-fg (dolgu PARLAK + üstündeki yazı KOYU kuralı birincil düğmede geçerli)", () => {
     const cssHex = ucluDenHex(hamKok("marka-fg"));
     expect(
-      eslesiyorMu(cssHex, panelTheme.token?.colorTextLightSolid),
+      eslesiyorMu(cssHex, panelTheme.components?.Button?.primaryColor),
       `index.css'teki --marka-fg değişti (şimdi ${cssHex}); panel/theme.ts içindeki MARKA_USTU_YAZI sabitini güncelle`
     ).toBe(true);
+  });
+
+  it("global colorTextLightSolid KULLANILMAZ (koyu menü yazısını görünmez yapıyordu)", () => {
+    // Kullanıcının gerçek tarayıcıda bildirdiği kusur: bu token AntD'de "koyu
+    // zemin üstündeki yazı" anlamına gelir ve koyu Sider menüsünün yazı rengini
+    // de kapsar; `--marka-fg` (neredeyse siyah) koyu zemine uygulanınca menü
+    // yazıları GÖRÜNMEZ oldu. Kural: marka-üstü-yazı kapsamı DÜĞMEYLE sınırlı.
+    expect(
+      panelTheme.token?.colorTextLightSolid,
+      "panel/theme.ts'te global colorTextLightSolid yeniden tanımlanmış — koyu menü yazısını ele geçirir. Kapsamı components.Button.primaryColor ile sınırla."
+    ).toBeUndefined();
+  });
+
+  it("koyu menü yazı renkleri AÇIKÇA verilmiştir (global token ele geçiremesin)", () => {
+    const menu = panelTheme.components?.Menu;
+    expect(menu?.darkItemColor, "Menu.darkItemColor verilmemiş — koyu menü yazısı global bir token'a bağımlı kalır").toBeTruthy();
+    expect(menu?.darkItemSelectedColor, "Menu.darkItemSelectedColor verilmemiş").toBeTruthy();
   });
 
   it("kendi kendine sınama: uydurma bir sapma bu kıyası KIRMIZIYA döndürür", () => {

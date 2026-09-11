@@ -30,23 +30,42 @@ const MARKA = "#FF9900"; // index.css → --marka: 255 153 0
  * `index.css` kuralı: dolgu PARLAK, üstündeki yazı KOYU (`--marka-fg`).
  * AntD birincil düğmenin varsayılan yazı rengi BEYAZdır ve `MARKA` üstünde
  * beyaz yazı yalnızca 2,1 kontrast verir (eşik 4,5) — kural sessizce
- * çiğnenir. `colorTextLightSolid` bunu `--marka-fg`ye bağlayarak AntD'nin
- * birincil düğmesini de aynı kurala tabi kılar. Aynı nöbetçi bu değeri de
- * sınar.
+ * çiğnenir. Bu yüzden düğmeye ÖZEL olarak `components.Button.primaryColor`
+ * ile bağlanır. Aynı nöbetçi bu değeri de sınar.
+ *
+ * DİKKAT — global `token.colorTextLightSolid` KULLANILMAZ. Denendi ve
+ * kullanıcının bildirdiği gerçek bir kusura yol açtı: o token AntD'de "koyu
+ * zemin üstündeki yazı" anlamına gelir, koyu Sider menüsünün yazı rengini de
+ * kapsar; `--marka-fg` (neredeyse siyah) koyu zemine (#111827) uygulanınca
+ * menü yazıları GÖRÜNMEZ oldu. Kapsam düğmeyle sınırlı tutulur; ayrıca koyu
+ * menünün yazı renkleri aşağıda AÇIKÇA verilir ki hiçbir global token onları
+ * sessizce ele geçiremesin.
  */
 const MARKA_USTU_YAZI = "#2B1000"; // index.css → --marka-fg: 43 16 0
+
+/** Koyu Sider/Menu zemini üstündeki yazı — AntD koyu menü varsayılanı. */
+const MENU_YAZI = "rgba(255, 255, 255, 0.85)";
 
 /** Panelin TEK renk/ölçü kaynağı. Başka dosyada renk sabiti yazılmaz. */
 export const panelTheme: ThemeConfig = {
   token: {
     colorPrimary: MARKA,
-    colorTextLightSolid: MARKA_USTU_YAZI,
     borderRadius: 8,
     fontFamily:
       'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
   components: {
     Layout: { siderBg: PANEL_SIDER_BG, headerBg: "#ffffff" },
-    Menu: { darkItemBg: PANEL_SIDER_BG, darkItemSelectedBg: "#1f2937" },
+    // Koyu menünün yazı renkleri AÇIKÇA verilir: global bir token bunları
+    // ele geçirip koyu-üstü-koyu yaparsa menü okunamaz hale gelir (bir kez oldu).
+    Menu: {
+      darkItemBg: PANEL_SIDER_BG,
+      darkItemSelectedBg: "#1f2937",
+      darkItemColor: MENU_YAZI,
+      darkItemHoverColor: "#ffffff",
+      darkItemSelectedColor: "#ffffff",
+    },
+    // Birincil düğme yazısı: "parlak dolgu + koyu yazı" kuralı YALNIZ burada.
+    Button: { primaryColor: MARKA_USTU_YAZI },
   },
 };
