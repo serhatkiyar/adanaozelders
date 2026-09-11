@@ -9,10 +9,19 @@ import { PATHS } from "@/lib/routes";
 const createProduct = vi.fn().mockResolvedValue({ id: 7 });
 const updateProduct = vi.fn().mockResolvedValue({ id: 9 });
 const fetchProductAdmin = vi.fn();
+// Varyant grubu sözlüğü boş dizi ile YOKMUŞ gibi başlar; her test kendi
+// `mockResolvedValueOnce`'unu koyar (bkz. `vi.clearAllMocks` — implementasyon
+// KORUNUR, yalnız çağrı geçmişi silinir; bu yüzden varsayılan burada sabit).
+const fetchVariantConfig = vi.fn().mockResolvedValue({ axes: ["Renk", "Beden"], book_root_slugs: [] });
+const listVariantGroups = vi.fn().mockResolvedValue([]);
+const createVariantGroup = vi.fn();
 vi.mock("@/api/store", () => ({
   createProduct: (...a: unknown[]) => createProduct(...a),
   updateProduct: (...a: unknown[]) => updateProduct(...a),
   fetchProductAdmin: (...a: unknown[]) => fetchProductAdmin(...a),
+  fetchVariantConfig: (...a: unknown[]) => fetchVariantConfig(...a),
+  listVariantGroups: (...a: unknown[]) => listVariantGroups(...a),
+  createVariantGroup: (...a: unknown[]) => createVariantGroup(...a),
 }));
 
 afterEach(() => {
@@ -184,6 +193,101 @@ describe("UrunFormu", () => {
 
       expect(await screen.findByText("Stok değiştiyse gerekçe zorunludur.")).toBeInTheDocument();
       expect(updateProduct).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("varyant grubu üyeliği", () => {
+    it("grup seçilince seçili grubun eksen adlarına göre değer alanları görünür", async () => {
+      listVariantGroups.mockResolvedValueOnce([
+        { id: 1, title: "Kalem Rengi", option1_name: "Renk", option2_name: "Beden", member_count: 2 },
+      ]);
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
+      await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk × Beden)"));
+
+      expect(await screen.findByLabelText("Renk")).toBeInTheDocument();
+      expect(screen.getByLabelText("Beden")).toBeInTheDocument();
+      expect(screen.getByLabelText("Barkod")).toBeInTheDocument();
+    });
+
+    it("gruba bağlı üründe barkod boşken kaydedilemez (istek atılmaz)", async () => {
+      listVariantGroups.mockResolvedValueOnce([
+        { id: 1, title: "Kalem Rengi", option1_name: "Renk", option2_name: null, member_count: 1 },
+      ]);
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "50");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
+      await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk)"));
+      await userEvent.type(await screen.findByLabelText("Renk"), "Sarı");
+      // Barkod BİLEREK boş bırakılıyor.
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      expect(
+        await screen.findByText("Varyant grubundaki ürün için barkod zorunludur."),
+      ).toBeInTheDocument();
+      expect(createProduct).not.toHaveBeenCalled();
+    });
+
+    it("gruba bağlı olmayan (basit) üründe barkod zorunlu değildir", async () => {
+      kur();
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Defter");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "30");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "10");
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      await waitFor(() => expect(createProduct).toHaveBeenCalled());
+      expect(createProduct.mock.calls[0][0]).not.toHaveProperty("variant_group_id");
+    });
+
+    it("kaydetme gövdesi variant_group_id, option1_value, option2_value ve barcode alanlarını taşır", async () => {
+      listVariantGroups.mockResolvedValueOnce([
+        { id: 3, title: "Kalem Rengi", option1_name: "Renk", option2_name: "Beden", member_count: 0 },
+      ]);
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem Sarı L");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "60");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
+      await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk × Beden)"));
+      await userEvent.type(await screen.findByLabelText("Renk"), "Sarı");
+      await userEvent.type(screen.getByLabelText("Beden"), "L");
+      await userEvent.type(screen.getByLabelText("Barkod"), "8690000000029");
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      await waitFor(() => expect(createProduct).toHaveBeenCalled());
+      expect(createProduct).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant_group_id: 3,
+          option1_value: "Sarı",
+          option2_value: "L",
+          barcode: "8690000000029",
+        }),
+      );
+    });
+
+    it("yeni grup için eksen adları sözlükten seçilir, serbest metin girilemez", async () => {
+      fetchVariantConfig.mockResolvedValueOnce({ axes: ["Renk", "Beden", "Boyut"], book_root_slugs: [] });
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByRole("button", { name: "+ Yeni grup oluştur" }));
+
+      expect(screen.queryByRole("textbox", { name: "1. eksen" })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("1. eksen"));
+      expect(await screen.findByTitle("Renk")).toBeInTheDocument();
+      expect(screen.getByTitle("Beden")).toBeInTheDocument();
+      expect(screen.getByTitle("Boyut")).toBeInTheDocument();
     });
   });
 });

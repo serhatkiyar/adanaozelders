@@ -25,13 +25,13 @@
  * Gerekçe yalnız DÜZENLEMEDE ve stok gerçekten değiştiğinde istenir —
  * oluşturmada ilk stok yazımının gerekçesi sabittir (`INITIAL`).
  */
-import { useEffect } from "react";
-import { App, Button, Form, Input, InputNumber, Select, Typography } from "antd";
+import { useEffect, useState } from "react";
+import { App, Button, Flex, Form, Input, InputNumber, Select, Typography, type FormInstance } from "antd";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormPage, type FormBolumu } from "@/panel/components/FormPage";
 import { createProduct, updateProduct } from "@/api/store";
-import { useAdminProduct } from "@/hooks/useStore";
+import { useAdminProduct, useCreateVariantGroup, useVariantConfig, useVariantGroups } from "@/hooks/useStore";
 import { ROUTES } from "@/lib/routes";
 import {
   ADMIN_REASON_OPTIONS,
@@ -40,7 +40,7 @@ import {
   type AdminReasonCode,
   type StockEditResult,
 } from "@/lib/stockMovements";
-import type { ProductCreate, ProductKind, ProductUpdate } from "@/types";
+import type { ProductCreate, ProductKind, ProductUpdate, VariantGroup } from "@/types";
 
 type UrunFormDegerleri = {
   title: string;
@@ -54,6 +54,15 @@ type UrunFormDegerleri = {
   /** Yalnız düzenlemede ve stok değiştiğinde anlamlı; bkz. dosya başı yorumu. */
   stock_reason_code?: AdminReasonCode | null;
   stock_note?: string | null;
+  /**
+   * Varyant grubu üyeliği — yalnız Varyant sekmesi mount olduğunda
+   * (varyantlı akışta) alan kayıtlıdır; sekme hiç açılmadıysa bu üçü
+   * `validateFields()` çıktısında hiç YOKTUR (bkz. `guncelleGovdesi`
+   * yorumundaki stok örneğiyle aynı AntD Form davranışı).
+   */
+  variant_group_id?: number | null;
+  option1_value?: string | null;
+  option2_value?: string | null;
 };
 
 function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
@@ -65,6 +74,22 @@ function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
     tax_rate: d.tax_rate_yuzde / 100,
     stock: d.kind === "PHYSICAL" ? (d.stock ?? undefined) : undefined,
     barcode: d.barcode || undefined,
+    ...varyantUyelikGovdesi(d),
+  };
+}
+
+/**
+ * Ürün bir varyant grubuna bağlıysa (`variant_group_id` seçiliyse) grup
+ * kimliği + bu ürünün kendi eksen değerleri gövdeye eklenir. Bağlı
+ * DEĞİLSE hiçbir varyant alanı gönderilmez — sunucu tarafında grupsuz
+ * ürün için bu alanlar anlamsızdır.
+ */
+function varyantUyelikGovdesi(d: UrunFormDegerleri) {
+  if (d.variant_group_id == null) return {};
+  return {
+    variant_group_id: d.variant_group_id,
+    option1_value: d.option1_value || undefined,
+    option2_value: d.option2_value || undefined,
   };
 }
 
@@ -81,6 +106,7 @@ function guncelleGovdesi(d: UrunFormDegerleri, stokSonuc: StockEditResult): Prod
     compare_at_price: d.compare_at_price ?? undefined,
     tax_rate: d.tax_rate_yuzde / 100,
     barcode: d.barcode || undefined,
+    ...varyantUyelikGovdesi(d),
     ...(stokSonuc.submitStock ? stokSonuc.payload : {}),
   };
 }
@@ -116,6 +142,9 @@ export function UrunFormu() {
       tax_rate_yuzde: urun.tax_rate != null ? Number(urun.tax_rate) * 100 : undefined,
       stock: urun.stock ?? undefined,
       barcode: urun.barcode ?? undefined,
+      variant_group_id: urun.variant_group_id ?? undefined,
+      option1_value: urun.option1_value ?? undefined,
+      option2_value: urun.option2_value ?? undefined,
     });
   }, [urun, form]);
 
@@ -250,9 +279,16 @@ export function UrunFormu() {
               )}
             </>
           )}
-          <Form.Item label="Barkod" name="barcode">
-            <Input />
-          </Form.Item>
+          {/* Varyant grubuna bağlı üründe barkod alanı Varyant sekmesinde,
+              ZORUNLU olarak durur (bkz. `VaryantAlanlari`) — burada
+              tekrarlanmaz; aynı `name="barcode"` iki sekmede birden
+              mount olursa AntD aynı alanı iki kez kaydeder ve testte
+              "Barkod" etiketi belirsizleşir. */}
+          {!varyantliMi && (
+            <Form.Item label="Barkod" name="barcode">
+              <Input />
+            </Form.Item>
+          )}
         </>
       ),
     },
@@ -262,7 +298,7 @@ export function UrunFormu() {
     bolumler.push({
       anahtar: "varyant",
       baslik: "Varyantlar",
-      icerik: <Typography.Text type="secondary">Varyantlar sonraki adımda bağlanacak.</Typography.Text>,
+      icerik: <VaryantAlanlari form={form} />,
     });
   }
 
@@ -289,5 +325,158 @@ export function UrunFormu() {
         hataAksiyon={<Button onClick={() => urunuTekrarCek()}>Tekrar dene</Button>}
       />
     </Form>
+  );
+}
+
+/**
+ * Varyant grubu ÜYELİĞİ — var olan bir gruba katılır ya da yeni grup açar,
+ * sonra bu ürünün kendi eksen DEĞERLERİ + zorunlu barkodu alınır.
+ *
+ * Tek istekte tek ürün + tek kombinasyon kaydedilir (bkz. karar belgesi
+ * `.superpowers/sdd/2026-09-11-panel-paket1-kurulum-kabuk-urunler/
+ * task-8-karar-varyant-akisi.md`). Toplu kardeş matrisi (Task 8b) burada
+ * YOK; yalnız düzenleme modunda ürün zaten gruptayken açılacak.
+ *
+ * Eksen adları (`option1_name`/`option2_name`) `useVariantConfig().axes`
+ * KAPALI SÖZLÜĞÜNDEN `Select` ile seçilir — serbest metin girilemez.
+ */
+function VaryantAlanlari({ form }: { form: FormInstance<UrunFormDegerleri> }) {
+  const { message } = App.useApp();
+  const { data: config, isPending: configYukleniyor, isError: configHataVar } = useVariantConfig();
+  const { data: gruplar, isPending: gruplarYukleniyor, isError: gruplarHataVar } = useVariantGroups();
+  const olusturMutasyonu = useCreateVariantGroup();
+
+  const groupIdWatch = Form.useWatch("variant_group_id", form);
+
+  const [yeniGrupAcik, setYeniGrupAcik] = useState(false);
+  const [yeniBaslik, setYeniBaslik] = useState("");
+  const [yeniEksen1, setYeniEksen1] = useState<string | undefined>();
+  const [yeniEksen2, setYeniEksen2] = useState<string | undefined>();
+  // `createVariantGroup` başarıyla dönen grup, liste yeniden çekilene kadar
+  // (invalidate asenkron) `gruplar` içinde henüz YOK olabilir — seçili
+  // değerin eksen adlarını hemen göstermek için ayrıca tutulur.
+  const [sonOlusturulan, setSonOlusturulan] = useState<VariantGroup | null>(null);
+
+  if (configYukleniyor || gruplarYukleniyor) {
+    return <Typography.Text type="secondary">Varyant bilgileri yükleniyor…</Typography.Text>;
+  }
+  if (configHataVar || gruplarHataVar) {
+    return <Typography.Text type="danger">Varyant bilgileri yüklenemedi.</Typography.Text>;
+  }
+
+  const tumGruplar =
+    sonOlusturulan != null && !(gruplar ?? []).some((g) => g.id === sonOlusturulan.id)
+      ? [...(gruplar ?? []), sonOlusturulan]
+      : (gruplar ?? []);
+  const secilenGrup = tumGruplar.find((g) => g.id === groupIdWatch) ?? null;
+  const eksenler = config?.axes ?? [];
+
+  function grupOlustur() {
+    if (!yeniBaslik.trim() || !yeniEksen1) return;
+    olusturMutasyonu.mutate(
+      { title: yeniBaslik.trim(), option1_name: yeniEksen1, option2_name: yeniEksen2 || null },
+      {
+        onSuccess: (grup) => {
+          setSonOlusturulan(grup);
+          form.setFieldValue("variant_group_id", grup.id);
+          setYeniGrupAcik(false);
+          setYeniBaslik("");
+          setYeniEksen1(undefined);
+          setYeniEksen2(undefined);
+          message.success("Varyant grubu oluşturuldu.");
+        },
+        onError: () => message.error("Varyant grubu oluşturulamadı."),
+      },
+    );
+  }
+
+  return (
+    <>
+      <Form.Item label="Varyant Grubu" name="variant_group_id">
+        <Select
+          allowClear
+          placeholder="Grup seçin"
+          onChange={() => form.setFieldsValue({ option1_value: undefined, option2_value: undefined, barcode: undefined })}
+          options={tumGruplar.map((g) => ({
+            value: g.id,
+            label: `${g.title} (${g.option1_name}${g.option2_name ? ` × ${g.option2_name}` : ""})`,
+          }))}
+        />
+      </Form.Item>
+      <Button type="link" style={{ paddingLeft: 0, marginBottom: 12 }} onClick={() => setYeniGrupAcik((v) => !v)}>
+        {yeniGrupAcik ? "Vazgeç" : "+ Yeni grup oluştur"}
+      </Button>
+      {yeniGrupAcik && (
+        <Flex vertical gap={8} style={{ maxWidth: 420, marginBottom: 16 }}>
+          <div>
+            <label htmlFor="yeni-varyant-grubu-baslik">Grup adı</label>
+            <Input
+              id="yeni-varyant-grubu-baslik"
+              placeholder="ör. Kalem Rengi"
+              value={yeniBaslik}
+              onChange={(e) => setYeniBaslik(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="yeni-varyant-grubu-eksen1">1. eksen</label>
+            <Select
+              id="yeni-varyant-grubu-eksen1"
+              placeholder="1. eksen seçin"
+              value={yeniEksen1}
+              onChange={setYeniEksen1}
+              options={eksenler.map((a) => ({ value: a, label: a }))}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div>
+            <label htmlFor="yeni-varyant-grubu-eksen2">2. eksen (opsiyonel)</label>
+            <Select
+              id="yeni-varyant-grubu-eksen2"
+              allowClear
+              placeholder="2. eksen (opsiyonel)"
+              value={yeniEksen2}
+              onChange={setYeniEksen2}
+              options={eksenler.filter((a) => a !== yeniEksen1).map((a) => ({ value: a, label: a }))}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <Button
+            type="primary"
+            loading={olusturMutasyonu.isPending}
+            disabled={!yeniBaslik.trim() || !yeniEksen1}
+            onClick={grupOlustur}
+          >
+            Grubu Oluştur
+          </Button>
+        </Flex>
+      )}
+      {secilenGrup && (
+        <>
+          <Form.Item
+            label={secilenGrup.option1_name}
+            name="option1_value"
+            rules={[{ required: true, message: `${secilenGrup.option1_name} zorunludur.` }]}
+          >
+            <Input />
+          </Form.Item>
+          {secilenGrup.option2_name && (
+            <Form.Item
+              label={secilenGrup.option2_name}
+              name="option2_value"
+              rules={[{ required: true, message: `${secilenGrup.option2_name} zorunludur.` }]}
+            >
+              <Input />
+            </Form.Item>
+          )}
+          <Form.Item
+            label="Barkod"
+            name="barcode"
+            rules={[{ required: true, message: "Varyant grubundaki ürün için barkod zorunludur." }]}
+          >
+            <Input />
+          </Form.Item>
+        </>
+      )}
+    </>
   );
 }
