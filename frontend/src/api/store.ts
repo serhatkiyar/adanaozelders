@@ -33,7 +33,31 @@ import type {
   VariantMatrixResult,
 } from "@/types";
 
-const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+/**
+ * FormData gövdesi için Content-Type ELLE YAZILMAZ.
+ *
+ * `"multipart/form-data"` sabit değeri boundary parametresi olmadan gider —
+ * sunucu gövdeyi ayrıştıramaz (ölçüldü: gerçek tarayıcıda header'da boundary
+ * YOK, gövde WebKit boundary'siyle kodlu). `Content-Type: undefined` de
+ * çözmüyor: kurulu axios'un `dispatchRequest.js`'i post/put/patch'te
+ * `setContentType('application/x-www-form-urlencoded', false)` çağırıyor ve
+ * bu, header değeri tam olarak `undefined` iken `rewrite:false`'a rağmen
+ * ÜZERİNE YAZIYOR (bkz. `AxiosHeaders.set` → `self[key] === undefined`
+ * koşulu) — sonuç FormData'ya `application/x-www-form-urlencoded` gitmesi.
+ * Header'ı tamamen silmek de yanlış: bu instance'ın varsayılanı
+ * `Content-Type: application/json` (bkz. `api/axios.ts`) devreye girer ve
+ * axios'un `transformRequest`'i `hasJSONContentType` dalına düşüp FormData'yı
+ * `JSON.stringify(formDataToJSON(...))` ile YOK EDER (ölçüldü: dosya içeriği
+ * kaybolup `{"file":{}}` gibi bir gövdeye dönüşüyor).
+ *
+ * Doğru sentinel `false`: axios bunu "bu header'ı hiç gönderme" olarak ele
+ * alıyor, `dispatchRequest`'in url-encoded düşüşü onu ÜZERİNE YAZMIYOR
+ * (`self[key] === false`, `undefined` değil) ve `xhr.js`'e giden gerçek
+ * header listesinde Content-Type hiç YOK — tarayıcı XHR.send(FormData)
+ * çağrısında boundary'yi kendisi ekliyor. (Üç senaryo da yerel axios
+ * kaynağı okunarak ve sahte adapter'la ölçüldü.)
+ */
+const MULTIPART = { headers: { "Content-Type": false as const } };
 
 /* ── Public katalog ── */
 
