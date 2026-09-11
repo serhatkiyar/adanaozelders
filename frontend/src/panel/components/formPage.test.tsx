@@ -61,6 +61,27 @@ describe("FormPage", () => {
     expect(screen.queryByRole("tab", { name: "Temel Bilgi" })).not.toBeInTheDocument();
   });
 
+  it("hata doluyken Kaydet düğmesi gösterilmez (gösterilemeyen form kaydedilemez)", () => {
+    render(
+      <PanelProvider>
+        <FormPage
+          baslik="Basit Ürün Ekle"
+          geriTiklandi={() => {}}
+          kaydet={() => {}}
+          ikincilAksiyon={<button type="button">Sil</button>}
+          hata="Kayıt yüklenemedi"
+          hataAksiyon={<button type="button">Tekrar dene</button>}
+          bolumler={[{ anahtar: "temel", baslik: "Temel Bilgi", icerik: <div>temel alanlar</div> }]}
+        />
+      </PanelProvider>,
+    );
+    expect(screen.queryByRole("button", { name: "Kaydet" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sil" })).not.toBeInTheDocument();
+    // Geri düğmesi ve hata içindeki "Tekrar dene" hâlâ kullanılabilir olmalı.
+    expect(screen.getByRole("button", { name: "Geri" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tekrar dene" })).toBeInTheDocument();
+  });
+
   it("hata varken duyuru rolü taşır", () => {
     render(
       <PanelProvider>

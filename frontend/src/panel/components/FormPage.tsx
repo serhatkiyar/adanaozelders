@@ -11,6 +11,19 @@ export type FormPageProps = {
   kaydet: () => void;
   kaydediyor?: boolean;
   ikincilAksiyon?: ReactNode;
+  /**
+   * `hata` doluyken bunun anlamı "form GÖVDESİ gösterilemiyor" (ör. kayıt
+   * yüklenemedi) — "kaydetme başarısız oldu" DEĞİLDİR. Hiçbir `Form.Item`
+   * mount olmadığı bir durumda `Kaydet` (ve `ikincilAksiyon`) tıklanabilir
+   * kalırsa `validateFields()` boş sonuç döner ve modül farkında olmadan
+   * eksik/boş bir gövde gönderebilir (ör. `tax_rate: null`) — bu yüzden
+   * `hata` varken ikisi de HİÇ render edilmez. `hataAksiyon` ("Tekrar
+   * dene") zaten `Alert` içinde ayrı durur ve etkilenmez.
+   *
+   * Kaydetme (mutasyon) hatası bu prop'a KONMAZ — modül kendi geri
+   * bildirimini (bildirim/toast) kendi gösterir; `hata` yalnız "gövde hiç
+   * kurulamadı" anlamına gelir.
+   */
   hata?: string | null;
   hataAksiyon?: ReactNode;
 };
@@ -39,12 +52,14 @@ export function FormPage({
             {baslik}
           </Typography.Title>
         </Flex>
-        <Flex gap={8} wrap>
-          {ikincilAksiyon}
-          <Button type="primary" loading={kaydediyor} onClick={kaydet}>
-            Kaydet
-          </Button>
-        </Flex>
+        {!hata && (
+          <Flex gap={8} wrap>
+            {ikincilAksiyon}
+            <Button type="primary" loading={kaydediyor} onClick={kaydet}>
+              Kaydet
+            </Button>
+          </Flex>
+        )}
       </Flex>
 
       {hata ? (
