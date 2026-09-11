@@ -244,6 +244,35 @@ describe("VaryantPenceresi", () => {
     expect(await screen.findByText("Önizleme alınamadı.")).toBeInTheDocument();
     expect(createVariantMatrix).not.toHaveBeenCalled();
   });
+
+  // İP-A8 gönder düğmesi nöbetçisi (`gecerlilik-borc`): "Önizle" düğmesi
+  // FORM GEÇERLİLİĞİYLE kapanıyordu (`disabled={onizleDisabled}`) ve —
+  // `VariantMatrixPanel`in aynı adlı düğmesinin aksine — yanında hangi
+  // koşulun eksik olduğunu söyleyen CANLI bir metin yoktu, yalnız statik
+  // `placeholder`/`help` vardı. Düğme artık kapanmaz: tıklanınca doğrulama
+  // çalışır, eksik eksen alanda görünür ve odak ona gider.
+  describe("Önizle — gönder düğmesi geçerlilikle kapanmaz", () => {
+    it("eksen değeri hiç girilmemişken tıklanınca istek atılmaz, hata görünür ve odak alana gider", async () => {
+      kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
+
+      expect(await screen.findByText("Renk değerlerini girin.")).toBeInTheDocument();
+      expect(previewVariantMatrix).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Renk değerleri")).toHaveFocus();
+    });
+
+    it("iki eksenli grupta ikinci eksen boşken tıklanınca istek atılmaz, hata görünür ve odak ikinci eksene gider", async () => {
+      kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" eksen2Adi="Beden" />);
+
+      await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı");
+      await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
+
+      expect(await screen.findByText("Beden değerlerini girin.")).toBeInTheDocument();
+      expect(previewVariantMatrix).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Beden değerleri")).toHaveFocus();
+    });
+  });
 });
 
 describe("Matris", () => {

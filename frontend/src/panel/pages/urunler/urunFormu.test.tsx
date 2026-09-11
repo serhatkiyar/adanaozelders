@@ -604,6 +604,68 @@ describe("UrunFormu", () => {
     });
   });
 
+  // İP-A8 gönder düğmesi nöbetçisi (`gecerlilik-borc`): "Grubu Oluştur"
+  // düğmesi FORM GEÇERLİLİĞİYLE kapanıyordu (`disabled={!yeniBaslik.trim()
+  // || !yeniEksen1}`) ve eksik alan hiçbir yerde YAZMIYORDU — kilitli
+  // kararın ihlali. Düğme artık kapanmaz: tıklanınca doğrulama çalışır,
+  // eksik alan alanda görünür ve odak ona gider (`VariantMatrixPanel`
+  // `uret()`/`KargolaSatiri` ile aynı desen).
+  describe("yeni varyant grubu oluşturma (Grubu Oluştur — gönder düğmesi geçerlilikle kapanmaz)", () => {
+    it("her iki alan da boşken tıklanınca istek atılmaz, hata görünür ve odak grup adına gider", async () => {
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByRole("button", { name: "+ Yeni grup oluştur" }));
+
+      await userEvent.click(screen.getByRole("button", { name: "Grubu Oluştur" }));
+
+      expect(await screen.findByText("Grup adı zorunludur.")).toBeInTheDocument();
+      expect(createVariantGroup).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Grup adı")).toHaveFocus();
+    });
+
+    it("grup adı dolu, 1. eksen boşken tıklanınca istek atılmaz, hata görünür ve odak 1. eksene gider", async () => {
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByRole("button", { name: "+ Yeni grup oluştur" }));
+
+      yaz(screen.getByLabelText("Grup adı"), "Kalem Rengi");
+      await userEvent.click(screen.getByRole("button", { name: "Grubu Oluştur" }));
+
+      expect(await screen.findByText("1. eksen zorunludur.")).toBeInTheDocument();
+      expect(createVariantGroup).not.toHaveBeenCalled();
+    });
+
+    it("her iki alan da dolduğunda createVariantGroup doğru gövdeyle çağrılır", async () => {
+      createVariantGroup.mockResolvedValueOnce({
+        id: 9,
+        title: "Kalem Rengi",
+        option1_name: "Renk",
+        option2_name: null,
+      });
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByRole("button", { name: "+ Yeni grup oluştur" }));
+
+      yaz(screen.getByLabelText("Grup adı"), "Kalem Rengi");
+      await userEvent.click(screen.getByLabelText("1. eksen"));
+      await userEvent.click(await screen.findByTitle("Renk"));
+
+      await userEvent.click(screen.getByRole("button", { name: "Grubu Oluştur" }));
+
+      // `useCreateVariantGroup` `mutationFn: storeApi.createVariantGroup`yi
+      // DOĞRUDAN referans verir; TanStack Query mutationFn'i ikinci bir
+      // bağlam argümanıyla çağırır (`{client, meta, mutationKey}`) — bu
+      // yüzden yalnız ilk argüman sınanır (diğer testlerdeki sarmalayıcı
+      // `mutationFn`lerin aksine).
+      await waitFor(() => expect(createVariantGroup).toHaveBeenCalled());
+      expect(createVariantGroup.mock.calls[0][0]).toEqual({
+        title: "Kalem Rengi",
+        option1_name: "Renk",
+        option2_name: null,
+      });
+    });
+  });
+
   // Denetim bulgusu: varyant alanları (`VaryantAlanlari`) panelin geri
   // kalanından FARKLI bir dil konuşuyordu (düz `Typography.Text`, "Tekrar
   // dene" yok) — artık paneldeki tek dili (`HataDurumu`/`YukleniyorDurumu`,

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { App, Button, Divider, Form, Input, Typography } from "antd";
+import { useRef, useState } from "react";
+import { App, Button, Divider, Form, Input, Typography, type InputRef } from "antd";
 import { YanPencere } from "@/panel/components/YanPencere";
 import { HataDurumu } from "@/panel/components/Durum";
 import { Matris, type MatrisSatiri } from "@/panel/components/Matris";
@@ -60,6 +60,11 @@ export function VaryantPenceresi({
   const [satirlar, setSatirlar] = useState<Record<string, SatirDegerleri>>({});
   const [gonderimHatasi, setGonderimHatasi] = useState<string | null>(null);
   const ikiEksenli = !!eksen2Adi;
+  // Eksen alanlarının ref'leri: geçersiz gönderimde odak İLK eksik alana
+  // taşınır (kilitli karar: düğme kapanmaz, sebep alanda okunur — bkz.
+  // `VariantMatrixPanel::uret()` ve `KargolaSatiri` ile aynı desen).
+  const eksen1Ref = useRef<InputRef>(null);
+  const eksen2Ref = useRef<InputRef>(null);
 
   function sifirla() {
     setEksen1Metin("");
@@ -75,9 +80,23 @@ export function VaryantPenceresi({
   }
 
   function onizle() {
+    // ── KİLİTLİ KARAR: gönder düğmesi geçerlilikle KAPANMAZ ──
+    //
+    // Ölü bir düğme "neden çalışmıyor" sorusunun cevabını hiçbir yere
+    // yazmaz. Düğme basılır, önizleme istenmez, sebep alanda görünür ve
+    // odak ilk eksik eksene taşınır.
     const eksen1Degerler = degerAyir(eksen1Metin);
     const eksen2Degerler = ikiEksenli ? degerAyir(eksen2Metin) : [];
-    if (eksen1Degerler.length === 0 || (ikiEksenli && eksen2Degerler.length === 0)) return;
+    if (eksen1Degerler.length === 0) {
+      setGonderimHatasi(`${eksen1Adi} değerlerini girin.`);
+      eksen1Ref.current?.focus();
+      return;
+    }
+    if (ikiEksenli && eksen2Degerler.length === 0) {
+      setGonderimHatasi(`${eksen2Adi} değerlerini girin.`);
+      eksen2Ref.current?.focus();
+      return;
+    }
     setGonderimHatasi(null);
     setSatirlar({});
     preview.mutate(
@@ -166,8 +185,6 @@ export function VaryantPenceresi({
     });
   }
 
-  const onizleDisabled = degerAyir(eksen1Metin).length === 0 || (ikiEksenli && degerAyir(eksen2Metin).length === 0);
-
   return (
     <YanPencere
       acik={acik}
@@ -179,23 +196,31 @@ export function VaryantPenceresi({
       <Form layout="vertical">
         <Form.Item label={`${eksen1Adi} değerleri`} required help="Virgülle ayırın: ör. Kırmızı,Mavi">
           <Input
+            ref={eksen1Ref}
             aria-label={`${eksen1Adi} değerleri`}
             value={eksen1Metin}
-            onChange={(e) => setEksen1Metin(e.target.value)}
+            onChange={(e) => {
+              setEksen1Metin(e.target.value);
+              setGonderimHatasi(null);
+            }}
             placeholder="Kırmızı,Mavi"
           />
         </Form.Item>
         {ikiEksenli && (
           <Form.Item label={`${eksen2Adi} değerleri`} required help="Virgülle ayırın: ör. S,M,L">
             <Input
+              ref={eksen2Ref}
               aria-label={`${eksen2Adi} değerleri`}
               value={eksen2Metin}
-              onChange={(e) => setEksen2Metin(e.target.value)}
+              onChange={(e) => {
+                setEksen2Metin(e.target.value);
+                setGonderimHatasi(null);
+              }}
               placeholder="S,M,L"
             />
           </Form.Item>
         )}
-        <Button onClick={onizle} loading={preview.isPending} disabled={onizleDisabled}>
+        <Button onClick={onizle} loading={preview.isPending}>
           Önizle
         </Button>
       </Form>

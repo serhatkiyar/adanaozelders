@@ -602,6 +602,10 @@ function VaryantAlanlari({
   const [yeniBaslik, setYeniBaslik] = useState("");
   const [yeniEksen1, setYeniEksen1] = useState<string | undefined>();
   const [yeniEksen2, setYeniEksen2] = useState<string | undefined>();
+  // Yeni grup formunun gönderim hatası (kilitli karar: gönder düğmesi
+  // geçerlilikle kapanmaz — bkz. `grupOlustur` ve İP-A8 gönder düğmesi
+  // nöbetçisi `gecerlilik-borc` kaydı).
+  const [yeniGrupHatasi, setYeniGrupHatasi] = useState<string | null>(null);
   // `createVariantGroup` başarıyla dönen grup, liste yeniden çekilene kadar
   // (invalidate asenkron) `gruplar` içinde henüz YOK olabilir — seçili
   // değerin eksen adlarını hemen göstermek için ayrıca tutulur.
@@ -639,7 +643,23 @@ function VaryantAlanlari({
   const eksenler = config?.axes ?? [];
 
   function grupOlustur() {
-    if (!yeniBaslik.trim() || !yeniEksen1) return;
+    // ── KİLİTLİ KARAR: gönder düğmesi geçerlilikle KAPANMAZ ──
+    //
+    // Ölü bir düğme "neden çalışmıyor" sorusunun cevabını hiçbir yere
+    // yazmaz. Düğme basılır, gönderim yapılmaz, sebep alanda görünür ve
+    // odak ilk eksik alana taşınır (`VariantMatrixPanel::uret()` /
+    // `KargolaSatiri` ile aynı desen).
+    if (!yeniBaslik.trim()) {
+      setYeniGrupHatasi("Grup adı zorunludur.");
+      document.getElementById("yeni-varyant-grubu-baslik")?.focus();
+      return;
+    }
+    if (!yeniEksen1) {
+      setYeniGrupHatasi("1. eksen zorunludur.");
+      document.getElementById("yeni-varyant-grubu-eksen1")?.focus();
+      return;
+    }
+    setYeniGrupHatasi(null);
     olusturMutasyonu.mutate(
       { title: yeniBaslik.trim(), option1_name: yeniEksen1, option2_name: yeniEksen2 || null },
       {
@@ -681,7 +701,10 @@ function VaryantAlanlari({
               id="yeni-varyant-grubu-baslik"
               placeholder="ör. Kalem Rengi"
               value={yeniBaslik}
-              onChange={(e) => setYeniBaslik(e.target.value)}
+              onChange={(e) => {
+                setYeniBaslik(e.target.value);
+                setYeniGrupHatasi(null);
+              }}
             />
           </div>
           <div>
@@ -690,7 +713,10 @@ function VaryantAlanlari({
               id="yeni-varyant-grubu-eksen1"
               placeholder="1. eksen seçin"
               value={yeniEksen1}
-              onChange={setYeniEksen1}
+              onChange={(v) => {
+                setYeniEksen1(v);
+                setYeniGrupHatasi(null);
+              }}
               options={eksenler.map((a) => ({ value: a, label: a }))}
               style={{ width: "100%" }}
             />
@@ -707,14 +733,10 @@ function VaryantAlanlari({
               style={{ width: "100%" }}
             />
           </div>
-          <Button
-            type="primary"
-            loading={olusturMutasyonu.isPending}
-            disabled={!yeniBaslik.trim() || !yeniEksen1}
-            onClick={grupOlustur}
-          >
+          <Button type="primary" loading={olusturMutasyonu.isPending} onClick={grupOlustur}>
             Grubu Oluştur
           </Button>
+          {yeniGrupHatasi && <HataDurumu hata={yeniGrupHatasi} />}
         </Flex>
       )}
       {secilenGrup && (
