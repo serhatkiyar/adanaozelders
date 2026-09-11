@@ -181,6 +181,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/components/admin/store/SupplierPanel.tsx <Button> bekleyenDakika !== null": "onkosul",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> pendingCount > 0": "onkosul",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> engeller.length > 0": "onkosul",
+  // Yeni panel sayım detayı: aynı önkoşul — engeller hemen altındaki uyarıda listelenir.
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx <Button> engeller.length > 0": "onkosul",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> engeller.length > 0": "onkosul",
   "src/pages/DeliveryDriver.tsx <button> busy || deliverDrop.isPending || !stop.photo_url":
     "onkosul",

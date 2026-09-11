@@ -31,7 +31,7 @@ import { useMobil } from "@/hooks/useMedyaSorgusu";
  * özgüllükte YENİLEBİLİR (ve `!important` bu paket için yasak). Satır içi
  * stil özgüllük tartışmasından bağımsız kazanır.
  */
-function basligaOlcumStiliEkle<T>(
+export function basligaOlcumStiliEkle<T>(
   kolonlar: TableProps<T>["columns"],
 ): TableProps<T>["columns"] {
   // `ColumnGroupType<T> | ColumnType<T>` birleşimi `onHeaderCell`in kolon

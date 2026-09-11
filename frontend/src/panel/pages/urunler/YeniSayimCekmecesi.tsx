@@ -5,8 +5,8 @@ import { useState } from "react";
 import { Alert, App, Flex, Form, Input, Select } from "antd";
 import { YanPencere } from "@/panel/components/YanPencere";
 import { useCreateCountSession } from "@/hooks/useInventory";
-import { useAdminProducts, useCategories } from "@/hooks/useStore";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useCategories } from "@/hooks/useStore";
+import { UrunSecici } from "@/panel/pages/urunler/UrunSecici";
 import { inventoryErrorMessage, type CountScope } from "@/lib/inventory";
 
 const KAPSAM_SECENEKLERI: { value: CountScope; label: string }[] = [
@@ -22,17 +22,12 @@ export function YeniSayimCekmecesi({ acik, kapat }: { acik: boolean; kapat: () =
   const [form] = Form.useForm<Degerler>();
   const olustur = useCreateCountSession();
   const [sunucuHatasi, setSunucuHatasi] = useState<string | null>(null);
-  const [urunArama, setUrunArama] = useState("");
-  const gecikmisArama = useDebounce(urunArama);
   const scope = Form.useWatch("scope", form) ?? "MANUAL";
   const kategoriler = useCategories();
-  // Ürün adayları yalnız arama yazılınca çekilir (eski ProductPicker ile aynı).
-  const urunler = useAdminProducts({ q: gecikmisArama, limit: 20 }, gecikmisArama.length > 0);
 
   const kapatVeSifirla = () => {
     form.resetFields();
     setSunucuHatasi(null);
-    setUrunArama("");
     kapat();
   };
 
@@ -83,18 +78,8 @@ export function YeniSayimCekmecesi({ acik, kapat }: { acik: boolean; kapat: () =
               label="Ürünler"
               rules={[{ validator: (_, v: number[]) => (v?.length ? Promise.resolve() : Promise.reject(new Error("En az bir ürün seçin."))) }]}
             >
-              <Select
-                mode="multiple"
-                showSearch
-                filterOption={false}
-                placeholder="Başlık, yazar, yayınevi, ISBN veya SKU"
-                searchValue={urunArama}
-                onSearch={setUrunArama}
-                loading={urunler.isFetching}
-                notFoundContent={gecikmisArama ? "Eşleşen ürün yok" : "Aramak için yazın"}
-                options={(urunler.data?.items ?? []).map((u) => ({ value: u.id, label: u.title }))}
-                optionLabelProp="label"
-              />
+              {/* Her açılışta yeniden mount: arama metni önceki açılıştan kalmaz. */}
+              <UrunSecici key={acik ? "acik" : "kapali"} />
             </Form.Item>
           ) : null}
           {scope === "CATEGORY" ? (

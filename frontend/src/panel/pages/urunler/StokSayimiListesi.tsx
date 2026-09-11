@@ -1,5 +1,5 @@
 // Stok sayımı oturumları listesi — eski CountSessionsPage'in verisi ve davranışı,
-// ListePage (ikas liste anatomisi) üzerinde. Detay henüz taşınmadı: satır eski detay rotasına gider.
+// ListePage (ikas liste anatomisi) üzerinde.
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Button, Flex, Select, Tag, Typography, theme } from "antd";
@@ -63,7 +63,7 @@ export function StokSayimiListesi() {
 
   const kolonlar: TableProps<CountSessionOut>["columns"] = useMemo(() => {
     const satirTiklama = (o: CountSessionOut) => ({
-      onClick: () => navigate(ROUTES.adminInventoryCount(o.id)),
+      onClick: () => navigate(ROUTES.adminNewStockCount(o.id)),
       style: { cursor: "pointer" },
     });
     return [
@@ -72,7 +72,7 @@ export function StokSayimiListesi() {
         key: "code",
         render: (_: unknown, o: CountSessionOut) => (
           <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-            <Link to={ROUTES.adminInventoryCount(o.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>
+            <Link to={ROUTES.adminNewStockCount(o.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>
               {o.code}
             </Link>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>

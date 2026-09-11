@@ -400,6 +400,9 @@ export const OLCUM_TABANI = [
   // Stok sayımı listesi ve yeni sayım çekmecesi: saf AntD, pencere durumu
   // çekmece dosyasında prop olarak gelir.
   "src/panel/pages/urunler/StokSayimiListesi.tsx",
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx",
+  "src/panel/pages/urunler/StokSayimiPencereleri.tsx",
+  "src/panel/pages/urunler/UrunSecici.tsx",
   "src/panel/pages/urunler/YeniSayimCekmecesi.tsx",
 ];
 

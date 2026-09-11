@@ -93,6 +93,9 @@ const GostergePaneli = lazy(() =>
 const StokSayimiListesi = lazy(() =>
   import("@/panel/pages/urunler/StokSayimiListesi").then((m) => ({ default: m.StokSayimiListesi })),
 );
+const StokSayimiDetayi = lazy(() =>
+  import("@/panel/pages/urunler/StokSayimiDetayi").then((m) => ({ default: m.StokSayimiDetayi })),
+);
 const UrunListesi = lazy(() =>
   import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
 );
@@ -690,6 +693,7 @@ function App() {
               <Route path="urunler" element={<UrunListesi />} />
               <Route path="urunler/yeni" element={<UrunFormu />} />
               <Route path="urunler/stok-sayimi" element={<StokSayimiListesi />} />
+              <Route path="urunler/stok-sayimi/:id" element={<StokSayimiDetayi />} />
               <Route path="urunler/:id" element={<UrunFormu />} />
               <Route path="siparisler" element={<SiparisListesi />} />
               <Route path="musteriler" element={<MusteriListesi />} />

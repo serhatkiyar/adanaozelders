@@ -59,15 +59,15 @@ beforeEach(() => {
 });
 
 describe("StokSayimiListesi", () => {
-  it("satır kod/kapsam/satır/uyarı/açılış/durum basar; kod eski detay rotasına bağlantıdır, satır tıklaması da oraya gider", async () => {
+  it("satır kod/kapsam/satır/uyarı/açılış/durum basar; kod yeni detay rotasına bağlantıdır, satır tıklaması da oraya gider", async () => {
     kur();
-    expect(screen.getByRole("link", { name: "SAY-000007" })).toHaveAttribute("href", ROUTES.adminInventoryCount(7));
+    expect(screen.getByRole("link", { name: "SAY-000007" })).toHaveAttribute("href", ROUTES.adminNewStockCount(7));
     expect(screen.getByText("Seçili ürünler · Açan: #3")).toBeInTheDocument();
     expect(screen.getByText("12 satır, 4 sayılmadı")).toBeInTheDocument();
     expect(screen.getByText("Yeniden sayım gerekiyor")).toBeInTheDocument();
     expect(screen.getByText("Sayım sürüyor")).toBeInTheDocument();
     await userEvent.click(screen.getByText("12 satır, 4 sayılmadı"));
-    expect(navigateMock).toHaveBeenCalledWith(ROUTES.adminInventoryCount(7));
+    expect(navigateMock).toHaveBeenCalledWith(ROUTES.adminNewStockCount(7));
   });
 
   it("durum süzgeci URL'de yaşar ve hook'a gider; uydurma değer elenir", async () => {
@@ -115,6 +115,17 @@ describe("StokSayimiListesi", () => {
     useAuthStore.setState({ token: "t", isAuthenticated: true, user: { id: 1, role_id: 1, admin_permissions: ["inventory.view"] } as never });
     kur();
     expect(screen.queryByRole("button", { name: /Stok Sayımı Ekle/ })).not.toBeInTheDocument();
+  });
+
+  it("çekmece kapatılıp yeniden açılınca ürün arama metni temizdir", async () => {
+    kur();
+    await userEvent.click(screen.getByRole("button", { name: /Stok Sayımı Ekle/ }));
+    await userEvent.type(await screen.findByRole("combobox", { name: "Ürünler" }), "matematik");
+    expect(screen.getByRole("combobox", { name: "Ürünler" })).toHaveValue("matematik");
+    await userEvent.click(screen.getByRole("button", { name: "Vazgeç" }));
+    await waitFor(() => expect(document.querySelector(".ant-drawer-open")).toBeNull());
+    await userEvent.click(screen.getByRole("button", { name: /Stok Sayımı Ekle/ }));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Ürünler" })).toHaveValue(""));
   });
 
   it("yeni sayım: MANUAL kapsamda ürünsüz gönderim istek atmaz ve hata alanda çıkar; ALL kapsamı gönderilir", async () => {

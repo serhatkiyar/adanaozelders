@@ -484,7 +484,13 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/urunler/UrunAracCubugu.tsx",
   // Stok sayımı listesi: propsuz mount olur, `useCountSessions` boş veri döner,
   // arama kutusu `ListePage`den ADLI gelir (`UrunListesi.tsx` ile aynı sınıf).
+  // Sayım detayı: propsuz mount olur (`id` yok), sorgu yanıtsız → yükleniyor; kontroller veri dalında.
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx",
+  // Sayım pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/urunler/StokSayimiPencereleri.tsx",
   "src/panel/pages/urunler/StokSayimiListesi.tsx",
+  // Ürün seçici: propsuz mount adlı bir Select çizer.
+  "src/panel/pages/urunler/UrunSecici.tsx",
   "src/panel/pages/urunler/UrunFormu.tsx",
   "src/panel/pages/urunler/UrunListesi.tsx",
   "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
@@ -681,6 +687,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/UrunAracCubugu.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/VaryantPenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/YeniSayimCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/StokSayimiPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx": "kosullu",
 };
 
 /**
