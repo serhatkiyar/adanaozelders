@@ -28,9 +28,14 @@ export function FormPage({
   return (
     <Flex vertical gap={16}>
       <Flex align="center" justify="space-between" wrap gap={12}>
-        <Flex align="center" gap={12}>
-          <Button aria-label="Geri" icon={<ArrowLeftOutlined />} onClick={geriTiklandi} />
-          <Typography.Title level={4} style={{ margin: 0 }}>
+        <Flex align="center" gap={12} wrap>
+          <Button
+            aria-label="Geri"
+            icon={<ArrowLeftOutlined />}
+            size="large"
+            onClick={geriTiklandi}
+          />
+          <Typography.Title level={4} style={{ margin: 0 }} ellipsis>
             {baslik}
           </Typography.Title>
         </Flex>

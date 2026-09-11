@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Layout, Menu, Drawer, Button, Grid } from "antd";
+import { Layout, Menu, Drawer, Button } from "antd";
 import type { MenuProps } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { PanelProvider } from "@/panel/PanelProvider";
 import { PANEL_MENU, seciliMenuDurumu, type PanelMenuItem } from "@/panel/layout/menu";
 import { PANEL_SIDER_BG } from "@/panel/theme";
@@ -33,8 +34,12 @@ export function PanelShell() {
   const [mobilAcik, setMobilAcik] = useState(false);
   const navigate = useNavigate();
   const konum = useLocation();
-  const { md } = Grid.useBreakpoint();
-  const mobil = md === false;
+  // AntD'nin `Grid.useBreakpoint()` yerine deponun kendi hook'u kullanılıyor:
+  // useBreakpoint ilk senkron render'da `{}` döner (md === undefined), bu da
+  // dar ekranda ilk render'ın yanlışlıkla masaüstü (Sider) dalını seçmesine
+  // yol açar. `useMobil`, değeri `useState` başlatıcısında `matchMedia` ile
+  // senkron okur — aynı 768px eşiğini korur (bkz. useMedyaSorgusu.ts).
+  const mobil = useMobil();
   const { selectedKey, openKeys } = seciliMenuDurumu(PANEL_MENU, konum.pathname);
 
   const menu = (
@@ -78,7 +83,12 @@ export function PanelShell() {
             }}
           >
             {mobil && (
-              <Button aria-label="Menü" icon={<MenuOutlined />} onClick={() => setMobilAcik(true)} />
+              <Button
+                aria-label="Menü"
+                icon={<MenuOutlined />}
+                size="large"
+                onClick={() => setMobilAcik(true)}
+              />
             )}
             <span style={{ fontWeight: 600 }}>Adana Özel Ders</span>
           </Header>

@@ -51,16 +51,18 @@ export function ListePage<T extends object>({
         {hata ? (
           <Alert type="error" showIcon message={hata} action={hataAksiyon} />
         ) : bos ? (
-          <Empty
-            description={
-              <Flex vertical gap={4} align="center">
-                <Typography.Text strong>{bosBaslik}</Typography.Text>
-                <Typography.Text type="secondary">{bosAciklama}</Typography.Text>
-              </Flex>
-            }
-          >
-            {bosAksiyon}
-          </Empty>
+          <div role="status" aria-live="polite">
+            <Empty
+              description={
+                <Flex vertical gap={4} align="center">
+                  <Typography.Text strong>{bosBaslik}</Typography.Text>
+                  <Typography.Text type="secondary">{bosAciklama}</Typography.Text>
+                </Flex>
+              }
+            >
+              {bosAksiyon}
+            </Empty>
+          </div>
         ) : (
           <Table<T>
             columns={kolonlar}

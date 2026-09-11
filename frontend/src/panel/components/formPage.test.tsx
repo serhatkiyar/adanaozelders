@@ -61,6 +61,35 @@ describe("FormPage", () => {
     expect(screen.queryByRole("tab", { name: "Temel Bilgi" })).not.toBeInTheDocument();
   });
 
+  it("hata varken duyuru rolü taşır", () => {
+    render(
+      <PanelProvider>
+        <FormPage
+          baslik="Basit Ürün Ekle"
+          geriTiklandi={() => {}}
+          kaydet={() => {}}
+          hata="Kayıt yüklenemedi"
+          bolumler={[{ anahtar: "temel", baslik: "Temel Bilgi", icerik: <div>temel alanlar</div> }]}
+        />
+      </PanelProvider>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Kayıt yüklenemedi");
+  });
+
+  it("geri düğmesi büyük dokunma hedefi boyutundadır", () => {
+    render(
+      <PanelProvider>
+        <FormPage
+          baslik="Basit Ürün Ekle"
+          geriTiklandi={() => {}}
+          kaydet={() => {}}
+          bolumler={[{ anahtar: "temel", baslik: "Temel Bilgi", icerik: <div>içerik</div> }]}
+        />
+      </PanelProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Geri" })).toHaveClass("ant-btn-lg");
+  });
+
   it("kaydediyorken kaydet düğmesi loading olur ve tekrar tıklanamaz", async () => {
     const kaydet = vi.fn();
     render(

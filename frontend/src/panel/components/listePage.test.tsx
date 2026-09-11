@@ -77,6 +77,35 @@ describe("ListePage", () => {
     expect(screen.queryByText("İlk Ürününüzü Yükleyin!")).not.toBeInTheDocument();
   });
 
+  it("hata varken duyuru rolü taşır", () => {
+    render(
+      <PanelProvider>
+        <ListePage<Satir>
+          baslik="Ürünler"
+          aramaDegeri=""
+          aramaDegisti={() => {}}
+          kolonlar={[{ title: "Ürün", dataIndex: "ad", key: "ad" }]}
+          veri={[]}
+          yukleniyor={false}
+          hata="Ürünler yüklenemedi."
+          toplam={0}
+          sayfa={1}
+          sayfaBoyutu={20}
+          sayfaDegisti={() => {}}
+          bosBaslik="İlk Ürününüzü Yükleyin!"
+          bosAciklama="Ürünlerinizi yükleyin ve satışa başlayın."
+          rowKey={(k) => k.id}
+        />
+      </PanelProvider>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Ürünler yüklenemedi.");
+  });
+
+  it("boş durumda status/aria-live duyurusu taşır", () => {
+    kur([]);
+    expect(screen.getByRole("status")).toHaveTextContent("İlk Ürününüzü Yükleyin!");
+  });
+
   it("sayfa değişince geri çağrıyı tetikler", async () => {
     const sayfaDegisti = vi.fn();
     render(
