@@ -40,7 +40,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "tanimlamalar", label: "Tanımlamalar" },
     ],
   },
-  { key: "siparisler", label: "Siparişler" },
+  {
+    key: "siparisler",
+    label: "Siparişler",
+    path: PATHS.adminNewOrders,
+    requiredPermission: "orders",
+  },
   { key: "dagitim", label: "Dağıtım" },
   { key: "musteriler", label: "Müşteriler" },
   { key: "dersler", label: "Dersler" },
