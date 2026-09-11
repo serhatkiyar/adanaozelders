@@ -32,12 +32,13 @@ describe("vitrin medya yükleme sözleşmesi", () => {
 
     await uploadStoreMedia(image, "Okula dönüş kampanyası");
 
+    // Content-Type ELLE yazılmaz (sentinel `false`): tarayıcı boundary'yi
+    // kendisi ekler. Bkz. multipartContentType.test.ts + api/store.ts'teki
+    // MULTIPART sabitinin gerekçe yorumu.
     const headers = request?.headers as
       | { get?: (name: string) => unknown }
       | undefined;
-    expect(String(headers?.get?.("Content-Type") ?? "")).toContain(
-      "multipart/form-data",
-    );
+    expect(headers?.get?.("Content-Type")).toBe(false);
     expect(request?.data).toBeInstanceOf(FormData);
     expect((request?.data as FormData).get("image")).toBe(image);
     expect((request?.data as FormData).get("alt_text")).toBe(

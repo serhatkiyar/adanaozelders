@@ -10,6 +10,15 @@
 // için tarayıcı boundary'yi asla EKLEMİYOR ve sunucu multipart gövdeyi
 // ayrıştıramıyor. Panelde ürün görseli yükleme bu yüzden canlıda kırıktı.
 //
+// Genişletme (2026-09-11, aynı gün): aynı boundary'siz literal kalıbı
+// `storeMerchandising.ts`, `delivery.ts` (iki çağrı: kurye foto + durak
+// PoD foto) ve `bookings.ts`'te de bulundu, aynı `false` sentinel'iyle
+// düzeltildi. `educations.ts`'teki `uploadEducationDocument` ise hiç
+// Content-Type override'ı YAPMIYORDU — bu daha ağır bir kusurdu: instance
+// varsayılanı `application/json` devreye girip axios'un `transformRequest`'i
+// FormData'yı `JSON.stringify` ile gövdesiz bir JSON'a çeviriyordu (dosya
+// içeriği tamamen kayboluyordu), boundary eksikliğinden bile kötü bir sonuç.
+//
 // Bu testin `false` beklemesi kasıtlıdır, `undefined` DEĞİL — ikisi eşit
 // görünse de axios'ta değildir: kurulu `dispatchRequest.js` post/put/patch
 // isteklerinde `setContentType('application/x-www-form-urlencoded', false)`
@@ -30,6 +39,10 @@ import { uploadLibraryLogo } from "@/api/libraries";
 import { uploadCatalogAnswerKey } from "@/api/examCatalogs";
 import { uploadResultDocument } from "@/api/libraryExams";
 import { submitTutorPreApplication } from "@/api/tutorPreApplications";
+import { uploadEducationDocument } from "@/api/educations";
+import { uploadStoreMedia } from "@/api/storeMerchandising";
+import { uploadCourierPhoto, uploadStopPhoto } from "@/api/delivery";
+import { uploadBookingResource } from "@/api/bookings";
 
 let sonIstek: AxiosRequestConfig | null = null;
 let eskiAdapter: unknown;
@@ -100,6 +113,46 @@ describe("multipart yüklemede elle Content-Type yazılmıyor", () => {
       subjects: ["Matematik"],
       kvkk_accepted: true,
     });
+
+    expect(sonIstek?.data).toBeInstanceOf(FormData);
+    expect(contentType()).toBe(false);
+  });
+
+  it("educations.ts: uploadEducationDocument", async () => {
+    const file = new File(["x"], "diploma.pdf", { type: "application/pdf" });
+    await uploadEducationDocument(1, file);
+
+    expect(sonIstek?.data).toBeInstanceOf(FormData);
+    expect(contentType()).toBe(false);
+  });
+
+  it("storeMerchandising.ts: uploadStoreMedia", async () => {
+    const file = new File(["x"], "kapak.webp", { type: "image/webp" });
+    await uploadStoreMedia(file, "kapak görseli");
+
+    expect(sonIstek?.data).toBeInstanceOf(FormData);
+    expect(contentType()).toBe(false);
+  });
+
+  it("delivery.ts: uploadCourierPhoto", async () => {
+    const file = new File(["x"], "kurye.png", { type: "image/png" });
+    await uploadCourierPhoto(1, file);
+
+    expect(sonIstek?.data).toBeInstanceOf(FormData);
+    expect(contentType()).toBe(false);
+  });
+
+  it("delivery.ts: uploadStopPhoto", async () => {
+    const file = new File(["x"], "pod.jpg", { type: "image/jpeg" });
+    await uploadStopPhoto(1, file);
+
+    expect(sonIstek?.data).toBeInstanceOf(FormData);
+    expect(contentType()).toBe(false);
+  });
+
+  it("bookings.ts: uploadBookingResource", async () => {
+    const file = new File(["x"], "kaynak.pdf", { type: "application/pdf" });
+    await uploadBookingResource(1, file);
 
     expect(sonIstek?.data).toBeInstanceOf(FormData);
     expect(contentType()).toBe(false);

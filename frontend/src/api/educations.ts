@@ -1,6 +1,15 @@
 import { apiClient } from "@/api/axios";
 import type { Education, EducationCreate, EducationUpdate } from "@/types";
 
+/**
+ * FormData gövdesi için Content-Type ELLE YAZILMAZ — sentinel `false` şart.
+ * Gerekçe (boundary'siz sabit → sunucu ayrıştıramaz; `undefined` axios'un
+ * post/put/patch url-encoded düşüşüyle ÜZERİNE YAZILIYOR; header'ı tamamen
+ * silmek bu instance'ın `application/json` varsayılanına düşüp FormData'yı
+ * JSON'a çeviriyor) ayrıntısıyla `api/store.ts`'teki aynı isimli sabitte.
+ */
+const MULTIPART = { headers: { "Content-Type": false as const } };
+
 export async function fetchMyEducations(): Promise<Education[]> {
   const { data } = await apiClient.get<Education[]>("/me/educations");
   return data;
@@ -36,7 +45,8 @@ export async function uploadEducationDocument(
   form.append("file", file);
   const { data } = await apiClient.post<Education>(
     `/me/educations/${id}/document`,
-    form
+    form,
+    MULTIPART
   );
   return data;
 }

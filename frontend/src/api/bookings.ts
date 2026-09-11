@@ -1,6 +1,15 @@
 import { apiClient } from "@/api/axios";
 import type { BookingCreate, BookingOut, BookingStatus } from "@/types";
 
+/**
+ * FormData gövdesi için Content-Type ELLE YAZILMAZ — sentinel `false` şart.
+ * Gerekçe (boundary'siz sabit → sunucu ayrıştıramaz; `undefined` axios'un
+ * post/put/patch url-encoded düşüşüyle ÜZERİNE YAZILIYOR; header'ı tamamen
+ * silmek bu instance'ın `application/json` varsayılanına düşüp FormData'yı
+ * JSON'a çeviriyor) ayrıntısıyla `api/store.ts`'teki aynı isimli sabitte.
+ */
+const MULTIPART = { headers: { "Content-Type": false as const } };
+
 export async function createBooking(
   payload: BookingCreate
 ): Promise<BookingOut> {
@@ -108,7 +117,7 @@ export async function uploadBookingResource(
   const { data } = await apiClient.post<BookingOut>(
     `/bookings/${id}/resources/upload`,
     form,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    MULTIPART
   );
   return data;
 }
