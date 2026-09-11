@@ -39,20 +39,22 @@ export function UrunListesi() {
   // durumda toplamı göstermemeli — bkz. store.ts listProductsAdmin notu.
   const toplam = data && data.total >= 0 ? data.total : undefined;
 
-  const duzenlemeyeGit = (kayit: ProductSearchOut) => navigate(ROUTES.adminNewProductEdit(kayit.id));
-
-  // AntD `Table`'ın kendisi `ListePage` içinde sarmalanıyor (satır tıklaması
-  // için `onRow` orada açılmıyor — 15 modülü etkileyen prop sözleşmesi
-  // değişikliği gerektirir). Bunun yerine her hücreye `onCell` ile aynı
-  // tıklama davranışını veriyoruz; satır menüsü düğmesi kendi tıklamasında
-  // olayı durdurduğu için (`stopPropagation`) satır gezinmesini tetiklemez.
-  const satirTiklama = (kayit: ProductSearchOut) => ({
-    onClick: () => duzenlemeyeGit(kayit),
-    style: { cursor: "pointer" },
-  });
-
+  // AntD `Table`, `ListePage` içinde sarmalı; satır tıklaması için `onRow`
+  // orada açılmıyor (15 modülü etkileyen prop sözleşmesi değişikliği olurdu).
+  // Bunun yerine her veri hücresine `onCell` ile aynı tıklamayı veriyoruz.
+  // Satır menüsü düğmesi kendi tıklamasında olayı durdurur, böylece satır
+  // gezinmesi tetiklenmez. Yardımcılar `useMemo` İÇİNDE tanımlı — dışarıda
+  // olsalardı her render'da yeni referans üretip bağımlılık kuralını
+  // susturmayı gerektiriyordu.
   const kolonlar: TableProps<ProductSearchOut>["columns"] = useMemo(
-    () => [
+    () => {
+    const duzenlemeyeGit = (kayit: ProductSearchOut) =>
+      navigate(ROUTES.adminNewProductEdit(kayit.id));
+    const satirTiklama = (kayit: ProductSearchOut) => ({
+      onClick: () => duzenlemeyeGit(kayit),
+      style: { cursor: "pointer" },
+    });
+    return [
       { title: "Ürün", dataIndex: "title", key: "title", onCell: satirTiklama },
       {
         title: "Satış Fiyatı",
@@ -92,8 +94,8 @@ export function UrunListesi() {
           </Dropdown>
         ),
       },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    ];
+    },
     [navigate],
   );
 
