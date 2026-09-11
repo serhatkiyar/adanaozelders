@@ -40,6 +40,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormPage, type FormBolumu } from "@/panel/components/FormPage";
 import { HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
+import { MedyaSekmesi } from "@/panel/components/MedyaSekmesi";
 import { VaryantPenceresi } from "@/panel/pages/urunler/VaryantPenceresi";
 import { createProduct, updateProduct } from "@/api/store";
 import {
@@ -516,6 +517,15 @@ export function UrunFormu() {
           )}
         </>
       ),
+    },
+    {
+      // Paket 2'nin ilk işi (bkz. dosya başı yorumu) — yeni kayıtta henüz
+      // `productId` yoktur (`idSayi` yalnız düzenlemede tanımlı, bkz.
+      // `duzenlemeModu`), `MedyaSekmesi` bu durumda kendi kapısını gösterir
+      // (aynı desen varyant sekmesindeki `productId` kapısıyla tutarlı).
+      anahtar: "medya",
+      baslik: "Medya",
+      icerik: <MedyaSekmesi productId={idSayi} urun={urun} />,
     },
   ];
 

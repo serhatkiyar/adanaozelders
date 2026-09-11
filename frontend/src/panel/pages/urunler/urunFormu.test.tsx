@@ -26,6 +26,14 @@ const createVariantMatrix = vi.fn();
 const fetchCategories = vi.fn().mockResolvedValue([
   { id: 1, slug: "kirtasiye", name: "Kırtasiye", parent_id: null, sort_order: 0, is_active: true },
 ]);
+// Medya sekmesi (`MedyaSekmesi`) → `hooks/useStore.ts::useProductMedia` bu
+// dördünü DOĞRUDAN çağırır (`storeApi.uploadProductCover` vb.) — mock
+// olmadan `useProductMedia`nın gerçek gövdesi `storeApi.uploadProductCover`ı
+// `undefined` bulup "is not a function" ile patlar.
+const uploadProductCover = vi.fn();
+const uploadProductImages = vi.fn();
+const deleteProductImage = vi.fn();
+const reorderProductImages = vi.fn();
 vi.mock("@/api/store", () => ({
   createProduct: (...a: unknown[]) => createProduct(...a),
   updateProduct: (...a: unknown[]) => updateProduct(...a),
@@ -36,6 +44,10 @@ vi.mock("@/api/store", () => ({
   previewVariantMatrix: (...a: unknown[]) => previewVariantMatrix(...a),
   createVariantMatrix: (...a: unknown[]) => createVariantMatrix(...a),
   fetchCategories: (...a: unknown[]) => fetchCategories(...a),
+  uploadProductCover: (...a: unknown[]) => uploadProductCover(...a),
+  uploadProductImages: (...a: unknown[]) => uploadProductImages(...a),
+  deleteProductImage: (...a: unknown[]) => deleteProductImage(...a),
+  reorderProductImages: (...a: unknown[]) => reorderProductImages(...a),
 }));
 
 afterEach(() => {
@@ -58,6 +70,8 @@ const DUZENLENECEK_URUN = {
   stock: 12,
   barcode: "8690000000012",
   variants: null,
+  cover_url: null,
+  images: [],
 };
 
 const DUZENLENECEK_URUN_VARYANTLI = {
@@ -731,6 +745,99 @@ describe("UrunFormu", () => {
       await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
 
       expect(await screen.findByRole("button", { name: "Kardeş Varyant Üret" })).toBeInTheDocument();
+    });
+  });
+
+  // Paket 2'nin ilk işi (bkz. `UrunFormu.tsx` dosya başı yorumu) —
+  // `MedyaSekmesi` kapak + galeri yönetimini bu sekmeye bağlar.
+  describe("Medya sekmesi", () => {
+    it("yeni kayıtta (henüz productId yok) kapı 'önce kaydedin' mesajı gösterir, yükleme UI'ı yok", async () => {
+      kur();
+      await userEvent.click(screen.getByRole("tab", { name: "Medya" }));
+
+      expect(await screen.findByText("Önce ürünü kaydedin")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Görsel Ekle" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Kapak Yükle" })).not.toBeInTheDocument();
+    });
+
+    it("düzenlemede kapak ve galeri görselleri listelenir", async () => {
+      fetchProductAdmin.mockResolvedValueOnce({
+        ...DUZENLENECEK_URUN,
+        cover_url: "https://cdn.example.com/kapak.jpg",
+        images: [
+          { id: 101, url: "https://cdn.example.com/1.jpg", sort_order: 0, alt_text: null, caption: null },
+          { id: 102, url: "https://cdn.example.com/2.jpg", sort_order: 1, alt_text: null, caption: null },
+        ],
+      });
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Medya" }));
+
+      expect(await screen.findByAltText("Kapak")).toBeInTheDocument();
+      expect(screen.getByAltText("Görsel 1")).toBeInTheDocument();
+      expect(screen.getByAltText("Görsel 2")).toBeInTheDocument();
+    });
+
+    it("görsel yükleme sunucuda başarısız olursa kullanıcı sunucunun mesajını görür", async () => {
+      fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN);
+      uploadProductImages.mockRejectedValueOnce({
+        response: { data: { detail: "Depolama alanı dolu." } },
+      });
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+      await userEvent.click(screen.getByRole("tab", { name: "Medya" }));
+
+      const gorselInput = screen.getByLabelText("Görsel seç") as HTMLInputElement;
+      const dosya = new File(["içerik"], "gorsel.png", { type: "image/png" });
+      await userEvent.upload(gorselInput, dosya);
+
+      expect(await screen.findByText("Depolama alanı dolu.")).toBeInTheDocument();
+    });
+
+    it("silme onay ister; onaylanmadan deleteProductImage çağrılmaz, onaylanınca çağrılır", async () => {
+      fetchProductAdmin.mockResolvedValueOnce({
+        ...DUZENLENECEK_URUN,
+        images: [{ id: 101, url: "https://cdn.example.com/1.jpg", sort_order: 0, alt_text: null, caption: null }],
+      });
+      deleteProductImage.mockResolvedValueOnce({ ...DUZENLENECEK_URUN, images: [] });
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+      await userEvent.click(screen.getByRole("tab", { name: "Medya" }));
+      await screen.findByAltText("Görsel 1");
+
+      await userEvent.click(screen.getByRole("button", { name: "1. görseli sil" }));
+      expect(await screen.findByText("Görseli sil")).toBeInTheDocument();
+      expect(deleteProductImage).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Sil" }));
+
+      await waitFor(() => expect(deleteProductImage).toHaveBeenCalledWith(9, 101));
+    });
+
+    it("sıralama değişikliği sunucuya doğru id dizisiyle gider", async () => {
+      fetchProductAdmin.mockResolvedValueOnce({
+        ...DUZENLENECEK_URUN,
+        images: [
+          { id: 101, url: "https://cdn.example.com/1.jpg", sort_order: 0, alt_text: null, caption: null },
+          { id: 102, url: "https://cdn.example.com/2.jpg", sort_order: 1, alt_text: null, caption: null },
+        ],
+      });
+      reorderProductImages.mockResolvedValueOnce({
+        ...DUZENLENECEK_URUN,
+        images: [
+          { id: 102, url: "https://cdn.example.com/2.jpg", sort_order: 0, alt_text: null, caption: null },
+          { id: 101, url: "https://cdn.example.com/1.jpg", sort_order: 1, alt_text: null, caption: null },
+        ],
+      });
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+      await userEvent.click(screen.getByRole("tab", { name: "Medya" }));
+      await screen.findByAltText("Görsel 1");
+
+      await userEvent.click(screen.getByRole("button", { name: "2. görseli yukarı taşı" }));
+
+      await waitFor(() => expect(reorderProductImages).toHaveBeenCalledWith(9, [102, 101]));
     });
   });
 });
