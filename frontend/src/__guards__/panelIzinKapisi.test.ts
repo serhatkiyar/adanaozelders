@@ -35,10 +35,11 @@
  * kendi Boşluk 1'i: bir nöbetçi ÖLÇMEDİĞİ şeyde her zaman yeşildir. Bu yüzden
  * aşağıda üç ayrı iddia var, ikisi UYDURMA girdiyle:
  *
- *   1. Gerçek `App.tsx` BUGÜN yeşil (kapı kuruldu, tek bağlı modül var).
+ *   1. Gerçek `App.tsx` BUGÜN yeşil (kapı kuruldu, bağlı modüller var).
  *   2. UYDURULMUŞ bir `App.tsx` parçası — gerçek `PANEL_MENU`de yaprağı
- *      OLMAYAN bir rota (`siparisler`, bugün `menu.ts`te path'siz bir yer
- *      tutucu) — nöbetçi bunu KIRMIZI görür mü?
+ *      OLMAYAN bir rota (bugün `menu.ts`te path'siz duran İLK yer tutucu,
+ *      runtime'da bulunur — bkz. `pathsizYerTutucular`) — nöbetçi bunu
+ *      KIRMIZI görür mü?
  *   3. UYDURULMUŞ bir menü — rota ile AYNI path'i taşıyan ama
  *      `requiredPermission`ı OLMAYAN bir yaprak — nöbetçi bunu da KIRMIZI
  *      görür mü? (Bu, riskin TAM TARİFİ: rota var, menü girdisi var, ama izin
@@ -186,6 +187,26 @@ export function panelAltRotalari(
 const HARIC_TUTULAN_ROTALAR: readonly string[] = [PATHS.adminNew];
 
 /**
+ * `PANEL_MENU` ağacındaki, henüz bir gerçek ekrana BAĞLANMAMIŞ (path'siz)
+ * yer tutucu yaprakları toplar — grup başlıkları (`children` taşıyanlar)
+ * hariç, çünkü onlar tek başlarına bir rotaya karşılık gelmez.
+ *
+ * UYDURMA 1 kanaryası bunu belirli bir anahtara (`"siparisler"`) SABİTLEMEK
+ * yerine RUNTIME'da bulur: bir modül path/requiredPermission kazandığı anda
+ * (tam olarak `siparisler`in başına geleni) kanarya kendiliğinden BİR
+ * SONRAKİ path'siz yaprağa kayar. 15 modülün hepsi bağlandığında liste boşalır
+ * — o durumda kanarya `PANEL_MENU`ye bağımlı olmaktan çıkıp UYDURMA bir menüyle
+ * aynı riski üretmeye devam eder (bkz. aşağıdaki test).
+ */
+function pathsizYerTutucular(items: PanelMenuItem[]): { key: string; label: string }[] {
+  return items.flatMap((m) => {
+    if (m.children) return pathsizYerTutucular(m.children);
+    if (m.path) return [];
+    return [{ key: m.key, label: m.label }];
+  });
+}
+
+/**
  * Verilen rotalardan, `menu`de KARŞILIĞI olmayan ya da karşılığı
  * `requiredPermission` TAŞIMAYAN her rotanın `pathname`ini döndürür.
  *
@@ -221,7 +242,8 @@ describe("İ9 · panel izin kapısı — App.tsx rotaları menu.ts'te izinle eş
       true
     );
     expect(cozulemeyenler, "dinamik (literal olmayan) path taşıyan <Route> bulundu").toEqual([]);
-    // Bugün bilinen dört rota: index + urunler + urunler/yeni + urunler/:id.
+    // Bugün bilinen beş rota: index + urunler + urunler/yeni + urunler/:id +
+    // siparisler.
     // Sayı değil TABAN büyüklüğü sınanır — asıl iddia altta (izinsizKalanRotalar).
     expect(rotalar.length).toBeGreaterThan(0);
 
@@ -235,24 +257,36 @@ describe("İ9 · panel izin kapısı — App.tsx rotaları menu.ts'te izinle eş
   });
 
   it("UYDURMA 1 — menu.ts'te YAPRAĞI OLMAYAN bir rota KIRMIZI verir", () => {
-    // `siparisler` bugün `menu.ts`te `path`SİZ bir yer tutucu (PANEL_MENU'de
-    // gerçek satır). Ona bir `<Route>` eklemek ama `path`/`requiredPermission`
-    // ile bağlamamak — riskin tarif ettiği senaryonun ta kendisi. Gerçek
-    // `PANEL_MENU` DEĞİŞTİRİLMEDİ; yalnız App.tsx'in ŞEKLİNİ taklit eden bir
-    // metin uyduruldu.
+    // Belirli bir anahtarı (`"siparisler"`) HARDCODE ETMEK yerine, gerçek
+    // `PANEL_MENU`de BUGÜN path'siz duran İLK yer tutucuyu runtime'da bulur.
+    // `siparisler` path/requiredPermission kazandığında (commit `06ab4d2`)
+    // bu kanarya kendiliğinden bir SONRAKİ yer tutucuya kaydı — dosya bunu
+    // elle güncellemeden. Ona bir `<Route>` eklemek ama `path`/
+    // `requiredPermission` ile bağlamamak — riskin tarif ettiği senaryonun ta
+    // kendisi. Gerçek `PANEL_MENU` DEĞİŞTİRİLMEDİ; yalnız App.tsx'in ŞEKLİNİ
+    // taklit eden bir metin uyduruldu.
+    //
+    // 15 modülün hepsi bağlanıp gerçek menüde hiç yer tutucu KALMAZSA, kanarya
+    // sessizce atlamak yerine TAMAMEN UYDURMA bir menüye (gerçek `PANEL_MENU`
+    // + uydurma bir yaprak) geçer — aynı riski üretmeye devam eder, ölçmeyi
+    // bırakmaz (dosya başı notu: "ölçmeyen nöbetçi yeşil verir").
+    const yerTutucular = pathsizYerTutucular(PANEL_MENU);
+    const yerTutucu = yerTutucular[0] ?? { key: "henuz-baglanmamis-uydurma-modul" };
+    const menu = yerTutucular.length > 0 ? PANEL_MENU : [...PANEL_MENU, { key: yerTutucu.key, label: "Uydurma" }];
+
     const sahteKaynak = `
       <Route path={PATHS.adminNew} element={<PanelShell />}>
         <Route index element={<div>Panel kuruldu.</div>} />
         <Route path="urunler" element={<UrunListesi />} />
-        <Route path="siparisler" element={<SiparislerSayfasi />} />
+        <Route path="${yerTutucu.key}" element={<SahteSayfa />} />
       </Route>
     `;
     const { rotalar, bulunduMu } = panelAltRotalari(sahteKaynak);
     expect(bulunduMu).toBe(true);
 
-    const izinsiz = izinsizKalanRotalar(rotalar);
+    const izinsiz = izinsizKalanRotalar(rotalar, menu);
     expect(izinsiz, "nöbetçi menüsüz rotayı KAÇIRDI — ölçmüyor demektir").toContain(
-      "/yonetim-yeni/siparisler"
+      `/yonetim-yeni/${yerTutucu.key}`
     );
   });
 

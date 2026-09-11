@@ -52,11 +52,12 @@ const GEREKCELI = [
   // eğitmen ön başvuru ekranının kapı kayıtları 592'ye taşıdı; merge sonrası
   // gerçek değer aşağıdaki koşuyla doğrulanır.
   //
-  // 701: nöbetçi kırmızısı kök neden düzeltmesi (FormPage/TipSecimi artık
-  // TOPLAMA evresinde statik import ediliyor, üçüncü örneği LibrariesMap/
-  // MapGate ile aynı sınıfın) satırı 685'ten 701'e kaydırdı — bu satırın
-  // KENDİSİ hâlâ gerekçeli: `import.meta.glob` burada testin KONUSUDUR.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:701 /src/**/*.tsx",
+  // 705: panel paket 1 kapanışı — `KAPI_KAPSAMI`ye `SiparisListesi.tsx`
+  // girişi (yukarıdaki dosya başı yorumuyla) satırı 701'den 705'e kaydırdı —
+  // bu satırın KENDİSİ hâlâ gerekçeli: `import.meta.glob` burada testin
+  // KONUSUDUR. (Önceki kaydırma: 685 → 701, FormPage/TipSecimi'nin TOPLAMA
+  // evresinde statik import edilmesi.)
+  "src/__guards__/calismaZamaniKapisi.test.tsx:705 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

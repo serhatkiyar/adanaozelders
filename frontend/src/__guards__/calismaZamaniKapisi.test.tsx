@@ -460,6 +460,10 @@ const KAPI_KAPSAMI = [
   "src/panel/components/Matris.tsx",
   "src/panel/components/YanPencere.tsx",
   "src/panel/layout/PanelShell.tsx",
+  // Siparişler modülü (commit `06ab4d2`): propsuz mount olur, `useAdminOrders`
+  // boş veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
+  // `UrunListesi.tsx`) — `KONTROLSUZ_EKRANLAR`a değil kapıya girer.
+  "src/panel/pages/siparisler/SiparisListesi.tsx",
   "src/panel/pages/urunler/UrunFormu.tsx",
   "src/panel/pages/urunler/UrunListesi.tsx",
   "src/panel/pages/urunler/VaryantPenceresi.tsx",

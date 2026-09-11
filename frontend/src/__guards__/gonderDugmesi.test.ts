@@ -43,9 +43,23 @@
  * Düzeltme satır numarasına dönmek değil, kimliğe **çağrı sayısını** eklemek:
  * `ADETLER` her kimliğin kaç kez geçtiğini dondurur (yazılmayan her kimlik
  * için 1). Tekrar da, tekrarın kapanması da kırmızı üretir; kaydırma gürültüsü
- * geri gelmez. Ölçülen: **64 benzersiz kimlik / 80 ham çağrı yeri**
+ * geri gelmez. Ölçülen: **67 benzersiz kimlik / 83 ham çağrı yeri**
  * (tedarikçi bağlama penceresinin "Vazgeç"i + devre kesici açıkken kapanan
  * iki senkron düğmesi eklendi).
+ *
+ * ## Panel paket 1 kapanışı — 2 ÖLÜ BORÇ KAYDI temizlendi (bu paket)
+ *
+ * `UrunFormu.tsx`teki "Grubu Oluştur" ve `VaryantPenceresi.tsx`teki "Önizle"
+ * düğmeleri `gecerlilik-borc` diye kayıtlıydı (İ9 · Boşluk 1). Borç commit
+ * `2287611`de ÖDENDİ: iki düğmeden de `disabled` kaldırıldı, artık tıklanınca
+ * doğrulama çalışıyor ve eksik alan `HataDurumu` ile alanda gösteriliyor
+ * (emsal: `VariantMatrixPanel::uret()` / `DeliveryOrdersPage`in
+ * `KargolaSatiri`si). Tarama bunu kendisi doğruladı: kayıt silinmeden ÖNCE
+ * `tabanTaramasi()` bu iki kimliği zaten döndürmüyordu (taban 67, kayıt 69 —
+ * fark ölü kayıtların ta kendisiydi). Kayıt aşağıda kaldırıldı; bu bir eşik
+ * GEVŞETMESİ değil, gerçeğin yansımasıdır — `GECERLILIK_BORCU` `KAYIT`tan
+ * TÜREDİĞİ için sayı kendiliğinden 10 → 8'e sıkılaştı, yeni bir dokuzuncu üye
+ * doğduğu gün nöbetçi yine kırmızı verir.
  */
 import { describe, expect, it } from "vitest";
 
@@ -165,9 +179,13 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
 
   // ── gecerlilik-borc: KİLİTLİ KARARIN İHLALİ (İP-A8'de kayda geçti) ──
   //
-  // Yedisi de göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
+  // Sekizi de göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
   // "Kargola") kapattı; bunlar kapsam dışı ve ayrı bir pakete bırakıldı.
-  // Kayıtta durmalarının işlevi: sekizincisi doğduğu gün CI kırılır.
+  // Kayıtta durmalarının işlevi: dokuzuncusu doğduğu gün CI kırılır.
+  //
+  // (İ9 · Boşluk 1'de eklenen `UrunFormu.tsx` "Grubu Oluştur" ve
+  // `VaryantPenceresi.tsx` "Önizle" kayıtları commit `2287611`de KAPANDI —
+  // panel paket 1 kapanışında buradan kaldırıldı, bkz. dosya başı notu.)
   "src/components/ExamSessionsManager.tsx <Button> !dirty": "gecerlilik-borc",
   "src/components/QrScanner.tsx <button> !manual.trim()": "gecerlilik-borc",
   "src/components/admin/store/ProductForm.tsx <Button> !newTitle.trim() || !newAxis1 || createGroup.isPending":
@@ -178,23 +196,6 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> busy || note.trim().length < 3": "gecerlilik-borc",
   "src/pages/DeliveryRunHandover.tsx <button> !kod.trim() || scan.isPending": "gecerlilik-borc",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> !kod.trim()": "gecerlilik-borc",
-  // ── İ9 · Boşluk 1: `src/panel/**` ölçüme girer girmez bulunan İKİ yeni üye ──
-  //
-  // "Grubu Oluştur" (yeni varyant grubu): eski panelin `ProductForm.tsx`
-  // <Button> !newTitle.trim() || !newAxis1 || createGroup.isPending`
-  // kaydıyla AYNI SINIF, aynı akışın panel karşılığı — düğmenin yanında
-  // "başlık/eksen gerekli" diye DİNAMİK bir metin yok, yalnız statik
-  // `placeholder`lar var.
-  "src/panel/pages/urunler/UrunFormu.tsx <Button> !yeniBaslik.trim() || !yeniEksen1":
-    "gecerlilik-borc",
-  // "Önizle" (kardeş varyant üretimi): `VariantMatrixPanel`in AYNI ADLI
-  // düğmesi `onkosul` sınıfındaydı çünkü DEVRE DIŞI sebebini düğmenin
-  // yanındaki canlı sayaç anlık yazıyordu ("her eksene en az bir değer
-  // girin"). Burada öyle bir metin YOK — `Form.Item help=…` yalnız statik
-  // bir BİÇİM ipucu (`"Virgülle ayırın: ör. Kırmızı,Mavi"`), boş alan
-  // yüzünden düğmenin neden kapalı olduğunu SÖYLEMİYOR. Bu yüzden
-  // `onkosul` değil `gecerlilik-borc`.
-  "src/panel/pages/urunler/VaryantPenceresi.tsx <Button> onizleDisabled": "gecerlilik-borc",
 };
 
 /**
