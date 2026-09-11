@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Button } from "antd";
+import { Button, Dropdown } from "antd";
 import type { TableProps } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, MoreOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { ListePage } from "@/panel/components/ListePage";
 import { TipSecimi } from "@/panel/components/TipSecimi";
@@ -39,23 +39,62 @@ export function UrunListesi() {
   // durumda toplamı göstermemeli — bkz. store.ts listProductsAdmin notu.
   const toplam = data && data.total >= 0 ? data.total : undefined;
 
+  const duzenlemeyeGit = (kayit: ProductSearchOut) => navigate(ROUTES.adminNewProductEdit(kayit.id));
+
+  // AntD `Table`'ın kendisi `ListePage` içinde sarmalanıyor (satır tıklaması
+  // için `onRow` orada açılmıyor — 15 modülü etkileyen prop sözleşmesi
+  // değişikliği gerektirir). Bunun yerine her hücreye `onCell` ile aynı
+  // tıklama davranışını veriyoruz; satır menüsü düğmesi kendi tıklamasında
+  // olayı durdurduğu için (`stopPropagation`) satır gezinmesini tetiklemez.
+  const satirTiklama = (kayit: ProductSearchOut) => ({
+    onClick: () => duzenlemeyeGit(kayit),
+    style: { cursor: "pointer" },
+  });
+
   const kolonlar: TableProps<ProductSearchOut>["columns"] = useMemo(
     () => [
-      { title: "Ürün", dataIndex: "title", key: "title" },
+      { title: "Ürün", dataIndex: "title", key: "title", onCell: satirTiklama },
       {
         title: "Satış Fiyatı",
         dataIndex: "price",
         key: "price",
         render: (v: string | number) => formatTL(v),
+        onCell: satirTiklama,
       },
       {
         title: "Envanter",
         dataIndex: "stock",
         key: "stock",
         render: (v?: number | null) => (v == null ? "—" : `${v} adet`),
+        onCell: satirTiklama,
+      },
+      {
+        title: "",
+        key: "aksiyonlar",
+        width: 48,
+        render: (_, kayit) => (
+          <Dropdown
+            trigger={["click"]}
+            menu={{
+              items: [{ key: "duzenle", label: "Düzenle" }],
+              onClick: ({ domEvent }) => {
+                domEvent.stopPropagation();
+                duzenlemeyeGit(kayit);
+              },
+            }}
+          >
+            <Button
+              type="text"
+              icon={<MoreOutlined />}
+              aria-label="satır aksiyonları"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Dropdown>
+        ),
       },
     ],
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigate],
   );
 
   return (

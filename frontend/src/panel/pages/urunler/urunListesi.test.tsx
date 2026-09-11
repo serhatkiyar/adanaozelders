@@ -5,10 +5,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { UrunListesi } from "@/panel/pages/urunler/UrunListesi";
 import { useAdminProducts } from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
+import { ROUTES } from "@/lib/routes";
 
 vi.mock("@/hooks/useStore", () => ({
   useAdminProducts: vi.fn(),
 }));
+
+const navigateMock = vi.fn();
+
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>();
+  return { ...actual, useNavigate: () => navigateMock };
+});
 
 const mockUseAdminProducts = vi.mocked(useAdminProducts);
 
@@ -24,6 +32,10 @@ function kur() {
 }
 
 describe("UrunListesi", () => {
+  beforeEach(() => {
+    navigateMock.mockClear();
+  });
+
   it("ürün adını ve fiyatını listeler", () => {
     mockUseAdminProducts.mockReturnValue({
       data: { items: [{ id: 1, title: "9. Sınıf Matematik Soru Bankası", price: 250, stock: 50 }], total: 1 },
@@ -132,6 +144,43 @@ describe("UrunListesi", () => {
 
       // Üç ayrı tuş vuruşu, gecikme sonunda TEK bir güncel sorguya dönüşür.
       expect(mockUseAdminProducts.mock.calls.at(-1)?.[0]).toMatchObject({ q: "kalem" });
+    });
+  });
+
+  describe("satır aksiyonu", () => {
+    beforeEach(() => {
+      mockUseAdminProducts.mockReturnValue({
+        data: { items: [{ id: 7, title: "9. Sınıf Matematik Soru Bankası", price: 250, stock: 50 }], total: 1 },
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAdminProducts>);
+    });
+
+    it("satır menüsünden Düzenle seçilince ürün düzenleme rotasına gider", async () => {
+      kur();
+
+      await userEvent.click(screen.getByRole("button", { name: /satır aksiyonları/i }));
+      await userEvent.click(await screen.findByText("Düzenle"));
+
+      expect(navigateMock).toHaveBeenCalledWith(ROUTES.adminNewProductEdit(7));
+    });
+
+    it("satıra tıklanınca da ürün düzenleme rotasına gider", async () => {
+      kur();
+
+      await userEvent.click(screen.getByText("9. Sınıf Matematik Soru Bankası"));
+
+      expect(navigateMock).toHaveBeenCalledWith(ROUTES.adminNewProductEdit(7));
+    });
+
+    it("satır menüsüne tıklamak satır tıklamasını tetiklemez (çift gezinme olmaz)", async () => {
+      kur();
+
+      await userEvent.click(screen.getByRole("button", { name: /satır aksiyonları/i }));
+
+      expect(navigateMock).not.toHaveBeenCalled();
     });
   });
 });
