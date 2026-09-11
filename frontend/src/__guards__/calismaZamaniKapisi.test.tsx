@@ -64,6 +64,22 @@ import "@/components/admin/ui2/duzenlemeYuzeyi";
 // TOPLAMA evresine taşındı.
 import "@/components/map/MapGate";
 import "@/components/LibrariesMap";
+// ── Üçüncü örnek: `FormPage`/`TipSecimi` (nöbetçi kırmızısı kök neden raporu) ──
+//
+// Bu ikisi `KAPI_DISI`nin TERS PROVASIDIR — propsuz mount edilince FIRLATMASI
+// beklenir ve fırlatma bizzat ÖLÇÜLDÜ (`TypeError: Cannot read properties of
+// undefined (reading 'map')`, doğru dosyada, doğru satırda). Tam suite altında
+// kırmızı düşmelerinin sebebi bu fırlatma DEĞİL: `render()`+throw süresi
+// ölçüldü, **12-14 ms**. Bütün bütçe `await ekranBileseni(dosya)`da, yani
+// `import.meta.glob` üzerinden TEMBEL yapılan dinamik import'ta gidiyordu —
+// 121 komşu dosyayla aynı işçi havuzunda ölçülen değerler: `TipSecimi.tsx`
+// **8.272 ms**, `FormPage.tsx` **20.785 ms** (9.000 ms'lik testTimeout'un
+// 2,3 katı). Aynı sınıf, üçüncü örneği: bu iki modül üstteki ikisinin aksine
+// TOPLAMA evresinde ödenmiyordu, bedeli testin KENDİ bütçesine yazılıyordu.
+// Düzeltme aynı ilaç: statik import maliyeti TOPLAMA evresine taşınır, testin
+// kendisi hiç değişmez (`await ekranBileseni` zaten yüklü modülü döndürür).
+import "@/panel/components/FormPage";
+import "@/panel/components/TipSecimi";
 
 import { createElement } from "react";
 

@@ -51,7 +51,12 @@ const GEREKCELI = [
   // Manuel vitrin sökümü 593'e, YakindaRozeti kayıtlarının silinmesi 581'e,
   // eğitmen ön başvuru ekranının kapı kayıtları 592'ye taşıdı; merge sonrası
   // gerçek değer aşağıdaki koşuyla doğrulanır.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:685 /src/**/*.tsx",
+  //
+  // 701: nöbetçi kırmızısı kök neden düzeltmesi (FormPage/TipSecimi artık
+  // TOPLAMA evresinde statik import ediliyor, üçüncü örneği LibrariesMap/
+  // MapGate ile aynı sınıfın) satırı 685'ten 701'e kaydırdı — bu satırın
+  // KENDİSİ hâlâ gerekçeli: `import.meta.glob` burada testin KONUSUDUR.
+  "src/__guards__/calismaZamaniKapisi.test.tsx:701 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 
