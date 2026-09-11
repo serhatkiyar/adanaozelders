@@ -32,6 +32,7 @@ export function Matris({
               aria-label={`Fiyat ${k.kombinasyon}`}
               value={k.price}
               min={0}
+              addonAfter="TL"
               onChange={(v) => degisti(k.anahtar, "price", Number(v ?? 0))}
             />
           ),

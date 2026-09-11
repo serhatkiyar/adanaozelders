@@ -36,8 +36,8 @@ describe("varyant akışı", () => {
         />
       </PanelProvider>,
     );
-    expect(screen.getByText("Kırmızı")).toBeTruthy();
-    expect(screen.getByText("Mavi")).toBeTruthy();
+    expect(screen.getByText("Kırmızı")).toBeInTheDocument();
+    expect(screen.getByText("Mavi")).toBeInTheDocument();
     const sku = screen.getAllByLabelText(/SKU/i)[0];
     await userEvent.type(sku, "ABC");
     expect(degisti).toHaveBeenCalled();

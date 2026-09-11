@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, Input, Radio } from "antd";
+import { Form, Input } from "antd";
 import { YanPencere } from "@/panel/components/YanPencere";
 
 export type VaryantEkseni = { ad: string; degerler: string[] };
@@ -15,7 +15,6 @@ export function VaryantPenceresi({
 }) {
   const [ad, setAd] = useState("");
   const [degerler, setDegerler] = useState("");
-  const [stil, setStil] = useState<"liste" | "renk">("liste");
 
   function kaydet() {
     const parcalar = degerler
@@ -26,7 +25,6 @@ export function VaryantPenceresi({
     eklendi({ ad: ad.trim(), degerler: parcalar });
     setAd("");
     setDegerler("");
-    setStil("liste");
     kapat();
   }
 
@@ -40,12 +38,6 @@ export function VaryantPenceresi({
             onChange={(e) => setAd(e.target.value)}
             placeholder="ör. Renk, Ebat"
           />
-        </Form.Item>
-        <Form.Item label="Seçim Stili">
-          <Radio.Group value={stil} onChange={(e) => setStil(e.target.value)}>
-            <Radio value="liste">Liste</Radio>
-            <Radio value="renk">Renk / Görsel</Radio>
-          </Radio.Group>
         </Form.Item>
         <Form.Item label="Varyantlar" required help="Virgülle ayırın: Kırmızı,Mavi">
           <Input

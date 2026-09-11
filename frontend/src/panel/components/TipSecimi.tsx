@@ -12,7 +12,7 @@ export type TipSecimiProps = {
 
 export function TipSecimi({ acik, baslik, secenekler, kapat, secildi }: TipSecimiProps) {
   return (
-    <Modal open={acik} title={baslik} onCancel={kapat} footer={null} destroyOnClose>
+    <Modal open={acik} title={baslik} onCancel={kapat} footer={null} destroyOnHidden>
       <Flex vertical gap={12}>
         {secenekler.map((s) => (
           <Card
