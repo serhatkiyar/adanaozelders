@@ -99,7 +99,8 @@ function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
  *    aynı desen, bkz. dosya başı yorumu).
  *  - Alan MOUNT OLDU ama boşsa (kullanıcı grubu Select'ten TEMİZLEDİ)
  *    gruptan çıkış GERÇEKTİR: `variant_group_id`, `option1_value`,
- *    `option2_value` VE `barcode` AÇIKÇA `null` gönderilir. Aksi halde
+ *    `option2_value` AÇIKÇA `null` gönderilir; `barcode` alanın gerçek
+ *    değerini taşır (boşsa `null`, yeni yazıldıysa o değer). Aksi halde
  *    backend `exclude_unset=True` kullandığından (`store_service.py`
  *    ~satır 2070-2078) anahtar gövdede yoksa eski değer korunur, üyelik
  *    hiç yeniden değerlendirilmez ve "Ürün kaydedildi" mesajına rağmen
@@ -108,7 +109,7 @@ function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
  *    (`store_service.py` ~2102-2113) ama barkodu ETMEZ — CHECK
  *    `ck_products_variant_barcode` yalnız "gruplu üründe barkod NULL
  *    olamaz" yönünü zorlar, tersi serbesttir (`backend/models/store.py`
- *    satır 553-556). Barkod burada yine de AÇIKÇA `null` gönderilir:
+ *    satır 553-556). Barkod boşsa yine de AÇIKÇA `null` gönderilir:
  *    `VaryantAlanlari`daki grup Select'inin `onChange`'i barkodu zaten
  *    görsel olarak sıfırlıyor (grup değişince/temizlenince eski barkod
  *    artık bu ürünü tanımlamaz) — gövde ekranla TUTARLI olsun, ekran
@@ -123,7 +124,17 @@ function varyantUyelikGovdesi(d: UrunFormDegerleri) {
     };
   }
   if ("variant_group_id" in d) {
-    return { variant_group_id: null, option1_value: null, option2_value: null, barcode: null };
+    // `barcode` ALANIN GERÇEK DEĞERİNİ taşır: boşsa açıkça `null` (gruptan
+    // çıkışta eski barkodun DB'de sessizce kalmaması için), kullanıcı grubu
+    // temizledikten SONRA yeni bir barkod yazdıysa O DEĞER. Sabit `null`
+    // döndürmek, bu satır `barcode: d.barcode || undefined`ı spread ile
+    // ezdiği için kullanıcının yeni yazdığı barkodu sessizce siliyordu.
+    return {
+      variant_group_id: null,
+      option1_value: null,
+      option2_value: null,
+      barcode: d.barcode || null,
+    };
   }
   return {};
 }

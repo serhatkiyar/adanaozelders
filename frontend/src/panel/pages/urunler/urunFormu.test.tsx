@@ -248,6 +248,37 @@ describe("UrunFormu", () => {
         });
       });
 
+      it("grup temizlendikten SONRA yazılan yeni barkod gövdede korunur", async () => {
+        // Bulgu: `barcode` açık satırı spread'den ÖNCE yazıldığı için,
+        // `varyantUyelikGovdesi` çıkış dalındaki `barcode: null` onu eziyordu;
+        // kullanıcı grubu temizleyip yeni bir barkod yazsa bile değeri
+        // sessizce siliniyordu. Gövde ALANIN GERÇEK DEĞERİNİ taşımalı.
+        listVariantGroups.mockResolvedValueOnce([
+          { id: 1, title: "Defter Rengi", option1_name: "Renk", option2_name: null, member_count: 3 },
+        ]);
+        fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN_VARYANTLI);
+        const { container } = kurDuzenleme();
+        await screen.findByDisplayValue("Kırmızı Defter");
+
+        await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+        await screen.findByLabelText("Varyant Grubu");
+
+        await userEvent.click(container.querySelector(".ant-select-clear") as Element);
+
+        // Grup gittikten sonra kullanıcı barkodu yeniden yazıyor.
+        const barkodAlani = screen.getByLabelText("Barkod");
+        await userEvent.clear(barkodAlani);
+        await userEvent.type(barkodAlani, "99998888");
+
+        await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+        await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+        expect(updateProduct.mock.calls[0][1]).toMatchObject({
+          variant_group_id: null,
+          barcode: "99998888",
+        });
+      });
+
       it("Varyant sekmesine hiç dokunulmadan kaydedilince bu alanlar gövdeye hiç girmez", async () => {
         fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN_VARYANTLI);
         kurDuzenleme();
