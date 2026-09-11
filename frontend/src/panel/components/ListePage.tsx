@@ -31,11 +31,29 @@ export type ListePageProps<T> = {
   bosAciklama: string;
   bosAksiyon?: ReactNode;
   rowKey: (kayit: T) => string | number;
+  /**
+   * AntD `Table.onChange` kanalının HAM geçişi (sayfalama hariç — o zaten
+   * `sayfaDegisti` ile taşınıyor). `ListePage` sıralama/filtre semantiğine
+   * karar vermez: hangi kolonun sıralanabilir/filtrelenebilir olduğu
+   * tüketicinin `kolonlar` tanımından (`sorter`/`filters`) gelir, burada
+   * yalnız olay dışarı aktarılır. Opsiyonel — verilmezse davranış hiç
+   * değişmez (geriye dönük uyum): AntD `onChange` prop'u `undefined`
+   * geçtiğinde no-op'tur.
+   *
+   * Tek prop'ta (ayrı `siralamaDegisti`/`filtreDegisti` yerine) tutulmasının
+   * nedeni: AntD zaten sorter+filters+extra'yı TEK olayda birlikte veriyor;
+   * burada onu yeniden modelleyip iki prop'a bölmek yüzeyi büyütür ve
+   * `ListePage`'e (kullanmadığı) bir normalize sözleşmesi yükler. Tüketici
+   * kendi normalize ettiği alanları kendi sorgusuna çevirir (bkz.
+   * `UrunListesi`).
+   */
+  tabloDegisti?: TableProps<T>["onChange"];
 };
 
 export function ListePage<T extends object>({
   baslik, aksiyonlar, aramaDegeri, aramaDegisti, kolonlar, veri, yukleniyor,
   hata, hataAksiyon, toplam, sayfa, sayfaBoyutu, sayfaDegisti, bosBaslik, bosAciklama, bosAksiyon, rowKey,
+  tabloDegisti,
 }: ListePageProps<T>) {
   const bos = !hata && !yukleniyor && (veri?.length ?? 0) === 0;
 
@@ -70,6 +88,7 @@ export function ListePage<T extends object>({
             loading={yukleniyor}
             rowKey={rowKey}
             scroll={{ x: "max-content" }}
+            onChange={tabloDegisti}
             pagination={{
               current: sayfa,
               pageSize: sayfaBoyutu,

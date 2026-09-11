@@ -11,11 +11,18 @@ import { formatTL } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import type { ProductSearchOut } from "@/types";
 
+/** `AdminProductQuery.sort` ile birebir — bkz. `backend/api/routers/store.py` `list_products_admin`. */
+type UrunSiralamaAlani = "title" | "price" | "stock" | "created_at";
+const SIRALANABILIR_ALANLAR: readonly UrunSiralamaAlani[] = ["title", "price", "stock", "created_at"];
+
+type UrunSiralama = { alan: UrunSiralamaAlani; yon: "asc" | "desc" } | undefined;
+
 export function UrunListesi() {
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
   const [tipAcik, setTipAcik] = useState(false);
+  const [siralama, setSiralama] = useState<UrunSiralama>(undefined);
   const navigate = useNavigate();
 
   // Girdi anında güncellenir (aramaDegeri); API'ye giden değer gecikmelidir —
@@ -30,6 +37,11 @@ export function UrunListesi() {
   // fetch/retry durumunda değil. Bkz. task-4-report.md "Düzeltme turu 2".
   const { data, isPending, isError, refetch } = useAdminProducts({
     q: gecikmisArama || undefined,
+    // Sıralama seçili değilken `sort`/`order` anahtarları hiç GÖNDERİLMEZ
+    // (`undefined` değerle değil) — backend zaten `created_at desc`
+    // varsayılanına düşüyor, ayrıca üçüncü tıklamada "sıralamayı kaldır"ın
+    // temiz bir karşılığı bu (bkz. `siralamaDegisti` aşağıda).
+    ...(siralama ? { sort: siralama.alan, order: siralama.yon } : {}),
     limit: boyut,
     offset: (sayfa - 1) * boyut,
   });
@@ -60,6 +72,10 @@ export function UrunListesi() {
         title: "Satış Fiyatı",
         dataIndex: "price",
         key: "price",
+        // Sıralanabilirlik kararı burada verilir — `ListePage` yalnız
+        // AntD'nin ürettiği olayı taşır, hangi kolonun sıralanabilir
+        // olduğuna karışmaz.
+        sorter: true,
         render: (v: string | number) => formatTL(v),
         onCell: satirTiklama,
       },
@@ -99,6 +115,25 @@ export function UrunListesi() {
     [navigate],
   );
 
+  // AntD `Table.onChange`'in HAM sorter'ını (`ascend`/`descend`) API'nin
+  // gerçek `order` sözleşmesine (`asc`/`desc`) çevirir. Yalnız bilinen bir
+  // alan + geçerli bir yön geldiğinde `siralama` kurulur; üçüncü tıklamada
+  // AntD `order`ı `undefined` yollar — o zaman sıralama tamamen kaldırılır
+  // (varsayılan `created_at desc`'e döner). Arama değişince sayfanın 1'e
+  // dönmesiyle AYNI emsal: sıralama da sonuç kümesinin SIRASINI değiştirir,
+  // kullanıcı sayfa 5'teyken yeni sırada o sayfa tutarsız/boş kalabilir.
+  const tabloDegisti: TableProps<ProductSearchOut>["onChange"] = (_sayfalama, _filtreler, sorter) => {
+    const tek = Array.isArray(sorter) ? sorter[0] : sorter;
+    const alan = tek?.columnKey ?? tek?.field;
+    const yon = tek?.order === "ascend" ? "asc" : tek?.order === "descend" ? "desc" : undefined;
+    setSiralama(
+      yon && typeof alan === "string" && (SIRALANABILIR_ALANLAR as readonly string[]).includes(alan)
+        ? { alan: alan as UrunSiralamaAlani, yon }
+        : undefined,
+    );
+    setSayfa(1);
+  };
+
   return (
     <>
       <ListePage<ProductSearchOut>
@@ -114,6 +149,7 @@ export function UrunListesi() {
           setSayfa(1);
         }}
         kolonlar={kolonlar}
+        tabloDegisti={tabloDegisti}
         veri={satirlar}
         yukleniyor={isPending}
         hata={isError ? "Ürünler yüklenemedi." : null}

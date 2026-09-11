@@ -183,4 +183,51 @@ describe("UrunListesi", () => {
       expect(navigateMock).not.toHaveBeenCalled();
     });
   });
+
+  describe("sıralama", () => {
+    beforeEach(() => {
+      mockUseAdminProducts.mockReturnValue({
+        data: { items: [{ id: 7, title: "9. Sınıf Matematik Soru Bankası", price: 250, stock: 50 }], total: 1 },
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAdminProducts>);
+    });
+
+    it("satış fiyatı başlığına tıklanınca useAdminProducts gerçek alan adlarıyla (sort/order) çağrılır ve sayfa 1'e döner", async () => {
+      kur();
+
+      await userEvent.click(screen.getByRole("columnheader", { name: "Satış Fiyatı" }));
+
+      expect(mockUseAdminProducts.mock.calls.at(-1)?.[0]).toMatchObject({
+        sort: "price",
+        order: "asc",
+        offset: 0,
+      });
+    });
+
+    it("aynı başlığa ikinci kez tıklanınca sıralama yönü tersine döner", async () => {
+      kur();
+
+      await userEvent.click(screen.getByRole("columnheader", { name: "Satış Fiyatı" }));
+      await userEvent.click(screen.getByRole("columnheader", { name: "Satış Fiyatı" }));
+
+      expect(mockUseAdminProducts.mock.calls.at(-1)?.[0]).toMatchObject({
+        sort: "price",
+        order: "desc",
+      });
+    });
+
+    it("üçüncü kez tıklanınca sıralama kaldırılır (varsayılana döner)", async () => {
+      kur();
+
+      await userEvent.click(screen.getByRole("columnheader", { name: "Satış Fiyatı" }));
+      await userEvent.click(screen.getByRole("columnheader", { name: "Satış Fiyatı" }));
+      await userEvent.click(screen.getByRole("columnheader", { name: "Satış Fiyatı" }));
+
+      expect(mockUseAdminProducts.mock.calls.at(-1)?.[0]).not.toHaveProperty("sort");
+      expect(mockUseAdminProducts.mock.calls.at(-1)?.[0]).not.toHaveProperty("order");
+    });
+  });
 });
