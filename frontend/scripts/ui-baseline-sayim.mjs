@@ -365,6 +365,7 @@ export const OLCUM_TABANI = [
   "src/panel/components/FormPage.tsx",
   "src/panel/components/ListePage.tsx",
   "src/panel/components/Matris.tsx",
+  "src/panel/components/MedyaSekmesi.tsx",
   "src/panel/components/TipSecimi.tsx",
   "src/panel/components/YanPencere.tsx",
   // Müşteriler modülünün ilk ekranı. Test dosyaları (`musteriListesi.test.tsx`,
