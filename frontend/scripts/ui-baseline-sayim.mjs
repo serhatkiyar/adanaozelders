@@ -387,6 +387,13 @@ export const OLCUM_TABANI = [
   // `uiBaseline.test.ts::modalDurumu` yalnız AYNI DOSYADAKİ yerel bileşenleri
   // izliyor, cross-file akış görünmez — bkz. o dosyadaki dosya başı notu.
   "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
+  // Ürün listesi araç çubuğunun yüzeyleri (ikas referansı §3): filtre
+  // çekmecesi, kolon ayarı, CSV içe aktarma ve ızgara görünümü. Ayrı dosya
+  // olma gerekçesi `UrunOlusturCekmecesi.tsx` ile AYNI (üstteki not):
+  // `<Drawer open={filtreAcik}>` `UrunListesi.tsx`e yazılsaydı `modalDurumu`
+  // kırılırdı. Saf AntD + bir tek `hidden` dosya girdisi (`aria-label`lı,
+  // dolayısıyla `olcumDisiKontrol`) — dört metriğe katkısı sıfır.
+  "src/panel/pages/urunler/UrunAracCubugu.tsx",
 ];
 
 /**

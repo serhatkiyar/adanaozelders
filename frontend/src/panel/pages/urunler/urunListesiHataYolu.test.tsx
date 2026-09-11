@@ -33,6 +33,16 @@ vi.mock("@/api/store", async (importOriginal) => {
     fetchCategories: vi.fn().mockResolvedValue([
       { id: 1, slug: "kirtasiye", name: "Kırtasiye", parent_id: null, sort_order: 0, is_active: true },
     ]),
+    // `fetchBookFacets` de aynı gerekçeyle taklit edilir: filtre çekmecesi
+    // (`UrunAracCubugu.tsx`) kapalıyken de mount olur ve yayınevi/yazar
+    // seçeneklerini bu uçtan çeker — bu dosyanın konusu ürün listesinin
+    // HATA yolu, künye facet'leri değil.
+    fetchBookFacets: vi
+      .fn()
+      .mockResolvedValue({ publisher: [], author: [], cover_type: [] }),
+    // Düşük stok eşiği de aynı gerekçeyle: envanter hücresi `/store/config`
+    // okur, konu o değil.
+    fetchStoreConfig: vi.fn().mockResolvedValue({ low_stock_threshold: 5 }),
   };
 });
 

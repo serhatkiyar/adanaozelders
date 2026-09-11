@@ -474,6 +474,12 @@ const KAPI_KAPSAMI = [
   // boş veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
   // `UrunListesi.tsx`) — `KONTROLSUZ_EKRANLAR`a değil kapıya girer.
   "src/panel/pages/siparisler/SiparisListesi.tsx",
+  // Ürün listesi araç çubuğunun yüzeyleri (filtre/kolon ayarı/içe aktarma
+  // çekmeceleri + ızgara görünümü). Propsuz mount olur: modülün ilk büyük
+  // harfli export'u `FiltreCekmecesi` ve kapalı çekmece gövdesini mount
+  // etmez — `UrunOlusturCekmecesi.tsx` ile aynı sınıf, aşağıda
+  // `KONTROLSUZ_EKRANLAR`'da "pencere-kabugu" olarak yazılı.
+  "src/panel/pages/urunler/UrunAracCubugu.tsx",
   "src/panel/pages/urunler/UrunFormu.tsx",
   "src/panel/pages/urunler/UrunListesi.tsx",
   "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
@@ -659,6 +665,10 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // kurulu, kapalıyken gövdeyi mount etmez — `YanPencere.tsx` ve
   // `VaryantPenceresi.tsx` ile BİREBİR aynı sınıf.
   "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx": "pencere-kabugu",
+  // Araç çubuğu yüzeyleri: kapıda mount edilen ilk export `FiltreCekmecesi`
+  // ve `acik` propu geçilmediği için AntD `Drawer` gövdeyi hiç mount etmez —
+  // `UrunOlusturCekmecesi.tsx`/`YanPencere.tsx` ile BİREBİR aynı sınıf.
+  "src/panel/pages/urunler/UrunAracCubugu.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/VaryantPenceresi.tsx": "pencere-kabugu",
 };
 

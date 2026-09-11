@@ -236,3 +236,28 @@ zemin **#F8FAFC**. Sağında ürün adı (14px/500/#121926, tek satır ellipsis)
 `Satış Kanalları`. Bizim backend'de ne alış fiyatı (`cost`/`purchase_price`
 alanı YOK) ne de satış kanalı kavramı var — boş ya da sahte değerle kolon
 açılmaz.
+
+### Ürün listesi — CANLI DOM ÖLÇÜMÜ (11 Eyl 2026, adanaozelders.myikas.com/admin/product)
+
+- Sider `aside` genişliği **224px**; içerik sütunu x=240'tan başlar, dolgu `0 24px`
+  (başlık satırı y=16, düğmeler 40px; başlık **20px/500/#121926**, 30px satır).
+- Araç çubuğu y=96 (başlık satırıyla arası 40px); arama **397×40** sabit; `Filtre`
+  aramanın 8px sağında. Tablo başlığı y=154 (araç çubuğuyla arası 16px).
+- Sağda: kolon ayarı düğmesi **42×42**, zemin **#F8FAFC**, kenarlık 0.8px #E3E8EF,
+  köşe 4 · 8px boşluk · görünüm anahtarı grubu: zemin #F8FAFC, kenarlık 0.8px
+  **#EEF2F6**, köşe 4, dolgu 4, aralık 6; anahtarlar 32×32, köşe 2, dolgu 8;
+  etkin #121926, etkin olmayan **#697586**.
+- Tablo `div` tabanlı (`datatable-*`): başlık satırı **40px**, zemin #EEF2F6,
+  köşe 4, yazı 14/500 **#4B5565**; veri hücresi dolgu **16px 12px**, satır 68px
+  (min 54); ad 14/500 #121926.
+- Alt bilgi **sticky (bottom)**, 72px yüksek, üst çizgi 0.8px #EEF2F6, beyaz zemin.
+- **Filtre bir ÇEKMECE DEĞİL**: düğmenin altında pencere, sol kenarı araç çubuğuyla
+  hizalı (x=247), **740px**, dolgu 16, köşe 8, kenarlık 0.8px #EEF2F6, gölge
+  `0 12px 16px -4px rgba(16,24,40,.08), 0 4px 6px -2px rgba(16,24,40,.03)`.
+  Boşken "Henüz filtre eklemediniz."; satır = `[alan 162px] [operatör] [değer] [çöp]`,
+  `+ Filtre Ekle` (14/500 aksan), sağ altta `Uygula` (80×40 birincil). Seçim
+  `Uygula` ile uygulanır. (Operatör seçicisi bizde kopyalanmadı: uçlar tam eşleşme.)
+- **Kolon ayarı da pencere**: düğmenin altında, her satır `⋮⋮ etiket … Switch`.
+  (Sürükleme tutamacı bizde kopyalanmadı: kolon sırası tercihi yok.)
+- **Izgara görünümü**: kart ≈238px, köşe 8, kare görsel alanı (#F8FAFC), ad
+  14/500, fiyat 14, altta kesik çizgi + `50 adet`.

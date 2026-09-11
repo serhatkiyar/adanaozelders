@@ -239,7 +239,9 @@ export function PanelShell() {
           </Sider>
         )}
         <Layout>
-          <Content style={{ padding: mobil ? 16 : 24 }}>
+          {/* Canlı ikas: içerik 0 24px yatay dolgu, başlık satırı y=16'dan
+              başlar (ölçüm 11 Eyl 2026). */}
+          <Content style={{ padding: mobil ? 16 : "16px 24px 0" }}>
             {/* ikas referansı §5/4: üst bar kaldırıldı, ama mobil çekmeceyi
                 açan TEK giriş (menü düğmesi) kalmalı — içeriğin üstünde, sol
                 üstte. */}

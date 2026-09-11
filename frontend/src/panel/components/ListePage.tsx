@@ -6,11 +6,12 @@ import {
   SettingOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
-import { Alert, Button, Flex, Input, Pagination, Select, Table, theme as antdTheme, Tooltip, Typography } from "antd";
+import { Alert, Badge, Button, Flex, Input, Pagination, Popover, Select, Spin, Table, theme as antdTheme, Tooltip, Typography } from "antd";
 import type { TableProps } from "antd";
 import type { CSSProperties, ReactNode } from "react";
 import { useMemo } from "react";
 import { BosDurumu, HataDurumu } from "@/panel/components/Durum";
+import { useMobil } from "@/hooks/useMedyaSorgusu";
 
 /**
  * ikas referansı §7 "Liste — İKİNCİ TUR ÖLÇÜM": başlık hücresi dolgusu
@@ -89,6 +90,24 @@ export type ListePageProps<T> = {
    * gerekçeyle burada da geçerli.
    */
   filtreTiklandi?: () => void;
+  /** Uygulanan filtre sayısı — `Filtre` düğmesine rozet olarak basılır (0/undefined: rozet yok). */
+  filtreSayisi?: number;
+  /**
+   * Canlı ikas: `Filtre` düğmesi sağdan çekmece DEĞİL, düğmenin ALTINDA
+   * açılan bir pencere (740px, 16px dolgu, 8px köşe) açar. İçerik tüketiciden
+   * gelir; açık/kapalı durumu da tüketicide yaşar (`filtreAcik` +
+   * `filtreAcikDegisti`). `filtreTiklandi` ile birlikte verilirse tıklama
+   * yine tüketiciye gider, pencereyi açmak tüketicinin işidir.
+   */
+  filtreIcerigi?: ReactNode;
+  filtreAcik?: boolean;
+  filtreAcikDegisti?: (acik: boolean) => void;
+  /** Kolon ayarı düğmesinin altında açılan pencere (ikas: etiket + anahtar listesi). */
+  kolonAyariIcerigi?: ReactNode;
+  kolonAyariAcik?: boolean;
+  kolonAyariAcikDegisti?: (acik: boolean) => void;
+  /** Etkin görünüm — anahtar grubunda etkin düğme koyu, diğeri gri basılır. */
+  gorunum?: "liste" | "izgara";
   /** ikas referansı §3 sağdaki üç ikon düğmesinden "kolon ayarı". Opsiyonel — bkz. `filtreTiklandi` gerekçesi. */
   kolonAyariTiklandi?: () => void;
   /** ikas referansı §3 — "liste görünümü". Opsiyonel — bkz. `filtreTiklandi` gerekçesi. */
@@ -106,6 +125,18 @@ export type ListePageProps<T> = {
    */
   satirSecimi?: TableProps<T>["rowSelection"];
   kolonlar: TableProps<T>["columns"];
+  /**
+   * Tablonun YERİNE çizilecek gövde (ör. ızgara/kart görünümü). Verilirse
+   * `kolonlar`/`satirSecimi`/`tabloDegisti` KULLANILMAZ; başlık satırı, araç
+   * çubuğu, uyarı şeridi, hata/boş durumları ve "Satır Adedi:" alt bilgisi
+   * aynen kalır — yani görünüm değişir, iskelet değişmez.
+   *
+   * Bu prop OLMADAN ızgara görünümü tabloyu taklit etmek zorunda kalıyordu
+   * (tek kolon + `display:none` başlık + veriyi tek satıra kırpmak); o çözüm
+   * çalışıyordu ama `rowKey`, sıralama ve boş durum mantığıyla aynı yerde
+   * yaşadığı için kırılgandı. Gövdeyi devretmek doğru sınır.
+   */
+  govde?: ReactNode;
   veri: T[] | undefined;
   yukleniyor: boolean;
   /**
@@ -179,15 +210,37 @@ export type ListePageProps<T> = {
 
 export function ListePage<T extends object>({
   baslik, aksiyonlar, detayliBilgiIpucu, aramaDegeri, aramaDegisti,
-  filtreTiklandi, kolonAyariTiklandi, listeGorunumuTiklandi, izgaraGorunumuTiklandi,
-  satirSecimi, kolonlar, veri, yukleniyor,
+  filtreTiklandi, filtreSayisi, filtreIcerigi, filtreAcik, filtreAcikDegisti,
+  kolonAyariTiklandi, kolonAyariIcerigi, kolonAyariAcik, kolonAyariAcikDegisti, gorunum = "liste",
+  listeGorunumuTiklandi, izgaraGorunumuTiklandi,
+  satirSecimi, kolonlar, govde, veri, yukleniyor,
   hata, hataAksiyon, uyari, toplam, sayfa, sayfaBoyutu, sayfaDegisti, birimEtiket = "kayıt",
   bosBaslik, bosAciklama, bosAksiyon, rowKey,
   tabloDegisti,
 }: ListePageProps<T>) {
   const { token } = antdTheme.useToken();
+  const mobil = useMobil();
   const bos = !hata && !yukleniyor && (veri?.length ?? 0) === 0;
-  const gorunumDugmesiVar = Boolean(kolonAyariTiklandi || listeGorunumuTiklandi || izgaraGorunumuTiklandi);
+  const kolonAyariVar = Boolean(kolonAyariTiklandi || kolonAyariIcerigi);
+  const gorunumDugmesiVar = Boolean(kolonAyariVar || listeGorunumuTiklandi || izgaraGorunumuTiklandi);
+  const filtreVar = Boolean(filtreTiklandi || filtreIcerigi);
+  // Canlı ikas pencere kabuğu (filtre + kolon ayarı): 8px köşe, 0.8px
+  // #EEF2F6 kenarlık, iki katmanlı gölge, 16px iç dolgu.
+  const pencereStili: CSSProperties = {
+    borderRadius: 8,
+    border: `1px solid ${token.colorBorderSecondary}`,
+    boxShadow: "0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03)",
+    padding: 16,
+  };
+  // Görünüm anahtarı (liste/ızgara): 32×32, 2px köşe, dolgu 8; etkin koyu,
+  // etkin olmayan üçüncül gri — canlı ölçüm.
+  const anahtarStili = (etkin: boolean): CSSProperties => ({
+    width: 32,
+    height: 32,
+    padding: 8,
+    borderRadius: 2,
+    color: etkin ? token.colorText : token.colorTextTertiary,
+  });
   const olculenKolonlar = useMemo(() => basligaOlcumStiliEkle(kolonlar), [kolonlar]);
 
   // Tüketicinin geçtiği `sayfaBoyutu` sabit listede yoksa (ör. 45) seçiciye
@@ -197,10 +250,15 @@ export function ListePage<T extends object>({
     : [...SABIT_SAYFA_BOYUTU_SECENEKLERI, sayfaBoyutu].sort((a, b) => a - b);
 
   return (
-    <Flex vertical gap={16}>
-      <Flex align="center" justify="space-between" wrap gap={12}>
-        <Flex align="center" gap={8}>
-          <Typography.Title level={3} style={{ margin: 0 }}>
+    <Flex vertical gap={0}>
+      {/* Canlı ikas başlık satırı: 40px yüksek (düğmelerle aynı), başlık
+          20px/500, satır ile araç çubuğu arası 40px. */}
+      <Flex align="center" justify="space-between" wrap gap={12} style={{ minHeight: 40, marginBottom: 40 }}>
+        <Flex align="center" gap={6}>
+          <Typography.Title
+            level={3}
+            style={{ margin: 0, fontSize: 20, fontWeight: 500, lineHeight: "30px" }}
+          >
             {baslik}
           </Typography.Title>
           {detayliBilgiIpucu ? (
@@ -223,15 +281,9 @@ export function ListePage<T extends object>({
           `border-bottom: 0.8px solid transparent`) — `theme.ts` →
           `components.Table.borderColor: "transparent"` bunu karşılıyor,
           burada ayrıca bir stil eklenmedi. */}
-      <div
-        style={{
-          background: token.colorBgContainer,
-          borderRadius: token.borderRadiusLG,
-          padding: token.paddingLG,
-        }}
-      >
+      <div>
         <Flex justify="space-between" align="center" wrap gap={12} style={{ marginBottom: 16 }}>
-          <Flex gap={8} wrap>
+          <Flex gap={8} wrap style={{ flex: mobil ? "1 1 100%" : undefined }}>
             {/* `Input.Search` DEĞİL: onSearch verilmediği için tıklanabilir ama
                 hiçbir şey yapmayan bir büyüteç düğmesi basıyordu. Etkisi olmayan
                 kontrol kullanıcıyı yanıltır (aynı gerekçeyle VaryantPenceresi'nden
@@ -248,52 +300,114 @@ export function ListePage<T extends object>({
               prefix={<SearchOutlined style={{ color: token.colorTextQuaternary }} />}
               value={aramaDegeri}
               onChange={(e) => aramaDegisti(e.target.value)}
-              style={{ maxWidth: 320 }}
+              // Canlı ikas: 397px SABİT genişlik (esnek değil); mobilde tam satır.
+              style={{ width: mobil ? "100%" : 397 }}
             />
             {/* ikas referansı §3: arama yanında `Filtre` düğmesi — çekmecenin
                 İÇERİĞİ kapsam dışı (YAGNI, spec §5). Yalnız tıklama dışarı
                 taşınır; tüketici vermezse düğme hiç yok (ölü düğme yok). */}
-            {filtreTiklandi ? (
+            {filtreVar ? (
               // İkon `aria-hidden`: AntD icon'un varsayılan `aria-label`ı
               // ("filter") düğmenin görünür metniyle ("Filtre") birleşip
               // erişilebilir adı "filter Filtre" yapardı — dekoratif ikon
               // metnin ÖNÜNE geçmesin diye gizlendi.
-              <Button icon={<FilterOutlined aria-hidden="true" />} onClick={filtreTiklandi}>
-                Filtre
-              </Button>
+              // Canlı ikas: pencerenin sol kenarı ARAÇ ÇUBUĞUNUN sol kenarıyla
+              // hizalı (x=247 ↔ içerik 264), düğmeyle değil. Masaüstünde düğme
+              // aramanın (397px) 8px sağında durduğu için pencere 405px sola
+              // kaydırılır; mobilde düğme kendi satırına iner, kaydırma yok.
+              // `autoAdjustOverflow` kapalı: 740px pencere sağa sığmadığında
+              // AntD'nin ters çevirmesi pencereyi ekran dışına (x<0) atıyordu.
+              <Popover
+                open={filtreIcerigi ? Boolean(filtreAcik) : false}
+                onOpenChange={filtreAcikDegisti}
+                trigger="click"
+                placement="bottomLeft"
+                arrow={false}
+                autoAdjustOverflow={false}
+                align={{ offset: [mobil ? 0 : -405, 4] }}
+                content={filtreIcerigi}
+                styles={{
+                  body: {
+                    ...pencereStili,
+                    width: mobil ? "calc(100vw - 32px)" : 740,
+                    maxWidth: "calc(100vw - 32px)",
+                  },
+                }}
+              >
+                <Badge count={filtreSayisi ?? 0} size="small" color={token.colorPrimary}>
+                  <Button
+                    icon={<FilterOutlined aria-hidden="true" />}
+                    aria-expanded={filtreIcerigi ? Boolean(filtreAcik) : undefined}
+                    onClick={filtreTiklandi}
+                  >
+                    Filtre
+                  </Button>
+                </Badge>
+              </Popover>
             ) : null}
           </Flex>
           {gorunumDugmesiVar ? (
-            <Flex gap={4}>
-              {kolonAyariTiklandi ? (
-                <Tooltip title="Kolon Ayarı">
-                  <Button
-                    type="text"
-                    icon={<SettingOutlined />}
-                    aria-label="Kolon Ayarı"
-                    onClick={kolonAyariTiklandi}
-                  />
-                </Tooltip>
+            <Flex gap={8} align="center">
+              {kolonAyariVar ? (
+                // Canlı ikas: 42×42, #F8FAFC zemin, 0.8px #E3E8EF kenarlık,
+                // 4px köşe; altında etiket + anahtar listesi penceresi.
+                <Popover
+                  open={kolonAyariIcerigi ? Boolean(kolonAyariAcik) : false}
+                  onOpenChange={kolonAyariAcikDegisti}
+                  trigger="click"
+                  placement="bottomRight"
+                  arrow={false}
+                  content={kolonAyariIcerigi}
+                  styles={{ body: pencereStili }}
+                >
+                  <Tooltip title="Kolon Ayarı">
+                    <Button
+                      icon={<SettingOutlined />}
+                      aria-label="Kolon Ayarı"
+                      aria-expanded={kolonAyariIcerigi ? Boolean(kolonAyariAcik) : undefined}
+                      onClick={kolonAyariTiklandi}
+                      style={{ width: 42, height: 42, padding: 0, background: token.colorBgLayout }}
+                    />
+                  </Tooltip>
+                </Popover>
               ) : null}
-              {listeGorunumuTiklandi ? (
-                <Tooltip title="Liste Görünümü">
-                  <Button
-                    type="text"
-                    icon={<UnorderedListOutlined />}
-                    aria-label="Liste Görünümü"
-                    onClick={listeGorunumuTiklandi}
-                  />
-                </Tooltip>
-              ) : null}
-              {izgaraGorunumuTiklandi ? (
-                <Tooltip title="Izgara Görünümü">
-                  <Button
-                    type="text"
-                    icon={<AppstoreOutlined />}
-                    aria-label="Izgara Görünümü"
-                    onClick={izgaraGorunumuTiklandi}
-                  />
-                </Tooltip>
+              {listeGorunumuTiklandi || izgaraGorunumuTiklandi ? (
+                // Anahtar grubu: #F8FAFC zemin, 0.8px #EEF2F6 kenarlık, 4px
+                // köşe, 4px dolgu, 6px aralık (canlı ölçüm).
+                <Flex
+                  gap={6}
+                  style={{
+                    background: token.colorBgLayout,
+                    border: `1px solid ${token.colorBorderSecondary}`,
+                    borderRadius: 4,
+                    padding: 4,
+                  }}
+                >
+                  {listeGorunumuTiklandi ? (
+                    <Tooltip title="Liste Görünümü">
+                      <Button
+                        type="text"
+                        icon={<UnorderedListOutlined />}
+                        aria-label="Liste Görünümü"
+                        aria-pressed={gorunum === "liste"}
+                        onClick={listeGorunumuTiklandi}
+                        style={anahtarStili(gorunum === "liste")}
+                      />
+                    </Tooltip>
+                  ) : null}
+                  {izgaraGorunumuTiklandi ? (
+                    <Tooltip title="Izgara Görünümü">
+                      <Button
+                        type="text"
+                        icon={<AppstoreOutlined />}
+                        aria-label="Izgara Görünümü"
+                        aria-pressed={gorunum === "izgara"}
+                        onClick={izgaraGorunumuTiklandi}
+                        style={anahtarStili(gorunum === "izgara")}
+                      />
+                    </Tooltip>
+                  ) : null}
+                </Flex>
               ) : null}
             </Flex>
           ) : null}
@@ -330,16 +444,23 @@ export function ListePage<T extends object>({
                 style={{ marginBottom: 16 }}
               />
             ) : null}
-            <Table<T>
-              columns={olculenKolonlar}
-              dataSource={veri}
-              loading={yukleniyor}
-              rowKey={rowKey}
-              rowSelection={satirSecimi}
-              scroll={{ x: "max-content" }}
-              onChange={tabloDegisti}
-              pagination={false}
-            />
+            {govde ? (
+              // Devredilen gövde: yükleme göstergesi `Table`in kendi
+              // `loading`i yerine `Spin` ile verilir (aynı gecikme/erişim
+              // davranışı, tabloya bağımlı değil).
+              <Spin spinning={yukleniyor}>{govde}</Spin>
+            ) : (
+              <Table<T>
+                columns={olculenKolonlar}
+                dataSource={veri}
+                loading={yukleniyor}
+                rowKey={rowKey}
+                rowSelection={satirSecimi}
+                scroll={{ x: "max-content" }}
+                onChange={tabloDegisti}
+                pagination={false}
+              />
+            )}
             {/* ikas referansı §3 alt bilgi: solda "Satır Adedi:" + boyut
                 seçici, sağda `X - Y / Z <birim>` aralık/toplam + sayfalayıcı.
                 AntD `Table`in varsayılan `pagination.showSizeChanger`
@@ -348,7 +469,23 @@ export function ListePage<T extends object>({
                 bileşeni burada elle, ikas'ın iki-uçlu yerleşiminde kuruldu.
                 Sayfa TIKLAMA/geri çağrı sözleşmesi (`sayfaDegisti(sayfa,
                 boyut)`) DEĞİŞMEDİ — yalnız yerleşim değişti. */}
-            <Flex justify="space-between" align="center" wrap gap={12} style={{ marginTop: 16 }}>
+            {/* Canlı ikas alt bilgi: görünüm alanının ALTINA YAPIŞIK, 72px
+                yüksek, üstte 0.8px #EEF2F6 çizgi, beyaz zemin — liste uzunken
+                sayfalayıcı hep görünür. */}
+            <Flex
+              justify="space-between"
+              align="center"
+              wrap
+              gap={12}
+              style={{
+                position: "sticky",
+                bottom: 0,
+                minHeight: 72,
+                marginTop: 16,
+                background: token.colorBgContainer,
+                borderTop: `1px solid ${token.colorBorderSecondary}`,
+              }}
+            >
               <Flex align="center" gap={8}>
                 <Typography.Text type="secondary">Satır Adedi:</Typography.Text>
                 <Select<number>

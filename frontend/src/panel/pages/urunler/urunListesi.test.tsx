@@ -4,9 +4,17 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PanelProvider } from "@/panel/PanelProvider";
 import { UrunListesi } from "@/panel/pages/urunler/UrunListesi";
-import { useAdminProducts, useCategories } from "@/hooks/useStore";
+import {
+  useAdminProducts,
+  useBookFacets,
+  useBulkImportProducts,
+  useCategories,
+  useStoreConfig,
+} from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
+import { useAuthStore } from "@/store/authStore";
+import { TAM_ADMIN_IZINLERI } from "@/test-utils/adminIzinleri";
 
 // `useCategories` burada mocklanıyor çünkü `UrunListesi` artık HER ZAMAN
 // (kapalıyken de) `UrunOlusturCekmecesi`yi mount ediyor — o da kategori
@@ -14,9 +22,20 @@ import { ROUTES } from "@/lib/routes";
 // dosyanın başı). Varsayılan dönüş boş olmayan bir liste: "kategori yok" boş
 // durumunu ayrıca sınayan bir test yoksa bu dosyanın testleri onunla
 // ilgilenmiyor (bkz. `urunOlusturCekmecesi.test.tsx`).
+// `useBookFacets` / `useBulkImportProducts`: araç çubuğu yüzeyleri
+// (`UrunAracCubugu.tsx`) kapalıyken de mount edilir — filtre çekmecesi
+// yayınevi/yazar seçeneklerini `/store/book-facets`ten, içe aktarma
+// çekmecesi de toplu yükleme mutation'ını oradan alır. Bu dosya hook
+// katmanını tamamen taklit ettiği için ikisi de burada tanımlı olmak
+// zorunda (yoksa `undefined is not a function`).
 vi.mock("@/hooks/useStore", () => ({
   useAdminProducts: vi.fn(),
   useCategories: vi.fn(),
+  useBookFacets: vi.fn(),
+  useBulkImportProducts: vi.fn(),
+  // Düşük stok eşiği (`/store/config`) — envanter hücresi okur.
+  useStoreConfig: vi.fn(),
+  useInvalidateAdminStore: () => vi.fn(),
 }));
 
 const navigateMock = vi.fn();
@@ -28,6 +47,9 @@ vi.mock("react-router-dom", async (importOriginal) => {
 
 const mockUseAdminProducts = vi.mocked(useAdminProducts);
 const mockUseCategories = vi.mocked(useCategories);
+const mockUseBookFacets = vi.mocked(useBookFacets);
+const mockUseBulkImport = vi.mocked(useBulkImportProducts);
+const mockUseStoreConfig = vi.mocked(useStoreConfig);
 
 function kur() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -49,6 +71,25 @@ describe("UrunListesi", () => {
       data: [{ id: 1, slug: "kirtasiye", name: "Kırtasiye", parent_id: null, sort_order: 0, is_active: true }],
       isPending: false,
     } as unknown as ReturnType<typeof useCategories>);
+    mockUseBookFacets.mockReturnValue({
+      data: { publisher: [], author: [], cover_type: [] },
+      isPending: false,
+    } as unknown as ReturnType<typeof useBookFacets>);
+    mockUseBulkImport.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useBulkImportProducts>);
+    mockUseStoreConfig.mockReturnValue({
+      data: { low_stock_threshold: 5 },
+      isPending: false,
+    } as unknown as ReturnType<typeof useStoreConfig>);
+    // "Ürün Ekle" / satır mutasyonları `products.manage` iznine bağlı —
+    // yetkili oturum kurulmazsa düğme hiç render edilmez.
+    useAuthStore.setState({
+      token: "test-token",
+      isAuthenticated: true,
+      user: { id: 1, role_id: 1, admin_permissions: [...TAM_ADMIN_IZINLERI] } as never,
+    });
   });
 
   it("ürün adını ve fiyatını listeler", () => {

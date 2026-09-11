@@ -60,7 +60,9 @@ const GEREKCELI = [
   // bu satırın KENDİSİ hâlâ gerekçeli: `import.meta.glob` burada testin
   // KONUSUDUR. (Önceki kaydırma: 685 → 701, FormPage/TipSecimi'nin TOPLAMA
   // evresinde statik import edilmesi.)
-  "src/__guards__/calismaZamaniKapisi.test.tsx:753 /src/**/*.tsx",
+  // 768: `UrunAracCubugu.tsx` kapı kayıtları (KAPI_KAPSAMI +
+  // KONTROLSUZ_EKRANLAR) satırı 753'ten 768'e kaydırdı.
+  "src/__guards__/calismaZamaniKapisi.test.tsx:768 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

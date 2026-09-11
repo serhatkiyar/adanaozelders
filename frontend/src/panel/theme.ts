@@ -55,6 +55,15 @@ const MARKA_USTU_YAZI = "#2B1000"; // index.css → --marka-fg: 43 16 0
  */
 const MENU_YAZI = "#ECECED";
 
+/**
+ * Bağlantı metni (ör. filtre penceresindeki "Filtre Ekle") — ikas'ta aksan
+ * rengiyle basılır; bizde aksanın METİN varyantı `index.css` → `--marka-metin`
+ * (#96430A, beyazda 6,77 kontrast). Parlak `--marka` metin olarak
+ * kullanılamaz (2,1), o yüzden düğme dolgusuyla aynı değer değil.
+ */
+const MARKA_METIN = "#96430A"; // index.css → --marka-metin: 150 67 10
+const MARKA_METIN_HOVER = "#7C3708"; // index.css → --marka-metin-hover: 124 55 8
+
 /** Panelin TEK renk/ölçü kaynağı. Başka dosyada renk sabiti yazılmaz. */
 export const panelTheme: ThemeConfig = {
   token: {
@@ -64,8 +73,18 @@ export const panelTheme: ThemeConfig = {
     controlHeight: 40,
     fontSize: 14,
     colorBorder: "#E3E8EF",
+    // Canlı ikas ürün ekranından ölçüldü (11 Eyl 2026, getComputedStyle):
+    // ikincil ayırıcı #EEF2F6 (alt bilgi üst çizgisi, görünüm anahtarı grubu
+    // kenarlığı, filtre penceresi kenarlığı), hafif zemin #F8FAFC (kolon
+    // ayarı düğmesi, görünüm anahtarı grubu, görselsiz ürün karesi), üçüncül
+    // yazı #697586 (etkin olmayan görünüm anahtarı).
+    colorBorderSecondary: "#EEF2F6",
+    colorBgLayout: "#F8FAFC",
+    colorTextTertiary: "#697586",
     colorText: "#121926",
     colorTextSecondary: "#4B5565",
+    colorLink: MARKA_METIN,
+    colorLinkHover: MARKA_METIN_HOVER,
     fontFamily:
       'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
@@ -117,8 +136,8 @@ export const panelTheme: ThemeConfig = {
       // sağlıyor, satır ayırıcısı `border-bottom: 0.8px solid transparent`) —
       // bu yüzden tek token'la ikisi birden kapatılıyor.
       borderColor: "transparent",
-      // Satır/tablo köşe yarıçapı 0 — tablo bir kartın içinde değil.
-      headerBorderRadius: 0,
+      // Başlık satırı köşesi 4px — canlı ikas ölçümü (11 Eyl 2026).
+      headerBorderRadius: 4,
       // Veri hücresi dolgusu: satır yüksekliği (ölçülen 69px) BURADAN,
       // sabit bir yükseklik token'ından DEĞİL doğuyor (ikas'ta da öyle).
       // Başlık hücresinin dolgusu/yüksekliği/`fontWeight`ı farklı (`0 12px`,

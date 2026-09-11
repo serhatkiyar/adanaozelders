@@ -392,7 +392,9 @@ describe("ListePage", () => {
         headerBg: "#EEF2F6",
         headerColor: "#4B5565",
         borderColor: "transparent",
-        headerBorderRadius: 0,
+        // 4: canlı ikas başlık satırı köşesi (11 Eyl 2026 ölçümü; önceki 0
+        // ilk tur tahminiydi).
+        headerBorderRadius: 4,
         cellPaddingBlock: 16,
         cellPaddingInline: 12,
       });
