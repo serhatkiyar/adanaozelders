@@ -1,13 +1,62 @@
-import { Alert, Card, Flex, Input, Table, Typography } from "antd";
+import {
+  AppstoreOutlined,
+  FilterOutlined,
+  InfoCircleOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  UnorderedListOutlined,
+} from "@ant-design/icons";
+import { Alert, Button, Flex, Input, Pagination, Select, Table, theme as antdTheme, Tooltip, Typography } from "antd";
 import type { TableProps } from "antd";
 import type { ReactNode } from "react";
 import { BosDurumu, HataDurumu } from "@/panel/components/Durum";
 
+/**
+ * Sayfa boyutu seçicide her zaman görünecek sabit seçenekler — ikas'ın
+ * "Satır Adedi:" seçicisiyle aynı fikir. Tüketicinin o an geçtiği
+ * `sayfaBoyutu` bu listede yoksa (ör. 45) seçili değer kaybolmasın diye
+ * render sırasında listeye eklenir (bkz. bileşen gövdesi).
+ */
+const SABIT_SAYFA_BOYUTU_SECENEKLERI = [10, 20, 50, 100];
+
 export type ListePageProps<T> = {
   baslik: string;
   aksiyonlar?: ReactNode;
+  /**
+   * ikas referansı §2: başlığın yanında bir bilgi ikonu ("Detaylı Bilgi")
+   * duruyor. Bizde karşılığı olan bir yardım içeriği yok — bu yüzden ikon
+   * OPSİYONEL: yalnız tüketici gerçek bir ipucu metni verirse çıkar,
+   * uydurma "Detaylı Bilgi" içeriği basılmaz (15 modülün 3'ü şu an bunu
+   * vermiyor, davranış aynen sürer).
+   */
+  detayliBilgiIpucu?: ReactNode;
   aramaDegeri: string;
   aramaDegisti: (v: string) => void;
+  /**
+   * ikas referansı §3: aramanın yanında ikonlu/outline bir `Filtre`
+   * düğmesi var. Çekmecenin İÇERİĞİ bu paketin kapsamı DIŞINDA (YAGNI,
+   * spec §5) — bu yüzden `ListePage` filtreyi KENDİSİ açmaz, yalnız
+   * tıklamayı dışarı taşır. Verilmezse düğme hiç render edilmez: "tıklanan
+   * ama etkisi olmayan kontrol" (bkz. `Input.Search` yorumu aşağıda) aynı
+   * gerekçeyle burada da geçerli.
+   */
+  filtreTiklandi?: () => void;
+  /** ikas referansı §3 sağdaki üç ikon düğmesinden "kolon ayarı". Opsiyonel — bkz. `filtreTiklandi` gerekçesi. */
+  kolonAyariTiklandi?: () => void;
+  /** ikas referansı §3 — "liste görünümü". Opsiyonel — bkz. `filtreTiklandi` gerekçesi. */
+  listeGorunumuTiklandi?: () => void;
+  /** ikas referansı §3 — "ızgara görünümü". Opsiyonel — bkz. `filtreTiklandi` gerekçesi. */
+  izgaraGorunumuTiklandi?: () => void;
+  /**
+   * ikas referansı §3: ilk kolonda satır seçimi checkbox'ı, başlıkta
+   * tümünü seç. AntD'nin kendi `rowSelection` şeklini AYNEN taşır —
+   * `tabloDegisti`nin AntD `onChange`i taşıma gerekçesiyle aynı: AntD zaten
+   * seçili anahtarlar + değişim olayını tek nesnede veriyor, burada yeniden
+   * modellemek yüzeyi büyütür. Opsiyonel — verilmezse `Table`e
+   * `rowSelection={undefined}` gider, checkbox hiç çıkmaz (bugünkü
+   * davranış: 15 modülün hiçbiri şu an satır seçimi kullanmıyor).
+   */
+  satirSecimi?: TableProps<T>["rowSelection"];
   kolonlar: TableProps<T>["columns"];
   veri: T[] | undefined;
   yukleniyor: boolean;
@@ -50,6 +99,13 @@ export type ListePageProps<T> = {
   sayfa: number;
   sayfaBoyutu: number;
   sayfaDegisti: (sayfa: number, boyut: number) => void;
+  /**
+   * ikas referansı §3 alt bilgi: `1 - 1 / 1 Ürün` — birim tüketiciye göre
+   * değişir (Ürün/Sipariş/Müşteri). `ListePage` bir birim İCAT ETMEZ,
+   * varsayılanı nötr `"kayıt"` (bugüne kadarki sabit metinle aynı) —
+   * opsiyonel, verilmezse davranış hiç değişmez.
+   */
+  birimEtiket?: string;
   bosBaslik: string;
   bosAciklama: string;
   bosAksiyon?: ReactNode;
@@ -74,38 +130,122 @@ export type ListePageProps<T> = {
 };
 
 export function ListePage<T extends object>({
-  baslik, aksiyonlar, aramaDegeri, aramaDegisti, kolonlar, veri, yukleniyor,
-  hata, hataAksiyon, uyari, toplam, sayfa, sayfaBoyutu, sayfaDegisti, bosBaslik, bosAciklama, bosAksiyon, rowKey,
+  baslik, aksiyonlar, detayliBilgiIpucu, aramaDegeri, aramaDegisti,
+  filtreTiklandi, kolonAyariTiklandi, listeGorunumuTiklandi, izgaraGorunumuTiklandi,
+  satirSecimi, kolonlar, veri, yukleniyor,
+  hata, hataAksiyon, uyari, toplam, sayfa, sayfaBoyutu, sayfaDegisti, birimEtiket = "kayıt",
+  bosBaslik, bosAciklama, bosAksiyon, rowKey,
   tabloDegisti,
 }: ListePageProps<T>) {
+  const { token } = antdTheme.useToken();
   const bos = !hata && !yukleniyor && (veri?.length ?? 0) === 0;
+  const gorunumDugmesiVar = Boolean(kolonAyariTiklandi || listeGorunumuTiklandi || izgaraGorunumuTiklandi);
+
+  // Tüketicinin geçtiği `sayfaBoyutu` sabit listede yoksa (ör. 45) seçiciye
+  // eklenir — yoksa AntD `Select` seçili değeri gösteremez.
+  const sayfaBoyutuSecenekleri = SABIT_SAYFA_BOYUTU_SECENEKLERI.includes(sayfaBoyutu)
+    ? SABIT_SAYFA_BOYUTU_SECENEKLERI
+    : [...SABIT_SAYFA_BOYUTU_SECENEKLERI, sayfaBoyutu].sort((a, b) => a - b);
 
   return (
     <Flex vertical gap={16}>
       <Flex align="center" justify="space-between" wrap gap={12}>
-        <Typography.Title level={3} style={{ margin: 0 }}>
-          {baslik}
-        </Typography.Title>
+        <Flex align="center" gap={8}>
+          <Typography.Title level={3} style={{ margin: 0 }}>
+            {baslik}
+          </Typography.Title>
+          {detayliBilgiIpucu ? (
+            <Tooltip title={detayliBilgiIpucu}>
+              <InfoCircleOutlined
+                aria-label="Detaylı Bilgi"
+                style={{ color: token.colorTextTertiary }}
+              />
+            </Tooltip>
+          ) : null}
+        </Flex>
         <Flex gap={8} wrap>{aksiyonlar}</Flex>
       </Flex>
 
-      <Card>
-        <Flex justify="space-between" wrap gap={12} style={{ marginBottom: 16 }}>
-          {/* `Input.Search` DEĞİL: onSearch verilmediği için tıklanabilir ama
-              hiçbir şey yapmayan bir büyüteç düğmesi basıyordu. Etkisi olmayan
-              kontrol kullanıcıyı yanıltır (aynı gerekçeyle VaryantPenceresi'nden
-              "Seçim Stili" söküldü). Arama zaten her tuşta tüketiciye gidiyor.
-              Erişilebilir ad başlıktan türetilir: 15 modülün her biri "Ürünler
-              içinde ara" gibi anlamlı bir ad alır; placeholder tek başına
-              güvenilir bir erişilebilir ad değildir. */}
-          <Input
-            aria-label={`${baslik} içinde ara`}
-            placeholder="Tabloda arama yapın"
-            allowClear
-            value={aramaDegeri}
-            onChange={(e) => aramaDegisti(e.target.value)}
-            style={{ maxWidth: 320 }}
-          />
+      {/* ikas referansı §2: içerik kartın İÇİNDE değil, düz beyaz yüzeyde
+          durur (renk kartın kendi border/shadow'unu değil, `theme.ts`'in
+          `token.colorBgContainer`ını kullanır — dosyaya yeni bir hex
+          YAZILMADI, AntD'nin kendi tema token'ı okunuyor). Satır ayırıcıları
+          AntD `Table`in varsayılan (bordered=false) satır-altı çizgisinden
+          gelir, ayrıca bir stil eklenmedi. */}
+      <div
+        style={{
+          background: token.colorBgContainer,
+          borderRadius: token.borderRadiusLG,
+          padding: token.paddingLG,
+        }}
+      >
+        <Flex justify="space-between" align="center" wrap gap={12} style={{ marginBottom: 16 }}>
+          <Flex gap={8} wrap>
+            {/* `Input.Search` DEĞİL: onSearch verilmediği için tıklanabilir ama
+                hiçbir şey yapmayan bir büyüteç düğmesi basıyordu. Etkisi olmayan
+                kontrol kullanıcıyı yanıltır (aynı gerekçeyle VaryantPenceresi'nden
+                "Seçim Stili" söküldü). Arama zaten her tuşta tüketiciye gidiyor.
+                Erişilebilir ad başlıktan türetilir: 15 modülün her biri "Ürünler
+                içinde ara" gibi anlamlı bir ad alır; placeholder tek başına
+                güvenilir bir erişilebilir ad değildir. ikas'ın büyüteç ikonu
+                burada salt DEKORATİF bir `prefix` — tıklanamaz, ikinci bir
+                ölü düğme getirmez. */}
+            <Input
+              aria-label={`${baslik} içinde ara`}
+              placeholder="Tabloda arama yapın"
+              allowClear
+              prefix={<SearchOutlined style={{ color: token.colorTextQuaternary }} />}
+              value={aramaDegeri}
+              onChange={(e) => aramaDegisti(e.target.value)}
+              style={{ maxWidth: 320 }}
+            />
+            {/* ikas referansı §3: arama yanında `Filtre` düğmesi — çekmecenin
+                İÇERİĞİ kapsam dışı (YAGNI, spec §5). Yalnız tıklama dışarı
+                taşınır; tüketici vermezse düğme hiç yok (ölü düğme yok). */}
+            {filtreTiklandi ? (
+              // İkon `aria-hidden`: AntD icon'un varsayılan `aria-label`ı
+              // ("filter") düğmenin görünür metniyle ("Filtre") birleşip
+              // erişilebilir adı "filter Filtre" yapardı — dekoratif ikon
+              // metnin ÖNÜNE geçmesin diye gizlendi.
+              <Button icon={<FilterOutlined aria-hidden="true" />} onClick={filtreTiklandi}>
+                Filtre
+              </Button>
+            ) : null}
+          </Flex>
+          {gorunumDugmesiVar ? (
+            <Flex gap={4}>
+              {kolonAyariTiklandi ? (
+                <Tooltip title="Kolon Ayarı">
+                  <Button
+                    type="text"
+                    icon={<SettingOutlined />}
+                    aria-label="Kolon Ayarı"
+                    onClick={kolonAyariTiklandi}
+                  />
+                </Tooltip>
+              ) : null}
+              {listeGorunumuTiklandi ? (
+                <Tooltip title="Liste Görünümü">
+                  <Button
+                    type="text"
+                    icon={<UnorderedListOutlined />}
+                    aria-label="Liste Görünümü"
+                    onClick={listeGorunumuTiklandi}
+                  />
+                </Tooltip>
+              ) : null}
+              {izgaraGorunumuTiklandi ? (
+                <Tooltip title="Izgara Görünümü">
+                  <Button
+                    type="text"
+                    icon={<AppstoreOutlined />}
+                    aria-label="Izgara Görünümü"
+                    onClick={izgaraGorunumuTiklandi}
+                  />
+                </Tooltip>
+              ) : null}
+            </Flex>
+          ) : null}
         </Flex>
 
         {hata ? (
@@ -144,20 +284,44 @@ export function ListePage<T extends object>({
               dataSource={veri}
               loading={yukleniyor}
               rowKey={rowKey}
+              rowSelection={satirSecimi}
               scroll={{ x: "max-content" }}
               onChange={tabloDegisti}
-              pagination={{
-                current: sayfa,
-                pageSize: sayfaBoyutu,
-                total: toplam,
-                showSizeChanger: true,
-                onChange: sayfaDegisti,
-                showTotal: (t, [bas, son]) => `${bas}-${son} / ${t} kayıt`,
-              }}
+              pagination={false}
             />
+            {/* ikas referansı §3 alt bilgi: solda "Satır Adedi:" + boyut
+                seçici, sağda `X - Y / Z <birim>` aralık/toplam + sayfalayıcı.
+                AntD `Table`in varsayılan `pagination.showSizeChanger`
+                yerleşimi (sağ uçta, tek bir metinle) bunu VEREMEZ — bu yüzden
+                `Table.pagination` kapatılıp aynı AntD `Pagination`
+                bileşeni burada elle, ikas'ın iki-uçlu yerleşiminde kuruldu.
+                Sayfa TIKLAMA/geri çağrı sözleşmesi (`sayfaDegisti(sayfa,
+                boyut)`) DEĞİŞMEDİ — yalnız yerleşim değişti. */}
+            <Flex justify="space-between" align="center" wrap gap={12} style={{ marginTop: 16 }}>
+              <Flex align="center" gap={8}>
+                <Typography.Text type="secondary">Satır Adedi:</Typography.Text>
+                <Select<number>
+                  size="small"
+                  aria-label="Satır Adedi"
+                  value={sayfaBoyutu}
+                  style={{ width: 76 }}
+                  options={sayfaBoyutuSecenekleri.map((deger) => ({ value: deger, label: deger }))}
+                  onChange={(deger) => sayfaDegisti(1, deger)}
+                />
+              </Flex>
+              <Pagination
+                size="small"
+                current={sayfa}
+                pageSize={sayfaBoyutu}
+                total={toplam ?? 0}
+                showSizeChanger={false}
+                onChange={sayfaDegisti}
+                showTotal={(t, [bas, son]) => `${bas} - ${son} / ${t} ${birimEtiket}`}
+              />
+            </Flex>
           </>
         )}
-      </Card>
+      </div>
     </Flex>
   );
 }

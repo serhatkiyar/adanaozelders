@@ -191,6 +191,151 @@ describe("ListePage", () => {
     });
   });
 
+  describe("araç çubuğu (ikas yerleşimi) — Filtre/görünüm düğmeleri (referans §3)", () => {
+    it("hiçbir geri çağrı verilmediğinde hiçbiri render edilmiyor (ölü düğme yok)", () => {
+      kur([{ id: 1, ad: "9. Sınıf Matematik" }]);
+      expect(screen.queryByRole("button", { name: "Filtre" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Kolon Ayarı" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Liste Görünümü" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Izgara Görünümü" })).not.toBeInTheDocument();
+    });
+
+    it("her biri kendi geri çağrısı verildiğinde render edilir ve tıklanınca tetiklenir", async () => {
+      const filtreTiklandi = vi.fn();
+      const kolonAyariTiklandi = vi.fn();
+      const listeGorunumuTiklandi = vi.fn();
+      const izgaraGorunumuTiklandi = vi.fn();
+      render(
+        <PanelProvider>
+          <ListePage<Satir>
+            baslik="Ürünler"
+            aramaDegeri=""
+            aramaDegisti={() => {}}
+            kolonlar={[{ title: "Ürün", dataIndex: "ad", key: "ad" }]}
+            veri={[{ id: 1, ad: "9. Sınıf Matematik" }]}
+            yukleniyor={false}
+            toplam={1}
+            sayfa={1}
+            sayfaBoyutu={20}
+            sayfaDegisti={() => {}}
+            bosBaslik="İlk Ürününüzü Yükleyin!"
+            bosAciklama="Ürünlerinizi yükleyin ve satışa başlayın."
+            rowKey={(k) => k.id}
+            filtreTiklandi={filtreTiklandi}
+            kolonAyariTiklandi={kolonAyariTiklandi}
+            listeGorunumuTiklandi={listeGorunumuTiklandi}
+            izgaraGorunumuTiklandi={izgaraGorunumuTiklandi}
+          />
+        </PanelProvider>,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Filtre" }));
+      await userEvent.click(screen.getByRole("button", { name: "Kolon Ayarı" }));
+      await userEvent.click(screen.getByRole("button", { name: "Liste Görünümü" }));
+      await userEvent.click(screen.getByRole("button", { name: "Izgara Görünümü" }));
+
+      expect(filtreTiklandi).toHaveBeenCalledTimes(1);
+      expect(kolonAyariTiklandi).toHaveBeenCalledTimes(1);
+      expect(listeGorunumuTiklandi).toHaveBeenCalledTimes(1);
+      expect(izgaraGorunumuTiklandi).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("satır seçimi (referans §3 — ilk kolon checkbox, başlıkta tümünü seç)", () => {
+    it("satirSecimi verilmediğinde checkbox çıkmıyor (geriye dönük uyum)", () => {
+      kur([{ id: 1, ad: "9. Sınıf Matematik" }]);
+      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    });
+
+    it("satirSecimi verildiğinde satır + tümünü seç checkbox'ları çıkıyor", () => {
+      render(
+        <PanelProvider>
+          <ListePage<Satir>
+            baslik="Ürünler"
+            aramaDegeri=""
+            aramaDegisti={() => {}}
+            kolonlar={[{ title: "Ürün", dataIndex: "ad", key: "ad" }]}
+            veri={[{ id: 1, ad: "9. Sınıf Matematik" }]}
+            yukleniyor={false}
+            toplam={1}
+            sayfa={1}
+            sayfaBoyutu={20}
+            sayfaDegisti={() => {}}
+            bosBaslik="İlk Ürününüzü Yükleyin!"
+            bosAciklama="Ürünlerinizi yükleyin ve satışa başlayın."
+            rowKey={(k) => k.id}
+            satirSecimi={{ selectedRowKeys: [], onChange: () => {} }}
+          />
+        </PanelProvider>,
+      );
+      // 1 "tümünü seç" (başlık) + 1 satır checkbox'ı.
+      expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+    });
+  });
+
+  describe("alt bilgi (referans §3 — 'Satır Adedi:' + aralık/toplam)", () => {
+    it("'Satır Adedi:' etiketini ve 'X - Y / Z <birim>' biçimini gösterir, varsayılan birim nötr", () => {
+      kur([{ id: 1, ad: "9. Sınıf Matematik" }]);
+      expect(screen.getByText("Satır Adedi:")).toBeInTheDocument();
+      expect(screen.getByText("1 - 1 / 1 kayıt")).toBeInTheDocument();
+    });
+
+    it("birimEtiket verildiğinde onu kullanır", () => {
+      render(
+        <PanelProvider>
+          <ListePage<Satir>
+            baslik="Ürünler"
+            aramaDegeri=""
+            aramaDegisti={() => {}}
+            kolonlar={[{ title: "Ürün", dataIndex: "ad", key: "ad" }]}
+            veri={[{ id: 1, ad: "9. Sınıf Matematik" }]}
+            yukleniyor={false}
+            toplam={1}
+            sayfa={1}
+            sayfaBoyutu={20}
+            sayfaDegisti={() => {}}
+            bosBaslik="İlk Ürününüzü Yükleyin!"
+            bosAciklama="Ürünlerinizi yükleyin ve satışa başlayın."
+            rowKey={(k) => k.id}
+            birimEtiket="Ürün"
+          />
+        </PanelProvider>,
+      );
+      expect(screen.getByText("1 - 1 / 1 Ürün")).toBeInTheDocument();
+    });
+  });
+
+  describe("başlık yanı bilgi ipucu (referans §2 — opsiyonel, verilmezse çıkmaz)", () => {
+    it("detayliBilgiIpucu verilmediğinde ikon yok", () => {
+      kur([{ id: 1, ad: "9. Sınıf Matematik" }]);
+      expect(screen.queryByLabelText("Detaylı Bilgi")).not.toBeInTheDocument();
+    });
+
+    it("detayliBilgiIpucu verildiğinde ikon çıkıyor", () => {
+      render(
+        <PanelProvider>
+          <ListePage<Satir>
+            baslik="Ürünler"
+            aramaDegeri=""
+            aramaDegisti={() => {}}
+            kolonlar={[{ title: "Ürün", dataIndex: "ad", key: "ad" }]}
+            veri={[{ id: 1, ad: "9. Sınıf Matematik" }]}
+            yukleniyor={false}
+            toplam={1}
+            sayfa={1}
+            sayfaBoyutu={20}
+            sayfaDegisti={() => {}}
+            bosBaslik="İlk Ürününüzü Yükleyin!"
+            bosAciklama="Ürünlerinizi yükleyin ve satışa başlayın."
+            rowKey={(k) => k.id}
+            detayliBilgiIpucu="Ürünler hakkında detaylı bilgi"
+          />
+        </PanelProvider>,
+      );
+      expect(screen.getByLabelText("Detaylı Bilgi")).toBeInTheDocument();
+    });
+  });
+
   describe("sıralama/filtre kanalı (tabloDegisti)", () => {
     function kurSiralanabilir(tabloDegisti?: (...args: unknown[]) => void) {
       return render(
