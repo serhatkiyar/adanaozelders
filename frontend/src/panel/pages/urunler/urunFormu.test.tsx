@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -111,6 +111,25 @@ function kurDuzenleme(id: number | string = 9) {
   );
 }
 
+/**
+ * AntD Form alanına TEK olayla değer yazar.
+ *
+ * `userEvent.type` karakter karakter yazar; her tuş bir React render + AntD
+ * Form doğrulaması tetikler. Bu dosyanın ağır testleri (13 haneli barkod, üç
+ * zorunlu alan, ardından Select tıklamaları) bu yüzden ölçülmüş 9000 ms
+ * bütçesini YÜK ALTINDA aşıyordu: tek başına koşulunca geçiyor, tam suite'te
+ * düşüyordu. `vitest.config.ts`'teki politika açık — "Bir test bu bütçeye
+ * sığmıyorsa çözüm bütçeyi büyütmek değil, testi incelemektir." Depodaki
+ * emsal: `components/admin/inventory/DamageDialog.test.tsx`.
+ *
+ * Tuş tuş yazmak sınanan bir davranış DEĞİL; sınanan şey alanın değerinin
+ * gövdeye doğru gitmesi. Tuş davranışının kendisi önemli olan yerlerde
+ * (klavyeyle seçim, canlı zorunluluk tepkisi) `userEvent` KORUNDU.
+ */
+function yaz(alan: HTMLElement, deger: string) {
+  fireEvent.change(alan, { target: { value: deger } });
+}
+
 describe("UrunFormu", () => {
   it("zorunlu alanlar boşken kaydetmez", async () => {
     kur();
@@ -128,9 +147,9 @@ describe("UrunFormu", () => {
   // 100` ile kayan nokta SAYISI üretiyordu.
   it("ad, fiyat ve KDV oranı girilince createProduct çağrılır", async () => {
     kur();
-    await userEvent.type(screen.getByLabelText("Ürün Adı"), "Deneme Kalem Seti");
-    await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "120");
-    await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+    yaz(screen.getByLabelText("Ürün Adı"), "Deneme Kalem Seti");
+    yaz(screen.getByLabelText("Satış Fiyatı"), "120");
+    yaz(screen.getByLabelText("KDV Oranı (%)"), "20");
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
     expect(createProduct).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Deneme Kalem Seti", price: 120, tax_rate: "0.2000" }),
@@ -148,9 +167,9 @@ describe("UrunFormu", () => {
 
     it("durum seçilmezse gövde varsayılan olarak DRAFT taşır", async () => {
       kur();
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Taslak Ürün");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "80");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "18");
+      yaz(screen.getByLabelText("Ürün Adı"), "Taslak Ürün");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "80");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "18");
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
       await waitFor(() => expect(createProduct).toHaveBeenCalled());
       expect(createProduct.mock.calls[0][0]).toMatchObject({ status: "DRAFT" });
@@ -158,9 +177,9 @@ describe("UrunFormu", () => {
 
     it("durum ACTIVE seçilip kategori seçilmezse kaydedilemez (backend kuralının istemci aynası)", async () => {
       kur();
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Yeni Ürün");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "100");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+      yaz(screen.getByLabelText("Ürün Adı"), "Yeni Ürün");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "100");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "20");
 
       await userEvent.click(screen.getByLabelText("Durum"));
       await userEvent.click(await screen.findByTitle("Yayında"));
@@ -173,9 +192,9 @@ describe("UrunFormu", () => {
 
     it("durum ACTIVE ve kategori seçilince gövde status ve category_id taşır", async () => {
       kur();
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Yeni Ürün");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "100");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+      yaz(screen.getByLabelText("Ürün Adı"), "Yeni Ürün");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "100");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "20");
 
       await userEvent.click(screen.getByLabelText("Durum"));
       await userEvent.click(await screen.findByTitle("Yayında"));
@@ -220,10 +239,10 @@ describe("UrunFormu", () => {
 
     it("eski fiyat satış fiyatından küçük ya da eşitse kaydedilemez", async () => {
       kur();
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Test Ürün");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "100");
-      await userEvent.type(screen.getByLabelText("Eski Fiyat"), "80");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+      yaz(screen.getByLabelText("Ürün Adı"), "Test Ürün");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "100");
+      yaz(screen.getByLabelText("Eski Fiyat"), "80");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "20");
 
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -308,7 +327,7 @@ describe("UrunFormu", () => {
       await userEvent.click(screen.getByRole("tab", { name: "Envanter" }));
       const stokAlani = screen.getByLabelText("Stok");
       await userEvent.clear(stokAlani);
-      await userEvent.type(stokAlani, "20");
+      yaz(stokAlani, "20");
 
       await userEvent.click(screen.getByLabelText("Stok Gerekçesi"));
       await userEvent.click(await screen.findByTitle("Sayım farkı"));
@@ -343,7 +362,7 @@ describe("UrunFormu", () => {
       await userEvent.click(screen.getByRole("tab", { name: "Envanter" }));
       const stokAlani = screen.getByLabelText("Stok");
       await userEvent.clear(stokAlani);
-      await userEvent.type(stokAlani, "20");
+      yaz(stokAlani, "20");
 
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -403,7 +422,7 @@ describe("UrunFormu", () => {
         // Grup gittikten sonra kullanıcı barkodu yeniden yazıyor.
         const barkodAlani = screen.getByLabelText("Barkod");
         await userEvent.clear(barkodAlani);
-        await userEvent.type(barkodAlani, "99998888");
+        yaz(barkodAlani, "99998888");
 
         await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -460,14 +479,14 @@ describe("UrunFormu", () => {
         { id: 1, title: "Kalem Rengi", option1_name: "Renk", option2_name: null, member_count: 1 },
       ]);
       kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "50");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+      yaz(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "50");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "20");
 
       await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
       await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
       await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk)"));
-      await userEvent.type(await screen.findByLabelText("Renk"), "Sarı");
+      yaz(await screen.findByLabelText("Renk"), "Sarı");
       // Barkod BİLEREK boş bırakılıyor.
 
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
@@ -480,9 +499,9 @@ describe("UrunFormu", () => {
 
     it("gruba bağlı olmayan (basit) üründe barkod zorunlu değildir", async () => {
       kur();
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Defter");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "30");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "10");
+      yaz(screen.getByLabelText("Ürün Adı"), "Defter");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "30");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "10");
 
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -495,16 +514,16 @@ describe("UrunFormu", () => {
         { id: 3, title: "Kalem Rengi", option1_name: "Renk", option2_name: "Beden", member_count: 0 },
       ]);
       kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem Sarı L");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "60");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+      yaz(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem Sarı L");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "60");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "20");
 
       await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
       await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
       await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk × Beden)"));
-      await userEvent.type(await screen.findByLabelText("Renk"), "Sarı");
-      await userEvent.type(screen.getByLabelText("Beden"), "L");
-      await userEvent.type(screen.getByLabelText("Barkod"), "8690000000029");
+      yaz(await screen.findByLabelText("Renk"), "Sarı");
+      yaz(screen.getByLabelText("Beden"), "L");
+      yaz(screen.getByLabelText("Barkod"), "8690000000029");
 
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -541,14 +560,14 @@ describe("UrunFormu", () => {
         { id: 1, title: "Kalem Rengi", option1_name: "Renk", option2_name: null, member_count: 1 },
       ]);
       const { container } = kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "50");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+      yaz(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "50");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "20");
 
       await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
       await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
       await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk)"));
-      await userEvent.type(await screen.findByLabelText("Renk"), "Sarı");
+      yaz(await screen.findByLabelText("Renk"), "Sarı");
 
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
       expect(
@@ -571,12 +590,12 @@ describe("UrunFormu", () => {
     // barkod sunucudan jenerik 422/"Ürün kaydedilemedi." ile dönüyordu.
     it("çok kısa barkod istemcide reddedilir, istek atılmaz", async () => {
       kur();
-      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Kısa Barkodlu Ürün");
-      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "40");
-      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "10");
+      yaz(screen.getByLabelText("Ürün Adı"), "Kısa Barkodlu Ürün");
+      yaz(screen.getByLabelText("Satış Fiyatı"), "40");
+      yaz(screen.getByLabelText("KDV Oranı (%)"), "10");
 
       await userEvent.click(screen.getByRole("tab", { name: "Envanter" }));
-      await userEvent.type(screen.getByLabelText("Barkod"), "12");
+      yaz(screen.getByLabelText("Barkod"), "12");
 
       await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
