@@ -117,14 +117,13 @@ describe("PanelShell", () => {
     expect(screen.getByRole("button", { name: /menü/i })).toBeInTheDocument();
   });
 
-  it("her menü öğesi (kök ve alt) bir ikon taşır", () => {
-    function dogrula(items: typeof PANEL_MENU) {
-      for (const item of items) {
-        expect(item.icon, `"${item.label}" ikon taşımıyor`).toBeTruthy();
-        if (item.children) dogrula(item.children);
+  it("her KÖK menü öğesi bir ikon taşır, alt öğeler ikon taşımaz (referans §7 ikinci tur ölçüm)", () => {
+    for (const kok of PANEL_MENU) {
+      expect(kok.icon, `"${kok.label}" (kök) ikon taşımıyor`).toBeTruthy();
+      for (const alt of kok.children ?? []) {
+        expect(alt.icon, `"${alt.label}" (alt öğe) ikon taşımamalı`).toBeUndefined();
       }
     }
-    dogrula(PANEL_MENU);
   });
 
   it("masaüstünde menü öğeleri AntD ikonlarıyla render olur", () => {

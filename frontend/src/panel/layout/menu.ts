@@ -2,23 +2,18 @@ import { adminAreaAccess } from "@/lib/adminAccess";
 import { PATHS } from "@/lib/routes";
 
 /**
- * Menü ikonları — `docs/ikas-panel-referans.md` §1 "her öğe ikonlu" kuralı.
- * Bu dosya `.ts` (JSX yok, `panel/layout/PanelShell.tsx`in aksine): ikon
- * BİLEŞENİ değil, ANAHTARI taşınır. Gerçek `@ant-design/icons` bileşenine
- * çevirme işi `PanelShell.tsx`teki `PANEL_MENU_ICONS` sözlüğünündür — menü
- * verisi AntD'yi hiç bilmez (mevcut mimari: bu dosya saf veri, dönüşüm
+ * Menü ikonları — `docs/ikas-panel-referans.md` §7 "Sider menüsü — İKİNCİ TUR
+ * ÖLÇÜM": ikon YALNIZ kök öğelerde var, alt öğelerde YOK (16 anahtar, 17 kök
+ * öğeye karşılık gelir — bkz. `PANEL_MENU`). Bu dosya `.ts` (JSX yok,
+ * `panel/layout/PanelShell.tsx`in aksine): ikon BİLEŞENİ değil, ANAHTARI
+ * taşınır. Gerçek `@ant-design/icons` bileşenine çevirme işi
+ * `PanelShell.tsx`teki `PANEL_MENU_ICONS` sözlüğünündür — menü verisi
+ * AntD'yi hiç bilmez (mevcut mimari: bu dosya saf veri, dönüşüm
  * `menuyuAntdyeCevir`de).
  */
 export type PanelMenuIconKey =
   | "home"
   | "shopping"
-  | "appstore"
-  | "cart"
-  | "swap"
-  | "audit"
-  | "tag"
-  | "dollar"
-  | "barcode"
   | "container"
   | "team"
   | "percentage"
@@ -33,17 +28,21 @@ export type PanelMenuIconKey =
   | "solution"
   | "book"
   | "safety"
-  | "wallet"
-  | "history"
-  | "warning";
+  | "wallet";
 
 export type PanelMenuItem = {
   key: string;
   label: string;
   path?: string;
   children?: PanelMenuItem[];
-  /** ikas referansı gereği HER öğe ikonlu — bkz. `PanelMenuIconKey`. */
-  icon: PanelMenuIconKey;
+  /**
+   * ikas referansı §7 "Sider menüsü — İKİNCİ TUR ÖLÇÜM": ikon YALNIZ kök
+   * öğelerde var (16×16), alt öğelerde YOK — canlı panelden ölçüldü. Bu
+   * yüzden yalnız kök seviyedeki öğelere verilir; alt öğelerde BİLİNÇLİ
+   * OLARAK boş bırakılır (opsiyonel — yanlışlıkla eklenmesin diye zorunlu
+   * tutulmuyor, `panelShell.test.tsx` bu ayrımı sınar).
+   */
+  icon?: PanelMenuIconKey;
   /**
    * İzin alanı öneki — `lib/adminAccess.ts`teki `adminAreaAccess`e aynen
    * geçer (`"products"` → `products.view`/`products.manage`). Yalnız gerçek
@@ -89,18 +88,17 @@ export const PANEL_MENU: PanelMenuItem[] = [
         label: "Ürünler",
         path: PATHS.adminNewProducts,
         requiredPermission: "products",
-        icon: "appstore",
       },
-      { key: "satin-alma", label: "Satın Alma", icon: "cart" },
-      { key: "transferler", label: "Transferler", icon: "swap" },
-      { key: "stok-sayimi", label: "Stok Sayımı", icon: "audit" },
+      { key: "satin-alma", label: "Satın Alma" },
+      { key: "transferler", label: "Transferler" },
+      { key: "stok-sayimi", label: "Stok Sayımı" },
       // Bize özgü (ikas'ta karşılığı yok) — spec §4'te onaylı, ikas'ın
       // Stok Sayımı öğesinden hemen sonra, Tanımlamalar'dan önce durur.
-      { key: "stok-hareketleri", label: "Stok Hareketleri", icon: "history" },
-      { key: "hasarli-stok", label: "Hasarlı Stok", icon: "warning" },
-      { key: "tanimlamalar", label: "Tanımlamalar", icon: "tag" },
-      { key: "fiyat-listesi", label: "Fiyat Listesi", icon: "dollar" },
-      { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi", icon: "barcode" },
+      { key: "stok-hareketleri", label: "Stok Hareketleri" },
+      { key: "hasarli-stok", label: "Hasarlı Stok" },
+      { key: "tanimlamalar", label: "Tanımlamalar" },
+      { key: "fiyat-listesi", label: "Fiyat Listesi" },
+      { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi" },
     ],
   },
   {

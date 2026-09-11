@@ -3,15 +3,10 @@ import { Avatar, Layout, Menu, Drawer, Button } from "antd";
 import type { MenuProps } from "antd";
 import {
   AppstoreAddOutlined,
-  AppstoreOutlined,
-  AuditOutlined,
   BarChartOutlined,
-  BarcodeOutlined,
   BookOutlined,
   CarOutlined,
   ContainerOutlined,
-  DollarOutlined,
-  HistoryOutlined,
   HomeOutlined,
   InboxOutlined,
   MenuOutlined,
@@ -21,15 +16,11 @@ import {
   SafetyOutlined,
   SettingOutlined,
   ShopOutlined,
-  ShoppingCartOutlined,
   ShoppingOutlined,
   SolutionOutlined,
-  SwapOutlined,
-  TagOutlined,
   TeamOutlined,
   UserOutlined,
   WalletOutlined,
-  WarningOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AccessDenied } from "@/components/admin/AccessState";
@@ -60,13 +51,6 @@ const { Sider, Content } = Layout;
 const PANEL_MENU_ICONS: Record<PanelMenuIconKey, ComponentType> = {
   home: HomeOutlined,
   shopping: ShoppingOutlined,
-  appstore: AppstoreOutlined,
-  cart: ShoppingCartOutlined,
-  swap: SwapOutlined,
-  audit: AuditOutlined,
-  tag: TagOutlined,
-  dollar: DollarOutlined,
-  barcode: BarcodeOutlined,
   container: ContainerOutlined,
   team: TeamOutlined,
   percentage: PercentageOutlined,
@@ -82,17 +66,23 @@ const PANEL_MENU_ICONS: Record<PanelMenuIconKey, ComponentType> = {
   book: BookOutlined,
   safety: SafetyOutlined,
   wallet: WalletOutlined,
-  history: HistoryOutlined,
-  warning: WarningOutlined,
 };
 
+/**
+ * ikas referansı §7 "İKİNCİ TUR ÖLÇÜM": ikon yalnız kök öğelerde (`m.icon`
+ * doluysa) render edilir, alt öğelerde `icon` hiç ayarlanmaz — AntD `Menu`
+ * `icon` prop'unu boş bırakınca kendisi hiçbir şey çizmiyor (elle `<span>`
+ * sarmalamaya gerek yok). AntD'nin ikon bileşenleri SVG'yi zaten
+ * `aria-hidden="true"` ile çiziyor — erişilebilir ad menü etiketinin
+ * metninden gelir, ikona ayrı `aria-label` eklenmez.
+ */
 function menuyuAntdyeCevir(items: PanelMenuItem[]): MenuProps["items"] {
   return items.map((m) => {
-    const Icon = PANEL_MENU_ICONS[m.icon];
+    const Icon = m.icon ? PANEL_MENU_ICONS[m.icon] : undefined;
     return {
       key: m.key,
       label: m.label,
-      icon: <Icon />,
+      icon: Icon ? <Icon /> : undefined,
       disabled: !m.path && !m.children,
       children: m.children ? menuyuAntdyeCevir(m.children) : undefined,
     };
