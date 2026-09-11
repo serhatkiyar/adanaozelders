@@ -138,7 +138,7 @@ describe("SiparisListesi", () => {
   });
 
   describe("kesilme uyarısı (parti sunucu tavanını doldurunca)", () => {
-    it("elde tutulan parti tavanı dolduğunda uyarı gösterir", () => {
+    it("X-Total-Count yoksa (total: -1) heuristiğe düşer: parti tavanı dolduğunda uyarı gösterir", () => {
       const tavan = 100;
       const doluParti = Array.from({ length: tavan }, (_, i) =>
         siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
@@ -153,10 +153,50 @@ describe("SiparisListesi", () => {
 
       kur();
 
-      expect(screen.getByRole("alert")).toHaveTextContent(String(tavan));
+      // `role="status"` — bkz. `ListePage.tsx`: uyarı bir hata değil, polite
+      // duyurulur (`role="alert"` DEĞİL).
+      expect(screen.getByRole("status")).toHaveTextContent(String(tavan));
     });
 
-    it("parti tavanı dolmadığında uyarı göstermez", () => {
+    it("tam sınırda (total === items.length === tavan) GERÇEK sinyal kesilme OLMADIĞINI söyler — uyarı çıkmaz", () => {
+      const tavan = 100;
+      const tamDoluAmaKesilmemis = Array.from({ length: tavan }, (_, i) =>
+        siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
+      );
+      mockUseAdminOrders.mockReturnValue({
+        data: { items: tamDoluAmaKesilmemis, total: tavan, limit: tavan },
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAdminOrders>);
+
+      kur();
+
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("total > items.length ise (GERÇEK sinyal) uyarı gösterir ve kesin sayıları içerir", () => {
+      const tavan = 100;
+      const doluParti = Array.from({ length: tavan }, (_, i) =>
+        siparis({ id: i + 1, order_no: `${1000 + i}-a-b` }),
+      );
+      mockUseAdminOrders.mockReturnValue({
+        data: { items: doluParti, total: 130, limit: tavan },
+        isPending: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAdminOrders>);
+
+      kur();
+
+      const uyariElementi = screen.getByRole("status");
+      expect(uyariElementi).toHaveTextContent("130");
+      expect(uyariElementi).toHaveTextContent(String(tavan));
+    });
+
+    it("parti tavanı dolmadığında (küçük liste) uyarı göstermez", () => {
       mockUseAdminOrders.mockReturnValue({
         data: { items: [siparis()], total: 1, limit: 100 },
         isPending: false,
@@ -167,7 +207,7 @@ describe("SiparisListesi", () => {
 
       kur();
 
-      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
   });
 

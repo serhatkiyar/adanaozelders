@@ -160,7 +160,34 @@ describe("ListePage", () => {
         </PanelProvider>,
       );
       expect(screen.getByText("9. Sınıf Matematik")).toBeInTheDocument();
-      expect(screen.getByRole("alert")).toHaveTextContent("Test uyarı metni");
+      expect(screen.getByRole("status")).toHaveTextContent("Test uyarı metni");
+    });
+
+    it("hata (role=alert, assertive) DEĞİL, polite duyuru semantiği taşır — role=status'tur, ikinci bir role=alert eklenmez", () => {
+      render(
+        <PanelProvider>
+          <ListePage<Satir>
+            baslik="Ürünler"
+            aramaDegeri=""
+            aramaDegisti={() => {}}
+            kolonlar={[{ title: "Ürün", dataIndex: "ad", key: "ad" }]}
+            veri={[{ id: 1, ad: "9. Sınıf Matematik" }]}
+            yukleniyor={false}
+            uyari="Test uyarı metni"
+            toplam={1}
+            sayfa={1}
+            sayfaBoyutu={20}
+            sayfaDegisti={() => {}}
+            bosBaslik="İlk Ürününüzü Yükleyin!"
+            bosAciklama="Ürünlerinizi yükleyin ve satışa başlayın."
+            rowKey={(k) => k.id}
+          />
+        </PanelProvider>,
+      );
+      // `role="status"` WAI-ARIA'da örtük `aria-live="polite"` taşır — bkz.
+      // `ListePage.tsx`teki kaynak yorumu. Assertive `role="alert"` hiç yok.
+      expect(screen.getByRole("status")).toHaveTextContent("Test uyarı metni");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
   });
 

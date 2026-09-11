@@ -40,6 +40,10 @@ export type ListePageProps<T> = {
    * showIcon`e konur: bu dosyayı yazan ajanın kapsamı `Durum.tsx`'i
    * kapsamıyordu (eşzamanlı başka bir ajan orada çalışıyordu) — üçüncü bir
    * tüketici çıkarsa oraya (bir `UyariDurumu` olarak) taşınabilir.
+   *
+   * Duyuru rolü `role="status"`tur (`role="alert"` DEĞİL) — bir hata değil,
+   * ekran okuyucunun assertive değil polite duyurması gereken bir bilgi
+   * notudur (bkz. aşağıdaki render'daki kaynak yorumu).
    */
   uyari?: ReactNode;
   toplam?: number;
@@ -110,13 +114,27 @@ export function ListePage<T extends object>({
           <BosDurumu baslik={bosBaslik} aciklama={bosAciklama} aksiyon={bosAksiyon} />
         ) : (
           <>
-            {/* `Alert` (5.29.3) kök `div`'e koşulsuz `role="alert"` bağlar
-                (bkz. `Durum.tsx`'teki aynı doğrulama) — ikinci bir rol
+            {/* `Alert` (5.29.3) kök `div`'e VARSAYILAN `role="alert"` bağlar
+                (bkz. `Durum.tsx`'teki aynı doğrulama) — ama `uyari` bir hata
+                değil, veriyle BİRLİKTE duran bir bilgi notu; `role="alert"`
+                örtük `aria-live="assertive"` demektir ve her veri çekiminde
+                agresif bir duyuru yapar. `AlertProps.role` (`antd/es/alert/
+                Alert.d.ts`) AÇIKÇA `string` tipli ve `rc-util` `pickAttrs`
+                `role` anahtarını `aria: true` altında topluyor — yani
+                `role="status"` buraya verildiğinde AntD'nin sabit değerinin
+                ÜZERİNE yazar (kaynaktan doğrulandı). `aria-live` ayrıca
+                verilmez: `AlertProps` onu tipe almıyor (verilse `tsc`
+                kırılır) ve zaten GEREKMEZ — WAI-ARIA'da `status` rolünün
+                varsayılanı `aria-live="polite"`tir, `Durum.tsx`teki
+                `BosDurumu`nun çıplak `div`e elle eklediği açık
+                `aria-live="polite"` orada rolün kendisi native olmadığı
+                içindi, burada rolün kendisi zaten polite. İkinci bir rol
                 sarmalayıcı EKLENMEZ, çakışır. */}
             {uyari ? (
               <Alert
                 type="warning"
                 showIcon
+                role="status"
                 message={uyari}
                 style={{ marginBottom: 16 }}
               />

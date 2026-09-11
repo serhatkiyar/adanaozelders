@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -46,6 +46,18 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+// `userEvent.type` karakter karakter yazar — her tuş bir React render + AntD
+// Form doğrulaması tetikler; bu dosyadaki alanların hiçbiri tuş DAVRANIŞININ
+// kendisini sınamıyor (yalnız SONUÇ değeri önemli), o yüzden emsal
+// `urunFormu.test.tsx`teki `yaz()` yardımcısı ile tek `fireEvent.change`e
+// indirilir (bkz. o dosyadaki aynı ad ve gerekçe). Tuş davranışının
+// sınandığı yer yoksa (klavyeyle seçim, canlı zorunluluk tepkisi) burada
+// yok — bu dosyada yalnız düğme tıklamaları (`userEvent.click`) ve
+// `userEvent.clear` (tek adımlık, ucuz) `userEvent`de kalır.
+function yaz(alan: HTMLElement, deger: string) {
+  fireEvent.change(alan, { target: { value: deger } });
+}
+
 function kur(ui: ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
@@ -75,7 +87,7 @@ describe("VaryantPenceresi", () => {
     previewVariantMatrix.mockResolvedValueOnce(ONIZLEME_TEK_EKSEN);
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
 
     await waitFor(() =>
@@ -95,8 +107,8 @@ describe("VaryantPenceresi", () => {
     });
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" eksen2Adi="Beden" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı");
-    await userEvent.type(screen.getByLabelText("Beden değerleri"), "S,M");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı");
+    yaz(screen.getByLabelText("Beden değerleri"), "S,M");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
 
     await waitFor(() =>
@@ -111,13 +123,13 @@ describe("VaryantPenceresi", () => {
     previewVariantMatrix.mockResolvedValueOnce(ONIZLEME_TEK_EKSEN);
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
     await screen.findByText("Kırmızı");
 
     // Yalnız birinci satıra barkod girilir, ikincisi BİLEREK boş bırakılır.
     const barkodlar = screen.getAllByLabelText(/^Barkod /);
-    await userEvent.type(barkodlar[0], "8690000000012");
+    yaz(barkodlar[0], "8690000000012");
 
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -131,13 +143,13 @@ describe("VaryantPenceresi", () => {
     previewVariantMatrix.mockResolvedValueOnce(ONIZLEME_TEK_EKSEN);
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
     await screen.findByText("Kırmızı");
 
     const barkodlar = screen.getAllByLabelText(/^Barkod /);
-    await userEvent.type(barkodlar[0], "8690000000012");
-    await userEvent.type(barkodlar[1], "8690000000012");
+    yaz(barkodlar[0], "8690000000012");
+    yaz(barkodlar[1], "8690000000012");
 
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -150,13 +162,13 @@ describe("VaryantPenceresi", () => {
     createVariantMatrix.mockResolvedValueOnce({ created: 2, product_ids: [10, 11] });
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
     await screen.findByText("Kırmızı");
 
     const barkodlar = screen.getAllByLabelText(/^Barkod /);
-    await userEvent.type(barkodlar[0], "8690000000012");
-    await userEvent.type(barkodlar[1], "8690000000029");
+    yaz(barkodlar[0], "8690000000012");
+    yaz(barkodlar[1], "8690000000029");
 
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -184,7 +196,7 @@ describe("VaryantPenceresi", () => {
     createVariantMatrix.mockResolvedValueOnce({ created: 2, product_ids: [10, 11] });
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
     await screen.findByText("Kırmızı");
 
@@ -192,12 +204,12 @@ describe("VaryantPenceresi", () => {
     // `price: Decimal | None = Field(default=None, gt=0, ...)` (0 geçersiz,
     // boş = ana üründen devral).
     const fiyatlar = screen.getAllByLabelText(/^Fiyat /);
-    await userEvent.type(fiyatlar[0], "150");
+    yaz(fiyatlar[0], "150");
     await userEvent.clear(fiyatlar[0]);
 
     const barkodlar = screen.getAllByLabelText(/^Barkod /);
-    await userEvent.type(barkodlar[0], "8690000000012");
-    await userEvent.type(barkodlar[1], "8690000000029");
+    yaz(barkodlar[0], "8690000000012");
+    yaz(barkodlar[1], "8690000000029");
 
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -214,17 +226,17 @@ describe("VaryantPenceresi", () => {
     createVariantMatrix.mockResolvedValueOnce({ created: 2, product_ids: [10, 11] });
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
     await screen.findByText("Kırmızı");
 
     const stoklar = screen.getAllByLabelText(/^Stok /);
-    await userEvent.type(stoklar[0], "20");
+    yaz(stoklar[0], "20");
     await userEvent.clear(stoklar[0]);
 
     const barkodlar = screen.getAllByLabelText(/^Barkod /);
-    await userEvent.type(barkodlar[0], "8690000000012");
-    await userEvent.type(barkodlar[1], "8690000000029");
+    yaz(barkodlar[0], "8690000000012");
+    yaz(barkodlar[1], "8690000000029");
 
     await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
 
@@ -238,7 +250,7 @@ describe("VaryantPenceresi", () => {
     previewVariantMatrix.mockRejectedValueOnce(new Error("ağ hatası"));
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
 
-    await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı");
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı");
     await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
 
     expect(await screen.findByText("Önizleme alınamadı.")).toBeInTheDocument();
@@ -265,7 +277,7 @@ describe("VaryantPenceresi", () => {
     it("iki eksenli grupta ikinci eksen boşken tıklanınca istek atılmaz, hata görünür ve odak ikinci eksene gider", async () => {
       kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" eksen2Adi="Beden" />);
 
-      await userEvent.type(screen.getByLabelText("Renk değerleri"), "Kırmızı");
+      yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı");
       await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
 
       expect(await screen.findByText("Beden değerlerini girin.")).toBeInTheDocument();
@@ -292,7 +304,7 @@ describe("Matris", () => {
     expect(screen.queryByText("SKU")).not.toBeInTheDocument();
 
     const barkod = screen.getAllByLabelText(/^Barkod /)[0];
-    await userEvent.type(barkod, "A");
+    yaz(barkod, "A");
     expect(degisti).toHaveBeenCalledWith("k1", "barcode", expect.any(String));
   });
 
@@ -333,7 +345,7 @@ describe("Matris", () => {
       />,
     );
     const stok = screen.getByLabelText("Stok Kırmızı");
-    await userEvent.type(stok, "0");
+    yaz(stok, "0");
     expect(degisti).toHaveBeenCalledWith("k1", "stock", 0);
   });
 });

@@ -64,14 +64,23 @@ export function SiparisListesi() {
   const { data, isPending, isError, refetch } = useAdminOrders(undefined, KESILME_TAVANI);
 
   const siparisler = data?.items ?? [];
-  // Elde tutulan parti TAM tavanı doldurduysa (== KESILME_TAVANI kadar
-  // kayıt döndüyse) sunucuda muhtemelen daha fazlası var ve bu ekran onu
-  // hiç görmüyor. `filtrelenmis` DEĞİL `siparisler` (ham, aramadan ÖNCEki
-  // parti) kullanılır — arama yalnız zaten çekilmiş partiyi süzer, sunucuya
+  // GERÇEK sinyal `X-Total-Count`tan gelen `data.total`dır (bkz.
+  // `api/store.ts` `listOrdersAdmin` — header sunucuda bu commit'lerden
+  // ÖNCE de dönüyordu). Başlık okunabiliyorsa (`total >= 0`) kesilme
+  // `total > siparisler.length` ile KESİN olarak bilinir — parti tam
+  // `KESILME_TAVANI` kadarsa (== 100) ve `total` de 100 ise kesilme YOKTUR,
+  // sınırda yanlış alarm vermez. `total === -1` ise (header hiç gelmedi)
+  // eskisi gibi heuristiğe (parti tavanı doldu mu) düşülür — geriye dönük
+  // emniyet. `filtrelenmis` DEĞİL `siparisler` (ham, aramadan ÖNCEki parti)
+  // kullanılır — arama yalnız zaten çekilmiş partiyi süzer, sunucuya
   // gitmez, dolayısıyla kesilmeyi etkilemez. Eski panelin
   // `OrdersPanel`indeki "kesilme uyarısı" şeridinin emsali (bkz.
-  // `components/admin/store/OrdersPanel.tsx`).
-  const partiTavaniDoldu = siparisler.length >= KESILME_TAVANI;
+  // `components/admin/store/OrdersPanel.tsx` `kesilmisOlabilir`).
+  const toplamBilgisi = data?.total ?? -1;
+  const kesilmeSinyaliGuvenilir = toplamBilgisi >= 0;
+  const partiTavaniDoldu = kesilmeSinyaliGuvenilir
+    ? toplamBilgisi > siparisler.length
+    : siparisler.length >= KESILME_TAVANI;
 
   const filtrelenmis = useMemo(() => {
     const q = arama.trim().toLocaleLowerCase("tr-TR");
@@ -130,7 +139,9 @@ export function SiparisListesi() {
       hataAksiyon={<Button onClick={() => refetch()}>Tekrar dene</Button>}
       uyari={
         partiTavaniDoldu
-          ? `İlk ${siparisler.length} sipariş gösteriliyor; sunucuda muhtemelen daha fazlası var, listenin tamamı bu olmayabilir.`
+          ? kesilmeSinyaliGuvenilir
+            ? `Toplam ${toplamBilgisi} siparişin ilk ${siparisler.length} tanesi gösteriliyor; listenin tamamı bu değil.`
+            : `İlk ${siparisler.length} sipariş gösteriliyor; sunucuda muhtemelen daha fazlası var, listenin tamamı bu olmayabilir.`
           : undefined
       }
       toplam={filtrelenmis.length}
