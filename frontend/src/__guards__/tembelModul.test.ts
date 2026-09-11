@@ -61,8 +61,9 @@ const GEREKCELI = [
   // KONUSUDUR. (Önceki kaydırma: 685 → 701, FormPage/TipSecimi'nin TOPLAMA
   // evresinde statik import edilmesi.)
   // 768: `UrunAracCubugu.tsx` kapı kayıtları (KAPI_KAPSAMI +
-  // KONTROLSUZ_EKRANLAR) satırı 753'ten 768'e kaydırdı.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:768 /src/**/*.tsx",
+  // KONTROLSUZ_EKRANLAR) satırı 753'ten 768'e; 775: `GostergePaneli.tsx`
+  // kayıtları 768'den 770'e kaydırdı.
+  "src/__guards__/calismaZamaniKapisi.test.tsx:770 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

@@ -470,6 +470,8 @@ const KAPI_KAPSAMI = [
   // veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
   // `MusteriListesi.tsx`in kardeşleri `SiparisListesi.tsx`/`UrunListesi.tsx`).
   "src/panel/pages/musteriler/MusteriListesi.tsx",
+  // Gösterge paneli: propsuz mount olur; dönem seçici (adlı) her durumda çizilir.
+  "src/panel/pages/gosterge/GostergePaneli.tsx",
   // Siparişler modülü (commit `06ab4d2`): propsuz mount olur, `useAdminOrders`
   // boş veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
   // `UrunListesi.tsx`) — `KONTROLSUZ_EKRANLAR`a değil kapıya girer.

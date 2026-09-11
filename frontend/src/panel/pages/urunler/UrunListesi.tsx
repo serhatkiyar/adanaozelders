@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Button, Flex, Typography, theme } from "antd";
 import type { TableProps } from "antd";
 import { PlusOutlined, ImportOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
 import { ListePage } from "@/panel/components/ListePage";
 import { UrunOlusturCekmecesi } from "@/panel/pages/urunler/UrunOlusturCekmecesi";
@@ -22,6 +22,7 @@ import {
 } from "@/panel/pages/urunler/UrunAracCubugu";
 import type { UrunFiltresi } from "@/panel/pages/urunler/UrunAracCubugu";
 import { useAdminProducts, useStoreConfig } from "@/hooks/useStore";
+import { STOK_FILTRELERI, TEDARIKCI_FILTRELERI } from "@/lib/storeProductQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatTL } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
@@ -34,6 +35,34 @@ const SIRALANABILIR_ALANLAR: readonly UrunSiralamaAlani[] = ["title", "price", "
 type UrunSiralama = { alan: UrunSiralamaAlani; yon: "asc" | "desc" } | undefined;
 
 type Gorunum = "liste" | "izgara";
+
+/**
+ * Filtre VERİ SEÇİMİDİR ve URL'de yaşar (eski panel `parseUrunSorgusu` ile aynı
+ * ayrım): gösterge panelinin "Düşük stok" kartı `?stok=kritik` ile gelir,
+ * filtreli liste bağlantısı paylaşılabilir, yenilemede korunur. Beyaz liste
+ * dışı değer SESSİZCE düşer (uydurma süzgeç sunucuda 422 üretirdi).
+ */
+function urldenFiltre(params: URLSearchParams): UrunFiltresi {
+  const stok = params.get("stok");
+  const tedarikci = params.get("tedarikci");
+  return {
+    ...(stok && (STOK_FILTRELERI as readonly string[]).includes(stok) ? { stok: stok as UrunFiltresi["stok"] } : {}),
+    ...(params.get("yayinevi") ? { yayinevi: params.get("yayinevi") as string } : {}),
+    ...(params.get("yazar") ? { yazar: params.get("yazar") as string } : {}),
+    ...(tedarikci && (TEDARIKCI_FILTRELERI as readonly string[]).includes(tedarikci)
+      ? { tedarikci: tedarikci as UrunFiltresi["tedarikci"] }
+      : {}),
+  };
+}
+
+function filtredenUrl(filtre: UrunFiltresi): Record<string, string> {
+  const sonuc: Record<string, string> = {};
+  if (filtre.stok) sonuc.stok = filtre.stok;
+  if (filtre.yayinevi) sonuc.yayinevi = filtre.yayinevi;
+  if (filtre.yazar) sonuc.yazar = filtre.yazar;
+  if (filtre.tedarikci) sonuc.tedarikci = filtre.tedarikci;
+  return sonuc;
+}
 
 /**
  * Görünüm ve kolon tercihi KİŞİSEL tercihtir, veri seçimi değil — bu yüzden
@@ -148,7 +177,8 @@ export function UrunListesi() {
   const [siralama, setSiralama] = useState<UrunSiralama>(undefined);
   // Araç çubuğu yüzeyleri (`ListePage`in dört düğmesinin arkası) — pencere
   // içerikleri AYRI dosyada (`UrunAracCubugu.tsx`); gerekçe orada yazılı.
-  const [filtre, setFiltre] = useState<UrunFiltresi>(BOS_FILTRE);
+  const [params, setParams] = useSearchParams();
+  const filtre = useMemo(() => urldenFiltre(params), [params]);
   const [filtreAcik, setFiltreAcik] = useState(false);
   const [kolonAyariAcik, setKolonAyariAcik] = useState(false);
   const [iceAktarAcik, setIceAktarAcik] = useState(false);
@@ -170,12 +200,12 @@ export function UrunListesi() {
   // Filtre listenin İÇERİĞİNİ değiştirir: kullanıcı sayfa 5'teyken daraltılmış
   // sonuçta o sayfa boş kalabilir. Arama ve sıralamayla AYNI emsal.
   const filtreUygula = (yeni: UrunFiltresi) => {
-    setFiltre(yeni);
+    setParams(filtredenUrl(yeni));
     setSayfa(1);
     setFiltreAcik(false);
   };
   const filtreyiTemizle = () => {
-    setFiltre(BOS_FILTRE);
+    setParams(filtredenUrl(BOS_FILTRE));
     setSayfa(1);
   };
 

@@ -87,6 +87,9 @@ const GoogleDonus = lazy(() => import("@/pages/GoogleDonus"));
 const HesapSilmeOnayi = lazy(() => import("@/pages/HesapSilmeOnayi"));
 const AdminLayout = lazy(() => import("@/components/admin/layout/AdminLayout"));
 const PanelShell = lazy(() => import("@/panel/layout/PanelShell").then((m) => ({ default: m.PanelShell })));
+const GostergePaneli = lazy(() =>
+  import("@/panel/pages/gosterge/GostergePaneli").then((m) => ({ default: m.GostergePaneli })),
+);
 const UrunListesi = lazy(() =>
   import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
 );
@@ -680,7 +683,7 @@ function App() {
               <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
             </Route>
             <Route path={PATHS.adminNew} element={<PanelShell />}>
-              <Route index element={<div>Panel kuruldu.</div>} />
+              <Route index element={<GostergePaneli />} />
               <Route path="urunler" element={<UrunListesi />} />
               <Route path="urunler/yeni" element={<UrunFormu />} />
               <Route path="urunler/:id" element={<UrunFormu />} />

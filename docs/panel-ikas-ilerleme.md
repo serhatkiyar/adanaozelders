@@ -18,7 +18,7 @@ Son güncelleme: 11 Eyl 2026.
 
 ## Sıradaki
 
-1. Gösterge paneli
+1. Gösterge paneli — `/yonetim-yeni` iniş sayfası `GostergePaneli.tsx` (KPI şeridi + kuyruklar + para sütunu, eski hook'lar); tarayıcıda doğrulandı, henüz commit edilmedi.
 2. Envanter: genel bakış, stok sayımları, detay, hasarlı stok, stok hareketleri
 3. Kategoriler, tedarikçi, kuponlar
 4. Ayarlar, yetkiler, denetim kayıtları
