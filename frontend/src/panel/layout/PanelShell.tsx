@@ -1,12 +1,21 @@
-import { useState } from "react";
-import { Layout, Menu, Drawer, Button } from "antd";
+import { useState, type ReactNode } from "react";
+import { Layout, Menu, Drawer, Button, Spin } from "antd";
 import type { MenuProps } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AccessDenied } from "@/components/admin/AccessState";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
+import { adminAreaAccess } from "@/lib/adminAccess";
 import { PanelProvider } from "@/panel/PanelProvider";
-import { PANEL_MENU, seciliMenuDurumu, type PanelMenuItem } from "@/panel/layout/menu";
+import {
+  PANEL_MENU,
+  menuyuIzneGoreSuz,
+  rotaIzniBul,
+  seciliMenuDurumu,
+  type PanelMenuItem,
+} from "@/panel/layout/menu";
 import { PANEL_SIDER_BG } from "@/panel/theme";
+import { useAuthStore } from "@/store/authStore";
 
 const { Sider, Header, Content } = Layout;
 
@@ -40,7 +49,20 @@ export function PanelShell() {
   // yol açar. `useMobil`, değeri `useState` başlatıcısında `matchMedia` ile
   // senkron okur — aynı 768px eşiğini korur (bkz. useMedyaSorgusu.ts).
   const mobil = useMobil();
-  const { selectedKey, openKeys } = seciliMenuDurumu(PANEL_MENU, konum.pathname);
+
+  // İzin kapısı (kök CLAUDE.md: yetkilendirme role değil sahipliğe/izinlere
+  // de bakar). `user` `/auth/me` çözülene kadar `null`dur — bu panel gerçek
+  // akışta hep `ProtectedRoute`un ARDINDA render olur (`user` orada zaten
+  // garanti), ama kabuk kendi başına da (test, doğrudan mount) render
+  // edilebilir; o yüzden FAIL-CLOSED kendi başına da doğru olmalı: izin
+  // bilgisi yoksa (`user` henüz gelmediyse) hem menü öğesi hem içerik kapalı
+  // kalır — `lib/adminAccess.ts`teki `undefined` sözleşmesiyle aynı yön.
+  const user = useAuthStore((s) => s.user);
+  const permissions = user?.admin_permissions;
+  const izinYukleniyor = !user;
+
+  const gorunurMenu = menuyuIzneGoreSuz(PANEL_MENU, permissions);
+  const { selectedKey, openKeys } = seciliMenuDurumu(gorunurMenu, konum.pathname);
 
   const menu = (
     <Menu
@@ -48,9 +70,9 @@ export function PanelShell() {
       mode="inline"
       selectedKeys={selectedKey ? [selectedKey] : []}
       defaultOpenKeys={openKeys}
-      items={menuyuAntdyeCevir(PANEL_MENU)}
+      items={menuyuAntdyeCevir(gorunurMenu)}
       onClick={({ key }) => {
-        const yol = yolBul(PANEL_MENU, key);
+        const yol = yolBul(gorunurMenu, key);
         if (yol) {
           navigate(yol);
           setMobilAcik(false);
@@ -58,6 +80,32 @@ export function PanelShell() {
       }}
     />
   );
+
+  // İçerik alanı: rota tam olarak PANEL_MENU'deki (izinden bağımsız TAM)
+  // ağaçtan bulunur — menüde gizlenmiş olması gerekli izni bilmemizi
+  // engellemez, aksi hâlde yetkisiz bir kullanıcı deep-link ile gelince
+  // gereken izin hiç bilinemez ve kapı sessizce açık kalırdı.
+  const rotaBilgisi = rotaIzniBul(PANEL_MENU, konum.pathname);
+  const izinliMi =
+    !rotaBilgisi?.requiredPermission ||
+    adminAreaAccess(permissions, rotaBilgisi.requiredPermission).canView;
+
+  let icerik: ReactNode;
+  if (izinYukleniyor) {
+    icerik = (
+      <div
+        data-testid="panel-icerik-yukleniyor"
+        role="status"
+        style={{ display: "flex", justifyContent: "center", padding: 48 }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  } else if (!izinliMi) {
+    icerik = <AccessDenied area={rotaBilgisi?.label ?? "Bu alan"} />;
+  } else {
+    icerik = <Outlet />;
+  }
 
   return (
     <PanelProvider>
@@ -93,7 +141,7 @@ export function PanelShell() {
             <span style={{ fontWeight: 600 }}>Adana Özel Ders</span>
           </Header>
           <Content style={{ padding: mobil ? 16 : 24 }}>
-            <Outlet />
+            {icerik}
           </Content>
         </Layout>
         <Drawer

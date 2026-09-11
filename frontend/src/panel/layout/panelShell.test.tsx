@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { PanelShell } from "@/panel/layout/PanelShell";
 import { PANEL_MENU } from "@/panel/layout/menu";
+import { PATHS } from "@/lib/routes";
+import { useAuthStore } from "@/store/authStore";
+import { TAM_ADMIN_IZINLERI } from "@/test-utils/adminIzinleri";
+import { ERISIM_REDDEDILDI_BASLIK } from "@/components/admin/AccessState";
 
 /**
  * Gerçek `matchMedia` sorgusunu (`min-width`/`max-width`, hangisi geçtiyse)
@@ -29,6 +33,21 @@ function setViewport(width: number) {
     };
   }) as unknown as typeof window.matchMedia;
 }
+
+/**
+ * İzin kapısı testleri gerçek `admin_permissions` sözleşmesiyle çalışır
+ * (`lib/adminAccess.ts`): joker yok, kod tam eşleşir. Varsayılan oturum TAM
+ * yetkilidir — mevcut kabuk testleri izinle ilgilenmediği için bunları
+ * kırmamak adına her testten önce tam yetkili bir yönetici kurulur; izin
+ * kapısını ölçen testler kendi oturumunu üzerine yazar.
+ */
+beforeEach(() => {
+  useAuthStore.setState({
+    token: "test-token",
+    isAuthenticated: true,
+    user: { id: 1, role_id: 1, admin_permissions: [...TAM_ADMIN_IZINLERI] } as never,
+  });
+});
 
 describe("PanelShell", () => {
   it("menü ağacı ikas modüllerini içerir", () => {
@@ -125,5 +144,68 @@ describe("PanelShell", () => {
     expect(document.querySelector(".ant-drawer")).toHaveClass("ant-drawer-open");
     await userEvent.click(screen.getByText("Giriş"));
     expect(document.querySelector(".ant-drawer")).not.toHaveClass("ant-drawer-open");
+  });
+});
+
+/** `admin_permissions`i verilen bir oturum kurar (izin kapısı testleri). */
+function izinliOturumKur(permissions: string[]) {
+  useAuthStore.setState({
+    token: "test-token",
+    isAuthenticated: true,
+    user: { id: 1, role_id: 1, admin_permissions: permissions } as never,
+  });
+}
+
+describe("PanelShell · izin kapısı", () => {
+  // Alt öğe yalnız kendi üst submenu'sü AÇIKKEN DOM'a girer (rc-menu inline
+  // mod), o yüzden her iki test de ürün rotasına navigate ederek submenu'yü
+  // açık kılıyor (aynı mekanizma: "aktif rotaya göre" testi).
+  it("ürün izni olmayan kullanıcıya menüde Ürünler listesi görünmez", () => {
+    setViewport(1280);
+    izinliOturumKur([]);
+    const { container } = render(
+      <MemoryRouter initialEntries={[PATHS.adminNewProducts]}>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector('[data-menu-id$="-urun-listesi"]')).toBeNull();
+    // Grup başlığı, izinsiz yer tutucu alt öğeler yüzünden yine de durabilir —
+    // ama listelenen tek gerçek ekran (ürün listesi) menüden düşmüş olmalı.
+  });
+
+  it("ürün izni olan kullanıcıya menüde Ürünler listesi görünür", () => {
+    setViewport(1280);
+    izinliOturumKur(["products.view"]);
+    const { container } = render(
+      <MemoryRouter initialEntries={[PATHS.adminNewProducts]}>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector('[data-menu-id$="-urun-listesi"]')).not.toBeNull();
+  });
+
+  it("ürün izni olmayan kullanıcı ürün rotasına girince yetkisiz ekranı görür", () => {
+    setViewport(1280);
+    izinliOturumKur([]);
+    render(
+      <MemoryRouter initialEntries={[PATHS.adminNewProducts]}>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(ERISIM_REDDEDILDI_BASLIK)).toBeVisible();
+  });
+
+  it("izin bilgisi henüz yüklenmemişken ürün rotasının içeriği açılmaz", () => {
+    setViewport(1280);
+    // `/auth/me` henüz dönmedi: token var ama kullanıcı yok — ProtectedRoute
+    // dışında (izole kabuk testi) fail-closed davranışı burada sınanır.
+    useAuthStore.setState({ token: "test-token", isAuthenticated: true, user: null });
+    render(
+      <MemoryRouter initialEntries={[PATHS.adminNewProducts]}>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText(ERISIM_REDDEDILDI_BASLIK)).toBeNull();
+    expect(screen.getByTestId("panel-icerik-yukleniyor")).toBeInTheDocument();
   });
 });
