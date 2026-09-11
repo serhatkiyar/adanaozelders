@@ -52,12 +52,15 @@ const GEREKCELI = [
   // eğitmen ön başvuru ekranının kapı kayıtları 592'ye taşıdı; merge sonrası
   // gerçek değer aşağıdaki koşuyla doğrulanır.
   //
-  // 705: panel paket 1 kapanışı — `KAPI_KAPSAMI`ye `SiparisListesi.tsx`
-  // girişi (yukarıdaki dosya başı yorumuyla) satırı 701'den 705'e kaydırdı —
+  // 753: yeni panel dosyalarının (`MedyaSekmesi`, `MusteriListesi`) kapı
+  // kayıtları satırı 705'ten 753'e kaydırdı. Dördüncü kayma: 685 → 701 → 705
+  // → 753. Satır numarası kimliğin parçası çünkü aynı dosyada ikinci bir
+  // `import.meta.glob` doğduğunda hangisinin gerekçeli olduğu ayırt edilemez;
+  // bedeli her kaymada bu yorumu elle güncellemek —
   // bu satırın KENDİSİ hâlâ gerekçeli: `import.meta.glob` burada testin
   // KONUSUDUR. (Önceki kaydırma: 685 → 701, FormPage/TipSecimi'nin TOPLAMA
   // evresinde statik import edilmesi.)
-  "src/__guards__/calismaZamaniKapisi.test.tsx:705 /src/**/*.tsx",
+  "src/__guards__/calismaZamaniKapisi.test.tsx:753 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

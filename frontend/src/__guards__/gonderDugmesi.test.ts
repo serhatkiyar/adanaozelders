@@ -119,6 +119,14 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/components/LibraryMediaManager.tsx <button> disabled": "islem",
 
   // ── sinir: sayfalama ──
+  // Medya sekmesi sıralama okları: ilkin ÜSTÜNDE, sonuncunun ALTINDA taşınacak
+  // yer yok — `sinir` sınıfının tanımı bu ("basılacak bir şey yok"). Bileşik
+  // koşuldaki `reorder.isPending` ise `islem` (uçuştaki istek, çift gönderim
+  // koruması); iki bileşenin ikisi de meşru, geçerlilik borcu YOK.
+  "src/panel/components/MedyaSekmesi.tsx <Button> index === 0 || reorder.isPending":
+    "sinir",
+  "src/panel/components/MedyaSekmesi.tsx <Button> index === gorseller.length - 1 || reorder.isPending":
+    "sinir",
   "src/components/admin/StockLedgerPanel.tsx <Button> offset === 0": "sinir",
   "src/components/admin/StockLedgerPanel.tsx <Button> sonSayfa": "sinir",
   "src/components/admin/StockMovementsPanel.tsx <Button> offset === 0": "sinir",
