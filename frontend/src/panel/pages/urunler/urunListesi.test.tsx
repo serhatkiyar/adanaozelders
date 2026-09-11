@@ -27,7 +27,7 @@ describe("UrunListesi", () => {
   it("ürün adını ve fiyatını listeler", () => {
     mockUseAdminProducts.mockReturnValue({
       data: { items: [{ id: 1, title: "9. Sınıf Matematik Soru Bankası", price: 250, stock: 50 }], total: 1 },
-      isLoading: false,
+      isPending: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -41,7 +41,7 @@ describe("UrunListesi", () => {
   it("ürün ekle aksiyonu bulunur", () => {
     mockUseAdminProducts.mockReturnValue({
       data: { items: [{ id: 1, title: "9. Sınıf Matematik Soru Bankası", price: 250, stock: 50 }], total: 1 },
-      isLoading: false,
+      isPending: false,
       isError: false,
       error: null,
       refetch: vi.fn(),
@@ -51,10 +51,27 @@ describe("UrunListesi", () => {
     expect(screen.getByRole("button", { name: /Ürün Ekle/i })).toBeInTheDocument();
   });
 
+  it("yüklenirken (henüz veri/hata yokken) boş durumu göstermez", () => {
+    // `isPending` kullanılıyor — `isLoading` (v5'te `isPending && isFetching`)
+    // DEĞİL: retry sırasında `isFetching` anlık false'a düşse bile veri henüz
+    // gelmediği/hata oluşmadığı sürece "boş" ekranı çıkmamalı.
+    mockUseAdminProducts.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAdminProducts>);
+
+    kur();
+    expect(screen.queryByText("İlk Ürününüzü Yükleyin!")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ürünler yüklenemedi.")).not.toBeInTheDocument();
+  });
+
   it("hata varken hata mesajını gösterir, boş durumu göstermez", () => {
     mockUseAdminProducts.mockReturnValue({
       data: undefined,
-      isLoading: false,
+      isPending: false,
       isError: true,
       error: new Error("network"),
       refetch: vi.fn(),
@@ -69,7 +86,7 @@ describe("UrunListesi", () => {
     const refetch = vi.fn();
     mockUseAdminProducts.mockReturnValue({
       data: undefined,
-      isLoading: false,
+      isPending: false,
       isError: true,
       error: new Error("network"),
       refetch,
@@ -91,7 +108,7 @@ describe("UrunListesi", () => {
     it("hızlı yazılan birkaç karakter API'ye tek istekle (gecikmiş değerle) gider", () => {
       mockUseAdminProducts.mockReturnValue({
         data: { items: [], total: 0 },
-        isLoading: false,
+        isPending: false,
         isError: false,
         error: null,
         refetch: vi.fn(),

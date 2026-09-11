@@ -20,7 +20,13 @@ export function UrunListesi() {
   // yoksa her tuş vuruşu bir /store/admin/products isteği demek olur.
   const gecikmisArama = useDebounce(arama);
 
-  const { data, isLoading, isError, refetch } = useAdminProducts({
+  // `isLoading` DEĞİL: React Query v5'te `isLoading = isPending && isFetching`.
+  // `isPending`, veri hiç gelmemişken (henüz çekilmedi/yeniden deneniyor/
+  // iptal edildi) `fetchStatus`un anlık durumundan bağımsız true kalan
+  // sinyaldir — "boş" (İlk Ürününüzü Yükleyin!) yalnız gerçekten veri
+  // GELDİĞİNDE (success + 0 kayıt) veya hata OLUŞMADIĞINDA çıkmalı, ara bir
+  // fetch/retry durumunda değil. Bkz. task-4-report.md "Düzeltme turu 2".
+  const { data, isPending, isError, refetch } = useAdminProducts({
     q: gecikmisArama || undefined,
     limit: boyut,
     offset: (sayfa - 1) * boyut,
@@ -65,7 +71,7 @@ export function UrunListesi() {
       }}
       kolonlar={kolonlar}
       veri={satirlar}
-      yukleniyor={isLoading}
+      yukleniyor={isPending}
       hata={isError ? "Ürünler yüklenemedi." : null}
       hataAksiyon={<Button onClick={() => refetch()}>Tekrar dene</Button>}
       toplam={toplam}
