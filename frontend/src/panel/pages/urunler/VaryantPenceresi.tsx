@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 import { App, Button, Divider, Form, Input, Typography, type InputRef } from "antd";
 import { YanPencere } from "@/panel/components/YanPencere";
 import { HataDurumu } from "@/panel/components/Durum";
-import { Matris, type MatrisSatiri } from "@/panel/components/Matris";
+import { Matris, BARKOD_MIN_UZUNLUK, BARKOD_MAX_UZUNLUK, type MatrisSatiri } from "@/panel/components/Matris";
 import { useVariantMatrix } from "@/hooks/useStore";
+import { getErrorDetail } from "@/lib/errors";
 import type { VariantMatrixRow } from "@/types";
 
 export type VaryantPenceresiProps = {
@@ -163,6 +164,17 @@ export function VaryantPenceresi({
       setGonderimHatasi("Aynı barkod iki satırda kullanılamaz.");
       return;
     }
+    // Sunucunun gerçek uzunluk sınırı (`Matris.tsx::BARKOD_MIN/MAX_UZUNLUK`,
+    // tek kaynak — bkz. o dosyadaki yorum). Bu kontrol olmadan 2-3 karakterlik
+    // bir barkodla gönderilen istek sunucudan 422 dönüyordu ve hepsi-ya-da-
+    // hiçbiri transaction'ı yüzünden TÜM matris jenerik bir mesajla düşüyordu.
+    const ilkGecersizUzunlukIndex = barkodlar.findIndex(
+      (b) => b.length < BARKOD_MIN_UZUNLUK || b.length > BARKOD_MAX_UZUNLUK,
+    );
+    if (ilkGecersizUzunlukIndex !== -1) {
+      setGonderimHatasi(`Barkod ${BARKOD_MIN_UZUNLUK}-${BARKOD_MAX_UZUNLUK} karakter olmalıdır.`);
+      return;
+    }
     setGonderimHatasi(null);
 
     const rows: VariantMatrixRow[] = yeniHucreler.map((h, i) => {
@@ -181,7 +193,7 @@ export function VaryantPenceresi({
         message.success(`${sonuc.created} varyant oluşturuldu.`);
         kapatVeSifirla();
       },
-      onError: () => message.error("Varyantlar oluşturulamadı."),
+      onError: (hata) => message.error(getErrorDetail(hata, "Varyantlar oluşturulamadı.")),
     });
   }
 

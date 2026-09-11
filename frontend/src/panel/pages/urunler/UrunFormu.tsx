@@ -41,6 +41,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormPage, type FormBolumu } from "@/panel/components/FormPage";
 import { HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
 import { MedyaSekmesi } from "@/panel/components/MedyaSekmesi";
+import { BARKOD_MIN_UZUNLUK, BARKOD_MAX_UZUNLUK } from "@/panel/components/Matris";
 import { VaryantPenceresi } from "@/panel/pages/urunler/VaryantPenceresi";
 import { createProduct, updateProduct } from "@/api/store";
 import {
@@ -213,18 +214,6 @@ function guncelleGovdesi(d: UrunFormDegerleri, stokSonuc: StockEditResult): Prod
     ...(stokSonuc.submitStock ? stokSonuc.payload : {}),
   };
 }
-
-/**
- * Sunucudaki gerçek uzunluk sınırı (`backend/schemas/store.py`:
- * `ProductUpdate.barcode` satır 291 ve `VariantMemberFields.barcode` /
- * `VariantMatrixRowIn.barcode` satır 527/578 — hepsi `min_length=4,
- * max_length=32`). İstemci bu sınırı BURADAN okur, uydurmaz; kısa/uzun
- * barkod sunucuya gitmeden reddedilir (Bulgu 3 — önceden yalnız boş
- * olmadığı kontrol ediliyordu, 1-3 karakterlik barkod sunucudan jenerik
- * "Ürün kaydedilemedi." ile geri dönüyordu).
- */
-const BARKOD_MIN_UZUNLUK = 4;
-const BARKOD_MAX_UZUNLUK = 32;
 
 /**
  * Barkod alanı TEK yerde mount olur (Bulgu 2) — ya `VaryantAlanlari`
@@ -682,7 +671,7 @@ function VaryantAlanlari({
           setYeniEksen2(undefined);
           message.success("Varyant grubu oluşturuldu.");
         },
-        onError: () => message.error("Varyant grubu oluşturulamadı."),
+        onError: (hata) => message.error(getErrorDetail(hata, "Varyant grubu oluşturulamadı.")),
       },
     );
   }

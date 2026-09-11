@@ -23,6 +23,15 @@
  * Hata metinleri sunucuyla BİREBİR aynı ("Yalnızca görsel yüklenebilir.",
  * "Görsel 12MB sınırını aşıyor.") — uydurma yok.
  *
+ * Tip/boyut kapısından geçen dosya sunucuya gitmeden `compressImage`
+ * (`frontend/src/lib/compressImage.ts`) ile küçültülür — eski panelin
+ * `ProductMediaManager.tsx`si (`kapakSec`/`galeriEkle`) AYNI işi zaten
+ * yapıyor, burada YENİDEN icat edilmez. Parametreler (1600px uzun kenar,
+ * 0.8 JPEG) `compressImage.ts`in kendi sabitleri — burada tekrarlanmaz.
+ * Sıkıştırma başarısız/desteklenmiyorsa (`compressImage` kendi try/catch'i
+ * içinde) ORİJİNAL dosyaya sessizce düşer — eski panelle aynı davranış,
+ * yükleme akışı asla bloklanmaz.
+ *
  * Dosya seçici deseni eski panelden alınır (`ProductsPanel.tsx`
  * `UrunAksiyonlari`): görünmez `<input type="file" hidden>` + `ref` +
  * düğmeyle tetikleme — AntD `Upload`ın kendi dosya listesi/otomatik
@@ -52,6 +61,7 @@ import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, UploadOutlined } fr
 import { BosDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
 import { useProductMedia } from "@/hooks/useStore";
 import { getErrorDetail } from "@/lib/errors";
+import { compressImage } from "@/lib/compressImage";
 import type { ProductDetailOut } from "@/types";
 
 const KABUL_EDILEN_TIP = "image/*";
@@ -93,7 +103,7 @@ export function MedyaSekmesi({ productId, urun }: { productId?: number; urun?: P
 
   const gorseller = [...urun.images].sort((a, b) => a.sort_order - b.sort_order);
 
-  function kapakSecildi(e: ChangeEvent<HTMLInputElement>) {
+  async function kapakSecildi(e: ChangeEvent<HTMLInputElement>) {
     const dosya = e.target.files?.[0];
     e.target.value = "";
     if (!dosya) return;
@@ -102,12 +112,12 @@ export function MedyaSekmesi({ productId, urun }: { productId?: number; urun?: P
       message.error(nedeni);
       return;
     }
-    uploadCover.mutate(dosya, {
+    uploadCover.mutate(await compressImage(dosya), {
       onError: (hata) => message.error(getErrorDetail(hata, "Kapak yüklenemedi.")),
     });
   }
 
-  function gorselSecildi(e: ChangeEvent<HTMLInputElement>) {
+  async function gorselSecildi(e: ChangeEvent<HTMLInputElement>) {
     const dosyalar = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (dosyalar.length === 0) return;
@@ -118,7 +128,8 @@ export function MedyaSekmesi({ productId, urun }: { productId?: number; urun?: P
         return;
       }
     }
-    uploadImages.mutate(dosyalar, {
+    const sikistirilmis = await Promise.all(dosyalar.map(compressImage));
+    uploadImages.mutate(sikistirilmis, {
       onError: (hata) => message.error(getErrorDetail(hata, "Görsel yüklenemedi.")),
     });
   }

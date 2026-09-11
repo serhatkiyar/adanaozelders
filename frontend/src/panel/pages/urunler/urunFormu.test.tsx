@@ -34,6 +34,15 @@ const uploadProductCover = vi.fn();
 const uploadProductImages = vi.fn();
 const deleteProductImage = vi.fn();
 const reorderProductImages = vi.fn();
+// `MedyaSekmesi` yükleme öncesi `compressImage`den geçiriyor (Bulgu 4) —
+// gerçek gövdesi (canvas/`createImageBitmap`) jsdom'da yok, testte sahte bir
+// GEÇİRGEN (pass-through) implementasyonla değiştirilir; sınanan şey
+// ÇAĞRILDIĞI, sıkıştırma algoritmasının kendisi değil (`compressImage.test.ts`
+// onu zaten ayrıca sınıyor).
+const compressImage = vi.fn(async (dosya: File) => dosya);
+vi.mock("@/lib/compressImage", () => ({
+  compressImage: (...a: [File]) => compressImage(...a),
+}));
 vi.mock("@/api/store", () => ({
   createProduct: (...a: unknown[]) => createProduct(...a),
   updateProduct: (...a: unknown[]) => updateProduct(...a),
@@ -678,6 +687,26 @@ describe("UrunFormu", () => {
         option2_name: null,
       });
     });
+
+    // `getErrorDetail` (`lib/errors.ts`) — bu mutasyon önceden jenerik
+    // "Varyant grubu oluşturulamadı." basıyordu; aynı dosyadaki `kaydet()`
+    // (~350. satır) bunu zaten doğru yapıyordu, dosya kendi içinde tutarsızdı.
+    it("createVariantGroup sunucuda başarısız olursa kullanıcı sunucunun mesajını görür", async () => {
+      createVariantGroup.mockRejectedValueOnce({
+        response: { data: { detail: "Bu grup adı zaten kullanılıyor." } },
+      });
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByRole("button", { name: "+ Yeni grup oluştur" }));
+
+      yaz(screen.getByLabelText("Grup adı"), "Kalem Rengi");
+      await userEvent.click(screen.getByLabelText("1. eksen"));
+      await userEvent.click(await screen.findByTitle("Renk"));
+
+      await userEvent.click(screen.getByRole("button", { name: "Grubu Oluştur" }));
+
+      expect(await screen.findByText("Bu grup adı zaten kullanılıyor.")).toBeInTheDocument();
+    });
   });
 
   // Denetim bulgusu: varyant alanları (`VaryantAlanlari`) panelin geri
@@ -813,6 +842,42 @@ describe("UrunFormu", () => {
       await userEvent.click(screen.getByRole("button", { name: "Sil" }));
 
       await waitFor(() => expect(deleteProductImage).toHaveBeenCalledWith(9, 101));
+    });
+
+    // Bulgu 4 — eski panelin `ProductMediaManager.tsx`si
+    // (`kapakSec`/`galeriEkle`) yükleme öncesi `compressImage` uyguluyordu;
+    // yeni `MedyaSekmesi` bunu atlayıp ham dosyayı doğrudan gönderiyordu.
+    it("kapak seçilince sunucuya gitmeden önce compressImage'dan geçer", async () => {
+      fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN);
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+      await userEvent.click(screen.getByRole("tab", { name: "Medya" }));
+
+      const kapakInput = screen.getByLabelText("Kapak görseli seç") as HTMLInputElement;
+      const dosya = new File(["içerik"], "kapak.png", { type: "image/png" });
+      await userEvent.upload(kapakInput, dosya);
+
+      await waitFor(() => expect(compressImage).toHaveBeenCalledWith(dosya));
+      await waitFor(() => expect(uploadProductCover).toHaveBeenCalledWith(9, dosya));
+    });
+
+    it("galeri görseli seçilince sunucuya gitmeden önce compressImage'dan geçer", async () => {
+      fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN);
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+      await userEvent.click(screen.getByRole("tab", { name: "Medya" }));
+
+      const gorselInput = screen.getByLabelText("Görsel seç") as HTMLInputElement;
+      const dosya = new File(["içerik"], "gorsel.png", { type: "image/png" });
+      await userEvent.upload(gorselInput, dosya);
+
+      // `dosyalar.map(compressImage)` — eski panelin `galeriEkle`siyle AYNI
+      // desen (`files.map(compressImage)`). `Array.map` çağırdığı fonksiyona
+      // `(deger, index, dizi)` geçer; `compressImage` yalnız ilkini okur —
+      // bu yüzden mock'a giden gerçek çağrı argümanları üçlü, yalnız İLK
+      // argüman (asıl dosya) sınanır.
+      await waitFor(() => expect(compressImage.mock.calls[0]?.[0]).toBe(dosya));
+      await waitFor(() => expect(uploadProductImages).toHaveBeenCalledWith(9, [dosya]));
     });
 
     it("sıralama değişikliği sunucuya doğru id dizisiyle gider", async () => {

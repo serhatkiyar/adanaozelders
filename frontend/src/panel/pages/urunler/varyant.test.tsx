@@ -246,6 +246,56 @@ describe("VaryantPenceresi", () => {
     expect(JSON.stringify(gonderilenSatirlar[0])).not.toMatch(/"stock"/);
   });
 
+  // Backend `VariantMatrixRowIn.barcode` (`backend/schemas/store.py:578`)
+  // `min_length=4, max_length=32` ister; matris tarafı önceden yalnız
+  // boş/tekrarlanan olmadığını kontrol ediyordu — kısa barkod sunucudan
+  // 422 dönüyor ve hepsi-ya-da-hiçbiri transaction'ı yüzünden TÜM matris
+  // jenerik bir mesajla düşüyordu (bkz. `Matris.tsx::BARKOD_MIN/MAX_UZUNLUK`,
+  // tek kaynak).
+  it("çok kısa barkodlu satır varken toplu yazım engellenir (istek atılmaz)", async () => {
+    previewVariantMatrix.mockResolvedValueOnce(ONIZLEME_TEK_EKSEN);
+    kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
+
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
+    await screen.findByText("Kırmızı");
+
+    const barkodlar = screen.getAllByLabelText(/^Barkod /);
+    yaz(barkodlar[0], "12");
+    yaz(barkodlar[1], "8690000000029");
+
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    expect(await screen.findByText("Barkod 4-32 karakter olmalıdır.")).toBeInTheDocument();
+    expect(createVariantMatrix).not.toHaveBeenCalled();
+  });
+
+  // `getErrorDetail` (`lib/errors.ts`) — sunucunun ALANI OLMAYAN 409/422
+  // mesajı önceden jenerik "Varyantlar oluşturulamadı." ile eziliyordu;
+  // aynı ekranın komşu mutasyonu (`UrunFormu.kaydet()`) bunu zaten doğru
+  // yapıyordu, bu dosya o emsale uydu.
+  it("kardeş varyant yazımı sunucuda başarısız olursa kullanıcı sunucunun mesajını görür", async () => {
+    previewVariantMatrix.mockResolvedValueOnce(ONIZLEME_TEK_EKSEN);
+    createVariantMatrix.mockRejectedValueOnce({
+      response: { data: { detail: "Barkod 8690000000012 başka bir üründe kullanılıyor." } },
+    });
+    kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);
+
+    yaz(screen.getByLabelText("Renk değerleri"), "Kırmızı,Mavi");
+    await userEvent.click(screen.getByRole("button", { name: "Önizle" }));
+    await screen.findByText("Kırmızı");
+
+    const barkodlar = screen.getAllByLabelText(/^Barkod /);
+    yaz(barkodlar[0], "8690000000012");
+    yaz(barkodlar[1], "8690000000029");
+
+    await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+    expect(
+      await screen.findByText("Barkod 8690000000012 başka bir üründe kullanılıyor."),
+    ).toBeInTheDocument();
+  });
+
   it("önizleme başarısız olursa kullanıcı hata görür", async () => {
     previewVariantMatrix.mockRejectedValueOnce(new Error("ağ hatası"));
     kur(<VaryantPenceresi acik kapat={() => {}} productId={5} eksen1Adi="Renk" />);

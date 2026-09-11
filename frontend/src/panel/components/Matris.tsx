@@ -16,6 +16,18 @@ export type MatrisSatiri = {
   stock?: number;
 };
 
+/**
+ * Sunucudaki gerçek barkod uzunluk sınırı — `backend/schemas/store.py`
+ * `VariantMatrixRowIn.barcode` (satır 578, `min_length=4, max_length=32`).
+ * Aynı sınır `ProductUpdate.barcode`/`VariantMemberFields.barcode`de de
+ * birebir aynı (satır 291/527). TEK KAYNAK burası: `Matris` hem bu dosyanın
+ * kendi hücre doğrulamasında hem de kardeş ekranların (`UrunFormu.tsx`nun
+ * tekil barkod alanı, `VaryantPenceresi.tsx`nin toplu gönderim öncesi
+ * engellemesi) kullandığı ortak değer — iki bağımsız 4/32 sabiti YOK.
+ */
+export const BARKOD_MIN_UZUNLUK = 4;
+export const BARKOD_MAX_UZUNLUK = 32;
+
 export function Matris({
   satirlar,
   degisti,
@@ -59,14 +71,22 @@ export function Matris({
         {
           title: "Barkod *",
           key: "barcode",
-          render: (_, k) => (
-            <Input
-              aria-label={`Barkod ${k.kombinasyon}`}
-              value={k.barcode}
-              status={k.barcode ? undefined : "error"}
-              onChange={(e) => degisti(k.anahtar, "barcode", e.target.value)}
-            />
-          ),
+          render: (_, k) => {
+            // Boş VEYA sunucunun kabul etmeyeceği uzunlukta (4-32 dışı) —
+            // ikisi de gönderimi engeller (bkz. `VaryantPenceresi.kaydet()`),
+            // hücre burada da kırmızı görünür ki kullanıcı hangi satırın
+            // sorunlu olduğunu göndermeden önce görsün.
+            const gecerli =
+              !!k.barcode && k.barcode.length >= BARKOD_MIN_UZUNLUK && k.barcode.length <= BARKOD_MAX_UZUNLUK;
+            return (
+              <Input
+                aria-label={`Barkod ${k.kombinasyon}`}
+                value={k.barcode}
+                status={gecerli ? undefined : "error"}
+                onChange={(e) => degisti(k.anahtar, "barcode", e.target.value)}
+              />
+            );
+          },
         },
         {
           title: "Stok",
