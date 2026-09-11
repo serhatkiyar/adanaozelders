@@ -90,17 +90,42 @@ function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
 
 /**
  * Ürün bir varyant grubuna bağlıysa (`variant_group_id` seçiliyse) grup
- * kimliği + bu ürünün kendi eksen değerleri gövdeye eklenir. Bağlı
- * DEĞİLSE hiçbir varyant alanı gönderilmez — sunucu tarafında grupsuz
- * ürün için bu alanlar anlamsızdır.
+ * kimliği + bu ürünün kendi eksen değerleri gövdeye eklenir.
+ *
+ * Bağlı DEĞİLSE (`variant_group_id` boş) iki durum ayrışır:
+ *  - Alan formda HİÇ MOUNT OLMADIYSA (`"variant_group_id" in d` yanlış —
+ *    Varyant sekmesi hiç açılmadı/bu ürün için hiç yok) hiçbir varyant
+ *    alanı gönderilmez; BİLİNÇLİ "dokunulmadı" davranışı (stok örneğiyle
+ *    aynı desen, bkz. dosya başı yorumu).
+ *  - Alan MOUNT OLDU ama boşsa (kullanıcı grubu Select'ten TEMİZLEDİ)
+ *    gruptan çıkış GERÇEKTİR: `variant_group_id`, `option1_value`,
+ *    `option2_value` VE `barcode` AÇIKÇA `null` gönderilir. Aksi halde
+ *    backend `exclude_unset=True` kullandığından (`store_service.py`
+ *    ~satır 2070-2078) anahtar gövdede yoksa eski değer korunur, üyelik
+ *    hiç yeniden değerlendirilmez ve "Ürün kaydedildi" mesajına rağmen
+ *    eski grup + eski eksen değerleri + eski barkod DB'de aynen kalır
+ *    (Bulgu 1). Backend option1/option2'yi kendisi temizler
+ *    (`store_service.py` ~2102-2113) ama barkodu ETMEZ — CHECK
+ *    `ck_products_variant_barcode` yalnız "gruplu üründe barkod NULL
+ *    olamaz" yönünü zorlar, tersi serbesttir (`backend/models/store.py`
+ *    satır 553-556). Barkod burada yine de AÇIKÇA `null` gönderilir:
+ *    `VaryantAlanlari`daki grup Select'inin `onChange`'i barkodu zaten
+ *    görsel olarak sıfırlıyor (grup değişince/temizlenince eski barkod
+ *    artık bu ürünü tanımlamaz) — gövde ekranla TUTARLI olsun, ekran
+ *    boşken DB'de sessizce eski barkod kalmasın.
  */
 function varyantUyelikGovdesi(d: UrunFormDegerleri) {
-  if (d.variant_group_id == null) return {};
-  return {
-    variant_group_id: d.variant_group_id,
-    option1_value: d.option1_value || undefined,
-    option2_value: d.option2_value || undefined,
-  };
+  if (d.variant_group_id != null) {
+    return {
+      variant_group_id: d.variant_group_id,
+      option1_value: d.option1_value || undefined,
+      option2_value: d.option2_value || undefined,
+    };
+  }
+  if ("variant_group_id" in d) {
+    return { variant_group_id: null, option1_value: null, option2_value: null, barcode: null };
+  }
+  return {};
 }
 
 /**
@@ -119,6 +144,44 @@ function guncelleGovdesi(d: UrunFormDegerleri, stokSonuc: StockEditResult): Prod
     ...varyantUyelikGovdesi(d),
     ...(stokSonuc.submitStock ? stokSonuc.payload : {}),
   };
+}
+
+/**
+ * Sunucudaki gerçek uzunluk sınırı (`backend/schemas/store.py`:
+ * `ProductUpdate.barcode` satır 291 ve `VariantMemberFields.barcode` /
+ * `VariantMatrixRowIn.barcode` satır 527/578 — hepsi `min_length=4,
+ * max_length=32`). İstemci bu sınırı BURADAN okur, uydurmaz; kısa/uzun
+ * barkod sunucuya gitmeden reddedilir (Bulgu 3 — önceden yalnız boş
+ * olmadığı kontrol ediliyordu, 1-3 karakterlik barkod sunucudan jenerik
+ * "Ürün kaydedilemedi." ile geri dönüyordu).
+ */
+const BARKOD_MIN_UZUNLUK = 4;
+const BARKOD_MAX_UZUNLUK = 32;
+
+/**
+ * Barkod alanı TEK yerde mount olur (Bulgu 2) — ya `VaryantAlanlari`
+ * içinde (ürün varyant grubuna bağlanabiliyorsa) ya da Envanter
+ * sekmesinde (bağlanamıyorsa); ikisi aynı render'da birden AKTİF olmaz
+ * (`varyantliMi` oturum boyunca sabit, bkz. dosya başı yorumu). Zorunluluk
+ * CANLI: `grupSecili` çağıran taraftan `Form.useWatch("variant_group_id")`
+ * ile beslenir — grup seçiliyken zorunlu, temizlenince/hiç yokken
+ * opsiyonel.
+ */
+function barkodKurallari(grupSecili: boolean) {
+  return [
+    { required: grupSecili, message: "Varyant grubundaki ürün için barkod zorunludur." },
+    {
+      validator: (_: unknown, value: string | null | undefined) => {
+        if (!value) return Promise.resolve();
+        if (value.length < BARKOD_MIN_UZUNLUK || value.length > BARKOD_MAX_UZUNLUK) {
+          return Promise.reject(
+            new Error(`Barkod ${BARKOD_MIN_UZUNLUK}-${BARKOD_MAX_UZUNLUK} karakter olmalıdır.`),
+          );
+        }
+        return Promise.resolve();
+      },
+    },
+  ];
 }
 
 export function UrunFormu() {
@@ -289,13 +352,16 @@ export function UrunFormu() {
               )}
             </>
           )}
-          {/* Varyant grubuna bağlı üründe barkod alanı Varyant sekmesinde,
-              ZORUNLU olarak durur (bkz. `VaryantAlanlari`) — burada
-              tekrarlanmaz; aynı `name="barcode"` iki sekmede birden
-              mount olursa AntD aynı alanı iki kez kaydeder ve testte
-              "Barkod" etiketi belirsizleşir. */}
+          {/* Bu ürün bir varyant grubuna bağlanabiliyorsa (`varyantliMi`)
+              barkod alanı `VaryantAlanlari` içinde, grup seçimine göre
+              CANLI zorunlulukla durur (bkz. `barkodKurallari` ve Bulgu 2
+              notu orada) — burada TEKRARLANMAZ; aynı `name="barcode"` iki
+              yerde birden mount olursa AntD aynı alanı iki kez kaydeder.
+              `varyantliMi` oturum boyunca sabittir (bkz. dosya başı) —
+              bu iki dal asla aynı anda aktif olmaz. Bu dalda (`!varyantliMi`)
+              grup hiç mümkün olmadığından zorunluluk hep `false`tur. */}
           {!varyantliMi && (
-            <Form.Item label="Barkod" name="barcode">
+            <Form.Item label="Barkod" name="barcode" rules={barkodKurallari(false)}>
               <Input />
             </Form.Item>
           )}
@@ -493,15 +559,20 @@ function VaryantAlanlari({
               <Input />
             </Form.Item>
           )}
-          <Form.Item
-            label="Barkod"
-            name="barcode"
-            rules={[{ required: true, message: "Varyant grubundaki ürün için barkod zorunludur." }]}
-          >
-            <Input />
-          </Form.Item>
         </>
       )}
+      {/* Barkod HER ZAMAN mount — `secilenGrup`a bağlı DEĞİL (Bulgu 2).
+          Önceki sürümde bu alan yalnız `secilenGrup` doğruyken görünürdü;
+          düzenlemede grup TEMİZLENDİĞİNDE (`secilenGrup` artık null) hem
+          burası hem Envanter sekmesi (`!varyantliMi` hâlâ false —
+          `varyantliMi` oturum başında donuyor, gruba canlı tepki vermez)
+          barkodu gizliyor ve kullanıcının barkodu görüp
+          düzenleyebileceği hiçbir yer kalmıyordu — sessiz veri hatasının
+          kök nedeni buydu. Zorunluluk CANLI `groupIdWatch`a bağlı: grup
+          seçiliyken zorunlu, temizlenince opsiyonel. */}
+      <Form.Item label="Barkod" name="barcode" rules={barkodKurallari(groupIdWatch != null)}>
+        <Input />
+      </Form.Item>
       {duzenlemeModu && urun?.variants != null && (
         <>
           <Divider />

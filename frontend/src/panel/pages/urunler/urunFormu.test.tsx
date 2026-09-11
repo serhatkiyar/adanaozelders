@@ -55,6 +55,9 @@ const DUZENLENECEK_URUN = {
 
 const DUZENLENECEK_URUN_VARYANTLI = {
   ...DUZENLENECEK_URUN,
+  variant_group_id: 1,
+  option1_value: "Kırmızı",
+  option2_value: null,
   variants: {
     group_id: 1,
     title: "Defter Rengi",
@@ -212,6 +215,62 @@ describe("UrunFormu", () => {
       expect(await screen.findByText("Stok değiştiyse gerekçe zorunludur.")).toBeInTheDocument();
       expect(updateProduct).not.toHaveBeenCalled();
     });
+
+    // Bulgu 1 — sessiz veri hatası: grup Select'i `allowClear` taşıyor ama
+    // gövdeye `variant_group_id` anahtarı hiç girmiyordu; backend
+    // `exclude_unset=True` kullandığından eski grup + eski eksen değerleri +
+    // eski barkod DB'de aynen kalıyordu (bkz. UrunFormu.tsx `varyantUyelikGovdesi`).
+    describe("gruptan çıkarma", () => {
+      it("gruplu ürünün grubu temizlenip kaydedilince gövde variant_group_id, option değerleri ve barkodu null taşır", async () => {
+        listVariantGroups.mockResolvedValueOnce([
+          { id: 1, title: "Defter Rengi", option1_name: "Renk", option2_name: null, member_count: 3 },
+        ]);
+        fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN_VARYANTLI);
+        const { container } = kurDuzenleme();
+        await screen.findByDisplayValue("Kırmızı Defter");
+
+        await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+        await screen.findByLabelText("Varyant Grubu");
+
+        const temizleDugmesi = container.querySelector(".ant-select-clear");
+        expect(temizleDugmesi).toBeTruthy();
+        await userEvent.click(temizleDugmesi as Element);
+
+        await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+        await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+        const govde = updateProduct.mock.calls[0][1];
+        expect(govde).toMatchObject({
+          variant_group_id: null,
+          option1_value: null,
+          option2_value: null,
+          barcode: null,
+        });
+      });
+
+      it("Varyant sekmesine hiç dokunulmadan kaydedilince bu alanlar gövdeye hiç girmez", async () => {
+        fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN_VARYANTLI);
+        kurDuzenleme();
+        await screen.findByDisplayValue("Kırmızı Defter");
+
+        // Varyant sekmesi hiç açılmıyor — mevcut "dokunulmadı" davranışı
+        // (stok gerekçesi desenindeki gibi) korunmalı.
+        await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+        await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+        const govde = updateProduct.mock.calls[0][1];
+        expect(govde).not.toHaveProperty("variant_group_id");
+        expect(govde).not.toHaveProperty("option1_value");
+        expect(govde).not.toHaveProperty("option2_value");
+        // `barcode` — Varyant alanlarından FARKLI olarak her zaman gövdede
+        // literal bir anahtardır (bkz. `guncelleGovdesi`, koşulsuz alan);
+        // dokunulmadığında değeri `undefined` kalır ve istek gövdesi
+        // serileştirilirken (JSON.stringify) düşer — "gönderilmedi" ile
+        // eşdeğerdir. Bu test yalnız Bulgu 1'in konusu olan üç varyant
+        // alanının GERÇEKTEN spread'e bağlı (var/yok) davrandığını sınar.
+        expect(govde.barcode).toBeUndefined();
+      });
+    });
   });
 
   describe("varyant grubu üyeliği", () => {
@@ -306,6 +365,57 @@ describe("UrunFormu", () => {
       expect(await screen.findByTitle("Renk")).toBeInTheDocument();
       expect(screen.getByTitle("Beden")).toBeInTheDocument();
       expect(screen.getByTitle("Boyut")).toBeInTheDocument();
+    });
+
+    // Bulgu 2 — tek `barcode` alanı, zorunluluğu grup seçimine CANLI
+    // tepki verir: aynı oturumda grup seçilince engeller, temizlenince
+    // serbest bırakır (alan kaybolmaz/yeniden mount olmaz, aynı Form.Item).
+    it("barkod zorunluluğu grup seçimine canlı tepki verir: seçiliyken engeller, temizlenince serbest bırakır", async () => {
+      listVariantGroups.mockResolvedValueOnce([
+        { id: 1, title: "Kalem Rengi", option1_name: "Renk", option2_name: null, member_count: 1 },
+      ]);
+      const { container } = kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Fosforlu Kalem");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "50");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "20");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
+      await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk)"));
+      await userEvent.type(await screen.findByLabelText("Renk"), "Sarı");
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+      expect(
+        await screen.findByText("Varyant grubundaki ürün için barkod zorunludur."),
+      ).toBeInTheDocument();
+      expect(createProduct).not.toHaveBeenCalled();
+
+      const temizleDugmesi = container.querySelector(".ant-select-clear");
+      expect(temizleDugmesi).toBeTruthy();
+      await userEvent.click(temizleDugmesi as Element);
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+      await waitFor(() => expect(createProduct).toHaveBeenCalled());
+      expect(createProduct.mock.calls[0][0]).toMatchObject({ variant_group_id: null, barcode: null });
+    });
+
+    // Bulgu 3 — backend `ProductUpdate.barcode`/`VariantMemberFields.barcode`
+    // (`backend/schemas/store.py:291,527,578`) `min_length=4, max_length=32`
+    // ister; istemci önceden yalnız boş olmadığını kontrol ediyordu, kısa
+    // barkod sunucudan jenerik 422/"Ürün kaydedilemedi." ile dönüyordu.
+    it("çok kısa barkod istemcide reddedilir, istek atılmaz", async () => {
+      kur();
+      await userEvent.type(screen.getByLabelText("Ürün Adı"), "Kısa Barkodlu Ürün");
+      await userEvent.type(screen.getByLabelText("Satış Fiyatı"), "40");
+      await userEvent.type(screen.getByLabelText("KDV Oranı (%)"), "10");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Envanter" }));
+      await userEvent.type(screen.getByLabelText("Barkod"), "12");
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      expect(await screen.findByText("Barkod 4-32 karakter olmalıdır.")).toBeInTheDocument();
+      expect(createProduct).not.toHaveBeenCalled();
     });
   });
 
