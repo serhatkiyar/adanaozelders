@@ -367,6 +367,10 @@ export const OLCUM_TABANI = [
   "src/panel/components/Matris.tsx",
   "src/panel/components/TipSecimi.tsx",
   "src/panel/components/YanPencere.tsx",
+  // Müşteriler modülünün ilk ekranı. Test dosyaları (`musteriListesi.test.tsx`,
+  // `musteriListesiRota.test.ts`) kapsam dışıdır — walk ile aynı gerekçe
+  // (fixture'lardaki ham etiketler borç değildir).
+  "src/panel/pages/musteriler/MusteriListesi.tsx",
   // Siparişler modülünün ilk ekranı (commit `06ab4d2`). Test dosyaları
   // (`siparisListesi.test.tsx`, `siparisListesiRota.test.ts`) kapsam dışıdır
   // — walk ile aynı gerekçe (fixture'lardaki ham etiketler borç değildir).

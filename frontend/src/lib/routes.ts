@@ -238,6 +238,7 @@ export const PATHS = {
   adminNewProductNew: "/yonetim-yeni/urunler/yeni",
   adminNewProductEdit: "/yonetim-yeni/urunler/:id",
   adminNewOrders: "/yonetim-yeni/siparisler",
+  adminNewCustomers: "/yonetim-yeni/musteriler",
 } as const;
 
 export const ROUTES = {
@@ -396,6 +397,7 @@ export const ROUTES = {
   adminNewProductNew: PATHS.adminNewProductNew,
   adminNewProductEdit: (id: string | number) => `/yonetim-yeni/urunler/${id}`,
   adminNewOrders: PATHS.adminNewOrders,
+  adminNewCustomers: PATHS.adminNewCustomers,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve

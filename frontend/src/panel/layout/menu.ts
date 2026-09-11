@@ -47,7 +47,14 @@ export const PANEL_MENU: PanelMenuItem[] = [
     requiredPermission: "orders",
   },
   { key: "dagitim", label: "Dağıtım" },
-  { key: "musteriler", label: "Müşteriler" },
+  {
+    key: "musteriler",
+    label: "Müşteriler",
+    path: PATHS.adminNewCustomers,
+    // Eski panelin `adminNavigation.ts`teki "Kullanıcılar" girdisiyle AYNI
+    // izin öneki (`users.view`/`users.manage`) — bkz. `AdminUsersPage.tsx`.
+    requiredPermission: "users",
+  },
   { key: "dersler", label: "Dersler" },
   { key: "egitmenler", label: "Eğitmenler" },
   { key: "kutuphaneler", label: "Kütüphaneler" },

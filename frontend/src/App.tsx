@@ -96,6 +96,9 @@ const UrunFormu = lazy(() =>
 const SiparisListesi = lazy(() =>
   import("@/panel/pages/siparisler/SiparisListesi").then((m) => ({ default: m.SiparisListesi })),
 );
+const MusteriListesi = lazy(() =>
+  import("@/panel/pages/musteriler/MusteriListesi").then((m) => ({ default: m.MusteriListesi })),
+);
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
 const AdminOperationsPage = lazy(() => import("@/pages/admin/AdminOperationsPage"));
@@ -682,6 +685,7 @@ function App() {
               <Route path="urunler/yeni" element={<UrunFormu />} />
               <Route path="urunler/:id" element={<UrunFormu />} />
               <Route path="siparisler" element={<SiparisListesi />} />
+              <Route path="musteriler" element={<MusteriListesi />} />
             </Route>
           </Route>
 
