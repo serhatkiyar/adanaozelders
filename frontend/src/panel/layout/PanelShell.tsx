@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Layout, Menu, Drawer, Button, Spin } from "antd";
+import { Layout, Menu, Drawer, Button } from "antd";
 import type { MenuProps } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
@@ -14,6 +14,7 @@ import {
   seciliMenuDurumu,
   type PanelMenuItem,
 } from "@/panel/layout/menu";
+import { YukleniyorDurumu } from "@/panel/components/Durum";
 import { PANEL_SIDER_BG } from "@/panel/theme";
 import { useAuthStore } from "@/store/authStore";
 
@@ -92,13 +93,17 @@ export function PanelShell() {
 
   let icerik: ReactNode;
   if (izinYukleniyor) {
+    // Panelin TEK yükleniyor dili `YukleniyorDurumu`dur (bkz. `components/Durum.tsx`).
+    // Burada elle kurulmuş bir `Spin` vardı; bu ekran ortak bileşen eklenirken
+    // paralel yazıldığı için onu görmemişti. 15 modül bu kabuğu örnek alacak,
+    // ikinci bir dil bırakılmaz. Metinsiz dönen çark ekran okuyucuya da bir şey
+    // söylemiyordu; etiket bağlama özgü.
     icerik = (
       <div
         data-testid="panel-icerik-yukleniyor"
-        role="status"
         style={{ display: "flex", justifyContent: "center", padding: 48 }}
       >
-        <Spin size="large" />
+        <YukleniyorDurumu etiket="Yetkiler denetleniyor…" />
       </div>
     );
   } else if (!izinliMi) {
