@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "antd";
+import type { TableProps } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { ListePage } from "@/panel/components/ListePage";
 import { useAdminProducts } from "@/hooks/useStore";
+import { useDebounce } from "@/hooks/useDebounce";
+import { formatTL } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import type { ProductSearchOut } from "@/types";
 
@@ -13,8 +16,12 @@ export function UrunListesi() {
   const [boyut, setBoyut] = useState(20);
   const navigate = useNavigate();
 
+  // Girdi anında güncellenir (aramaDegeri); API'ye giden değer gecikmelidir —
+  // yoksa her tuş vuruşu bir /store/admin/products isteği demek olur.
+  const gecikmisArama = useDebounce(arama);
+
   const { data, isLoading, isError, refetch } = useAdminProducts({
-    q: arama || undefined,
+    q: gecikmisArama || undefined,
     limit: boyut,
     offset: (sayfa - 1) * boyut,
   });
@@ -23,6 +30,25 @@ export function UrunListesi() {
   // Toplam bilinmiyorsa (`X-Total-Count` yoksa) API -1 döner; sayfalama o
   // durumda toplamı göstermemeli — bkz. store.ts listProductsAdmin notu.
   const toplam = data && data.total >= 0 ? data.total : undefined;
+
+  const kolonlar: TableProps<ProductSearchOut>["columns"] = useMemo(
+    () => [
+      { title: "Ürün", dataIndex: "title", key: "title" },
+      {
+        title: "Satış Fiyatı",
+        dataIndex: "price",
+        key: "price",
+        render: (v: string | number) => formatTL(v),
+      },
+      {
+        title: "Envanter",
+        dataIndex: "stock",
+        key: "stock",
+        render: (v?: number | null) => (v == null ? "—" : `${v} adet`),
+      },
+    ],
+    [],
+  );
 
   return (
     <ListePage<ProductSearchOut>
@@ -37,21 +63,7 @@ export function UrunListesi() {
         setArama(v);
         setSayfa(1);
       }}
-      kolonlar={[
-        { title: "Ürün", dataIndex: "title", key: "title" },
-        {
-          title: "Satış Fiyatı",
-          dataIndex: "price",
-          key: "price",
-          render: (v: string | number) => `₺ ${Number(v).toFixed(2)}`,
-        },
-        {
-          title: "Envanter",
-          dataIndex: "stock",
-          key: "stock",
-          render: (v?: number | null) => (v == null ? "—" : `${v} adet`),
-        },
-      ]}
+      kolonlar={kolonlar}
       veri={satirlar}
       yukleniyor={isLoading}
       hata={isError ? "Ürünler yüklenemedi." : null}
