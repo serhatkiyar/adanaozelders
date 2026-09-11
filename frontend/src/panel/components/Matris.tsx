@@ -1,10 +1,17 @@
 import { Input, InputNumber, Table } from "antd";
 
+/**
+ * Kardeş varyant matrisi satırı — backend `VariantMatrixRow` ile aynı
+ * alanları taşır (bkz. `frontend/src/types/index.ts`). `sku` alanı YOK:
+ * backend'de karşılığı yok. `barcode` ZORUNLU (gruplu ürün barkodsuz
+ * yazılamaz, `ck_products_variant_barcode`) — boşken sütun görsel olarak
+ * uyarır; asıl engelleme (istek atılmaması) tüketici (`VaryantPenceresi`)
+ * tarafında yapılır.
+ */
 export type MatrisSatiri = {
   anahtar: string;
   kombinasyon: string;
   price?: number;
-  sku?: string;
   barcode?: string;
   stock?: number;
 };
@@ -38,23 +45,13 @@ export function Matris({
           ),
         },
         {
-          title: "SKU",
-          key: "sku",
-          render: (_, k) => (
-            <Input
-              aria-label={`SKU ${k.kombinasyon}`}
-              value={k.sku}
-              onChange={(e) => degisti(k.anahtar, "sku", e.target.value)}
-            />
-          ),
-        },
-        {
-          title: "Barkod",
+          title: "Barkod *",
           key: "barcode",
           render: (_, k) => (
             <Input
               aria-label={`Barkod ${k.kombinasyon}`}
               value={k.barcode}
+              status={k.barcode ? undefined : "error"}
               onChange={(e) => degisti(k.anahtar, "barcode", e.target.value)}
             />
           ),

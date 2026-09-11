@@ -12,6 +12,15 @@
  * `ProductForm.tsx`: "karar veri olarak girilir") — bu form da aynı
  * kuralı korur, sessiz bir KDV varsayımı YAZMAZ.
  *
+ * ## Toplu kardeş varyant üretimi (Task 8b)
+ *
+ * Yalnız DÜZENLEME modunda VE ürün zaten bir varyant grubundaysa
+ * (`urun.variants != null`) `VaryantAlanlari` altında "Kardeş Varyant Üret"
+ * tetikleyicisi + `VaryantPenceresi` görünür (bkz. karar belgesi
+ * `.superpowers/sdd/2026-09-11-panel-paket1-kurulum-kabuk-urunler/
+ * task-8-karar-varyant-akisi.md`, Faz 2). Yeni kayıtta `productId` yok —
+ * bu akış hiç gösterilmez.
+ *
  * ## Stok gerekçesi
  *
  * `backend/services/store_service.py::update_product` stok hedefi mevcut
@@ -26,10 +35,11 @@
  * oluşturmada ilk stok yazımının gerekçesi sabittir (`INITIAL`).
  */
 import { useEffect, useState } from "react";
-import { App, Button, Flex, Form, Input, InputNumber, Select, Typography, type FormInstance } from "antd";
+import { App, Button, Divider, Flex, Form, Input, InputNumber, Select, Typography, type FormInstance } from "antd";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormPage, type FormBolumu } from "@/panel/components/FormPage";
+import { VaryantPenceresi } from "@/panel/pages/urunler/VaryantPenceresi";
 import { createProduct, updateProduct } from "@/api/store";
 import { useAdminProduct, useCreateVariantGroup, useVariantConfig, useVariantGroups } from "@/hooks/useStore";
 import { ROUTES } from "@/lib/routes";
@@ -40,7 +50,7 @@ import {
   type AdminReasonCode,
   type StockEditResult,
 } from "@/lib/stockMovements";
-import type { ProductCreate, ProductKind, ProductUpdate, VariantGroup } from "@/types";
+import type { ProductCreate, ProductDetailOut, ProductKind, ProductUpdate, VariantGroup } from "@/types";
 
 type UrunFormDegerleri = {
   title: string;
@@ -298,7 +308,7 @@ export function UrunFormu() {
     bolumler.push({
       anahtar: "varyant",
       baslik: "Varyantlar",
-      icerik: <VaryantAlanlari form={form} />,
+      icerik: <VaryantAlanlari form={form} duzenlemeModu={duzenlemeModu} urun={urun} />,
     });
   }
 
@@ -339,12 +349,27 @@ export function UrunFormu() {
  *
  * Eksen adları (`option1_name`/`option2_name`) `useVariantConfig().axes`
  * KAPALI SÖZLÜĞÜNDEN `Select` ile seçilir — serbest metin girilemez.
+ *
+ * ## Toplu kardeş üretimi (Task 8b) — KAPI
+ *
+ * `duzenlemeModu && urun.variants != null` olmadıkça hiç render edilmez:
+ * yeni kayıtta `productId` yoktur ve `previewVariantMatrix`/
+ * `createVariantMatrix` var olan bir ürün ister (bkz. karar belgesi).
  */
-function VaryantAlanlari({ form }: { form: FormInstance<UrunFormDegerleri> }) {
+function VaryantAlanlari({
+  form,
+  duzenlemeModu,
+  urun,
+}: {
+  form: FormInstance<UrunFormDegerleri>;
+  duzenlemeModu: boolean;
+  urun?: ProductDetailOut;
+}) {
   const { message } = App.useApp();
   const { data: config, isPending: configYukleniyor, isError: configHataVar } = useVariantConfig();
   const { data: gruplar, isPending: gruplarYukleniyor, isError: gruplarHataVar } = useVariantGroups();
   const olusturMutasyonu = useCreateVariantGroup();
+  const [matrisAcik, setMatrisAcik] = useState(false);
 
   const groupIdWatch = Form.useWatch("variant_group_id", form);
 
@@ -475,6 +500,22 @@ function VaryantAlanlari({ form }: { form: FormInstance<UrunFormDegerleri> }) {
           >
             <Input />
           </Form.Item>
+        </>
+      )}
+      {duzenlemeModu && urun?.variants != null && (
+        <>
+          <Divider />
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+            Bu ürün "{urun.variants.title}" grubunda. Aynı gruba toplu kardeş varyant üretebilirsiniz.
+          </Typography.Paragraph>
+          <Button onClick={() => setMatrisAcik(true)}>Kardeş Varyant Üret</Button>
+          <VaryantPenceresi
+            acik={matrisAcik}
+            kapat={() => setMatrisAcik(false)}
+            productId={urun.id}
+            eksen1Adi={urun.variants.option1_name}
+            eksen2Adi={urun.variants.option2_name}
+          />
         </>
       )}
     </>

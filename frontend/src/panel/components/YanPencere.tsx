@@ -6,10 +6,12 @@ export type YanPencereProps = {
   baslik: string;
   kapat: () => void;
   kaydet: () => void;
+  /** Kaydet düğmesinde yükleme göstergesi — bkz. `FormPage`'in `kaydediyor`u. */
+  kaydediyor?: boolean;
   children: ReactNode;
 };
 
-export function YanPencere({ acik, baslik, kapat, kaydet, children }: YanPencereProps) {
+export function YanPencere({ acik, baslik, kapat, kaydet, kaydediyor, children }: YanPencereProps) {
   const { md } = Grid.useBreakpoint();
   return (
     <Drawer
@@ -21,7 +23,7 @@ export function YanPencere({ acik, baslik, kapat, kaydet, children }: YanPencere
       footer={
         <Flex justify="flex-end" gap={8}>
           <Button onClick={kapat}>Vazgeç</Button>
-          <Button type="primary" onClick={kaydet}>
+          <Button type="primary" loading={kaydediyor} onClick={kaydet}>
             Kaydet
           </Button>
         </Flex>

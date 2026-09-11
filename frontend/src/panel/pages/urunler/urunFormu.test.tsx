@@ -15,6 +15,11 @@ const fetchProductAdmin = vi.fn();
 const fetchVariantConfig = vi.fn().mockResolvedValue({ axes: ["Renk", "Beden"], book_root_slugs: [] });
 const listVariantGroups = vi.fn().mockResolvedValue([]);
 const createVariantGroup = vi.fn();
+// Task 8b: toplu kardeş matrisi. Bu dosyanın testleri KAPIYI sınar (açılır
+// mı); matrisin kendi davranışı (`previewVariantMatrix`/`createVariantMatrix`
+// gövdesi, barkod doğrulaması) `varyant.test.tsx`te.
+const previewVariantMatrix = vi.fn();
+const createVariantMatrix = vi.fn();
 vi.mock("@/api/store", () => ({
   createProduct: (...a: unknown[]) => createProduct(...a),
   updateProduct: (...a: unknown[]) => updateProduct(...a),
@@ -22,6 +27,8 @@ vi.mock("@/api/store", () => ({
   fetchVariantConfig: (...a: unknown[]) => fetchVariantConfig(...a),
   listVariantGroups: (...a: unknown[]) => listVariantGroups(...a),
   createVariantGroup: (...a: unknown[]) => createVariantGroup(...a),
+  previewVariantMatrix: (...a: unknown[]) => previewVariantMatrix(...a),
+  createVariantMatrix: (...a: unknown[]) => createVariantMatrix(...a),
 }));
 
 afterEach(() => {
@@ -44,6 +51,17 @@ const DUZENLENECEK_URUN = {
   stock: 12,
   barcode: "8690000000012",
   variants: null,
+};
+
+const DUZENLENECEK_URUN_VARYANTLI = {
+  ...DUZENLENECEK_URUN,
+  variants: {
+    group_id: 1,
+    title: "Defter Rengi",
+    option1_name: "Renk",
+    option2_name: null,
+    members: [],
+  },
 };
 
 // `MemoryRouter` doğrudan `UrunFormu`yu sarıyor (aradaki `<Routes>` YOK) —
@@ -288,6 +306,37 @@ describe("UrunFormu", () => {
       expect(await screen.findByTitle("Renk")).toBeInTheDocument();
       expect(screen.getByTitle("Beden")).toBeInTheDocument();
       expect(screen.getByTitle("Boyut")).toBeInTheDocument();
+    });
+  });
+
+  // Task 8b — toplu kardeş matrisi yalnız DÜZENLEME modunda VE ürün zaten
+  // bir gruba bağlıyken açılır (karar belgesi, Faz 2). Matrisin kendi
+  // davranışı `varyant.test.tsx`te; burada yalnız KAPI sınanır.
+  describe("toplu kardeş varyant üretimi (kapı)", () => {
+    it("yeni üründe (kaydedilmemiş) toplu kardeş üretimi tetikleyicisi görünmez", async () => {
+      listVariantGroups.mockResolvedValueOnce([
+        { id: 1, title: "Kalem Rengi", option1_name: "Renk", option2_name: null, member_count: 1 },
+      ]);
+      kur("/yonetim-yeni/urunler/yeni?tip=varyantli");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      await userEvent.click(await screen.findByLabelText("Varyant Grubu"));
+      await userEvent.click(await screen.findByTitle("Kalem Rengi (Renk)"));
+      // Grup seçili olsa bile — bu ürünün henüz `productId`si yok.
+      await screen.findByLabelText("Renk");
+
+      expect(screen.queryByRole("button", { name: "Kardeş Varyant Üret" })).not.toBeInTheDocument();
+      expect(previewVariantMatrix).not.toHaveBeenCalled();
+    });
+
+    it("düzenlemede gruba bağlı üründe toplu kardeş üretimi tetikleyicisi görünür", async () => {
+      fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN_VARYANTLI);
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+
+      expect(await screen.findByRole("button", { name: "Kardeş Varyant Üret" })).toBeInTheDocument();
     });
   });
 });
