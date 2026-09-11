@@ -68,7 +68,15 @@ export function ListePage<T extends object>({
 
       <Card>
         <Flex justify="space-between" wrap gap={12} style={{ marginBottom: 16 }}>
-          <Input.Search
+          {/* `Input.Search` DEĞİL: onSearch verilmediği için tıklanabilir ama
+              hiçbir şey yapmayan bir büyüteç düğmesi basıyordu. Etkisi olmayan
+              kontrol kullanıcıyı yanıltır (aynı gerekçeyle VaryantPenceresi'nden
+              "Seçim Stili" söküldü). Arama zaten her tuşta tüketiciye gidiyor.
+              Erişilebilir ad başlıktan türetilir: 15 modülün her biri "Ürünler
+              içinde ara" gibi anlamlı bir ad alır; placeholder tek başına
+              güvenilir bir erişilebilir ad değildir. */}
+          <Input
+            aria-label={`${baslik} içinde ara`}
             placeholder="Tabloda arama yapın"
             allowClear
             value={aramaDegeri}
