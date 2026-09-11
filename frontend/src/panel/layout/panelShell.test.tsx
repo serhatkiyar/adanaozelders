@@ -186,6 +186,17 @@ describe("PanelShell", () => {
     expect(screen.queryByRole("button", { name: /menü/i })).not.toBeInTheDocument();
   });
 
+  it("Sider genişliği ikas referansından ölçülen 224px'tir (docs/ikas-panel-referans.md §7)", () => {
+    setViewport(1280);
+    const { container } = render(
+      <MemoryRouter>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    const sider = container.querySelector(".ant-layout-sider") as HTMLElement | null;
+    expect(sider?.style.width).toBe("224px");
+  });
+
   it("mobil menü düğmesi büyük dokunma hedefi boyutundadır", () => {
     setViewport(390);
     render(

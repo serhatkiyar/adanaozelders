@@ -228,11 +228,13 @@ export function PanelShell() {
   return (
     <PanelProvider>
       <Layout style={{ minHeight: "100vh" }}>
-        {/* ikas referansı §5/4: üst bar yok. §1/§5-3: Sider dar (~172px) ve
-            menünün altına sabit kullanıcı kartı (gerçek oturum, uydurma yok). */}
+        {/* ikas referansı §5/4: üst bar yok. §7 "Sider": genişlik ölçüldü
+            224px (önceki 172px tahmini yanlıştı — daraltılmış hâlin 72px'i
+            yanlış okunmuştu, bkz. referans §7 sonu). Menünün altına sabit
+            kullanıcı kartı (gerçek oturum, uydurma yok). */}
         {!mobil && (
           <Sider
-            width={172}
+            width={224}
             role="navigation"
             style={{
               position: "sticky",

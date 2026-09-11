@@ -2,11 +2,15 @@ import type { ThemeConfig } from "antd";
 
 /**
  * Sider/Menu koyu zemini — panel genelinde bu sabit üzerinden kullanılır.
- * Marka rengi DEĞİL: nötr koyu zemin (gray-900 tonu). `index.css`'te bunun
- * karşılığı bir token yok (panel dışı hiçbir yüzey koyu-nötr Sider kullanmıyor),
- * bu yüzden uydurma bir bağlama yapılmadı — sabit olduğu gibi bırakıldı.
+ * Marka rengi DEĞİL: nötr koyu zemin. `index.css`'te bunun karşılığı bir
+ * token yok (panel dışı hiçbir yüzey koyu-nötr Sider kullanmıyor), bu yüzden
+ * uydurma bir bağlama yapılmadı — sabit olduğu gibi bırakıldı.
+ *
+ * Değer `docs/ikas-panel-referans.md` §7'de canlı ikas panelinden
+ * `getComputedStyle` ile ölçüldü: tam siyah (#000000), eski `#111827`
+ * (gray-900 tahmini) değil.
  */
-export const PANEL_SIDER_BG = "#111827";
+export const PANEL_SIDER_BG = "#000000";
 
 /**
  * Panelin birincil rengi `index.css`'teki `--marka` (#FF9900, Amazon
@@ -36,21 +40,32 @@ const MARKA = "#FF9900"; // index.css → --marka: 255 153 0
  * DİKKAT — global `token.colorTextLightSolid` KULLANILMAZ. Denendi ve
  * kullanıcının bildirdiği gerçek bir kusura yol açtı: o token AntD'de "koyu
  * zemin üstündeki yazı" anlamına gelir, koyu Sider menüsünün yazı rengini de
- * kapsar; `--marka-fg` (neredeyse siyah) koyu zemine (#111827) uygulanınca
- * menü yazıları GÖRÜNMEZ oldu. Kapsam düğmeyle sınırlı tutulur; ayrıca koyu
+ * kapsar; `--marka-fg` (neredeyse siyah) koyu zemine uygulanınca menü
+ * yazıları GÖRÜNMEZ oldu. Kapsam düğmeyle sınırlı tutulur; ayrıca koyu
  * menünün yazı renkleri aşağıda AÇIKÇA verilir ki hiçbir global token onları
  * sessizce ele geçiremesin.
  */
 const MARKA_USTU_YAZI = "#2B1000"; // index.css → --marka-fg: 43 16 0
 
-/** Koyu Sider/Menu zemini üstündeki yazı — AntD koyu menü varsayılanı. */
-const MENU_YAZI = "rgba(255, 255, 255, 0.85)";
+/**
+ * Koyu Sider/Menu zemini üstündeki yazı — `docs/ikas-panel-referans.md` §7'de
+ * ölçülen değerler: varsayılan öğe yazısı `#ECECED`, seçili öğe yazısı
+ * `#F8FAFC` (aşağıda `Menu.darkItemSelectedColor`). Eski değer
+ * `rgba(255,255,255,0.85)` (AntD koyu menü varsayılanı) tahminiydi.
+ */
+const MENU_YAZI = "#ECECED";
 
 /** Panelin TEK renk/ölçü kaynağı. Başka dosyada renk sabiti yazılmaz. */
 export const panelTheme: ThemeConfig = {
   token: {
     colorPrimary: MARKA,
-    borderRadius: 8,
+    // ikas referansı §7 "Tema token'ları" — canlı panelden ölçüldü.
+    borderRadius: 4,
+    controlHeight: 40,
+    fontSize: 14,
+    colorBorder: "#E3E8EF",
+    colorText: "#121926",
+    colorTextSecondary: "#4B5565",
     fontFamily:
       'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
@@ -61,14 +76,28 @@ export const panelTheme: ThemeConfig = {
     Layout: { siderBg: PANEL_SIDER_BG, bodyBg: "#ffffff" },
     // Koyu menünün yazı renkleri AÇIKÇA verilir: global bir token bunları
     // ele geçirip koyu-üstü-koyu yaparsa menü okunamaz hale gelir (bir kez oldu).
+    // Ölçüler de referans §7 "Sider" tablosundan: öğe yüksekliği 36px,
+    // köşe yarıçapı 4px, `paddingInline` 10px, seçili zemin `#2E2E33`.
     Menu: {
       darkItemBg: PANEL_SIDER_BG,
-      darkItemSelectedBg: "#1f2937",
+      darkItemSelectedBg: "#2E2E33",
       darkItemColor: MENU_YAZI,
       darkItemHoverColor: "#ffffff",
-      darkItemSelectedColor: "#ffffff",
+      darkItemSelectedColor: "#F8FAFC",
+      itemHeight: 36,
+      itemBorderRadius: 4,
+      itemPaddingInline: 10,
     },
     // Birincil düğme yazısı: "parlak dolgu + koyu yazı" kuralı YALNIZ burada.
-    Button: { primaryColor: MARKA_USTU_YAZI },
+    // Yükseklik/yarıçap global `controlHeight`/`borderRadius`tan gelir;
+    // `fontWeight` ve ikincil düğmenin zemin/kenarlık/yazısı referans §7
+    // "Düğmeler" tablosundan.
+    Button: {
+      primaryColor: MARKA_USTU_YAZI,
+      fontWeight: 500,
+      defaultBg: "#FFFFFF",
+      defaultBorderColor: "#E3E8EF",
+      defaultColor: "#121926",
+    },
   },
 };
