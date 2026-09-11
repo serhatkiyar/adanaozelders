@@ -4,8 +4,8 @@ import { PanelProvider } from "@/panel/PanelProvider";
 import { panelTheme } from "@/panel/theme";
 
 describe("panel kurulumu", () => {
-  it("aksan rengi tek kaynakta ve marka turuncusu", () => {
-    expect(panelTheme.token?.colorPrimary).toBe("#C2410C");
+  it("aksan rengi marka turuncusu (index.css --marka ile eşleşmeli; çapraz dosya eşleşmesi panelMarkaRengi.test.ts'te sınanır)", () => {
+    expect(panelTheme.token?.colorPrimary).toBe("#FF9900");
   });
 
   it("AntD butonu Türkçe locale ile ve kendi sınıfıyla render olur", () => {
