@@ -225,3 +225,14 @@ yükseklik **40px** · yarıçap **4px** · dolgu **0 16px** · 14px · `fontWei
 
 **Arama girdisi:** genişlik **397px** (sabit, esnek değil) · yükseklik **40px**
 · placeholder **"Tabloda arama yapın"** · büyüteç ikonu içeride solda
+
+### Ürün hücresi — ÖLÇÜLEN
+
+Hücre `display:flex`, `align-items:center`. Solda kare görsel:
+**36×36** · yarıçap **4px** · kenarlık **0.8px solid #E3E8EF** · görsel yokken
+zemin **#F8FAFC**. Sağında ürün adı (14px/500/#121926, tek satır ellipsis).
+
+**Kopyalanamayan iki kolon** (uydurma veri yasağı, §6): `Alış Fiyatı` ve
+`Satış Kanalları`. Bizim backend'de ne alış fiyatı (`cost`/`purchase_price`
+alanı YOK) ne de satış kanalı kavramı var — boş ya da sahte değerle kolon
+açılmaz.

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Dropdown } from "antd";
+import { Button, Dropdown, Typography, theme } from "antd";
 import type { TableProps } from "antd";
 import { PlusOutlined, MoreOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
@@ -16,6 +16,40 @@ type UrunSiralamaAlani = "title" | "price" | "stock" | "created_at";
 const SIRALANABILIR_ALANLAR: readonly UrunSiralamaAlani[] = ["title", "price", "stock", "created_at"];
 
 type UrunSiralama = { alan: UrunSiralamaAlani; yon: "asc" | "desc" } | undefined;
+
+/**
+ * Liste "Ürün" hücresi — ölçülen ikas kalıbı: solda 36×36 kare görsel,
+ * sağında tek satır ellipsis ad. Ölçüler `docs/ikas-panel-referans.md`
+ * "Ürün hücresi — ÖLÇÜLEN" bölümünden; renkler tema token'larından
+ * (`colorBorder`, `colorFillTertiary`) okunur — bu dosya hex TUTMAZ,
+ * panelin tek renk kaynağı `panel/theme.ts`tir.
+ */
+function UrunHucresi({ baslik, kapakUrl }: { baslik: string; kapakUrl?: string | null }) {
+  const { token } = theme.useToken();
+  const kare = {
+    width: 36,
+    height: 36,
+    flex: "0 0 36px",
+    borderRadius: token.borderRadius,
+    border: `1px solid ${token.colorBorder}`,
+    background: token.colorFillQuaternary,
+    objectFit: "cover" as const,
+  };
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+      {kapakUrl ? (
+        <img src={kapakUrl} alt="" style={kare} />
+      ) : (
+        // Görseli olmayan ürün: aynı ölçüde boş kare. `aria-hidden` —
+        // hücrenin erişilebilir adı ürün adından gelir, kare dekoratif.
+        <span aria-hidden style={kare} />
+      )}
+      <Typography.Text ellipsis={{ tooltip: baslik }} style={{ minWidth: 0 }}>
+        {baslik}
+      </Typography.Text>
+    </span>
+  );
+}
 
 export function UrunListesi() {
   const [arama, setArama] = useState("");
@@ -72,7 +106,19 @@ export function UrunListesi() {
       style: { cursor: "pointer" },
     });
     return [
-      { title: "Ürün", dataIndex: "title", key: "title", onCell: satirTiklama },
+      {
+        title: "Ürün",
+        dataIndex: "title",
+        key: "title",
+        sorter: true,
+        // ikas'ın ürün hücresi: 36×36 kare görsel + tek satır ellipsis ad
+        // (`docs/ikas-panel-referans.md` "Ürün hücresi — ÖLÇÜLEN").
+        // Görsel yoksa aynı ölçüde boş kare durur — hücre hizası bozulmasın.
+        render: (baslik: string, kayit) => (
+          <UrunHucresi baslik={baslik} kapakUrl={kayit.cover_url} />
+        ),
+        onCell: satirTiklama,
+      },
       {
         title: "Satış Fiyatı",
         dataIndex: "price",

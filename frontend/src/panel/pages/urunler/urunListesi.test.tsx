@@ -65,6 +65,53 @@ describe("UrunListesi", () => {
     expect(screen.getByText(formatTL(250))).toBeInTheDocument();
   });
 
+  it("kapak görseli olan ürün 36px kare görselle, olmayan boş kareyle listelenir", () => {
+    mockUseAdminProducts.mockReturnValue({
+      data: {
+        items: [
+          { id: 1, title: "Görselli", price: 250, stock: 5, cover_url: "https://ornek/kapak.jpg" },
+          { id: 2, title: "Görselsiz", price: 120, stock: 3 },
+        ],
+        total: 2,
+      },
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAdminProducts>);
+
+    kur();
+    // Kapak görseli DEKORATİF: hücrenin erişilebilir adı ürün adından gelir,
+    // bu yüzden `alt=""` ile gelir ve erişilebilirlik ağacında görünmez.
+    const gorsel = document.querySelector('img[src="https://ornek/kapak.jpg"]') as HTMLImageElement | null;
+    expect(gorsel).not.toBeNull();
+    expect(gorsel?.getAttribute("alt")).toBe("");
+    expect(gorsel?.style.width).toBe("36px");
+    expect(gorsel?.style.height).toBe("36px");
+    // Görseli olmayan üründe hücre hizası bozulmasın diye aynı ölçüde boş
+    // kare durur (ikas'ta da böyle) — `aria-hidden`, sayfaya gürültü katmaz.
+    const bosKare = document.querySelector('span[aria-hidden="true"][style*="36px"]');
+    expect(bosKare).not.toBeNull();
+    expect(screen.getByText("Görselsiz")).toBeInTheDocument();
+  });
+
+  it("ürün adı kolonu sıralanabilir (backend sort=title destekliyor)", async () => {
+    mockUseAdminProducts.mockReturnValue({
+      data: { items: [{ id: 1, title: "A ürünü", price: 10, stock: 1 }], total: 1 },
+      isPending: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAdminProducts>);
+
+    kur();
+    mockUseAdminProducts.mockClear();
+    await userEvent.click(screen.getByRole("columnheader", { name: "Ürün" }));
+    expect(mockUseAdminProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: "title", order: "asc" }),
+    );
+  });
+
   it("ürün ekle aksiyonu bulunur", () => {
     mockUseAdminProducts.mockReturnValue({
       data: { items: [{ id: 1, title: "9. Sınıf Matematik Soru Bankası", price: 250, stock: 50 }], total: 1 },
