@@ -90,6 +90,9 @@ const PanelShell = lazy(() => import("@/panel/layout/PanelShell").then((m) => ({
 const GostergePaneli = lazy(() =>
   import("@/panel/pages/gosterge/GostergePaneli").then((m) => ({ default: m.GostergePaneli })),
 );
+const StokSayimiListesi = lazy(() =>
+  import("@/panel/pages/urunler/StokSayimiListesi").then((m) => ({ default: m.StokSayimiListesi })),
+);
 const UrunListesi = lazy(() =>
   import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
 );
@@ -686,6 +689,7 @@ function App() {
               <Route index element={<GostergePaneli />} />
               <Route path="urunler" element={<UrunListesi />} />
               <Route path="urunler/yeni" element={<UrunFormu />} />
+              <Route path="urunler/stok-sayimi" element={<StokSayimiListesi />} />
               <Route path="urunler/:id" element={<UrunFormu />} />
               <Route path="siparisler" element={<SiparisListesi />} />
               <Route path="musteriler" element={<MusteriListesi />} />

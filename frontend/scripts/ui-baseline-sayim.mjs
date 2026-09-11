@@ -397,6 +397,10 @@ export const OLCUM_TABANI = [
   // kırılırdı. Saf AntD + bir tek `hidden` dosya girdisi (`aria-label`lı,
   // dolayısıyla `olcumDisiKontrol`) — dört metriğe katkısı sıfır.
   "src/panel/pages/urunler/UrunAracCubugu.tsx",
+  // Stok sayımı listesi ve yeni sayım çekmecesi: saf AntD, pencere durumu
+  // çekmece dosyasında prop olarak gelir.
+  "src/panel/pages/urunler/StokSayimiListesi.tsx",
+  "src/panel/pages/urunler/YeniSayimCekmecesi.tsx",
 ];
 
 /**

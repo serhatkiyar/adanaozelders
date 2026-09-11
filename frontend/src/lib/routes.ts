@@ -237,6 +237,7 @@ export const PATHS = {
   adminNewProducts: "/yonetim-yeni/urunler",
   adminNewProductNew: "/yonetim-yeni/urunler/yeni",
   adminNewProductEdit: "/yonetim-yeni/urunler/:id",
+  adminNewStockCounts: "/yonetim-yeni/urunler/stok-sayimi",
   adminNewOrders: "/yonetim-yeni/siparisler",
   adminNewCustomers: "/yonetim-yeni/musteriler",
 } as const;
@@ -396,6 +397,7 @@ export const ROUTES = {
   adminNewProducts: PATHS.adminNewProducts,
   adminNewProductNew: PATHS.adminNewProductNew,
   adminNewProductEdit: (id: string | number) => `/yonetim-yeni/urunler/${id}`,
+  adminNewStockCounts: PATHS.adminNewStockCounts,
   adminNewOrders: PATHS.adminNewOrders,
   adminNewCustomers: PATHS.adminNewCustomers,
 } as const;

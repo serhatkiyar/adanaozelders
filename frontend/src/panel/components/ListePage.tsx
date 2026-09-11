@@ -79,8 +79,9 @@ export type ListePageProps<T> = {
    * vermiyor, davranış aynen sürer).
    */
   detayliBilgiIpucu?: ReactNode;
-  aramaDegeri: string;
-  aramaDegisti: (v: string) => void;
+  /** Arama ucu olmayan listede (ör. sayım oturumları) ikisi de verilmez; kutu çizilmez. */
+  aramaDegeri?: string;
+  aramaDegisti?: (v: string) => void;
   /**
    * ikas referansı §3: aramanın yanında ikonlu/outline bir `Filtre`
    * düğmesi var. Çekmecenin İÇERİĞİ bu paketin kapsamı DIŞINDA (YAGNI,
@@ -293,16 +294,18 @@ export function ListePage<T extends object>({
                 güvenilir bir erişilebilir ad değildir. ikas'ın büyüteç ikonu
                 burada salt DEKORATİF bir `prefix` — tıklanamaz, ikinci bir
                 ölü düğme getirmez. */}
-            <Input
-              aria-label={`${baslik} içinde ara`}
-              placeholder="Tabloda arama yapın"
-              allowClear
-              prefix={<SearchOutlined style={{ color: token.colorTextQuaternary }} />}
-              value={aramaDegeri}
-              onChange={(e) => aramaDegisti(e.target.value)}
-              // Canlı ikas: 397px SABİT genişlik (esnek değil); mobilde tam satır.
-              style={{ width: mobil ? "100%" : 397 }}
-            />
+            {aramaDegisti ? (
+              <Input
+                aria-label={`${baslik} içinde ara`}
+                placeholder="Tabloda arama yapın"
+                allowClear
+                prefix={<SearchOutlined style={{ color: token.colorTextQuaternary }} />}
+                value={aramaDegeri}
+                onChange={(e) => aramaDegisti(e.target.value)}
+                // Canlı ikas: 397px SABİT genişlik (esnek değil); mobilde tam satır.
+                style={{ width: mobil ? "100%" : 397 }}
+              />
+            ) : null}
             {/* ikas referansı §3: arama yanında `Filtre` düğmesi — çekmecenin
                 İÇERİĞİ kapsam dışı (YAGNI, spec §5). Yalnız tıklama dışarı
                 taşınır; tüketici vermezse düğme hiç yok (ölü düğme yok). */}
@@ -324,7 +327,7 @@ export function ListePage<T extends object>({
                 placement="bottomLeft"
                 arrow={false}
                 autoAdjustOverflow={false}
-                align={{ offset: [mobil ? 0 : -405, 4] }}
+                align={{ offset: [mobil || !aramaDegisti ? 0 : -405, 4] }}
                 content={filtreIcerigi}
                 styles={{
                   body: {

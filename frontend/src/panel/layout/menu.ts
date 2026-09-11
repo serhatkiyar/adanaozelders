@@ -91,7 +91,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
       },
       { key: "satin-alma", label: "Satın Alma" },
       { key: "transferler", label: "Transferler" },
-      { key: "stok-sayimi", label: "Stok Sayımı" },
+      {
+        key: "stok-sayimi",
+        label: "Stok Sayımı",
+        path: PATHS.adminNewStockCounts,
+        requiredPermission: "inventory",
+      },
       // Bize özgü (ikas'ta karşılığı yok) — spec §4'te onaylı, ikas'ın
       // Stok Sayımı öğesinden hemen sonra, Tanımlamalar'dan önce durur.
       { key: "stok-hareketleri", label: "Stok Hareketleri" },

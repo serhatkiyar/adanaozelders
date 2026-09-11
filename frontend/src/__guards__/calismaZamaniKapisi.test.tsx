@@ -482,9 +482,14 @@ const KAPI_KAPSAMI = [
   // etmez — `UrunOlusturCekmecesi.tsx` ile aynı sınıf, aşağıda
   // `KONTROLSUZ_EKRANLAR`'da "pencere-kabugu" olarak yazılı.
   "src/panel/pages/urunler/UrunAracCubugu.tsx",
+  // Stok sayımı listesi: propsuz mount olur, `useCountSessions` boş veri döner,
+  // arama kutusu `ListePage`den ADLI gelir (`UrunListesi.tsx` ile aynı sınıf).
+  "src/panel/pages/urunler/StokSayimiListesi.tsx",
   "src/panel/pages/urunler/UrunFormu.tsx",
   "src/panel/pages/urunler/UrunListesi.tsx",
   "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
+  // Yeni sayım çekmecesi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/urunler/YeniSayimCekmecesi.tsx",
   "src/panel/pages/urunler/VaryantPenceresi.tsx",
 ];
 
@@ -666,12 +671,16 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // "Ürün Oluştur" çekmecesi (commit `15c218d`): `YanPencere` üstüne
   // kurulu, kapalıyken gövdeyi mount etmez — `YanPencere.tsx` ve
   // `VaryantPenceresi.tsx` ile BİREBİR aynı sınıf.
+  // Liste kabuğu: arama kutusu ve sayfalayıcı prop/veriyle gelir; propsuz
+  // mount (arama ucu yok, veri yok) hiç kontrol çizmez.
+  "src/panel/components/ListePage.tsx": "kosullu",
   "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx": "pencere-kabugu",
   // Araç çubuğu yüzeyleri: kapıda mount edilen ilk export `FiltreCekmecesi`
   // ve `acik` propu geçilmediği için AntD `Drawer` gövdeyi hiç mount etmez —
   // `UrunOlusturCekmecesi.tsx`/`YanPencere.tsx` ile BİREBİR aynı sınıf.
   "src/panel/pages/urunler/UrunAracCubugu.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/VaryantPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/YeniSayimCekmecesi.tsx": "pencere-kabugu",
 };
 
 /**

@@ -18,13 +18,14 @@ Son güncelleme: 11 Eyl 2026.
 
 ## Sıradaki
 
-1. Gösterge paneli — `/yonetim-yeni` iniş sayfası `GostergePaneli.tsx` (KPI şeridi + kuyruklar + para sütunu, eski hook'lar); tarayıcıda doğrulandı, henüz commit edilmedi.
-2. Envanter: genel bakış, stok sayımları, detay, hasarlı stok, stok hareketleri
-3. Kategoriler, tedarikçi, kuponlar
-4. Ayarlar, yetkiler, denetim kayıtları
-5. Sipariş detayı, müşteri detayı, iadeler
-6. Paketleme · 7. Dağıtım · 8. Eğitmen yönetimi · 9. Kütüphane/deneme/rezervasyon/
-   talep · 10. Moderasyon, hak edişler, kalan rotalar
+1. Gösterge paneli — tamamlandı (`0b04b18`).
+2. Envanter · Stok Sayımı listesi — tamamlandı; `/yonetim-yeni/urunler/stok-sayimi` (`StokSayimiListesi.tsx`, `YeniSayimCekmecesi.tsx`), detay eski rotada.
+3. Envanter: genel bakış, sayım detayı, hasarlı stok, stok hareketleri
+4. Kategoriler, tedarikçi, kuponlar
+5. Ayarlar, yetkiler, denetim kayıtları
+6. Sipariş detayı, müşteri detayı, iadeler
+7. Paketleme · 8. Dağıtım · 9. Eğitmen yönetimi · 10. Kütüphane/deneme/rezervasyon/
+   talep · 11. Moderasyon, hak edişler, kalan rotalar
 
 ## Notlar
 
