@@ -45,4 +45,27 @@ describe("PanelShell", () => {
     );
     expect(screen.getByRole("button", { name: /menü/i })).toBeInTheDocument();
   });
+
+  it("aktif rotaya göre doğru menü öğesi seçili ve üst menüsü açık olur", () => {
+    setViewport(1280);
+    const { container } = render(
+      <MemoryRouter initialEntries={["/yonetim-yeni/urunler"]}>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    const secililer = container.querySelectorAll(".ant-menu-item-selected");
+    expect(secililer).toHaveLength(1);
+    expect(secililer[0]?.getAttribute("data-menu-id")).toMatch(/-urun-listesi$/);
+    expect(container.querySelector(".ant-menu-submenu-open")).not.toBeNull();
+  });
+
+  it("üst şeritte marka adı görünür", () => {
+    setViewport(1280);
+    render(
+      <MemoryRouter>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Adana Özel Ders")).toBeVisible();
+  });
 });

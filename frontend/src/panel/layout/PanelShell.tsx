@@ -4,7 +4,8 @@ import type { MenuProps } from "antd";
 import { MenuOutlined } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { PanelProvider } from "@/panel/PanelProvider";
-import { PANEL_MENU, type PanelMenuItem } from "@/panel/layout/menu";
+import { PANEL_MENU, seciliMenuDurumu, type PanelMenuItem } from "@/panel/layout/menu";
+import { PANEL_SIDER_BG } from "@/panel/theme";
 
 const { Sider, Header, Content } = Layout;
 
@@ -34,12 +35,14 @@ export function PanelShell() {
   const konum = useLocation();
   const { md } = Grid.useBreakpoint();
   const mobil = md === false;
+  const { selectedKey, openKeys } = seciliMenuDurumu(PANEL_MENU, konum.pathname);
 
   const menu = (
     <Menu
       theme="dark"
       mode="inline"
-      selectedKeys={[konum.pathname]}
+      selectedKeys={selectedKey ? [selectedKey] : []}
+      defaultOpenKeys={openKeys}
       items={menuyuAntdyeCevir(PANEL_MENU)}
       onClick={({ key }) => {
         const yol = yolBul(PANEL_MENU, key);
@@ -55,7 +58,7 @@ export function PanelShell() {
     <PanelProvider>
       <Layout style={{ minHeight: "100vh" }}>
         {!mobil && (
-          <Sider width={224} breakpoint="md" collapsedWidth={0} role="navigation">
+          <Sider width={224} role="navigation">
             {menu}
           </Sider>
         )}
@@ -64,6 +67,7 @@ export function PanelShell() {
             {mobil && (
               <Button aria-label="Menü" icon={<MenuOutlined />} onClick={() => setMobilAcik(true)} />
             )}
+            <span style={{ fontWeight: 600 }}>Adana Özel Ders</span>
           </Header>
           <Content style={{ padding: mobil ? 16 : 24 }}>
             <Outlet />
@@ -74,7 +78,7 @@ export function PanelShell() {
           onClose={() => setMobilAcik(false)}
           placement="left"
           width={240}
-          styles={{ body: { padding: 0, background: "#111827" } }}
+          styles={{ body: { padding: 0, background: PANEL_SIDER_BG } }}
         >
           <nav role="navigation">{menu}</nav>
         </Drawer>
