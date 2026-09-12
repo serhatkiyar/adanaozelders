@@ -183,6 +183,8 @@ export type ListePageProps<T> = {
   sayfa: number;
   sayfaBoyutu: number;
   sayfaDegisti: (sayfa: number, boyut: number) => void;
+  /** Seçicide sunulacak boyutlar; verilmezse sabit ikas listesi. Ekranın doğrulayıcısıyla aynı olmalı. */
+  sayfaBoyutuSecenekleri?: number[];
   /**
    * ikas referansı §3 alt bilgi: `1 - 1 / 1 Ürün` — birim tüketiciye göre
    * değişir (Ürün/Sipariş/Müşteri). `ListePage` bir birim İCAT ETMEZ,
@@ -220,6 +222,7 @@ export function ListePage<T extends object>({
   listeGorunumuTiklandi, izgaraGorunumuTiklandi,
   satirSecimi, kolonlar, govde, veri, yukleniyor,
   hata, hataAksiyon, uyari, aciklama, ustIcerik, toplam, sayfa, sayfaBoyutu, sayfaDegisti, birimEtiket = "kayıt",
+  sayfaBoyutuSecenekleri: ozelSecenekler,
   bosBaslik, bosAciklama, bosAksiyon, rowKey,
   tabloDegisti,
 }: ListePageProps<T>) {
@@ -250,9 +253,10 @@ export function ListePage<T extends object>({
 
   // Tüketicinin geçtiği `sayfaBoyutu` sabit listede yoksa (ör. 45) seçiciye
   // eklenir — yoksa AntD `Select` seçili değeri gösteremez.
-  const sayfaBoyutuSecenekleri = SABIT_SAYFA_BOYUTU_SECENEKLERI.includes(sayfaBoyutu)
-    ? SABIT_SAYFA_BOYUTU_SECENEKLERI
-    : [...SABIT_SAYFA_BOYUTU_SECENEKLERI, sayfaBoyutu].sort((a, b) => a - b);
+  const tabanSecenekler = ozelSecenekler ?? SABIT_SAYFA_BOYUTU_SECENEKLERI;
+  const sayfaBoyutuSecenekleri = tabanSecenekler.includes(sayfaBoyutu)
+    ? tabanSecenekler
+    : [...tabanSecenekler, sayfaBoyutu].sort((a, b) => a - b);
 
   return (
     <Flex vertical gap={0}>

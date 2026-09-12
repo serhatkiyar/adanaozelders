@@ -474,6 +474,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/musteriler/MusteriDetayi.tsx",
   // Hesap silme penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx",
+  // Denetim kayıtları: propsuz mount olur; izinli oturumda arama kutusu ListePage'den ADLI gelir.
+  "src/panel/pages/ayarlar/DenetimKayitlariListesi.tsx",
+  // Denetim ayrıntı penceresi: `kayit` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx",
   // Gösterge paneli: propsuz mount olur; dönem seçici (adlı) her durumda çizilir.
   "src/panel/pages/gosterge/GostergePaneli.tsx",
   // İadeler: propsuz mount olur; izinli oturumda Filtre/sayfalayıcı ADLI gelir.
@@ -722,6 +726,7 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/Tanimlamalar.tsx": "sunum",
   "src/panel/pages/siparisler/IadePenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx": "pencere-kabugu",
   // Müşteri detayı: form kontrolü yalnız silme çekmecesinde; propsuz mount hata kartı basar.
   "src/panel/pages/musteriler/MusteriDetayi.tsx": "kosullu",
   "src/panel/pages/urunler/StokSayimiDetayi.tsx": "kosullu",

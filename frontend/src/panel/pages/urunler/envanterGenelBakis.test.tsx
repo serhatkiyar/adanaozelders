@@ -72,7 +72,7 @@ describe("EnvanterGenelBakis", () => {
     // İç içe etkileşimli öğe yok: tek <a>, içinde/dışında <button> yok.
     expect(ilgili.querySelectorAll("a button, button a")).toHaveLength(0);
     expect(within(ilgili).getByRole("link", { name: "Stok hareketleri" })).toHaveAttribute("href", ROUTES.adminNewStockMovements);
-    expect(within(ilgili).getByRole("link", { name: "Denetim kayıtları" })).toHaveAttribute("href", ROUTES.adminAuditLogs);
+    expect(within(ilgili).getByRole("link", { name: "Denetim kayıtları" })).toHaveAttribute("href", ROUTES.adminNewAuditLogs);
   });
 
   it("yükleniyor: sayaç '…' basar, hasar kartı yükleniyor der; boş liste boş metni basar", () => {

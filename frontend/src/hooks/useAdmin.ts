@@ -120,11 +120,12 @@ export function useAdminUser(role: AdminUserRolePath | undefined, id: number, en
   });
 }
 
-export function useAdminAuditLogs(params: AdminAuditParams) {
+export function useAdminAuditLogs(params: AdminAuditParams, enabled = true) {
   return useQuery({
     queryKey: ["admin", "audit-logs", params],
     queryFn: () => fetchAdminAuditLogs(params),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 

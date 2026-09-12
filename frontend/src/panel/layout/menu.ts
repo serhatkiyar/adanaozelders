@@ -193,7 +193,23 @@ export const PANEL_MENU: PanelMenuItem[] = [
   { key: "pazarlama", label: "Pazarlama", icon: "notification" },
   { key: "raporlar", label: "Raporlar", icon: "barchart" },
   { key: "uygulamalar", label: "Uygulamalar", icon: "appstore-add" },
-  { key: "ayarlar", label: "Ayarlar", icon: "setting" },
+  // Onaylı bilgi mimarisi: Ayarlar kök grup; yalnız gerçek ekrana bağlı çocuk izin taşır.
+  {
+    key: "ayarlar",
+    label: "Ayarlar",
+    icon: "setting",
+    children: [
+      { key: "ayarlar-genel", label: "Genel" },
+      { key: "personel-yetkiler", label: "Personel & Yetkiler" },
+      {
+        key: "denetim-kayitlari",
+        label: "Denetim Kayıtları",
+        path: PATHS.adminNewAuditLogs,
+        requiredPermission: "audit",
+      },
+      { key: "hata-cozme", label: "Hata Çözme" },
+    ],
+  },
   { key: "satis-kanallari", label: "Satış Kanalları", icon: "shop" },
   // ── Bizim projemize özgü modüller (ikas'ta karşılığı yok) ──
   { key: "dagitim", label: "Dağıtım", icon: "car" },

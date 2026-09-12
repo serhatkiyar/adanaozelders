@@ -108,7 +108,7 @@ function kuyruklar(d: AdminDashboardOut, donemEtiketi: string, esik?: number): K
     { etiket: "Düşük stok", deger: d.low_stock_products, hedef: `${ROUTES.adminNewProducts}?stok=kritik`, ton: "warning", aciklama: `Aktif fiziksel ürünlerde stok ${esik ?? "eşiğin"} veya altında.` },
     { etiket: "Kütüphane başvuruları", deger: d.pending_libraries, hedef: ROUTES.adminLibraries, ton: "warning", aciklama: "Katalog onayı bekleyen işletmeler." },
     { etiket: "Aktif dağıtım turları", deger: d.active_delivery_runs, hedef: ROUTES.adminDelivery, ton: "processing", aciklama: "Şu anda sahada olan kendi-filo turları." },
-    { etiket: "Denetim kayıtları", deger: d.period_audit_logs, hedef: ROUTES.adminAuditLogs, aciklama: `${donemEtiketi} içindeki yönetim işlemleri.` },
+    { etiket: "Denetim kayıtları", deger: d.period_audit_logs, hedef: ROUTES.adminNewAuditLogs, aciklama: `${donemEtiketi} içindeki yönetim işlemleri.` },
   ];
 }
 

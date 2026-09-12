@@ -140,8 +140,7 @@ export function EnvanterGenelBakis() {
       <Kart baslik="İlgili ekranlar" aciklama="Sayım ve hasar işlemleri hareket kaydı üretir; kayıtların kendisi salt okunurdur.">
         <Flex gap={8} wrap style={{ paddingTop: 16 }}>
           <Button {...dugmeBaglanti(ROUTES.adminNewStockMovements)}>Stok hareketleri</Button>
-          {/* Denetim kayıtları henüz yeni panelde değil; çalışan eski rota. */}
-          <Button {...dugmeBaglanti(ROUTES.adminAuditLogs)}>Denetim kayıtları</Button>
+          <Button {...dugmeBaglanti(ROUTES.adminNewAuditLogs)}>Denetim kayıtları</Button>
         </Flex>
       </Kart>
     </Flex>

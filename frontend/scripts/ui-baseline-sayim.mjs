@@ -374,6 +374,8 @@ export const OLCUM_TABANI = [
   "src/panel/pages/musteriler/MusteriListesi.tsx",
   "src/panel/pages/musteriler/MusteriDetayi.tsx",
   "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx",
+  "src/panel/pages/ayarlar/DenetimKayitlariListesi.tsx",
+  "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx",
   // Gösterge paneli (`/yonetim-yeni` iniş sayfası): saf AntD (Select, Tag,
   // Link) — ham `<button>`/`<input>` yok, pencere durumu yok.
   "src/panel/pages/gosterge/GostergePaneli.tsx",
