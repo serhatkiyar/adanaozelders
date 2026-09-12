@@ -271,7 +271,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
         // paketleme-paketler kalır; önek eşleşmesi Kuyruk'tan (/paketleme) uzun olduğu için o kazanır.
         rotaTakmaAdlari: [{ path: PAKET_DETAY_ONEKI, requiredPermission: "packing" }],
       },
-      { key: "paketleme-geri-donus", label: "Geri Dönüş" },
+      {
+        key: "paketleme-geri-donus",
+        label: "Geri Dönüş",
+        path: PATHS.adminNewPackingReturns,
+        requiredPermission: "packing",
+      },
     ],
   },
   { key: "dagitim", label: "Dağıtım", icon: "car" },

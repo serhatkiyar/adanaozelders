@@ -299,11 +299,11 @@ describe("PaketListesi", () => {
     expect(screen.queryByText("Henüz paket açılmadı")).not.toBeInTheDocument();
   });
 
-  it("menü: Paketleme → Paketler gerçek rota (packing), Kuyruk korunur, Geri Dönüş path'siz; seçili/açık anahtarlar", () => {
+  it("menü: Paketleme → Paketler gerçek rota (packing), Kuyruk ve Geri Dönüş de gerçek rota; seçili/açık anahtarlar", () => {
     expect(PATHS.adminNewPackingPackages).toBe("/yonetim-yeni/paketleme/paketler");
     expect(ROUTES.adminNewPackingPackages).toBe(PATHS.adminNewPackingPackages);
     const grup = PANEL_MENU.find((m) => m.key === "paketleme")!;
-    expect(grup.children?.map((c) => [c.key, Boolean(c.path)])).toEqual([["paketleme-kuyruk", true], ["paketleme-paketler", true], ["paketleme-geri-donus", false]]);
+    expect(grup.children?.map((c) => [c.key, Boolean(c.path)])).toEqual([["paketleme-kuyruk", true], ["paketleme-paketler", true], ["paketleme-geri-donus", true]]);
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewPackingPackages)).toMatchObject({ label: "Paketler", requiredPermission: "packing" });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewPackingPackages)).toEqual({ selectedKey: "paketleme-paketler", openKeys: ["paketleme"] });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewPacking)).toEqual({ selectedKey: "paketleme-kuyruk", openKeys: ["paketleme"] });
