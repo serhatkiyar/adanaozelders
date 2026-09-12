@@ -182,10 +182,11 @@ export function useDeliveryInfo(enabled = true) {
   });
 }
 
-export function useDeliveryRuns(runDate?: string) {
+export function useDeliveryRuns(runDate?: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "runs", runDate ?? "all"],
     queryFn: () => deliveryApi.fetchDeliveryRuns(runDate),
+    enabled,
   });
 }
 

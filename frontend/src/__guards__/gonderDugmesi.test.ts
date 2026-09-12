@@ -152,6 +152,10 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
     "secim",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> run.stops.length === 0": "secim",
   "src/pages/admin/delivery/DeliveryTodayPage.tsx <Button> dispatchable === 0": "secim",
+  // Yeni panel Bugün: araç sorgusu bitmeden/hatalıyken Yeni Tur, uygun sipariş sorgusu bitmeden/hatalıyken
+  // ya da konumlu sipariş yokken optimize kapalı; sebep (yükleniyor / yüklenemedi / sipariş yok) ekranda yazılıdır.
+  "src/panel/pages/dagitim/DagitimBugun.tsx <Button> !aracHazir": "onkosul",
+  "src/panel/pages/dagitim/DagitimBugun.tsx <Button> !uygunHazir || dagitilabilir === 0": "onkosul",
   "src/pages/admin/packing/PackagesPage.tsx <Button> seciliGorunen.length === 0": "secim",
   "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
   // Paket detayı "Paketi tamamla": engel listesi ekranda yazılıdır (eksik adet / kalemsiz paket).

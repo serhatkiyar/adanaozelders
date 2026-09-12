@@ -498,6 +498,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/paketleme/PaketlemePencereleri.tsx",
   // Geri dönüş kuyruğu: propsuz mount olur; satırlar ve "Depoya al" sunucu verisiyle doğar, form kontrolü yok.
   "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx",
+  // Dağıtım · Bugün: propsuz mount olur; izinli oturumda tarih alanı ("Tur tarihi") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimBugun.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
   // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.

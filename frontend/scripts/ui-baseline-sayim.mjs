@@ -387,6 +387,7 @@ export const OLCUM_TABANI = [
   "src/panel/pages/paketleme/PaketlemeDetayi.tsx",
   "src/panel/pages/paketleme/PaketlemePencereleri.tsx",
   "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx",
+  "src/panel/pages/dagitim/DagitimBugun.tsx",
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
   "src/panel/pages/indirimler/KuponListesi.tsx",
   "src/panel/pages/indirimler/KuponCekmecesi.tsx",

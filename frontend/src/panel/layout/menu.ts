@@ -279,7 +279,21 @@ export const PANEL_MENU: PanelMenuItem[] = [
       },
     ],
   },
-  { key: "dagitim", label: "Dağıtım", icon: "car" },
+  // Dağıtım kök grup (kendi filo operasyonu); bu turda yalnız Bugün gerçek rota, diğerleri yer tutucu.
+  {
+    key: "dagitim",
+    label: "Dağıtım",
+    icon: "car",
+    children: [
+      { key: "dagitim-bugun", label: "Bugün", path: PATHS.adminNewDelivery, requiredPermission: "delivery" },
+      { key: "dagitim-siparisler", label: "Siparişler" },
+      { key: "dagitim-turlar", label: "Turlar" },
+      { key: "dagitim-performans", label: "Performans" },
+      { key: "dagitim-kuryeler", label: "Kuryeler" },
+      { key: "dagitim-tahta", label: "Tahta" },
+      { key: "dagitim-araclar", label: "Araçlar" },
+    ],
+  },
   { key: "dersler", label: "Dersler", icon: "read" },
   { key: "egitmenler", label: "Eğitmenler", icon: "solution" },
   { key: "kutuphaneler", label: "Kütüphaneler", icon: "book" },
