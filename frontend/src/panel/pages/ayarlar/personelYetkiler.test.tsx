@@ -314,6 +314,6 @@ describe("PersonelYetkiler", () => {
     expect(izinBeyaniniKarsilarMi(["admin_roles.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewStaffPermissions)!)).toBe(true);
     expect(izinBeyaniniKarsilarMi(["settings.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewStaffPermissions)!)).toBe(false);
     const gorunur = menuyuIzneGoreSuz(PANEL_MENU, ["settings.view"]).find((m) => m.key === "ayarlar");
-    expect(gorunur?.children?.map((c) => c.key)).toEqual(["ayarlar-genel", "hata-cozme"]);
+    expect(gorunur?.children?.map((c) => c.key)).toEqual(["ayarlar-genel"]);
   });
 });

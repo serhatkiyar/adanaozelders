@@ -235,7 +235,13 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewAuditLogs,
         requiredPermission: "audit",
       },
-      { key: "hata-cozme", label: "Hata Çözme" },
+      // Eski `/yonetim/operasyon` (sıkışmış para + ölü işler); backend `operations.view/manage`.
+      {
+        key: "hata-cozme",
+        label: "Hata Çözme",
+        path: PATHS.adminNewOperations,
+        requiredPermission: "operations",
+      },
     ],
   },
   { key: "satis-kanallari", label: "Satış Kanalları", icon: "shop" },

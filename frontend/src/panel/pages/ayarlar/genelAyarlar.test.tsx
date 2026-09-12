@@ -214,7 +214,7 @@ describe("GenelAyarlar", () => {
     expect(izinBeyaniniKarsilarMi(["settings.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewGeneralSettings)!)).toBe(true);
     expect(izinBeyaniniKarsilarMi(["audit.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewGeneralSettings)!)).toBe(false);
     const gorunur = menuyuIzneGoreSuz(PANEL_MENU, ["audit.view"]).find((m) => m.key === "ayarlar");
-    expect(gorunur?.children?.map((c) => c.key)).toEqual(["denetim-kayitlari", "hata-cozme"]);
+    expect(gorunur?.children?.map((c) => c.key)).toEqual(["denetim-kayitlari"]);
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewAuditLogs)).toEqual({ selectedKey: "denetim-kayitlari", openKeys: ["ayarlar"] });
   });
 });
