@@ -39,7 +39,7 @@ export function KategoriListesi() {
   const { canView, canManage } = useAdminAreaAccess("products");
   const sorgu = useCategories();
   const [sayfa, setSayfa] = useState(1);
-  const [boyut, setBoyut] = useState(25);
+  const [boyut, setBoyut] = useState(20);
   const [cekmeceAcik, setCekmeceAcik] = useState(false);
   const [duzenlenen, setDuzenlenen] = useState<ProductCategory | null>(null);
 

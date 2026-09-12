@@ -182,14 +182,14 @@ describe("KategoriListesi", () => {
     expect(screen.getByText(/yalnız görüntüleme yetkiniz var/)).toBeInTheDocument();
   });
 
-  it("sayfa boyutu 25 ile başlar; veri azalınca etkin sayfa geçerli son sayfaya çekilir", async () => {
+  it("sayfa boyutu 20 ile başlar; veri azalınca etkin sayfa geçerli son sayfaya çekilir", async () => {
     const cok = Array.from({ length: 30 }, (_, i) => ({ ...KATEGORILER[0], id: 100 + i, name: `K${i}`, parent_id: null }));
     veriDondur(cok);
     const { rerender } = kur();
-    expect(screen.getByText("1 - 25 / 30 Kategori")).toBeInTheDocument();
+    expect(screen.getByText("1 - 20 / 30 Kategori")).toBeInTheDocument();
     await userEvent.click(screen.getByTitle("2"));
-    expect(await screen.findByText("26 - 30 / 30 Kategori")).toBeInTheDocument();
-    expect(screen.getByText("K25")).toBeInTheDocument();
+    expect(await screen.findByText("21 - 30 / 30 Kategori")).toBeInTheDocument();
+    expect(screen.getByText("K20")).toBeInTheDocument();
 
     veriDondur(cok.slice(0, 10));
     rerender(
