@@ -286,7 +286,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
     icon: "car",
     children: [
       { key: "dagitim-bugun", label: "Bugün", path: PATHS.adminNewDelivery, requiredPermission: "delivery" },
-      { key: "dagitim-siparisler", label: "Siparişler" },
+      { key: "dagitim-siparisler", label: "Siparişler", path: PATHS.adminNewDeliveryOrders, requiredPermission: "delivery" },
       { key: "dagitim-turlar", label: "Turlar" },
       { key: "dagitim-performans", label: "Performans" },
       { key: "dagitim-kuryeler", label: "Kuryeler" },

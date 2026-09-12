@@ -156,6 +156,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   // ya da konumlu sipariş yokken optimize kapalı; sebep (yükleniyor / yüklenemedi / sipariş yok) ekranda yazılıdır.
   "src/panel/pages/dagitim/DagitimBugun.tsx <Button> !aracHazir": "onkosul",
   "src/panel/pages/dagitim/DagitimBugun.tsx <Button> !uygunHazir || dagitilabilir === 0": "onkosul",
+  // Yeni panel Siparişler: bugün açık tur yokken "Tura ekle" kapalı; sebep ipucunda ve şeritte ("Bugün açık tur yok") yazılıdır.
+  "src/panel/pages/dagitim/DagitimSiparisleri.tsx <Button> hedef == null": "onkosul",
   "src/pages/admin/packing/PackagesPage.tsx <Button> seciliGorunen.length === 0": "secim",
   "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
   // Paket detayı "Paketi tamamla": engel listesi ekranda yazılıdır (eksik adet / kalemsiz paket).

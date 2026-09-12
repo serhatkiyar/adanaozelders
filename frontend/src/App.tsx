@@ -126,6 +126,9 @@ const KuponListesi = lazy(() =>
 const PaketListesi = lazy(() =>
   import("@/panel/pages/paketleme/PaketListesi").then((m) => ({ default: m.PaketListesi })),
 );
+const DagitimSiparisleri = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimSiparisleri").then((m) => ({ default: m.DagitimSiparisleri })),
+);
 const DagitimBugun = lazy(() =>
   import("@/panel/pages/dagitim/DagitimBugun").then((m) => ({ default: m.DagitimBugun })),
 );
@@ -773,6 +776,7 @@ function App() {
               <Route path="paketleme/paket/:id" element={<PaketlemeDetayi />} />
               <Route path="paketleme/geri-donus" element={<GeriDonusKuyrugu />} />
               <Route path="dagitim" element={<DagitimBugun />} />
+              <Route path="dagitim/siparisler" element={<DagitimSiparisleri />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>
