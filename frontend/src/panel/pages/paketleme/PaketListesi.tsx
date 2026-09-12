@@ -1,7 +1,6 @@
 // Paketler — eski PackagesPage panel düzeninde: durum/sipariş süzgeci URL'de, sunucu sayfalaması,
 // tekli/toplu etiket ve yalnız packing.manage ile repack / "bozuldu" damgası.
-// Paket kodu ve satır tıklaması şimdilik çalışan ESKİ paket detayına gider (ROUTES.adminPackingPackage);
-// yeni istasyon ekranı gelince bu bağlantılar çevrilecek.
+// Paket kodu ve satır tıklaması yeni paket detayına (ROUTES.adminNewPackingPackage) gider.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { App, Button, Flex, InputNumber, Select, Tag, Tooltip, Typography } from "antd";
@@ -175,7 +174,7 @@ export function PaketListesi() {
     });
   };
 
-  const satirTiklama = (p: Package) => ({ onClick: () => navigate(ROUTES.adminPackingPackage(p.id)), style: { cursor: "pointer" } });
+  const satirTiklama = (p: Package) => ({ onClick: () => navigate(ROUTES.adminNewPackingPackage(p.id)), style: { cursor: "pointer" } });
   const kolonlar: TableProps<Package>["columns"] = [
     {
       title: "Paket",
@@ -185,7 +184,7 @@ export function PaketListesi() {
         const damga = zamanDamgasi(p);
         return (
           <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-            <Link to={ROUTES.adminPackingPackage(p.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>
+            <Link to={ROUTES.adminNewPackingPackage(p.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>
               {p.code}
             </Link>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>

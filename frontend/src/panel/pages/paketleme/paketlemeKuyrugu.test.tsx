@@ -66,7 +66,7 @@ function agac(yol = PATHS.adminNewPacking) {
         <MemoryRouter initialEntries={[yol]}>
           <Routes>
             <Route path={PATHS.adminNewPacking} element={<><PaketlemeKuyrugu /><Konum /></>} />
-            <Route path={PATHS.adminPackingPackage} element={<><div>Eski paket detayı</div><Konum /></>} />
+            <Route path={PATHS.adminNewPackingPackage} element={<><div>Yeni paket detayı</div><Konum /></>} />
           </Routes>
         </MemoryRouter>
       </PanelProvider>
@@ -120,17 +120,17 @@ describe("PaketlemeKuyrugu", () => {
     expect(screen.getByText("PKT-000079 · Hazır")).toBeInTheDocument();
 
     expect(screen.getByRole("button", { name: "Paketlemeye başla" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Paketlemeye devam et" })).toHaveAttribute("href", ROUTES.adminPackingPackage(77));
+    expect(screen.getByRole("link", { name: "Paketlemeye devam et" })).toHaveAttribute("href", ROUTES.adminNewPackingPackage(77));
     expect(screen.getByRole("button", { name: "Yeniden paketle" })).toBeInTheDocument();
     // Bilinmeyen eylem: yalnız okuma bağlantısı; eksik eylem ve paket yok: hiçbir şey
     expect(screen.getAllByRole("link", { name: "Paketi gör →" })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: "Paketi gör →" })).toHaveAttribute("href", ROUTES.adminPackingPackage(79));
+    expect(screen.getByRole("link", { name: "Paketi gör →" })).toHaveAttribute("href", ROUTES.adminNewPackingPackage(79));
     expect(screen.getAllByRole("button")).toHaveLength(2);
     expect(ac).not.toHaveBeenCalled();
     expect(repack).not.toHaveBeenCalled();
   });
 
-  it("Paketlemeye başla: çift tık tek istek, sunucunun döndürdüğü paket ID'sine (eski detay rotası) gider", async () => {
+  it("Paketlemeye başla: çift tık tek istek, sunucunun döndürdüğü paket ID'sine (yeni detay rotası) gider", async () => {
     kur();
     await userEvent.dblClick(screen.getByRole("button", { name: "Paketlemeye başla" }));
     expect(ac).toHaveBeenCalledTimes(1);
@@ -143,8 +143,8 @@ describe("PaketlemeKuyrugu", () => {
       sozler[0].res({ id: 9001, code: "PKT-009001", order_id: 501, status: "OPEN" });
       await Promise.resolve();
     });
-    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminPackingPackage(9001)));
-    expect(screen.getByText("Eski paket detayı")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminNewPackingPackage(9001)));
+    expect(screen.getByText("Yeni paket detayı")).toBeInTheDocument();
   });
 
   it("paket açma hatası görünür, kilit bırakılır ve yeniden denenebilir", async () => {

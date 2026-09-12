@@ -89,6 +89,9 @@ export type PanelMenuItem = {
  * tasarim-design.md` §4'teki onaylı yerlerinde durur (Stok Sayımı'ndan
  * sonra, Tanımlamalar'dan önce).
  */
+/** `PATHS.adminNewPackingPackage` parametresiz öneki (`/yonetim-yeni/paketleme/paket`). */
+const PAKET_DETAY_ONEKI = PATHS.adminNewPackingPackage.replace("/:id", "");
+
 export const PANEL_MENU: PanelMenuItem[] = [
   { key: "giris", label: "Giriş", path: PATHS.adminNew, icon: "home" },
   {
@@ -264,6 +267,9 @@ export const PANEL_MENU: PanelMenuItem[] = [
         label: "Paketler",
         path: PATHS.adminNewPackingPackages,
         requiredPermission: "packing",
+        // Paket detayı (`/paketleme/paket/:id`) Paketler yaprağının takma adıdır: seçili anahtar
+        // paketleme-paketler kalır; önek eşleşmesi Kuyruk'tan (/paketleme) uzun olduğu için o kazanır.
+        rotaTakmaAdlari: [{ path: PAKET_DETAY_ONEKI, requiredPermission: "packing" }],
       },
       { key: "paketleme-geri-donus", label: "Geri Dönüş" },
     ],

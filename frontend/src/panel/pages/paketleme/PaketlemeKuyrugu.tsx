@@ -1,7 +1,6 @@
 // Paketleme kuyruğu — eski PackingQueuePage panel düzeninde. Eylemi SUNUCU söyler
 // (`next_action`), ekran çıkarmaz; bilinmeyen/eksik değer fail-closed: yazma eylemi yok.
-// Devam et / Paketi gör / açılan paket şimdilik çalışan ESKİ paket detayına gider
-// (ROUTES.adminPackingPackage); yeni istasyon ekranı gelince bu bağlantılar çevrilecek.
+// Devam et / Paketi gör / açılan paket yeni paket detayına (ROUTES.adminNewPackingPackage) gider.
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { App, Button, Flex, Pagination, Tag, Typography, theme } from "antd";
@@ -70,7 +69,7 @@ export function PaketlemeKuyrugu() {
     if (!kilitle(anahtar)) return;
     try {
       const paket = await paketAc.mutateAsync(orderId);
-      navigate(ROUTES.adminPackingPackage(paket.id));
+      navigate(ROUTES.adminNewPackingPackage(paket.id));
     } catch (e) {
       message.error(getErrorDetail(e, "Paket açılamadı."));
     } finally {
@@ -102,7 +101,7 @@ export function PaketlemeKuyrugu() {
       );
     }
     if (row.next_action === "CONTINUE_PACKING" && canPack && paketId != null) {
-      return <Link to={ROUTES.adminPackingPackage(paketId)} style={{ fontWeight: 500 }}>Paketlemeye devam et</Link>;
+      return <Link to={ROUTES.adminNewPackingPackage(paketId)} style={{ fontWeight: 500 }}>Paketlemeye devam et</Link>;
     }
     if (row.next_action === "REPACK_RETURNED" && paketId != null) {
       if (!canManage) {
@@ -119,7 +118,7 @@ export function PaketlemeKuyrugu() {
         </Button>
       );
     }
-    if (paketId != null) return <Link to={ROUTES.adminPackingPackage(paketId)}>Paketi gör →</Link>;
+    if (paketId != null) return <Link to={ROUTES.adminNewPackingPackage(paketId)}>Paketi gör →</Link>;
     return null;
   };
 

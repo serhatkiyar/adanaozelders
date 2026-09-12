@@ -492,6 +492,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx",
   // Paketler: propsuz mount olur; izinli oturumda Filtre/sayfalayıcı ListePage'den ADLI gelir.
   "src/panel/pages/paketleme/PaketListesi.tsx",
+  // Paket detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Paketler listesine dön".
+  "src/panel/pages/paketleme/PaketlemeDetayi.tsx",
+  // Paketleme pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/paketleme/PaketlemePencereleri.tsx",
   // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.
   "src/panel/pages/indirimler/KuponListesi.tsx",
   // Kupon oluşturma çekmecesi: `acik` yokken kapalı, gövde mount edilmez.
@@ -749,6 +753,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/siparisler/IadePenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/siparisler/SiparisDetayPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/siparisler/SiparisDetayi.tsx": "kosullu",
+  // Paket detayı: rota parametresi olmadan hata durumu; pencereler kapalıyken gövde yok.
+  "src/panel/pages/paketleme/PaketlemeDetayi.tsx": "kosullu",
+  "src/panel/pages/paketleme/PaketlemePencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/ayarlar/BayrakGerekcePenceresi.tsx": "pencere-kabugu",

@@ -255,6 +255,7 @@ export const PATHS = {
   adminNewOperations: "/yonetim-yeni/ayarlar/hata-cozme",
   adminNewPacking: "/yonetim-yeni/paketleme",
   adminNewPackingPackages: "/yonetim-yeni/paketleme/paketler",
+  adminNewPackingPackage: "/yonetim-yeni/paketleme/paket/:id",
   adminNewAuditLogs: "/yonetim-yeni/ayarlar/denetim-kayitlari",
   adminNewCoupons: "/yonetim-yeni/indirimler/kuponlar",
 } as const;
@@ -432,6 +433,7 @@ export const ROUTES = {
   adminNewOperations: PATHS.adminNewOperations,
   adminNewPacking: PATHS.adminNewPacking,
   adminNewPackingPackages: PATHS.adminNewPackingPackages,
+  adminNewPackingPackage: (id: string | number) => `/yonetim-yeni/paketleme/paket/${id}`,
   adminNewAuditLogs: PATHS.adminNewAuditLogs,
   adminNewCoupons: PATHS.adminNewCoupons,
 } as const;

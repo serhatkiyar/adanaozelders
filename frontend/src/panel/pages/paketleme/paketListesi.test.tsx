@@ -67,7 +67,7 @@ function agac(yol = PATHS.adminNewPackingPackages) {
         <MemoryRouter initialEntries={[yol]}>
           <Routes>
             <Route path={PATHS.adminNewPackingPackages} element={<><PaketListesi /><Konum /></>} />
-            <Route path={PATHS.adminPackingPackage} element={<><div>Eski paket detayı</div><Konum /></>} />
+            <Route path={PATHS.adminNewPackingPackage} element={<><div>Yeni paket detayı</div><Konum /></>} />
           </Routes>
         </MemoryRouter>
       </PanelProvider>
@@ -119,7 +119,7 @@ describe("PaketListesi", () => {
     kur();
     expect(screen.getByRole("heading", { name: "Paketler" })).toBeInTheDocument();
     expect(sonSorgu()).toEqual([{ status: undefined, orderId: undefined, limit: 20, offset: 0 }, true]);
-    expect(screen.getByRole("link", { name: "PKT-000001" })).toHaveAttribute("href", ROUTES.adminPackingPackage(1));
+    expect(screen.getByRole("link", { name: "PKT-000001" })).toHaveAttribute("href", ROUTES.adminNewPackingPackage(1));
     expect(screen.getByText(/Sipariş #501 · 1 kalem · paketlendi ·/)).toBeInTheDocument();
     expect(screen.getByText("Geri bekleniyor")).toBeInTheDocument();
     expect(screen.getByText("Bozulacak")).toBeInTheDocument();
@@ -263,15 +263,15 @@ describe("PaketListesi", () => {
     expect(await screen.findByText("Kutu bozuldu olarak işaretlendi.")).toBeInTheDocument();
   });
 
-  it("satır tıklaması eski detaya gider; link ve aksiyon hücresi satırı tetiklemez; iç içe a/button yok", async () => {
+  it("satır tıklaması yeni detaya gider; link ve aksiyon hücresi satırı tetiklemez; iç içe a/button yok", async () => {
     kur();
     const link = screen.getByRole("link", { name: "PKT-000001" });
     expect(link.closest("button")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Yeniden paketle" }));
     expect(screen.getByTestId("konum")).toHaveTextContent(PATHS.adminNewPackingPackages);
     await userEvent.click(screen.getByText("Geri bekleniyor"));
-    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminPackingPackage(6)));
-    expect(screen.getByText("Eski paket detayı")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminNewPackingPackage(6)));
+    expect(screen.getByText("Yeni paket detayı")).toBeInTheDocument();
   });
 
   it("boş (filtresiz/filtreli), hata + Tekrar dene, yükleniyor", async () => {

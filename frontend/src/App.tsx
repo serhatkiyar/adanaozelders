@@ -126,6 +126,9 @@ const KuponListesi = lazy(() =>
 const PaketListesi = lazy(() =>
   import("@/panel/pages/paketleme/PaketListesi").then((m) => ({ default: m.PaketListesi })),
 );
+const PaketlemeDetayi = lazy(() =>
+  import("@/panel/pages/paketleme/PaketlemeDetayi").then((m) => ({ default: m.PaketlemeDetayi })),
+);
 const PaketlemeKuyrugu = lazy(() =>
   import("@/panel/pages/paketleme/PaketlemeKuyrugu").then((m) => ({ default: m.PaketlemeKuyrugu })),
 );
@@ -760,6 +763,8 @@ function App() {
               <Route path="ayarlar/hata-cozme" element={<HataCozme />} />
               <Route path="paketleme" element={<PaketlemeKuyrugu />} />
               <Route path="paketleme/paketler" element={<PaketListesi />} />
+              {/* Statik `paketler` yukarıda; `paket/:id` yalnız sayısal kimlik için. */}
+              <Route path="paketleme/paket/:id" element={<PaketlemeDetayi />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>
