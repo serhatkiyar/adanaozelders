@@ -21,6 +21,7 @@ import {
   TeamOutlined,
   UserOutlined,
   WalletOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AccessDenied } from "@/components/admin/AccessState";
@@ -66,6 +67,7 @@ const PANEL_MENU_ICONS: Record<PanelMenuIconKey, ComponentType> = {
   book: BookOutlined,
   safety: SafetyOutlined,
   wallet: WalletOutlined,
+  gift: GiftOutlined,
 };
 
 /**

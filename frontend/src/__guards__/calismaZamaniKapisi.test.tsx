@@ -488,6 +488,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/ayarlar/RolCekmecesi.tsx",
   // Hata çözme: propsuz mount olur; iki liste salt okunur, form kontrolü yok, tek aksiyon düğme.
   "src/panel/pages/ayarlar/HataCozme.tsx",
+  // Paketleme kuyruğu: propsuz mount olur; satırlar ve aksiyonlar sunucu verisiyle doğar, form kontrolü yok.
+  "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx",
   // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.
   "src/panel/pages/indirimler/KuponListesi.tsx",
   // Kupon oluşturma çekmecesi: `acik` yokken kapalı, gövde mount edilmez.
@@ -750,6 +752,7 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/ayarlar/BayrakGerekcePenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/ayarlar/RolCekmecesi.tsx": "pencere-kabugu",
   "src/panel/pages/ayarlar/HataCozme.tsx": "kosullu",
+  "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx": "kosullu",
   "src/panel/pages/ayarlar/PersonelYetkiler.tsx": "kosullu",
   "src/panel/pages/ayarlar/GenelAyarlar.tsx": "kosullu",
   "src/panel/pages/indirimler/KuponCekmecesi.tsx": "pencere-kabugu",

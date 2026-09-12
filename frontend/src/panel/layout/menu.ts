@@ -28,7 +28,8 @@ export type PanelMenuIconKey =
   | "solution"
   | "book"
   | "safety"
-  | "wallet";
+  | "wallet"
+  | "gift";
 
 export type PanelMenuItem = {
   key: string;
@@ -246,6 +247,22 @@ export const PANEL_MENU: PanelMenuItem[] = [
   },
   { key: "satis-kanallari", label: "Satış Kanalları", icon: "shop" },
   // ── Bizim projemize özgü modüller (ikas'ta karşılığı yok) ──
+  // Paketleme kök grup (F30 istasyonu); Dağıtım ayrı modül olarak kalır.
+  {
+    key: "paketleme",
+    label: "Paketleme",
+    icon: "gift",
+    children: [
+      {
+        key: "paketleme-kuyruk",
+        label: "Kuyruk",
+        path: PATHS.adminNewPacking,
+        requiredPermission: "packing",
+      },
+      { key: "paketleme-paketler", label: "Paketler" },
+      { key: "paketleme-geri-donus", label: "Geri Dönüş" },
+    ],
+  },
   { key: "dagitim", label: "Dağıtım", icon: "car" },
   { key: "dersler", label: "Dersler", icon: "read" },
   { key: "egitmenler", label: "Eğitmenler", icon: "solution" },

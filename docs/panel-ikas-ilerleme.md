@@ -25,7 +25,8 @@ Son güncelleme: 12 Eyl 2026.
 5. Kategoriler, Tedarikçiler ve Kuponlar — tamamlandı; `/yonetim-yeni/urunler/tanimlamalar` (`Tanimlamalar.tsx` hub; menüde Tanımlamalar öğesi, kart rotaları alias), `/yonetim-yeni/urunler/kategoriler` (`KategoriListesi.tsx`, `KategoriCekmecesi.tsx`), `/yonetim-yeni/urunler/tedarikciler` (`TedarikciListesi.tsx`, `TedarikciCekmecesi.tsx`), `/yonetim-yeni/indirimler/kuponlar` (`KuponListesi.tsx`, `KuponCekmecesi.tsx`; menüde İndirimler grubu).
 6. Ayarlar · Genel Ayarlar, Personel & Yetkiler, Denetim Kayıtları ve Hata Çözme — tamamlandı; `/yonetim-yeni/ayarlar/genel` (`GenelAyarlar.tsx`, `BayrakGerekcePenceresi.tsx`), `/yonetim-yeni/ayarlar/personel-yetkiler` (`PersonelYetkiler.tsx`, `RolCekmecesi.tsx`), `/yonetim-yeni/ayarlar/denetim-kayitlari` (`DenetimKayitlariListesi.tsx`, `DenetimKaydiPenceresi.tsx`), `/yonetim-yeni/ayarlar/hata-cozme` (`HataCozme.tsx`; menüde Ayarlar grubu).
 7. İadeler, Müşteri Detayı ve Sipariş Detayı — tamamlandı; `/yonetim-yeni/siparisler/iadeler` (`IadeListesi.tsx`, `IadePenceresi.tsx`; menüde Siparişler grubu), `/yonetim-yeni/musteriler/:role/:id` (`MusteriDetayi.tsx`, `MusteriDetayPencereleri.tsx`; menüde Müşteriler grubu), `/yonetim-yeni/siparisler/:id` (`SiparisDetayi.tsx`, `SiparisDetayPencereleri.tsx`; tekil `GET /store/admin/orders/{id}` ucu).
-8. Paketleme · 9. Dağıtım · 10. Eğitmen yönetimi · 11. Kütüphane/deneme/rezervasyon/
+8. Paketleme · Kuyruk — tamamlandı; `/yonetim-yeni/paketleme` (`PaketlemeKuyrugu.tsx`, `usePaketlemeErisimi.ts`; menüde Paketleme grubu). Kalan: Paketler listesi, Paketleme İstasyonu/Detayı, Geri Dönüş kuyruğu. Geçici not: Devam et / Paketi gör / açılış sonrası yönlendirmeler detay taşınana kadar eski çalışan paket detayına (`ROUTES.adminPackingPackage`) gider.
+9. Dağıtım · 10. Eğitmen yönetimi · 11. Kütüphane/deneme/rezervasyon/
    talep · 12. Moderasyon, hak edişler, kalan rotalar
 
 ## Notlar
