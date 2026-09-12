@@ -108,6 +108,12 @@ const HasarliStokListesi = lazy(() =>
 const KategoriListesi = lazy(() =>
   import("@/panel/pages/urunler/KategoriListesi").then((m) => ({ default: m.KategoriListesi })),
 );
+const Tanimlamalar = lazy(() =>
+  import("@/panel/pages/urunler/Tanimlamalar").then((m) => ({ default: m.Tanimlamalar })),
+);
+const TedarikciListesi = lazy(() =>
+  import("@/panel/pages/urunler/TedarikciListesi").then((m) => ({ default: m.TedarikciListesi })),
+);
 const IadeListesi = lazy(() =>
   import("@/panel/pages/siparisler/IadeListesi").then((m) => ({ default: m.IadeListesi })),
 );
@@ -715,7 +721,9 @@ function App() {
               <Route path="urunler/stok-hareketleri" element={<StokHareketleriListesi />} />
               <Route path="urunler/envanter" element={<EnvanterGenelBakis />} />
               <Route path="urunler/hasarli-stok" element={<HasarliStokListesi />} />
+              <Route path="urunler/tanimlamalar" element={<Tanimlamalar />} />
               <Route path="urunler/kategoriler" element={<KategoriListesi />} />
+              <Route path="urunler/tedarikciler" element={<TedarikciListesi />} />
               <Route path="urunler/:id" element={<UrunFormu />} />
               <Route path="siparisler" element={<SiparisListesi />} />
               <Route path="siparisler/iadeler" element={<IadeListesi />} />

@@ -496,6 +496,12 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/urunler/KategoriListesi.tsx",
   // Kategori çekmecesi: `acik` yokken kapalı, gövde mount edilmez.
   "src/panel/pages/urunler/KategoriCekmecesi.tsx",
+  // Tanımlamalar hub'ı: yalnız kartlar/bağlantılar, form kontrolü yok.
+  "src/panel/pages/urunler/Tanimlamalar.tsx",
+  // Tedarikçiler: propsuz mount olur; izinli oturumda arama kutusu ListePage'den ADLI gelir.
+  "src/panel/pages/urunler/TedarikciListesi.tsx",
+  // Tedarikçi çekmeceleri: `acik` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/urunler/TedarikciCekmecesi.tsx",
   // Hasarlı stok: propsuz mount olur, Filtre/işlem düğmeleri ListePage'den ADLI gelir.
   "src/panel/pages/urunler/HasarliStokListesi.tsx",
   // Hasar penceresi: `kind` yokken çekmece kapalı, gövde mount edilmez.
@@ -712,6 +718,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/StokSayimiPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/HasarliStokPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/KategoriCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/TedarikciCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/Tanimlamalar.tsx": "sunum",
   "src/panel/pages/siparisler/IadePenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx": "pencere-kabugu",
   // Müşteri detayı: form kontrolü yalnız silme çekmecesinde; propsuz mount hata kartı basar.

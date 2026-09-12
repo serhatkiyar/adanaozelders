@@ -144,11 +144,11 @@ describe("KategoriListesi", () => {
     await waitFor(() => expect(yenileMock).toHaveBeenCalled());
   });
 
-  it("menü: doğrudan Kategoriler öğesi yok; Tanımlamalar kategori rotasına bağlı, products izni ister ve seçili görünür", () => {
+  it("menü: doğrudan Kategoriler öğesi yok; kategori rotası Tanımlamalar'ın takma adı, products izni ister ve hub seçili görünür", () => {
     const urunler = PANEL_MENU.find((m) => m.key === "urunler")?.children ?? [];
     expect(urunler.some((c) => c.label === "Kategoriler" || c.key === "kategoriler")).toBe(false);
     expect(urunler.some((c) => c.children?.length)).toBe(false);
-    expect(urunler.find((c) => c.key === "tanimlamalar")?.path).toBe(PATHS.adminNewCategories);
+    expect(urunler.find((c) => c.key === "tanimlamalar")?.path).toBe(PATHS.adminNewDefinitions);
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewCategories)).toEqual({ label: "Tanımlamalar", requiredPermission: "products" });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewCategories)).toEqual({ selectedKey: "tanimlamalar", openKeys: ["urunler"] });
   });

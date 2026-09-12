@@ -220,7 +220,11 @@ export function izinsizKalanRotalar(
   return rotalar
     .map((r) => r.path)
     .filter((p) => !HARIC_TUTULAN_ROTALAR.includes(p))
-    .filter((p) => !rotaIzniBul(menu, p)?.requiredPermission)
+    // Tek izin (`requiredPermission`) ya da çoklu izin (`requiredAnyPermissions`) beyanı sayılır.
+    .filter((p) => {
+      const beyan = rotaIzniBul(menu, p);
+      return !(beyan?.requiredPermission || beyan?.requiredAnyPermissions?.length);
+    })
     .sort();
 }
 

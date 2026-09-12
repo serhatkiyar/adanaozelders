@@ -183,6 +183,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> engeller.length > 0": "onkosul",
   // Yeni panel sayım detayı: aynı önkoşul — engeller hemen altındaki uyarıda listelenir.
   "src/panel/pages/urunler/StokSayimiDetayi.tsx <Button> engeller.length > 0": "onkosul",
+  // Devre kesici açıkken senkron kapalı; sebep durum şeridindeki uyarıda yazar.
+  "src/panel/pages/urunler/TedarikciListesi.tsx <Button> bekleyenDakika !== null": "onkosul",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> engeller.length > 0": "onkosul",
   "src/pages/DeliveryDriver.tsx <button> busy || deliverDrop.isPending || !stop.photo_url":
     "onkosul",
@@ -226,6 +228,7 @@ const ADETLER: Record<string, number> = {
   "src/components/LibraryBookmarkButton.tsx <button> toggle.isPending": 2,
   "src/components/LibraryMediaManager.tsx <button> busy": 2,
   "src/components/admin/store/SupplierPanel.tsx <Button> bekleyenDakika !== null": 2,
+  "src/panel/pages/urunler/TedarikciListesi.tsx <Button> bekleyenDakika !== null": 2,
   "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": 2,
   "src/pages/DeliveryDriver.tsx <button> busy": 2,
   "src/pages/admin/AdminBookingsPage.tsx <Button> pending": 3,

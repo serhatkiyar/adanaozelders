@@ -22,7 +22,7 @@ Son güncelleme: 12 Eyl 2026.
 2. Envanter · Stok Sayımı listesi + detayı — tamamlandı; liste `/yonetim-yeni/urunler/stok-sayimi` (`StokSayimiListesi.tsx`, `YeniSayimCekmecesi.tsx`), detay `/yonetim-yeni/urunler/stok-sayimi/:id` (`StokSayimiDetayi.tsx`, `StokSayimiPencereleri.tsx`).
 3. Envanter · Stok Hareketleri — tamamlandı; `/yonetim-yeni/urunler/stok-hareketleri` (`StokHareketleriListesi.tsx`, salt okunur defter + denetim).
 4. Envanter · Genel Bakış ve Hasarlı Stok — tamamlandı; `/yonetim-yeni/urunler/envanter` (`EnvanterGenelBakis.tsx`), `/yonetim-yeni/urunler/hasarli-stok` (`HasarliStokListesi.tsx`, `HasarliStokPencereleri.tsx`).
-5. Kategoriler — tamamlandı; `/yonetim-yeni/urunler/kategoriler` (`KategoriListesi.tsx`, `KategoriCekmecesi.tsx`; menüde Tanımlamalar öğesi). Kalan: tedarikçi, kuponlar.
+5. Kategoriler ve Tedarikçiler — tamamlandı; `/yonetim-yeni/urunler/tanimlamalar` (`Tanimlamalar.tsx` hub; menüde Tanımlamalar öğesi, kart rotaları alias), `/yonetim-yeni/urunler/kategoriler` (`KategoriListesi.tsx`, `KategoriCekmecesi.tsx`), `/yonetim-yeni/urunler/tedarikciler` (`TedarikciListesi.tsx`, `TedarikciCekmecesi.tsx`). Kalan: Kuponlar.
 6. Ayarlar, yetkiler, denetim kayıtları
 7. İadeler ve Müşteri Detayı — tamamlandı; `/yonetim-yeni/siparisler/iadeler` (`IadeListesi.tsx`, `IadePenceresi.tsx`; menüde Siparişler grubu), `/yonetim-yeni/musteriler/:role/:id` (`MusteriDetayi.tsx`, `MusteriDetayPencereleri.tsx`; menüde Müşteriler grubu). Kalan: Sipariş Detayı.
 8. Paketleme · 9. Dağıtım · 10. Eğitmen yönetimi · 11. Kütüphane/deneme/rezervasyon/

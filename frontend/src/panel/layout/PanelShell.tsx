@@ -25,11 +25,11 @@ import {
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AccessDenied } from "@/components/admin/AccessState";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
-import { adminAreaAccess } from "@/lib/adminAccess";
 import { rolEtiketi } from "@/lib/roles";
 import { PanelProvider } from "@/panel/PanelProvider";
 import {
   PANEL_MENU,
+  izinBeyaniniKarsilarMi,
   menuyuIzneGoreSuz,
   rotaIzniBul,
   seciliMenuDurumu,
@@ -190,9 +190,8 @@ export function PanelShell() {
   // engellemez, aksi hâlde yetkisiz bir kullanıcı deep-link ile gelince
   // gereken izin hiç bilinemez ve kapı sessizce açık kalırdı.
   const rotaBilgisi = rotaIzniBul(PANEL_MENU, konum.pathname);
-  const izinliMi =
-    !rotaBilgisi?.requiredPermission ||
-    adminAreaAccess(permissions, rotaBilgisi.requiredPermission).canView;
+  // Beyan yoksa açık; tek izin aynen; çoklu izinde herhangi biri yeter.
+  const izinliMi = !rotaBilgisi || izinBeyaniniKarsilarMi(permissions, rotaBilgisi);
 
   let icerik: ReactNode;
   if (izinYukleniyor) {

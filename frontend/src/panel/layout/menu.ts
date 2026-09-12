@@ -56,6 +56,18 @@ export type PanelMenuItem = {
    * kendi `requiredPermission`'ları eklenmelidir.
    */
   requiredPermission?: string;
+  /**
+   * Çoklu izin: bu öneklerden HERHANGİ birinde görüntüleme yetkisi olan
+   * kullanıcı öğeyi görür ve rotayı açar (ör. Tanımlamalar hub'ı). Yalnız
+   * `requiredPermission` yokken anlamlıdır; ikisi birden verilmez.
+   */
+  requiredAnyPermissions?: string[];
+  /**
+   * Menüde öğe olarak ÇİZİLMEYEN ama bu öğeyi seçili gösteren alt rotalar
+   * (ör. Tanımlamalar hub'ının kartları). Her takma ad kendi izin önekini ZORUNLU
+   * taşır (kapı açık kalmasın). `PanelShell` izin kapısı da bunları tanır.
+   */
+  rotaTakmaAdlari?: { path: string; requiredPermission: string }[];
 };
 
 /**
@@ -117,13 +129,17 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewDamageEvents,
         requiredPermission: "inventory",
       },
-      // Canlı ikas: Kategoriler ayrı menü öğesi değil, Tanımlamalar hub'ının kartı.
-      // Hub ekranı henüz yok; Tanımlamalar şimdilik doğrudan kategori listesine gider.
+      // Canlı ikas: Kategoriler/Tedarikçiler ayrı menü öğesi değil, Tanımlamalar
+      // hub'ının kartı. Kart rotaları takma ad: menüde çizilmez, hub'ı seçili gösterir.
       {
         key: "tanimlamalar",
         label: "Tanımlamalar",
-        path: PATHS.adminNewCategories,
-        requiredPermission: "products",
+        path: PATHS.adminNewDefinitions,
+        requiredAnyPermissions: ["products", "suppliers"],
+        rotaTakmaAdlari: [
+          { path: PATHS.adminNewCategories, requiredPermission: "products" },
+          { path: PATHS.adminNewSuppliers, requiredPermission: "suppliers" },
+        ],
       },
       { key: "fiyat-listesi", label: "Fiyat Listesi" },
       { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi" },
@@ -194,6 +210,7 @@ type MenuYapragi = {
   label: string;
   ebeveynAnahtarlari: string[];
   requiredPermission?: string;
+  requiredAnyPermissions?: string[];
 };
 
 /** `path` sahibi tüm yaprakları, üst (submenu) anahtar zinciriyle birlikte düzleştirir. */
@@ -211,11 +228,20 @@ function yapraklariDuzlestir(
             label: m.label,
             ebeveynAnahtarlari,
             requiredPermission: m.requiredPermission,
+            requiredAnyPermissions: m.requiredAnyPermissions,
           },
         ]
       : [];
+    // Takma ad rotaları aynı anahtar/etiketle yaprak olur; izni kendi önekidir.
+    const takmaAdlar: MenuYapragi[] = (m.rotaTakmaAdlari ?? []).map((t) => ({
+      key: m.key,
+      path: t.path,
+      label: m.label,
+      ebeveynAnahtarlari,
+      requiredPermission: t.requiredPermission,
+    }));
     const cocuklar = m.children ? yapraklariDuzlestir(m.children, altEbeveynler) : [];
-    return [...kendisi, ...cocuklar];
+    return [...kendisi, ...takmaAdlar, ...cocuklar];
   });
 }
 
@@ -256,10 +282,30 @@ export function seciliMenuDurumu(
 export function rotaIzniBul(
   items: PanelMenuItem[],
   pathname: string,
-): { label: string; requiredPermission?: string } | undefined {
+): { label: string; requiredPermission?: string; requiredAnyPermissions?: string[] } | undefined {
   const enOzgul = enOzgulEslesenYaprak(items, pathname);
   if (!enOzgul) return undefined;
-  return { label: enOzgul.label, requiredPermission: enOzgul.requiredPermission };
+  return {
+    label: enOzgul.label,
+    requiredPermission: enOzgul.requiredPermission,
+    requiredAnyPermissions: enOzgul.requiredAnyPermissions,
+  };
+}
+
+/**
+ * Bir öğenin/rotanın izin beyanına göre görüntüleme kararı: tek izin aynen,
+ * çoklu izinde herhangi biri yeter, beyan yoksa açık (mevcut sözleşme).
+ */
+export function izinBeyaniniKarsilarMi(
+  permissions: string[] | undefined,
+  beyan: { requiredPermission?: string; requiredAnyPermissions?: string[] },
+): boolean {
+  if (beyan.requiredPermission) return adminAreaAccess(permissions, beyan.requiredPermission).canView;
+  // Beyan edilmiş ama boş liste fail-closed: kimseye açılmaz.
+  if (beyan.requiredAnyPermissions) {
+    return beyan.requiredAnyPermissions.length > 0 && adminAreaAccess(permissions, ...beyan.requiredAnyPermissions).canView;
+  }
+  return true;
 }
 
 /**
@@ -274,9 +320,7 @@ export function menuyuIzneGoreSuz(
   permissions: string[] | undefined,
 ): PanelMenuItem[] {
   return items.reduce<PanelMenuItem[]>((acc, item) => {
-    if (item.requiredPermission && !adminAreaAccess(permissions, item.requiredPermission).canView) {
-      return acc;
-    }
+    if (!izinBeyaniniKarsilarMi(permissions, item)) return acc;
     if (!item.children) {
       acc.push(item);
       return acc;
