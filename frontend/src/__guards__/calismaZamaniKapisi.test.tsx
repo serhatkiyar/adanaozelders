@@ -502,6 +502,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/dagitim/DagitimBugun.tsx",
   // Dağıtım · Siparişler: propsuz mount olur; kuyruk seçici (Segmented "Sipariş kuyrukları") ADLI gelir.
   "src/panel/pages/dagitim/DagitimSiparisleri.tsx",
+  // Dağıtım · Turlar: propsuz mount olur; tarih alanı ("Tarihe göre filtrele") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimTurlari.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
   // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.

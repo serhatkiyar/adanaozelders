@@ -226,6 +226,26 @@ async def test_saha_audit_kaydi_kurye_aktoruyle_yazilir(pf):
     assert row.actor_role == ROLE_IDS[RoleType.COURIER]
 
 
+async def test_runs_run_date_suzgeci_yalniz_o_gunun_turlarini_dondurur(pf):
+    """Tarih süzgeci sözleşmesi: aynı ``run_date`` filtreli listede bulunur,
+    farklı tarihte bulunmaz. (Turlar ekranı `?tarih=` → `run_date=` gönderir.)"""
+    ids = await pf.runs(3)  # her tur ayrı güne: 2031-01-01, 01-02, 01-03
+    hedef = ids[1]
+    async with AsyncSessionLocal() as s:
+        gun = datetime.date(2031, 1, 2)
+        ayni = await delivery_service.list_runs(s, run_date=gun, limit=50)
+        assert hedef in {r.id for r in ayni}
+        assert all(r.run_date == gun for r in ayni)
+        farkli = await delivery_service.list_runs(
+            s, run_date=datetime.date(2031, 1, 3), limit=50
+        )
+        assert hedef not in {r.id for r in farkli}
+        assert ids[2] in {r.id for r in farkli}
+        assert await delivery_service.list_runs(
+            s, run_date=datetime.date(2031, 6, 15), limit=50
+        ) == []
+
+
 async def test_runs_offset_sayfalari_kesismez(pf):
     """Arşiv sayfalaması: sayfalar kesişmez, birleşimleri tam listeyi verir,
     offset liste sonunu aşınca boş döner."""

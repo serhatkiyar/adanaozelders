@@ -191,7 +191,7 @@ export function useDeliveryRuns(runDate?: string, enabled = true) {
 }
 
 /** Tur arşivi — sayfalı (offset). Dönen liste `limit`'ten kısaysa son sayfadır. */
-export function useDeliveryRunArchive(page: number, pageSize = 20) {
+export function useDeliveryRunArchive(page: number, pageSize = 20, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "runs", "archive", page, pageSize],
     queryFn: () =>
@@ -199,6 +199,7 @@ export function useDeliveryRunArchive(page: number, pageSize = 20) {
         limit: pageSize,
         offset: page * pageSize,
       }),
+    enabled,
   });
 }
 
