@@ -372,6 +372,8 @@ export const OLCUM_TABANI = [
   // `musteriListesiRota.test.ts`) kapsam dışıdır — walk ile aynı gerekçe
   // (fixture'lardaki ham etiketler borç değildir).
   "src/panel/pages/musteriler/MusteriListesi.tsx",
+  "src/panel/pages/musteriler/MusteriDetayi.tsx",
+  "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx",
   // Gösterge paneli (`/yonetim-yeni` iniş sayfası): saf AntD (Select, Tag,
   // Link) — ham `<button>`/`<input>` yok, pencere durumu yok.
   "src/panel/pages/gosterge/GostergePaneli.tsx",

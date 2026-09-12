@@ -24,7 +24,7 @@ Son güncelleme: 12 Eyl 2026.
 4. Envanter · Genel Bakış ve Hasarlı Stok — tamamlandı; `/yonetim-yeni/urunler/envanter` (`EnvanterGenelBakis.tsx`), `/yonetim-yeni/urunler/hasarli-stok` (`HasarliStokListesi.tsx`, `HasarliStokPencereleri.tsx`).
 5. Kategoriler — tamamlandı; `/yonetim-yeni/urunler/kategoriler` (`KategoriListesi.tsx`, `KategoriCekmecesi.tsx`; menüde Tanımlamalar öğesi). Kalan: tedarikçi, kuponlar.
 6. Ayarlar, yetkiler, denetim kayıtları
-7. İadeler — tamamlandı; `/yonetim-yeni/siparisler/iadeler` (`IadeListesi.tsx`, `IadePenceresi.tsx`; menüde Siparişler grubu). Kalan: sipariş detayı, müşteri detayı.
+7. İadeler ve Müşteri Detayı — tamamlandı; `/yonetim-yeni/siparisler/iadeler` (`IadeListesi.tsx`, `IadePenceresi.tsx`; menüde Siparişler grubu), `/yonetim-yeni/musteriler/:role/:id` (`MusteriDetayi.tsx`, `MusteriDetayPencereleri.tsx`; menüde Müşteriler grubu). Kalan: Sipariş Detayı.
 8. Paketleme · 9. Dağıtım · 10. Eğitmen yönetimi · 11. Kütüphane/deneme/rezervasyon/
    talep · 12. Moderasyon, hak edişler, kalan rotalar
 

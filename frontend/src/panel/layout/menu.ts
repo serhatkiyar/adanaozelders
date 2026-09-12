@@ -154,14 +154,23 @@ export const PANEL_MENU: PanelMenuItem[] = [
       },
     ],
   },
+  // Canlı ikas: Müşteriler kök grup; çocukları Müşteriler, Müşteri Grupları, Etiketler.
   {
     key: "musteriler",
     label: "Müşteriler",
-    path: PATHS.adminNewCustomers,
-    // Eski panelin `adminNavigation.ts`teki "Kullanıcılar" girdisiyle AYNI
-    // izin öneki (`users.view`/`users.manage`) — bkz. `AdminUsersPage.tsx`.
-    requiredPermission: "users",
     icon: "team",
+    children: [
+      {
+        key: "musteri-listesi",
+        label: "Müşteriler",
+        path: PATHS.adminNewCustomers,
+        // Eski panelin `adminNavigation.ts`teki "Kullanıcılar" girdisiyle AYNI
+        // izin öneki (`users.view`/`users.manage`) — bkz. `AdminUsersPage.tsx`.
+        requiredPermission: "users",
+      },
+      { key: "musteri-gruplari", label: "Müşteri Grupları" },
+      { key: "musteri-etiketleri", label: "Etiketler" },
+    ],
   },
   { key: "indirimler", label: "İndirimler", icon: "percentage" },
   { key: "gelen-kutusu", label: "Gelen Kutusu", icon: "inbox" },

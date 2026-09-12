@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { Button, Tag } from "antd";
 import type { TableProps } from "antd";
+import { Link, useNavigate } from "react-router-dom";
 import { ListePage } from "@/panel/components/ListePage";
 import { useAdminUsers } from "@/hooks/useAdmin";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatDateTime } from "@/lib/datetime";
 import { rolEtiketi } from "@/lib/roles";
+import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { AdminUserOut, AdminUserRole } from "@/types";
 
@@ -73,31 +75,50 @@ export function MusteriListesi() {
   // (bkz. `api/admin.ts`), sayı uydurulmaz.
   const toplam = data?.total;
 
-  const kolonlar: TableProps<AdminUserOut>["columns"] = useMemo(
-    () => [
-      { title: "Ad Soyad", dataIndex: "full_name", key: "full_name" },
-      { title: "E-posta", dataIndex: "email", key: "email" },
+  const navigate = useNavigate();
+  // Liste yalnız CLIENT gösterir; detay bağlantısı `client` rolüyle kurulur.
+  const kolonlar: TableProps<AdminUserOut>["columns"] = useMemo(() => {
+    const satirTiklama = (k: AdminUserOut) => ({
+      onClick: () => navigate(ROUTES.adminNewCustomer("client", k.id)),
+      style: { cursor: "pointer" },
+    });
+    return [
+      {
+        title: "Ad Soyad",
+        dataIndex: "full_name",
+        key: "full_name",
+        // Gerçek bağlantı: orta/Ctrl tık çalışır; satır olayı ikinci kez tetiklenmez.
+        render: (v: string, k: AdminUserOut) => (
+          <Link to={ROUTES.adminNewCustomer("client", k.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>
+            {v}
+          </Link>
+        ),
+        onCell: satirTiklama,
+      },
+      { title: "E-posta", dataIndex: "email", key: "email", onCell: satirTiklama },
       {
         title: "Rol",
         dataIndex: "role",
         key: "role",
         render: (v: AdminUserRole) => rolEtiketi(ROLE_ID[v]),
+        onCell: satirTiklama,
       },
       {
         title: "Durum",
         dataIndex: "is_active",
         key: "is_active",
         render: (v: boolean) => <Tag color={v ? "success" : "default"}>{v ? "Aktif" : "Pasif"}</Tag>,
+        onCell: satirTiklama,
       },
       {
         title: "Kayıt Tarihi",
         dataIndex: "created_at",
         key: "created_at",
         render: (v: string) => formatDateTime(v),
+        onCell: satirTiklama,
       },
-    ],
-    [],
-  );
+    ];
+  }, [navigate]);
 
   return (
     <ListePage<AdminUserOut>

@@ -470,6 +470,10 @@ const KAPI_KAPSAMI = [
   // veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
   // `MusteriListesi.tsx`in kardeşleri `SiparisListesi.tsx`/`UrunListesi.tsx`).
   "src/panel/pages/musteriler/MusteriListesi.tsx",
+  // Müşteri detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Müşterilere dön" düğmesi.
+  "src/panel/pages/musteriler/MusteriDetayi.tsx",
+  // Hesap silme penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx",
   // Gösterge paneli: propsuz mount olur; dönem seçici (adlı) her durumda çizilir.
   "src/panel/pages/gosterge/GostergePaneli.tsx",
   // İadeler: propsuz mount olur; izinli oturumda Filtre/sayfalayıcı ADLI gelir.
@@ -709,6 +713,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/HasarliStokPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/KategoriCekmecesi.tsx": "pencere-kabugu",
   "src/panel/pages/siparisler/IadePenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx": "pencere-kabugu",
+  // Müşteri detayı: form kontrolü yalnız silme çekmecesinde; propsuz mount hata kartı basar.
+  "src/panel/pages/musteriler/MusteriDetayi.tsx": "kosullu",
   "src/panel/pages/urunler/StokSayimiDetayi.tsx": "kosullu",
 };
 

@@ -112,11 +112,11 @@ export function useAdminUsers(params: AdminUsersParams = { limit: 25, offset: 0 
   });
 }
 
-export function useAdminUser(role: AdminUserRolePath | undefined, id: number) {
+export function useAdminUser(role: AdminUserRolePath | undefined, id: number, enabled = true) {
   return useQuery({
     queryKey: ["admin", "users", "detail", role, id],
     queryFn: () => fetchAdminUser(role!, id),
-    enabled: role !== undefined && Number.isInteger(id) && id > 0,
+    enabled: enabled && role !== undefined && Number.isInteger(id) && id > 0,
   });
 }
 

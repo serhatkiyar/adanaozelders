@@ -62,8 +62,8 @@ const GEREKCELI = [
   // evresinde statik import edilmesi.)
   // 768: `UrunAracCubugu.tsx` kapı kayıtları (KAPI_KAPSAMI +
   // KONTROLSUZ_EKRANLAR) satırı 753'ten 768'e; 775: `GostergePaneli.tsx`
-  // kayıtları 768'den 770'e; 776: `StokSayimiListesi`/`YeniSayimCekmecesi` kayıtları 770'den 779'a; sayım detayı kayıtları 779'dan 787'e; stok hareketleri kaydı 787'den 789'a; envanter genel bakış kaydı 789'dan 793'e; hasarlı stok kayıtları 793'ten 798'e; kategori kayıtları 798'den 803'e; iade kayıtları 803'ten 808'e kaydırdı.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:808 /src/**/*.tsx",
+  // kayıtları 768'den 770'e; 776: `StokSayimiListesi`/`YeniSayimCekmecesi` kayıtları 770'den 779'a; sayım detayı kayıtları 779'dan 787'e; stok hareketleri kaydı 787'den 789'a; envanter genel bakış kaydı 789'dan 793'e; hasarlı stok kayıtları 793'ten 798'e; kategori kayıtları 798'den 803'e; iade kayıtları 803'ten 808'e; müşteri detayı kayıtları 808'den 815'e kaydırdı.
+  "src/__guards__/calismaZamaniKapisi.test.tsx:815 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

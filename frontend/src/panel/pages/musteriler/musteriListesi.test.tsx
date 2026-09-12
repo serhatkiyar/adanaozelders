@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MusteriListesi } from "@/panel/pages/musteriler/MusteriListesi";
 import { useAdminUsers } from "@/hooks/useAdmin";
@@ -8,6 +8,11 @@ import { formatDateTime } from "@/lib/datetime";
 import { rolEtiketi } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
 import type { AdminUserOut } from "@/types";
+import { PATHS, ROUTES } from "@/lib/routes";
+
+function Konum() {
+  return <output data-testid="konum">{useLocation().pathname}</output>;
+}
 
 vi.mock("@/hooks/useAdmin", () => ({
   useAdminUsers: vi.fn(),
@@ -42,6 +47,25 @@ const musteri = (parca: Partial<AdminUserOut> = {}): AdminUserOut =>
   }) as AdminUserOut;
 
 describe("MusteriListesi", () => {
+  it("ad gerçek bir bağlantıdır (client detayı); satırın kalanına tıklamak da detaya gider", async () => {
+    mockUseAdminUsers.mockReturnValue({ data: { items: [musteri({ id: 7 })], total: 1 }, isPending: false, isError: false, refetch: vi.fn() } as never);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={[PATHS.adminNewCustomers]}>
+          <Routes>
+            <Route path={PATHS.adminNewCustomers} element={<><MusteriListesi /><Konum /></>} />
+            <Route path={PATHS.adminNewCustomer} element={<><div>Detay</div><Konum /></>} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole("link", { name: "Ahmet Yılmaz" })).toHaveAttribute("href", ROUTES.adminNewCustomer("client", 7));
+    expect(screen.queryByText(/telefon/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText("ahmet@example.com"));
+    expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminNewCustomer("client", 7));
+  });
+
   it("ad soyad, e-posta, rol ve kayıt tarihini listeler", () => {
     mockUseAdminUsers.mockReturnValue({
       data: { items: [musteri()], total: 1 },

@@ -111,6 +111,9 @@ const KategoriListesi = lazy(() =>
 const IadeListesi = lazy(() =>
   import("@/panel/pages/siparisler/IadeListesi").then((m) => ({ default: m.IadeListesi })),
 );
+const MusteriDetayi = lazy(() =>
+  import("@/panel/pages/musteriler/MusteriDetayi").then((m) => ({ default: m.MusteriDetayi })),
+);
 const UrunListesi = lazy(() =>
   import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
 );
@@ -717,6 +720,7 @@ function App() {
               <Route path="siparisler" element={<SiparisListesi />} />
               <Route path="siparisler/iadeler" element={<IadeListesi />} />
               <Route path="musteriler" element={<MusteriListesi />} />
+              <Route path="musteriler/:role/:id" element={<MusteriDetayi />} />
             </Route>
           </Route>
 
