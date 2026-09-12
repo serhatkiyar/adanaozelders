@@ -383,6 +383,7 @@ export const OLCUM_TABANI = [
   "src/panel/pages/ayarlar/HataCozme.tsx",
   "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx",
   "src/panel/pages/paketleme/usePaketlemeErisimi.ts",
+  "src/panel/pages/paketleme/PaketListesi.tsx",
   "src/panel/pages/indirimler/KuponListesi.tsx",
   "src/panel/pages/indirimler/KuponCekmecesi.tsx",
   // Gösterge paneli (`/yonetim-yeni` iniş sayfası): saf AntD (Select, Tag,

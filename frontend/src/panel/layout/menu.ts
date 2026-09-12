@@ -259,7 +259,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewPacking,
         requiredPermission: "packing",
       },
-      { key: "paketleme-paketler", label: "Paketler" },
+      {
+        key: "paketleme-paketler",
+        label: "Paketler",
+        path: PATHS.adminNewPackingPackages,
+        requiredPermission: "packing",
+      },
       { key: "paketleme-geri-donus", label: "Geri Dönüş" },
     ],
   },

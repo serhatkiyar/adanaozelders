@@ -153,6 +153,7 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> run.stops.length === 0": "secim",
   "src/pages/admin/delivery/DeliveryTodayPage.tsx <Button> dispatchable === 0": "secim",
   "src/pages/admin/packing/PackagesPage.tsx <Button> seciliGorunen.length === 0": "secim",
+  "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
   "src/components/LibraryMapPanel.tsx <button> !week": "secim",
 
   // ── onkosul: sebebi EKRANDA yazan durum kilidi ──

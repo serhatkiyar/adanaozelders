@@ -490,6 +490,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/ayarlar/HataCozme.tsx",
   // Paketleme kuyruğu: propsuz mount olur; satırlar ve aksiyonlar sunucu verisiyle doğar, form kontrolü yok.
   "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx",
+  // Paketler: propsuz mount olur; izinli oturumda Filtre/sayfalayıcı ListePage'den ADLI gelir.
+  "src/panel/pages/paketleme/PaketListesi.tsx",
   // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.
   "src/panel/pages/indirimler/KuponListesi.tsx",
   // Kupon oluşturma çekmecesi: `acik` yokken kapalı, gövde mount edilmez.

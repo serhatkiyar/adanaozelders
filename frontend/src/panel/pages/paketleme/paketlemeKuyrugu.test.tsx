@@ -253,14 +253,14 @@ describe("PaketlemeKuyrugu", () => {
     expect(screen.queryByText(/sipariş$/)).not.toBeInTheDocument();
   });
 
-  it("menü: Paketleme kök grubu (Kuyruk gerçek rota, diğerleri yer tutucu), packing izni, seçili/açık anahtarlar", () => {
+  it("menü: Paketleme kök grubu (Kuyruk ve Paketler gerçek rota, Geri Dönüş yer tutucu), packing izni, seçili/açık anahtarlar", () => {
     expect(PATHS.adminNewPacking).toBe("/yonetim-yeni/paketleme");
     expect(ROUTES.adminNewPacking).toBe(PATHS.adminNewPacking);
     const grup = PANEL_MENU.find((m) => m.key === "paketleme")!;
     expect(grup.icon).toBeTruthy();
     expect(grup.path).toBeUndefined();
     expect(grup.children?.map((c) => c.label)).toEqual(["Kuyruk", "Paketler", "Geri Dönüş"]);
-    expect(grup.children?.[1].path).toBeUndefined();
+    expect(grup.children?.[1].path).toBe(PATHS.adminNewPackingPackages);
     expect(grup.children?.[2].path).toBeUndefined();
     expect(grup.children?.some((c) => c.children?.length)).toBe(false);
     expect(PANEL_MENU.find((m) => m.key === "dagitim")).toBeTruthy();

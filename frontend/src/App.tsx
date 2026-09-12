@@ -123,6 +123,9 @@ const IadeListesi = lazy(() =>
 const KuponListesi = lazy(() =>
   import("@/panel/pages/indirimler/KuponListesi").then((m) => ({ default: m.KuponListesi })),
 );
+const PaketListesi = lazy(() =>
+  import("@/panel/pages/paketleme/PaketListesi").then((m) => ({ default: m.PaketListesi })),
+);
 const PaketlemeKuyrugu = lazy(() =>
   import("@/panel/pages/paketleme/PaketlemeKuyrugu").then((m) => ({ default: m.PaketlemeKuyrugu })),
 );
@@ -756,6 +759,7 @@ function App() {
               <Route path="ayarlar/personel-yetkiler" element={<PersonelYetkiler />} />
               <Route path="ayarlar/hata-cozme" element={<HataCozme />} />
               <Route path="paketleme" element={<PaketlemeKuyrugu />} />
+              <Route path="paketleme/paketler" element={<PaketListesi />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>
