@@ -218,13 +218,21 @@ export function useRoutingHealth(enabled = true) {
   });
 }
 
-export function useDeliveryRun(runId: number | null, opts?: { poll?: boolean }) {
+export function useDeliveryRun(
+  runId: number | null,
+  opts?: { poll?: boolean; pollWhenActive?: boolean; enabled?: boolean },
+) {
   return useQuery({
     queryKey: [...KEY, "run", runId],
     queryFn: () => deliveryApi.fetchDeliveryRun(runId!),
-    enabled: runId != null,
+    enabled: runId != null && (opts?.enabled ?? true),
     // Saha ekranı: iki dağıtıcı telefonu aynı turu görüyor olabilir — tazele.
-    refetchInterval: opts?.poll ? 15_000 : undefined,
+    // `pollWhenActive`: yalnız ACTIVE turda 15 sn (yeni panel detayı); PLANNED/DONE/CANCELLED'da poll yok.
+    refetchInterval: opts?.poll
+      ? 15_000
+      : opts?.pollWhenActive
+        ? (q) => (q.state.data?.status === "ACTIVE" ? 15_000 : false)
+        : undefined,
   });
 }
 

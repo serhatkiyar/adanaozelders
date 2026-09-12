@@ -1,8 +1,7 @@
 // Dağıtım → Turlar — eski DeliveryRunsPage panel düzeninde: tur listesi ve arşivi. İki mod:
 // geçerli `?tarih=` varsa o günün turları (useDeliveryRuns), yoksa sunucu offset sayfalı arşiv
 // (useDeliveryRunArchive, 20 satır, `?sayfa=`). Aynı anda yalnız etkin modun sorgusu çalışır. Salt okunur.
-// GEÇİCİ: satır ve tur kodu çalışan ESKİ tur detayına (ROUTES.adminDeliveryRun) gider; yeni Tur Detayı
-// tamamlandığında yeni rotaya çevrilecek.
+// Satır ve tur kodu yeni tur detayına (ROUTES.adminNewDeliveryRun) gider.
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Flex, Input, Tag, Typography, theme } from "antd";
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
@@ -37,7 +36,7 @@ function TurSatiri({ run, sonMu, ayrac }: { run: DeliveryRun; sonMu: boolean; ay
   const navigate = useNavigate();
   const [biten, toplam] = runProgress(run);
   const basarisiz = run.stops.filter((s) => s.status === "FAILED").length;
-  const hedef = ROUTES.adminDeliveryRun(run.id);
+  const hedef = ROUTES.adminNewDeliveryRun(run.id);
   return (
     // Satırın tamamı detaya götürür; gerçek bağlantı tur kodundadır (orta tık / değiştirici tuş korunur), iç içe a/button yok.
     <Flex
@@ -58,7 +57,6 @@ function TurSatiri({ run, sonMu, ayrac }: { run: DeliveryRun; sonMu: boolean; ay
           {TARIH_BICIMI.format(new Date(`${run.run_date}T00:00:00`))}
         </Typography.Text>
         <div style={{ minWidth: 0 }}>
-          {/* GEÇİCİ: eski tur detayı rotası. */}
           <Link to={hedef} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>Tur #{run.id}</Link>
           <Typography.Text type="secondary" style={{ marginLeft: 8 }}>{run.vehicle}</Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>{run.courier?.name ?? "Kurye atanmadı"}</Typography.Text>

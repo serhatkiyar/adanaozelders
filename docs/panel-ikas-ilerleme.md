@@ -26,7 +26,7 @@ Son güncelleme: 12 Eyl 2026.
 6. Ayarlar · Genel Ayarlar, Personel & Yetkiler, Denetim Kayıtları ve Hata Çözme — tamamlandı; `/yonetim-yeni/ayarlar/genel` (`GenelAyarlar.tsx`, `BayrakGerekcePenceresi.tsx`), `/yonetim-yeni/ayarlar/personel-yetkiler` (`PersonelYetkiler.tsx`, `RolCekmecesi.tsx`), `/yonetim-yeni/ayarlar/denetim-kayitlari` (`DenetimKayitlariListesi.tsx`, `DenetimKaydiPenceresi.tsx`), `/yonetim-yeni/ayarlar/hata-cozme` (`HataCozme.tsx`; menüde Ayarlar grubu).
 7. İadeler, Müşteri Detayı ve Sipariş Detayı — tamamlandı; `/yonetim-yeni/siparisler/iadeler` (`IadeListesi.tsx`, `IadePenceresi.tsx`; menüde Siparişler grubu), `/yonetim-yeni/musteriler/:role/:id` (`MusteriDetayi.tsx`, `MusteriDetayPencereleri.tsx`; menüde Müşteriler grubu), `/yonetim-yeni/siparisler/:id` (`SiparisDetayi.tsx`, `SiparisDetayPencereleri.tsx`; tekil `GET /store/admin/orders/{id}` ucu).
 8. Paketleme · Kuyruk, Paketler listesi, İstasyon/Detay ve Geri Dönüş — tamamlandı; `/yonetim-yeni/paketleme` (`PaketlemeKuyrugu.tsx`, `usePaketlemeErisimi.ts`; menüde Paketleme grubu), `/yonetim-yeni/paketleme/paketler` (`PaketListesi.tsx`), `/yonetim-yeni/paketleme/paket/:id` (`PaketlemeDetayi.tsx`, `PaketlemePencereleri.tsx`; Kuyruk ve Paketler yeni detaya bağlı) ve `/yonetim-yeni/paketleme/geri-donus` (`GeriDonusKuyrugu.tsx`, `DepoyaAlPenceresi.tsx`).
-9. Dağıtım · Bugün, Siparişler ve Turlar listesi — tamamlandı; `/yonetim-yeni/dagitim` (`DagitimBugun.tsx`; menüde Dağıtım grubu), `/yonetim-yeni/dagitim/siparisler` (`DagitimSiparisleri.tsx`), `/yonetim-yeni/dagitim/turlar` (`DagitimTurlari.tsx`). Kalan: Tur Detayı, Performans, Kuryeler, Tahta, Araçlar. Geçici not: Bugün ekranındaki tur bağlantıları ile tur oluşturma/günü optimize etme sonrası yönlendirmeler ve Turlar listesindeki satır/tur kodu bağlantıları Tur Detayı taşınana kadar eski çalışan tur detayına (`ROUTES.adminDeliveryRun`) gider.
+9. Dağıtım · Bugün, Siparişler, Turlar listesi ve Tur Detayı — tamamlandı; `/yonetim-yeni/dagitim` (`DagitimBugun.tsx`; menüde Dağıtım grubu), `/yonetim-yeni/dagitim/siparisler` (`DagitimSiparisleri.tsx`), `/yonetim-yeni/dagitim/turlar` (`DagitimTurlari.tsx`), `/yonetim-yeni/dagitim/turlar/:id` (`DagitimTurDetayi.tsx`; Bugün ve Turlar listesi yeni detaya bağlı). Kalan: Performans, Kuryeler, Tahta, Araçlar. Geçici not: Tur Detayı'ndaki "Kurye ekle" bağlantısı Kuryeler ekranı taşınana kadar eski çalışan `ROUTES.adminDeliveryCouriers` rotasına gider.
 10. Eğitmen yönetimi
 11. Kütüphane/deneme/rezervasyon/talep
 12. Moderasyon, hak edişler, kalan rotalar
@@ -38,3 +38,7 @@ Son güncelleme: 12 Eyl 2026.
   kullanmalı.
 - Bilinçli boşluklar: Dışa Aktar (uç yok), satır seçimi/toplu işlem (uç yok),
   filtre operatörü ve kolon sürükleme (karşılığı yok).
+- Teknik borç (dağıtım): backend `add_stops` sıra numarasını DB kilidi olmadan
+  hesaplıyor; Tur Detayı aynı sekmedeki eklemeleri tur düzeyinde sıraya alıyor, farklı
+  sekme/istemcilerden eşzamanlı istek yarışı backend tarafında hâlâ mümkün. Ayrıca
+  `GET /delivery/runs?run_date=…` yavaşlığı (canlıda ~4 sn) ayrı performans işi olarak duruyor.

@@ -158,6 +158,17 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/panel/pages/dagitim/DagitimBugun.tsx <Button> !uygunHazir || dagitilabilir === 0": "onkosul",
   // Yeni panel Siparişler: bugün açık tur yokken "Tura ekle" kapalı; sebep ipucunda ve şeritte ("Bugün açık tur yok") yazılıdır.
   "src/panel/pages/dagitim/DagitimSiparisleri.tsx <Button> hedef == null": "onkosul",
+  // Yeni panel Tur Detayı: tur düzeyi yazma koordinasyonu — başka özel yazım ya da ekleme kuyruğu sürerken
+  // (`baskaIslem`) kontroller kapalı ve neden `title`da ("Turda başka bir işlem sürüyor." / "Tura sipariş
+  // ekleniyor"). Ayrıca: durak yokken başlat, bekleyen durak varken tamamla (sayı ipucunda), ilk/son bekleyen
+  // durakta yukarı/aşağı (sınır), özel yazım sürerken ekleme.
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> run.stops.length === 0 || baskaIslem": "onkosul",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> bekleyenSayisi > 0 || baskaIslem": "onkosul",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem": "islem",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ilkMi || baskaIslem": "sinir",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> sonMu || baskaIslem": "sinir",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem && !ucusta": "islem",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ozelYazim !== null": "islem",
   "src/pages/admin/packing/PackagesPage.tsx <Button> seciliGorunen.length === 0": "secim",
   "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
   // Paket detayı "Paketi tamamla": engel listesi ekranda yazılıdır (eksik adet / kalemsiz paket).
@@ -235,6 +246,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
  * ayrıca sınıyor.
  */
 const ADETLER: Record<string, number> = {
+  // Tur Detayı: optimize + iptal aynı kilit ifadesi; Ekle + Tümünü ekle aynı ifade.
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem": 2,
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ozelYazim !== null": 2,
   "src/components/ImageCropModal.tsx <button> isUploading": 3,
   "src/components/LibraryBookmarkButton.tsx <button> toggle.isPending": 2,
   "src/components/LibraryMediaManager.tsx <button> busy": 2,

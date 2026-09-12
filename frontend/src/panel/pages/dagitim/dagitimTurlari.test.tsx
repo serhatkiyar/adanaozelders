@@ -47,7 +47,7 @@ function agac(yol = PATHS.adminNewDeliveryRuns) {
         <MemoryRouter initialEntries={[yol]}>
           <Routes>
             <Route path={PATHS.adminNewDeliveryRuns} element={<><DagitimTurlari /><Konum /></>} />
-            <Route path={PATHS.adminDeliveryRunDetail} element={<><div>Eski tur detayı</div><Konum /></>} />
+            <Route path={PATHS.adminNewDeliveryRunDetail} element={<><div>Yeni tur detayı</div><Konum /></>} />
           </Routes>
         </MemoryRouter>
       </PanelProvider>
@@ -89,7 +89,7 @@ describe("DagitimTurlari", () => {
     expect(son(useDeliveryRuns)).toEqual([undefined, false]);
     const a = within(screen.getByTestId("tur-5"));
     expect(a.getByText(/12 Eyl/)).toBeInTheDocument();
-    expect(a.getByRole("link", { name: "Tur #5" })).toHaveAttribute("href", ROUTES.adminDeliveryRun(5));
+    expect(a.getByRole("link", { name: "Tur #5" })).toHaveAttribute("href", ROUTES.adminNewDeliveryRun(5));
     expect(a.getByText("Lada")).toBeInTheDocument();
     expect(a.getByText("Ali Kurye")).toBeInTheDocument();
     expect(a.getByText(/2\/3 durak/)).toBeInTheDocument();
@@ -111,8 +111,8 @@ describe("DagitimTurlari", () => {
     fireEvent.click(b.getByText("Fiat"), { shiftKey: true });
     expect(screen.getByTestId("konum")).toHaveTextContent(PATHS.adminNewDeliveryRuns);
     fireEvent.click(b.getByText("Fiat"));
-    expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminDeliveryRun(4));
-    expect(screen.getByText("Eski tur detayı")).toBeInTheDocument();
+    expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminNewDeliveryRun(4));
+    expect(screen.getByText("Yeni tur detayı")).toBeInTheDocument();
   });
 
   it("geçerli tarih: yalnız tarih sorgusu; arşiv kapalı; Filtreyi kaldır arşive ve sayfa 1'e döner; tarih modunda eski sayfa sorguyu etkilemez", async () => {

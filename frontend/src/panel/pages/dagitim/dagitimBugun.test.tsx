@@ -81,7 +81,7 @@ function agac(yol = PATHS.adminNewDelivery) {
         <MemoryRouter initialEntries={[yol]}>
           <Routes>
             <Route path={PATHS.adminNewDelivery} element={<><DagitimBugun /><Konum /></>} />
-            <Route path={PATHS.adminDeliveryRunDetail} element={<><div>Eski tur detayı</div><Konum /></>} />
+            <Route path={PATHS.adminNewDeliveryRunDetail} element={<><div>Yeni tur detayı</div><Konum /></>} />
           </Routes>
         </MemoryRouter>
       </PanelProvider>
@@ -198,7 +198,7 @@ describe("DagitimBugun", () => {
     kur();
     expect([...document.querySelectorAll('[data-testid^="tur-"]')].map((e) => e.getAttribute("data-testid"))).toEqual(["tur-3", "tur-1", "tur-2", "tur-4"]);
     const a = within(screen.getByTestId("tur-3"));
-    expect(a.getByRole("link", { name: "Tur #3" })).toHaveAttribute("href", ROUTES.adminDeliveryRun(3));
+    expect(a.getByRole("link", { name: "Tur #3" })).toHaveAttribute("href", ROUTES.adminNewDeliveryRun(3));
     expect(a.getByText("Lada")).toBeInTheDocument();
     expect(a.getByText(/Ali Kurye/)).toBeInTheDocument();
     expect(a.getByText(/konum canlı/)).toBeInTheDocument();
@@ -211,7 +211,7 @@ describe("DagitimBugun", () => {
     expect(document.querySelectorAll("a button, button a, a a, button button")).toHaveLength(0);
     // Satır tıklaması da eski detaya gider (geçici).
     fireEvent.click(within(screen.getByTestId("tur-2")).getByText("Fiat"));
-    expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminDeliveryRun(2));
+    expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminNewDeliveryRun(2));
     // Polling yalnız ACTIVE turda açık.
     expect(vi.mocked(useRunPosition)).toHaveBeenCalledWith(3, true);
     expect(vi.mocked(useRunPosition)).toHaveBeenCalledWith(1, false);
@@ -273,8 +273,8 @@ describe("DagitimBugun", () => {
     expect(create).toHaveBeenCalledTimes(2);
     await act(async () => { sozler.pop()!.res(tur({ id: 77 })); await Promise.resolve(); });
     expect(await screen.findByText("Tur oluşturuldu.")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminDeliveryRun(77)));
-    expect(screen.getByText("Eski tur detayı")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminNewDeliveryRun(77)));
+    expect(screen.getByText("Yeni tur detayı")).toBeInTheDocument();
   });
 
   it("optimize: konumlu sipariş yoksa kapalı ve neden görünür; varsa sayı, onay, aynı tick tek istek, hata açık kalır, tek/çok tur metinleri", async () => {
@@ -303,7 +303,7 @@ describe("DagitimBugun", () => {
     await act(async () => { sozler.pop()!.res([tur({ id: 81 }), tur({ id: 82 })]); await Promise.resolve(); });
     expect(await screen.findByText("Gün 2 araca bölüştürüldü.")).toBeInTheDocument();
     await waitFor(() => expect(onayGorunur()).toBe(false));
-    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminDeliveryRun(81)));
+    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(ROUTES.adminNewDeliveryRun(81)));
     // Tek tur metni.
     await userEvent.click(screen.getByRole("button", { name: "geri" }));
     await u.click(await screen.findByRole("button", { name: /Günü Optimize Et/ }));

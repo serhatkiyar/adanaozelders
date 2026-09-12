@@ -2,8 +2,7 @@
 // Sıra: rota altyapısı şeridi (yalnız degraded), istisna kuyruğu (tek uyarı yüzeyi / sakin tek satır),
 // günün turları (tarih URL'de, kapasite şeridi, araç seçimi ve yazma aksiyonları yalnız delivery.manage).
 // Hiçbir tur/FSM verisi uydurulmaz; adetler, konum ve kapasite sunucudan gelir.
-// GEÇİCİ: tur satırları ve oluşturma/optimize sonrası yönlendirme çalışan ESKİ tur detayına
-// (ROUTES.adminDeliveryRun) gider; yeni tur detayı ekranı gelince bu bağlantılar çevrilecek.
+// Tur satırları ve oluşturma/optimize sonrası yönlendirme yeni tur detayına (ROUTES.adminNewDeliveryRun) gider.
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, App, Button, Flex, Input, Select, Tag, Tooltip, Typography, theme } from "antd";
@@ -62,12 +61,11 @@ function TurSatiri({ run, sonMu, ayrac }: { run: DeliveryRun; sonMu: boolean; ay
       justify="space-between"
       gap={12}
       wrap
-      onClick={() => navigate(ROUTES.adminDeliveryRun(run.id))}
+      onClick={() => navigate(ROUTES.adminNewDeliveryRun(run.id))}
       style={{ padding: "12px 0", cursor: "pointer", borderBottom: sonMu ? "none" : `1px solid ${ayrac}` }}
     >
       <div style={{ minWidth: 0, flex: "1 1 200px" }}>
-        {/* GEÇİCİ: eski tur detayı rotası; yeni detay gelince çevrilecek. */}
-        <Link to={ROUTES.adminDeliveryRun(run.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>Tur #{run.id}</Link>
+        <Link to={ROUTES.adminNewDeliveryRun(run.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>Tur #{run.id}</Link>
         <Typography.Text type="secondary" style={{ marginLeft: 8 }}>{run.vehicle}</Typography.Text>
         <Typography.Text type="secondary" style={{ fontSize: 12, display: "block" }}>
           {run.courier ? run.courier.name : "Kurye atanmadı"}
@@ -174,8 +172,8 @@ export function DagitimBugun() {
         .mutateAsync(govde)
         .then((r) => {
           message.success("Tur oluşturuldu.");
-          // GEÇİCİ: sunucunun döndürdüğü tur ID'siyle eski tur detayına gidilir.
-          navigate(ROUTES.adminDeliveryRun(r.id));
+          // Sunucunun döndürdüğü tur ID'siyle yeni tur detayına gidilir.
+          navigate(ROUTES.adminNewDeliveryRun(r.id));
         })
         .catch((e: unknown) => {
           message.error(getErrorDetail(e, "Tur oluşturulamadı."));
@@ -201,8 +199,7 @@ export function DagitimBugun() {
             .mutateAsync(hedefTarih)
             .then((kurulan) => {
               message.success(kurulan.length > 1 ? `Gün ${kurulan.length} araca bölüştürüldü.` : "Günün turu kuruldu ve optimize edildi.");
-              // GEÇİCİ: ilk kurulan tur eski detayda açılır.
-              if (kurulan[0]) navigate(ROUTES.adminDeliveryRun(kurulan[0].id));
+              if (kurulan[0]) navigate(ROUTES.adminNewDeliveryRun(kurulan[0].id));
             })
             .catch((e: unknown) => {
               message.error(getErrorDetail(e, "Günü optimize etme başarısız."));
