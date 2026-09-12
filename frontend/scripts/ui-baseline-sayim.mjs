@@ -402,6 +402,8 @@ export const OLCUM_TABANI = [
   "src/panel/pages/urunler/StokSayimiListesi.tsx",
   "src/panel/pages/urunler/StokHareketleriListesi.tsx",
   "src/panel/pages/urunler/EnvanterGenelBakis.tsx",
+  "src/panel/pages/urunler/HasarliStokListesi.tsx",
+  "src/panel/pages/urunler/HasarliStokPencereleri.tsx",
   "src/panel/pages/urunler/StokSayimiDetayi.tsx",
   "src/panel/pages/urunler/StokSayimiPencereleri.tsx",
   "src/panel/pages/urunler/UrunSecici.tsx",

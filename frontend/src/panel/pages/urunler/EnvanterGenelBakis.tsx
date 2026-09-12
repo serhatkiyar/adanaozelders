@@ -106,7 +106,7 @@ export function EnvanterGenelBakis() {
       <Kart
         baslik="Son hasar olayları"
         aciklama="Hasara ayırma, kurtarma, imha ve tedarikçi iadesi kayıtları."
-        ekstra={<Link to={ROUTES.adminInventoryDamage} style={{ fontWeight: 500 }}>Tümü</Link>}
+        ekstra={<Link to={ROUTES.adminNewDamageEvents} style={{ fontWeight: 500 }}>Tümü</Link>}
       >
         {hasar.isError ? (
           <div style={{ paddingTop: 16 }}>

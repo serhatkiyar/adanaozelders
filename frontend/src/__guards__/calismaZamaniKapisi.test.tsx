@@ -484,6 +484,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/urunler/UrunAracCubugu.tsx",
   // Stok sayımı listesi: propsuz mount olur, `useCountSessions` boş veri döner,
   // arama kutusu `ListePage`den ADLI gelir (`UrunListesi.tsx` ile aynı sınıf).
+  // Hasarlı stok: propsuz mount olur, Filtre/işlem düğmeleri ListePage'den ADLI gelir.
+  "src/panel/pages/urunler/HasarliStokListesi.tsx",
+  // Hasar penceresi: `kind` yokken çekmece kapalı, gövde mount edilmez.
+  "src/panel/pages/urunler/HasarliStokPencereleri.tsx",
   // Envanter genel bakış: propsuz mount olur; izinli oturumda sayaç/ilgili ekran bağlantıları çizilir.
   "src/panel/pages/urunler/EnvanterGenelBakis.tsx",
   // Stok hareketleri: propsuz mount olur, arama kutusu `ListePage`den ADLI gelir.
@@ -694,6 +698,7 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/VaryantPenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/YeniSayimCekmecesi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/StokSayimiPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/HasarliStokPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/StokSayimiDetayi.tsx": "kosullu",
 };
 

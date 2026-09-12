@@ -111,7 +111,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewStockMovements,
         requiredPermission: "products",
       },
-      { key: "hasarli-stok", label: "Hasarlı Stok" },
+      {
+        key: "hasarli-stok",
+        label: "Hasarlı Stok",
+        path: PATHS.adminNewDamageEvents,
+        requiredPermission: "inventory",
+      },
       { key: "tanimlamalar", label: "Tanımlamalar" },
       { key: "fiyat-listesi", label: "Fiyat Listesi" },
       { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi" },

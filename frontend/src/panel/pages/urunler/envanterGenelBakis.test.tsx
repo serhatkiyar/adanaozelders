@@ -66,7 +66,7 @@ describe("EnvanterGenelBakis", () => {
     expect(within(kart).getByText("Hasara ayrıldı")).toBeInTheDocument();
     expect(within(kart).getByText("Ürün #42 · 3 adet")).toBeInTheDocument();
     expect(within(kart).getByText("Kırık")).toBeInTheDocument();
-    expect(within(kart).getByRole("link", { name: "Tümü" })).toHaveAttribute("href", ROUTES.adminInventoryDamage);
+    expect(within(kart).getByRole("link", { name: "Tümü" })).toHaveAttribute("href", ROUTES.adminNewDamageEvents);
     const ilgili = screen.getByRole("region", { name: "İlgili ekranlar" });
     expect(within(ilgili).getAllByRole("link")).toHaveLength(2);
     // İç içe etkileşimli öğe yok: tek <a>, içinde/dışında <button> yok.
