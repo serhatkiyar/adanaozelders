@@ -484,6 +484,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/urunler/UrunAracCubugu.tsx",
   // Stok sayımı listesi: propsuz mount olur, `useCountSessions` boş veri döner,
   // arama kutusu `ListePage`den ADLI gelir (`UrunListesi.tsx` ile aynı sınıf).
+  // Kategoriler: propsuz mount olur; izinli oturumda "Kategori Ekle" ve sayfalayıcı ADLI çizilir.
+  "src/panel/pages/urunler/KategoriListesi.tsx",
+  // Kategori çekmecesi: `acik` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/urunler/KategoriCekmecesi.tsx",
   // Hasarlı stok: propsuz mount olur, Filtre/işlem düğmeleri ListePage'den ADLI gelir.
   "src/panel/pages/urunler/HasarliStokListesi.tsx",
   // Hasar penceresi: `kind` yokken çekmece kapalı, gövde mount edilmez.
@@ -699,6 +703,7 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/YeniSayimCekmecesi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/StokSayimiPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/HasarliStokPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/KategoriCekmecesi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/StokSayimiDetayi.tsx": "kosullu",
 };
 

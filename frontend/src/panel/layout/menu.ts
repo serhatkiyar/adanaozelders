@@ -117,7 +117,14 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewDamageEvents,
         requiredPermission: "inventory",
       },
-      { key: "tanimlamalar", label: "Tanımlamalar" },
+      // Canlı ikas: Kategoriler ayrı menü öğesi değil, Tanımlamalar hub'ının kartı.
+      // Hub ekranı henüz yok; Tanımlamalar şimdilik doğrudan kategori listesine gider.
+      {
+        key: "tanimlamalar",
+        label: "Tanımlamalar",
+        path: PATHS.adminNewCategories,
+        requiredPermission: "products",
+      },
       { key: "fiyat-listesi", label: "Fiyat Listesi" },
       { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi" },
     ],
