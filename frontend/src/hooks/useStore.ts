@@ -502,10 +502,11 @@ export function useInvalidateAdminStore() {
 
 /* ── Kupon (ADMIN) ── */
 
-export function useCoupons() {
+export function useCoupons(enabled = true) {
   return useQuery({
     queryKey: ["store", "admin", "coupons"],
     queryFn: storeApi.listCoupons,
+    enabled,
   });
 }
 

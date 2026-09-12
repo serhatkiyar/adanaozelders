@@ -188,7 +188,23 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "musteri-etiketleri", label: "Etiketler" },
     ],
   },
-  { key: "indirimler", label: "İndirimler", icon: "percentage" },
+  // Onaylı bilgi mimarisi: İndirimler kök grup; yalnız gerçek ekrana bağlı çocuk izin taşır.
+  {
+    key: "indirimler",
+    label: "İndirimler",
+    icon: "percentage",
+    // Canlı ikas: Kampanyalar, Kuponlar. Öne Çıkarmalar bize özgü bekleyen ekran.
+    children: [
+      { key: "kampanyalar", label: "Kampanyalar" },
+      {
+        key: "kuponlar",
+        label: "Kuponlar",
+        path: PATHS.adminNewCoupons,
+        requiredPermission: "coupons",
+      },
+      { key: "one-cikarmalar", label: "Öne Çıkarmalar" },
+    ],
+  },
   { key: "gelen-kutusu", label: "Gelen Kutusu", icon: "inbox" },
   { key: "pazarlama", label: "Pazarlama", icon: "notification" },
   { key: "raporlar", label: "Raporlar", icon: "barchart" },
