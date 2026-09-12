@@ -21,7 +21,7 @@ Son güncelleme: 12 Eyl 2026.
 1. Gösterge paneli — tamamlandı (`0b04b18`).
 2. Envanter · Stok Sayımı listesi + detayı — tamamlandı; liste `/yonetim-yeni/urunler/stok-sayimi` (`StokSayimiListesi.tsx`, `YeniSayimCekmecesi.tsx`), detay `/yonetim-yeni/urunler/stok-sayimi/:id` (`StokSayimiDetayi.tsx`, `StokSayimiPencereleri.tsx`).
 3. Envanter · Stok Hareketleri — tamamlandı; `/yonetim-yeni/urunler/stok-hareketleri` (`StokHareketleriListesi.tsx`, salt okunur defter + denetim).
-4. Envanter: genel bakış, hasarlı stok
+4. Envanter · Genel Bakış — tamamlandı; `/yonetim-yeni/urunler/envanter` (`EnvanterGenelBakis.tsx`). Kalan: hasarlı stok.
 5. Kategoriler, tedarikçi, kuponlar
 6. Ayarlar, yetkiler, denetim kayıtları
 7. Sipariş detayı, müşteri detayı, iadeler

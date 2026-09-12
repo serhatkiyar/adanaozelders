@@ -401,6 +401,7 @@ export const OLCUM_TABANI = [
   // çekmece dosyasında prop olarak gelir.
   "src/panel/pages/urunler/StokSayimiListesi.tsx",
   "src/panel/pages/urunler/StokHareketleriListesi.tsx",
+  "src/panel/pages/urunler/EnvanterGenelBakis.tsx",
   "src/panel/pages/urunler/StokSayimiDetayi.tsx",
   "src/panel/pages/urunler/StokSayimiPencereleri.tsx",
   "src/panel/pages/urunler/UrunSecici.tsx",

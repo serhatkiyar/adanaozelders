@@ -92,6 +92,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "satin-alma", label: "Satın Alma" },
       { key: "transferler", label: "Transferler" },
       {
+        key: "envanter",
+        label: "Envanter",
+        path: PATHS.adminNewInventory,
+        requiredPermission: "inventory",
+      },
+      {
         key: "stok-sayimi",
         label: "Stok Sayımı",
         path: PATHS.adminNewStockCounts,

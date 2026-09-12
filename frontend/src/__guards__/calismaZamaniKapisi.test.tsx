@@ -484,6 +484,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/urunler/UrunAracCubugu.tsx",
   // Stok sayımı listesi: propsuz mount olur, `useCountSessions` boş veri döner,
   // arama kutusu `ListePage`den ADLI gelir (`UrunListesi.tsx` ile aynı sınıf).
+  // Envanter genel bakış: propsuz mount olur; izinli oturumda sayaç/ilgili ekran bağlantıları çizilir.
+  "src/panel/pages/urunler/EnvanterGenelBakis.tsx",
   // Stok hareketleri: propsuz mount olur, arama kutusu `ListePage`den ADLI gelir.
   "src/panel/pages/urunler/StokHareketleriListesi.tsx",
   // Sayım detayı: propsuz mount olur (`id` yok), sorgu yanıtsız → yükleniyor; kontroller veri dalında.
@@ -682,6 +684,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // Liste kabuğu: arama kutusu ve sayfalayıcı prop/veriyle gelir; propsuz
   // mount (arama ucu yok, veri yok) hiç kontrol çizmez.
   "src/panel/components/ListePage.tsx": "kosullu",
+  // Envanter genel bakış: sayaç kartları ve bağlantılar; form kontrolü yalnız izinli/verili dalda yok.
+  "src/panel/pages/urunler/EnvanterGenelBakis.tsx": "kosullu",
   "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx": "pencere-kabugu",
   // Araç çubuğu yüzeyleri: kapıda mount edilen ilk export `FiltreCekmecesi`
   // ve `acik` propu geçilmediği için AntD `Drawer` gövdeyi hiç mount etmez —
