@@ -215,7 +215,13 @@ export const PANEL_MENU: PanelMenuItem[] = [
     label: "Ayarlar",
     icon: "setting",
     children: [
-      { key: "ayarlar-genel", label: "Genel" },
+      // Eski `/yonetim/ayarlar` (özellik bayrakları + ödeme kolları); backend `settings.view/manage`.
+      {
+        key: "ayarlar-genel",
+        label: "Genel",
+        path: PATHS.adminNewGeneralSettings,
+        requiredPermission: "settings",
+      },
       { key: "personel-yetkiler", label: "Personel & Yetkiler" },
       {
         key: "denetim-kayitlari",

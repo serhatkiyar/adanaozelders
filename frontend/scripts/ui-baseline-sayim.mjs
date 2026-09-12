@@ -376,6 +376,8 @@ export const OLCUM_TABANI = [
   "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx",
   "src/panel/pages/ayarlar/DenetimKayitlariListesi.tsx",
   "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx",
+  "src/panel/pages/ayarlar/GenelAyarlar.tsx",
+  "src/panel/pages/ayarlar/BayrakGerekcePenceresi.tsx",
   "src/panel/pages/indirimler/KuponListesi.tsx",
   "src/panel/pages/indirimler/KuponCekmecesi.tsx",
   // Gösterge paneli (`/yonetim-yeni` iniş sayfası): saf AntD (Select, Tag,

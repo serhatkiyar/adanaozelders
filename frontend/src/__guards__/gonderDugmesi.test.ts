@@ -175,6 +175,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> s.status !== \"PENDING\" || run.status !== \"ACTIVE\"":
     "onkosul",
   "src/pages/admin/AdminSettingsPage.tsx <Button> !!flag.locked_reason && !flag.enabled": "onkosul",
+  // Üretimde kilitli kapalı bayrak açılamaz; sebep satırdaki rozet ve kilit metninde yazar.
+  "src/panel/pages/ayarlar/GenelAyarlar.tsx <Button> !!bayrak.locked_reason && !bayrak.enabled": "onkosul",
   // Devre kesici açıkken elle senkron düğmeleri kapalı: sunucu cooldown
   // yüzünden zaten reddeder. Sebep EKRANDA — hem `title`da hem düğmelerin
   // altındaki amber şeritte ("Devre kesici açık — N dk beklemede").
