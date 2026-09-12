@@ -650,6 +650,12 @@ export async function listOrdersAdmin(
   };
 }
 
+/** Yönetim tekil sipariş okuma — `orders.view`; kalemler ve iade durumu dahil. */
+export async function getOrderAdmin(id: number): Promise<OrderOut> {
+  const { data } = await apiClient.get<OrderOut>(`/store/admin/orders/${id}`);
+  return data;
+}
+
 export async function shipOrder(
   id: number,
   trackingNo?: string | null

@@ -114,6 +114,9 @@ const Tanimlamalar = lazy(() =>
 const TedarikciListesi = lazy(() =>
   import("@/panel/pages/urunler/TedarikciListesi").then((m) => ({ default: m.TedarikciListesi })),
 );
+const SiparisDetayi = lazy(() =>
+  import("@/panel/pages/siparisler/SiparisDetayi").then((m) => ({ default: m.SiparisDetayi })),
+);
 const IadeListesi = lazy(() =>
   import("@/panel/pages/siparisler/IadeListesi").then((m) => ({ default: m.IadeListesi })),
 );
@@ -733,6 +736,8 @@ function App() {
               <Route path="urunler/:id" element={<UrunFormu />} />
               <Route path="siparisler" element={<SiparisListesi />} />
               <Route path="siparisler/iadeler" element={<IadeListesi />} />
+              {/* Statik `iadeler` yukarıda; `:id` yalnız sayısal kimlik için. */}
+              <Route path="siparisler/:id" element={<SiparisDetayi />} />
               <Route path="musteriler" element={<MusteriListesi />} />
               <Route path="musteriler/:role/:id" element={<MusteriDetayi />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />

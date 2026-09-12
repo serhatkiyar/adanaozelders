@@ -488,6 +488,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/siparisler/IadeListesi.tsx",
   // İade pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/siparisler/IadePenceresi.tsx",
+  // Sipariş detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Listeye dön".
+  "src/panel/pages/siparisler/SiparisDetayi.tsx",
+  // Sipariş detayı pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/siparisler/SiparisDetayPencereleri.tsx",
   // Siparişler modülü (commit `06ab4d2`): propsuz mount olur, `useAdminOrders`
   // boş veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
   // `UrunListesi.tsx`) — `KONTROLSUZ_EKRANLAR`a değil kapıya girer.
@@ -729,6 +733,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/TedarikciCekmecesi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/Tanimlamalar.tsx": "sunum",
   "src/panel/pages/siparisler/IadePenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/siparisler/SiparisDetayPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/siparisler/SiparisDetayi.tsx": "kosullu",
   "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/indirimler/KuponCekmecesi.tsx": "pencere-kabugu",

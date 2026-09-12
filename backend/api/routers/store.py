@@ -723,6 +723,19 @@ async def list_orders_admin(
     return kayitlar
 
 
+@router.get("/admin/orders/{order_id}", response_model=OrderOut)
+async def get_order_admin(
+    order_id: int,
+    _admin: Admin = Depends(require_admin_permission("orders.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Yönetim tekil sipariş okuma (kalemler + iade durumu). Salt okuma: audit yazmaz.
+
+    Sahiplik süzgeci yok (yönetim ucu); eksik/soft-delete sipariş 404.
+    """
+    return await order_service.get_order(db, order_id)
+
+
 @router.post("/admin/orders/{order_id}/ship", response_model=OrderOut)
 async def ship_order(
     order_id: int,

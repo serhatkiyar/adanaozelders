@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button, Tag, Typography } from "antd";
 import type { TableProps } from "antd";
 import { ListePage } from "@/panel/components/ListePage";
@@ -6,6 +7,7 @@ import { useAdminOrders } from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
+import { ROUTES } from "@/lib/routes";
 import type { OrderOut } from "@/types";
 
 /**
@@ -54,6 +56,7 @@ const TON_RENK: Record<ReturnType<typeof orderStatusTone>, string> = {
  * yol açardı.
  */
 export function SiparisListesi() {
+  const navigate = useNavigate();
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
@@ -83,36 +86,56 @@ export function SiparisListesi() {
     );
   }, [siparisler, arama]);
 
+  // Satırın diğer hücreleri de aynı detaya SPA gezinmesi yapar.
+  const satirTiklama = (k: OrderOut) => ({
+    onClick: () => navigate(ROUTES.adminNewOrder(k.id)),
+    style: { cursor: "pointer" },
+  });
   const kolonlar: TableProps<OrderOut>["columns"] = useMemo(
     () => [
-      { title: "Sipariş No", dataIndex: "order_no", key: "order_no" },
+      {
+        title: "Sipariş No",
+        key: "order_no",
+        // Gerçek bağlantı: Ctrl/orta tık yeni sekmede açar; satır olayı ikinci kez tetiklenmez.
+        render: (_: unknown, k: OrderOut) => (
+          <Link to={ROUTES.adminNewOrder(k.id)} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 500 }}>
+            {k.order_no}
+          </Link>
+        ),
+        onCell: satirTiklama,
+      },
       {
         title: "Müşteri",
         dataIndex: "ship_recipient",
         key: "ship_recipient",
         render: (v?: string | null) =>
           v ?? <Typography.Text type="secondary">Dijital sipariş</Typography.Text>,
+        onCell: satirTiklama,
       },
       {
         title: "Tutar",
         dataIndex: "total",
         key: "total",
         render: (v: string) => formatTL(v),
+        onCell: satirTiklama,
       },
       {
         title: "Durum",
         dataIndex: "status",
         key: "status",
         render: (v: string) => <Tag color={TON_RENK[orderStatusTone(v)]}>{orderStatusLabel(v)}</Tag>,
+        onCell: satirTiklama,
       },
       {
         title: "Tarih",
         dataIndex: "created_at",
         key: "created_at",
         render: (v: string) => formatDateTime(v),
+        onCell: satirTiklama,
       },
     ],
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigate],
   );
 
   return (

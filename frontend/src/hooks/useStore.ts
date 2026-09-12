@@ -462,6 +462,20 @@ export function useAdminOrders(statusFilter?: string, limit?: number, offset?: n
   });
 }
 
+/**
+ * Tekil yönetim siparişi. Anahtar `["store","admin","orders","detail",id]`:
+ * `useInvalidateAdminStore`ın `["store","admin"]` öneki bunu da tazeler.
+ * Liste sayfalarını taramak ya da önbellekte sipariş aramak yok.
+ */
+export function useAdminOrder(id: number, enabled = true) {
+  const gecerli = Number.isSafeInteger(id) && id > 0;
+  return useQuery({
+    queryKey: ["store", "admin", "orders", "detail", id],
+    queryFn: () => storeApi.getOrderAdmin(id),
+    enabled: enabled && gecerli,
+  });
+}
+
 export function useAdminReturns(statusFilter?: string) {
   return useQuery({
     queryKey: ["store", "admin", "returns", statusFilter ?? "all"],
