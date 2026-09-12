@@ -123,6 +123,9 @@ const IadeListesi = lazy(() =>
 const KuponListesi = lazy(() =>
   import("@/panel/pages/indirimler/KuponListesi").then((m) => ({ default: m.KuponListesi })),
 );
+const PersonelYetkiler = lazy(() =>
+  import("@/panel/pages/ayarlar/PersonelYetkiler").then((m) => ({ default: m.PersonelYetkiler })),
+);
 const GenelAyarlar = lazy(() =>
   import("@/panel/pages/ayarlar/GenelAyarlar").then((m) => ({ default: m.GenelAyarlar })),
 );
@@ -744,6 +747,7 @@ function App() {
               <Route path="musteriler" element={<MusteriListesi />} />
               <Route path="musteriler/:role/:id" element={<MusteriDetayi />} />
               <Route path="ayarlar/genel" element={<GenelAyarlar />} />
+              <Route path="ayarlar/personel-yetkiler" element={<PersonelYetkiler />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>

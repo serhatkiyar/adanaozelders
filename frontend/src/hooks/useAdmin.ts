@@ -38,16 +38,16 @@ import {
 } from "@/api/admin";
 import type { AdminRoleCreate, AdminRoleInput, AdminUserRolePath } from "@/types";
 
-export function useAdminPermissions() {
-  return useQuery({ queryKey: ["admin", "access", "permissions"], queryFn: fetchAdminPermissions });
+export function useAdminPermissions(enabled = true) {
+  return useQuery({ queryKey: ["admin", "access", "permissions"], queryFn: fetchAdminPermissions, enabled });
 }
 
-export function useAdminRoles() {
-  return useQuery({ queryKey: ["admin", "access", "roles"], queryFn: fetchAdminRoles });
+export function useAdminRoles(enabled = true) {
+  return useQuery({ queryKey: ["admin", "access", "roles"], queryFn: fetchAdminRoles, enabled });
 }
 
-export function useAdminRoleAssignments() {
-  return useQuery({ queryKey: ["admin", "access", "assignments"], queryFn: fetchAdminRoleAssignments });
+export function useAdminRoleAssignments(enabled = true) {
+  return useQuery({ queryKey: ["admin", "access", "assignments"], queryFn: fetchAdminRoleAssignments, enabled });
 }
 
 function useInvalidateAdminAccess() {

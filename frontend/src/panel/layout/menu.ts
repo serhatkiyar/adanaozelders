@@ -222,7 +222,13 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewGeneralSettings,
         requiredPermission: "settings",
       },
-      { key: "personel-yetkiler", label: "Personel & Yetkiler" },
+      // Eski `/yonetim/yetkiler` (roller, izinler, atamalar); backend `admin_roles.view/manage`.
+      {
+        key: "personel-yetkiler",
+        label: "Personel & Yetkiler",
+        path: PATHS.adminNewStaffPermissions,
+        requiredPermission: "admin_roles",
+      },
       {
         key: "denetim-kayitlari",
         label: "Denetim Kayıtları",

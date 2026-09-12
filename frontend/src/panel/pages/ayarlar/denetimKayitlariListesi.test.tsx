@@ -260,14 +260,14 @@ describe("DenetimKayitlariListesi", () => {
     expect(ayarlar.requiredPermission).toBeUndefined();
     expect(ayarlar.children?.map((c) => c.label)).toEqual(["Genel", "Personel & Yetkiler", "Denetim Kayıtları", "Hata Çözme"]);
     // Genel (settings) ve Denetim Kayıtları (audit) bağlı; diğer ikisi yer tutucu.
-    expect(ayarlar.children?.filter((c) => c.path).map((c) => c.key)).toEqual(["ayarlar-genel", "denetim-kayitlari"]);
+    expect(ayarlar.children?.filter((c) => c.path).map((c) => c.key)).toEqual(["ayarlar-genel", "personel-yetkiler", "denetim-kayitlari"]);
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewAuditLogs)).toMatchObject({ label: "Denetim Kayıtları", requiredPermission: "audit" });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewAuditLogs)).toEqual({ selectedKey: "denetim-kayitlari", openKeys: ["ayarlar"] });
     expect(izinBeyaniniKarsilarMi(["audit.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewAuditLogs)!)).toBe(true);
     expect(izinBeyaniniKarsilarMi(["products.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewAuditLogs)!)).toBe(false);
     const gorunur = menuyuIzneGoreSuz(PANEL_MENU, ["products.view"]).find((m) => m.key === "ayarlar");
     expect(gorunur?.children?.some((c) => c.key === "denetim-kayitlari")).toBe(false);
-    expect(gorunur?.children?.map((c) => c.key)).toEqual(["personel-yetkiler", "hata-cozme"]);
+    expect(gorunur?.children?.map((c) => c.key)).toEqual(["hata-cozme"]);
     // Tanımlamalar altyapısı korunuyor
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewSuppliers)).toEqual({ selectedKey: "tanimlamalar", openKeys: ["urunler"] });
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewDefinitions)?.requiredAnyPermissions).toEqual(["products", "suppliers"]);
