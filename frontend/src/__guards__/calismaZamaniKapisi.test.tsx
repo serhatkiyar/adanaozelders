@@ -472,6 +472,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/musteriler/MusteriListesi.tsx",
   // Gösterge paneli: propsuz mount olur; dönem seçici (adlı) her durumda çizilir.
   "src/panel/pages/gosterge/GostergePaneli.tsx",
+  // İadeler: propsuz mount olur; izinli oturumda Filtre/sayfalayıcı ADLI gelir.
+  "src/panel/pages/siparisler/IadeListesi.tsx",
+  // İade pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/siparisler/IadePenceresi.tsx",
   // Siparişler modülü (commit `06ab4d2`): propsuz mount olur, `useAdminOrders`
   // boş veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
   // `UrunListesi.tsx`) — `KONTROLSUZ_EKRANLAR`a değil kapıya girer.
@@ -704,6 +708,7 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/urunler/StokSayimiPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/HasarliStokPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/KategoriCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/siparisler/IadePenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/urunler/StokSayimiDetayi.tsx": "kosullu",
 };
 

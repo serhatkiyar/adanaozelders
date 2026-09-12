@@ -129,12 +129,30 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "urun-barkod-etiketi", label: "Ürün Barkod Etiketi" },
     ],
   },
+  // Canlı ikas: Siparişler kök grup; çocukları Siparişler, Taslaklar, Terk Edilmiş
+  // Sepetler, Etiketler, Hediye Kartları. İadeler ikas'ta yok; bizim gerçek özelliğimiz.
   {
     key: "siparisler",
     label: "Siparişler",
-    path: PATHS.adminNewOrders,
-    requiredPermission: "orders",
     icon: "container",
+    children: [
+      {
+        key: "siparis-listesi",
+        label: "Siparişler",
+        path: PATHS.adminNewOrders,
+        requiredPermission: "orders",
+      },
+      { key: "taslaklar", label: "Taslaklar" },
+      { key: "terk-edilmis-sepetler", label: "Terk Edilmiş Sepetler" },
+      { key: "etiketler", label: "Etiketler" },
+      { key: "hediye-kartlari", label: "Hediye Kartları" },
+      {
+        key: "iadeler",
+        label: "İadeler",
+        path: PATHS.adminNewReturns,
+        requiredPermission: "returns",
+      },
+    ],
   },
   {
     key: "musteriler",

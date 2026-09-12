@@ -243,6 +243,7 @@ export const PATHS = {
   adminNewInventory: "/yonetim-yeni/urunler/envanter",
   adminNewDamageEvents: "/yonetim-yeni/urunler/hasarli-stok",
   adminNewCategories: "/yonetim-yeni/urunler/kategoriler",
+  adminNewReturns: "/yonetim-yeni/siparisler/iadeler",
   adminNewOrders: "/yonetim-yeni/siparisler",
   adminNewCustomers: "/yonetim-yeni/musteriler",
 } as const;
@@ -408,6 +409,7 @@ export const ROUTES = {
   adminNewInventory: PATHS.adminNewInventory,
   adminNewDamageEvents: PATHS.adminNewDamageEvents,
   adminNewCategories: PATHS.adminNewCategories,
+  adminNewReturns: PATHS.adminNewReturns,
   adminNewOrders: PATHS.adminNewOrders,
   adminNewCustomers: PATHS.adminNewCustomers,
 } as const;

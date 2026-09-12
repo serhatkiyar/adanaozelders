@@ -108,6 +108,9 @@ const HasarliStokListesi = lazy(() =>
 const KategoriListesi = lazy(() =>
   import("@/panel/pages/urunler/KategoriListesi").then((m) => ({ default: m.KategoriListesi })),
 );
+const IadeListesi = lazy(() =>
+  import("@/panel/pages/siparisler/IadeListesi").then((m) => ({ default: m.IadeListesi })),
+);
 const UrunListesi = lazy(() =>
   import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
 );
@@ -712,6 +715,7 @@ function App() {
               <Route path="urunler/kategoriler" element={<KategoriListesi />} />
               <Route path="urunler/:id" element={<UrunFormu />} />
               <Route path="siparisler" element={<SiparisListesi />} />
+              <Route path="siparisler/iadeler" element={<IadeListesi />} />
               <Route path="musteriler" element={<MusteriListesi />} />
             </Route>
           </Route>
