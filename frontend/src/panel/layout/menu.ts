@@ -295,7 +295,17 @@ export const PANEL_MENU: PanelMenuItem[] = [
     ],
   },
   { key: "dersler", label: "Dersler", icon: "read" },
-  { key: "egitmenler", label: "Eğitmenler", icon: "solution" },
+  {
+    key: "egitmenler",
+    label: "Eğitmenler",
+    icon: "solution",
+    children: [
+      { key: "egitmenler-ilanlar", label: "İlanlar", path: PATHS.adminNewTutors, requiredPermission: "tutors" },
+      { key: "egitmenler-basvurular", label: "Ön Başvurular" },
+      { key: "egitmenler-diploma", label: "Diploma Doğrulama" },
+      { key: "egitmenler-one-cikarmalar", label: "Öne Çıkarmalar" },
+    ],
+  },
   { key: "kutuphaneler", label: "Kütüphaneler", icon: "book" },
   { key: "moderasyon", label: "Moderasyon", icon: "safety" },
   { key: "finans", label: "Finans", icon: "wallet" },

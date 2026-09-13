@@ -521,6 +521,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/dagitim/DagitimPerformans.tsx",
   // Dağıtım · Tahta: propsuz mount olur; izinli oturumda tarih alanı ("Tarih") ADLI gelir.
   "src/panel/pages/dagitim/DagitimTahtasi.tsx",
+  // Eğitmen İlanları: propsuz mount olur; kontroller satır aksiyonları ve pencerede (kapalı) doğar.
+  "src/panel/pages/egitmenler/EgitmenIlanlari.tsx",
+  // Red penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx",
   // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/dagitim/AracPencereleri.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
@@ -787,6 +791,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx": "kosullu",
   "src/panel/pages/dagitim/KuryePencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/dagitim/AracPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/EgitmenIlanlari.tsx": "kosullu",
   "src/panel/pages/dagitim/DagitimAraclar.tsx": "kosullu",
   "src/panel/pages/paketleme/PaketlemePencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx": "kosullu",

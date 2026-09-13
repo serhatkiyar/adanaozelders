@@ -149,11 +149,12 @@ export function useCancelAdminDemand() {
   });
 }
 
-export function useAdminTutors() {
+export function useAdminTutors(enabled = true) {
   return useQuery({
     queryKey: ["admin", "tutors"],
     queryFn: fetchAdminTutors,
     refetchInterval: 30_000,
+    enabled,
   });
 }
 
