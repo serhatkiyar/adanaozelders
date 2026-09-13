@@ -203,6 +203,7 @@ export const OLCUM_TABANI = [
   "src/components/admin/StockMovementTable.tsx",
   "src/components/admin/StockMovementsPanel.tsx",
   "src/components/admin/kuryeSemalari.ts",
+  "src/components/admin/aracSemalari.ts",
   "src/components/admin/data-table/DataTable.tsx",
   "src/components/admin/data-table/index.ts",
   "src/components/admin/delivery/CapacityStrip.tsx",
@@ -369,6 +370,8 @@ export const OLCUM_TABANI = [
   "src/panel/components/MedyaSekmesi.tsx",
   "src/panel/components/TipSecimi.tsx",
   "src/panel/components/YanPencere.tsx",
+  "src/panel/components/pencereAlanlari.ts",
+  "src/panel/components/varlikKilidi.tsx",
   // Müşteriler modülünün ilk ekranı. Test dosyaları (`musteriListesi.test.tsx`,
   // `musteriListesiRota.test.ts`) kapsam dışıdır — walk ile aynı gerekçe
   // (fixture'lardaki ham etiketler borç değildir).
@@ -394,6 +397,8 @@ export const OLCUM_TABANI = [
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx",
   "src/panel/pages/dagitim/DagitimKuryeler.tsx",
   "src/panel/pages/dagitim/KuryePencereleri.tsx",
+  "src/panel/pages/dagitim/DagitimAraclar.tsx",
+  "src/panel/pages/dagitim/AracPencereleri.tsx",
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
   "src/panel/pages/indirimler/KuponListesi.tsx",
   "src/panel/pages/indirimler/KuponCekmecesi.tsx",

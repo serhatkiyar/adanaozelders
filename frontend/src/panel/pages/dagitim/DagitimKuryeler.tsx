@@ -9,7 +9,7 @@
 // istek çıkmaz ve neden görünür. Pending işlemin düğmesi loading, aynı varlığın diğer yazma düğmeleri kapalıdır.
 import { useRef, useState } from "react";
 import { App, Avatar, Button, Flex, Input, Tag, Typography, theme } from "antd";
-import type { ButtonProps } from "antd";
+import { VarlikDugmesi, useVarlikKilidi } from "@/panel/components/varlikKilidi";
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { BosDurumu, HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
 import { HesapPenceresi, KuryePenceresi, SifrePenceresi, sunucuHatasiniDagit, type HesapDegerleri, type KuryeDegerleri } from "@/panel/pages/dagitim/KuryePencereleri";
@@ -44,16 +44,10 @@ export function kapasiteMetni(cap: number): string {
 }
 /** Backend `ClosedDayIn.label` üst sınırı. */
 export const ACIKLAMA_MAX = 120;
-export const MESGUL_NEDENI = "Bu kayıt üzerinde başka bir işlem sürüyor; bitince deneyin.";
+export { MESGUL_NEDENI } from "@/panel/components/varlikKilidi";
 
 type Hata = { alan: Record<string, string | undefined>; genel: string | null };
 const TEMIZ_HATA: Hata = { alan: {}, genel: null };
-
-/** Varlık kilidine uyan yazma düğmesi: kendi işlemi sürüyorsa loading, aynı varlıkta başka işlem sürüyorsa kapalı + neden. */
-function VarlikDugmesi({ islem, mesgulIslem, title, ...props }: ButtonProps & { islem: string; mesgulIslem: string | undefined }) {
-  const baska = mesgulIslem !== undefined && mesgulIslem !== islem;
-  return <Button {...props} loading={mesgulIslem === islem} disabled={baska} title={baska ? MESGUL_NEDENI : title} />;
-}
 
 function KuryeAvatar({ c }: { c: Courier }) {
   return c.photo_url ? <Avatar src={c.photo_url} alt={c.name} size={40} /> : <Avatar size={40}>{c.name.charAt(0).toLocaleUpperCase("tr")}</Avatar>;
@@ -133,38 +127,7 @@ export function DagitimKuryeler() {
   const aciklamaRef = useRef<import("antd").InputRef>(null);
   const fotoInputlar = useRef<Record<number, HTMLInputElement | null>>({});
 
-  // Varlık kilitleri: varlık → { işlem, uçuştaki söz }. Senkron ref karar verir, state düğmeleri çizer.
-  const kilitRef = useRef(new Map<string, { islem: string; soz: Promise<unknown> }>());
-  const [bekleyenler, setBekleyenler] = useState<Record<string, string>>({});
-  const surenIslem = (varlik: string) => bekleyenler[varlik];
-  /**
-   * Aynı varlık + aynı işlem: uçuştaki söz paylaşılır (tek istek). Aynı varlık + başka işlem: istek çıkmaz, neden
-   * görünür, `null` döner. Kilit başarı/hatadan bağımsız `finally` ile kesin bırakılır.
-   */
-  const kilitle = (varlik: string, islem: string, calistir: () => Promise<unknown>): Promise<unknown> | null => {
-    const mevcut = kilitRef.current.get(varlik);
-    if (mevcut) {
-      if (mevcut.islem === islem) return mevcut.soz;
-      message.warning(MESGUL_NEDENI);
-      return null;
-    }
-    const soz = calistir().finally(() => {
-      kilitRef.current.delete(varlik);
-      setBekleyenler((o) => {
-        const kalan = { ...o };
-        delete kalan[varlik];
-        return kalan;
-      });
-    });
-    kilitRef.current.set(varlik, { islem, soz });
-    setBekleyenler((o) => ({ ...o, [varlik]: islem }));
-    return soz;
-  };
-  const kilitli = (varlik: string) => kilitRef.current.has(varlik);
-  /** Onay penceresi: varlık kilitliyken Vazgeç/ESC/maske kapatmaz. */
-  const kapatmaEngeli = (varlik: string) => () => (kilitli(varlik) ? Promise.reject(new Error("bekleniyor")) : undefined);
-  /** Onayın onOk'u: gerçek mutation sözü; kilit çakışırsa reddedilir ve pencere açık kalır. */
-  const onayla = (varlik: string, islem: string, calistir: () => Promise<unknown>) => () => kilitle(varlik, islem, calistir) ?? Promise.reject(new Error("mesgul"));
+  const { kilitle, kilitli, surenIslem, kapatmaEngeli, onayla } = useVarlikKilidi(message);
 
   const kuryeListesi: Courier[] = Array.isArray(kuryeler.data) ? kuryeler.data : [];
   const gunler: ClosedDay[] = Array.isArray(takvim.data) ? takvim.data : [];

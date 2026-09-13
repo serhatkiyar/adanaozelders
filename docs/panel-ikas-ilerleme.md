@@ -26,7 +26,7 @@ Son güncelleme: 12 Eyl 2026.
 6. Ayarlar · Genel Ayarlar, Personel & Yetkiler, Denetim Kayıtları ve Hata Çözme — tamamlandı; `/yonetim-yeni/ayarlar/genel` (`GenelAyarlar.tsx`, `BayrakGerekcePenceresi.tsx`), `/yonetim-yeni/ayarlar/personel-yetkiler` (`PersonelYetkiler.tsx`, `RolCekmecesi.tsx`), `/yonetim-yeni/ayarlar/denetim-kayitlari` (`DenetimKayitlariListesi.tsx`, `DenetimKaydiPenceresi.tsx`), `/yonetim-yeni/ayarlar/hata-cozme` (`HataCozme.tsx`; menüde Ayarlar grubu).
 7. İadeler, Müşteri Detayı ve Sipariş Detayı — tamamlandı; `/yonetim-yeni/siparisler/iadeler` (`IadeListesi.tsx`, `IadePenceresi.tsx`; menüde Siparişler grubu), `/yonetim-yeni/musteriler/:role/:id` (`MusteriDetayi.tsx`, `MusteriDetayPencereleri.tsx`; menüde Müşteriler grubu), `/yonetim-yeni/siparisler/:id` (`SiparisDetayi.tsx`, `SiparisDetayPencereleri.tsx`; tekil `GET /store/admin/orders/{id}` ucu).
 8. Paketleme · Kuyruk, Paketler listesi, İstasyon/Detay ve Geri Dönüş — tamamlandı; `/yonetim-yeni/paketleme` (`PaketlemeKuyrugu.tsx`, `usePaketlemeErisimi.ts`; menüde Paketleme grubu), `/yonetim-yeni/paketleme/paketler` (`PaketListesi.tsx`), `/yonetim-yeni/paketleme/paket/:id` (`PaketlemeDetayi.tsx`, `PaketlemePencereleri.tsx`; Kuyruk ve Paketler yeni detaya bağlı) ve `/yonetim-yeni/paketleme/geri-donus` (`GeriDonusKuyrugu.tsx`, `DepoyaAlPenceresi.tsx`).
-9. Dağıtım · Bugün, Siparişler, Turlar listesi, Tur Detayı ve Kuryeler — tamamlandı; `/yonetim-yeni/dagitim` (`DagitimBugun.tsx`; menüde Dağıtım grubu), `/yonetim-yeni/dagitim/siparisler` (`DagitimSiparisleri.tsx`), `/yonetim-yeni/dagitim/turlar` (`DagitimTurlari.tsx`), `/yonetim-yeni/dagitim/turlar/:id` (`DagitimTurDetayi.tsx`; Bugün ve Turlar listesi yeni detaya bağlı), `/yonetim-yeni/dagitim/kuryeler` (`DagitimKuryeler.tsx` + `KuryePencereleri.tsx`; Tur Detayı'ndaki "Kurye ekle" bağlantısı yeni Kuryeler rotasına bağlı; doğrulama sözleşmeleri eski ekranla ortak `components/admin/kuryeSemalari.ts`). Kalan: Performans, Tahta, Araçlar.
+9. Dağıtım · Bugün, Siparişler, Turlar listesi, Tur Detayı, Kuryeler ve Araçlar — tamamlandı; `/yonetim-yeni/dagitim` (`DagitimBugun.tsx`; menüde Dağıtım grubu), `/yonetim-yeni/dagitim/siparisler` (`DagitimSiparisleri.tsx`), `/yonetim-yeni/dagitim/turlar` (`DagitimTurlari.tsx`), `/yonetim-yeni/dagitim/turlar/:id` (`DagitimTurDetayi.tsx`; Bugün ve Turlar listesi yeni detaya bağlı), `/yonetim-yeni/dagitim/kuryeler` (`DagitimKuryeler.tsx` + `KuryePencereleri.tsx`; Tur Detayı'ndaki "Kurye ekle" bağlantısı yeni Kuryeler rotasına bağlı; doğrulama sözleşmeleri eski ekranla ortak `components/admin/kuryeSemalari.ts`), `/yonetim-yeni/dagitim/araclar` (`DagitimAraclar.tsx` + `AracPencereleri.tsx`; filo + başlangıç noktaları, şemalar eski ekranla ortak `components/admin/aracSemalari.ts`; varlık kilidi ve pencere alan-hatası altyapısı `panel/components/varlikKilidi.tsx` / `pencereAlanlari.ts` ile Kuryeler'le ortak). Kalan: Performans, Tahta.
 10. Eğitmen yönetimi
 11. Kütüphane/deneme/rezervasyon/talep
 12. Moderasyon, hak edişler, kalan rotalar
@@ -47,6 +47,10 @@ Son güncelleme: 12 Eyl 2026.
   sağlamlaştırılmalı (frontend zod + lowercase ile telafi ediyor). Fotoğraf için frontend
   ön kontrolü yok; backend 12 MB sınırı uyguluyor. Fotoğraf audit metadata'sındaki
   istemci dosya adı ayrıca sınırlandırılmalı/normalize edilmeli.
+- Teknik borç (araçlar): eski `DeliveryVehiclesPage` formundaki "sınırsız" durak tavanı
+  placeholder'ı backend sözleşmesiyle çelişiyor; gerçek davranışta `max_stops = null`,
+  `DELIVERY_MAX_STOPS_PER_RUN` sunucu varsayılanını kullanıyor. Yeni panel doğru anlamı
+  gösteriyor ("varsayılan durak tavanı"); eski ekran metni bu commit'te değiştirilmedi.
 - Teknik borç (test): AntD `modal.confirm` reddedilen `onOk` sözünü kendi içinde yeniden
   reddettiği için onay-hata testleri vitest'te "Unhandled Rejection" gürültüsü üretiyor
   (Tur Detayı ve Kuryeler ortak); testleri kırmıyor, ayrı iş.

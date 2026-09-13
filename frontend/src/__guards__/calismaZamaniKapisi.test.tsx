@@ -206,6 +206,11 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu secenekler (dizi) + acik/baslik/kapat/secildi",
   },
+  // Dağıtım ortak varlık kilidi düğmesi: `islem` beyanı zorunlu (propsuz atar); adı `children`dan gelir.
+  "src/panel/components/varlikKilidi.tsx": {
+    tur: "props",
+    gerekce: "zorunlu islem (kilit anahtari) + children (dugme metni)",
+  },
 };
 
 /**
@@ -510,6 +515,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/dagitim/DagitimKuryeler.tsx",
   // Kurye pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/dagitim/KuryePencereleri.tsx",
+  // Dağıtım · Araçlar: propsuz mount olur; kontroller veri gelince (satır aksiyonları) ve pencerelerde doğar (koşullu).
+  "src/panel/pages/dagitim/DagitimAraclar.tsx",
+  // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/dagitim/AracPencereleri.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
   // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.
@@ -773,6 +782,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/paketleme/PaketlemeDetayi.tsx": "kosullu",
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx": "kosullu",
   "src/panel/pages/dagitim/KuryePencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/dagitim/AracPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/dagitim/DagitimAraclar.tsx": "kosullu",
   "src/panel/pages/paketleme/PaketlemePencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx": "kosullu",
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx": "pencere-kabugu",
