@@ -264,6 +264,7 @@ export const PATHS = {
   adminNewDeliveryCouriers: "/yonetim-yeni/dagitim/kuryeler",
   adminNewDeliveryVehicles: "/yonetim-yeni/dagitim/araclar",
   adminNewDeliveryPerformance: "/yonetim-yeni/dagitim/performans",
+  adminNewDeliveryBoard: "/yonetim-yeni/dagitim/tahta",
   adminNewAuditLogs: "/yonetim-yeni/ayarlar/denetim-kayitlari",
   adminNewCoupons: "/yonetim-yeni/indirimler/kuponlar",
 } as const;
@@ -450,6 +451,7 @@ export const ROUTES = {
   adminNewDeliveryCouriers: PATHS.adminNewDeliveryCouriers,
   adminNewDeliveryVehicles: PATHS.adminNewDeliveryVehicles,
   adminNewDeliveryPerformance: PATHS.adminNewDeliveryPerformance,
+  adminNewDeliveryBoard: PATHS.adminNewDeliveryBoard,
   adminNewAuditLogs: PATHS.adminNewAuditLogs,
   adminNewCoupons: PATHS.adminNewCoupons,
 } as const;

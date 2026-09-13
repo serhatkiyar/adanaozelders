@@ -668,10 +668,11 @@ export function usePublicOrderTracking(token: string | null) {
 
 /** Gün tahtası: atanmamış havuz + araç bazlı turlar. Optimistic YOK — durak
  *  ekleyen mutasyon (`useAddStops`) KEY'i invalidate eder, tahta tazelenir. */
-export function useDeliveryBoard(date: string) {
+export function useDeliveryBoard(date: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "board", date],
     queryFn: () => deliveryApi.fetchDeliveryBoard(date),
+    enabled,
   });
 }
 

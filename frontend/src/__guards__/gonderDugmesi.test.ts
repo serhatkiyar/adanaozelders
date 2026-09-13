@@ -171,6 +171,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ozelYazim !== null": "islem",
   // Dağıtım ortak `VarlikDugmesi` (Kuryeler, Araçlar): aynı varlıkta BAŞKA bir işlem sürerken kapalı; neden `title`da okunur.
   "src/panel/components/varlikKilidi.tsx <Button> baska || Boolean(disabled)": "onkosul",
+  // Tahta: ekleme/optimize önkoşulları (optimize sürüyor, tur yok, ekleme kuyruğu, konumlu sipariş yok) `title`da okunur.
+  "src/panel/pages/dagitim/DagitimTahtasi.tsx <Button> engel !== null && !ekleniyorMu(o.order_id)": "onkosul",
+  "src/panel/pages/dagitim/DagitimTahtasi.tsx <Button> optimizeNedeni !== null": "onkosul",
   "src/pages/admin/packing/PackagesPage.tsx <Button> seciliGorunen.length === 0": "secim",
   "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
   // Paket detayı "Paketi tamamla": engel listesi ekranda yazılıdır (eksik adet / kalemsiz paket).
