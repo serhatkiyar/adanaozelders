@@ -517,6 +517,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/dagitim/KuryePencereleri.tsx",
   // Dağıtım · Araçlar: propsuz mount olur; kontroller veri gelince (satır aksiyonları) ve pencerelerde doğar (koşullu).
   "src/panel/pages/dagitim/DagitimAraclar.tsx",
+  // Dağıtım · Performans: propsuz mount olur; dönem seçicileri (Segmented "Metrik aralığı"/"Gün aralığı") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimPerformans.tsx",
   // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/dagitim/AracPencereleri.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).

@@ -152,18 +152,20 @@ export function useSeedHolidays() {
 }
 
 /** Teslimat KPI özeti — söz tutma / ilk denemede teslim / neden dağılımı (ADMIN). */
-export function useDeliveryKpi(days = 30) {
+export function useDeliveryKpi(days = 30, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "kpi", days],
     queryFn: () => deliveryApi.fetchDeliveryKpi(days),
     staleTime: 60_000,
+    enabled,
   });
 }
 
-export function useRecentDeliveryFeedback(limit = 50) {
+export function useRecentDeliveryFeedback(limit = 50, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "feedback", limit],
     queryFn: () => deliveryApi.fetchRecentDeliveryFeedback(limit),
+    enabled,
   });
 }
 
@@ -691,10 +693,11 @@ export function useAddBoardStops() {
 /* ── İP-19: operasyon metrikleri ── */
 
 /** Tarih aralıklı operasyon metrikleri (YYYY-MM-DD) — performans sayfası (ADMIN). */
-export function useDeliveryMetrics(fromDate: string, toDate: string) {
+export function useDeliveryMetrics(fromDate: string, toDate: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "metrics", fromDate, toDate],
     queryFn: () => deliveryApi.fetchDeliveryMetrics(fromDate, toDate),
     staleTime: 60_000,
+    enabled,
   });
 }

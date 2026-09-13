@@ -440,7 +440,7 @@ describe("DagitimBugun", () => {
     expect(grup.icon).toBeTruthy();
     expect(grup.path).toBeUndefined();
     expect(grup.children?.map((c) => c.label)).toEqual(["Bugün", "Siparişler", "Turlar", "Performans", "Kuryeler", "Tahta", "Araçlar"]);
-    expect(grup.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, false, true, false, true]);
+    expect(grup.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, true, true, false, true]);
     expect(PANEL_MENU.find((m) => m.key === "paketleme")?.children?.length).toBe(3);
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewDelivery)).toMatchObject({ label: "Bugün", requiredPermission: "delivery" });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewDelivery)).toEqual({ selectedKey: "dagitim-bugun", openKeys: ["dagitim"] });

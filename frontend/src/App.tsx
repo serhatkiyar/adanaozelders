@@ -126,6 +126,9 @@ const KuponListesi = lazy(() =>
 const PaketListesi = lazy(() =>
   import("@/panel/pages/paketleme/PaketListesi").then((m) => ({ default: m.PaketListesi })),
 );
+const DagitimPerformans = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimPerformans").then((m) => ({ default: m.DagitimPerformans })),
+);
 const DagitimAraclar = lazy(() =>
   import("@/panel/pages/dagitim/DagitimAraclar").then((m) => ({ default: m.DagitimAraclar })),
 );
@@ -794,6 +797,7 @@ function App() {
               <Route path="dagitim/turlar/:id" element={<DagitimTurDetayi />} />
               <Route path="dagitim/kuryeler" element={<DagitimKuryeler />} />
               <Route path="dagitim/araclar" element={<DagitimAraclar />} />
+              <Route path="dagitim/performans" element={<DagitimPerformans />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>
