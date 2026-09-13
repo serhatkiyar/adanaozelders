@@ -289,7 +289,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "dagitim-siparisler", label: "Siparişler", path: PATHS.adminNewDeliveryOrders, requiredPermission: "delivery" },
       { key: "dagitim-turlar", label: "Turlar", path: PATHS.adminNewDeliveryRuns, requiredPermission: "delivery" },
       { key: "dagitim-performans", label: "Performans" },
-      { key: "dagitim-kuryeler", label: "Kuryeler" },
+      { key: "dagitim-kuryeler", label: "Kuryeler", path: PATHS.adminNewDeliveryCouriers, requiredPermission: "delivery" },
       { key: "dagitim-tahta", label: "Tahta" },
       { key: "dagitim-araclar", label: "Araçlar" },
     ],

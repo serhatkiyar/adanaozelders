@@ -249,10 +249,10 @@ describe("DagitimTurDetayi", () => {
     await act(async () => { sozler.pop()!.res(tur()); await Promise.resolve(); });
   });
 
-  it("kurye yoksa eski Kuryeler bağlantısı (geçici); kurye sorgusu hatası kendi Tekrar dene'siyle", async () => {
+  it("kurye yoksa yeni Kuryeler ekranı bağlantısı; kurye sorgusu hatası kendi Tekrar dene'siyle", async () => {
     vi.mocked(useCouriers).mockReturnValue(sonuc([{ id: 6, name: "Pasif", is_active: false }]));
     const a = kur();
-    expect(screen.getByRole("link", { name: "Kurye ekle →" })).toHaveAttribute("href", ROUTES.adminDeliveryCouriers);
+    expect(screen.getByRole("link", { name: "Kurye ekle →" })).toHaveAttribute("href", ROUTES.adminNewDeliveryCouriers);
     a.unmount();
     const refetch = vi.fn();
     vi.mocked(useCouriers).mockReturnValue(sonuc(undefined, { isError: true, error: new Error("x"), refetch }));

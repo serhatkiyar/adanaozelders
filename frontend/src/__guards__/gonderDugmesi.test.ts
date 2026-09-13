@@ -169,6 +169,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> sonMu || baskaIslem": "sinir",
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem && !ucusta": "islem",
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ozelYazim !== null": "islem",
+  // Kuryeler: `VarlikDugmesi` — aynı varlıkta (kurye/hesap) BAŞKA bir işlem sürerken kapalı; neden `title`da okunur.
+  "src/panel/pages/dagitim/DagitimKuryeler.tsx <Button> baska": "onkosul",
   "src/pages/admin/packing/PackagesPage.tsx <Button> seciliGorunen.length === 0": "secim",
   "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
   // Paket detayı "Paketi tamamla": engel listesi ekranda yazılıdır (eksik adet / kalemsiz paket).

@@ -116,10 +116,12 @@ const HESAP = {
   is_active: true,
 };
 
+let sonQc: QueryClient;
 function sar() {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });
+  sonQc = qc;
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
@@ -294,6 +296,58 @@ describe("KY-4 · doğrulama alanda, gönder düğmesi kapanmaz", () => {
 
     await waitFor(() => expect(alan.getAttribute("aria-invalid")).toBe("true"));
     expect(istekler.some((i) => i.url.includes("/password"))).toBe(false);
+  });
+});
+
+/* ══════════════ 4b · Şifre mutation cache/observer'da kalmaz ══════════════ */
+
+/** QueryClient mutation cache'inin ve observer'ların serileştirilmiş hâlinde düz metin şifre aranır. */
+function cacheSifreIceriyor(sifre: string) {
+  const mutasyonlar = sonQc.getMutationCache().getAll();
+  const durumlar = mutasyonlar.map((mu) => mu.state);
+  return JSON.stringify(durumlar).includes(sifre) || mutasyonlar.length > 0;
+}
+
+describe("KY-4b · şifre taşıyan mutation'lar settled sonrası cache'te şifre bırakmaz", () => {
+  it("hesap oluşturma: hata sonrası hata alanda, şifre alanı korunur, cache boş; yeniden gönderim başarır, cache yine boş", async () => {
+    await listeyiAc();
+    sunucu(/\/account$/, { data: null }, "get");
+    sunucu(/\/account$/, { status: 422, data: { detail: [{ loc: ["body", "email"], msg: "E-posta zaten kayıtlı" }] } }, "post");
+    fireEvent.click(screen.getByRole("button", { name: "Hesap" }));
+    const eposta = await screen.findByLabelText(/E-posta/);
+    fireEvent.change(eposta, { target: { value: "deniz@kurye.example.com" } });
+    const sifre = screen.getByLabelText(/Şifre/) as HTMLInputElement;
+    fireEvent.change(sifre, { target: { value: "cokGizli123" } });
+    fireEvent.change(screen.getByLabelText(/Soyad/), { target: { value: "Kurye" } });
+    fireEvent.click(screen.getByRole("button", { name: "Hesap oluştur" }));
+    await screen.findByText("E-posta zaten kayıtlı");
+    expect(sifre.value).toBe("cokGizli123");
+    await waitFor(() => expect(cacheSifreIceriyor("cokGizli123")).toBe(false));
+    // Yeniden gönderim: başarı → alan temizlenir, cache yine boş.
+    sunucu(/\/account$/, { data: HESAP }, "post");
+    fireEvent.click(screen.getByRole("button", { name: "Hesap oluştur" }));
+    await waitFor(() => expect(istekler.filter((i) => i.method === "post" && i.url.includes("/account"))).toHaveLength(2));
+    await waitFor(() => expect(sifre.value).toBe(""));
+    await waitFor(() => expect(cacheSifreIceriyor("cokGizli123")).toBe(false));
+  });
+
+  it("şifre sıfırlama: hata sonrası hata alanda, şifre alanı korunur, cache boş; yeniden gönderim başarır, alan temizlenir", async () => {
+    await listeyiAc();
+    sunucu(/\/account$/, { data: HESAP }, "get");
+    sunucu(/\/reset-password$/, { status: 422, data: { detail: [{ loc: ["body", "new_password"], msg: "Şifre çok zayıf" }] } }, "post");
+    fireEvent.click(screen.getByRole("button", { name: "Hesap" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre sıfırla" }));
+    const alan = (await screen.findByLabelText(/Yeni şifre/)) as HTMLInputElement;
+    fireEvent.change(alan, { target: { value: "yeniGizli123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Şifreyi kaydet" }));
+    await screen.findByText("Şifre çok zayıf");
+    expect(alan.value).toBe("yeniGizli123");
+    await waitFor(() => expect(cacheSifreIceriyor("yeniGizli123")).toBe(false));
+    sunucu(/\/reset-password$/, { data: null }, "post");
+    fireEvent.click(screen.getByRole("button", { name: "Şifreyi kaydet" }));
+    await waitFor(() => expect(istekler.filter((i) => i.url.includes("/reset-password"))).toHaveLength(2));
+    await waitFor(() => expect(screen.queryByLabelText(/Yeni şifre/)).not.toBeInTheDocument());
+    await waitFor(() => expect(cacheSifreIceriyor("yeniGizli123")).toBe(false));
   });
 });
 

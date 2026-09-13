@@ -506,6 +506,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/dagitim/DagitimTurlari.tsx",
   // Dağıtım · Tur Detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Turlar listesine dön".
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx",
+  // Dağıtım · Kuryeler: propsuz mount olur; izinli oturumda takvim formu ("Kapatılacak gün") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimKuryeler.tsx",
+  // Kurye pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/dagitim/KuryePencereleri.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
   // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.
@@ -768,6 +772,7 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // Paket detayı: rota parametresi olmadan hata durumu; pencereler kapalıyken gövde yok.
   "src/panel/pages/paketleme/PaketlemeDetayi.tsx": "kosullu",
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx": "kosullu",
+  "src/panel/pages/dagitim/KuryePencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/paketleme/PaketlemePencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx": "kosullu",
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx": "pencere-kabugu",

@@ -63,17 +63,22 @@ export function useCourierWorkspace(enabled = true) {
   });
 }
 
-export function useCourierAccount(courierId: number | null) {
+export function useCourierAccount(courierId: number | null, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "account", courierId],
     queryFn: () => deliveryApi.fetchCourierAccount(courierId!),
-    enabled: courierId != null,
+    enabled: courierId != null && enabled,
   });
 }
 
+/**
+ * Değişkenleri düz metin şifre taşır: mutation cache'inde bekletilmez (`gcTime: 0`). Tüketici, settled
+ * sonrasında yerel hata işlemeyi bitirince `reset()` çağırır ki observer state'inde de şifre kalmasın.
+ */
 export function useCreateCourierAccount() {
   const qc = useQueryClient();
   return useMutation({
+    gcTime: 0,
     mutationFn: ({
       courierId,
       ...payload
@@ -96,8 +101,10 @@ export function useCloseCourierAccount() {
   });
 }
 
+/** Şifre taşır: bkz. `useCreateCourierAccount` — `gcTime: 0` + tüketicide settled sonrası `reset()`. */
 export function useResetCourierPassword() {
   return useMutation({
+    gcTime: 0,
     mutationFn: ({ accountId, newPassword }: { accountId: number; newPassword: string }) =>
       deliveryApi.resetCourierPassword(accountId, newPassword),
   });
@@ -161,10 +168,11 @@ export function useRecentDeliveryFeedback(limit = 50) {
 }
 
 /** Admin kapasite şeridi — önümüzdeki günlerin söz doluluğu. Dakikada bir tazelenir. */
-export function useCapacityOverview(days = 14) {
+export function useCapacityOverview(days = 14, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "capacity", days],
     queryFn: () => deliveryApi.fetchCapacityOverview(days),
+    enabled,
     staleTime: 60_000,
     refetchInterval: 60_000,
   });

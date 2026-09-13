@@ -3,7 +3,6 @@
 // DONE/CANCELLED salt okunur); kesin karar backend'de. Tur sorgusu yalnız ACTIVE turda 15 sn poll eder.
 // Sıralama: PENDING duraklar arasında yukarı/aşağı (klavye/dokunmatik) + masaüstü sürükle-bırak; sonuçlanmış
 // duraklar sabittir. Koordinatlar metin olarak basılmaz; harita yalnız optimize edilmiş ve konumlu durak varsa.
-// GEÇİCİ: kurye yokken "Kurye ekle" bağlantısı yeni Kuryeler ekranı gelene kadar eski ROUTES.adminDeliveryCouriers'a gider.
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert, App, Button, Flex, Progress, Select, Tag, Tooltip, Typography, theme } from "antd";
@@ -369,8 +368,7 @@ function DagitimTurDetayiIc({ id }: { id: string | undefined }) {
   ) : kuryeler.isPending ? (
     <Typography.Text type="secondary">Kuryeler yükleniyor…</Typography.Text>
   ) : secilebilirKuryeler.length === 0 ? (
-    // GEÇİCİ: yeni Kuryeler ekranı gelene kadar eski çalışan ekrana bağlantı.
-    <Link to={ROUTES.adminDeliveryCouriers} style={{ fontWeight: 500 }}>Kurye ekle →</Link>
+    <Link to={ROUTES.adminNewDeliveryCouriers} style={{ fontWeight: 500 }}>Kurye ekle →</Link>
   ) : (
     <Flex align="center" gap={8} wrap>
       <Typography.Text type="secondary">Kurye</Typography.Text>
