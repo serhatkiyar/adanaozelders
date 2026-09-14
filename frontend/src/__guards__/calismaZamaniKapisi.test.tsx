@@ -527,6 +527,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/egitmenler/EgitmenOnBasvurulari.tsx",
   // Red penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx",
+  // Diploma Doğrulama: propsuz mount olur; kontroller satır "İncele" ve pencerede (kapalı) doğar.
+  "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx",
+  // İnceleme penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx",
   // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/dagitim/AracPencereleri.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
@@ -794,6 +798,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/dagitim/KuryePencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/dagitim/AracPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx": "kosullu",
   "src/panel/pages/egitmenler/EgitmenIlanlari.tsx": "kosullu",
   "src/panel/pages/dagitim/DagitimAraclar.tsx": "kosullu",
   "src/panel/pages/paketleme/PaketlemePencereleri.tsx": "pencere-kabugu",

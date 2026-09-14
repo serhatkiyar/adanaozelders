@@ -302,7 +302,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
     children: [
       { key: "egitmenler-ilanlar", label: "İlanlar", path: PATHS.adminNewTutors, requiredPermission: "tutors" },
       { key: "egitmenler-basvurular", label: "Ön Başvurular", path: PATHS.adminNewTutorApplications, requiredPermission: "tutors" },
-      { key: "egitmenler-diploma", label: "Diploma Doğrulama" },
+      { key: "egitmenler-diploma", label: "Diploma Doğrulama", path: PATHS.adminNewTutorDiplomas, requiredPermission: "tutors" },
       { key: "egitmenler-one-cikarmalar", label: "Öne Çıkarmalar" },
     ],
   },

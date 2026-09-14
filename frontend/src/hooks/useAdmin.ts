@@ -242,11 +242,19 @@ export function useAdminToggleDisputeBooking() {
 
 // ── Diploma doğrulama kuyruğu ──
 
-export function usePendingEducations() {
+/**
+ * Diploma doğrulama kuyruğu. Yanıt TCKN ve kısa ömürlü imzalı belge adresi taşır:
+ *  - `enabled=false` (yetkisiz oturum) hem ilk isteği hem 30 sn'lik yoklamayı tamamen kapatır;
+ *  - `gcTime: 0` ile son gözlemci gidince önbellekteki PII anında düşer (ekran kapanınca artık bellekte durmaz).
+ * Parametre varsayılanlı: eski çağıran (`AdminHome`) davranışını aynen korur.
+ */
+export function usePendingEducations(enabled = true) {
   return useQuery({
     queryKey: ["admin", "educations", "pending"],
     queryFn: fetchPendingEducations,
-    refetchInterval: 30_000,
+    enabled,
+    refetchInterval: enabled ? 30_000 : false,
+    gcTime: 0,
   });
 }
 
