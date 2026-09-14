@@ -310,9 +310,21 @@ export const PANEL_MENU: PanelMenuItem[] = [
   {
     key: "kutuphaneler",
     label: "Kütüphaneler",
-    path: PATHS.adminNewLibraries,
-    requiredPermission: "libraries",
     icon: "book",
+    children: [
+      {
+        key: "kutuphane-listesi",
+        label: "Kütüphaneler",
+        path: PATHS.adminNewLibraries,
+        requiredPermission: "libraries",
+      },
+      {
+        key: "deneme-kataloglari",
+        label: "Deneme Katalogları",
+        path: PATHS.adminNewExamCatalogs,
+        requiredPermission: "catalogs",
+      },
+    ],
   },
   { key: "moderasyon", label: "Moderasyon", icon: "safety" },
   { key: "finans", label: "Finans", icon: "wallet" },

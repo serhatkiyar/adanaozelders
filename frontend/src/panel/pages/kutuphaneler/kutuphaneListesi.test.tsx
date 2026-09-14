@@ -236,17 +236,22 @@ describe("KutuphaneListesi", () => {
   it("rota, menü ve izin beyanı doğrudur", () => {
     expect(PATHS.adminNewLibraries).toBe("/yonetim-yeni/kutuphaneler");
     expect(ROUTES.adminNewLibraries).toBe(PATHS.adminNewLibraries);
-    expect(PANEL_MENU.find((oge) => oge.key === "kutuphaneler")).toMatchObject({
-      path: PATHS.adminNewLibraries,
-      requiredPermission: "libraries",
-    });
+    expect(PANEL_MENU.find((oge) => oge.key === "kutuphaneler")?.children).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "kutuphane-listesi",
+          path: PATHS.adminNewLibraries,
+          requiredPermission: "libraries",
+        }),
+      ]),
+    );
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewLibraries)).toMatchObject({
       label: "Kütüphaneler",
       requiredPermission: "libraries",
     });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewLibraries)).toEqual({
-      selectedKey: "kutuphaneler",
-      openKeys: [],
+      selectedKey: "kutuphane-listesi",
+      openKeys: ["kutuphaneler"],
     });
     expect(
       izinBeyaniniKarsilarMi(

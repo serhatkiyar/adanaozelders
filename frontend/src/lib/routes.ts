@@ -270,6 +270,7 @@ export const PATHS = {
   adminNewTutorDiplomas: "/yonetim-yeni/egitmenler/diplomalar",
   adminNewTutorPromotions: "/yonetim-yeni/egitmenler/one-cikarmalar",
   adminNewLibraries: "/yonetim-yeni/kutuphaneler",
+  adminNewExamCatalogs: "/yonetim-yeni/kutuphaneler/deneme-kataloglari",
   adminNewAuditLogs: "/yonetim-yeni/ayarlar/denetim-kayitlari",
   adminNewCoupons: "/yonetim-yeni/indirimler/kuponlar",
 } as const;
@@ -462,6 +463,7 @@ export const ROUTES = {
   adminNewTutorDiplomas: PATHS.adminNewTutorDiplomas,
   adminNewTutorPromotions: PATHS.adminNewTutorPromotions,
   adminNewLibraries: PATHS.adminNewLibraries,
+  adminNewExamCatalogs: PATHS.adminNewExamCatalogs,
   adminNewAuditLogs: PATHS.adminNewAuditLogs,
   adminNewCoupons: PATHS.adminNewCoupons,
 } as const;
