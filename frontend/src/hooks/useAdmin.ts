@@ -293,10 +293,15 @@ export function useUpdateTutorPreApplicationStatus() {
 
 // ── İlan öne çıkarma ──
 
-export function useAdminPromotions(status?: string) {
+/**
+ * Öne çıkarma satışları. `enabled=false` (yetkisiz oturum) isteği tamamen kapatır; `limit`/`offset`
+ * gerçek sunucu sayfalamasıdır. Parametreler varsayılanlı: eski çağıran aynen çalışır.
+ */
+export function useAdminPromotions(status?: string, enabled = true, limit = 100, offset = 0) {
   return useQuery({
-    queryKey: ["admin", "promotions", status ?? "all"],
-    queryFn: () => fetchAdminPromotions(status),
+    queryKey: ["admin", "promotions", status ?? "all", limit, offset],
+    queryFn: () => fetchAdminPromotions(status, limit, offset),
+    enabled,
   });
 }
 

@@ -303,7 +303,8 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "egitmenler-ilanlar", label: "İlanlar", path: PATHS.adminNewTutors, requiredPermission: "tutors" },
       { key: "egitmenler-basvurular", label: "Ön Başvurular", path: PATHS.adminNewTutorApplications, requiredPermission: "tutors" },
       { key: "egitmenler-diploma", label: "Diploma Doğrulama", path: PATHS.adminNewTutorDiplomas, requiredPermission: "tutors" },
-      { key: "egitmenler-one-cikarmalar", label: "Öne Çıkarmalar" },
+      // Satış/iade kaydıdır: izni `tutors` değil `promotions` (uç da `promotions.view`/`promotions.manage` ister).
+      { key: "egitmenler-one-cikarmalar", label: "Öne Çıkarmalar", path: PATHS.adminNewTutorPromotions, requiredPermission: "promotions" },
     ],
   },
   { key: "kutuphaneler", label: "Kütüphaneler", icon: "book" },

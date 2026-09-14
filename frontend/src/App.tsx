@@ -129,6 +129,9 @@ const PaketListesi = lazy(() =>
 const EgitmenOnBasvurulari = lazy(() =>
   import("@/panel/pages/egitmenler/EgitmenOnBasvurulari").then((m) => ({ default: m.EgitmenOnBasvurulari })),
 );
+const EgitmenOneCikarmalar = lazy(() =>
+  import("@/panel/pages/egitmenler/EgitmenOneCikarmalar").then((m) => ({ default: m.EgitmenOneCikarmalar })),
+);
 const EgitmenDiplomaDogrulama = lazy(() =>
   import("@/panel/pages/egitmenler/EgitmenDiplomaDogrulama").then((m) => ({ default: m.EgitmenDiplomaDogrulama })),
 );
@@ -814,6 +817,7 @@ function App() {
               <Route path="egitmenler" element={<EgitmenIlanlari />} />
               <Route path="egitmenler/on-basvurular" element={<EgitmenOnBasvurulari />} />
               <Route path="egitmenler/diplomalar" element={<EgitmenDiplomaDogrulama />} />
+              <Route path="egitmenler/one-cikarmalar" element={<EgitmenOneCikarmalar />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>

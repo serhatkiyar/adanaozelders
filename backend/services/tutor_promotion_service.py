@@ -314,9 +314,17 @@ async def complete_checkout(
             db,
             promo,
             escrow.PROMOTION_SPEC,
-            from_statuses=[PromotionPaymentStatus.PENDING.value],
+            from_statuses=[
+                PromotionPaymentStatus.PENDING.value,
+                PromotionPaymentStatus.FAILED.value,
+            ],
             provider_ref=provider_ref,
         )
+        # Üçüncü iade yolu da aynı defteri yazar: burada atlanırsa kayıt
+        # "REFUNDED ama refunded_amount = 0" kalır ve REFUNDING olmadığı için
+        # reconciler onu bir daha hiç görmez (defter kalıcı olarak yanlış).
+        if outcome == "refunded":
+            await iade_tutarini_kesinlestir(db, promo)
         logger.error(
             "iyzico callback: iptal edilmiş/ölü öne çıkarmaya tahsilat geldi; "
             "iade akışı=%s (promo=%s)",
@@ -400,16 +408,62 @@ async def list_for_admin(
     return out
 
 
+async def iade_tutarini_kesinlestir(db: AsyncSession, promo: TutorPromotion) -> bool:
+    """İade REFUNDED'a ulaştığında tutarı deftere yazar (idempotent).
+
+    `escrow.finalize_refund` yalnız durum ve `refunded_at` yazar; promosyon
+    kolonuna kimse dokunmuyordu. Koşul `REFUNDED` + `refunded_amount = 0`
+    olduğu için aynı tur iki kez koşarsa ikincisi no-op'tur.
+    """
+    return await escrow.claim(
+        db,
+        TutorPromotion,
+        promo.id,
+        from_statuses=[PromotionPaymentStatus.REFUNDED.value],
+        values={"refunded_amount": promo.price},
+        extra_where=(TutorPromotion.refunded_amount == 0,),
+        status_attr="payment_status",
+    )
+
+
 # ── Admin iptali ─────────────────────────────────────────────────────────────
+
+
+async def _iptal_catisma_mesaji(db: AsyncSession, promotion_id: int) -> str:
+    """Claim kaybının GERÇEK nedenini söyler (kayıt iptal mi edildi, durumu mu değişti)."""
+    iptal_edildi = (
+        await db.execute(
+            select(TutorPromotion.cancelled_at).where(
+                TutorPromotion.id == promotion_id
+            )
+        )
+    ).scalar_one_or_none()
+    if iptal_edildi is not None:
+        return "Bu kayıt zaten iptal edilmiş."
+    return "Kaydın durumu bu sırada değişti; listeyi tazeleyip tekrar deneyin."
 
 
 async def cancel_by_admin(
     db: AsyncSession, promotion_id: int, *, reason: str | None = None
 ) -> TutorPromotion:
-    """Yürürlükteki paketi anında durdurur ve iade sürecini başlatır.
+    """Yürürlükteki paketi anında durdurur ve (ödenmişse) iade sürecini başlatır.
 
-    `cancelled_at` damgası iade sağlayıcıdan dönmeden ÖNCE yazılır: eğitmenin
-    parası iade sürecindeyken görünürlüğü sürmemelidir.
+    **İptal damgası ile iade niyeti TEK atomik claim'dedir.** Önceki sürüm
+    `cancelled_at`'i ayrı commit ediyor, iade niyetini (`REFUNDING` +
+    `refund_requested_at` + `refund_attempts`) ancak ikinci commit'te yazıyordu.
+    Araya düşen bir çökme "iptal edilmiş ama hâlâ PAID" yetim kaydı bırakıyordu:
+    reconciler yalnız `REFUNDING` tarar, yeniden deneme ise `cancelled_at`
+    dolu olduğu için 409 alırdı — para kurumda, görünürlük kapalı, kimse
+    haberdar değil. Artık claim kazanılmadan hiçbir alan kalıcılaşmaz; süreç
+    faz 1'den sonra ölse bile kayıt `cancelled + REFUNDING` olur ve reconciler
+    devralır.
+
+    Çağıranın (router) aynı oturumda ÖNCEDEN stage ettiği audit satırı bu
+    claim'in commit'ine biner; claim kaybedilirse istisna atılır ve `get_db`
+    rollback ettiği için audit de kalmaz.
+
+    Eşzamanlı iki iptalden yalnız biri kazanır: kaybeden 409 alır, sağlayıcıya
+    ikinci istek gitmez, ikinci bildirim/audit üretilmez.
     """
     promo = await db.get(TutorPromotion, promotion_id)
     if promo is None:
@@ -425,30 +479,67 @@ async def cancel_by_admin(
             status.HTTP_409_CONFLICT, "Bu kaydın para durumu iptale uygun değil."
         )
 
-    odenmis = promo.payment_status == PromotionPaymentStatus.PAID.value
-    promo.cancelled_at = _now()
-    await db.commit()
-
-    if odenmis:
-        await escrow.refund_escrow(
+    iptal_ani = _now()
+    if promo.payment_status != PromotionPaymentStatus.PAID.value:
+        # Tahsilat YOK: yalnız kayıt kapanır. İade niyeti (`refund_requested_at`,
+        # `refund_attempts`) ve para durumu DEĞİŞMEZ, bildirim gönderilmez.
+        # Yazım yine koşulludur: araya giren bir PAID callback'i geçişi kaybettirir.
+        kazandi = await escrow.claim(
             db,
-            promo,
-            escrow.PROMOTION_SPEC,
-            from_statuses=[PromotionPaymentStatus.PAID.value],
-            provider_ref=promo.provider_ref,
+            TutorPromotion,
+            promo.id,
+            from_statuses=[
+                PromotionPaymentStatus.PENDING.value,
+                PromotionPaymentStatus.FAILED.value,
+            ],
+            values={"cancelled_at": iptal_ani},
+            extra_where=(TutorPromotion.cancelled_at.is_(None),),
+            status_attr="payment_status",
         )
-        await notification_service.notify(
-            db,
-            user_id=promo.tutor_id,
-            role_id=ROLE_IDS[RoleType.TUTOR],
-            message=(
-                "İlan öne çıkarma paketiniz iptal edildi ve ücreti iade ediliyor."
-                + (f" Gerekçe: {reason}" if reason else "")
-            ),
-            link="/ilanimi-one-cikar",
-        )
+        if not kazandi:
+            # Stage edilmiş audit/bildirim satırları kalıcılaşmasın (çağıranın
+            # `get_db` rollback'ine güvenmeden).
+            await db.rollback()
+            raise HTTPException(status.HTTP_409_CONFLICT, await _iptal_catisma_mesaji(db, promotion_id))
+        # Audit (router'da stage edildi) + iptal damgası aynı commit'te kalıcılaşır.
         await db.commit()
+        await db.refresh(promo, attribute_names=["payment_status", "cancelled_at"])
+        return promo
 
+    # Ödenmiş kayıt: bildirim de kazanan claim'in commit'ine binsin diye ÖNCE stage
+    # edilir. Claim kaybedilirse istisna atılır ve rollback bildirimi de siler —
+    # böylece bildirim yalnız kazanan tarafta ve yalnız BİR kez doğar.
+    await notification_service.notify(
+        db,
+        user_id=promo.tutor_id,
+        role_id=ROLE_IDS[RoleType.TUTOR],
+        message=(
+            "İlan öne çıkarma paketiniz iptal edildi ve ücreti iade ediliyor."
+            + (f" Gerekçe: {reason}" if reason else "")
+        ),
+        link="/ilanimi-one-cikar",
+    )
+    # Faz 1 — TEK atomik claim: cancelled_at + REFUNDING + refund_requested_at +
+    # refund_attempts (+ provider_ref) aynı UPDATE'te, aynı commit'te.
+    kazandi = await escrow.begin_refund(
+        db,
+        promo,
+        escrow.PROMOTION_SPEC,
+        from_statuses=[PromotionPaymentStatus.PAID.value],
+        provider_ref=promo.provider_ref,
+        extra_values={"cancelled_at": iptal_ani},
+        extra_where=(TutorPromotion.cancelled_at.is_(None),),
+        refresh_attrs=("cancelled_at",),
+    )
+    if not kazandi:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, await _iptal_catisma_mesaji(db, promotion_id))
+
+    # Faz 2 — sağlayıcı iadesi. Başarısızsa kayıt `cancelled + REFUNDING` KALIR
+    # (hiçbir hata yolunda PAID'e dönülmez) ve reconciler yeniden dener.
+    if await escrow.perform_refund(db, promo, escrow.PROMOTION_SPEC):
+        await iade_tutarini_kesinlestir(db, promo)
+    await db.commit()
     await db.refresh(promo)
     return promo
 

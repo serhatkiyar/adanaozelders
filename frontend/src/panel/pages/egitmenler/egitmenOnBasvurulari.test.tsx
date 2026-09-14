@@ -391,8 +391,8 @@ describe("EgitmenOnBasvurulari", () => {
     expect(ROUTES.adminNewTutorApplications).toBe(PATHS.adminNewTutorApplications);
     const grup = PANEL_MENU.find((g) => g.key === "egitmenler");
     expect(grup?.children?.map((c) => c.label)).toEqual(["İlanlar", "Ön Başvurular", "Diploma Doğrulama", "Öne Çıkarmalar"]);
-    // İlanlar, Ön Başvurular ve Diploma Doğrulama gerçek rota; Öne Çıkarmalar hâlâ yer tutucu.
-    expect(grup?.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, false]);
+    // Eğitmenler grubunun dört yaprağının da gerçek rotası var; yer tutucu kalmadı.
+    expect(grup?.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, true]);
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewTutorApplications)).toMatchObject({ label: "Ön Başvurular", requiredPermission: "tutors" });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewTutorApplications)).toEqual({ selectedKey: "egitmenler-basvurular", openKeys: ["egitmenler"] });
     expect(izinBeyaniniKarsilarMi(["tutors.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewTutorApplications)!)).toBe(true);
