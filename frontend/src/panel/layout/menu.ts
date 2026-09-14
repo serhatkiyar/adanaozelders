@@ -344,7 +344,20 @@ export const PANEL_MENU: PanelMenuItem[] = [
       },
     ],
   },
-  { key: "moderasyon", label: "Moderasyon", icon: "safety" },
+  {
+    key: "moderasyon",
+    label: "Moderasyon",
+    icon: "safety",
+    children: [
+      {
+        key: "sikayetler",
+        label: "Şikayetler",
+        path: PATHS.adminNewReports,
+        requiredPermission: "reports",
+      },
+      { key: "ad-degisiklikleri", label: "Ad Değişiklikleri" },
+    ],
+  },
   { key: "finans", label: "Finans", icon: "wallet" },
 ];
 
