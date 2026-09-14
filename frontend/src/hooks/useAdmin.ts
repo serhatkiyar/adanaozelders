@@ -215,11 +215,12 @@ export function useAdminBookings(params: { limit?: number; offset?: number } = {
   });
 }
 
-export function useAdminBookingList(params: AdminBookingsParams) {
+export function useAdminBookingList(params: AdminBookingsParams, enabled = true) {
   return useQuery({
     queryKey: ["admin", "bookings", "list", params],
     queryFn: () => fetchAdminBookingList(params),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 

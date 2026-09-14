@@ -294,7 +294,20 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "dagitim-araclar", label: "Araçlar", path: PATHS.adminNewDeliveryVehicles, requiredPermission: "delivery" },
     ],
   },
-  { key: "dersler", label: "Dersler", icon: "read" },
+  {
+    key: "dersler",
+    label: "Dersler",
+    icon: "read",
+    children: [
+      {
+        key: "rezervasyonlar",
+        label: "Rezervasyonlar",
+        path: PATHS.adminNewBookings,
+        requiredPermission: "bookings",
+      },
+      { key: "talepler", label: "Talepler" },
+    ],
+  },
   {
     key: "egitmenler",
     label: "Eğitmenler",

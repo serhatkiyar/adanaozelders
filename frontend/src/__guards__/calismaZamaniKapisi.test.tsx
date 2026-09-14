@@ -539,6 +539,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx",
   // Deneme katalogları: propsuz mount olur; ekleme ve satır işlemleri izin/veriyle doğar.
   "src/panel/pages/kutuphaneler/DenemeKataloglari.tsx",
+  // Rezervasyonlar: propsuz mount olur; filtreler ADLI kontroller olarak çizilir.
+  "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx",
   // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/dagitim/AracPencereleri.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
