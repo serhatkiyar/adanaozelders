@@ -111,6 +111,7 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> uploadPhoto.isPending": "islem",
   "src/pages/admin/AdminBookingsPage.tsx <Button> pending": "islem",
   "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx <Button> mesgul": "islem",
+  "src/panel/pages/rezervasyonlar/TalepListesi.tsx <Button> iptal.isPending": "islem",
   "src/pages/admin/AdminDemandsPage.tsx <Button> cancel.isPending": "islem",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> addStops.isPending": "islem",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> isPending": "islem",

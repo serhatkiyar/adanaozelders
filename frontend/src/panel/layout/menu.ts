@@ -305,7 +305,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewBookings,
         requiredPermission: "bookings",
       },
-      { key: "talepler", label: "Talepler" },
+      {
+        key: "talepler",
+        label: "Talepler",
+        path: PATHS.adminNewDemands,
+        requiredPermission: "demands",
+      },
     ],
   },
   {

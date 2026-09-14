@@ -129,11 +129,12 @@ export function useAdminAuditLogs(params: AdminAuditParams, enabled = true) {
   });
 }
 
-export function useAdminDemands(params: AdminDemandsParams) {
+export function useAdminDemands(params: AdminDemandsParams, enabled = true) {
   return useQuery({
     queryKey: ["admin", "demands", params],
     queryFn: () => fetchAdminDemands(params),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
