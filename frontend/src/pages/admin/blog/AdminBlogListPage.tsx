@@ -24,10 +24,12 @@ function SatirDurumu({ post }: { post: BlogPostAdmin }) {
   );
 }
 
-export default function AdminBlogListPage() {
+export default function AdminBlogListPage({ yeniPanel = false }: { yeniPanel?: boolean }) {
   const navigate = useNavigate();
   const { canView, canManage } = useAdminAreaAccess("content");
-  const { data: posts, isLoading, isError, refetch } = useAdminBlogPosts();
+  const { data: posts, isLoading, isError, refetch } = useAdminBlogPosts(canView);
+  const yeniYolu = yeniPanel ? ROUTES.adminNewBlogNew : ROUTES.adminBlogNew;
+  const duzenlemeYolu = (id: number) => yeniPanel ? ROUTES.adminNewBlogEdit(id) : ROUTES.adminBlogEdit(id);
 
   if (!canView) return <AccessDenied area="Blog" />;
 
@@ -42,7 +44,7 @@ export default function AdminBlogListPage() {
           </p>
         </div>
         {canManage && (
-          <Button onClick={() => navigate(ROUTES.adminBlogNew)}>Yeni yazı</Button>
+          <Button onClick={() => navigate(yeniYolu)}>Yeni yazı</Button>
         )}
       </div>
 
@@ -61,14 +63,14 @@ export default function AdminBlogListPage() {
               ? "İlk blog yazınızı oluşturun; taslak olarak kaydedilir, siz yayımlayana kadar görünmez."
               : "Henüz oluşturulmuş bir blog yazısı yok."
           }
-          action={canManage ? <Button onClick={() => navigate(ROUTES.adminBlogNew)}>Yeni yazı</Button> : undefined}
+          action={canManage ? <Button onClick={() => navigate(yeniYolu)}>Yeni yazı</Button> : undefined}
         />
       ) : (
         <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white ">
           {posts.map((post) => (
             <li key={post.id}>
               <GezinmeBaglantisi
-                to={ROUTES.adminBlogEdit(post.id)}
+                to={duzenlemeYolu(post.id)}
                 className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 transition hover:bg-slate-50 "
               >
                 <div className="min-w-0 flex-1">

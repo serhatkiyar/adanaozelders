@@ -31,8 +31,8 @@ export function useBlogPost(slug: string | undefined) {
   });
 }
 
-export function useAdminBlogPosts() {
-  return useQuery({ queryKey: [...ADMIN_KEY, "posts"], queryFn: fetchAdminBlogPosts });
+export function useAdminBlogPosts(enabled = true) {
+  return useQuery({ queryKey: [...ADMIN_KEY, "posts"], queryFn: fetchAdminBlogPosts, enabled });
 }
 
 function useInvalidateBlog() {

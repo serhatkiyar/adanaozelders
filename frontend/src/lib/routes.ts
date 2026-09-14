@@ -276,6 +276,9 @@ export const PATHS = {
   adminNewReports: "/yonetim-yeni/moderasyon/sikayetler",
   adminNewNameChanges: "/yonetim-yeni/moderasyon/ad-degisiklikleri",
   adminNewPayouts: "/yonetim-yeni/finans/hakedisler",
+  adminNewBlog: "/yonetim-yeni/pazarlama/blog",
+  adminNewBlogNew: "/yonetim-yeni/pazarlama/blog/yeni",
+  adminNewBlogEdit: "/yonetim-yeni/pazarlama/blog/:postId",
   adminNewAuditLogs: "/yonetim-yeni/ayarlar/denetim-kayitlari",
   adminNewCoupons: "/yonetim-yeni/indirimler/kuponlar",
 } as const;
@@ -474,6 +477,9 @@ export const ROUTES = {
   adminNewReports: PATHS.adminNewReports,
   adminNewNameChanges: PATHS.adminNewNameChanges,
   adminNewPayouts: PATHS.adminNewPayouts,
+  adminNewBlog: PATHS.adminNewBlog,
+  adminNewBlogNew: PATHS.adminNewBlogNew,
+  adminNewBlogEdit: (postId: string | number) => `/yonetim-yeni/pazarlama/blog/${postId}`,
   adminNewAuditLogs: PATHS.adminNewAuditLogs,
   adminNewCoupons: PATHS.adminNewCoupons,
 } as const;

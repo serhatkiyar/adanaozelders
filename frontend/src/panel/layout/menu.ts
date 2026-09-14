@@ -210,7 +210,13 @@ export const PANEL_MENU: PanelMenuItem[] = [
     ],
   },
   { key: "gelen-kutusu", label: "Gelen Kutusu", icon: "inbox" },
-  { key: "pazarlama", label: "Pazarlama", icon: "notification" },
+  {
+    key: "pazarlama",
+    label: "Pazarlama",
+    path: PATHS.adminNewBlog,
+    icon: "notification",
+    requiredPermission: "content",
+  },
   { key: "raporlar", label: "Raporlar", icon: "barchart" },
   { key: "uygulamalar", label: "Uygulamalar", icon: "appstore-add" },
   // Onaylı bilgi mimarisi: Ayarlar kök grup; yalnız gerçek ekrana bağlı çocuk izin taşır.

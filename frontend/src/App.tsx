@@ -846,6 +846,9 @@ function App() {
               <Route path="moderasyon/sikayetler" element={<SikayetListesi />} />
               <Route path="moderasyon/ad-degisiklikleri" element={<AdDegisiklikleri />} />
               <Route path="finans/hakedisler" element={<HakEdisler />} />
+              <Route path="pazarlama/blog" element={<AdminBlogListPage yeniPanel />} />
+              <Route path="pazarlama/blog/yeni" element={<AdminBlogEditorPage yeniPanel />} />
+              <Route path="pazarlama/blog/:postId" element={<AdminBlogEditorPage yeniPanel />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>
