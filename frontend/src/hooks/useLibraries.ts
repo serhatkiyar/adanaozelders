@@ -103,10 +103,11 @@ export function useDeleteLibraryReview(libraryId: number) {
 
 /* ── Admin ── */
 
-export function useAdminLibraries() {
+export function useAdminLibraries(enabled = true) {
   return useQuery({
     queryKey: ["libraries", "admin"],
     queryFn: listLibrariesAdmin,
+    enabled,
   });
 }
 

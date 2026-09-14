@@ -307,7 +307,13 @@ export const PANEL_MENU: PanelMenuItem[] = [
       { key: "egitmenler-one-cikarmalar", label: "Öne Çıkarmalar", path: PATHS.adminNewTutorPromotions, requiredPermission: "promotions" },
     ],
   },
-  { key: "kutuphaneler", label: "Kütüphaneler", icon: "book" },
+  {
+    key: "kutuphaneler",
+    label: "Kütüphaneler",
+    path: PATHS.adminNewLibraries,
+    requiredPermission: "libraries",
+    icon: "book",
+  },
   { key: "moderasyon", label: "Moderasyon", icon: "safety" },
   { key: "finans", label: "Finans", icon: "wallet" },
 ];
