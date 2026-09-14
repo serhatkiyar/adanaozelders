@@ -6,10 +6,11 @@ import {
 } from "@/api/nameChanges";
 import type { NameChangeStatus } from "@/types";
 
-export function useAdminNameChangeRequests(status?: NameChangeStatus) {
+export function useAdminNameChangeRequests(status?: NameChangeStatus, enabled = true) {
   return useQuery({
     queryKey: ["admin", "name-change-requests", status ?? "all"],
     queryFn: () => fetchAdminNameChangeRequests(status),
+    enabled,
   });
 }
 

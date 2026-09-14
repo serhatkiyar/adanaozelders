@@ -153,6 +153,9 @@ const TalepListesi = lazy(() =>
 const SikayetListesi = lazy(() =>
   import("@/panel/pages/moderasyon/SikayetListesi").then((m) => ({ default: m.SikayetListesi })),
 );
+const AdDegisiklikleri = lazy(() =>
+  import("@/panel/pages/moderasyon/AdDegisiklikleri").then((m) => ({ default: m.AdDegisiklikleri })),
+);
 const DagitimTahtasi = lazy(() =>
   import("@/panel/pages/dagitim/DagitimTahtasi").then((m) => ({ default: m.DagitimTahtasi })),
 );
@@ -838,6 +841,7 @@ function App() {
               <Route path="rezervasyonlar" element={<RezervasyonListesi />} />
               <Route path="talepler" element={<TalepListesi />} />
               <Route path="moderasyon/sikayetler" element={<SikayetListesi />} />
+              <Route path="moderasyon/ad-degisiklikleri" element={<AdDegisiklikleri />} />
               <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
               <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>

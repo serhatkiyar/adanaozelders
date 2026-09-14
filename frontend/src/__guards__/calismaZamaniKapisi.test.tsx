@@ -545,6 +545,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/rezervasyonlar/TalepListesi.tsx",
   // Şikayetler: propsuz mount olur; filtreler ADLI kontroller olarak çizilir.
   "src/panel/pages/moderasyon/SikayetListesi.tsx",
+  // Ad değişiklikleri: propsuz mount olur; durum filtresi ADLI kontrol olarak çizilir.
+  "src/panel/pages/moderasyon/AdDegisiklikleri.tsx",
   // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/dagitim/AracPencereleri.tsx",
   // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).

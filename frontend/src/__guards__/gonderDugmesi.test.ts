@@ -112,6 +112,7 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/admin/AdminBookingsPage.tsx <Button> pending": "islem",
   "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx <Button> mesgul": "islem",
   "src/panel/pages/rezervasyonlar/TalepListesi.tsx <Button> iptal.isPending": "islem",
+  "src/panel/pages/moderasyon/AdDegisiklikleri.tsx <Button> mesgul": "islem",
   "src/pages/admin/AdminDemandsPage.tsx <Button> cancel.isPending": "islem",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> addStops.isPending": "islem",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> isPending": "islem",
@@ -270,6 +271,7 @@ const ADETLER: Record<string, number> = {
   "src/pages/DeliveryDriver.tsx <button> busy": 2,
   "src/pages/admin/AdminBookingsPage.tsx <Button> pending": 3,
   "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx <Button> mesgul": 2,
+  "src/panel/pages/moderasyon/AdDegisiklikleri.tsx <Button> mesgul": 2,
   "src/pages/admin/AdminDemandsPage.tsx <Button> cancel.isPending": 2,
   "src/pages/dashboards/AdminHome.tsx <Button> busy": 7,
 };

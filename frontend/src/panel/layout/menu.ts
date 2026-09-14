@@ -355,7 +355,12 @@ export const PANEL_MENU: PanelMenuItem[] = [
         path: PATHS.adminNewReports,
         requiredPermission: "reports",
       },
-      { key: "ad-degisiklikleri", label: "Ad Değişiklikleri" },
+      {
+        key: "ad-degisiklikleri",
+        label: "Ad Değişiklikleri",
+        path: PATHS.adminNewNameChanges,
+        requiredPermission: "users",
+      },
     ],
   },
   { key: "finans", label: "Finans", icon: "wallet" },
