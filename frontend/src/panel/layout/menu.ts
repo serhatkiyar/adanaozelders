@@ -363,7 +363,19 @@ export const PANEL_MENU: PanelMenuItem[] = [
       },
     ],
   },
-  { key: "finans", label: "Finans", icon: "wallet" },
+  {
+    key: "finans",
+    label: "Finans",
+    icon: "wallet",
+    children: [
+      {
+        key: "hakedisler",
+        label: "Hak Edişler",
+        path: PATHS.adminNewPayouts,
+        requiredPermission: "payments",
+      },
+    ],
+  },
 ];
 
 type MenuYapragi = {

@@ -413,6 +413,7 @@ export const OLCUM_TABANI = [
   "src/panel/pages/rezervasyonlar/TalepListesi.tsx",
   "src/panel/pages/moderasyon/SikayetListesi.tsx",
   "src/panel/pages/moderasyon/AdDegisiklikleri.tsx",
+  "src/panel/pages/finans/HakEdisler.tsx",
   "src/panel/pages/dagitim/AracPencereleri.tsx",
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
   "src/panel/pages/indirimler/KuponListesi.tsx",
