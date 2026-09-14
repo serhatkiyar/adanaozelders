@@ -523,6 +523,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/dagitim/DagitimTahtasi.tsx",
   // Eğitmen İlanları: propsuz mount olur; kontroller satır aksiyonları ve pencerede (kapalı) doğar.
   "src/panel/pages/egitmenler/EgitmenIlanlari.tsx",
+  // Eğitmen Ön Başvuruları: propsuz mount olur; durum filtresi ("Durum filtresi") ADLI kontrolleriyle gelir.
+  "src/panel/pages/egitmenler/EgitmenOnBasvurulari.tsx",
   // Red penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx",
   // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).

@@ -264,10 +264,11 @@ export function useVerifyEducation() {
 
 // ── Eğitmen ön başvuruları (lead) ──
 
-export function useAdminTutorPreApplications(status?: string) {
+export function useAdminTutorPreApplications(status?: string, enabled = true, limit = 100, offset = 0) {
   return useQuery({
-    queryKey: ["admin", "tutor-pre-applications", status ?? "all"],
-    queryFn: () => fetchAdminTutorPreApplications(status),
+    queryKey: ["admin", "tutor-pre-applications", status ?? "all", limit, offset],
+    queryFn: () => fetchAdminTutorPreApplications(status, limit, offset),
+    enabled,
   });
 }
 

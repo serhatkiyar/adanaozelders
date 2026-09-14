@@ -27,7 +27,7 @@ Son güncelleme: 12 Eyl 2026.
 7. İadeler, Müşteri Detayı ve Sipariş Detayı — tamamlandı; `/yonetim-yeni/siparisler/iadeler` (`IadeListesi.tsx`, `IadePenceresi.tsx`; menüde Siparişler grubu), `/yonetim-yeni/musteriler/:role/:id` (`MusteriDetayi.tsx`, `MusteriDetayPencereleri.tsx`; menüde Müşteriler grubu), `/yonetim-yeni/siparisler/:id` (`SiparisDetayi.tsx`, `SiparisDetayPencereleri.tsx`; tekil `GET /store/admin/orders/{id}` ucu).
 8. Paketleme · Kuyruk, Paketler listesi, İstasyon/Detay ve Geri Dönüş — tamamlandı; `/yonetim-yeni/paketleme` (`PaketlemeKuyrugu.tsx`, `usePaketlemeErisimi.ts`; menüde Paketleme grubu), `/yonetim-yeni/paketleme/paketler` (`PaketListesi.tsx`), `/yonetim-yeni/paketleme/paket/:id` (`PaketlemeDetayi.tsx`, `PaketlemePencereleri.tsx`; Kuyruk ve Paketler yeni detaya bağlı) ve `/yonetim-yeni/paketleme/geri-donus` (`GeriDonusKuyrugu.tsx`, `DepoyaAlPenceresi.tsx`).
 9. Dağıtım · Bugün, Siparişler, Turlar listesi, Tur Detayı, Performans, Kuryeler, Tahta ve Araçlar — tamamlandı; `/yonetim-yeni/dagitim` (`DagitimBugun.tsx`; menüde Dağıtım grubu), `/yonetim-yeni/dagitim/siparisler` (`DagitimSiparisleri.tsx`), `/yonetim-yeni/dagitim/turlar` (`DagitimTurlari.tsx`), `/yonetim-yeni/dagitim/turlar/:id` (`DagitimTurDetayi.tsx`; Bugün ve Turlar listesi yeni detaya bağlı), `/yonetim-yeni/dagitim/kuryeler` (`DagitimKuryeler.tsx` + `KuryePencereleri.tsx`; Tur Detayı'ndaki "Kurye ekle" bağlantısı yeni Kuryeler rotasına bağlı; doğrulama sözleşmeleri eski ekranla ortak `components/admin/kuryeSemalari.ts`), `/yonetim-yeni/dagitim/araclar` (`DagitimAraclar.tsx` + `AracPencereleri.tsx`; filo + başlangıç noktaları, şemalar eski ekranla ortak `components/admin/aracSemalari.ts`; varlık kilidi ve pencere alan-hatası altyapısı `panel/components/varlikKilidi.tsx` / `pencereAlanlari.ts` ile Kuryeler'le ortak), `/yonetim-yeni/dagitim/performans` (`DagitimPerformans.tsx`; salt okunur: operasyon metrikleri, teslimat göstergeleri `?gun=`, son değerlendirmeler — sipariş bağlantısı yeni Sipariş Detayı'na gider), `/yonetim-yeni/dagitim/tahta` (`DagitimTahtasi.tsx`; atanmamış sipariş havuzu, erişilebilir tura ekleme, araç/tur şeritleri ve günü optimize etme).
-10. Eğitmen Yönetimi · İlanlar — tamamlandı; `/yonetim-yeni/egitmenler` (`EgitmenIlanlari.tsx`, `EgitmenIlanPencereleri.tsx`; menüde Eğitmenler → İlanlar). Kalan: Ön Başvurular, Diploma Doğrulama, Öne Çıkarmalar.
+10. Eğitmen Yönetimi · İlanlar ve Ön Başvurular — tamamlandı; `/yonetim-yeni/egitmenler` (`EgitmenIlanlari.tsx`, `EgitmenIlanPencereleri.tsx`), `/yonetim-yeni/egitmenler/on-basvurular` (`EgitmenOnBasvurulari.tsx`; durum filtresi, gerçek sunucu sayfalaması ve ayrıntı açılımı). Kalan: Diploma Doğrulama, Öne Çıkarmalar.
 11. Kütüphane/deneme/rezervasyon/talep
 12. Moderasyon, hak edişler, kalan rotalar
 
@@ -54,3 +54,9 @@ Son güncelleme: 12 Eyl 2026.
 - Teknik borç (test): AntD `modal.confirm` reddedilen `onOk` sözünü kendi içinde yeniden
   reddettiği için onay-hata testleri vitest'te "Unhandled Rejection" gürültüsü üretiyor
   (Tur Detayı ve Kuryeler ortak); testleri kırmıyor, ayrı iş.
+- Telemetri (merkezi, `lib/monitoring.ts`): yönetim yollarındaki `ui.*` breadcrumb'ları
+  sabit `[yönetim etkileşimi]` metnine indirilir (DOM serileştirmesi ad/e-posta/dosya adı
+  taşıyordu). Hata ve transaction olaylarında adresler ortak maskeden geçer: oturum/doğrulama
+  token'ları, yolun kendisinde token taşıyan public rotalar, presigned özel dosya yolu ile
+  imza/credential alanları (AWS, Azure SAS, GCS) gizlenir. Kullanıcının gerçek bağlantısı
+  değişmez; yalnız telemetriye giden kopya maskelenir.

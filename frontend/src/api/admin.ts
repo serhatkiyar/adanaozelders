@@ -316,11 +316,14 @@ export interface AdminTutorPreApplication {
 }
 
 export async function fetchAdminTutorPreApplications(
-  status?: string
+  status?: string,
+  limit = 100,
+  offset = 0
 ): Promise<AdminTutorPreApplication[]> {
+  // Uç `limit`/`offset` destekler ve id DESC sıralar; varsayılanlar eski çağrı yerlerinin davranışını korur.
   const { data } = await apiClient.get<AdminTutorPreApplication[]>(
     "/admin/tutor-pre-applications",
-    { params: status ? { status } : undefined }
+    { params: { ...(status ? { status } : {}), limit, offset } }
   );
   return data;
 }

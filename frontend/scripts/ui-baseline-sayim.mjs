@@ -401,6 +401,7 @@ export const OLCUM_TABANI = [
   "src/panel/pages/dagitim/DagitimPerformans.tsx",
   "src/panel/pages/dagitim/DagitimTahtasi.tsx",
   "src/panel/pages/egitmenler/EgitmenIlanlari.tsx",
+  "src/panel/pages/egitmenler/EgitmenOnBasvurulari.tsx",
   "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx",
   "src/panel/pages/dagitim/AracPencereleri.tsx",
   "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
