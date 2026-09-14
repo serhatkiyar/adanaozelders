@@ -35,12 +35,14 @@
  * oluşturmada ilk stok yazımının gerekçesi sabittir (`INITIAL`).
  */
 import { useEffect, useState } from "react";
-import { App, Button, Divider, Flex, Form, Input, InputNumber, Select, Typography, type FormInstance } from "antd";
+import { App, Button, Checkbox, Divider, Flex, Form, Input, InputNumber, Select, Typography, type FormInstance } from "antd";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormPage, type FormBolumu } from "@/panel/components/FormPage";
 import { HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
 import { MedyaSekmesi } from "@/panel/components/MedyaSekmesi";
+import { BlogBodyEditor } from "@/components/admin/content/BlogBodyEditor";
+import { ProductManagedAttributes } from "@/components/admin/store/ProductForm";
 import { BARKOD_MIN_UZUNLUK, BARKOD_MAX_UZUNLUK } from "@/panel/components/Matris";
 import { VaryantPenceresi } from "@/panel/pages/urunler/VaryantPenceresi";
 import { createProduct, updateProduct } from "@/api/store";
@@ -61,6 +63,7 @@ import {
   type StockEditResult,
 } from "@/lib/stockMovements";
 import { orandanYuzde, yuzdedenOran } from "@/lib/tax";
+import { aciklamaEditorBicimi } from "@/lib/storeProductForm";
 import type {
   ProductCreate,
   ProductDetailOut,
@@ -89,6 +92,8 @@ const DURUM_SECENEKLERI_DUZENLEME: { value: ProductStatus; label: string }[] = [
 
 type UrunFormDegerleri = {
   title: string;
+  description?: string | null;
+  brand?: string | null;
   kind: ProductKind;
   price: number;
   compare_at_price?: number | null;
@@ -98,6 +103,16 @@ type UrunFormDegerleri = {
   category_id?: number | null;
   stock?: number | null;
   barcode?: string | null;
+  supplier_backed?: boolean;
+  author?: string | null;
+  publisher?: string | null;
+  isbn?: string | null;
+  page_count?: number | null;
+  dimensions?: string | null;
+  publication_year?: number | null;
+  edition?: string | null;
+  language?: string | null;
+  cover_type?: string | null;
   /** Yalnız düzenlemede ve stok değiştiğinde anlamlı; bkz. dosya başı yorumu. */
   stock_reason_code?: AdminReasonCode | null;
   stock_note?: string | null;
@@ -110,7 +125,60 @@ type UrunFormDegerleri = {
   variant_group_id?: number | null;
   option1_value?: string | null;
   option2_value?: string | null;
+  variant_sort?: number | null;
 };
+
+const bosNull = (deger: string | null | undefined) => {
+  const temiz = deger?.trim();
+  return temiz ? temiz : null;
+};
+
+function kunyeGovdesi(d: UrunFormDegerleri) {
+  return {
+    description: bosNull(d.description),
+    brand: bosNull(d.brand),
+    author: bosNull(d.author),
+    publisher: bosNull(d.publisher),
+    isbn: bosNull(d.isbn),
+    page_count: d.page_count ?? null,
+    dimensions: bosNull(d.dimensions),
+    publication_year: d.publication_year ?? null,
+    edition: bosNull(d.edition),
+    language: bosNull(d.language),
+    cover_type: bosNull(d.cover_type),
+    ...(d.kind === "PHYSICAL" ? { supplier_backed: d.supplier_backed === true } : {}),
+  };
+}
+
+function AciklamaEditorAlani({
+  value,
+  onChange,
+  id,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
+  disabled,
+}: {
+  value?: string;
+  onChange?: (html: string) => void;
+  id?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <BlogBodyEditor
+      value={value ?? ""}
+      onChange={(html) => onChange?.(html)}
+      id={id}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid}
+      disabled={disabled}
+    />
+  );
+}
 
 function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
   return {
@@ -127,6 +195,7 @@ function olusturGovdesi(d: UrunFormDegerleri): ProductCreate {
     // üç değerden biridir; tip daraltması burada güvenlidir.
     status: d.status as ProductCreate["status"],
     category_id: d.category_id ?? null,
+    ...kunyeGovdesi(d),
     ...varyantUyelikGovdesi(d),
   };
 }
@@ -177,6 +246,7 @@ function varyantUyelikGovdesi(d: UrunFormDegerleri) {
       variant_group_id: d.variant_group_id,
       option1_value: d.option1_value || undefined,
       option2_value: d.option2_value || undefined,
+      variant_sort: d.variant_sort ?? 0,
     };
   }
   if ("variant_group_id" in d) {
@@ -189,6 +259,7 @@ function varyantUyelikGovdesi(d: UrunFormDegerleri) {
       variant_group_id: null,
       option1_value: null,
       option2_value: null,
+      variant_sort: 0,
       barcode: d.barcode || null,
     };
   }
@@ -210,6 +281,7 @@ function guncelleGovdesi(d: UrunFormDegerleri, stokSonuc: StockEditResult): Prod
     barcode: d.barcode || undefined,
     status: d.status,
     category_id: d.category_id ?? null,
+    ...kunyeGovdesi(d),
     ...varyantUyelikGovdesi(d),
     ...(stokSonuc.submitStock ? stokSonuc.payload : {}),
   };
@@ -266,6 +338,8 @@ export function UrunFormu() {
     if (!urun) return;
     form.setFieldsValue({
       title: urun.title,
+      description: aciklamaEditorBicimi(urun.description),
+      brand: urun.brand ?? undefined,
       kind: urun.kind,
       price: Number(urun.price),
       compare_at_price: urun.compare_at_price != null ? Number(urun.compare_at_price) : undefined,
@@ -277,9 +351,20 @@ export function UrunFormu() {
       category_id: urun.category_id ?? undefined,
       stock: urun.stock ?? undefined,
       barcode: urun.barcode ?? undefined,
+      supplier_backed: urun.supplier_backed === true,
+      author: urun.author ?? undefined,
+      publisher: urun.publisher ?? undefined,
+      isbn: urun.isbn ?? undefined,
+      page_count: urun.page_count ?? undefined,
+      dimensions: urun.dimensions ?? undefined,
+      publication_year: urun.publication_year ?? undefined,
+      edition: urun.edition ?? undefined,
+      language: urun.language ?? undefined,
+      cover_type: urun.cover_type ?? undefined,
       variant_group_id: urun.variant_group_id ?? undefined,
       option1_value: urun.option1_value ?? undefined,
       option2_value: urun.option2_value ?? undefined,
+      variant_sort: urun.variant_sort ?? 0,
     });
   }, [urun, form]);
 
@@ -304,7 +389,28 @@ export function UrunFormu() {
   async function kaydet() {
     let degerler: UrunFormDegerleri;
     try {
-      degerler = await form.validateFields();
+      const dogrulanan = await form.validateFields();
+      // AntD Tabs yalnız etkin bölümü mount eder. `validateFields()` bu yüzden
+      // henüz açılmamış, fakat ürün yüklenirken `setFieldsValue()` ile iç
+      // depoya yazılmış künye/tedarik değerlerini döndürmez. Yalnız bu yeni,
+      // opsiyonel alanları iç depodan tamamla; varyant üyeliği için mevcut
+      // "sekme açılmadıysa gövdeye dokunma" sözleşmesini değiştirme.
+      degerler = {
+        ...dogrulanan,
+        kind: form.getFieldValue("kind"),
+        description: form.getFieldValue("description"),
+        brand: form.getFieldValue("brand"),
+        supplier_backed: form.getFieldValue("supplier_backed"),
+        author: form.getFieldValue("author"),
+        publisher: form.getFieldValue("publisher"),
+        isbn: form.getFieldValue("isbn"),
+        page_count: form.getFieldValue("page_count"),
+        dimensions: form.getFieldValue("dimensions"),
+        publication_year: form.getFieldValue("publication_year"),
+        edition: form.getFieldValue("edition"),
+        language: form.getFieldValue("language"),
+        cover_type: form.getFieldValue("cover_type"),
+      };
     } catch {
       return; // doğrulama hatası: AntD alan altında gösterir
     }
@@ -368,6 +474,12 @@ export function UrunFormu() {
         <>
           <Form.Item label="Ürün Adı" name="title" rules={[{ required: true, message: "Ürün adı zorunludur." }]}>
             <Input />
+          </Form.Item>
+          <Form.Item label="Marka" name="brand">
+            <Input placeholder="ör. Faber-Castell" />
+          </Form.Item>
+          <Form.Item label="Açıklama" name="description" style={{ gridColumn: "1 / -1" }}>
+            <AciklamaEditorAlani />
           </Form.Item>
           {/* `kind` sunucuda değiştirilemez (DB trigger) — yalnız YENİ kayıtta seçilir. */}
           {!duzenlemeModu && (
@@ -467,9 +579,18 @@ export function UrunFormu() {
       icerik: (
         <>
           {efektifTur === "PHYSICAL" && (
-            <Form.Item label="Stok" name="stock">
-              <InputNumber min={0} style={{ width: "100%" }} />
-            </Form.Item>
+            <>
+              <Form.Item label="Stok" name="stock">
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item
+                name="supplier_backed"
+                valuePropName="checked"
+                style={{ gridColumn: "1 / -1" }}
+              >
+                <Checkbox>Kendi stoğum bittiğinde bağlı tedarikçinin stoğunu vitrinde kullan</Checkbox>
+              </Form.Item>
+            </>
           )}
           {stokDegisti && (
             <>
@@ -508,6 +629,42 @@ export function UrunFormu() {
       ),
     },
     {
+      anahtar: "kunye",
+      baslik: "Ürün Bilgileri",
+      icerik: (
+        <>
+          <Form.Item label="Yazar" name="author"><Input /></Form.Item>
+          <Form.Item label="Yayınevi" name="publisher"><Input /></Form.Item>
+          <Form.Item label="ISBN / Barkod" name="isbn"><Input /></Form.Item>
+          <Form.Item
+            label="Sayfa Sayısı"
+            name="page_count"
+            rules={[{ type: "number", min: 1, message: "Sayfa sayısı sıfırdan büyük olmalı." }]}
+          >
+            <InputNumber min={1} precision={0} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item label="Ebat" name="dimensions"><Input placeholder="ör. 13,5 × 21 cm" /></Form.Item>
+          <Form.Item
+            label="Basım Yılı"
+            name="publication_year"
+            rules={[{ type: "number", min: 1, message: "Basım yılı sıfırdan büyük olmalı." }]}
+          >
+            <InputNumber min={1} precision={0} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item label="Baskı" name="edition"><Input placeholder="ör. 3. baskı" /></Form.Item>
+          <Form.Item label="Dil" name="language"><Input /></Form.Item>
+          <Form.Item label="Kapak Tipi" name="cover_type"><Input /></Form.Item>
+        </>
+      ),
+    },
+    ...(duzenlemeModu && idSayi != null
+      ? [{
+          anahtar: "ozellikler",
+          baslik: "Yönetilen Özellikler",
+          icerik: <ProductManagedAttributes productId={idSayi} />,
+        } satisfies FormBolumu]
+      : []),
+    {
       // Paket 2'nin ilk işi (bkz. dosya başı yorumu) — yeni kayıtta henüz
       // `productId` yoktur (`idSayi` yalnız düzenlemede tanımlı, bkz.
       // `duzenlemeModu`), `MedyaSekmesi` bu durumda kendi kapısını gösterir
@@ -536,7 +693,7 @@ export function UrunFormu() {
     <Form
       form={form}
       layout="vertical"
-      initialValues={{ kind: "PHYSICAL", status: "DRAFT" }}
+      initialValues={{ kind: "PHYSICAL", status: "DRAFT", supplier_backed: false, variant_sort: 0 }}
       disabled={duzenlemeModu && urunYukleniyor}
     >
       <FormPage
@@ -756,6 +913,9 @@ function VaryantAlanlari({
               <Input />
             </Form.Item>
           )}
+          <Form.Item label="Varyant Sırası" name="variant_sort">
+            <InputNumber min={0} precision={0} style={{ width: "100%" }} />
+          </Form.Item>
         </>
       )}
       {/* Barkod HER ZAMAN mount — `secilenGrup`a bağlı DEĞİL (Bulgu 2).

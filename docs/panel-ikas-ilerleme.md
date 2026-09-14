@@ -1,6 +1,6 @@
 # /yonetim-yeni ilerleme (feat/panel-ikas)
 
-Son güncelleme: 12 Eyl 2026.
+Son güncelleme: 14 Eyl 2026.
 
 ## Tamamlanan modüller
 
@@ -11,6 +11,10 @@ Son güncelleme: 12 Eyl 2026.
   (Düzenle/Gizle-Yayınla/Kapak yükle/Sil-onaylı), Durum ve Maliyet/Marj kolonları
   (`suppliers.view`), `products.manage` kapısı (salt okunur uyarısı), loading/error/
   empty ("kayıt yok" ≠ "sonuç yok"), mobil (396px'te yatay taşma yok).
+  Ürün ekleme/düzenleme paritesi tamamlandı: zengin metin açıklaması, marka,
+  tedarikçi stoğu, kitap künyesi (yazar/yayınevi/ISBN/sayfa/ebat/basım/baskı/dil/
+  kapak), varyant sırası ve mevcut yönetilen ürün özellikleri yeni formda korunur;
+  sekmesi açılmadan kaydedilen mevcut opsiyonel değerler silinmez.
   Doğrulama: `tsc -b`, ESLint (değişen dosyalar), `vitest src/__guards__ src/panel`
   (tek bilinen sallantı: `urunFormu.test.tsx` compare_at_price testi yük altında
   zaman aşımı; tek başına geçiyor, bu değişiklikle ilgisiz). Tarayıcı: masaüstü +

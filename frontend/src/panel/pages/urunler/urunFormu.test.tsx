@@ -40,6 +40,26 @@ const reorderProductImages = vi.fn();
 // ÇAĞRILDIĞI, sıkıştırma algoritmasının kendisi değil (`compressImage.test.ts`
 // onu zaten ayrıca sınıyor).
 const compressImage = vi.fn(async (dosya: File) => dosya);
+vi.mock("@/components/admin/content/BlogBodyEditor", () => ({
+  BlogBodyEditor: (props: {
+    value: string;
+    onChange: (value: string) => void;
+    id?: string;
+    "aria-labelledby"?: string;
+  }) => (
+    <textarea
+      id={props.id}
+      aria-labelledby={props["aria-labelledby"]}
+      value={props.value}
+      onChange={(event) => props.onChange(event.target.value)}
+    />
+  ),
+}));
+vi.mock("@/components/admin/store/ProductForm", () => ({
+  ProductManagedAttributes: ({ productId }: { productId: number }) => (
+    <div>Yönetilen özellikler · Ürün #{productId}</div>
+  ),
+}));
 vi.mock("@/lib/compressImage", () => ({
   compressImage: (...a: [File]) => compressImage(...a),
 }));
@@ -95,6 +115,23 @@ const DUZENLENECEK_URUN_VARYANTLI = {
     option2_name: null,
     members: [],
   },
+};
+
+const DUZENLENECEK_URUN_TAM = {
+  ...DUZENLENECEK_URUN_VARYANTLI,
+  description: "<p>Çizgisiz, sert kapaklı defter.</p>",
+  brand: "Mopak",
+  supplier_backed: true,
+  author: "Ayşe Yazar",
+  publisher: "Adana Yayınları",
+  isbn: "9789750000001",
+  page_count: 192,
+  dimensions: "13,5 × 21 cm",
+  publication_year: 2026,
+  edition: "3. baskı",
+  language: "Türkçe",
+  cover_type: "Sert kapak",
+  variant_sort: 4,
 };
 
 // `MemoryRouter` doğrudan `UrunFormu`yu sarıyor (aradaki `<Routes>` YOK) —
@@ -319,6 +356,59 @@ describe("UrunFormu", () => {
   });
 
   describe("düzenleme modu", () => {
+    it("eski paneldeki açıklama, künye, tedarik ve yönetilen özellik yüzeylerini korur", async () => {
+      fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN_TAM);
+      kurDuzenleme();
+
+      expect(await screen.findByDisplayValue("Kırmızı Defter")).toBeInTheDocument();
+      expect(screen.getByLabelText("Marka")).toHaveValue("Mopak");
+      expect(screen.getByLabelText("Açıklama")).toHaveValue("<p>Çizgisiz, sert kapaklı defter.</p>");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Envanter" }));
+      expect(screen.getByRole("checkbox", { name: /bağlı tedarikçinin stoğunu/i })).toBeChecked();
+
+      await userEvent.click(screen.getByRole("tab", { name: "Ürün Bilgileri" }));
+      expect(screen.getByLabelText("Yazar")).toHaveValue("Ayşe Yazar");
+      expect(screen.getByLabelText("Yayınevi")).toHaveValue("Adana Yayınları");
+      expect(screen.getByLabelText("ISBN / Barkod")).toHaveValue("9789750000001");
+      expect(screen.getByLabelText("Sayfa Sayısı")).toHaveValue("192");
+      expect(screen.getByLabelText("Basım Yılı")).toHaveValue("2026");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Yönetilen Özellikler" }));
+      expect(screen.getByText("Yönetilen özellikler · Ürün #9")).toBeInTheDocument();
+    });
+
+    it("kaydetme gövdesi açıklama, künye, tedarik ve varyant sırasını korur", async () => {
+      listVariantGroups.mockResolvedValueOnce([
+        { id: 1, title: "Defter Rengi", option1_name: "Renk", option2_name: null, member_count: 3 },
+      ]);
+      fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN_TAM);
+      kurDuzenleme();
+      await screen.findByDisplayValue("Kırmızı Defter");
+
+      await userEvent.click(screen.getByRole("tab", { name: "Varyantlar" }));
+      expect(screen.getByLabelText("Varyant Sırası")).toHaveValue("4");
+
+      await userEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+      await waitFor(() => expect(updateProduct).toHaveBeenCalled());
+      expect(updateProduct.mock.calls[0][1]).toMatchObject({
+        description: "<p>Çizgisiz, sert kapaklı defter.</p>",
+        brand: "Mopak",
+        supplier_backed: true,
+        author: "Ayşe Yazar",
+        publisher: "Adana Yayınları",
+        isbn: "9789750000001",
+        page_count: 192,
+        dimensions: "13,5 × 21 cm",
+        publication_year: 2026,
+        edition: "3. baskı",
+        language: "Türkçe",
+        cover_type: "Sert kapak",
+        variant_sort: 4,
+      });
+    });
+
     it("mevcut ürün verisi forma dolar", async () => {
       fetchProductAdmin.mockResolvedValueOnce(DUZENLENECEK_URUN);
       kurDuzenleme();
