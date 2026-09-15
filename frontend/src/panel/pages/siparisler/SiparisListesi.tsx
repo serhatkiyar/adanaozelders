@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button, Tag, Typography } from "antd";
 import type { TableProps } from "antd";
 import { ListePage } from "@/panel/components/ListePage";
+import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { useAdminOrders } from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
@@ -57,6 +58,9 @@ const TON_RENK: Record<ReturnType<typeof orderStatusTone>, string> = {
  */
 export function SiparisListesi() {
   const navigate = useNavigate();
+  // Eski `OrdersPanel` gibi: uç `orders.view` ister. İzin yokken ekran kapanır VE
+  // istek hiç çıkmaz (yetkisiz oturumda 403 üreten sorgu atılmaz).
+  const { canView } = useAdminAreaAccess("orders");
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
@@ -65,6 +69,7 @@ export function SiparisListesi() {
     undefined,
     boyut,
     (sayfa - 1) * boyut,
+    canView,
   );
 
   const siparisler = data?.items ?? [];
@@ -137,6 +142,8 @@ export function SiparisListesi() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [navigate],
   );
+
+  if (!canView) return <AccessDenied area="Siparişler" />;
 
   return (
     <ListePage<OrderOut>

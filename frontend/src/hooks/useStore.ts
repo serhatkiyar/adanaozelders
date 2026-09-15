@@ -449,7 +449,13 @@ export function useDeriveVariant() {
  * sayfa değişince React Query aynı anahtarı görür ve önbellekteki ilk
  * sayfayı döndürürdü (yeni istek atılmazdı).
  */
-export function useAdminOrders(statusFilter?: string, limit?: number, offset?: number) {
+/** `enabled=false` (ör. `orders.view` yokken) isteği tamamen kapatır. */
+export function useAdminOrders(
+  statusFilter?: string,
+  limit?: number,
+  offset?: number,
+  enabled = true,
+) {
   return useQuery({
     queryKey: [
       "store",
@@ -460,6 +466,7 @@ export function useAdminOrders(statusFilter?: string, limit?: number, offset?: n
       offset ?? 0,
     ],
     queryFn: () => storeApi.listOrdersAdmin(statusFilter, limit, offset),
+    enabled,
   });
 }
 
@@ -477,10 +484,12 @@ export function useAdminOrder(id: number, enabled = true) {
   });
 }
 
-export function useAdminReturns(statusFilter?: string) {
+/** `enabled=false` (ör. `returns.view` yokken) isteği tamamen kapatır. */
+export function useAdminReturns(statusFilter?: string, enabled = true) {
   return useQuery({
     queryKey: ["store", "admin", "returns", statusFilter ?? "all"],
     queryFn: () => storeApi.listReturnsAdmin(statusFilter),
+    enabled,
   });
 }
 

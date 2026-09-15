@@ -35,7 +35,8 @@ export function IadeListesi() {
   const [seciliId, setSeciliId] = useState<number | null>(null);
   const [redId, setRedId] = useState<number | null>(null);
 
-  const sorgu = useAdminReturns(durum === HEPSI ? undefined : durum);
+  // İzin yokken istek hiç çıkmaz; `AccessDenied` aşağıda çizilir.
+  const sorgu = useAdminReturns(durum === HEPSI ? undefined : durum, canView);
   const resolve = useResolveReturn();
   const hepsi = useMemo(() => sorgu.data ?? [], [sorgu.data]);
   // Veri/süzgeç değişip sayfa sayısı düşerse etkin sayfa geçerli son sayfaya çekilir.

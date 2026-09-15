@@ -83,17 +83,17 @@ describe("IadeListesi", () => {
 
   it("durum süzgeci: varsayılan PENDING, uydurma değer elenir, seçim URL'ye ve hook'a gider", async () => {
     kur("/yonetim-yeni/siparisler/iadeler?durum=UYDURMA");
-    expect(mockListe).toHaveBeenLastCalledWith("PENDING");
+    expect(mockListe).toHaveBeenLastCalledWith("PENDING", true);
     await userEvent.click(screen.getByRole("button", { name: "Filtre" }));
     await userEvent.click(await screen.findByRole("combobox", { name: "Durum" }));
     await userEvent.click(await screen.findByTitle("Tümü"));
     await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent("?durum=hepsi"));
-    expect(mockListe).toHaveBeenLastCalledWith(undefined);
+    expect(mockListe).toHaveBeenLastCalledWith(undefined, true);
     await userEvent.click(screen.getByRole("button", { name: "Filtre" }));
     await userEvent.click(await screen.findByRole("combobox", { name: "Durum" }));
     await userEvent.click(await screen.findByTitle("Reddedilenler"));
     await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent("?durum=REJECTED"));
-    expect(mockListe).toHaveBeenLastCalledWith("REJECTED");
+    expect(mockListe).toHaveBeenLastCalledWith("REJECTED", true);
   });
 
   it("rota ve menü: Siparişler kök grup, çocuklar ikas sırasında + İadeler; seçili/açık anahtarlar doğru", () => {
@@ -113,11 +113,11 @@ describe("IadeListesi", () => {
 
   it("harici URL değişimi (geri/ileri) süzgeci ve hook'u URL'e döndürür", async () => {
     kur();
-    expect(mockListe).toHaveBeenLastCalledWith("PENDING");
+    expect(mockListe).toHaveBeenLastCalledWith("PENDING", true);
     act(() => git(`${YOL}?durum=APPROVED`));
-    await waitFor(() => expect(mockListe).toHaveBeenLastCalledWith("APPROVED"));
+    await waitFor(() => expect(mockListe).toHaveBeenLastCalledWith("APPROVED", true));
     act(() => git(YOL));
-    await waitFor(() => expect(mockListe).toHaveBeenLastCalledWith("PENDING"));
+    await waitFor(() => expect(mockListe).toHaveBeenLastCalledWith("PENDING", true));
   });
 
   it("sayfa boyutu 20 ile başlar; veri azalınca etkin sayfa geçerli son sayfaya çekilir", async () => {

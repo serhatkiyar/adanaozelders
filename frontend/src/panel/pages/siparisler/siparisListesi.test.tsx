@@ -7,6 +7,8 @@ import { useAdminOrders } from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { orderStatusLabel } from "@/lib/orderStatus";
+import { ERISIM_REDDEDILDI_BASLIK } from "@/components/admin/AccessState";
+import { useAuthStore } from "@/store/authStore";
 import type { OrderOut } from "@/types";
 
 vi.mock("@/hooks/useStore", () => ({
@@ -14,6 +16,13 @@ vi.mock("@/hooks/useStore", () => ({
 }));
 
 const mockUseAdminOrders = vi.mocked(useAdminOrders);
+
+function izin(...perms: string[]) {
+  useAuthStore.setState({ token: "t", isAuthenticated: true, user: { id: 1, role_id: 1, admin_permissions: perms } as never });
+}
+beforeEach(() => {
+  izin("orders.view", "orders.manage");
+});
 
 function kur() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -46,6 +55,17 @@ const siparis = (parca: Partial<OrderOut> = {}): OrderOut =>
   }) as OrderOut;
 
 describe("SiparisListesi", () => {
+  it("orders.view yoksa AccessDenied ve sorgu HİÇ çalışmaz", () => {
+    izin("products.view");
+    mockUseAdminOrders.mockReturnValue({
+      data: undefined, isPending: false, isError: false, error: null, refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAdminOrders>);
+    kur();
+    expect(screen.getByText(ERISIM_REDDEDILDI_BASLIK)).toBeInTheDocument();
+    // Dördüncü argüman `enabled`: yetkisiz oturumda istek atılmaz.
+    expect(mockUseAdminOrders.mock.calls.at(-1)?.[3]).toBe(false);
+  });
+
   it("sipariş no, müşteri, tutar, durum ve tarihi listeler", () => {
     mockUseAdminOrders.mockReturnValue({
       data: { items: [siparis()], total: 1, limit: 100 },
@@ -168,7 +188,7 @@ describe("SiparisListesi", () => {
       // hâlâ undefined, limit hâlâ sayfa boyutu (20), offset artık
       // (sayfa-1)*boyut = 20 — bkz. `api/store.ts` `listOrdersAdmin`in
       // `offset` yorumu.
-      expect(mockUseAdminOrders).toHaveBeenCalledWith(undefined, 20, 20);
+      expect(mockUseAdminOrders).toHaveBeenCalledWith(undefined, 20, 20, true);
     });
 
     it("`toplam` sunucunun GERÇEK X-Total-Count değerini yansıtır — mevcut sayfadaki satır sayısını değil", () => {
@@ -269,7 +289,7 @@ describe("SiparisListesi", () => {
       // istek attırmaz, çünkü zaten sunucuya hiç gitmiyor, yalnız elde
       // tutulan sayfayı süzer.
       const sonCagri = mockUseAdminOrders.mock.calls.at(-1);
-      expect(sonCagri).toEqual([undefined, 20, 0]);
+      expect(sonCagri).toEqual([undefined, 20, 0, true]);
     });
   });
 });
