@@ -407,6 +407,11 @@ export const OLCUM_TABANI = [
   "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx",
   "src/panel/pages/egitmenler/EgitmenOneCikarmalar.tsx",
   "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx",
+  // Hak edişlerin ödeme çekmecesi. Ayrı dosya olma gerekçesi
+  // `UrunAracCubugu.tsx`/`OneCikarmaPenceresi.tsx` ile AYNI: pencere ekranla
+  // aynı dosyada durduğunda açık/kapalı durumu ekranın `useState`ine düşüyor
+  // ve `modalDurumu` TABANINI (0) kırıyordu.
+  "src/panel/pages/finans/OdemePenceresi.tsx",
   "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx",
   "src/panel/pages/kutuphaneler/DenemeKataloglari.tsx",
   "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx",

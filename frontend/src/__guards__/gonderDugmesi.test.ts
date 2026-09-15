@@ -113,7 +113,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx <Button> mesgul": "islem",
   "src/panel/pages/rezervasyonlar/TalepListesi.tsx <Button> iptal.isPending": "islem",
   "src/panel/pages/moderasyon/AdDegisiklikleri.tsx <Button> mesgul": "islem",
-  "src/panel/pages/finans/HakEdisler.tsx <Button> mesgul": "islem",
+  // Ödeme çekmecesi kendi dosyasına taşındı (pencere durumu ekranda yaşamasın diye).
+  "src/panel/pages/finans/OdemePenceresi.tsx <Button> mesgul": "islem",
   "src/pages/admin/AdminDemandsPage.tsx <Button> cancel.isPending": "islem",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> addStops.isPending": "islem",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> isPending": "islem",

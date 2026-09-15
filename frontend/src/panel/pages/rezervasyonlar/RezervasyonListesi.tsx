@@ -18,10 +18,12 @@ import {
   parseAdminBookingQuery,
 } from "@/lib/adminOperationsQuery";
 import { BOOKING_STATUS_LABEL } from "@/lib/bookingStatus";
+import { rolEtiketi } from "@/lib/roles";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { formatTRY } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
+import { ROLE_IDS } from "@/types";
 import { ListePage } from "@/panel/components/ListePage";
 import { toast } from "@/store/toastStore";
 import { BookingStatus, type AdminBookingOut } from "@/types";
@@ -118,7 +120,9 @@ export function RezervasyonListesi() {
     id: number,
     ad: string | null | undefined,
   ): ReactNode => {
-    const metin = ad || `${rol === "tutor" ? "Eğitmen" : "Öğrenci"} #${id}`;
+    // Rol adı elle YAZILMAZ: tek kaynak `lib/roles.ts` (nöbetçi `__guards__/rolEtiketi.test.ts`).
+    // Adsız kayıtta rol + kimlik yazılır; "Öğrenci" bir rol adı değildir ("Üye").
+    const metin = ad || `${rolEtiketi(rol === "tutor" ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)} #${id}`;
     return kullaniciDetayiVar ? (
       <Link to={ROUTES.adminNewCustomer(rol, id)} style={{ fontWeight: 500 }}>
         {metin}

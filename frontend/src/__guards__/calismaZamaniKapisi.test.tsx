@@ -535,6 +535,8 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/egitmenler/EgitmenOneCikarmalar.tsx",
   // Ayrıntı/iptal pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx",
+  // Ödeme çekmecesi: `hedef` propsuz `null`, gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/finans/OdemePenceresi.tsx",
   // Kütüphaneler: propsuz mount olur; ekleme ve satır işlemleri izin/veriyle doğar.
   "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx",
   // Deneme katalogları: propsuz mount olur; ekleme ve satır işlemleri izin/veriyle doğar.
@@ -818,6 +820,7 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/finans/OdemePenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx": "kosullu",
   "src/panel/pages/egitmenler/EgitmenIlanlari.tsx": "kosullu",
   "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx": "kosullu",

@@ -1,16 +1,14 @@
-import { useRef, useState } from "react";
-import { Alert, Button, Drawer, Flex, Form, Input, InputNumber, Modal, Segmented, Table, Tag, Typography, theme } from "antd";
+import { useState } from "react";
+import { Button, Flex, Segmented, Table, Tag, Typography, theme } from "antd";
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { useCreatePayout, usePayoutHistory, usePendingPayouts } from "@/hooks/usePayouts";
+import { usePayoutHistory, usePendingPayouts } from "@/hooks/usePayouts";
 import { useUrlDurumu } from "@/hooks/useUrlDurumu";
-import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
+import { formatDate } from "@/lib/datetime";
 import { formatTL, parseMoney } from "@/lib/money";
 import { BosDurumu, HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
-import { toast } from "@/store/toastStore";
-import type { PayeeBalance, PayoutCreate } from "@/api/payouts";
-
-type OdemeDegerleri = { amount: number; reference?: string; note?: string };
+import { OdemePenceresi } from "@/panel/pages/finans/OdemePenceresi";
+import type { PayeeBalance } from "@/api/payouts";
 
 /** Elle yapılan havalelerin hak ediş defterini yeni panel kabuğunda yönetir. */
 export function HakEdisler() {
@@ -123,79 +121,5 @@ function Gecmis({ sorgu }: { sorgu: ReturnType<typeof usePayoutHistory> }) {
         { title: "IBAN (o anki)", dataIndex: "iban_snapshot", render: (deger?: string | null) => <Typography.Text style={{ fontFamily: "monospace" }}>{deger || "-"}</Typography.Text> },
       ]}
     />
-  );
-}
-
-function OdemePenceresi({ hedef, kapat }: { hedef: PayeeBalance | null; kapat: () => void }) {
-  const [form] = Form.useForm<OdemeDegerleri>();
-  const create = useCreatePayout();
-  const kilit = useRef(false);
-  const [hata, setHata] = useState<string | null>(null);
-  const mesgul = kilit.current || create.isPending;
-  const max = hedef ? (parseMoney(hedef.balance) ?? 0) : 0;
-
-  const gercekKapat = () => {
-    setHata(null);
-    form.resetFields();
-    kapat();
-  };
-  const kapatmaIstegi = () => {
-    if (kilit.current || create.isPending) return;
-    if (!form.isFieldsTouched()) return gercekKapat();
-    Modal.confirm({
-      title: "Kaydedilmemiş değişiklikler var",
-      content: "Ödeme bilgileri kaydedilmeden kapatılacak.",
-      okText: "Değişiklikleri sil",
-      cancelText: "Düzenlemeye devam et",
-      onOk: gercekKapat,
-    });
-  };
-  const gonder = async (degerler: OdemeDegerleri) => {
-    if (!hedef || kilit.current || create.isPending) return;
-    kilit.current = true;
-    setHata(null);
-    const govde: PayoutCreate = {
-      payee_type: hedef.payee_type,
-      payee_id: hedef.payee_id,
-      amount: String(degerler.amount),
-      reference: degerler.reference?.trim() || null,
-      note: degerler.note?.trim() || null,
-    };
-    try {
-      await create.mutateAsync(govde);
-      toast.success("Ödeme kaydedildi.");
-      gercekKapat();
-    } catch (error) {
-      setHata(getErrorMessage(error, "Ödeme kaydedilemedi."));
-    } finally {
-      kilit.current = false;
-    }
-  };
-
-  return (
-    <Drawer
-      open={hedef !== null}
-      title={hedef ? `Ödeme kaydı: ${hedef.name}` : "Ödeme kaydı"}
-      width={480}
-      onClose={kapatmaIstegi}
-      maskClosable={!mesgul}
-      keyboard={!mesgul}
-      footer={<Flex justify="flex-end" gap={8}><Button disabled={mesgul} onClick={kapatmaIstegi}>Vazgeç</Button><Button type="primary" loading={mesgul} onClick={() => form.submit()}>Ödemeyi kaydet</Button></Flex>}
-    >
-      {hedef ? (
-        <Form form={form} layout="vertical" initialValues={{ amount: max, reference: "", note: "" }} onFinish={(degerler) => void gonder(degerler)}>
-          <Flex vertical gap={12}>
-            <Typography.Text type="secondary">Ödenmemiş bakiye: <Typography.Text strong>{formatTL(hedef.balance)}</Typography.Text></Typography.Text>
-            {hedef.iban ? <Typography.Text code>{hedef.iban}</Typography.Text> : <Alert type="warning" showIcon message="Bu alıcının IBAN'ı kayıtlı değil; ödemeden önce kendisinden isteyin." />}
-            {hata ? <Alert type="error" showIcon message={hata} /> : null}
-          </Flex>
-          <Form.Item name="amount" label="Tutar (TL)" rules={[{ required: true, message: "Tutar gerekli." }, { type: "number", min: 0.01, message: "Tutar sıfırdan büyük olmalı." }, { validator: (_, value) => Number(value) <= max ? Promise.resolve() : Promise.reject(new Error(`Tutar en fazla ${formatTL(hedef.balance)} olabilir.`)) }]}>
-            <InputNumber min={0.01} step={0.01} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="reference" label="Havale referansı" rules={[{ max: 120, message: "Referans en fazla 120 karakter olabilir." }]}><Input maxLength={120} placeholder="Dekonttaki referans no" /></Form.Item>
-          <Form.Item name="note" label="Not" rules={[{ max: 1000, message: "Not en fazla 1000 karakter olabilir." }]}><Input.TextArea rows={3} maxLength={1000} showCount /></Form.Item>
-        </Form>
-      ) : null}
-    </Drawer>
   );
 }
