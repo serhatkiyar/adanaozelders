@@ -2,10 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SiparisListesi } from "@/panel/pages/siparisler/SiparisListesi";
+import { SiparisListesi, durumCoz } from "@/panel/pages/siparisler/SiparisListesi";
 import { useAdminOrders } from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
+import { orderPaymentLabel } from "@/lib/orderPayment";
 import { orderStatusLabel } from "@/lib/orderStatus";
 import { ERISIM_REDDEDILDI_BASLIK } from "@/components/admin/AccessState";
 import { useAuthStore } from "@/store/authStore";
@@ -24,11 +25,11 @@ beforeEach(() => {
   izin("orders.view", "orders.manage");
 });
 
-function kur() {
+function kur(girisler: string[] = ["/yonetim-yeni/siparisler"]) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={girisler}>
         <SiparisListesi />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -55,6 +56,36 @@ const siparis = (parca: Partial<OrderOut> = {}): OrderOut =>
   }) as OrderOut;
 
 describe("SiparisListesi", () => {
+  it("durum süzgeci: beyaz liste, sunucuya gider, geçersiz değer düşer", () => {
+    for (const [ham, beklenen] of [["PAID", "PAID"], ["SHIPPED", "SHIPPED"], ["paid", "hepsi"], ["__proto__", "hepsi"], ["", "hepsi"], [null, "hepsi"]] as const) {
+      expect(durumCoz(ham)).toBe(beklenen);
+    }
+    mockUseAdminOrders.mockReturnValue({
+      data: { items: [], total: 0, limit: 20 }, isPending: false, isError: false, error: null, refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAdminOrders>);
+    // Geçersiz değer sunucuya GİTMEZ.
+    kur(["/yonetim-yeni/siparisler?durum=uydurma"]).unmount();
+    expect(mockUseAdminOrders.mock.calls.at(-1)?.[0]).toBeUndefined();
+    // Beyaz listedeki değer sunucuya gider (elde tutulan sayfayı süzmez).
+    kur(["/yonetim-yeni/siparisler?durum=SHIPPED"]);
+    expect(mockUseAdminOrders.mock.calls.at(-1)?.[0]).toBe("SHIPPED");
+    expect(screen.getByText("Sonuç bulunamadı")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filtreyi temizle" })).toBeInTheDocument();
+  });
+
+  it("ödeme ve kalem kolonları listede görünür (para ekseni durumdan ayrı)", () => {
+    mockUseAdminOrders.mockReturnValue({
+      data: { items: [siparis({ payment_status: "REFUNDING", status: "DELIVERED", items: [{ id: 1 }, { id: 2 }] as never })], total: 1, limit: 20 },
+      isPending: false, isError: false, error: null, refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAdminOrders>);
+    kur();
+    expect(screen.getByRole("columnheader", { name: "Ödeme" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Kalem" })).toBeInTheDocument();
+    expect(screen.getByText(orderPaymentLabel("REFUNDING"))).toBeInTheDocument();
+    expect(screen.getByText(orderStatusLabel("DELIVERED"))).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+  });
+
   it("orders.view yoksa AccessDenied ve sorgu HİÇ çalışmaz", () => {
     izin("products.view");
     mockUseAdminOrders.mockReturnValue({

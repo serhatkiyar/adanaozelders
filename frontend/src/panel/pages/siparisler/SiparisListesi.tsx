@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Button, Tag, Typography } from "antd";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Button, Select, Tag, Typography } from "antd";
 import type { TableProps } from "antd";
 import { ListePage } from "@/panel/components/ListePage";
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { useAdminOrders } from "@/hooks/useStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
-import { orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
+import { orderPaymentLabel } from "@/lib/orderPayment";
+import { ORDER_STATUS_FILTERS, orderPaymentTone, orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
 import { ROUTES } from "@/lib/routes";
 import type { OrderOut } from "@/types";
 
@@ -24,6 +25,16 @@ const TON_RENK: Record<ReturnType<typeof orderStatusTone>, string> = {
   warning: "warning",
   danger: "error",
 };
+
+const HEPSI = "hepsi";
+/**
+ * Durum süzgeci eski `OrdersPanel` ile birebir: değer URL'de yaşar (filtreli liste
+ * bağlantısı paylaşılabilir, yenilemede seçim korunur) ve BEYAZ LİSTEDEN geçer —
+ * bilinmeyen bir değer sunucuya gidip 422 üretmez ya da sessizce boş liste döndürmez.
+ */
+export function durumCoz(ham: string | null): string {
+  return ham && ORDER_STATUS_FILTERS.includes(ham) ? ham : HEPSI;
+}
 
 /**
  * Siparişler modülünün ilk ekranı — yalnız liste (bkz. spec §4/§5).
@@ -61,16 +72,32 @@ export function SiparisListesi() {
   // Eski `OrdersPanel` gibi: uç `orders.view` ister. İzin yokken ekran kapanır VE
   // istek hiç çıkmaz (yetkisiz oturumda 403 üreten sorgu atılmaz).
   const { canView } = useAdminAreaAccess("orders");
+  const [params, setParams] = useSearchParams();
+  const durum = durumCoz(params.get("durum"));
   const [arama, setArama] = useState("");
   const [sayfa, setSayfa] = useState(1);
   const [boyut, setBoyut] = useState(20);
+  const [filtreAcik, setFiltreAcik] = useState(false);
 
+  // Durum SUNUCUYA gider (uç `status` alır): filtre tüm siparişleri kapsar, elde
+  // tutulan sayfayı süzmez — aramadan farkı budur.
   const { data, isPending, isError, refetch } = useAdminOrders(
-    undefined,
+    durum === HEPSI ? undefined : durum,
     boyut,
     (sayfa - 1) * boyut,
     canView,
   );
+
+  const durumSec = (v: string) => {
+    // Varsayılan ("hepsi") URL'ye yazılmaz; ilgisiz parametreler korunur.
+    const sonraki = new URLSearchParams(params);
+    if (v === HEPSI) sonraki.delete("durum");
+    else sonraki.set("durum", v);
+    setParams(sonraki, { replace: true });
+    // Filtre değişince sayfa 1'e döner: 3. sayfadayken filtre değiştirmek boş liste gösterirdi.
+    setSayfa(1);
+    setFiltreAcik(false);
+  };
 
   const siparisler = data?.items ?? [];
   // Sunucu toplamı bilinmiyorsa (`X-Total-Count` hiç gelmediyse, `total ===
@@ -118,10 +145,30 @@ export function SiparisListesi() {
         onCell: satirTiklama,
       },
       {
+        title: "Kalem",
+        key: "kalem",
+        render: (_: unknown, k: OrderOut) => {
+          // Boş kalem listesi "sipariş boş" DEMEK DEĞİLDİR: eski/bozuk veride
+          // `order_items` satırı hiç olmayabilir (bkz. `lib/orderItems`).
+          const adet = k.items?.length ?? 0;
+          return adet > 0 ? adet : <Typography.Text type="secondary">-</Typography.Text>;
+        },
+        onCell: satirTiklama,
+      },
+      {
         title: "Tutar",
         dataIndex: "total",
         key: "total",
         render: (v: string) => formatTL(v),
+        onCell: satirTiklama,
+      },
+      {
+        // Para ekseni durum ekseninden AYRIDIR: "Teslim edildi" bir siparişin
+        // ödemesi iade sürecinde olabilir. Eski ekranda da ayrı kolondu.
+        title: "Ödeme",
+        dataIndex: "payment_status",
+        key: "payment_status",
+        render: (v: string) => <Tag color={TON_RENK[orderPaymentTone(v)]}>{orderPaymentLabel(v)}</Tag>,
         onCell: satirTiklama,
       },
       {
@@ -153,6 +200,21 @@ export function SiparisListesi() {
       // o an elde tutulan sayfayı süzüyor), sıfırlamak yalnız gereksiz bir
       // server round-trip'e yol açardı — bkz. yukarıdaki modül yorumu.
       aramaDegisti={setArama}
+      filtreSayisi={durum === HEPSI ? 0 : 1}
+      filtreIcerigi={
+        <Select<string>
+          aria-label="Durum"
+          value={durum}
+          onChange={durumSec}
+          style={{ width: 240 }}
+          options={[
+            { value: HEPSI, label: "Tümü" },
+            ...ORDER_STATUS_FILTERS.map((d) => ({ value: d, label: orderStatusLabel(d) })),
+          ]}
+        />
+      }
+      filtreAcik={filtreAcik}
+      filtreAcikDegisti={setFiltreAcik}
       kolonlar={kolonlar}
       veri={filtrelenmis}
       yukleniyor={isPending}
@@ -170,11 +232,16 @@ export function SiparisListesi() {
         setSayfa(s);
         setBoyut(b);
       }}
-      bosBaslik={arama ? "Sonuç bulunamadı" : "Henüz sipariş yok"}
+      bosBaslik={arama || durum !== HEPSI ? "Sonuç bulunamadı" : "Henüz sipariş yok"}
       bosAciklama={
         arama
           ? "Farklı bir arama deneyin."
-          : "İlk sipariş geldiğinde burada görünecek."
+          : durum !== HEPSI
+            ? "Bu durumda sipariş bulunmuyor; filtreyi değiştirmeyi deneyin."
+            : "İlk sipariş geldiğinde burada görünecek."
+      }
+      bosAksiyon={
+        durum !== HEPSI ? <Button onClick={() => durumSec(HEPSI)}>Filtreyi temizle</Button> : undefined
       }
       rowKey={(k) => k.id}
     />
