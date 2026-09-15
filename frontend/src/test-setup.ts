@@ -12,6 +12,7 @@
 // testlerin değil, test ortamının eksikliğiydi. Aşağıdaki bellek-içi uygulama
 // tarayıcı sözleşmesini birebir karşılar ve her test dosyası için izoledir.
 import { afterEach } from "vitest";
+import "@testing-library/jest-dom/vitest";
 
 class BellekDepolama implements Storage {
   private veri = new Map<string, string>();

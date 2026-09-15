@@ -76,7 +76,7 @@ const ALAN =
   "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 disabled:opacity-60 ";
 const ETIKET = "block text-xs font-semibold uppercase tracking-wide text-slate-500 ";
 
-export default function AdminBlogEditorPage() {
+export default function AdminBlogEditorPage({ yeniPanel = false }: { yeniPanel?: boolean }) {
   const { postId } = useParams<{ postId: string }>();
   const yeni = postId === undefined;
   const navigate = useNavigate();
@@ -84,7 +84,9 @@ export default function AdminBlogEditorPage() {
 
   // Tek yazı ucu yerine liste sorgusu paylaşılıyor: liste zaten önbellekte ve
   // kayıt sayısı düşük; ayrı bir GET /posts/:id sorgusu ekstra tur olurdu.
-  const { data: posts, isLoading, isError, refetch } = useAdminBlogPosts();
+  const { data: posts, isLoading, isError, refetch } = useAdminBlogPosts(canView);
+  const listeYolu = yeniPanel ? ROUTES.adminNewBlog : ROUTES.adminBlog;
+  const duzenlemeYolu = (id: number) => yeniPanel ? ROUTES.adminNewBlogEdit(id) : ROUTES.adminBlogEdit(id);
   const post = useMemo(
     () => (yeni ? null : posts?.find((p) => String(p.id) === postId) ?? null),
     [posts, postId, yeni]
@@ -131,7 +133,7 @@ export default function AdminBlogEditorPage() {
       if (yeni) {
         const olusan = await create.mutateAsync(toPayload(form));
         toast.success("Taslak oluşturuldu.");
-        navigate(ROUTES.adminBlogEdit(olusan.id), { replace: true });
+        navigate(duzenlemeYolu(olusan.id), { replace: true });
         return olusan;
       }
       const guncel = await update.mutateAsync({ postId: post!.id, payload: toPayload(form) });
@@ -170,7 +172,7 @@ export default function AdminBlogEditorPage() {
     try {
       await remove.mutateAsync(post.id);
       toast.success("Yazı silindi.");
-      navigate(ROUTES.adminBlog, { replace: true });
+      navigate(listeYolu, { replace: true });
     } catch (e) {
       toast.error(getErrorDetail(e, "Silinemedi."));
     }
@@ -190,7 +192,7 @@ export default function AdminBlogEditorPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <GezinmeBaglantisi
-            to={ROUTES.adminBlog}
+            to={listeYolu}
             className="text-sm text-slate-500 transition hover:text-slate-900 "
           >
             ← Blog

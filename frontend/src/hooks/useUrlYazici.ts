@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 /**
@@ -76,6 +76,13 @@ export function useUrlYazici<T>({
    * dışarıda yapılan gezinmeyi geri alırdı.
    */
   const bekleyenRef = useRef<{ taban: string; yazilan: URLSearchParams } | null>(null);
+  // Konum bir kez yansıdıysa (render oldu) bekleyen yazım görevini bitirmiştir.
+  // Yalnız taban karşılaştırması YETMEZ: geri tuşuyla aynı tabana dönülünce
+  // eski bekleyen "hâlâ geçerli" sanılır ve sonraki yazım (ör. sayfa boyutu)
+  // geri alınmış filtreyi adrese geri diriltirdi.
+  useEffect(() => {
+    bekleyenRef.current = null;
+  }, [params]);
 
   const ayarla = useCallback(
     (yama: Partial<T>, secenek?: { replace?: boolean }) => {

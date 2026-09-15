@@ -20,8 +20,14 @@ export function useAvatarUpload() {
     mutationFn: async (blob: Blob) => {
       const formData = new FormData();
       formData.append("file", blob, "avatar.webp");
+      // FormData'da Content-Type ELLE YAZILMAZ; doğru sentinel `false`.
+      // Gerekçesi `api/store.ts`teki MULTIPART yorumunda ölçümle yazılı:
+      // sabit "multipart/form-data" boundary'siz gidiyor, `undefined` axios
+      // tarafından x-www-form-urlencoded'a çevriliyor, header'ı silmek ise
+      // instance varsayılanı application/json'u devreye sokup FormData'yı
+      // JSON'a çevirerek dosya içeriğini YOK EDİYOR.
       const { data } = await apiClient.post("/auth/me/avatar", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": false as const },
       });
       return data;
     },

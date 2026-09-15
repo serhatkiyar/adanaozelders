@@ -43,9 +43,23 @@
  * Düzeltme satır numarasına dönmek değil, kimliğe **çağrı sayısını** eklemek:
  * `ADETLER` her kimliğin kaç kez geçtiğini dondurur (yazılmayan her kimlik
  * için 1). Tekrar da, tekrarın kapanması da kırmızı üretir; kaydırma gürültüsü
- * geri gelmez. Ölçülen: **64 benzersiz kimlik / 80 ham çağrı yeri**
+ * geri gelmez. Ölçülen: **67 benzersiz kimlik / 83 ham çağrı yeri**
  * (tedarikçi bağlama penceresinin "Vazgeç"i + devre kesici açıkken kapanan
  * iki senkron düğmesi eklendi).
+ *
+ * ## Panel paket 1 kapanışı — 2 ÖLÜ BORÇ KAYDI temizlendi (bu paket)
+ *
+ * `UrunFormu.tsx`teki "Grubu Oluştur" ve `VaryantPenceresi.tsx`teki "Önizle"
+ * düğmeleri `gecerlilik-borc` diye kayıtlıydı (İ9 · Boşluk 1). Borç commit
+ * `2287611`de ÖDENDİ: iki düğmeden de `disabled` kaldırıldı, artık tıklanınca
+ * doğrulama çalışıyor ve eksik alan `HataDurumu` ile alanda gösteriliyor
+ * (emsal: `VariantMatrixPanel::uret()` / `DeliveryOrdersPage`in
+ * `KargolaSatiri`si). Tarama bunu kendisi doğruladı: kayıt silinmeden ÖNCE
+ * `tabanTaramasi()` bu iki kimliği zaten döndürmüyordu (taban 67, kayıt 69 —
+ * fark ölü kayıtların ta kendisiydi). Kayıt aşağıda kaldırıldı; bu bir eşik
+ * GEVŞETMESİ değil, gerçeğin yansımasıdır — `GECERLILIK_BORCU` `KAYIT`tan
+ * TÜREDİĞİ için sayı kendiliğinden 10 → 8'e sıkılaştı, yeni bir dokuzuncu üye
+ * doğduğu gün nöbetçi yine kırmızı verir.
  */
 import { describe, expect, it } from "vitest";
 
@@ -78,6 +92,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/components/admin/CourierManager.tsx <Button> closeAccount.isPending": "islem",
   "src/components/admin/delivery/ClosedDays.tsx <Button> remove.isPending": "islem",
   "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": "islem",
+  // Diploma inceleme penceresinin red modundaki "Geri"si: karar uçarken moda dönmek sonucu gizlerdi.
+  // Karar düğmeleri (`Doğrula`/`Belgeyi reddet`) `VarlikDugmesi`dir; önkoşul kapısı orada, kilitte tanımlı.
+  "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx <Button> mesgul()": "islem",
   // Kısmi teslimat penceresinin "Vazgeç"i. "Sonraki teslimata ayır"
   // düğmesi geçerlilikle KAPANMAZ (kilitli karar): seçim boşsa ya da kutu
   // tamamen boşalıyorsa gönderim iş yapmaz, sebep pencerede yazılır ve
@@ -93,6 +110,11 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> sendOtp.isPending": "islem",
   "src/pages/DeliveryDriver.tsx <button> uploadPhoto.isPending": "islem",
   "src/pages/admin/AdminBookingsPage.tsx <Button> pending": "islem",
+  "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx <Button> mesgul": "islem",
+  "src/panel/pages/rezervasyonlar/TalepListesi.tsx <Button> iptal.isPending": "islem",
+  "src/panel/pages/moderasyon/AdDegisiklikleri.tsx <Button> mesgul": "islem",
+  // Ödeme çekmecesi kendi dosyasına taşındı (pencere durumu ekranda yaşamasın diye).
+  "src/panel/pages/finans/OdemePenceresi.tsx <Button> mesgul": "islem",
   "src/pages/admin/AdminDemandsPage.tsx <Button> cancel.isPending": "islem",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> addStops.isPending": "islem",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> isPending": "islem",
@@ -105,6 +127,14 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/components/LibraryMediaManager.tsx <button> disabled": "islem",
 
   // ── sinir: sayfalama ──
+  // Medya sekmesi sıralama okları: ilkin ÜSTÜNDE, sonuncunun ALTINDA taşınacak
+  // yer yok — `sinir` sınıfının tanımı bu ("basılacak bir şey yok"). Bileşik
+  // koşuldaki `reorder.isPending` ise `islem` (uçuştaki istek, çift gönderim
+  // koruması); iki bileşenin ikisi de meşru, geçerlilik borcu YOK.
+  "src/panel/components/MedyaSekmesi.tsx <Button> index === 0 || reorder.isPending":
+    "sinir",
+  "src/panel/components/MedyaSekmesi.tsx <Button> index === gorseller.length - 1 || reorder.isPending":
+    "sinir",
   "src/components/admin/StockLedgerPanel.tsx <Button> offset === 0": "sinir",
   "src/components/admin/StockLedgerPanel.tsx <Button> sonSayfa": "sinir",
   "src/components/admin/StockMovementsPanel.tsx <Button> offset === 0": "sinir",
@@ -130,7 +160,32 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
     "secim",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> run.stops.length === 0": "secim",
   "src/pages/admin/delivery/DeliveryTodayPage.tsx <Button> dispatchable === 0": "secim",
+  // Yeni panel Bugün: araç sorgusu bitmeden/hatalıyken Yeni Tur, uygun sipariş sorgusu bitmeden/hatalıyken
+  // ya da konumlu sipariş yokken optimize kapalı; sebep (yükleniyor / yüklenemedi / sipariş yok) ekranda yazılıdır.
+  "src/panel/pages/dagitim/DagitimBugun.tsx <Button> !aracHazir": "onkosul",
+  "src/panel/pages/dagitim/DagitimBugun.tsx <Button> !uygunHazir || dagitilabilir === 0": "onkosul",
+  // Yeni panel Siparişler: bugün açık tur yokken "Tura ekle" kapalı; sebep ipucunda ve şeritte ("Bugün açık tur yok") yazılıdır.
+  "src/panel/pages/dagitim/DagitimSiparisleri.tsx <Button> hedef == null": "onkosul",
+  // Yeni panel Tur Detayı: tur düzeyi yazma koordinasyonu — başka özel yazım ya da ekleme kuyruğu sürerken
+  // (`baskaIslem`) kontroller kapalı ve neden `title`da ("Turda başka bir işlem sürüyor." / "Tura sipariş
+  // ekleniyor"). Ayrıca: durak yokken başlat, bekleyen durak varken tamamla (sayı ipucunda), ilk/son bekleyen
+  // durakta yukarı/aşağı (sınır), özel yazım sürerken ekleme.
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> run.stops.length === 0 || baskaIslem": "onkosul",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> bekleyenSayisi > 0 || baskaIslem": "onkosul",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem": "islem",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ilkMi || baskaIslem": "sinir",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> sonMu || baskaIslem": "sinir",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem && !ucusta": "islem",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ozelYazim !== null": "islem",
+  // Dağıtım ortak `VarlikDugmesi` (Kuryeler, Araçlar): aynı varlıkta BAŞKA bir işlem sürerken kapalı; neden `title`da okunur.
+  "src/panel/components/varlikKilidi.tsx <Button> baska || Boolean(disabled)": "onkosul",
+  // Tahta: ekleme/optimize önkoşulları (optimize sürüyor, tur yok, ekleme kuyruğu, konumlu sipariş yok) `title`da okunur.
+  "src/panel/pages/dagitim/DagitimTahtasi.tsx <Button> engel !== null && !ekleniyorMu(o.order_id)": "onkosul",
+  "src/panel/pages/dagitim/DagitimTahtasi.tsx <Button> optimizeNedeni !== null": "onkosul",
   "src/pages/admin/packing/PackagesPage.tsx <Button> seciliGorunen.length === 0": "secim",
+  "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
+  // Paket detayı "Paketi tamamla": engel listesi ekranda yazılıdır (eksik adet / kalemsiz paket).
+  "src/panel/pages/paketleme/PaketlemeDetayi.tsx <Button> engeller.length > 0": "onkosul",
   "src/components/LibraryMapPanel.tsx <button> !week": "secim",
 
   // ── onkosul: sebebi EKRANDA yazan durum kilidi ──
@@ -153,21 +208,31 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> s.status !== \"PENDING\" || run.status !== \"ACTIVE\"":
     "onkosul",
   "src/pages/admin/AdminSettingsPage.tsx <Button> !!flag.locked_reason && !flag.enabled": "onkosul",
+  // Üretimde kilitli kapalı bayrak açılamaz; sebep satırdaki rozet ve kilit metninde yazar.
+  "src/panel/pages/ayarlar/GenelAyarlar.tsx <Button> !!bayrak.locked_reason && !bayrak.enabled": "onkosul",
   // Devre kesici açıkken elle senkron düğmeleri kapalı: sunucu cooldown
   // yüzünden zaten reddeder. Sebep EKRANDA — hem `title`da hem düğmelerin
   // altındaki amber şeritte ("Devre kesici açık — N dk beklemede").
   "src/components/admin/store/SupplierPanel.tsx <Button> bekleyenDakika !== null": "onkosul",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> pendingCount > 0": "onkosul",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> engeller.length > 0": "onkosul",
+  // Yeni panel sayım detayı: aynı önkoşul — engeller hemen altındaki uyarıda listelenir.
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx <Button> engeller.length > 0": "onkosul",
+  // Devre kesici açıkken senkron kapalı; sebep durum şeridindeki uyarıda yazar.
+  "src/panel/pages/urunler/TedarikciListesi.tsx <Button> bekleyenDakika !== null": "onkosul",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> engeller.length > 0": "onkosul",
   "src/pages/DeliveryDriver.tsx <button> busy || deliverDrop.isPending || !stop.photo_url":
     "onkosul",
 
   // ── gecerlilik-borc: KİLİTLİ KARARIN İHLALİ (İP-A8'de kayda geçti) ──
   //
-  // Yedisi de göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
+  // Sekizi de göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
   // "Kargola") kapattı; bunlar kapsam dışı ve ayrı bir pakete bırakıldı.
-  // Kayıtta durmalarının işlevi: sekizincisi doğduğu gün CI kırılır.
+  // Kayıtta durmalarının işlevi: dokuzuncusu doğduğu gün CI kırılır.
+  //
+  // (İ9 · Boşluk 1'de eklenen `UrunFormu.tsx` "Grubu Oluştur" ve
+  // `VaryantPenceresi.tsx` "Önizle" kayıtları commit `2287611`de KAPANDI —
+  // panel paket 1 kapanışında buradan kaldırıldı, bkz. dosya başı notu.)
   "src/components/ExamSessionsManager.tsx <Button> !dirty": "gecerlilik-borc",
   "src/components/QrScanner.tsx <button> !manual.trim()": "gecerlilik-borc",
   "src/components/admin/store/ProductForm.tsx <Button> !newTitle.trim() || !newAxis1 || createGroup.isPending":
@@ -194,13 +259,21 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
  * ayrıca sınıyor.
  */
 const ADETLER: Record<string, number> = {
+  // Diploma inceleme penceresinde aynı kilit ifadesi iki düğmede: red modundaki "Geri" ve inceleme "Kapat".
+  "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx <Button> mesgul()": 2,
+  // Tur Detayı: optimize + iptal aynı kilit ifadesi; Ekle + Tümünü ekle aynı ifade.
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem": 2,
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ozelYazim !== null": 2,
   "src/components/ImageCropModal.tsx <button> isUploading": 3,
   "src/components/LibraryBookmarkButton.tsx <button> toggle.isPending": 2,
   "src/components/LibraryMediaManager.tsx <button> busy": 2,
   "src/components/admin/store/SupplierPanel.tsx <Button> bekleyenDakika !== null": 2,
+  "src/panel/pages/urunler/TedarikciListesi.tsx <Button> bekleyenDakika !== null": 2,
   "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": 2,
   "src/pages/DeliveryDriver.tsx <button> busy": 2,
   "src/pages/admin/AdminBookingsPage.tsx <Button> pending": 3,
+  "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx <Button> mesgul": 2,
+  "src/panel/pages/moderasyon/AdDegisiklikleri.tsx <Button> mesgul": 2,
   "src/pages/admin/AdminDemandsPage.tsx <Button> cancel.isPending": 2,
   "src/pages/dashboards/AdminHome.tsx <Button> busy": 7,
 };

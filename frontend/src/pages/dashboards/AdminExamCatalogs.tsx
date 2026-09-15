@@ -24,7 +24,7 @@ import type { CatalogOut, CatalogWrite } from "@/types";
 
 const EXAM_TYPES = ["TYT", "AYT", "YKS", "YDT", "LGS", "KPSS", "DGS", "ALES"];
 
-interface FormState {
+export interface FormState {
   id?: number;
   exam_name: string;
   exam_type: string;
@@ -88,7 +88,7 @@ function formDegerleri(f: FormState): KatalogFormDegerleri {
   };
 }
 
-function emptyForm(): FormState {
+export function emptyForm(): FormState {
   return {
     exam_name: "",
     exam_type: "TYT",
@@ -160,7 +160,7 @@ export default function AdminExamCatalogs() {
   );
 }
 
-function toForm(c: CatalogOut): FormState {
+export function toForm(c: CatalogOut): FormState {
   return {
     id: c.id,
     exam_name: c.exam_name,
@@ -291,7 +291,7 @@ function CatalogCard({ catalog, canManage, onEdit }: { catalog: CatalogOut; canM
  * Bekçi kancası İÇERİK bileşeninde çağrılır — pencereyi render eden bu
  * bileşende çağırmak A7d2'den beri geliştirmede patlar (SK-3).
  */
-function CatalogEditorPenceresi({
+export function CatalogEditorPenceresi({
   yuzey,
 }: {
   yuzey: DuzenlemeYuzeyiDurumu<FormState, void>;

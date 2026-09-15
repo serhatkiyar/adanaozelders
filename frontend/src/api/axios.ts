@@ -33,15 +33,34 @@ apiClient.interceptors.request.use((config) => {
 // Aynı anda birden çok 401 olursa tek bir refresh isteği yapılır; diğerleri bekler.
 let refreshPromise: Promise<string | null> | null = null;
 
+// Yenileme isteği hiç settle olmazsa (backend kilitlenmesi, düşen bağlantı,
+// arka plan sekmesi kısıtlaması) bu süre olmadan `refreshPromise` sonsuza
+// kadar pending kalır: o anki istek asla settle olmaz VE — daha kötüsü —
+// `.finally()` hiç çalışmadığı için `refreshPromise` temizlenmez, sekmenin
+// geri kalan ömrü boyunca sonraki HER 401 aynı ölü promise'i bekleyip yeni
+// bir `/auth/refresh` isteği hiç atmaz (bkz. tani-sonsuz-spinner.md).
+//
+// Değer tahmin değil: yenileme tek bir gövdesiz POST, kendi backend'imize.
+// Bu depoda "kullanıcıyı UI'da bloke eden ama tamamlanması gereken tek bir
+// ağ isteği" için zaten 8000ms emsal var (konumStore.ts, Libraries.tsx
+// geolocation timeout'u) — aynı toleransı burada da kullanıyoruz. Daha kısa
+// (ör. 2-3 sn) yavaş ama meşru bir ağ/backend anında refresh'i erken
+// düşürüp kullanıcıyı gereksiz yere oturumdan atar; daha uzun (ör. 20-30 sn)
+// tam da düzelttiğimiz belirtiyi (uzun süre dönen spinner) geri getirir.
+export const REFRESH_TIMEOUT_MS = 8_000;
+
 async function refreshAccessToken(): Promise<string | null> {
   try {
     // apiClient yerine ham axios: interceptor döngüsünü ve eski Authorization'ı
     // önler. Gövde YOK — refresh token `httpOnly` çerezde gider ve JS onu
     // okuyamaz; `withCredentials` olmadan çerez de gitmez.
+    // `timeout`: istek bu sürede settle olmazsa axios isteği İPTAL EDER ve
+    // reddeder (ECONNABORTED) — aşağıdaki `catch` bunu normal bir yenileme
+    // hatası gibi ele alır, `refreshPromise` her koşulda temizlenir.
     const { data } = await axios.post<{ access_token: string }>(
       `${baseURL}/auth/refresh`,
       null,
-      { withCredentials: true }
+      { withCredentials: true, timeout: REFRESH_TIMEOUT_MS }
     );
     useAuthStore.getState().setToken(data.access_token);
     return data.access_token;

@@ -64,6 +64,22 @@ import "@/components/admin/ui2/duzenlemeYuzeyi";
 // TOPLAMA evresine taşındı.
 import "@/components/map/MapGate";
 import "@/components/LibrariesMap";
+// ── Üçüncü örnek: `FormPage`/`TipSecimi` (nöbetçi kırmızısı kök neden raporu) ──
+//
+// Bu ikisi `KAPI_DISI`nin TERS PROVASIDIR — propsuz mount edilince FIRLATMASI
+// beklenir ve fırlatma bizzat ÖLÇÜLDÜ (`TypeError: Cannot read properties of
+// undefined (reading 'map')`, doğru dosyada, doğru satırda). Tam suite altında
+// kırmızı düşmelerinin sebebi bu fırlatma DEĞİL: `render()`+throw süresi
+// ölçüldü, **12-14 ms**. Bütün bütçe `await ekranBileseni(dosya)`da, yani
+// `import.meta.glob` üzerinden TEMBEL yapılan dinamik import'ta gidiyordu —
+// 121 komşu dosyayla aynı işçi havuzunda ölçülen değerler: `TipSecimi.tsx`
+// **8.272 ms**, `FormPage.tsx` **20.785 ms** (9.000 ms'lik testTimeout'un
+// 2,3 katı). Aynı sınıf, üçüncü örneği: bu iki modül üstteki ikisinin aksine
+// TOPLAMA evresinde ödenmiyordu, bedeli testin KENDİ bütçesine yazılıyordu.
+// Düzeltme aynı ilaç: statik import maliyeti TOPLAMA evresine taşınır, testin
+// kendisi hiç değişmez (`await ekranBileseni` zaten yüklü modülü döndürür).
+import "@/panel/components/FormPage";
+import "@/panel/components/TipSecimi";
 
 import { createElement } from "react";
 
@@ -177,6 +193,24 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "bilesen-yok",
     gerekce: "yalniz useKirliFormBekcisi hook'u",
   },
+  // ── İ9 · Boşluk 1: `src/panel/**` (ikas tarzı yeni panel) ──
+  //
+  // İkisi de EMPİRİK olarak sınandı: propsuz mount gerçekten TypeError
+  // fırlatıyor (`bolumler.map`/`secenekler.map` — `Array.prototype.map`
+  // `undefined` üzerinde).
+  "src/panel/components/FormPage.tsx": {
+    tur: "props",
+    gerekce: "zorunlu bolumler (sekme listesi) + geriTiklandi/kaydet",
+  },
+  "src/panel/components/TipSecimi.tsx": {
+    tur: "props",
+    gerekce: "zorunlu secenekler (dizi) + acik/baslik/kapat/secildi",
+  },
+  // Dağıtım ortak varlık kilidi düğmesi: `islem` beyanı zorunlu (propsuz atar); adı `children`dan gelir.
+  "src/panel/components/varlikKilidi.tsx": {
+    tur: "props",
+    gerekce: "zorunlu islem (kilit anahtari) + children (dugme metni)",
+  },
 };
 
 /**
@@ -278,6 +312,25 @@ const CALISMA_ZAMANI_ADSIZ: Record<string, number> = {
   // düşüşü RAPORLATIR (aksi hâlde "sayı düştü" ile "ekran ölçümden çıktı"
   // ayırt edilemez).
   "src/components/ImageCropModal.tsx": 1, // yakınlaştırma kaydırağı (type=range)
+  // ── İ9 · Boşluk 1 KAPANDI: `ListePage`in arama kutusu (11 Eyl, 4b2bcc9) ──
+  //
+  // `ListePage`in arama kutusu (`Input.Search`) `placeholder` DIŞINDA ad
+  // taşımıyordu — `aria-label` yok, `htmlFor`lu bir `<label>` yoktu.
+  // `placeholder` bu depoda BİLİNÇLİ OLARAK ad sayılmaz
+  // (`test-utils/alanAdlari.ts` başı). Bu satırlar bir süre (`ListePage`: 1,
+  // `UrunListesi`: 1) burada GERÇEK borç olarak durdu.
+  //
+  // Düzeltme aynı zamanda ikinci bir borcu da kapattı: kutu `Input.Search`
+  // olduğu için `onSearch` verilmeyince tıklanabilir ama hiçbir şey yapmayan
+  // ölü bir büyüteç düğmesi basıyordu — `Input`e indirildi (arama zaten her
+  // tuşta tüketiciye gidiyordu, ayrı bir "ara" eylemine ihtiyaç yoktu).
+  // `aria-label` başlıktan türetildi (`"${baslik} içinde ara"`), yani
+  // `ListePage`i kopyalayacak 15 modülün hepsi bu adı miras alıyor.
+  //
+  // Bu paket panel koduna DOKUNMADI (nöbetçi koruduğu kodu değiştirmez);
+  // kapanış ayrı bir committen (4b2bcc9) geldi. Kayıt kaldırılınca satır
+  // kaybolur — "sayı düştü" ile "ekran ölçümden çıktı" ayrımı için bu not
+  // burada duruyor.
 };
 
 /**
@@ -404,6 +457,161 @@ const KAPI_KAPSAMI = [
   "src/pages/dashboards/OperatorHome.tsx",
   "src/pages/dashboards/OperatorLibrary.tsx",
   "src/pages/dashboards/OperatorSessions.tsx",
+  // ── İ9 · Boşluk 1: `src/panel/**` — dokuzu propsuz mount ediliyor ──
+  // (ikisi — `FormPage`/`TipSecimi` — propsuz ATIYOR, `KAPI_DISI`'nda).
+  "src/panel/PanelProvider.tsx",
+  "src/panel/components/Durum.tsx",
+  "src/panel/components/ListePage.tsx",
+  "src/panel/components/Matris.tsx",
+  // Ürün medya sekmesi (kapak + galeri). Propsuz mount olur (`productId`
+  // undefined iken `BosDurumu` basar — throw ETMEZ), bu yüzden `KAPI_DISI`'na
+  // yazılamaz (oranın ters provası "propsuz mount EDİLEMİYOR" der). Gerçek
+  // prop `ZORUNLU_PROPLAR`'da veriliyor ki yükleme/sıralama/silme UI'ı
+  // gerçekten mount olsun.
+  "src/panel/components/MedyaSekmesi.tsx",
+  "src/panel/components/YanPencere.tsx",
+  "src/panel/layout/PanelShell.tsx",
+  // Müşteriler modülünün ilk ekranı: propsuz mount olur, `useAdminUsers` boş
+  // veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
+  // `MusteriListesi.tsx`in kardeşleri `SiparisListesi.tsx`/`UrunListesi.tsx`).
+  "src/panel/pages/musteriler/MusteriListesi.tsx",
+  // Müşteri detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Müşterilere dön" düğmesi.
+  "src/panel/pages/musteriler/MusteriDetayi.tsx",
+  // Hesap silme penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx",
+  // Denetim kayıtları: propsuz mount olur; izinli oturumda arama kutusu ListePage'den ADLI gelir.
+  "src/panel/pages/ayarlar/DenetimKayitlariListesi.tsx",
+  // Denetim ayrıntı penceresi: `kayit` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx",
+  // Genel ayarlar: propsuz mount olur; satırlar hook verisiyle doğar, form kontrolü yalnız gerekçe penceresinde.
+  "src/panel/pages/ayarlar/GenelAyarlar.tsx",
+  // Bayrak gerekçesi penceresi: `acik` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/ayarlar/BayrakGerekcePenceresi.tsx",
+  // Personel & Yetkiler: propsuz mount olur; izinli oturumda atama seçicileri veriyle doğar.
+  "src/panel/pages/ayarlar/PersonelYetkiler.tsx",
+  // Rol çekmecesi: `acik` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/ayarlar/RolCekmecesi.tsx",
+  // Hata çözme: propsuz mount olur; iki liste salt okunur, form kontrolü yok, tek aksiyon düğme.
+  "src/panel/pages/ayarlar/HataCozme.tsx",
+  // Paketleme kuyruğu: propsuz mount olur; satırlar ve aksiyonlar sunucu verisiyle doğar, form kontrolü yok.
+  "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx",
+  // Paketler: propsuz mount olur; izinli oturumda Filtre/sayfalayıcı ListePage'den ADLI gelir.
+  "src/panel/pages/paketleme/PaketListesi.tsx",
+  // Paket detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Paketler listesine dön".
+  "src/panel/pages/paketleme/PaketlemeDetayi.tsx",
+  // Paketleme pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/paketleme/PaketlemePencereleri.tsx",
+  // Geri dönüş kuyruğu: propsuz mount olur; satırlar ve "Depoya al" sunucu verisiyle doğar, form kontrolü yok.
+  "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx",
+  // Dağıtım · Bugün: propsuz mount olur; izinli oturumda tarih alanı ("Tur tarihi") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimBugun.tsx",
+  // Dağıtım · Siparişler: propsuz mount olur; kuyruk seçici (Segmented "Sipariş kuyrukları") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimSiparisleri.tsx",
+  // Dağıtım · Turlar: propsuz mount olur; tarih alanı ("Tarihe göre filtrele") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimTurlari.tsx",
+  // Dağıtım · Tur Detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Turlar listesine dön".
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx",
+  // Dağıtım · Kuryeler: propsuz mount olur; izinli oturumda takvim formu ("Kapatılacak gün") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimKuryeler.tsx",
+  // Kurye pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/dagitim/KuryePencereleri.tsx",
+  // Dağıtım · Araçlar: propsuz mount olur; kontroller veri gelince (satır aksiyonları) ve pencerelerde doğar (koşullu).
+  "src/panel/pages/dagitim/DagitimAraclar.tsx",
+  // Dağıtım · Performans: propsuz mount olur; dönem seçicileri (Segmented "Metrik aralığı"/"Gün aralığı") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimPerformans.tsx",
+  // Dağıtım · Tahta: propsuz mount olur; izinli oturumda tarih alanı ("Tarih") ADLI gelir.
+  "src/panel/pages/dagitim/DagitimTahtasi.tsx",
+  // Eğitmen İlanları: propsuz mount olur; kontroller satır aksiyonları ve pencerede (kapalı) doğar.
+  "src/panel/pages/egitmenler/EgitmenIlanlari.tsx",
+  // Eğitmen Ön Başvuruları: propsuz mount olur; durum filtresi ("Durum filtresi") ADLI kontrolleriyle gelir.
+  "src/panel/pages/egitmenler/EgitmenOnBasvurulari.tsx",
+  // Red penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx",
+  // Diploma Doğrulama: propsuz mount olur; kontroller satır "İncele" ve pencerede (kapalı) doğar.
+  "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx",
+  // İnceleme penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx",
+  // Öne Çıkarmalar: propsuz mount olur; durum filtresi ("Durum filtresi") ADLI kontrolleriyle gelir.
+  "src/panel/pages/egitmenler/EgitmenOneCikarmalar.tsx",
+  // Ayrıntı/iptal pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx",
+  // Ödeme çekmecesi: `hedef` propsuz `null`, gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/finans/OdemePenceresi.tsx",
+  // Kütüphaneler: propsuz mount olur; ekleme ve satır işlemleri izin/veriyle doğar.
+  "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx",
+  // Deneme katalogları: propsuz mount olur; ekleme ve satır işlemleri izin/veriyle doğar.
+  "src/panel/pages/kutuphaneler/DenemeKataloglari.tsx",
+  // Rezervasyonlar: propsuz mount olur; filtreler ADLI kontroller olarak çizilir.
+  "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx",
+  // Talepler: propsuz mount olur; filtreler ADLI kontroller olarak çizilir.
+  "src/panel/pages/rezervasyonlar/TalepListesi.tsx",
+  // Şikayetler: propsuz mount olur; filtreler ADLI kontroller olarak çizilir.
+  "src/panel/pages/moderasyon/SikayetListesi.tsx",
+  // Ad değişiklikleri: propsuz mount olur; durum filtresi ADLI kontrol olarak çizilir.
+  "src/panel/pages/moderasyon/AdDegisiklikleri.tsx",
+  // Hak edişler: propsuz mount olur; sekme seçimi ADLI kontrol olarak çizilir.
+  "src/panel/pages/finans/HakEdisler.tsx",
+  // Araç/nokta pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/dagitim/AracPencereleri.tsx",
+  // Depoya al penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
+  // Kuponlar: propsuz mount olur; izinli oturumda "Kupon Ekle" ve sayfalayıcı ADLI çizilir.
+  "src/panel/pages/indirimler/KuponListesi.tsx",
+  // Kupon oluşturma çekmecesi: `acik` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/indirimler/KuponCekmecesi.tsx",
+  // Gösterge paneli: propsuz mount olur; dönem seçici (adlı) her durumda çizilir.
+  "src/panel/pages/gosterge/GostergePaneli.tsx",
+  // İadeler: propsuz mount olur; izinli oturumda Filtre/sayfalayıcı ADLI gelir.
+  "src/panel/pages/siparisler/IadeListesi.tsx",
+  // İade pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/siparisler/IadePenceresi.tsx",
+  // Sipariş detayı: propsuz mount'ta rota parametresi yok → dostane hata + "Listeye dön".
+  "src/panel/pages/siparisler/SiparisDetayi.tsx",
+  // Sipariş detayı pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/siparisler/SiparisDetayPencereleri.tsx",
+  // Siparişler modülü (commit `06ab4d2`): propsuz mount olur, `useAdminOrders`
+  // boş veri döner, arama kutusu `ListePage`den ADLI gelir (aynı sınıf
+  // `UrunListesi.tsx`) — `KONTROLSUZ_EKRANLAR`a değil kapıya girer.
+  "src/panel/pages/siparisler/SiparisListesi.tsx",
+  // Ürün listesi araç çubuğunun yüzeyleri (filtre/kolon ayarı/içe aktarma
+  // çekmeceleri + ızgara görünümü). Propsuz mount olur: modülün ilk büyük
+  // harfli export'u `FiltreCekmecesi` ve kapalı çekmece gövdesini mount
+  // etmez — `UrunOlusturCekmecesi.tsx` ile aynı sınıf, aşağıda
+  // `KONTROLSUZ_EKRANLAR`'da "pencere-kabugu" olarak yazılı.
+  "src/panel/pages/urunler/UrunAracCubugu.tsx",
+  // Stok sayımı listesi: propsuz mount olur, `useCountSessions` boş veri döner,
+  // arama kutusu `ListePage`den ADLI gelir (`UrunListesi.tsx` ile aynı sınıf).
+  // Kategoriler: propsuz mount olur; izinli oturumda "Kategori Ekle" ve sayfalayıcı ADLI çizilir.
+  "src/panel/pages/urunler/KategoriListesi.tsx",
+  // Kategori çekmecesi: `acik` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/urunler/KategoriCekmecesi.tsx",
+  // Tanımlamalar hub'ı: yalnız kartlar/bağlantılar, form kontrolü yok.
+  "src/panel/pages/urunler/Tanimlamalar.tsx",
+  // Tedarikçiler: propsuz mount olur; izinli oturumda arama kutusu ListePage'den ADLI gelir.
+  "src/panel/pages/urunler/TedarikciListesi.tsx",
+  // Tedarikçi çekmeceleri: `acik` yokken kapalı, gövde mount edilmez.
+  "src/panel/pages/urunler/TedarikciCekmecesi.tsx",
+  // Hasarlı stok: propsuz mount olur, Filtre/işlem düğmeleri ListePage'den ADLI gelir.
+  "src/panel/pages/urunler/HasarliStokListesi.tsx",
+  // Hasar penceresi: `kind` yokken çekmece kapalı, gövde mount edilmez.
+  "src/panel/pages/urunler/HasarliStokPencereleri.tsx",
+  // Envanter genel bakış: propsuz mount olur; izinli oturumda sayaç/ilgili ekran bağlantıları çizilir.
+  "src/panel/pages/urunler/EnvanterGenelBakis.tsx",
+  // Stok hareketleri: propsuz mount olur, arama kutusu `ListePage`den ADLI gelir.
+  "src/panel/pages/urunler/StokHareketleriListesi.tsx",
+  // Sayım detayı: propsuz mount olur (`id` yok), sorgu yanıtsız → yükleniyor; kontroller veri dalında.
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx",
+  // Sayım pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/urunler/StokSayimiPencereleri.tsx",
+  "src/panel/pages/urunler/StokSayimiListesi.tsx",
+  // Ürün seçici: propsuz mount adlı bir Select çizer.
+  "src/panel/pages/urunler/UrunSecici.tsx",
+  "src/panel/pages/urunler/UrunFormu.tsx",
+  "src/panel/pages/urunler/UrunListesi.tsx",
+  "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
+  // Yeni sayım çekmecesi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/urunler/YeniSayimCekmecesi.tsx",
+  "src/panel/pages/urunler/VaryantPenceresi.tsx",
 ];
 
 /**
@@ -553,6 +761,86 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/pages/dashboards/OperatorHome.tsx": "kosullu",
   "src/pages/dashboards/OperatorLibrary.tsx": "kosullu",
   "src/pages/dashboards/OperatorSessions.tsx": "kosullu",
+  // ── İ9 · Boşluk 1: `src/panel/**` ──
+  // `PanelProvider`/`PanelShell`: sağlayıcı + gezinme kabuğu, kendi form
+  // alanı yok (masaüstünde hamburger düğmesi de basmaz — yalnız mobilde).
+  "src/panel/PanelProvider.tsx": "kabuk",
+  "src/panel/layout/PanelShell.tsx": "kabuk",
+  // `Durum` modülünün ilk büyük harfli export'u `HataDurumu` (AntD `Alert`) —
+  // sunum, form kontrolü taşımaz.
+  "src/panel/components/Durum.tsx": "sunum",
+  // Kardeş varyant matrisi: satırlar (`satirlar`) olmadan tablo boş —
+  // fiyat/barkod/stok girdileri yalnız veri gelince doğar.
+  "src/panel/components/Matris.tsx": "kosullu",
+  // Ürün medya sekmesi: gerçek bir ürünle (`ZORUNLU_PROPLAR`) ölçüldü —
+  // `productId`/`urun` verilince BosDurumu KAPISI açılır ve kapak + galeri
+  // gerçekten mount olur (44 DOM düğümü). Ama bu ekranın TEK "form kontrolü"
+  // (`input`/`select`/`textarea`) adayı iki `type="file" hidden"` seçicidir
+  // ve ikisi de sayaçtan ÖLÇÜM DIŞI: `hidden` özniteliği taşıyan kontrol
+  // erişilebilirlik ağacında yoktur, görünen tetikleyici (`Button`) kendi
+  // metnini taşır — `scripts/ui-baseline-sayim.mjs`teki sanksiyonlu istisnanın
+  // AYNISI ("ref ile tetiklenen dosya seçicileri"), `LibraryMediaManager.tsx`
+  // ile aynı desen. Yükleme/sıralama/silme aksiyonları `Button`dur, bu
+  // sayacın kapsamındaki tip değildir (`KONTROL = "input, select, textarea"`,
+  // `test-utils/alanAdlari.ts`). Ölçüldü: `toplam:0, dugumSayisi:44` — sunum,
+  // form kontrolü taşımaz.
+  "src/panel/components/MedyaSekmesi.tsx": "sunum",
+  // Kapalı pencere hiçbir şey render etmez (AntD `Drawer` varsayılanı
+  // `open` olana dek gövdeyi mount etmez) — `ConfirmDialog`/`Dialog` ile
+  // aynı sınıf.
+  "src/panel/components/YanPencere.tsx": "pencere-kabugu",
+  // "Ürün Oluştur" çekmecesi (commit `15c218d`): `YanPencere` üstüne
+  // kurulu, kapalıyken gövdeyi mount etmez — `YanPencere.tsx` ve
+  // `VaryantPenceresi.tsx` ile BİREBİR aynı sınıf.
+  // Liste kabuğu: arama kutusu ve sayfalayıcı prop/veriyle gelir; propsuz
+  // mount (arama ucu yok, veri yok) hiç kontrol çizmez.
+  "src/panel/components/ListePage.tsx": "kosullu",
+  // Envanter genel bakış: sayaç kartları ve bağlantılar; form kontrolü yalnız izinli/verili dalda yok.
+  "src/panel/pages/urunler/EnvanterGenelBakis.tsx": "kosullu",
+  "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx": "pencere-kabugu",
+  // Araç çubuğu yüzeyleri: kapıda mount edilen ilk export `FiltreCekmecesi`
+  // ve `acik` propu geçilmediği için AntD `Drawer` gövdeyi hiç mount etmez —
+  // `UrunOlusturCekmecesi.tsx`/`YanPencere.tsx` ile BİREBİR aynı sınıf.
+  "src/panel/pages/urunler/UrunAracCubugu.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/VaryantPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/YeniSayimCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/StokSayimiPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/HasarliStokPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/KategoriCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/TedarikciCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/urunler/Tanimlamalar.tsx": "sunum",
+  "src/panel/pages/siparisler/IadePenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/siparisler/SiparisDetayPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/siparisler/SiparisDetayi.tsx": "kosullu",
+  // Paket detayı: rota parametresi olmadan hata durumu; pencereler kapalıyken gövde yok.
+  "src/panel/pages/paketleme/PaketlemeDetayi.tsx": "kosullu",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx": "kosullu",
+  "src/panel/pages/dagitim/KuryePencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/dagitim/AracPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/finans/OdemePenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx": "kosullu",
+  "src/panel/pages/egitmenler/EgitmenIlanlari.tsx": "kosullu",
+  "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx": "kosullu",
+  "src/panel/pages/kutuphaneler/DenemeKataloglari.tsx": "kosullu",
+  "src/panel/pages/dagitim/DagitimAraclar.tsx": "kosullu",
+  "src/panel/pages/paketleme/PaketlemePencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx": "kosullu",
+  "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx": "pencere-kabugu",
+  "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/ayarlar/BayrakGerekcePenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/ayarlar/RolCekmecesi.tsx": "pencere-kabugu",
+  "src/panel/pages/ayarlar/HataCozme.tsx": "kosullu",
+  "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx": "kosullu",
+  "src/panel/pages/ayarlar/PersonelYetkiler.tsx": "kosullu",
+  "src/panel/pages/ayarlar/GenelAyarlar.tsx": "kosullu",
+  "src/panel/pages/indirimler/KuponCekmecesi.tsx": "pencere-kabugu",
+  // Müşteri detayı: form kontrolü yalnız silme çekmecesinde; propsuz mount hata kartı basar.
+  "src/panel/pages/musteriler/MusteriDetayi.tsx": "kosullu",
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx": "kosullu",
 };
 
 /**
@@ -610,6 +898,31 @@ const ZORUNLU_PROPLAR: Record<string, Record<string, unknown>> = {
     gruplar: [],
     etkin: 0,
     onEtkin: () => {},
+  },
+  // `MedyaSekmesi`: `productId` undefined iken `BosDurumu` basar (yükleme/
+  // silme/sıralama UI'ı hiç mount olmaz). Gerçek ölçüm için KAYITLI bir ürün
+  // verilir — şekil `urunFormu.test.tsx`teki `DUZENLENECEK_URUN` fixture'ıyla
+  // AYNI (id/title/kind/price/cover_url/images), buraya `images` bir kayıtla
+  // dolduruldu ki sıralama/silme düğmeleri de gerçekten render edilsin.
+  "src/panel/components/MedyaSekmesi.tsx": {
+    productId: 9,
+    urun: {
+      id: 9,
+      slug: "kirmizi-defter",
+      title: "Kırmızı Defter",
+      kind: "PHYSICAL",
+      seller_type: "PLATFORM",
+      price: "45.50",
+      compare_at_price: null,
+      tax_rate: "0.20",
+      currency: "TRY",
+      cover_url: null,
+      in_stock: true,
+      stock: 12,
+      images: [
+        { id: 101, url: "https://cdn.example.com/1.jpg", sort_order: 0, alt_text: null, caption: null },
+      ],
+    },
   },
 };
 

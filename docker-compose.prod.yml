@@ -69,8 +69,17 @@ services:
       timeout: 3s
       retries: 10
 
+  # İmaj kaynağı quay.io ve SÜRÜM SABİT: `minio/minio:latest` (Docker Hub) artık
+  # çekilemiyor — depo kaldırıldı, anonim çekme `repository does not exist` ile
+  # reddediliyor (CI bu yüzden düştü). MinIO'nun kanonik kayıt defteri quay.io.
+  #
+  # Seçilen sürüm ÜRETİMDE ÇALIŞAN imajın ta kendisidir: koşan konteynerin imaj
+  # kimliği bu digest, `release` etiketi bu sürüm. Yani bu bir SÜRÜM YÜKSELTMESİ
+  # değil, hâlihazırda çalışan imajın çekilebilir bir adresle sabitlenmesidir.
+  # Veri volume'ü, komut, port, environment ve healthcheck sözleşmesi AYNEN kalır
+  # (`mc` imajda mevcut: /usr/bin/mc).
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:

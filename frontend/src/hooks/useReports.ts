@@ -30,8 +30,8 @@ export function useAdminReports(status?: ReportStatus) {
   });
 }
 
-export function useAdminReportList(params: AdminReportsParams) {
-  const enabled = useIsAdmin();
+export function useAdminReportList(params: AdminReportsParams, permissionEnabled = true) {
+  const enabled = useIsAdmin() && permissionEnabled;
   return useQuery({
     queryKey: ["admin", "reports", "list", params],
     queryFn: () => fetchAdminReportList(params),

@@ -509,9 +509,9 @@ async def cancel_promotion(
     db: AsyncSession = Depends(get_db),
 ):
     """Paketi anında durdurur ve iadeyi başlatır. Gerekçe zorunlu (denetim)."""
-    promo = await tutor_promotion_service.cancel_by_admin(
-        db, promotion_id, reason=payload.reason
-    )
+    # Audit satırı geçişten ÖNCE stage edilir: kazanan claim'in commit'ine biner,
+    # yani "iptal oldu ama denetim izi yok" durumu doğamaz. Geçiş 404/409 ile
+    # biterse istisna `get_db`'de rollback'e düşer ve audit de kalmaz.
     await audit_service.record(
         db,
         actor=admin,
@@ -520,7 +520,9 @@ async def cancel_promotion(
         target_id=promotion_id,
         reason=payload.reason,
     )
-    await db.commit()
+    promo = await tutor_promotion_service.cancel_by_admin(
+        db, promotion_id, reason=payload.reason
+    )
     return await tutor_promotion_service.to_admin_out(db, promo)
 
 

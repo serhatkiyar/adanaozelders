@@ -30,7 +30,14 @@ export interface TutorPreApplicationResponse {
   detail: string;
 }
 
-const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+/**
+ * FormData gövdesi için Content-Type ELLE YAZILMAZ — sentinel `false` şart.
+ * Gerekçe (boundary'siz sabit → sunucu ayrıştıramaz; `undefined` axios'un
+ * post/put/patch url-encoded düşüşüyle ÜZERİNE YAZILIYOR; header'ı tamamen
+ * silmek bu instance'ın `application/json` varsayılanına düşüp FormData'yı
+ * JSON'a çeviriyor) ayrıntısıyla `api/store.ts`'teki aynı isimli sabitte.
+ */
+const MULTIPART = { headers: { "Content-Type": false as const } };
 
 /** İsteğe bağlı alanları forma yazar; hiç doldurulmayanlar (undefined/null) atlanır. */
 function profiliEkle(form: FormData, profil: TutorPreApplicationProfile): void {

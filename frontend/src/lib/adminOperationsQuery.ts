@@ -3,7 +3,10 @@ import type { AdminBookingSort, AdminDemandSort } from "@/api/admin";
 
 export type AdminAuditSort = "created_at" | "action" | "target_type" | "actor_id";
 
-const PAGE_SIZES = new Set([10, 25, 50]);
+/** Yönetim listelerinin geçerli sayfa boyutları; ekran seçicileri bu listeden beslenir. */
+export const ADMIN_PAGE_SIZES = [10, 25, 50] as const;
+export const ADMIN_DEFAULT_PAGE_SIZE = 25;
+const PAGE_SIZES = new Set<number>(ADMIN_PAGE_SIZES);
 const AUDIT_SORTS = new Set<AdminAuditSort>([
   "created_at",
   "action",
@@ -28,8 +31,8 @@ function positiveInt(value: string | null, fallback: number): number {
 }
 
 function pageSize(params: URLSearchParams): number {
-  const parsed = positiveInt(params.get("limit"), 25);
-  return PAGE_SIZES.has(parsed) ? parsed : 25;
+  const parsed = positiveInt(params.get("limit"), ADMIN_DEFAULT_PAGE_SIZE);
+  return PAGE_SIZES.has(parsed) ? parsed : ADMIN_DEFAULT_PAGE_SIZE;
 }
 
 export function parseAdminAuditQuery(params: URLSearchParams) {

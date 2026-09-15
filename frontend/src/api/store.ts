@@ -33,7 +33,31 @@ import type {
   VariantMatrixResult,
 } from "@/types";
 
-const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+/**
+ * FormData gövdesi için Content-Type ELLE YAZILMAZ.
+ *
+ * `"multipart/form-data"` sabit değeri boundary parametresi olmadan gider —
+ * sunucu gövdeyi ayrıştıramaz (ölçüldü: gerçek tarayıcıda header'da boundary
+ * YOK, gövde WebKit boundary'siyle kodlu). `Content-Type: undefined` de
+ * çözmüyor: kurulu axios'un `dispatchRequest.js`'i post/put/patch'te
+ * `setContentType('application/x-www-form-urlencoded', false)` çağırıyor ve
+ * bu, header değeri tam olarak `undefined` iken `rewrite:false`'a rağmen
+ * ÜZERİNE YAZIYOR (bkz. `AxiosHeaders.set` → `self[key] === undefined`
+ * koşulu) — sonuç FormData'ya `application/x-www-form-urlencoded` gitmesi.
+ * Header'ı tamamen silmek de yanlış: bu instance'ın varsayılanı
+ * `Content-Type: application/json` (bkz. `api/axios.ts`) devreye girer ve
+ * axios'un `transformRequest`'i `hasJSONContentType` dalına düşüp FormData'yı
+ * `JSON.stringify(formDataToJSON(...))` ile YOK EDER (ölçüldü: dosya içeriği
+ * kaybolup `{"file":{}}` gibi bir gövdeye dönüşüyor).
+ *
+ * Doğru sentinel `false`: axios bunu "bu header'ı hiç gönderme" olarak ele
+ * alıyor, `dispatchRequest`'in url-encoded düşüşü onu ÜZERİNE YAZMIYOR
+ * (`self[key] === false`, `undefined` değil) ve `xhr.js`'e giden gerçek
+ * header listesinde Content-Type hiç YOK — tarayıcı XHR.send(FormData)
+ * çağrısında boundary'yi kendisi ekliyor. (Üç senaryo da yerel axios
+ * kaynağı okunarak ve sahte adapter'la ölçüldü.)
+ */
+const MULTIPART = { headers: { "Content-Type": false as const } };
 
 /* ── Public katalog ── */
 
@@ -595,13 +619,27 @@ export interface AdminOrderPage {
  * Sonuç: 130 siparişten 100'ü dönüyor, uyarı ASLA tetiklenmiyordu (P1-5).
  * Tavanı istemcinin bilmesi şart — yoksa "hepsini gördüm mü" sorusu
  * cevaplanamaz.
+ *
+ * `offset` — EKLENTİ (bkz. `backend/api/routers/store.py` `list_orders_admin`,
+ * uç bunu baştan beri destekliyordu; eksik olan tek şey istemcinin onu hiç
+ * göndermemesiydi, bkz. `SiparisListesi` sunucu sayfalaması). Opsiyoneldir
+ * ve `undefined` bırakıldığında isteğe HİÇ eklenmez — eski çağrı yerleri
+ * (ör. `OrdersPanel.tsx`nin `useAdminOrders(durum)` çağrısı) birebir eski
+ * davranışı korur. `0` özel olarak "verilmedi" ile KARIŞTIRILMAZ (ilk sayfa
+ * da açıkça `offset=0` gönderir) — kontrol `undefined` kontrolüdür, `!offset`
+ * değil.
  */
 export async function listOrdersAdmin(
   statusFilter?: string,
-  limit = 100
+  limit = 100,
+  offset?: number
 ): Promise<AdminOrderPage> {
   const response = await apiClient.get<OrderOut[]>("/store/admin/orders", {
-    params: { ...(statusFilter ? { status: statusFilter } : {}), limit },
+    params: {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      limit,
+      ...(offset !== undefined ? { offset } : {}),
+    },
   });
   const ham = response.headers["x-total-count"];
   const total = ham === undefined ? -1 : Number(ham);
@@ -610,6 +648,12 @@ export async function listOrdersAdmin(
     total: Number.isFinite(total) ? total : -1,
     limit,
   };
+}
+
+/** Yönetim tekil sipariş okuma — `orders.view`; kalemler ve iade durumu dahil. */
+export async function getOrderAdmin(id: number): Promise<OrderOut> {
+  const { data } = await apiClient.get<OrderOut>(`/store/admin/orders/${id}`);
+  return data;
 }
 
 export async function shipOrder(

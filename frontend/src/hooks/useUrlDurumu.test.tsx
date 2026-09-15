@@ -13,7 +13,7 @@
  * Gerçek `react-router` + gerçek jsdom geçmişi kullanılır; `useSearchParams`
  * mock'lanmaz — mock'lansaydı test yalnız kendi mock'unu doğrulardı.
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -118,6 +118,21 @@ describe("useUrlDurumu", () => {
     tikla("Yazıyor gibi");
     expect(adres()).toContain("urun=5");
     expect(window.history.length, "her tuş vuruşu geçmişe girdi").toBe(once);
+  });
+
+  it("geri tuşuyla tabana dönülünce eski yazım DİRİLMEZ (bekleyen yazım render sonrası düşer)", async () => {
+    ac();
+    tikla("Durumu daralt");
+    expect(adres()).toContain("durum=ACIK");
+    await act(async () => {
+      window.history.back();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(adres()).not.toContain("durum=ACIK");
+    tikla("Boyut 50");
+    expect(adres()).toContain("boyut=50");
+    expect(adres(), "geri alınan filtre adrese geri yazıldı").not.toContain("durum=ACIK");
+    expect(degerler().durum).toBe("");
   });
 
   it("bilinmeyen arama parametreleri KORUNUR", () => {

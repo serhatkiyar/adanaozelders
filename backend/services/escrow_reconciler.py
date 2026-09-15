@@ -383,6 +383,13 @@ async def _telafileri_tamamla(db: AsyncSession, obj, *, kaynak: str) -> None:
         await order_service.settle_completed_return(
             db, obj, changed_by=f"system:reconciler:{kaynak}"
         )
+        return
+
+    if isinstance(obj, TutorPromotion):
+        # Canlı istekle AYNI sonuç: iade kesinleşince tutar deftere yazılır.
+        from services import tutor_promotion_service
+
+        await tutor_promotion_service.iade_tutarini_kesinlestir(db, obj)
 
 
 async def _manual_review_audit(db: AsyncSession, obj, spec: escrow.EscrowSpec) -> None:

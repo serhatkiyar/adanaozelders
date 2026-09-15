@@ -67,6 +67,18 @@ const BELIRSIZ = [
   "src/pages/dashboards/AdminLibraries.tsx",
   "src/pages/dashboards/AdminLibraries.tsx",
   "src/pages/dashboards/AdminLibraries.tsx",
+  // Yeni panelin kütüphane listesi, eski `AdminLibraries` penceresiyle AYNI İKİ
+  // yüzeyi (oturum/operatör yönetimi ve ödeme formu) aynı içerik bileşenleriyle
+  // açar; ikisi de başka dosyada ve bekçilerini KENDİLERİ çağırıyor:
+  //   • `OperatorsManager` (AdminLibraries.tsx:435) ve `ExamSessionsManager`
+  //     (ExamSessionsManager.tsx:762) kendi iç pencerelerine kaydoluyor,
+  //   • `LibraryPayoutForm` (LibraryPayoutForm.tsx:100) `pencereSiz: true` ile
+  //     doğrudan dış pencereye kaydoluyor.
+  // Statik tarama dosya sınırını geçemediği için bunlar BELİRSİZ sayılır;
+  // doğrulaması çalışma zamanındadır (`ui2/korumasizIcerik.test.tsx` +
+  // `adminKutuphaneOperator.acceptance`).
+  "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx",
+  "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx",
 ];
 
 describe("İP-A7d4 · korumasız pencere nöbetçisi", () => {

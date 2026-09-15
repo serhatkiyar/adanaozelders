@@ -40,9 +40,10 @@
  * DÖNÜLMEDİ — gürültü gerekçesi hâlâ geçerli; sayı, satır numarasının ayırt
  * etme gücünü onun gürültüsü olmadan geri getiriyor.
  *
- * Bugünkü fark ölçüldü: **77 ham çağrı yeri, 62 benzersiz kimlik.** Aradaki 15
- * tekrarın hepsi `islem` sınıfında (`isPending`/`busy`); hiçbiri geçerlilik
- * borcu değil.
+ * Bugünkü fark ölçüldü (panel paket 1 kapanışı, 2 ölü `gecerlilik-borc`
+ * kaydı temizlendikten sonra): **83 ham çağrı yeri, 67 benzersiz kimlik.**
+ * Aradaki 16 tekrarın hepsi `islem` sınıfında (`isPending`/`busy`); hiçbiri
+ * geçerlilik borcu değil (bkz. `__guards__/gonderDugmesi.test.ts` → `ADETLER`).
  *
  * ## Sınıflandırma nöbetçide, burada DEĞİL
  *

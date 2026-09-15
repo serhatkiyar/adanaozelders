@@ -72,9 +72,59 @@
  * Eşiklerin hepsi gerçek JSX mutasyonuyla sınandı
  * (`docs/ip-a2-rapor.md` → Görev 6, `docs/ip-a3a-rapor.md` → Görev 5,
  * `docs/ip-a3c-rapor.md` → Görev 9).
+ *
+ * ## İ9 · Boşluk 1: `src/panel/**` (ikas tarzı yeni panel) ölçüme eklendi
+ *
+ * Bağımsız denetim: yeni panel `OLCUM_TABANI`nın (bu dosyanın kaynağı,
+ * `scripts/ui-baseline-sayim.mjs`) DIŞINDA doğdu, dört eşik de onu hiç
+ * ölçmeden yeşil kaldı — TB-A5-1'in (bkz. yukarıdaki İP-A6 notu) aynısı, yeni
+ * ağaçta. `kesfedilenTaban()` artık `src/panel`i de DİZİN KURALIYLA yürüyor
+ * (elle güncellenen tek yer aşağıdaki `OLCUM_TABANI` listesidir — yeni bir
+ * panel dosyası doğduğunda `fazlaDosyalar` kırılır, bu satır bir daha
+ * değişmez).
+ *
+ * Panel AntD kullanıyor (`<Button>`, `<Input.Search>`, `<Modal>`…), ham
+ * `<button>`/`<input>` JSX etiketi YAZMIYOR — bu yüzden `rawButton`
+ * (bugün 100, eşik değişmedi) ve `adsizKontrol`e (bugün 7, eşik değişmedi)
+ * katkısı sıfır. Bu ikisinin doğruluk kaynağı zaten çalışma zamanı kapısıdır
+ * (bkz. İP-A6b notu); panel orada GERÇEK DOM üzerinden ölçülüyor
+ * (`calismaZamaniKapisi.test.tsx`) ve orada gerçek bir borç bulundu:
+ * `ListePage`/`UrunListesi`nin arama kutusunun erişilebilir adı yok
+ * (kayıt: o dosyadaki `CALISMA_ZAMANI_ADSIZ`).
+ *
+ * `modalDurumu` İSE panelde bir eşleşme buldu: `PanelShell.tsx`in mobil
+ * gezinme çekmecesi `const [mobilAcik, setMobilAcik] = useState(false)`u
+ * `<Drawer open={mobilAcik}>`e veriyor — bileşen adı (`Drawer`) + öznitelik
+ * (`open`) deseni tam eşleşiyor. Bu mekanik olarak DOĞRU bir yakalama: gerçek
+ * bir sözdizimsel pencere-durumu sinyali. Ama semantik olarak yanlış kovaya
+ * düşüyordu.
+ *
+ * ## İ9 kapanışı: KAYIT DÜZENLEME ile GEZİNME ÇEKMECESİ ayrı kategoridir
+ *
+ * `useDuzenlemeYuzeyi` (`components/admin/ui2/yuzeyDurumu.ts`) bir KAYIT
+ * düzenleme/yeni kayıt açma durum makinesidir: `ac(kayit)`, `yeniAc(baglam)`,
+ * `hedef: {tur:"kayit"|"yeni"}`. `PanelShell`in mobil çekmecesi bir gezinme
+ * MENÜSÜdür — kaydı yok, "yeni" hâli yok, kapanırken kirli form onayı
+ * gerekmez. Onu `useDuzenlemeYuzeyi`ye taşımak hook'un anlamını bozardı
+ * (menüyü "düzenlenen kayıt" gibi göstermek); eşiği gevşetmek de korumayı
+ * değersizleştirirdi. Panel koduna DOKUNULMADI (nöbetçi koruduğu kodu
+ * değiştirmez).
+ *
+ * Çözüm: sayaç artık İKİ ayrı kova tutuyor (`scripts/ui-baseline-sayim.mjs` →
+ * `GEZINME_CEKMECELERI`). `modalDurumu` KAYIT DÜZENLEME içindir ve TABAN
+ * `0`da KALDI. Gezinme çekmecesi ayrı `gezinmeCekmecesiDurumu`/
+ * `gezinmeCekmecesiDosyalari` alanlarında, isimle ve KİMLİKLE dondurulmuş
+ * (aşağıdaki testler). Eşleşme dar ve varsayılanı katı kovadır: bir bağ
+ * ancak dosya+ad+TEK bileşen tam eşleşirse gezinme çekmecesi sayılır — yeni
+ * dosyada aynı adla bir `Drawer`, aynı dosyada farklı adla ikinci bir
+ * çekmece, ya da aynı adın GERÇEKTEN bir düzenleme penceresine de akması,
+ * hepsi KAYIT DÜZENLEME kovasına düşer ve `modalDurumu`yu kırar (gerekçe ve
+ * üç kaçamama senaryosu `GEZINME_CEKMECELERI`nin yanındaki yorumda).
  */
 import { describe, expect, it } from "vitest";
 import {
+  dosyaOlcumu,
+  GEZINME_CEKMECELERI,
   OLCUM_TABANI,
   sayim,
   tsHamButonlari,
@@ -354,6 +404,15 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // bir TABAN "borç YOK" der: panelde ekranda yaşayan bir pencere durumu
     // doğduğu gün CI kırılır ve hangi dosyada doğduğu alttaki liste
     // testinde isimle görünür.
+    //
+    // İ9 kapanışı: `src/panel/**` ölçüme girince `PanelShell.tsx`in mobil
+    // gezinme çekmecesi bu metriğe TAKILDI (dosya başı notuna bak). Metrik
+    // ARTAN bir borç değildi — bir GEZİNME MENÜSÜ ile bir KAYIT DÜZENLEME
+    // yüzeyi aynı sözdizimsel desene (`<XDialog open={..}>`) sahip olduğu
+    // için aynı kovaya düşüyordu. Kova ikiye ayrıldı
+    // (`GEZINME_CEKMECELERI`); bu test KAYIT DÜZENLEME kovasını ölçmeye
+    // devam ediyor ve TABAN yine `0`dır — gezinme çekmecesi kendi testinde
+    // (aşağıda) ayrıca ve KİMLİKLE tutuluyor.
     expect(olcum.modalDurumu).toBe(0);
   });
 
@@ -368,6 +427,110 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // canlı bir nöbetçi gibi okunan ölü bir kontrol. Yerini alan iddia
     // yukarıdaki satırdır ve daha güçlüdür: liste BOŞ, yani pilot ekran da
     // dahil HİÇBİR dosya listede değil.
+  });
+
+  // ── İ9 · Boşluk 1 kapanışı: GEZİNME ÇEKMECESİ — ayrı kategori, KİMLİKLE ──
+  //
+  // `useDuzenlemeYuzeyi` (`components/admin/ui2/yuzeyDurumu.ts`) bir KAYIT
+  // düzenleme durum makinesidir (`ac(kayit)`/`yeniAc(baglam)`,
+  // `hedef:{tur:"kayit"|"yeni"}`). `PanelShell`in mobil çekmecesi bir gezinme
+  // MENÜSÜdür: kaydı yok, "yeni" hâli yok, kirli form onayı gerekmez. İkisini
+  // aynı kovada tutmak ya eşiği gevşetirdi (borcu gizlerdi) ya da çekmeceyi
+  // `useDuzenlemeYuzeyi`ye taşımayı gerektirirdi (hook'un anlamını bozardı).
+  //
+  // Bu iki test yukarıdaki ikilinin İKİZİDİR, ama TERS yönde: yukarıdaki iki
+  // test "kayıt düzenleme borcu SIFIR" der, bunlar "bilinen gezinme
+  // çekmeceleri İSİMLE sabit" der. Üçüncü bir gezinme çekmecesi (ya da
+  // ikincisi) `GEZINME_CEKMECELERI`ye elle eklenmeden bu testleri KIRAR —
+  // sessizce geçemez. Sözdizimsel tespit ve "yanlış tarafa kaçamaz" kanıtı
+  // `scripts/ui-baseline-sayim.mjs`teki `GEZINME_CEKMECELERI` sabitinin
+  // yanındaki yorumda.
+  it("gezinme çekmecesi durumu KİMLİKLE sabittir (tavan değil, sayılı liste)", () => {
+    expect(olcum.gezinmeCekmecesiDurumu).toBe(GEZINME_CEKMECELERI.length);
+  });
+
+  it("gezinme çekmecesi tutan dosya + bağ listesi BİLİNEN listenin TA KENDİSİDİR", () => {
+    const beklenen = GEZINME_CEKMECELERI.map((g) => ({ dosya: g.dosya, adlar: [g.ad] }));
+    expect(olcum.gezinmeCekmecesiDosyalari).toEqual(beklenen);
+  });
+
+  // ── Nöbetçinin kendini sınaması: İKİ uydurma ihlal, ikisi de kırmızı ──
+  //
+  // `sayim()` yalnız `OLCUM_TABANI`ndaki dosyaları okur; panel koduna
+  // dokunmadan yeni bir ihlal ÜRETMENİN yolu `dosyaOlcumu`yu sentetik
+  // kaynakla, GERÇEK dosya adıyla (`dosyaAdi = "src/panel/layout/
+  // PanelShell.tsx"`) çağırmaktır — sayaç dosya+ad eşleşmesini bu isim
+  // üzerinden yapar, gerçek dosyayı okumaz.
+  it("[kendini sınama 1] panelde GERÇEK bir kayıt düzenleme durumu doğarsa kırmızı", () => {
+    // Yeni bir alan (`kayitAcik`) gerçek bir düzenleme penceresine akıyor.
+    // `GEZINME_CEKMECELERI`de bu isim yok → varsayılan kovaya (KAYIT
+    // DÜZENLEME) düşmeli.
+    const kaynak = `
+      export function PanelShell() {
+        const [kayitAcik, setKayitAcik] = useState(false);
+        return <KayitDuzenlemeDialog open={kayitAcik} />;
+      }
+    `;
+    const o = dosyaOlcumu(kaynak, "src/panel/layout/PanelShell.tsx");
+    expect(o.modalDurumAdlari).toEqual(["kayitAcik"]);
+    expect(o.gezinmeCekmecesiAdlari).toEqual([]);
+  });
+
+  it("[kendini sınama 2] İKİNCİ bir gezinme çekmecesi (yeni ad ya da yeni dosya) kaçamaz", () => {
+    // (a) Aynı dosyada, farklı adlı ikinci bir `Drawer` — ad eşleşmiyor.
+    const ikinciCekmeceAyniDosya = `
+      export function PanelShell() {
+        const [ikinciAcik, setIkinciAcik] = useState(false);
+        return <Drawer open={ikinciAcik} />;
+      }
+    `;
+    const a = dosyaOlcumu(ikinciCekmeceAyniDosya, "src/panel/layout/PanelShell.tsx");
+    expect(a.modalDurumAdlari).toEqual(["ikinciAcik"]);
+    expect(a.gezinmeCekmecesiAdlari).toEqual([]);
+
+    // (b) Başka bir dosyada, AYNI adla ve AYNI bileşenle bir `Drawer` —
+    // dosya eşleşmiyor. Kimlik dosyaya bağlıdır, yalnız ada değil.
+    const ayniAdBaskaDosya = `
+      export function BaskaEkran() {
+        const [mobilAcik, setMobilAcik] = useState(false);
+        return <Drawer open={mobilAcik} />;
+      }
+    `;
+    const b = dosyaOlcumu(ayniAdBaskaDosya, "src/panel/pages/BaskaEkran.tsx");
+    expect(b.modalDurumAdlari).toEqual(["mobilAcik"]);
+    expect(b.gezinmeCekmecesiAdlari).toEqual([]);
+
+    // (c) Bilinen çekmecenin adı (`mobilAcik`, aynı dosya) GERÇEKTEN bir
+    // düzenleme penceresine de akarsa — bağlandığı bileşen kümesi tek
+    // başına `Drawer` olmadığı için — yine KAYIT DÜZENLEME kovasına düşer.
+    const ayniAdIkiFarkliBilesen = `
+      export function PanelShell() {
+        const [mobilAcik, setMobilAcik] = useState(false);
+        return (
+          <>
+            <Drawer open={mobilAcik} />
+            <KayitDialog open={mobilAcik} />
+          </>
+        );
+      }
+    `;
+    const c = dosyaOlcumu(ayniAdIkiFarkliBilesen, "src/panel/layout/PanelShell.tsx");
+    expect(c.modalDurumAdlari).toEqual(["mobilAcik"]);
+    expect(c.gezinmeCekmecesiAdlari).toEqual([]);
+
+    // Ters prova: gerçek (bugünkü) `PanelShell.tsx` GEZİNME kovasına düşer —
+    // yukarıdaki üç senaryonun KAYIT DÜZENLEME kovasına düşmesi bir yanlış
+    // pozitif değil, sınıflandırıcının farkı gerçekten ayırt ettiğinin
+    // kanıtıdır.
+    const bugunkuPanelShell = `
+      export function PanelShell() {
+        const [mobilAcik, setMobilAcik] = useState(false);
+        return <Drawer open={mobilAcik} />;
+      }
+    `;
+    const d = dosyaOlcumu(bugunkuPanelShell, "src/panel/layout/PanelShell.tsx");
+    expect(d.modalDurumAdlari).toEqual([]);
+    expect(d.gezinmeCekmecesiAdlari).toEqual(["mobilAcik"]);
   });
 
   it("hiçbir .ts dosyası createElement(\"button\") ile ham düğme üretmiyor", () => {

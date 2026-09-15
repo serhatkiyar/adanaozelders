@@ -316,11 +316,14 @@ export interface AdminTutorPreApplication {
 }
 
 export async function fetchAdminTutorPreApplications(
-  status?: string
+  status?: string,
+  limit = 100,
+  offset = 0
 ): Promise<AdminTutorPreApplication[]> {
+  // Uç `limit`/`offset` destekler ve id DESC sıralar; varsayılanlar eski çağrı yerlerinin davranışını korur.
   const { data } = await apiClient.get<AdminTutorPreApplication[]>(
     "/admin/tutor-pre-applications",
-    { params: status ? { status } : undefined }
+    { params: { ...(status ? { status } : {}), limit, offset } }
   );
   return data;
 }
@@ -356,11 +359,17 @@ export interface AdminPromotion {
   created_at: string;
 }
 
+/**
+ * Öne çıkarma satışları. Uç `status`, `limit` (1–200) ve `offset` alır; sıra `id DESC`.
+ * Parametreler VARSAYILANLI: eski çağıran (`useAdminPromotions(status)`) davranışını aynen korur.
+ */
 export async function fetchAdminPromotions(
-  status?: string
+  status?: string,
+  limit = 100,
+  offset = 0
 ): Promise<AdminPromotion[]> {
   const { data } = await apiClient.get<AdminPromotion[]>("/admin/promotions", {
-    params: status ? { status } : undefined,
+    params: { ...(status ? { status } : {}), limit, offset },
   });
   return data;
 }

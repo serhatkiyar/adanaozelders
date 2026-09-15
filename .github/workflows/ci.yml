@@ -89,10 +89,18 @@ jobs:
       # access.py` altı testi de CI'da atlıyordu.
       - name: MinIO (depolama erişim sınırı doğrulaması)
         run: |
+          # İmaj kaynağı quay.io'dur ve SÜRÜM SABİTTİR.
+          #
+          # `minio/minio:latest` (Docker Hub) `pull access denied … repository does
+          # not exist` ile düştü: Hub deposu kaldırılmış (API 404 dönüyor). MinIO'nun
+          # kanonik kayıt defteri quay.io; oradaki `latest` de hareketli olduğu için
+          # sürüm + digest ile sabitlendi — CI'nin yeşilliği "o gün kayıt defterinde
+          # ne varsa"ya bağlı kalmasın (aşağıdaki pip pinlerinin gerekçesiyle aynı).
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER="$AWS_ACCESS_KEY_ID" \
             -e MINIO_ROOT_PASSWORD="$AWS_SECRET_ACCESS_KEY" \
-            minio/minio:latest server /data
+            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e \
+            server /data
           for deneme in $(seq 1 30); do
             if curl -fsS http://localhost:9000/minio/health/live > /dev/null; then
               echo "MinIO hazır ($deneme. deneme)"
