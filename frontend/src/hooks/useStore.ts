@@ -258,11 +258,12 @@ export function useRemoveFromCollection() {
  *  Uç düşerse `LOW_STOCK_THRESHOLD` bilinmez; çağıran taraf rozetleri nötr
  *  gösterir (yanlış eşikle amber basmaktansa renksiz basmak dürüsttür).
  */
-export function useStoreConfig() {
+export function useStoreConfig(enabled = true) {
   return useQuery({
     queryKey: ["store", "config"],
     queryFn: storeApi.fetchStoreConfig,
     staleTime: 60 * 60 * 1000,
+    enabled,
   });
 }
 

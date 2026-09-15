@@ -80,21 +80,38 @@ describe("GostergePaneli", () => {
 
     const kuyruk = screen.getByRole("region", { name: "Operasyon kuyrukları" });
     expect(within(kuyruk).getAllByRole("listitem")).toHaveLength(10);
+    expect(within(kuyruk).getAllByRole("listitem")[0]).toHaveTextContent("Eğitmen başvuruları");
+    expect(within(kuyruk).getAllByRole("listitem")[9]).toHaveTextContent("Açık şikâyetler");
     const dusukStok = within(kuyruk).getByText("Düşük stok").closest("[role=listitem]") as HTMLElement;
     expect(within(dusukStok).getByRole("link")).toHaveAttribute("href", `${ROUTES.adminNewProducts}?stok=kritik`);
     expect(within(dusukStok).getByText(/stok 5 veya altında/)).toBeInTheDocument();
+
+    const hedefler = new Map(
+      within(kuyruk).getAllByRole("listitem").map((satir) => [
+        satir.querySelector(".ant-typography")?.textContent,
+        within(satir).getByRole("link").getAttribute("href"),
+      ]),
+    );
+    expect(hedefler.get("Eğitmen başvuruları")).toBe(ROUTES.adminNewTutors);
+    expect(hedefler.get("Diploma doğrulamaları")).toBe(ROUTES.adminNewTutorDiplomas);
+    expect(hedefler.get("Açık şikâyetler")).toBe(ROUTES.adminNewReports);
+    expect(hedefler.get("İhtilaflı rezervasyonlar")).toBe(ROUTES.adminNewBookings);
+    expect(hedefler.get("Açık öğrenci talepleri")).toBe(ROUTES.adminNewDemands);
+    expect(hedefler.get("Hazırlanacak siparişler")).toBe(ROUTES.adminNewPacking);
+    expect(hedefler.get("Kütüphane başvuruları")).toBe(ROUTES.adminNewLibraries);
+    expect(hedefler.get("Aktif dağıtım turları")).toBe(ROUTES.adminNewDelivery);
   });
 
   it("dönem seçimi URL'ye yazılır ve hook'lara gider; hafta varsayılanı URL'de tutulmaz", async () => {
-    kur("/yonetim-yeni?range=day");
-    expect(mockOzet).toHaveBeenLastCalledWith("day");
+    kur("/yonetim-yeni?range=day&sekme=x");
+    expect(mockOzet).toHaveBeenLastCalledWith("day", true);
     await userEvent.click(screen.getByRole("combobox", { name: "Dönem" }));
     await userEvent.click(await screen.findByTitle("Son 30 Gün"));
-    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent("?range=month"));
-    expect(mockPara).toHaveBeenLastCalledWith("month");
+    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent("?range=month&sekme=x"));
+    expect(mockPara).toHaveBeenLastCalledWith("month", true);
     await userEvent.click(screen.getByRole("combobox", { name: "Dönem" }));
     await userEvent.click(await screen.findByTitle("Son 7 Gün"));
-    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent(""));
+    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent("?sekme=x"));
   });
 
   it("özet hatası Tekrar dene sunar; para hatası yalnız para kartında kalır", async () => {
@@ -118,5 +135,8 @@ describe("GostergePaneli", () => {
     });
     kur();
     expect(screen.getByText("Bu alan için yetkiniz yok")).toBeInTheDocument();
+    expect(mockOzet).toHaveBeenLastCalledWith("week", false);
+    expect(mockPara).toHaveBeenLastCalledWith("week", false);
+    expect(useStoreConfig).toHaveBeenLastCalledWith(false);
   });
 });

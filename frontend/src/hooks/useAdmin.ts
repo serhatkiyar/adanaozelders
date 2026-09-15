@@ -88,19 +88,21 @@ export function useAdminStats() {
   });
 }
 
-export function useAdminRevenue(range: "day" | "week" | "month") {
+export function useAdminRevenue(range: "day" | "week" | "month", enabled = true) {
   return useQuery({
     queryKey: ["admin", "revenue", range],
     queryFn: () => fetchAdminRevenue(range),
     staleTime: 60_000,
+    enabled,
   });
 }
 
-export function useAdminDashboard(range: "day" | "week" | "month") {
+export function useAdminDashboard(range: "day" | "week" | "month", enabled = true) {
   return useQuery({
     queryKey: ["admin", "dashboard", range],
     queryFn: () => fetchAdminDashboard(range),
     refetchInterval: 60_000,
+    enabled,
   });
 }
 

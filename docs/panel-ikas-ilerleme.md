@@ -1,6 +1,6 @@
 # /yonetim-yeni ilerleme (feat/panel-ikas)
 
-Son güncelleme: 14 Eyl 2026.
+Son güncelleme: 15 Eyl 2026.
 
 ## Tamamlanan modüller
 
@@ -22,7 +22,10 @@ Son güncelleme: 14 Eyl 2026.
 
 ## Sıradaki
 
-1. Gösterge paneli — tamamlandı (`0b04b18`).
+1. Gösterge paneli — tamamlandı (`0b04b18`); dönem/KPI/para özetleri ve gerçek
+   operasyon kuyrukları korunur. Bekleyen işi olan kuyruklar önce gösterilir,
+   bütün kuyruk bağlantıları yeni panel ekranlarına gider ve `dashboard.view`
+   yokken özet/para/mağaza yapılandırması sorguları çalışmaz.
 2. Envanter · Stok Sayımı listesi + detayı — tamamlandı; liste `/yonetim-yeni/urunler/stok-sayimi` (`StokSayimiListesi.tsx`, `YeniSayimCekmecesi.tsx`), detay `/yonetim-yeni/urunler/stok-sayimi/:id` (`StokSayimiDetayi.tsx`, `StokSayimiPencereleri.tsx`).
 3. Envanter · Stok Hareketleri — tamamlandı; `/yonetim-yeni/urunler/stok-hareketleri` (`StokHareketleriListesi.tsx`, salt okunur defter + denetim).
 4. Envanter · Genel Bakış ve Hasarlı Stok — tamamlandı; `/yonetim-yeni/urunler/envanter` (`EnvanterGenelBakis.tsx`), `/yonetim-yeni/urunler/hasarli-stok` (`HasarliStokListesi.tsx`, `HasarliStokPencereleri.tsx`).

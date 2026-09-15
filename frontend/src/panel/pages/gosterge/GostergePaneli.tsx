@@ -98,18 +98,22 @@ function MetrikSatiri({ etiket, deger, degisim, son }: { etiket: string; deger: 
 type Kuyruk = { etiket: string; deger: number; hedef: string; ton?: string; aciklama: string };
 
 function kuyruklar(d: AdminDashboardOut, donemEtiketi: string, esik?: number): Kuyruk[] {
-  return [
-    { etiket: "Eğitmen başvuruları", deger: d.pending_tutors, hedef: ROUTES.adminTutors, ton: "warning", aciklama: "Onay veya ret kararı bekliyor." },
-    { etiket: "Diploma doğrulamaları", deger: d.pending_diplomas, hedef: ROUTES.adminDiplomas, ton: "warning", aciklama: "Belge teyidi bekleyen eğitim kayıtları." },
-    { etiket: "Açık şikâyetler", deger: d.open_reports, hedef: ROUTES.adminReports, ton: "error", aciklama: "Moderasyon kararı bekleyen bildirimler." },
-    { etiket: "İhtilaflı rezervasyonlar", deger: d.disputed_bookings, hedef: ROUTES.adminBookings, ton: "error", aciklama: `${d.active_bookings} aktif rezervasyon içinde.` },
-    { etiket: "Açık öğrenci talepleri", deger: d.open_demands, hedef: ROUTES.adminDemands, ton: "processing", aciklama: "Eğitmenlerden yanıt bekleyen ders ilanları." },
-    { etiket: "Hazırlanacak siparişler", deger: d.paid_orders, hedef: ROUTES.adminPacking, ton: "processing", aciklama: `${d.pending_returns} açık iade talebi bulunuyor.` },
+  const liste = [
+    { etiket: "Eğitmen başvuruları", deger: d.pending_tutors, hedef: ROUTES.adminNewTutors, ton: "warning", aciklama: "Onay veya ret kararı bekliyor." },
+    { etiket: "Diploma doğrulamaları", deger: d.pending_diplomas, hedef: ROUTES.adminNewTutorDiplomas, ton: "warning", aciklama: "Belge teyidi bekleyen eğitim kayıtları." },
+    { etiket: "Açık şikâyetler", deger: d.open_reports, hedef: ROUTES.adminNewReports, ton: "error", aciklama: "Moderasyon kararı bekleyen bildirimler." },
+    { etiket: "İhtilaflı rezervasyonlar", deger: d.disputed_bookings, hedef: ROUTES.adminNewBookings, ton: "error", aciklama: `${d.active_bookings} aktif rezervasyon içinde.` },
+    { etiket: "Açık öğrenci talepleri", deger: d.open_demands, hedef: ROUTES.adminNewDemands, ton: "processing", aciklama: "Eğitmenlerden yanıt bekleyen ders ilanları." },
+    { etiket: "Hazırlanacak siparişler", deger: d.paid_orders, hedef: ROUTES.adminNewPacking, ton: "processing", aciklama: `${d.pending_returns} açık iade talebi bulunuyor.` },
     { etiket: "Düşük stok", deger: d.low_stock_products, hedef: `${ROUTES.adminNewProducts}?stok=kritik`, ton: "warning", aciklama: `Aktif fiziksel ürünlerde stok ${esik ?? "eşiğin"} veya altında.` },
-    { etiket: "Kütüphane başvuruları", deger: d.pending_libraries, hedef: ROUTES.adminLibraries, ton: "warning", aciklama: "Katalog onayı bekleyen işletmeler." },
-    { etiket: "Aktif dağıtım turları", deger: d.active_delivery_runs, hedef: ROUTES.adminDelivery, ton: "processing", aciklama: "Şu anda sahada olan kendi-filo turları." },
+    { etiket: "Kütüphane başvuruları", deger: d.pending_libraries, hedef: ROUTES.adminNewLibraries, ton: "warning", aciklama: "Katalog onayı bekleyen işletmeler." },
+    { etiket: "Aktif dağıtım turları", deger: d.active_delivery_runs, hedef: ROUTES.adminNewDelivery, ton: "processing", aciklama: "Şu anda sahada olan kendi-filo turları." },
     { etiket: "Denetim kayıtları", deger: d.period_audit_logs, hedef: ROUTES.adminNewAuditLogs, aciklama: `${donemEtiketi} içindeki yönetim işlemleri.` },
   ];
+  // Dashboard önce gerçekten işlem/takip isteyen işleri göstermeli. Sıfır
+  // kayıtlı modüller erişim bağlantısı olarak kalır, ancak iş kuyruğunun
+  // önüne geçmez. Aynı gruptaki sunucu/anlam sırası korunur.
+  return liste.sort((a, b) => Number(b.deger > 0) - Number(a.deger > 0));
 }
 
 function ParaSutunu({ p }: { p: AdminRevenueOut }) {
@@ -138,9 +142,16 @@ export function GostergePaneli() {
   const ham = params.get("range");
   const donem: Donem = ham === "day" || ham === "month" ? ham : "week";
   const secili = DONEMLER.find((d) => d.value === donem)!;
-  const ozet = useAdminDashboard(donem);
-  const para = useAdminRevenue(donem);
-  const esik = useStoreConfig().data?.low_stock_threshold;
+  const ozet = useAdminDashboard(donem, canView);
+  const para = useAdminRevenue(donem, canView);
+  const esik = useStoreConfig(canView).data?.low_stock_threshold;
+
+  const donemDegisti = (yeniDonem: Donem) => {
+    const siradaki = new URLSearchParams(params);
+    if (yeniDonem === "week") siradaki.delete("range");
+    else siradaki.set("range", yeniDonem);
+    setParams(siradaki, { replace: true });
+  };
 
   if (!canView) return <AccessDenied area="Gösterge paneli" />;
 
@@ -155,7 +166,7 @@ export function GostergePaneli() {
           value={donem}
           prefix={<CalendarOutlined aria-hidden="true" />}
           options={DONEMLER.map((x) => ({ value: x.value, label: x.label }))}
-          onChange={(v) => setParams(v === "week" ? {} : { range: v })}
+          onChange={donemDegisti}
           style={{ width: 160 }}
         />
         <Typography.Text type="secondary">
@@ -200,7 +211,7 @@ export function GostergePaneli() {
                     <div role="listitem" key={k.etiket} style={{ padding: "16px 0", borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                       <Flex justify="space-between" align="center" gap={12}>
                         <Typography.Text style={{ fontWeight: 500, color: token.colorTextTertiary }}>{k.etiket}</Typography.Text>
-                        <Tag color={k.ton} style={{ marginInlineEnd: 0 }}>{k.deger}</Tag>
+                        <Tag color={k.deger > 0 ? k.ton : undefined} style={{ marginInlineEnd: 0 }}>{k.deger}</Tag>
                       </Flex>
                       <Typography.Text type="secondary" style={{ fontSize: 12, display: "block", marginTop: 4 }}>{k.aciklama}</Typography.Text>
                       <Link to={k.hedef} style={{ fontSize: 12, fontWeight: 500 }}>Kuyruğu aç →</Link>
