@@ -31,6 +31,7 @@ import { formatTL } from "@/lib/money";
 import { formatDuration, formatEta } from "@/lib/polyline";
 import { ROUTES } from "@/lib/routes";
 import type { DeliveryEligibleOrder, DeliveryStop } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 /** URL kimliği yalnız düz pozitif tam sayı ("abc", "-1", "1e3", "0x10", "42.0", boşluk, güvenli aralık dışı reddedilir). */
 export function turKimligi(ham: string | undefined): number | null {
@@ -167,16 +168,16 @@ function DagitimTurDetayiIc({ id }: { id: string | undefined }) {
     if (!run || turMesgul()) return;
     const hedefId = run.id;
     const bekleyen = bekleyenSayisi;
-    modal.confirm({
+    onayAc(modal, {
       title: "Dağıtım turunu iptal et",
       content: `Tur #${hedefId}: bekleyen ${bekleyen} durak "teslim edilemedi" olarak kapanacak ve siparişler yeniden planlanabilir hale gelecek. Teslim edilmiş duraklar etkilenmez.`,
       okText: "Turu iptal et",
       okButtonProps: { danger: true },
       cancelText: "Vazgeç",
-      // ESC pending'de kapatıp onCancel dönüşünü yok sayar; klavye kapatması kapalı.
-      keyboard: false,
-      onCancel: () => (ozelYazimUcusta("cancel") ? Promise.reject(new Error("bekleniyor")) : undefined),
-      onOk: () => {
+      // Kapanış GERİ ÇAĞRIYLA yönetilir (bkz. `panel/components/onayPenceresi`):
+      // meşgulken pencere sessizce açık kalır, AntD'ye reddedilen söz gitmez.
+      mesgulMu: () => ozelYazimUcusta("cancel"),
+      calistir: () => {
         const soz = ozelYaz("cancel", () =>
           turAksiyonu
             .mutateAsync({ runId: hedefId, action: "cancel" })
@@ -189,10 +190,7 @@ function DagitimTurDetayiIc({ id }: { id: string | undefined }) {
             }),
         );
         // Onay açıkken başka bir yazım başladıysa istek çıkmaz; onay açık kalır, kullanıcı görünür nedeni okur.
-        if (!soz) {
-          message.warning("Turda başka bir işlem sürüyor.");
-          return Promise.reject(new Error("mesgul"));
-        }
+        if (!soz) message.warning("Turda başka bir işlem sürüyor.");
         return soz;
       },
     });
@@ -259,15 +257,14 @@ function DagitimTurDetayiIc({ id }: { id: string | undefined }) {
   const durakCikarOnayi = (durak: DeliveryStop) => {
     const hedefStop = durak.id;
     if (turMesgul()) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Durağı turdan çıkar",
       content: `${durak.recipient ?? "-"} · sipariş #${durak.order_id} bu turdan çıkarılacak; sipariş yeniden dağıtıma hazır olur.`,
       okText: "Turdan çıkar",
       okButtonProps: { danger: true },
       cancelText: "Vazgeç",
-      keyboard: false,
-      onCancel: () => (ozelYazimUcusta(`stop:${hedefStop}`) ? Promise.reject(new Error("bekleniyor")) : undefined),
-      onOk: () => {
+      mesgulMu: () => ozelYazimUcusta(`stop:${hedefStop}`),
+      calistir: () => {
         const soz = ozelYaz(`stop:${hedefStop}`, () => {
           ucustakiDurakRef.current.add(hedefStop);
           setUcustakiDuraklar([...ucustakiDurakRef.current]);
@@ -285,10 +282,7 @@ function DagitimTurDetayiIc({ id }: { id: string | undefined }) {
               setUcustakiDuraklar([...ucustakiDurakRef.current]);
             });
         });
-        if (!soz) {
-          message.warning("Turda başka bir işlem sürüyor.");
-          return Promise.reject(new Error("mesgul"));
-        }
+        if (!soz) message.warning("Turda başka bir işlem sürüyor.");
         return soz;
       },
     });

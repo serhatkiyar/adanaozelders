@@ -16,6 +16,7 @@ import { formatRate } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import { TutorStatus } from "@/types";
 import type { TutorOut } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 /** Onay bekleyenler kuyruktur: listenin BAŞINDA durur (eski sözleşme). */
 export const DURUM_SIRASI: Record<TutorStatus, number> = {
@@ -65,7 +66,7 @@ export function EgitmenIlanlari() {
   // Red penceresi: hedef kimlik ve görünen ad AÇILIŞTA sabitlenir.
   const [redPenceresi, setRedPenceresi] = useState<{ id: number; adSoyad: string } | null>(null);
   const [redHatasi, setRedHatasi] = useState<{ alan: Record<string, string | undefined>; genel: string | null }>({ alan: {}, genel: null });
-  const { kilitle, kilitli, surenIslem, kapatmaEngeli, onayla: kilitliOnay } = useVarlikKilidi(message);
+  const { kilitle, kilitli, surenIslem, onayIsi } = useVarlikKilidi(message);
 
   const liste = useMemo(() => ilanlariSirala(Array.isArray(sorgu.data) ? sorgu.data : []), [sorgu.data]);
   const bekleyenler = liste.filter((t) => t.status === TutorStatus.PENDING_APPROVAL);
@@ -97,16 +98,13 @@ export function EgitmenIlanlari() {
     const ad = t.full_name;
     const varlik = `tutor:${hedefId}`;
     if (kilitli(varlik)) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "İlanı sil",
       content: `${ad} ilanı kalıcı olarak silinecek.`,
       okText: "İlanı sil",
       okButtonProps: { danger: true },
       cancelText: "Vazgeç",
-      // ESC onayı pending'de kapatabilir ve onCancel dönüşünü yok sayar; klavye kapatması kapalı.
-      keyboard: false,
-      onCancel: kapatmaEngeli(varlik),
-      onOk: kilitliOnay(varlik, "sil", () =>
+      ...onayIsi(varlik, "sil", () =>
         sil
           .mutateAsync(hedefId)
           .then(() => {

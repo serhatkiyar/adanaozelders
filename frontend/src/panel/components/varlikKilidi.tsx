@@ -58,9 +58,17 @@ export function useVarlikKilidi(message: MessageInstance) {
     return soz;
   };
   const kilitli = (varlik: string) => kilitRef.current.has(varlik);
-  /** Onay penceresi: varlık kilitliyken Vazgeç/ESC/maske kapatmaz. */
-  const kapatmaEngeli = (varlik: string) => () => (kilitli(varlik) ? Promise.reject(new Error("bekleniyor")) : undefined);
-  /** Onayın onOk'u: gerçek mutation sözü; kilit çakışırsa reddedilir ve pencere açık kalır. */
-  const onayla = (varlik: string, islem: string, calistir: () => Promise<unknown>) => () => kilitle(varlik, islem, calistir) ?? Promise.reject(new Error("mesgul"));
-  return { kilitle, kilitli, surenIslem, kapatmaEngeli, onayla };
+  /**
+   * Kilide bağlı onay penceresinin iş sözleşmesi (bkz. `panel/components/onayPenceresi`).
+   *
+   * Eski `kapatmaEngeli`/`onayla` çifti AntD'ye REDDEDİLMİŞ SÖZ döndürüyordu; davranış
+   * doğruydu ama AntD o reddi kendi içinde yeniden reddettiği için süreç düzeyinde
+   * yakalanmamış rejection üretiyordu (CI'yi kırdı). Artık kapanışı `onayAc` yönetir:
+   * meşgulde pencere sessizce açık kalır, söz hiç üretilmez.
+   */
+  const onayIsi = (varlik: string, islem: string, calistir: () => Promise<unknown>) => ({
+    mesgulMu: () => kilitli(varlik),
+    calistir: () => kilitle(varlik, islem, calistir),
+  });
+  return { kilitle, kilitli, surenIslem, onayIsi };
 }

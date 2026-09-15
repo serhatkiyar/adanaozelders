@@ -26,6 +26,7 @@ import { getErrorDetail } from "@/lib/errors";
 import { formatTL } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import type { DeliveryEligibleOrder, DeliveryRun, Vehicle } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 /** URL tarihi yalnız gerçek bir ISO gün (YYYY-MM-DD) ise kabul edilir; aksi hâlde bugün. Geçersiz değer sunucuya gitmez. */
 export function tarihNo(ham: string | null): string {
@@ -135,15 +136,14 @@ export function DagitimBugun() {
   const yenidenDeneOnayi = (siparisId: number) => {
     const anahtar = `retry:${siparisId}`;
     if (kilitRef.current.has(anahtar)) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Yeni teslimat denemesi planla",
       content: `Sipariş #${siparisId} müşteriyle görüşüldüğü kabul edilerek yeniden dağıtım kuyruğuna alınacak.`,
       okText: "Yeniden dene",
       cancelText: "Vazgeç",
-      // ESC onayı pending'de kapatabilir ve onCancel dönüşünü yok sayar; klavye kapatması kapalı.
-      keyboard: false,
-      onCancel: () => (kilitRef.current.has(anahtar) ? Promise.reject(new Error("bekleniyor")) : undefined),
-      onOk: () =>
+      // Kapanışı `onayAc` yönetir: meşgulde sessizce açık kalır (bkz. onayPenceresi).
+      mesgulMu: () => kilitRef.current.has(anahtar),
+      calistir: () =>
         kilitli(anahtar, () =>
           yenidenDene
             .mutateAsync(siparisId)
@@ -186,14 +186,14 @@ export function DagitimBugun() {
     if (!uygunHazir || dagitilabilir === 0 || kilitRef.current.has("dispatch")) return;
     const hedefTarih = tarih;
     const adet = dagitilabilir;
-    modal.confirm({
+    onayAc(modal, {
       title: "Günü optimize et",
       content: `${adet} konumlu sipariş aktif araçlara bölüştürülüp optimize turlar kurulacak. Mevcut planlı turlara durak eklenebilir.`,
       okText: "Turları kur",
       cancelText: "Vazgeç",
-      keyboard: false,
-      onCancel: () => (kilitRef.current.has("dispatch") ? Promise.reject(new Error("bekleniyor")) : undefined),
-      onOk: () =>
+      // Kapanışı `onayAc` yönetir: meşgulde sessizce açık kalır (bkz. onayPenceresi).
+      mesgulMu: () => kilitRef.current.has("dispatch"),
+      calistir: () =>
         kilitli("dispatch", () =>
           gunuOptimize
             .mutateAsync(hedefTarih)

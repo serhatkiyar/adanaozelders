@@ -17,6 +17,7 @@ import { getErrorDetail } from "@/lib/errors";
 import { PACKAGE_STATUS_LABEL } from "@/lib/packing";
 import { ROUTES } from "@/lib/routes";
 import type { Package, PackageStatus } from "@/types/packing";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 /** API sınırıyla uyumlu seçenekler; başlangıç 20. */
 const SAYFA_BOYUTLARI = [10, 20, 50];
@@ -145,32 +146,34 @@ export function PaketListesi() {
     kilitRef.current.set(anahtar, soz);
     return soz;
   };
-  const kapatmaEngeli = (anahtar: string) => () => (kilitRef.current.has(anahtar) ? Promise.reject(new Error("bekleniyor")) : undefined);
+  /** `onayAc` iş sözleşmesi: meşgulde pencere sessizce açık kalır, AntD'ye söz gitmez. */
+  const onayIsi = (anahtar: string, calistir: () => Promise<unknown>, basari: string, hata: string) => ({
+    mesgulMu: () => kilitRef.current.has(anahtar),
+    calistir: onayla(anahtar, calistir, basari, hata),
+  });
 
   const yenidenPaketleOnayi = (paket: Package) => {
     const hedefId = paket.id;
     const anahtar = `repack:${hedefId}`;
     if (kilitRef.current.has(anahtar)) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Yeniden dağıtıma ver",
       content: `${paket.code} yeniden dağıtıma girer. Kutunun üstündeki etiket GEÇERLİ kalır; yeni etiket basmayın.`,
       okText: "Yeniden paketle",
       cancelText: "İptal",
-      onCancel: kapatmaEngeli(anahtar),
-      onOk: onayla(anahtar, () => yenidenPaketle.mutateAsync(hedefId), "Paket yeniden dağıtıma hazır.", "Paket yeniden dağıtıma verilemedi."),
+      ...onayIsi(anahtar, () => yenidenPaketle.mutateAsync(hedefId), "Paket yeniden dağıtıma hazır.", "Paket yeniden dağıtıma verilemedi."),
     });
   };
   const bozulduOnayi = (paket: Package) => {
     const hedefId = paket.id;
     const anahtar = `unpack:${hedefId}`;
     if (kilitRef.current.has(anahtar)) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Kutu bozuldu mu?",
       content: `${paket.code} kutusunun fiziksel olarak açıldığını ve içeriğin rafa geri konduğunu işaretleyeceksiniz. Bu damga stok hareketi YAZMAZ; sayım envanterden yapılır.`,
       okText: "Bozuldu",
       cancelText: "İptal",
-      onCancel: kapatmaEngeli(anahtar),
-      onOk: onayla(anahtar, () => bozuldu.mutateAsync(hedefId), "Kutu bozuldu olarak işaretlendi.", "İşaretlenemedi."),
+      ...onayIsi(anahtar, () => bozuldu.mutateAsync(hedefId), "Kutu bozuldu olarak işaretlendi.", "İşaretlenemedi."),
     });
   };
 

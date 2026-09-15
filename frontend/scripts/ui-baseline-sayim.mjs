@@ -372,6 +372,8 @@ export const OLCUM_TABANI = [
   "src/panel/components/YanPencere.tsx",
   "src/panel/components/pencereAlanlari.ts",
   "src/panel/components/varlikKilidi.tsx",
+  // Kilide bağlı onay penceresi: kapanışı geri çağrı yönetir, AntD'ye söz dönmez.
+  "src/panel/components/onayPenceresi.ts",
   // Müşteriler modülünün ilk ekranı. Test dosyaları (`musteriListesi.test.tsx`,
   // `musteriListesiRota.test.ts`) kapsam dışıdır — walk ile aynı gerekçe
   // (fixture'lardaki ham etiketler borç değildir).

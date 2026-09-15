@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorDetail } from "@/lib/errors";
 import { formatTL } from "@/lib/money";
 import type { FailedOutboxEvent, StuckEscrowEntity, StuckEscrowRecord } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 const VARLIK_ETIKETI: Record<StuckEscrowEntity, string> = {
   payment: "Ders ödemesi",
@@ -74,15 +75,15 @@ export function HataCozme() {
   const yenidenKuyrugaAl = (is: FailedOutboxEvent) => {
     if (kilitRef.current) return;
     const hedefId = is.id;
-    modal.confirm({
+    onayAc(modal, {
       title: "İşi yeniden kuyruğa al",
       content: `"${is.kind}" işi (#${hedefId}) yeniden gönderilmek üzere kuyruğa alınacak. Bu işlem müşteriye giden bir bildirimi tetikleyebilir.`,
       okText: "İşi yeniden kuyruğa al",
       cancelText: "Vazgeç",
-      // Uçuş sürerken Vazgeç/ESC kapatamaz: reddedilen söz AntD'yi açık tutar.
-      onCancel: () => (kilitRef.current ? Promise.reject(new Error("bekleniyor")) : undefined),
-      // Await modu: söz reddedilirse onay açık kalır; hata gerçek gerekçesiyle gösterilir.
-      onOk: () => {
+      // Uçuş sürerken Vazgeç/ESC kapatamaz: kapanışı `onayAc` yönetir, AntD'ye söz gitmez.
+      mesgulMu: () => kilitRef.current,
+      // Hata yolunda onay açık kalır ve yeniden denenebilir; hata gerçek gerekçesiyle gösterilir.
+      calistir: () => {
         if (kilitRef.current && sozRef.current) return sozRef.current;
         kilitRef.current = true;
         const soz = yenidenDene

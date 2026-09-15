@@ -20,6 +20,7 @@ import { parseMoney } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import type { BoardPoolOrder, BoardRun } from "@/api/delivery";
 import type { Vehicle } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 const DURUM_RENGI: Record<string, string> = { PLANNED: "default", ACTIVE: "processing", DONE: "success", CANCELLED: "error" };
 const SAYI: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
@@ -210,22 +211,22 @@ export function DagitimTahtasi() {
     if (!canManage || optimizeEngeli() !== null || optimizeRef.current !== null) return;
     const hedefTarih = tarih;
     const adet = dagitilabilir;
-    modal.confirm({
+    onayAc(modal, {
       title: "Günü optimize et",
       content: `${adet} konumlu sipariş aktif filo araçlarına dağıtılmak üzere değerlendirilecek ve turlar optimize edilecek. Araç kapasitesine sığmayan siparişler havuzda kalabilir; mevcut planlı turlara durak eklenebilir.`,
       okText: "Turları kur",
       cancelText: "Vazgeç",
-      // ESC pending'de kapatabilir ve onCancel dönüşünü yok sayar; klavye kapatması kapalı.
-      keyboard: false,
-      onCancel: () => (optimizeRef.current !== null ? Promise.reject(new Error("bekleniyor")) : undefined),
-      onOk: () => {
+      // Kapanış `onayAc`ın denetiminde: meşgulken sessizce açık kalır (bkz. onayPenceresi).
+      mesgulMu: () => optimizeRef.current !== null,
+      calistir: () => {
         // Aynı tick çift onay: uçuştaki söz paylaşılır, ikinci mutation çıkmaz.
         if (optimizeRef.current) return optimizeRef.current;
         // Onay penceresi açıkken ekleme başlamış olabilir: çapraz kilit ONAY ANINDA da senkron doğrulanır
         // (backend `add_stops` sıra numarasını kilitsiz hesaplıyor; paralel dispatch çakışan sequence üretebilir).
         if (eklemeSayaciRef.current > 0) {
           message.warning("Tura sipariş ekleniyor; bitince deneyin.");
-          return Promise.reject(new Error("bekleniyor"));
+          // `null` = istek çıkmadı: onay penceresi açık kalır, söz üretilmez.
+          return null;
         }
         const soz = gunuOptimize
           .mutateAsync(hedefTarih)

@@ -18,6 +18,7 @@ import { getErrorDetail } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
 import { BELGE_TURU_ETIKETI, IncelemePenceresi, derecemetni, dogrulanabilirMi, onayKontrolMetni } from "./DiplomaDogrulamaPenceresi";
 import type { AdminEducation } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 const SAR: React.CSSProperties = { overflowWrap: "anywhere" };
 const SAYI: React.CSSProperties = { fontVariantNumeric: "tabular-nums" };
@@ -52,7 +53,7 @@ export function EgitmenDiplomaDogrulama() {
   // `state` ise çekmeceyi kilitleyen GÖRÜNÜR durumdur: onay açıkken alttaki hassas veri penceresi kapanmaz.
   const onayAcikRef = useRef(false);
   const [onayAcik, setOnayAcik] = useState(false);
-  const { kilitle, kilitli, surenIslem, kapatmaEngeli, onayla: kilitliOnay } = useVarlikKilidi(message);
+  const { kilitle, kilitli, surenIslem, onayIsi } = useVarlikKilidi(message);
 
   const liste = useMemo(() => (Array.isArray(sorgu.data) ? sorgu.data : []), [sorgu.data]);
   const veriHazir = Array.isArray(sorgu.data);
@@ -88,22 +89,15 @@ export function EgitmenDiplomaDogrulama() {
       onayAcikRef.current = false;
       setOnayAcik(false);
     };
-    modal.confirm({
+    onayAc(modal, {
       title: "Belgeyi doğrula",
       content: `${ad} · ${okul}: ${onayKontrolMetni(kayit)} doğrulayın; belge onaylanmış sayılacak.`,
       okText: "Doğrula",
       cancelText: "Vazgeç",
-      // ESC onayı pending'de kapatabilir ve `onCancel` dönüşünü yok sayar; klavye kapatması kapalı.
-      keyboard: false,
-      afterClose: serbestBirak,
-      onCancel: () => {
-        // Mutasyon uçuyorsa kapanma ENGELLENİR (söz reddedilir) ve kilit açık kalır.
-        const engel = kapatmaEngeli(varlik)();
-        if (engel) return engel;
-        serbestBirak();
-        return undefined;
-      },
-      onOk: kilitliOnay(varlik, "verify", () =>
+      // Pencere hangi yoldan kapanırsa kapansın onay kilidi kalkar. `afterClose` DEĞİL:
+      // o kapanış animasyonuna bağlı ve jsdom'da hiç koşmaz (bkz. onayPenceresi notu).
+      kapanista: serbestBirak,
+      ...onayIsi(varlik, "verify", () =>
         dogrula
           .mutateAsync({ id: hedefId, action: "verify" })
           // `message.success` AntD'de thenable döner: zincirin DÖNÜŞ değeri yapılırsa kilit mesaj kapanana kadar tutulurdu.

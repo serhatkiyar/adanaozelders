@@ -32,6 +32,7 @@ import {
 } from "@/hooks/useDelivery";
 import { getErrorDetail } from "@/lib/errors";
 import type { ClosedDay, Courier } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 const GUN_BICIMI = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
 /** Kapalı gün satır açıklaması: etiket varsa o; `holiday` kaynağında "Resmî tatil", diğerinde "Kapalı". */
@@ -127,7 +128,7 @@ export function DagitimKuryeler() {
   const aciklamaRef = useRef<import("antd").InputRef>(null);
   const fotoInputlar = useRef<Record<number, HTMLInputElement | null>>({});
 
-  const { kilitle, kilitli, surenIslem, kapatmaEngeli, onayla } = useVarlikKilidi(message);
+  const { kilitle, kilitli, surenIslem, onayIsi } = useVarlikKilidi(message);
 
   const kuryeListesi: Courier[] = Array.isArray(kuryeler.data) ? kuryeler.data : [];
   const gunler: ClosedDay[] = Array.isArray(takvim.data) ? takvim.data : [];
@@ -170,15 +171,13 @@ export function DagitimKuryeler() {
     const hedefId = c.id;
     const varlik = `kurye:${hedefId}`;
     if (kilitli(varlik)) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Kurye profilini sil",
       content: `${c.name} kurye profili silinecek.`,
       okText: "Kuryeyi sil",
       okButtonProps: { danger: true },
       cancelText: "Vazgeç",
-      keyboard: false,
-      onCancel: kapatmaEngeli(varlik),
-      onOk: onayla(varlik, "sil", () =>
+      ...onayIsi(varlik, "sil", () =>
         kuryeSil
           .mutateAsync(hedefId)
           .then(() => {
@@ -246,15 +245,13 @@ export function DagitimKuryeler() {
   const hesabiKapatOnayi = (c: Courier, accountId: number) => {
     const varlik = `hesap:${accountId}`;
     if (kilitli(varlik)) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Kurye giriş hesabını kapat",
       content: `${c.name} için açık oturumlar anında sonlandırılacak.`,
       okText: "Hesabı kapat",
       okButtonProps: { danger: true },
       cancelText: "Vazgeç",
-      keyboard: false,
-      onCancel: kapatmaEngeli(varlik),
-      onOk: onayla(varlik, "hesapKapat", () =>
+      ...onayIsi(varlik, "hesapKapat", () =>
         hesapKapat
           .mutateAsync(accountId)
           .then(() => {
@@ -301,14 +298,12 @@ export function DagitimKuryeler() {
     const hedefId = d.id;
     const varlik = `gun:${hedefId}`;
     if (kilitli(varlik)) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Günü yeniden aç",
       content: `${GUN_BICIMI.format(new Date(`${d.day}T00:00:00`))} teslimata yeniden açılacak; söz motoru bu güne yine söz verebilir.`,
       okText: "Yeniden aç",
       cancelText: "Vazgeç",
-      keyboard: false,
-      onCancel: kapatmaEngeli(varlik),
-      onOk: onayla(varlik, "gunAc", () =>
+      ...onayIsi(varlik, "gunAc", () =>
         gunAc
           .mutateAsync(hedefId)
           .then(() => {
@@ -324,14 +319,12 @@ export function DagitimKuryeler() {
   const tatilYukleOnayi = () => {
     if (kilitli("takvim:tatil")) return;
     const hedefYil = yil;
-    modal.confirm({
+    onayAc(modal, {
       title: `${hedefYil} resmî tatillerini yükle`,
       content: "Yılın resmî tatilleri teslimata kapalı olarak işaretlenir (yinelenenler atlanır). İstemediğiniz günü listeden açabilirsiniz. Not: tatil verisi şimdilik yalnız 2026 için tanımlı.",
       okText: "Yükle",
       cancelText: "Vazgeç",
-      keyboard: false,
-      onCancel: kapatmaEngeli("takvim:tatil"),
-      onOk: onayla("takvim:tatil", "tatil", () =>
+      ...onayIsi("takvim:tatil", "tatil", () =>
         tatilYukle
           .mutateAsync(hedefYil)
           .then((r) => {

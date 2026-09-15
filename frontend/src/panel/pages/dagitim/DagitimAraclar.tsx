@@ -13,6 +13,7 @@ import { ARAC_SIRA, NOKTA_SIRA, shiftText } from "@/components/admin/aracSemalar
 import { useCreatePickupPoint, useCreateVehicle, useDeleteVehicle, usePickupPoints, useUpdatePickupPoint, useUpdateVehicle, useVehicles } from "@/hooks/useDelivery";
 import { getErrorDetail } from "@/lib/errors";
 import type { PickupPoint, Vehicle } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 /** Backend alan adları (422 beyaz listesi) — form alanlarıyla eşleme. */
 const ARAC_SUNUCU_ALANLARI = ["label", "code", "plate", "max_stops", "shift_start", "shift_end", "fixed_cost", "sort_order"] as const;
@@ -73,7 +74,7 @@ export function DagitimAraclar() {
   const [noktaPenceresi, setNoktaPenceresi] = useState<{ mod: "ekle" } | { mod: "duzenle"; nokta: PickupPoint } | null>(null);
   const [aracHatasi, setAracHatasi] = useState<Hata>(TEMIZ_HATA);
   const [noktaHatasi, setNoktaHatasi] = useState<Hata>(TEMIZ_HATA);
-  const { kilitle, kilitli, surenIslem, kapatmaEngeli, onayla } = useVarlikKilidi(message);
+  const { kilitle, kilitli, surenIslem, onayIsi } = useVarlikKilidi(message);
 
   const aracListesi: Vehicle[] = Array.isArray(araclar.data) ? araclar.data : [];
   const baseListesi = baseNoktalari(Array.isArray(noktalar.data) ? noktalar.data : []);
@@ -116,15 +117,13 @@ export function DagitimAraclar() {
     const varlik = `vehicle:${hedefId}`;
     if (kilitli(varlik)) return;
     const aciklama = `${v.label} filodan kaldırılacak. Geçmiş turların kaydı bozulmaz.`;
-    const onay = modal.confirm({
+    const onay = onayAc(modal, {
       title: "Aracı sil",
       content: aciklama,
       okText: "Aracı sil",
       okButtonProps: { danger: true },
       cancelText: "Vazgeç",
-      keyboard: false,
-      onCancel: kapatmaEngeli(varlik),
-      onOk: onayla(varlik, "sil", () =>
+      ...onayIsi(varlik, "sil", () =>
         aracSil
           .mutateAsync(hedefId)
           .then(() => {

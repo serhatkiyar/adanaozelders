@@ -41,10 +41,12 @@ describe("useVarlikKilidi", () => {
     expect(result.current.surenIslem("vehicle:1")).toBe("sil");
     expect(result.current.surenIslem("vehicle:2")).toBe("aktif");
     expect(result.current.kilitli("vehicle:1")).toBe(true);
-    // Onay yardımcıları: kilitliyken kapatma reddedilir, çakışan onOk reddedilir.
-    await expect(result.current.kapatmaEngeli("vehicle:1")()).rejects.toThrow("bekleniyor");
-    expect(result.current.kapatmaEngeli("vehicle:3")()).toBeUndefined();
-    await expect(result.current.onayla("vehicle:1", "aktif", calistir)()).rejects.toThrow("mesgul");
+    // Onay iş sözleşmesi: REDDEDİLMİŞ SÖZ ÜRETMEZ (AntD'ye rejection sızmasın).
+    const mesgulIs = result.current.onayIsi("vehicle:1", "aktif", calistir);
+    expect(mesgulIs.mesgulMu()).toBe(true);
+    // Çakışan işlem: istek çıkmaz, `null` döner — söz hiç doğmaz.
+    expect(mesgulIs.calistir()).toBeNull();
+    expect(result.current.onayIsi("vehicle:3", "sil", calistir).mesgulMu()).toBe(false);
     await act(async () => { cozumler[0](undefined); await a; });
     expect(result.current.kilitli("vehicle:1")).toBe(false);
     expect(result.current.surenIslem("vehicle:1")).toBeUndefined();
