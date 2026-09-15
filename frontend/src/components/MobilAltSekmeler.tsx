@@ -119,7 +119,7 @@ const ANONIM_SEKMELERI: Sekme[] = [KESFET, FAVORILER];
  */
 const PANEL_SEKMELERI: Sekme[] = [
   KESFET,
-  { key: "panel", to: ROUTES.admin, label: "Yönetim", icon: "dashboard" },
+  { key: "panel", to: ROUTES.adminNew, label: "Yönetim", icon: "dashboard" },
   { key: "ayarlar", to: ROUTES.settings, label: "Ayarlar", icon: "settings" },
 ];
 
