@@ -13,6 +13,7 @@ import { useCategories, useInvalidateAdminStore } from "@/hooks/useStore";
 import { getErrorDetail } from "@/lib/errors";
 import { orandanYuzde } from "@/lib/tax";
 import type { ProductCategory } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 function derinlik(kategori: ProductCategory, hepsi: Map<number, ProductCategory>): number {
   let d = 0;
@@ -166,13 +167,15 @@ function KategoriSatirAksiyonlari({ kategori, duzenle }: { kategori: ProductCate
     if (key === "duzenle") duzenle();
     else if (key === "durum") durum.mutate();
     else if (key === "sil") {
-      modal.confirm({
+      onayAc(modal, {
         title: "Kategoriyi sil",
         content: `"${kategori.name}" kategorisi silinecek.`,
         okText: "Kategoriyi sil",
         okButtonProps: { danger: true },
         cancelText: "Vazgeç",
-        onOk: () => sil.mutateAsync(),
+        // Kapanış `onayAc`ta: mutasyon reddi AntD'ye çıkmaz, pencere açık kalır.
+        mesgulMu: () => sil.isPending,
+        calistir: () => sil.mutateAsync(),
       });
     }
   };

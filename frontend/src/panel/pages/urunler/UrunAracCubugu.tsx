@@ -70,6 +70,7 @@ import { CSV_COLUMNS, buildCsvTemplate } from "@/lib/productCsvTemplate";
 import { ROUTES } from "@/lib/routes";
 import type { StokFiltresi, TedarikciFiltresi } from "@/lib/storeProductQuery";
 import type { BulkImportResult, ProductSearchOut } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 /* ────────────────────────────── Filtre ────────────────────────────── */
 
@@ -635,13 +636,15 @@ export function UrunSatirAksiyonlari({
     else if (key === "durum") durumDegistir.mutate();
     else if (key === "kapak") dosyaRef.current?.click();
     else if (key === "sil") {
-      modal.confirm({
+      onayAc(modal, {
         title: "Ürünü sil",
         content: `"${urun.title}" katalogdan kaldırılacak.`,
         okText: "Ürünü sil",
         okButtonProps: { danger: true },
         cancelText: "Vazgeç",
-        onOk: () => sil.mutateAsync(),
+        // Kapanış `onayAc`ta: mutasyon reddi AntD'ye çıkmaz, pencere açık kalır.
+        mesgulMu: () => sil.isPending,
+        calistir: () => sil.mutateAsync(),
       });
     }
   };

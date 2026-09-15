@@ -21,6 +21,7 @@ import { orderPaymentLabel } from "@/lib/orderPayment";
 import { orderPaymentTone, orderStatusLabel, orderStatusTone } from "@/lib/orderStatus";
 import { ROUTES } from "@/lib/routes";
 import type { OrderItemOut, OrderOut } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 const TON_RENK: Record<ReturnType<typeof orderStatusTone>, string> = {
   neutral: "default",
@@ -172,15 +173,17 @@ export function SiparisDetayi() {
   const teslimEdilebilir = canManage && o.status === "SHIPPED";
   const iadeEdilebilir = canManage && o.payment_status === "PAID";
 
-  // Await modu: onOk reddedince onay penceresi açık kalır; hata gerçek metniyle gösterilir.
+  // Kapanış `onayAc`ın denetiminde: hata yolunda pencere açık kalır, AntD'ye söz gitmez.
   const teslimOnayi = () => {
     if (teslimRef.current || teslim.isPending) return;
-    modal.confirm({
+    onayAc(modal, {
       title: "Siparişi teslim edildi işaretle",
       content: `${o.order_no} siparişi teslim edilmiş sayılacak ve teslimat akışı kapanacak.`,
       okText: "Teslim edildi olarak işaretle",
       cancelText: "Vazgeç",
-      onOk: () => {
+      mesgulMu: () => teslimRef.current && teslim.isPending,
+      calistir: () => {
+        // Aynı tick ikinci onay: uçuştaki söz paylaşılır, ikinci istek çıkmaz.
         if (teslimRef.current && teslimSozuRef.current) return teslimSozuRef.current;
         teslimRef.current = true;
         const soz = teslim.mutateAsync().catch((e: unknown) => {

@@ -11,6 +11,7 @@ import { useCoupons, useDeleteCoupon, useUpdateCoupon } from "@/hooks/useStore";
 import { getErrorDetail } from "@/lib/errors";
 import { formatTL } from "@/lib/money";
 import type { Coupon } from "@/types";
+import { onayAc } from "@/panel/components/onayPenceresi";
 
 const VARSAYILAN_BOYUT = 20;
 
@@ -56,16 +57,16 @@ export function KuponListesi() {
     );
   };
 
-  // Await modu: onOk reddedince onay penceresi açık kalır, kullanıcı yeniden deneyebilir.
+  // Kapanış `onayAc`ın denetiminde: hatada pencere açık kalır ve yeniden denenebilir.
   const silOnayla = (k: Coupon) =>
-    modal.confirm({
+    onayAc(modal, {
       title: "Kuponu sil",
       content: `${k.code} kuponu silinecek.`,
       okText: "Kuponu sil",
       okButtonProps: { danger: true },
       cancelText: "Vazgeç",
-      onOk: async () => {
-        if (silRef.current) return;
+      mesgulMu: () => silRef.current,
+      calistir: () => (async () => {
         silRef.current = true;
         try {
           await sil.mutateAsync(k.id);
@@ -76,7 +77,7 @@ export function KuponListesi() {
         } finally {
           silRef.current = false;
         }
-      },
+      })(),
     });
 
   const kolonlar: TableProps<Coupon>["columns"] = [
