@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -225,10 +225,30 @@ describe("SiparisDetayi", () => {
     veri(siparis({ status: "PAID" }));
     await userEvent.click(screen.getByRole("button", { name: "Kargoya ver" }));
     await waitFor(() => expect(document.querySelector(".ant-drawer-open")).not.toBeNull());
+    // Kilit pencere yeniden açılırken sıfırlanır: ikinci gönderim MÜMKÜN olmalı.
     const acik = document.querySelector(".ant-drawer-open .ant-drawer-content") as HTMLElement;
     await userEvent.type(within(acik).getByLabelText(/Takip no/), "  TRK-9  ");
     await userEvent.click(within(acik).getByRole("button", { name: /Kargola/ }));
     await waitFor(() => expect(api.shipOrder).toHaveBeenLastCalledWith(42, "TRK-9"));
+  });
+
+  it("Kargoya ver: istek ÇÖZÜLDÜKTEN sonra gelen ikinci tık da istek açmaz (kilit başarıda bırakılmaz)", async () => {
+    // CI'da yük altında görülen yarışın birebir provası: `dblClick`in iki tıkı arasında
+    // mutasyon çözülüyor. Kilit `onSettled`de bırakılsaydı ikinci tık ikinci kargo
+    // isteği açardı — bekleme/timeout eklemeden, sırayı ELLE kurarak ölçülür.
+    veri(siparis());
+    kur();
+    await userEvent.click(screen.getByRole("button", { name: "Kargoya ver" }));
+    const pencere = await screen.findByRole("dialog");
+    const kargola = within(pencere).getByRole("button", { name: /Kargola/ });
+    await userEvent.click(kargola);
+    // Birinci istek tamamen sonuçlanır (başarı + pencere kapanışı akışı).
+    await waitFor(() => expect(api.shipOrder).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(invalidate).toHaveBeenCalled());
+    // Aynı düğmeye ikinci tık: pencere kapanış render'ını beklemeden.
+    fireEvent.click(kargola);
+    await act(async () => { await Promise.resolve(); });
+    expect(api.shipOrder).toHaveBeenCalledTimes(1);
   });
 
   it("Kargoya ver: hata pencerede, takip no korunur, yeniden gönderilebilir; kirli/temiz kapatma", async () => {

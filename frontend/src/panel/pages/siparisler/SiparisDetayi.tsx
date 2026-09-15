@@ -59,7 +59,11 @@ export function SiparisDetayi() {
   const [kargoHatasi, setKargoHatasi] = useState<string | null>(null);
   const [iadeAcik, setIadeAcik] = useState(false);
   const [iadeHatasi, setIadeHatasi] = useState<string | null>(null);
-  // Senkron kilitler: aynı tick'te ikinci ship/deliver/refund isteği çıkmaz.
+  // Senkron kilitler: ikinci ship/deliver/refund isteği çıkmaz. Kilit BAŞARIDA
+  // BIRAKILMAZ — mutasyon çözülür çözülmez serbest kalsaydı, pencereyi kapatan
+  // render'dan önce düşen ikinci bir tık aynı sipariş için ikinci istek açardı
+  // (CI'da tam olarak bu görüldü). Serbest bırakma yalnız iki yerde: hata yolunda
+  // (aynı pencerede yeniden deneme) ve pencere yeniden açılırken (yeni oturum).
   const kargoRef = useRef(false);
   const teslimRef = useRef(false);
   // Uçuştaki teslim isteği: aynı tick'te ikinci onay yeni istek açmaz, aynı sonucu bekler.
@@ -79,8 +83,9 @@ export function SiparisDetayi() {
       setKargoAcik(false);
       detayiGuncelle(o);
     },
-    onError: (e) => setKargoHatasi(getErrorDetail(e, "Kargoya verilemedi.")),
-    onSettled: () => {
+    onError: (e) => {
+      setKargoHatasi(getErrorDetail(e, "Kargoya verilemedi."));
+      // Yalnız hata yolunda serbest: kullanıcı aynı pencerede yeniden deneyebilsin.
       kargoRef.current = false;
     },
   });
@@ -102,8 +107,8 @@ export function SiparisDetayi() {
       setIadeAcik(false);
       detayiGuncelle(o);
     },
-    onError: (e) => setIadeHatasi(getErrorDetail(e, "İade başarısız.")),
-    onSettled: () => {
+    onError: (e) => {
+      setIadeHatasi(getErrorDetail(e, "İade başarısız."));
       iadeRef.current = false;
     },
   });
@@ -248,9 +253,9 @@ export function SiparisDetayi() {
           <Tag color={TON_RENK[orderStatusTone(o.status)]}>{orderStatusLabel(o.status)}</Tag>
         </Flex>
         <Flex gap={8} wrap>
-          {iadeEdilebilir ? <Button danger onClick={() => { setIadeHatasi(null); setIadeAcik(true); }}>İade et</Button> : null}
+          {iadeEdilebilir ? <Button danger onClick={() => { iadeRef.current = false; setIadeHatasi(null); setIadeAcik(true); }}>İade et</Button> : null}
           {teslimEdilebilir ? <Button loading={teslim.isPending} onClick={teslimOnayi}>Teslim edildi</Button> : null}
-          {kargolanabilir ? <Button type="primary" onClick={() => { setKargoHatasi(null); setKargoAcik(true); }}>Kargoya ver</Button> : null}
+          {kargolanabilir ? <Button type="primary" onClick={() => { kargoRef.current = false; setKargoHatasi(null); setKargoAcik(true); }}>Kargoya ver</Button> : null}
         </Flex>
       </Flex>
 
