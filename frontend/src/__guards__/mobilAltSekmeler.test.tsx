@@ -137,6 +137,10 @@ describe("mobil alt sekme çubuğu", () => {
     girisYap(ROLE_IDS.ADMIN);
     sar();
     expect(sekmeAdlari()).toEqual(["Keşfet", "Yönetim", "Ayarlar"]);
+    expect(screen.getByRole("link", { name: "Yönetim" })).toHaveAttribute(
+      "href",
+      ROUTES.adminNew
+    );
   });
 
   it.each([

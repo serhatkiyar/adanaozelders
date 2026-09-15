@@ -149,6 +149,19 @@ describe("üst bar · KALDIRILAN kısayolların hedefi hâlâ erişilebilir", ()
   const menuyuAc = () =>
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
 
+  it("yönetici hesabındaki Yönetim Paneli yeni paneli açar", () => {
+    useAuthStore.setState({
+      user: { id: 4, role_id: ROLE_IDS.ADMIN, display_name: "Yönetici", email: "a@example.com" },
+    } as never);
+    sar([]);
+    menuyuAc();
+
+    expect(screen.getByRole("link", { name: "Yönetim Paneli" })).toHaveAttribute(
+      "href",
+      ROUTES.adminNew
+    );
+  });
+
   it.each([
     ["öğrenci", ROLE_IDS.CLIENT, UYE_NAV],
     ["eğitmen", ROLE_IDS.TUTOR, TUTOR_NAV],

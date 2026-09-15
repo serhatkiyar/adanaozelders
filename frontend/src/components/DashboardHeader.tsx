@@ -143,7 +143,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         {/* Admin artık kökten panele ZORLA yönlendirilmiyor (29 Ağu: admin de
             özel ders yüzeyini gezebilmeli); panele dönüş yolu bu menüde durur. */}
         {user?.role_id === ROLE_IDS.ADMIN && (
-          <NavLink to={ROUTES.admin} onClick={onClick} className={menuItemClass}>
+          <NavLink to={ROUTES.adminNew} onClick={onClick} className={menuItemClass}>
             <Icon name="settings" className="h-5 w-5" />
             Yönetim Paneli
           </NavLink>
