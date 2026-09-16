@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
 /**
  * Eğitmen arama SONUÇ ekranının telefon başlığı — geri · hap · filtre, altında
@@ -41,12 +41,17 @@ export type SiralamaSecenegi = { value: string; kisa: string };
 /** Dokunma kabuğu — 44px, zeminsiz. */
 const KABUK = "flex h-11 shrink-0 snap-start items-center py-[5px]";
 
-/** Görünen hap — 34px. */
+/** Görünen hap — 34px.
+ *
+ * SEÇİLİ ÇİP DOLMAZ (kullanıcı kararı, 16 Eyl 2026; referans Airbnb): siyah
+ * dolgu şeridi lekeliyordu. Seçili çip aynı beyaz zeminde KALIN (2px) koyu
+ * çerçeve alır; seçilmemiş çip ince, orta gri çerçevedir. `box-border` ve
+ * sabit yükseklik sayesinde kalın çerçeve çipi büyütmez. */
 export function cipSinifi(aktif: boolean): string {
-  return `flex h-[34px] items-center gap-1 rounded-full border px-3.5 text-sm transition active:scale-95 ${
+  return `box-border flex h-[34px] items-center gap-1 rounded-full bg-white px-3.5 text-sm text-slate-900 transition active:scale-95 ${
     aktif
-      ? "border-slate-900 bg-slate-900 font-medium text-white"
-      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+      ? "border-2 border-slate-900 font-medium"
+      : "border border-slate-300 hover:border-slate-500"
   }`;
 }
 
@@ -85,13 +90,60 @@ function AramaOzetiHapi({
   );
 }
 
+/**
+ * Sayfa AŞAĞI kaydırılırken `true`: filtre şeridi katlanır, yalnız hap satırı
+ * kalır (kullanıcı kararı, 16 Eyl 2026; Airbnb aynısını yapar). Yukarı
+ * kaydırmaya başlayınca veya tepeye dönünce şerit geri açılır.
+ *
+ * Eşik 8px: parmağın küçük titremesi şeridi açıp kapatmasın. Tepeden 24px
+ * içindeyken hep açık: sayfa daha kaydırılmamışken şerit gizlenmemeli.
+ */
+function useAsagiKaydiriliyor(): boolean {
+  const [asagi, setAsagi] = useState(false);
+  useEffect(() => {
+    let son = window.scrollY;
+    let bekliyor = false;
+    /* Şerit katlanıp açılırken başlığın boyu değişir; tarayıcının kaydırma
+       çıpası (scroll anchoring) sayfayı o kadar kaydırır ve bu da yeni bir
+       "aşağı/yukarı" olayı doğurur — şerit çırpınıyordu (ölçüldü, 16 Eyl
+       2026). Bir karar verildikten sonra geçiş süresi boyunca (300ms) olaylar
+       yok sayılır ve referans nokta geçiş bittiğinde yeniden alınır. */
+    let donmusa = 0;
+    const karar = (deger: boolean) => {
+      setAsagi(deger);
+      donmusa = performance.now() + 350;
+    };
+    const oku = () => {
+      bekliyor = false;
+      const y = window.scrollY;
+      if (performance.now() < donmusa) {
+        son = y;
+        return;
+      }
+      if (y < 24) karar(false);
+      else if (y > son + 8) karar(true);
+      else if (y < son - 8) karar(false);
+      else return;
+      son = y;
+    };
+    const onScroll = () => {
+      if (bekliyor) return;
+      bekliyor = true;
+      requestAnimationFrame(oku);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return asagi;
+}
+
 export function AramaMobilBaslik({
   baslik,
   ozet,
   onHap,
   onGeri,
   onFiltre,
-  filtreAktif,
+  filtreSayisi,
   siralama,
   cipler,
   filtreIkonu,
@@ -103,8 +155,9 @@ export function AramaMobilBaslik({
   onHap: () => void;
   onGeri: () => void;
   onFiltre: () => void;
-  /** Filtre penceresinde etkin bir filtre var mı (ikonu doldurur). */
-  filtreAktif: boolean;
+  /** Filtre penceresindeki ETKİN filtre sayısı — düğmenin köşesinde rozet
+   *  olur (Airbnb'deki gibi). 0 ise rozet çizilmez. */
+  filtreSayisi: number;
   siralama: {
     deger: string;
     secenekler: SiralamaSecenegi[];
@@ -115,8 +168,9 @@ export function AramaMobilBaslik({
   cipler: FiltreCipi[];
   filtreIkonu: ReactNode;
 }) {
+  const seritKatli = useAsagiKaydiriliyor();
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
       <div className="flex items-center gap-1.5">
         <button
           type="button"
@@ -138,20 +192,46 @@ export function AramaMobilBaslik({
         <div className="min-w-0 flex-1">
           <AramaOzetiHapi baslik={baslik} ozet={ozet} onClick={onHap} />
         </div>
+        {/* Filtre düğmesi DOLMAZ: etkin filtre varsa çerçeve kalınlaşır ve
+            köşede sayı rozeti belirir. Siyah dolu daire "basılı" gibi
+            okunuyordu ve kaç filtre olduğunu söylemiyordu. */}
         <button
           type="button"
           onClick={onFiltre}
-          aria-label="Filtreler"
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition active:scale-95 ${
-            filtreAktif
-              ? "border-slate-900 bg-slate-900 text-white"
-              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+          aria-label={
+            filtreSayisi > 0 ? `Filtreler, ${filtreSayisi} etkin` : "Filtreler"
+          }
+          className={`relative box-border flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-slate-900 transition active:scale-95 ${
+            filtreSayisi > 0
+              ? "border-2 border-slate-900"
+              : "border border-slate-300 hover:border-slate-500"
           }`}
         >
           {filtreIkonu}
+          {filtreSayisi > 0 && (
+            <span
+              aria-hidden
+              className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white"
+            >
+              {filtreSayisi}
+            </span>
+          )}
         </button>
       </div>
-      <FiltreSeridi siralama={siralama} cipler={cipler} />
+      {/* Şerit `grid-template-rows` ile katlanır (0fr ↔ 1fr): yükseklik
+          animasyonu için içeriğin ölçüsünü bilmek gerekmez. Üstteki boşluk
+          iç kapta, böylece katlıyken o da kaybolur. */}
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: seritKatli ? "0fr" : "1fr" }}
+        aria-hidden={seritKatli}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="pt-2">
+            <FiltreSeridi siralama={siralama} cipler={cipler} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -185,9 +265,7 @@ function FiltreSeridi({
         </span>
         <span
           aria-hidden
-          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
-            siralamaAktif ? "text-white" : "text-slate-400"
-          }`}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M6 9l6 6 6-6" />

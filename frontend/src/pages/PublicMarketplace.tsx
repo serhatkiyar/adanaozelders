@@ -39,8 +39,20 @@ const SORT_OPTIONS: { value: TutorSort; label: string; kisa: string }[] = [
 /* ─── icon helpers ─────────────────────────────────────── */
 
 const FilterIconSvg = () => (
-  <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
+  /* Çizgi "ayar sürgüleri" (Airbnb'deki ikon dili): dolu huni, dolu siyah
+     daireyle birlikte ağır duruyordu (kullanıcı itirazı, 16 Eyl 2026). */
+  <svg
+    className="h-5 w-5 shrink-0"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    aria-hidden
+  >
+    <path d="M4 7h16M4 17h16" />
+    <circle cx="9" cy="7" r="2.2" fill="white" />
+    <circle cx="15" cy="17" r="2.2" fill="white" />
   </svg>
 );
 
@@ -149,6 +161,13 @@ export default function PublicMarketplace() {
   // unutmak, rozeti sessizce yanlış gösterirdi. Eskiden yalnız `sort`a
   // bakıyordu ve anonim yüzeyde başka filtre de yoktu.
   const hasActiveFilters = filtreliMi(EGITMEN_ARAMA, degerler);
+  /* Filtre PENCERESİNDEKİ etkin grup sayısı (rozet). Hapta zaten görünen
+     ders/yer/şekil sayılmaz; fiyat ve yaş aralığı birer grup. */
+  const mobilFiltreSayisi =
+    (degerler.minFiyat || degerler.maxFiyat ? 1 : 0) +
+    (degerler.cinsiyet ? 1 : 0) +
+    (degerler.minYas || degerler.maxYas ? 1 : 0) +
+    (degerler.yakinimda ? 1 : 0);
 
   const seoTitle = subjects.length
     ? `${subjects.join(", ")} Eğitmenleri`
@@ -285,6 +304,10 @@ export default function PublicMarketplace() {
 
      Görünüm `Marketplace` (oturumlu) ile ORTAK bileşenden gelir; durum
      değil — iki sayfanın filtre modeli farklıdır. */
+  /* Hap İKİ bilgiyi HER ZAMAN söyler (kullanıcı kararı, 16 Eyl 2026; Airbnb
+     "Herhangi hafta • Misafir ekleyin" gibi): yer yoksa "Tüm Adana", ders
+     şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
+     neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
   const mobilAramaOzeti = [
     yer
       ? yerEtiketi(yer)
@@ -292,15 +315,13 @@ export default function PublicMarketplace() {
         ? district[0]
         : district.length
           ? `${district.length} ilçe`
-          : null,
+          : "Tüm Adana",
     sekil === TeachingMode.ONLINE
       ? "Uzaktan"
       : sekil === TeachingMode.IN_PERSON
         ? "Yüz yüze"
-        : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+        : "Ders şekli ekleyin",
+  ].join("  •  ");
 
   /* Çipler UYDURMA DEĞİL: hepsi zaten adreste yaşayan ve arama isteğine giden
      filtrelerdir. Ders şekli TEK seçimdir — aynı çipe tekrar dokunmak filtreyi
@@ -336,18 +357,19 @@ export default function PublicMarketplace() {
   const mobilUst = mobil ? (
     <AramaMobilBaslik
       baslik={
-        q ||
-        (subjects.length === 1
-          ? subjects[0]
-          : subjects.length
-            ? `${subjects.length} ders`
-            : "Eğitmen ara")
+        q
+          ? `${q} eğitmenleri`
+          : subjects.length === 1
+            ? `${subjects[0]} eğitmenleri`
+            : subjects.length
+              ? `${subjects.length} ders için eğitmenler`
+              : "Tüm eğitmenler"
       }
-      ozet={mobilAramaOzeti || "Tüm Adana"}
+      ozet={mobilAramaOzeti}
       onHap={() => setMobilAramaAcik(true)}
       onGeri={() => navigate(-1)}
       onFiltre={() => setShowFilters(true)}
-      filtreAktif={hasActiveFilters}
+      filtreSayisi={mobilFiltreSayisi}
       siralama={{
         deger: sort,
         secenekler: SORT_OPTIONS.map((o) => ({ value: o.value, kisa: o.kisa })),
