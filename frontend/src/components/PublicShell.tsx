@@ -164,7 +164,7 @@ export function PublicShell({
           mobilDetayEkrani
             ? "flex-1 p-0 md:p-6"
             : icerikSiki
-              ? "flex-1 px-4 pb-8 pt-6 sm:px-6"
+              ? "flex-1 px-4 pb-8 pt-8 sm:px-6"
               : "flex-1 p-4 sm:p-6"
         }
       >
