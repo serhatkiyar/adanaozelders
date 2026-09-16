@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EducationSection } from "@/components/EducationSection";
@@ -71,7 +72,7 @@ export default function Profile() {
     <>
       {/* ── Sayfa başlığı + tek düzenleme girişi ── */}
           <div className="mb-6 flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            <h1 className={SAYFA_BASLIGI}>
               {isTutor ? "Hakkımda" : "Profil"}
             </h1>
             {user && !isAdmin && !isEditing && (

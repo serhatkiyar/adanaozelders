@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Field } from "@/components/ui/Field";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -57,7 +58,7 @@ function StudentDemands() {
     <DashboardShell title="Taleplerim" navItems={UYE_NAV}>
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 ">
+          <h1 className={SAYFA_BASLIGI}>
             İlan / Taleplerim
           </h1>
           <p className="mt-1 text-sm text-slate-500 ">
@@ -363,7 +364,7 @@ function TutorDemands() {
     <DashboardShell title="Gelen Talepler" navItems={TUTOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 ">
+          <h1 className={SAYFA_BASLIGI}>
             Gelen Talepler
           </h1>
           <p className="mt-1 text-sm text-slate-500 ">

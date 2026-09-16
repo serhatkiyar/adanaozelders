@@ -1,8 +1,9 @@
 import { type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
+import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { CompactSearch } from "@/components/HeroSearch";
 import { StoreLayout } from "@/pages/store/StoreLayout";
+import { useLogout } from "@/hooks/useLogout";
 import { UYE_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { TALEPLER_ACIK } from "@/lib/ozellikBayraklari";
@@ -120,12 +121,14 @@ const CARDS: AccountCard[] = [
 ];
 
 export default function AccountHub() {
-  const navigate = useNavigate();
   const lastSurface = useSurfaceStore((s) => s.lastSurface);
+  /* Çıkış sonrası Keşfet'e dönülür: telefonda üst bar (ve içindeki "Çıkış
+     yap") kalktı, oturum bu sayfadan kapanır; anonim kullanıcının evi `/`. */
+  const cikis = useLogout(ROUTES.home);
 
   const content = (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-2xl font-bold text-slate-900 ">Hesabım</h1>
+      <h1 className={SAYFA_BASLIGI}>Hesabım</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map((c) => (
@@ -146,6 +149,32 @@ export default function AccountHub() {
           </Link>
         ))}
       </div>
+
+      {/* ÇIKIŞ BURADA (16 Eyl 2026): telefonda üst bar ve hamburger menüsü
+          bu ekranda çizilmiyor (`mobilUstGizle`); oradaki "Çıkış yap"ın tek
+          telefon karşılığı bu düğme. Masaüstünde avatar menüsünde de var —
+          iki yol aynı hook'u çağırır. Kartlardan ayrı, altta ve sade: çıkış
+          bir hedef değil, oturumu bitiren eylem. */}
+      <button
+        type="button"
+        onClick={cikis}
+        className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99] sm:w-auto"
+      >
+        <svg
+          className="h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <path d="M16 17l5-5-5-5M21 12H9" />
+        </svg>
+        Çıkış yap
+      </button>
     </div>
   );
 
@@ -160,21 +189,13 @@ export default function AccountHub() {
   }
 
   return (
-    <DashboardShell
-      title="Hesabım"
-      navItems={UYE_NAV}
-      center={
-        <div className="flex w-full justify-center">
-          <CompactSearch
-            active="egitmenler"
-            placeholder="Ders, eğitmen, kütüphane ara…"
-            q=""
-            district={[]}
-            onOpen={() => navigate(ROUTES.tutors)}
-          />
-        </div>
-      }
-    >
+    /* Telefonda ÜST BAR YOK (kullanıcı kararı, 16 Eyl 2026): alt sekme çubuğu
+       zaten Keşfet · Favoriler · Mesajlar · Rezervasyon · Hesabım'ı taşıyor; üstte
+       logo, kalp ve hamburger ikinci bir gezinmeydi. Mesajlar ekranıyla aynı
+       bayrak. Masaüstünde üst bar olduğu gibi kalır. */
+    /* Arama hapı da KALDIRILDI: hesap ekranı arama yüzeyi değil; hap
+       yalnız /egitmenler'e atlıyordu, arama Keşfet sekmesinde. */
+    <DashboardShell title="Hesabım" navItems={UYE_NAV} mobilUstGizle>
       {content}
     </DashboardShell>
   );

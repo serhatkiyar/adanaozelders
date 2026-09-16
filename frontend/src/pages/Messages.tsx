@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link, useSearchParams } from "react-router-dom";
 import { AxiosError } from "axios";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -373,7 +374,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-slate-900 ">
+                <h1 className={SAYFA_BASLIGI}>
                   Mesajlar
                 </h1>
                 {/* Başlığın sağındaki iki yuvarlak: ara · arşiv. Arşiv eskiden

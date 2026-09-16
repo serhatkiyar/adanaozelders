@@ -225,7 +225,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
     ? "sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md "
     : "border-b border-slate-200 bg-[#fafafa] ";
-  const innerPad = "px-4 md:px-8 pt-5 pb-2";
+  /* `mobilSade` iken DOLGU DA GİZLENİR (16 Eyl 2026, ölçüldü): satır
+     `hidden md:flex` olsa da dolgu bu sarmalayıcıda kaldığı için telefonda
+     arama hapının üstünde 28px boş bant kalıyordu — anonim kabukta
+     (`PublicNavbar`) dolgu gizlenen satırın kendisinde olduğundan orada
+     yoktu; giriş yapınca "boşluk belirdi" sanılan fark buydu. */
+  const innerPad = `px-4 md:px-8 pt-5 pb-2 ${mobilSade ? "hidden md:block" : ""}`;
   // 30 Ağu: telefonda da TAM (yazılı) logo — kategori şeridi mobilde ikinci
   // satırda olduğundan üstte çakışma yok; yazısız simge devre dışı.
   const logoClass = transparent
