@@ -76,12 +76,17 @@ export function PublicNavbar({
               {/* 30 Ağu: telefonda da TAM (yazılı) logo — kategori şeridi <md'de
                   ikinci satıra indiği için üstte çakışacak orta sütun yok.
                   Simge logo yalnız md..xl bandında kalır (yukarıdaki ölçüm). */}
-              <img src="/logo-compact.svg" alt="" aria-hidden className="hidden h-8 w-auto object-contain md:block xl:hidden" />
+              {/* 16 Eyl 2026: telefonun "masaüstü sitesi" kipi ~980px açar ve
+                  orada simge logo çıkıyordu (kullanıcı: "başka logo yükleniyor").
+                  Ölçüldü: sekme şeridi 950'de 246px, 980'de 261px'ten başlıyor;
+                  28px yüksekliğindeki yazılı logo 32+200=232'de bitiyor → 950'den
+                  itibaren çakışmadan sığar. Simge logo yalnız 768–949 bandı. */}
+              <img src="/logo-compact.svg" alt="" aria-hidden className="hidden h-8 w-auto object-contain md:block min-[950px]:hidden" />
               <img
                 src="/logo.svg"
                 alt=""
                 aria-hidden
-                className="block h-8 w-auto object-contain md:hidden xl:block xl:h-9"
+                className="block h-8 w-auto object-contain md:hidden min-[950px]:block min-[950px]:h-7 xl:h-9"
               />
             </Link>
           </div>
