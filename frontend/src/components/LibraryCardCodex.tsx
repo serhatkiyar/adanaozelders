@@ -137,9 +137,6 @@ export function LibraryCardCodex({ library }: { library: LibrarySearchOut }) {
                 <span className="block text-base font-semibold text-slate-950 ">
                   {formatTRY(library.study_hourly_price)}
                 </span>
-                <span className="block text-[11px] text-slate-500 ">
-                  saatlik çalışma alanı
-                </span>
               </>
             ) : library.capacity != null ? (
               <span className="text-xs text-slate-500 ">

@@ -46,8 +46,9 @@ describe("formatTL", () => {
 });
 
 describe("formatRate", () => {
-  it("'/ saat' ekler", () => {
-    expect(formatRate(250)).toContain("/ saat");
+  it("yalnız tutar basar, '/ saat' eki yok", () => {
+    expect(formatRate(250)).toBe("250 TL");
+    expect(formatRate(250)).not.toContain("saat");
   });
   it("null için açıklayıcı fallback", () => {
     expect(formatRate(null)).toBe("Ücret belirtilmemiş");

@@ -288,7 +288,7 @@ function AboutSection({ lib }: { lib: LibraryDetailOut }) {
             <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600 ">
               Çalışma ücreti:{" "}
               {lib.study_hourly_price != null
-                ? `${formatTRY(lib.study_hourly_price)}/saat`
+                ? formatTRY(lib.study_hourly_price)
                 : "kapalı"}
             </span>
           </div>

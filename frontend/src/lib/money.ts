@@ -23,12 +23,14 @@ export function formatTRY(
 // formatTRY ile aynı çıktı; mağaza yüzeylerinde adı semantik olsun diye korunur.
 export const formatTL = formatTRY;
 
-// "250 TL / saat" — saatlik ücret etiketi.
+// "250 TL" — saatlik ücret etiketi. "/ saat" EKİ YOK (kullanıcı kararı,
+// 16 Eyl 2026): ücret her yüzeyde yalnız tutar olarak basılır; eğitmen
+// profili, yönetim listesi ve kartlar bu tek fonksiyondan geçer.
 export function formatRate(
   value: string | number | null | undefined,
   fallback = "Ücret belirtilmemiş"
 ): string {
   const n = parseMoney(value);
   if (n === null) return fallback;
-  return `${formatTRY(n)} / saat`;
+  return formatTRY(n);
 }
