@@ -99,7 +99,6 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
         </p>
         <span className="shrink-0 text-sm font-bold text-marka-metin-hover ">
           {formatTRY(library.study_hourly_price)}
-          <span className="font-medium text-marka-metin ">/saat</span>
         </span>
       </div>
 

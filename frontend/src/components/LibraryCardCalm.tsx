@@ -122,7 +122,6 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
               <span className="font-semibold text-slate-900 ">
                 {formatTRY(library.study_hourly_price)}
               </span>
-              {" / saat"}
             </span>
           )}
         </div>
