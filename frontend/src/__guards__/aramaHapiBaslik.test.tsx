@@ -36,7 +36,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BigSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
+import { DersArama, KutuphaneArama } from "@/components/HeroSearch";
 
 // `DersArama` ders katalogunu React Query ile çekiyor; sağlayıcı olmadan
 // bileşen render edilemiyor. Ağ yok — sorgu boşta kalır, başlıklar yine basılır.
@@ -106,51 +106,6 @@ describe("arama hapı · alan başlıkları", () => {
     const yer = baslikAlaninAdi("Yer");
     expect(yer.getAttribute("placeholder")).toBeTruthy();
     expect(screen.queryByLabelText("Kütüphane")).toBeNull();
-  });
-
-  it("`BigSearch`: başlıkları ÇAĞIRAN verir, ikisi de alana bağlanır", () => {
-    // İlçe tarafı bir <button>; `<label htmlFor>` ona bağlanmaz, ad
-    // `aria-labelledby` ile gelir. Bu testin görmesi gereken şey ikisinin de
-    // aynı sonucu vermesi: başlık = erişilebilir ad.
-    sar(
-      <BigSearch
-        q=""
-        setQ={yok}
-        district={[]}
-        setDistrict={yok}
-        onSubmit={yok}
-        placeholder="Ders ekleyin"
-        solBaslik="Yer"
-        sagBaslik="Ders"
-      />
-    );
-    baslikAlaninAdi("Yer");
-    const q = baslikAlaninAdi("Ders");
-    expect(q.getAttribute("placeholder")).toBe("Ders ekleyin");
-  });
-
-  it("sağ başlık ZORUNLU — 'Ara' varsayılanı gönder düğmesiyle çakışıyordu", () => {
-    // Bu ölçülmüş bir kusur: `sagBaslik` varsayılanı "Ara" iken hapta iki
-    // "Ara" oluyordu (alan başlığı + gönder düğmesinin `aria-label`ı). Ekran
-    // okuyucuda ayırt edilemezdi. Varsayılan kaldırıldı, prop zorunlu oldu.
-    sar(
-      <BigSearch
-        q=""
-        setQ={yok}
-        district={[]}
-        setDistrict={yok}
-        onSubmit={yok}
-        placeholder="Kütüphane adı giriniz"
-        sagBaslik="Kütüphane"
-      />
-    );
-    baslikAlaninAdi("Yer"); // sol başlık varsayılanı hâlâ çalışıyor
-    baslikAlaninAdi("Kütüphane");
-
-    // Hapta "Ara" adında TEK öğe kalmalı: gönder düğmesi.
-    const aralar = screen.getAllByLabelText("Ara");
-    expect(aralar).toHaveLength(1);
-    expect(aralar[0].tagName).toBe("BUTTON");
   });
 
   it("TERS PROVA: `aria-label` görünür başlığı gölgelerse yakalanır", () => {

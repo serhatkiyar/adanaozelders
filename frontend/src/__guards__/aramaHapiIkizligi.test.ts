@@ -279,11 +279,10 @@ describe("ana sayfa arama hapları ikizdir", () => {
      * Liste isimle sabit: yeni bir dosya `BigSearch` basarsa test kırılır ve
      * bu DOĞRU davranıştır — üçüncü tasarım sessizce yayılmasın.
      */
-    const izinli = new Set([
-      "src/hooks/useNavSearch.tsx",
-      "src/pages/Marketplace.tsx",
-      "src/pages/PublicMarketplace.tsx",
-    ]);
+    /* 16 Eyl 2026: borç ödendi. `useNavSearch` ve iki sonuç sayfası da
+       DersArama/KutuphaneArama'ya geçti, `BigSearch` silindi. Liste BOŞ —
+       hiçbir dosya üçüncü tasarımı basamaz. */
+    const izinli = new Set<string>([]);
     const suclular = tsxDosyalari()
       .filter((yol) => !izinli.has(yol) && oku(yol).includes("<BigSearch"));
     expect(
