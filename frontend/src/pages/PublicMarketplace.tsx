@@ -13,12 +13,12 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
 import { TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
-import { CategoryBar } from "@/components/CategoryBar";
-import { CompactSearch, DersArama } from "@/components/HeroSearch";
+import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
+import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { type DersSekli } from "@/components/AramaSecicileri";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { EGITMEN_ARAMA, dersSorgusu, egitmenIstegi } from "@/lib/aramaUrl";
+import { EGITMEN_ARAMA, dersSorgusu, egitmenIstegi, kutuphaneAramaAdresi } from "@/lib/aramaUrl";
 import { filtreliMi } from "@/lib/urlSemasi";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
 import { useKonumStore } from "@/store/konumStore";
@@ -26,7 +26,7 @@ import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
 import { egitmenHapBasligi } from "@/lib/aramaBasligi";
-import { ilceListesindenYer, konumOzeti, yerinIlceleri } from "@/lib/yerArama";
+import { ilceListesindenYer, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -188,11 +188,35 @@ export default function PublicMarketplace() {
     yakinimda: degerler.yakinimda,
   });
   const [taslak, setTaslak] = useState(taslagiCoz);
+  /* Geniş aramadaki sekme (16 Eyl 2026): "Kütüphaneler"e basmak sayfayı
+     değiştirmez, formu kütüphane hapına çevirir; Ara → /kutuphaneler. Eğitmen
+     taslağı bu arada durur, sekme geri gelince aynen görünür. */
+  const [aramaKategori, setAramaKategori] = useState<CategoryKey>("egitmenler");
+  const [kTaslak, setKTaslak] = useState<{ yer: YerSecimi | null; yakinimda: boolean }>({
+    yer: null,
+    yakinimda: false,
+  });
   const [oncekiAcik, setOncekiAcik] = useState(false);
   if (searchOpen !== oncekiAcik) {
     setOncekiAcik(searchOpen);
-    if (searchOpen) setTaslak(taslagiCoz());
+    if (searchOpen) {
+      setTaslak(taslagiCoz());
+      setAramaKategori("egitmenler");
+    }
   }
+  const submitKutuphane = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate(
+      kutuphaneAramaAdresi({
+        konum: {
+          yer: kTaslak.yer?.tur === "mahalle" ? kTaslak.yer : null,
+          ilce: yerinIlceleri(kTaslak.yer),
+        },
+        yakinimda: kTaslak.yakinimda,
+      })
+    );
+    setSearchOpen(false);
+  };
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +252,7 @@ export default function PublicMarketplace() {
   const navCenter = (
     <div key={searchOpen ? "cats" : "compact"} className="w-full animate-in fade-in duration-300">
       {searchOpen ? (
-        <CategoryBar active="egitmenler" />
+        <CategoryBar active={aramaKategori} onSec={setAramaKategori} />
       ) : (
         <div className="flex w-full justify-center">
           <CompactSearch
@@ -257,6 +281,22 @@ export default function PublicMarketplace() {
      yazar. Telefonun adımlı yüzeyi (`MobilAramaAkisi`) aynı şeyi yapıyor. */
   const bigSearchRow = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
+      {aramaKategori === "kutuphaneler" ? (
+        <KutuphaneArama
+          yer={kTaslak.yer}
+          /* Fonksiyonel güncelleme ŞART: hap yer seçince art arda setYer ve
+             setYakinimda(false) çağırır; ikincisi eski kapanıştaki `yer`i
+             (null) geri yazıyordu, Merkez seçimi kayboluyordu (ölçüldü). */
+          setYer={(v) =>
+            setKTaslak((o) => ({ yer: v, yakinimda: v ? false : o.yakinimda }))
+          }
+          yakinimda={kTaslak.yakinimda}
+          setYakinimda={(v) =>
+            setKTaslak((o) => ({ yer: v ? null : o.yer, yakinimda: v }))
+          }
+          onSubmit={submitKutuphane}
+        />
+      ) : (
       <DersArama
         ders={taslak.ders}
         dersEtiket={taslak.dersEtiket}
@@ -271,6 +311,7 @@ export default function PublicMarketplace() {
         setYakinimda={(v) => setTaslak((o) => ({ ...o, yakinimda: v }))}
         onSubmit={submitSearch}
       />
+      )}
     </div>
   );
 

@@ -106,8 +106,20 @@ export function categoryMeta(key: CategoryKey): Category {
 export function CategoryBar({
   active,
   sekmeKipi = false,
+  onSec,
 }: {
   active?: CategoryKey;
+  /**
+   * GENİŞ ARAMA İÇİNDE sekme YERİNDE değişir (kullanıcı kararı, 16 Eyl 2026):
+   * sonuç ekranında hapa tıklayıp açılan aramada "Kütüphaneler"e basmak
+   * sayfayı DEĞİŞTİRMEMELİ — yalnız formu kütüphane hapına çevirmeli; sayfa
+   * Ara'ya basınca değişir, eğitmen seçimleri de kaybolmaz. Bu, 9 Eyl'deki
+   * "her kategori bir bağlantıdır" kararını BOZMAZ: o karar ana sayfanın
+   * gezinmesi için; burada şerit bir formun sekmesi. Verilirse Eğitmenler ve
+   * Kütüphaneler düğme olur, Mağaza başka bir yüzey olduğu için bağlantı
+   * kalır.
+   */
+  onSec?: (key: CategoryKey) => void;
   /**
    * SEKME kipini HER genişlikte zorla (alt çizgili), telefonda bile.
    *
@@ -232,6 +244,24 @@ export function CategoryBar({
            * iki tür öğe. Kullanıcı: *"tıklayınca /egitmenler /kutuphaneler
            * olsa daha mantıklı değil mi?"*
            */
+          const sekmeAnahtari = c.key;
+          if (
+            onSec &&
+            (sekmeAnahtari === "egitmenler" || sekmeAnahtari === "kutuphaneler")
+          ) {
+            return (
+              <button
+                key={c.key}
+                type="button"
+                aria-pressed={isActive}
+                className={cls}
+                onClick={() => onSec(sekmeAnahtari)}
+              >
+                {inner}
+              </button>
+            );
+          }
+
           return (
             <Link
               key={c.key}

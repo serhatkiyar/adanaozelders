@@ -15,6 +15,7 @@ import {
   KUTUPHANE_ARAMA,
   dersSorgusu,
   egitmenAramaAdresi,
+  kutuphaneAramaAdresi,
 } from "@/lib/aramaUrl";
 import { TUTOR_NAV, UYE_NAV } from "@/lib/nav";
 import { PATHS } from "@/lib/routes";
@@ -162,6 +163,20 @@ export function KesifKabugu() {
      kapanıyordu. `Landing`den olduğu gibi taşındı. */
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  /* Geniş aramadaki sekme seçimi — YALNIZ hap tıklanarak açıldığında (16 Eyl
+     2026). Sayfa değişmez, yalnız hangi hapın çizildiği değişir; Ara'ya
+     basınca gidilir. Kapanınca sıfırlanır: bir sonraki açılış sayfanın kendi
+     kategorisinden başlar. */
+  const [aramaKategori, setAramaKategori] = useState<CategoryKey | null>(null);
+  useEffect(() => {
+    if (!searchOpen) setAramaKategori(null);
+  }, [searchOpen]);
+  const hapKategori: CategoryKey = (searchOpen && aramaKategori) || kategori;
+  const hapKutuphane = hapKategori === "kutuphaneler";
+  /* Eğitmen sayfasındayken kütüphane sekmesine geçilirse taslak YERELDİR:
+     adres bu sayfanın; kütüphane şemasına yazılamaz. Ara → /kutuphaneler. */
+  const [kYerTaslak, setKYerTaslak] = useState<YerSecimi | null>(null);
+  const [kYakinimdaTaslak, setKYakinimdaTaslak] = useState(false);
   const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
 
   useEffect(() => {
@@ -232,14 +247,42 @@ export function KesifKabugu() {
      İkisi TASARIM OLARAK ikiz (7 Eyl kullanıcı kararı) — aynı kabuk, aynı
      sıralama, aynı eşit bölmeler; fark yalnız sağ bölmenin seçicisinde.
      Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`. */
-  const hap = kutuphaneMi ? (
-    <KutuphaneArama
-      yer={kYer}
-      setYer={setKYer}
-      yakinimda={kDegerler.yakinimda}
-      setYakinimda={setKYakinimda}
-      onSubmit={submitKutuphane}
-    />
+  const hap = hapKutuphane ? (
+    kutuphaneMi ? (
+      <KutuphaneArama
+        yer={kYer}
+        setYer={setKYer}
+        yakinimda={kDegerler.yakinimda}
+        setYakinimda={setKYakinimda}
+        onSubmit={submitKutuphane}
+      />
+    ) : (
+      <KutuphaneArama
+        yer={kYerTaslak}
+        setYer={(v) => {
+          setKYerTaslak(v);
+          if (v) setKYakinimdaTaslak(false);
+        }}
+        yakinimda={kYakinimdaTaslak}
+        setYakinimda={(v) => {
+          setKYakinimdaTaslak(v);
+          if (v) setKYerTaslak(null);
+        }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          navigate(
+            kutuphaneAramaAdresi({
+              konum: {
+                yer: kYerTaslak?.tur === "mahalle" ? kYerTaslak : null,
+                ilce: yerinIlceleri(kYerTaslak),
+              },
+              yakinimda: kYakinimdaTaslak,
+            })
+          );
+          setSearchOpen(false);
+        }}
+      />
+    )
   ) : (
     <DersArama
       ders={ders}
@@ -282,7 +325,12 @@ export function KesifKabugu() {
       className="w-full animate-in fade-in duration-300"
     >
       {expanded || mobil ? (
-        <CategoryBar active={kategori} />
+        <CategoryBar
+          active={hapKategori}
+          /* Hap tıklanarak açıldıysa sekme formu değiştirir; ana sayfanın
+             kendi açık hâlinde (kaydırılmamış) sekmeler gezinmedir. */
+          onSec={searchOpen && !mobil ? setAramaKategori : undefined}
+        />
       ) : (
         <div className="flex w-full justify-center">
           <CompactSearch
