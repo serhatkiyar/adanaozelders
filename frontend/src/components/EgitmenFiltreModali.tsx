@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
-import { SegmentedControl } from "@/components/SegmentedControl";
 import {
   useTutorGenderFacets,
   useTutorPriceHistogram,
@@ -11,11 +10,10 @@ import {
   EGITMEN_ARAMA,
   VARSAYILAN_YARICAP_KM,
   egitmenIstegi,
-  type EgitmenAramasi,
 } from "@/lib/aramaUrl";
 import { bosDeger } from "@/lib/urlSemasi";
 import { useKonumStore } from "@/store/konumStore";
-import { Gender, TeachingMode } from "@/types";
+import { Gender } from "@/types";
 
 /**
  * Eğitmen arama filtreleri — İKİ YÜZEYİN ORTAK penceresi.
@@ -41,14 +39,9 @@ import { Gender, TeachingMode } from "@/types";
  * adresi yazar ve ayrışamazlar.
  */
 
-const MODE_ALL = "ALL" as const;
-type AramaSekli = EgitmenAramasi["sekil"][number];
-
-const MODE_SEGMENTS: { value: AramaSekli | typeof MODE_ALL; label: string }[] = [
-  { value: MODE_ALL, label: "Tümü" },
-  { value: TeachingMode.ONLINE, label: "Uzaktan" },
-  { value: TeachingMode.IN_PERSON, label: "Yüzyüze" },
-];
+/* DERS İŞLEME ŞEKLİ BU PENCEREDE YOK (kullanıcı kararı, 16 Eyl 2026): şekil
+   arama hapının kendi adımı, burada ikinci bir yerden değiştirilmesi hapla
+   çelişiyordu. */
 
 const GENDER_OPTIONS: { value: Gender.MALE | Gender.FEMALE; label: string }[] = [
   { value: Gender.FEMALE, label: "Kadın" },
@@ -77,7 +70,7 @@ export function EgitmenFiltreModali({
   const { degerler, ayarla } = useAramaDurumu(EGITMEN_ARAMA);
   const { konum, yukleniyor, iste, unut } = useKonumStore();
 
-  const { sekil: modes, cinsiyet: gender, yakinimda } = degerler;
+  const { cinsiyet: gender, yakinimda } = degerler;
   const radiusKm = degerler.yaricap ?? VARSAYILAN_YARICAP_KM;
 
   // Fiyat kutusunun anlık metni YEREL, değeri adreste: her sürüklemede adres
@@ -127,10 +120,6 @@ export function EgitmenFiltreModali({
 
   if (!acik) return null;
 
-  const modeSegment: AramaSekli | typeof MODE_ALL = modes[0] ?? MODE_ALL;
-  const selectMode = (v: AramaSekli | typeof MODE_ALL) =>
-    ayarla({ sekil: v === MODE_ALL ? [] : [v] });
-
   const temizle = () => {
     setMinRate("");
     setMaxRate("");
@@ -157,12 +146,6 @@ export function EgitmenFiltreModali({
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto p-6">
-          {/* Ders işleme şekli */}
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Ders İşleme Şekli</h3>
-            <SegmentedControl options={MODE_SEGMENTS} value={modeSegment} onChange={selectMode} />
-          </div>
-
           {/* Mesafe */}
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
