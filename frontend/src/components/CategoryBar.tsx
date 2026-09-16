@@ -161,10 +161,16 @@ export function CategoryBar({
                   ? "border-slate-900 bg-transparent "
                   : "border-transparent bg-transparent hover:border-slate-200 "
               }`
-            : `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-full border px-3.5 py-2.5 shadow-sm transition-colors duration-200 md:rounded-none md:border-0 md:border-b-2 md:px-0 md:py-0 md:pb-2 md:shadow-none ${
+            : /* Telefonda seçili çip DOLMAZ (kullanıcı kararı, 16 Eyl 2026):
+                 beyaz zeminde kalın (2px) koyu çerçeve. Sonuç sayfasındaki
+                 filtre çipleriyle (`AramaMobilBaslik.cipSinifi`) aynı dil.
+                 Kalınlık 1px kenarlık + 1px İÇE halka: `border-2` çipi
+                 komşularından 2px yüksek yapıyordu (ölçüldü). Masaüstü kipi
+                 alt çizgi olarak kalır. */
+              `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-full border bg-white px-3.5 py-2.5 shadow-sm transition-colors duration-200 md:rounded-none md:border-0 md:border-b-2 md:bg-transparent md:px-0 md:py-0 md:pb-2 md:shadow-none md:ring-0 ${
                 isActive
-                  ? "border-slate-900 bg-slate-900 md:bg-transparent "
-                  : "border-slate-200 bg-white hover:border-slate-300 md:border-transparent md:bg-transparent md:hover:border-slate-200 "
+                  ? "border-slate-900 ring-1 ring-inset ring-slate-900 "
+                  : "border-slate-200 hover:border-slate-300 md:border-transparent md:hover:border-slate-200 "
               }`;
           const inner = (
             <>
@@ -190,9 +196,7 @@ export function CategoryBar({
                   sekmeKipi ? "text-[13px]" : "text-sm md:text-[15px]"
                 } ${
                   isActive
-                    ? sekmeKipi
-                      ? "text-slate-900 "
-                      : "text-white md:text-slate-900 "
+                    ? "text-slate-900 "
                     : "text-slate-600 group-hover:text-slate-900 "
                 }`}
               >
