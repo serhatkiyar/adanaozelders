@@ -22,14 +22,16 @@ import type { TutorSearchParams } from "@/api/tutors";
 import type { TutorSearchOut } from "@/types";
 
 /**
- * TELEFONDA ölçü Airbnb'nin kendi ölçüsüdür (referans ekrandan ölçüldü: 24px
- * kenar boşluğu, ~165px kart, 12px boşluk, ~12px "peek"). Sabit `190px`
- * kalsaydı 390px'te ikinci kart 34px dışarıda kalıyor ve fiyat satırı yarıda
- * kesiliyordu; oran ise 360-414 bandının tamamında iki kart + peek verir.
- * `md:` ve üstü DEĞİŞMEDİ.
+ * TELEFONDA İKİ KART + ÜÇÜNCÜNÜN UCU (kullanıcı kararı, 16 Eyl 2026: "2 tane
+ * gözüksün, 3.sü de ucundan gözükse yeter, kaydırabildiği anlaşılsın").
+ * Eski formül `(100% - 12px) / 2` iki kartı rayı TAM dolduracak şekilde
+ * kesiyordu — "peek" yorumda vardı, ölçüde yoktu. Şimdi iki kart + iki 12px
+ * boşluk + 24px uç: kart = (ray − 48px) / 2. 412px telefonda (ray ≈ 333px)
+ * kart 142px, üçüncünün 24px'i görünür. `md:` ve üstü: rayı tam dolduran 3 / 4 / 5 kart (ölçüldü:
+ * 1366, 1440 ve 1920'de beşinci kart rayın kenarına oturuyor).
  */
 const VITRIN_KART =
-  "shrink-0 snap-start w-[calc((100%-12px)/2)] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
+  "shrink-0 snap-start w-[calc((100%-48px)/2)] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
 
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
