@@ -53,7 +53,10 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
         <div className="flex w-full justify-center">
           <CompactSearch
             active={active}
-            placeholder={placeholder}
+            /* Kompakt hap her yüzeyde aynı daveti taşır (kullanıcı, 16 Eyl
+               2026): "Aramaya başlayın". `placeholder` geniş aramanın kendi
+               girdisi içindir. */
+            placeholder="Aramaya başlayın"
             parcalar={[konumOzeti({ yer, ilce: district }) ?? "", q]}
             onOpen={() => setOpen(true)}
           />

@@ -377,7 +377,7 @@ export default function Marketplace() {
         <div className="flex w-full justify-center">
           <CompactSearch
             active="egitmenler"
-            placeholder="Ders ekleyin"
+            placeholder="Aramaya başlayın"
             /* Seçili ders de görünür (kullanıcı, 16 Eyl 2026: "Matematik
                seçiyorum, çubukta yazmıyor"): `q` yalnız serbest metindi,
                katalogdan seçilen `ders` hapa hiç gitmiyordu. */

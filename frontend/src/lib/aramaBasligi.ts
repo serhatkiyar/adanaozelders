@@ -80,9 +80,13 @@ export function kutuphaneHapBasligi(a: {
      seçtirmiyor; seçilmişse sayısı yazılır, yoksa hiçbir şey. Masaüstü
      hapın ilk parçası da başlığın kendisi ("… bölgesindeki kütüphaneler"). */
   const olanak = a.olanakSayisi ? `${a.olanakSayisi} olanak` : null;
+  /* Kompakt hapın parçaları yalnız GERÇEK seçimlerdir: hiçbir şey seçili
+     değilse boş dizi → hap "Aramaya başlayın" der (kullanıcı, 16 Eyl 2026:
+     "Tüm kütüphaneler yazıyor, rezil"). Telefon başlığı (`baslik`) sayfa
+     başlığı olduğu için "Tüm kütüphaneler" demeye devam eder. */
   return {
     baslik,
     ozet: olanak ?? (a.konum ? "Adana" : "Tüm Adana"),
-    parcalar: [baslik, ...(olanak ? [olanak] : [])],
+    parcalar: [...(a.konum ? [baslik] : []), ...(olanak ? [olanak] : [])],
   };
 }
