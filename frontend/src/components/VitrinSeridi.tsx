@@ -22,16 +22,24 @@ import type { TutorSearchParams } from "@/api/tutors";
 import type { TutorSearchOut } from "@/types";
 
 /**
- * TELEFONDA İKİ KART + ÜÇÜNCÜNÜN UCU (kullanıcı kararı, 16 Eyl 2026: "2 tane
- * gözüksün, 3.sü de ucundan gözükse yeter, kaydırabildiği anlaşılsın").
- * Eski formül `(100% - 12px) / 2` iki kartı rayı TAM dolduracak şekilde
- * kesiyordu — "peek" yorumda vardı, ölçüde yoktu. Şimdi iki kart + iki 12px
- * boşluk + 24px uç: kart = (ray − 48px) / 2. 412px telefonda (ray ≈ 333px)
- * kart 142px, üçüncünün 24px'i görünür. `md:` ve üstü: rayı tam dolduran 3 / 4 / 5 kart (ölçüldü:
- * 1366, 1440 ve 1920'de beşinci kart rayın kenarına oturuyor).
+ * KART SAYISI = AİRBNB KIRILIMLARI (kullanıcı kararı, 16 Eyl 2026; referans
+ * ekrandan ölçüldü):
+ *   < 744px   2 kart + üçüncünün 24px ucu (kaydırılabildiği anlaşılsın)
+ *   ≥ 744px   4 kart      ≥ 950px  5 kart
+ *   ≥ 1130px  6 kart      ≥ 1440px 7 kart
+ * Aralıkta kart rayı DOLDURUR: genişlik = (ray − boşluklar) / sayı. Kırılım
+ * geçilince sayı artar, kartlar küçülüp yeniden büyür. Tailwind'in md/lg/xl
+ * eşikleri (768/1024/1280) DEĞİL: Airbnb'nin kendi sayıları, `min-[…]`
+ * varyantlarıyla. Boşluk 744 altında 12px, üstünde 20px; formüldeki sabitler
+ * (n−1)×boşluk. Kap `VITRIN_KAP` — 7 kart için 1216px'lik eski konteyner
+ * dardı.
  */
 const VITRIN_KART =
-  "shrink-0 snap-start w-[calc((100%-48px)/2)] md:w-[calc((100%-40px)/3)] lg:w-[calc((100%-60px)/4)] xl:w-[calc((100%-80px)/5)]";
+  "shrink-0 snap-start w-[calc((100%-48px)/2)] min-[744px]:w-[calc((100%-60px)/4)] min-[950px]:w-[calc((100%-80px)/5)] min-[1130px]:w-[calc((100%-100px)/6)] min-[1440px]:w-[calc((100%-120px)/7)]";
+/** Rayın kabı: Airbnb'de 1760px'e kadar genişler, kenar boşluğu 24 → 40 → 80. */
+const VITRIN_KAP = "mx-auto w-full max-w-[1760px] px-4 min-[744px]:px-10 min-[1440px]:px-20";
+/** Rayın boşluk/snap sınıfları — kart formülüyle AYNI sayılar. */
+const VITRIN_RAY = "snap-x snap-mandatory gap-3 pb-2 min-[744px]:snap-none min-[744px]:gap-5";
 
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
@@ -121,7 +129,7 @@ function TumunuGorKarti({
 
 function RowSkeleton() {
   return (
-    <div className="flex gap-3 overflow-hidden md:gap-5">
+    <div className="flex gap-3 overflow-hidden min-[744px]:gap-5">
       {Array.from({ length: 7 }).map((_, i) => (
         <div
           key={i}
@@ -140,9 +148,9 @@ export function FeaturedTutorRow() {
   if (tutors.length === 0) return null;
 
   return (
-    <section aria-label="Reklam" className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
+    <section aria-label="Reklam" className={VITRIN_KAP}>
       <HScroll
-        className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
+        className={VITRIN_RAY}
         etiket="Reklam"
         baslik={
           <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
@@ -187,7 +195,7 @@ export function TutorRow({
   });
 
   return (
-    <section className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
+    <section className={VITRIN_KAP}>
       {isLoading ? (
         <>
           <div className="mb-4">
@@ -197,7 +205,7 @@ export function TutorRow({
         </>
       ) : (
         <HScroll
-          className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
+          className={VITRIN_RAY}
           etiket={heading}
           baslik={<RowHeader heading={heading} href={href} />}
         >
@@ -239,7 +247,7 @@ export function LibraryRow({
   });
 
   return (
-    <section className="mx-auto w-full max-w-[1216px] px-4 md:px-6">
+    <section className={VITRIN_KAP}>
       {isLoading ? (
         <>
           <div className="mb-4">
@@ -249,7 +257,7 @@ export function LibraryRow({
         </>
       ) : (
         <HScroll
-          className="snap-x snap-mandatory gap-3 pb-2 md:snap-none md:gap-5"
+          className={VITRIN_RAY}
           etiket={heading}
           baslik={<RowHeader heading={heading} href={href} />}
         >
