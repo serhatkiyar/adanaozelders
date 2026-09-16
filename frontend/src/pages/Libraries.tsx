@@ -14,18 +14,19 @@ import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
 import { LibraryRow } from "@/components/VitrinSeridi";
-import { AramaMobilBaslik, cipSinifi, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { FiltreAcilir } from "@/components/FiltreAcilir";
+import { MesafeSecici } from "@/components/MesafeSecici";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
 import { ROUTES } from "@/lib/routes";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { MESAFE_SECENEKLERI, kutuphaneHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
-import { SegmentedControl } from "@/components/SegmentedControl";
+import { kutuphaneHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
 import { konumOzeti } from "@/lib/yerArama";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useKonumStore } from "@/store/konumStore";
-import { KUTUPHANE_ARAMA, VARSAYILAN_YARICAP_KM, kutuphaneIstegi } from "@/lib/aramaUrl";
+import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
 
 type ViewMode = "list" | "map";
@@ -113,8 +114,9 @@ export default function Libraries() {
      niyet adresten düşer. Eğitmen sonuç sayfalarıyla aynı depo. */
   const konumum = useKonumStore((s) => s.konum);
   const geoLoading = useKonumStore((s) => s.yukleniyor);
-  const konumIste = useKonumStore((s) => s.iste);
-  const konumUnut = useKonumStore((s) => s.unut);
+  /* Şeritteki açılır çip. */
+  const [uzaklikAcik, setUzaklikAcik] = useState(false);
+  const yakinimdaKaldir = () => ayarla({ yakinimda: false, yaricap: undefined, sirala: "" });
   /* Rozet: olanaklar + Yakınımda (eğitmen ekranıyla aynı sayım). */
   const filtreSayisi = amenities.length + (degerler.yakinimda ? 1 : 0);
   const [showFilters, setShowFilters] = useState(false);
@@ -210,12 +212,23 @@ export default function Libraries() {
           uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
-      {/* UZAKLIK ÇİPİ (kullanıcı kararı, 16 Eyl 2026): Yakınımda seçiliyken
-          yarıçap burada yazar; dokununca filtre penceresi açılır. */}
+      {/* AÇILIR UZAKLIK ÇİPİ — eğitmen şeridiyle aynı bileşen (16 Eyl 2026). */}
       {degerler.yakinimda && (
-        <button onClick={() => setShowFilters(true)} className={cipSinifi(true)}>
-          {uzaklikCipi(degerler.yaricap)}
-        </button>
+        <FiltreAcilir
+          etiket={uzaklikCipi(degerler.yaricap)}
+          aktif
+          acik={uzaklikAcik}
+          onAc={() => setUzaklikAcik(true)}
+          onKapat={() => setUzaklikAcik(false)}
+          onTemizle={yakinimdaKaldir}
+          genislik="w-[460px]"
+        >
+          <MesafeSecici
+            yaricap={degerler.yaricap}
+            sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+            kaldir={yakinimdaKaldir}
+          />
+        </FiltreAcilir>
       )}
 
       {/* İLÇE ÇİPİ YOK (16 Eyl 2026): konum hapta yazıyor ("Merkez"); Merkez
@@ -471,25 +484,11 @@ export default function Libraries() {
                 {degerler.yakinimda && (
                   <div>
                     <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
-                    <SegmentedControl<string>
-                      options={MESAFE_SECENEKLERI}
-                      value={String(degerler.yaricap ?? VARSAYILAN_YARICAP_KM)}
-                      onChange={(val) => {
-                        if (!val) {
-                          konumUnut();
-                          ayarla({ yakinimda: false, yaricap: undefined, sirala: "" });
-                          return;
-                        }
-                        ayarla({ yakinimda: true, yaricap: Number(val) });
-                        if (!konumum) konumIste(() => ayarla({ yakinimda: false, yaricap: undefined, sirala: "" }));
-                      }}
+                    <MesafeSecici
+                      yaricap={degerler.yaricap}
+                      sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+                      kaldir={yakinimdaKaldir}
                     />
-                    {geoLoading && (
-                      <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>
-                    )}
-                    {konumum && !geoLoading && (
-                      <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>
-                    )}
                   </div>
                 )}
                 <div>

@@ -1,7 +1,10 @@
-import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
+import { type CSSProperties, useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { AramaMobilBaslik, cipSinifi, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { FiltreAcilir } from "@/components/FiltreAcilir";
+import { FiyatAraligi } from "@/components/FiyatAraligi";
+import { MesafeSecici } from "@/components/MesafeSecici";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
@@ -113,6 +116,9 @@ export default function Marketplace() {
   }, [degerler.q]);
 
   const [showFilters, setShowFilters] = useState(false);
+  /* Şeritteki açılır çipler: tek seferde tek pencere. */
+  const [acikFiltre, setAcikFiltre] = useState<"fiyat" | "uzaklik" | null>(null);
+  const kapatAcilir = useCallback(() => setAcikFiltre(null), []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
   const mobil = useMobil();
@@ -469,12 +475,34 @@ export default function Marketplace() {
           uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
-      {/* UZAKLIK ÇİPİ (kullanıcı kararı, 16 Eyl 2026): Yakınımda seçiliyken
-          yarıçap burada yazar; dokununca filtre penceresi açılır. */}
+      {/* AÇILIR ÇİPLER — Airbnb "Fiyat ⌄ / Yerin türü ⌄" (kullanıcı kararı,
+          16 Eyl 2026). Gövdeler filtre penceresiyle ORTAK bileşen. */}
+      <FiltreAcilir
+        etiket="Fiyat"
+        aktif={degerler.minFiyat !== undefined || degerler.maxFiyat !== undefined}
+        acik={acikFiltre === "fiyat"}
+        onAc={() => setAcikFiltre("fiyat")}
+        onKapat={kapatAcilir}
+        onTemizle={() => ayarla({ minFiyat: undefined, maxFiyat: undefined })}
+      >
+        <FiyatAraligi acik={acikFiltre === "fiyat"} />
+      </FiltreAcilir>
       {degerler.yakinimda && (
-        <button onClick={() => setShowFilters(true)} className={cipSinifi(true)}>
-          {uzaklikCipi(degerler.yaricap)}
-        </button>
+        <FiltreAcilir
+          etiket={uzaklikCipi(degerler.yaricap)}
+          aktif
+          acik={acikFiltre === "uzaklik"}
+          onAc={() => setAcikFiltre("uzaklik")}
+          onKapat={kapatAcilir}
+          onTemizle={() => ayarla({ yakinimda: false, yaricap: undefined })}
+          genislik="w-[460px]"
+        >
+          <MesafeSecici
+            yaricap={degerler.yaricap}
+            sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+            kaldir={() => ayarla({ yakinimda: false, yaricap: undefined })}
+          />
+        </FiltreAcilir>
       )}
 
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
@@ -554,6 +582,9 @@ export default function Marketplace() {
      şeritte tekrarı gürültüydü. Değiştirmek için hap dokunulur. Sınav çipi
      kalıyor — hap onu taşımıyor. */
   const mobilCipler: FiltreCipi[] = [
+    ...(degerler.minFiyat !== undefined || degerler.maxFiyat !== undefined
+      ? [{ id: "fiyat", etiket: "Fiyat", aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
     ...(degerler.yakinimda
       ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]
       : []),

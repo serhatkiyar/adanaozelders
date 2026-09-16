@@ -1,20 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
-import {
-  useTutorGenderFacets,
-  useTutorPriceHistogram,
-} from "@/hooks/useTutorSearch";
+import { FiyatAraligi, useHistogramParametreleri } from "@/components/FiyatAraligi";
+import { MesafeSecici } from "@/components/MesafeSecici";
+import { useTutorGenderFacets } from "@/hooks/useTutorSearch";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import {
-  EGITMEN_ARAMA,
-  VARSAYILAN_YARICAP_KM,
-  egitmenIstegi,
-} from "@/lib/aramaUrl";
+import { EGITMEN_ARAMA } from "@/lib/aramaUrl";
 import { bosDeger } from "@/lib/urlSemasi";
 import { useKonumStore } from "@/store/konumStore";
 import { SegmentedControl } from "@/components/SegmentedControl";
-import { MESAFE_SECENEKLERI } from "@/lib/aramaBasligi";
 import { Gender } from "@/types";
 
 /**
@@ -55,15 +48,6 @@ const GENDER_OPTIONS: { value: CinsiyetSecimi; label: string }[] = [
   { value: Gender.MALE, label: "Erkek" },
 ];
 
-/** Kutu metni ↔ şema değeri: boş kutu = filtre YOK, "0" geçerli alt sınır. */
-const sayiMetni = (n: number | undefined) => (n === undefined ? "" : String(n));
-const metinSayisi = (t: string): number | undefined => {
-  const kirpik = t.trim();
-  if (!kirpik) return undefined;
-  const n = Number(kirpik);
-  return Number.isFinite(n) && n >= 0 ? n : undefined;
-};
-
 export function EgitmenFiltreModali({
   acik,
   kapat,
@@ -75,43 +59,13 @@ export function EgitmenFiltreModali({
   onTemizle?: () => void;
 }) {
   const { degerler, ayarla } = useAramaDurumu(EGITMEN_ARAMA);
-  const { konum, yukleniyor, iste, unut } = useKonumStore();
+  const unut = useKonumStore((s) => s.unut);
 
   const { cinsiyet: gender, yakinimda } = degerler;
-  const radiusKm = degerler.yaricap ?? VARSAYILAN_YARICAP_KM;
 
-  // Fiyat kutusunun anlık metni YEREL, değeri adreste: her sürüklemede adres
-  // yazmak geçmişi kirletir.
-  const [minRate, setMinRate] = useState(sayiMetni(degerler.minFiyat));
-  const [maxRate, setMaxRate] = useState(sayiMetni(degerler.maxFiyat));
-
-  // Adres → kutu (geri tuşu, paylaşılan bağlantı, "Temizle").
-  useEffect(() => {
-    setMinRate((o) => (metinSayisi(o) === degerler.minFiyat ? o : sayiMetni(degerler.minFiyat)));
-    setMaxRate((o) => (metinSayisi(o) === degerler.maxFiyat ? o : sayiMetni(degerler.maxFiyat)));
-  }, [degerler.minFiyat, degerler.maxFiyat]);
-
-  /*
-   * Histogram ve fasetler, SONUÇ LİSTESİYLE AYNI kümeyi ölçmeli — yoksa
-   * çubuklar listede olmayan eğitmenleri sayar. Küme elle ikinci kez
-   * kurulmuyor, listenin isteğinden ÇIKARILARAK türetiliyor.
-   */
-  const istek = useMemo(
-    () => egitmenIstegi(degerler, { konumum: konum }),
-    [degerler, konum]
-  );
-  const histParams = useMemo(() => {
-    const {
-      sort: _sort,
-      exam: _exam,
-      limit: _limit,
-      offset: _offset,
-      min_rate: _min,
-      max_rate: _max,
-      ...rest
-    } = istek;
-    return rest;
-  }, [istek]);
+  /* Fiyat gövdesi ve histogram kümesi `FiyatAraligi`de — şeritteki "Fiyat ⌄"
+     açılırıyla ORTAK. Faset yalnız aynı kümeden kendi eksenini düşürür. */
+  const histParams = useHistogramParametreleri();
   // Faset KENDİ eksenini saymaz: "Kadın" seçiliyken "Erkek 0" görünürdü ve
   // sayılar seçim yapmayı imkânsız kılardı.
   const fasetParams = useMemo(() => {
@@ -119,17 +73,11 @@ export function EgitmenFiltreModali({
     return kalan;
   }, [histParams]);
 
-  const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(
-    histParams,
-    acik
-  );
   const { data: fasetler } = useTutorGenderFacets(fasetParams, acik);
 
   if (!acik) return null;
 
   const temizle = () => {
-    setMinRate("");
-    setMaxRate("");
     unut();
     ayarla(bosDeger(EGITMEN_ARAMA));
     onTemizle?.();
@@ -160,28 +108,11 @@ export function EgitmenFiltreModali({
           {yakinimda && (
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
-            <SegmentedControl<string>
-              options={MESAFE_SECENEKLERI}
-              value={yakinimda ? String(radiusKm) : ""}
-              onChange={(val) => {
-                if (!val) {
-                  unut();
-                  ayarla({ yakinimda: false, yaricap: undefined });
-                  return;
-                }
-                // Niyet ADRESTE, koordinat yalnız bellekte. İzin verilmezse
-                // niyet geri alınır, yoksa adreste hiçbir şey yapmayan bir
-                // filtre asılı kalırdı.
-                ayarla({ yakinimda: true, yaricap: Number(val) });
-                if (!konum) iste(() => ayarla({ yakinimda: false, yaricap: undefined }));
-              }}
+            <MesafeSecici
+              yaricap={degerler.yaricap}
+              sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+              kaldir={() => ayarla({ yakinimda: false, yaricap: undefined })}
             />
-            {yukleniyor && (
-              <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>
-            )}
-            {konum && !yukleniyor && (
-              <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>
-            )}
           </div>
           )}
 
@@ -189,20 +120,7 @@ export function EgitmenFiltreModali({
           <div>
             <h3 className="text-sm font-semibold text-slate-900 ">Fiyat Aralığı</h3>
             <p className="mb-4 mt-0.5 text-xs text-slate-500 ">Saatlik ders ücreti</p>
-            <PriceRangeHistogram
-              rates={rateDist ?? []}
-              loading={histLoading}
-              minRate={minRate}
-              maxRate={maxRate}
-              onChange={(mn, mx) => {
-                setMinRate(mn);
-                setMaxRate(mx);
-                ayarla(
-                  { minFiyat: metinSayisi(mn), maxFiyat: metinSayisi(mx) },
-                  { replace: true }
-                );
-              }}
-            />
+            <FiyatAraligi acik={acik} />
           </div>
 
           {/* Eğitmen cinsiyeti — bölmeli seçici */}
