@@ -76,10 +76,13 @@ export function kutuphaneHapBasligi(a: {
       ? "Yakınımdaki kütüphaneler"
       : `${a.konum} bölgesindeki kütüphaneler`
     : "Tüm kütüphaneler";
-  const olanak = a.olanakSayisi ? `${a.olanakSayisi} olanak` : "Olanak ekleyin";
+  /* "Olanak ekleyin" DAVETİ YOK (kullanıcı, 16 Eyl 2026): hap olanak
+     seçtirmiyor; seçilmişse sayısı yazılır, yoksa hiçbir şey. Masaüstü
+     hapın ilk parçası da başlığın kendisi ("… bölgesindeki kütüphaneler"). */
+  const olanak = a.olanakSayisi ? `${a.olanakSayisi} olanak` : null;
   return {
     baslik,
-    ozet: `${a.konum ? "Adana" : "Tüm Adana"}  •  ${olanak}`,
-    parcalar: [a.konum ?? "Tüm Adana", olanak],
+    ozet: olanak ?? (a.konum ? "Adana" : "Tüm Adana"),
+    parcalar: [baslik, ...(olanak ? [olanak] : [])],
   };
 }

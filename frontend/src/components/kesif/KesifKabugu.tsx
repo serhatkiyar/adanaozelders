@@ -6,6 +6,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
+import { kutuphaneHapBasligi } from "@/lib/aramaBasligi";
 import { FullScreenSpinner } from "@/components/Spinner";
 import type { DersSekli } from "@/components/AramaSecicileri";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -314,6 +315,11 @@ export function KesifKabugu() {
         yakinimda: sekil === TeachingMode.IN_PERSON && yakinimda,
         uzaktan: sekil === TeachingMode.ONLINE,
       });
+  /* Kompakt hapın parçaları: kütüphanede sonuç başlığıyla aynı kaynak
+     ("Çukurova bölgesindeki kütüphaneler"), eğitmende taslak [yer, ders]. */
+  const hapParcalari = kutuphaneMi
+    ? kutuphaneHapBasligi({ konum: hapYer, olanakSayisi: kDegerler.olanaklar.length }).parcalar
+    : [hapYer ?? "", hapMetni];
 
   /* Telefonda swap YOK: kompakt hap `mobilUst` yuvasında kalıcı durur, bu yuva
      her zaman kategori çiplerini taşır. İkisi birden basılsaydı aynı hapın iki
@@ -336,7 +342,7 @@ export function KesifKabugu() {
           <CompactSearch
             active={kategori}
             placeholder="Aramaya başlayın"
-            parcalar={[hapYer ?? "", hapMetni]}
+            parcalar={hapParcalari}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -354,7 +360,7 @@ export function KesifKabugu() {
       // Telefonda hap kategoriye göre değişen bir metin taşımaz: kategori zaten
       // hemen altındaki çip şeridinde seçili, hapın işi davet etmek.
       placeholder="Aramaya başlayın"
-      parcalar={[hapYer ?? "", hapMetni]}
+      parcalar={hapParcalari}
       onOpen={() => setMobilAramaAcik(true)}
     />
   ) : undefined;
