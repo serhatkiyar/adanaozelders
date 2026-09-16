@@ -200,7 +200,7 @@ export default function Libraries() {
            göre filtrelenmiş bir listede bile boş görünüyordu. */
         className={`flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
           filtreli
-            ? "border-slate-900 bg-slate-900 text-white "
+            ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
       >
@@ -229,7 +229,7 @@ export default function Libraries() {
           aria-label="Sıralama"
           className={`min-h-[44px] appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 md:min-h-0 ${
             sort
-              ? "border-slate-900 bg-slate-900 text-white "
+              ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
@@ -241,7 +241,7 @@ export default function Libraries() {
         </select>
         <div
           className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
-            sort ? "text-white " : "text-slate-400 "
+            sort ? "text-slate-900 " : "text-slate-400 "
           }`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

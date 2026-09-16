@@ -460,15 +460,18 @@ export default function Marketplace() {
         onClick={() => setShowFilters(true)}
         className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
           hasModalFilters
-            ? "border-slate-900 bg-slate-900 text-white "
+            ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
       >
         <FilterIconSvg />
         Filtreler
+        {/* Etkin filtre SAYISI, telefon başlığındaki rozetle aynı dil
+            (koyu, küçük). Turuncu onay işareti marka aksanını aksiyon dışı
+            bir yerde kullanıyordu. */}
         {hasModalFilters && (
-          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-marka text-[9px] font-bold text-marka-fg ">
-            ✓
+          <span className="ml-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white">
+            {mobilFiltreSayisi}
           </span>
         )}
       </button>
@@ -482,7 +485,7 @@ export default function Marketplace() {
           onChange={(e) => setSort(e.target.value as TutorSort)}
           className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
             sort !== TutorSort.RELEVANCE
-              ? "border-slate-900 bg-slate-900 text-white "
+              ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
@@ -490,7 +493,7 @@ export default function Marketplace() {
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
-        <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${sort !== TutorSort.RELEVANCE ? 'text-white ' : 'text-slate-400 '}`}>
+        <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${sort !== TutorSort.RELEVANCE ? 'text-slate-900 ' : 'text-slate-400 '}`}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
         </div>
       </div>
@@ -505,7 +508,7 @@ export default function Marketplace() {
           onClick={togglePricePopover}
           className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
             minRate || maxRate
-              ? "border-slate-900 bg-slate-900 text-white "
+              ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
