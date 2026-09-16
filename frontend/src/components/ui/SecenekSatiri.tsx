@@ -11,15 +11,16 @@ import { PlainButton } from "@/components/ui/PlainButton";
  * kutu / 56px satır, giriş penceresindeki "Eğitmen misin?" 36px kutu.
  * Kullanıcı farkı gördü: *"bir standart olması lazım."*
  *
- * Ölçü BURADA yazılır, başka yerde yazılmaz:
- *   - Simge kutusu 48px, köşe `rounded-xl`, zemin `slate-100`. Çizgi ikon
- *     24px ve siyah, kutunun ortasında; fotoğraf kutuyu doldurur
- *     (`h-full w-full object-cover`).
- *   - Satır 64px, yatay boşluk 16px, başlık 15px ORTA ağırlık (kalın değil;
- *     kullanıcı kararı, 16 Eyl 2026: "biraz küçült, bold yapmışsın"), alt
- *     başlık 13px gri.
+ * Ölçü BURADA yazılır, başka yerde yazılmaz (ikinci küçültme, 16 Eyl 2026 —
+ * kullanıcı: "seçenekler çok kalın, büyükler"):
+ *   - Simge kutusu 40px, köşe `rounded-lg`, zemin `slate-100`. Çizgi ikon
+ *     20px ve siyah — ikonun kendi sınıfı ne olursa olsun kutu onu 20px'e
+ *     çeker (`[&_svg]`), yani ölçü çağıranın eline bırakılmaz. Fotoğraf
+ *     kutuyu doldurur (`h-full w-full object-cover`).
+ *   - Satır 56px, yatay boşluk 12px, başlık 14px orta ağırlık, alt başlık
+ *     12px gri.
  *
- * `h-16` blok akışta sabit yüksekliktir; flex sütunda taban ölçüdür ve
+ * `h-14` blok akışta sabit yüksekliktir; flex sütunda taban ölçüdür ve
  * `shrink-0` ile küçülmez — telefondaki kart listenin altında kesilir,
  * satırlar cılızlaşmaz (bkz. `AramaAdimlari`).
  *
@@ -28,7 +29,7 @@ import { PlainButton } from "@/components/ui/PlainButton";
  * gerçekleşmeden kapatır. Telefonda zararsız.
  */
 export const SIMGE_KUTUSU =
-  "grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-slate-900";
+  "grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-slate-900 [&_svg]:h-5 [&_svg]:w-5";
 
 export function SecenekSatiri({
   simge,
@@ -52,18 +53,16 @@ export function SecenekSatiri({
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       aria-pressed={secili || undefined}
-      className={`flex h-16 w-full shrink-0 items-center gap-4 rounded-xl px-2 text-left transition hover:bg-slate-50 active:scale-[0.99] ${className}`}
+      className={`flex h-14 w-full shrink-0 items-center gap-3 rounded-xl px-2 text-left transition hover:bg-slate-50 active:scale-[0.99] ${className}`}
     >
       {simge && <span className={SIMGE_KUTUSU}>{simge}</span>}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-medium text-slate-900">{baslik}</span>
-        {altBaslik && (
-          <span className="block truncate text-[13px] text-slate-500">{altBaslik}</span>
-        )}
+        <span className="block truncate text-sm font-medium text-slate-900">{baslik}</span>
+        {altBaslik && <span className="block truncate text-xs text-slate-500">{altBaslik}</span>}
       </span>
       {secili && (
         <svg
-          className="h-5 w-5 shrink-0 text-marka-metin"
+          className="h-4 w-4 shrink-0 text-marka-metin"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
