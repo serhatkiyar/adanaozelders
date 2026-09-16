@@ -22,22 +22,30 @@ import type { TutorSearchParams } from "@/api/tutors";
 import type { TutorSearchOut } from "@/types";
 
 /**
- * KART SAYISI = AİRBNB KIRILIMLARI (kullanıcı kararı, 16 Eyl 2026; referans
- * ekrandan ölçüldü):
- *   < 744px   2 kart + üçüncünün 24px ucu (kaydırılabildiği anlaşılsın)
- *   ≥ 744px   4 kart      ≥ 950px  5 kart
- *   ≥ 1130px  6 kart      ≥ 1440px 7 kart
- * Aralıkta kart rayı DOLDURUR: genişlik = (ray − boşluklar) / sayı. Kırılım
- * geçilince sayı artar, kartlar küçülüp yeniden büyür. Tailwind'in md/lg/xl
- * eşikleri (768/1024/1280) DEĞİL: Airbnb'nin kendi sayıları, `min-[…]`
- * varyantlarıyla. Boşluk 744 altında 12px, üstünde 20px; formüldeki sabitler
- * (n−1)×boşluk. Kap `VITRIN_KAP` — 7 kart için 1216px'lik eski konteyner
- * dardı.
+ * KART SAYISI — BİRER BİRER ARTAR (kullanıcı kararı, 16 Eyl 2026, Airbnb
+ * deseni): 744 altında 2 kart + üçüncünün 24px ucu; sonra her eşikte bir
+ * kart daha: 744→3, 950→4, 1130→5, 1440→6, 1640→7. Aralıkta kart rayı
+ * doldurur; eşik geçilince sayı artar, kartlar küçülüp yeniden büyür.
+ * Formüldeki sabitler (n−1)×boşluk; boşluk 744 altında 12px, üstünde 20px.
+ *
+ * HİZA: kap üst barla AYNI kaptır (`max-w-screen-2xl px-4 md:px-8`,
+ * `PublicNavbar`/`DashboardHeader`). Kartların sol kenarı logonun, sağ kenarı
+ * "Giriş Yap"ın hizasında biter — Airbnb'de de ray sayfa oluğuyla hizalı.
+ * Önceki 1760px'lik kap barla hizasızdı (kullanıcı itirazı).
  */
 const VITRIN_KART =
-  "shrink-0 snap-start w-[calc((100%-48px)/2)] min-[744px]:w-[calc((100%-60px)/4)] min-[950px]:w-[calc((100%-80px)/5)] min-[1130px]:w-[calc((100%-100px)/6)] min-[1440px]:w-[calc((100%-120px)/7)]";
-/** Rayın kabı: Airbnb'de 1760px'e kadar genişler, kenar boşluğu 24 → 40 → 80. */
-const VITRIN_KAP = "mx-auto w-full max-w-[1760px] px-4 min-[744px]:px-10 min-[1440px]:px-20";
+  "shrink-0 snap-start w-[calc((100%-48px)/2)] min-[744px]:w-[calc((100%-40px)/3)] min-[950px]:w-[calc((100%-60px)/4)] min-[1130px]:w-[calc((100%-80px)/5)] min-[1440px]:w-[calc((100%-100px)/6)] min-[1640px]:w-[calc((100%-120px)/7)]";
+/**
+ * Rayın kabı = üst barın kabı (hiza). Üst bar `max-w-screen-2xl px-4 md:px-8`
+ * (1536px, oluk 16/32). Vitrin ise sayfa gövdesinin İÇİNDE ve gövdenin kendi
+ * oluğu var (`main`: px-4, sm:px-6). O oluk telafi edilir:
+ *   < 640   gövde 16 + kap 0  = 16 (üst bar 16)
+ *   640–767 gövde 24, üst bar 16 → kap 8px dışarı taşar (-mx-2)
+ *   ≥ 768   gövde 24 + kap 8  = 32 (üst bar 32); azami genişlik 1536−48
+ * Ölçüldü (16 Eyl 2026): önceki kap barla 24px hizasızdı (kullanıcı itirazı).
+ */
+const VITRIN_KAP =
+  "mx-auto w-full max-w-[1488px] px-0 sm:-mx-2 sm:w-[calc(100%+16px)] md:mx-auto md:w-full md:px-2";
 /** Rayın boşluk/snap sınıfları — kart formülüyle AYNI sayılar. */
 const VITRIN_RAY = "snap-x snap-mandatory gap-3 pb-2 min-[744px]:snap-none min-[744px]:gap-5";
 
