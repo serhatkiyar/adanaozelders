@@ -20,7 +20,8 @@ import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
 import { ROUTES } from "@/lib/routes";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { ilceOzeti } from "@/lib/yerArama";
+import { kutuphaneHapBasligi } from "@/lib/aramaBasligi";
+import { konumOzeti } from "@/lib/yerArama";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useKonumStore } from "@/store/konumStore";
 import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
@@ -302,14 +303,18 @@ export default function Libraries() {
     })),
   ];
 
+  const mobilHap = kutuphaneHapBasligi({
+    konum: konumOzeti({ yer: konum.yer, ilce: district, yakinimda: degerler.yakinimda }),
+    olanakSayisi: amenities.length,
+  });
   const mobilBaslik = (
     <div
       className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
       style={{ top: "var(--yapiskan-ust, 0px)" }}
     >
       <AramaMobilBaslik
-        baslik={degerler.q || "Kütüphane ara"}
-        ozet={ilceOzeti(district) ?? "Tüm Adana"}
+        baslik={mobilHap.baslik}
+        ozet={mobilHap.ozet}
         onHap={() => setAramaAcik(true)}
         onGeri={geriDon}
         onFiltre={() => setShowFilters(true)}

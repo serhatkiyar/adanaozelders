@@ -17,6 +17,7 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
+import { egitmenHapBasligi } from "@/lib/aramaBasligi";
 import { konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
@@ -530,55 +531,34 @@ export default function Marketplace() {
      "Herhangi hafta • Misafir ekleyin" gibi): yer yoksa "Tüm Adana", ders
      şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
      neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
-  const mobilAramaOzeti = [
-    konumOzeti({ yer, ilce: district, yakinimda: yakinimda }) ?? "Tüm Adana",
-    modeSegment === TeachingMode.ONLINE
-      ? "Uzaktan"
-      : modeSegment === TeachingMode.IN_PERSON
-        ? "Yüz yüze"
-        : "Ders şekli ekleyin",
-  ].join("  •  ");
+  /* Hapın iki satırı `lib/aramaBasligi`den: konum seçiliyse başlık konumu
+     söyler ("Çukurova bölgesindeki eğitmenler"), alt satır ders + şekil. */
+  const mobilHap = egitmenHapBasligi({
+    q,
+    dersler: subjects,
+    konum: konumOzeti({
+      yer,
+      ilce: district,
+      yakinimda: yakinimda,
+      uzaktan: modeSegment === TeachingMode.ONLINE,
+    }),
+    sekil: modeSegment,
+  });
 
+  /* Şeritte DERS ŞEKLİ ve DERS ÇİPİ YOK (kullanıcı kararı, 16 Eyl 2026):
+     ikisi de hapın iki satırında zaten yazıyor ("Matematik • Uzaktan");
+     şeritte tekrarı gürültüydü. Değiştirmek için hap dokunulur. Sınav çipi
+     kalıyor — hap onu taşımıyor. */
   const mobilCipler: FiltreCipi[] = [
-    {
-      id: "uzaktan",
-      etiket: "Uzaktan",
-      aktif: modeSegment === TeachingMode.ONLINE,
-      onClick: () =>
-        selectMode(modeSegment === TeachingMode.ONLINE ? MODE_ALL : TeachingMode.ONLINE),
-    },
-    {
-      id: "yuzyuze",
-      etiket: "Yüz yüze",
-      aktif: modeSegment === TeachingMode.IN_PERSON,
-      onClick: () =>
-        selectMode(
-          modeSegment === TeachingMode.IN_PERSON ? MODE_ALL : TeachingMode.IN_PERSON
-        ),
-    },
     ...(exam
       ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }]
       : []),
-    ...subjects.map((s) => ({
-      id: `subject-${s}`,
-      etiket: `${s} ✕`,
-      aktif: true,
-      onClick: () => removeSubject(s),
-    })),
   ];
 
   const mobilUst = mobil ? (
     <AramaMobilBaslik
-      baslik={
-        q
-          ? `${q} eğitmenleri`
-          : subjects.length === 1
-            ? `${subjects[0]} eğitmenleri`
-            : subjects.length
-              ? `${subjects.length} ders için eğitmenler`
-              : "Tüm eğitmenler"
-      }
-      ozet={mobilAramaOzeti}
+      baslik={mobilHap.baslik}
+      ozet={mobilHap.ozet}
       onHap={() => setMobilAramaAcik(true)}
       onGeri={() => navigate(-1)}
       onFiltre={() => setShowFilters(true)}

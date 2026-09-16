@@ -26,6 +26,7 @@ import { useKonumStore } from "@/store/konumStore";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { egitmenHapBasligi } from "@/lib/aramaBasligi";
 import { konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
@@ -330,58 +331,38 @@ export default function PublicMarketplace() {
      "Herhangi hafta • Misafir ekleyin" gibi): yer yoksa "Tüm Adana", ders
      şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
      neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
-  const mobilAramaOzeti = [
-    konumOzeti({ yer, ilce: district, yakinimda: degerler.yakinimda }) ?? "Tüm Adana",
-    sekil === TeachingMode.ONLINE
-      ? "Uzaktan"
-      : sekil === TeachingMode.IN_PERSON
-        ? "Yüz yüze"
-        : "Ders şekli ekleyin",
-  ].join("  •  ");
+  /* Hapın iki satırı `lib/aramaBasligi`den: konum seçiliyse başlık konumu
+     söyler ("Çukurova bölgesindeki eğitmenler"), alt satır ders + şekil. */
+  const mobilHap = egitmenHapBasligi({
+    q,
+    dersler: subjects,
+    konum: konumOzeti({
+      yer,
+      ilce: district,
+      yakinimda: degerler.yakinimda,
+      uzaktan: sekil === TeachingMode.ONLINE,
+    }),
+    sekil: sekil,
+  });
 
   /* Çipler UYDURMA DEĞİL: hepsi zaten adreste yaşayan ve arama isteğine giden
      filtrelerdir. Ders şekli TEK seçimdir — aynı çipe tekrar dokunmak filtreyi
      kaldırır; iki çip birden seçili görünseydi kullanıcıya olmayan bir
      kombinasyon vaat edilirdi. */
-  const setSekil = (v: DersSekli) => ayarla({ sekil: v ? [v] : [] });
+  /* Şeritte DERS ŞEKLİ ve DERS ÇİPİ YOK (kullanıcı kararı, 16 Eyl 2026):
+     ikisi de hapın iki satırında zaten yazıyor ("Matematik • Uzaktan");
+     şeritte tekrarı gürültüydü. Değiştirmek için hap dokunulur. Sınav çipi
+     kalıyor — hap onu taşımıyor. */
   const mobilCipler: FiltreCipi[] = [
-    {
-      id: "uzaktan",
-      etiket: "Uzaktan",
-      aktif: sekil === TeachingMode.ONLINE,
-      onClick: () =>
-        setSekil(sekil === TeachingMode.ONLINE ? "" : TeachingMode.ONLINE),
-    },
-    {
-      id: "yuzyuze",
-      etiket: "Yüz yüze",
-      aktif: sekil === TeachingMode.IN_PERSON,
-      onClick: () =>
-        setSekil(sekil === TeachingMode.IN_PERSON ? "" : TeachingMode.IN_PERSON),
-    },
     ...(exam
       ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }]
       : []),
-    ...subjects.map((s) => ({
-      id: `subject-${s}`,
-      etiket: `${s} ✕`,
-      aktif: true,
-      onClick: () => removeSubject(s),
-    })),
   ];
 
   const mobilUst = mobil ? (
     <AramaMobilBaslik
-      baslik={
-        q
-          ? `${q} eğitmenleri`
-          : subjects.length === 1
-            ? `${subjects[0]} eğitmenleri`
-            : subjects.length
-              ? `${subjects.length} ders için eğitmenler`
-              : "Tüm eğitmenler"
-      }
-      ozet={mobilAramaOzeti}
+      baslik={mobilHap.baslik}
+      ozet={mobilHap.ozet}
       onHap={() => setMobilAramaAcik(true)}
       onGeri={() => navigate(-1)}
       onFiltre={() => setShowFilters(true)}
