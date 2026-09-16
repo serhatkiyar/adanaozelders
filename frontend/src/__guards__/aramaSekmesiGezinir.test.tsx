@@ -55,7 +55,8 @@ describe("kategori sekmesi · gerçek gezinme", () => {
     sar();
     // Liste boşalırsa ya da render kırılırsa aşağıdaki iddialar hiçbir şey
     // ölçmeden yeşil kalırdı.
-    expect(screen.getAllByRole("link").length).toBeGreaterThanOrEqual(3);
+    // Eğitmenler + Kütüphaneler; Mağaza bayrakla gizli (16 Eyl 2026).
+    expect(screen.getAllByRole("link").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Eğitmenler")).toBeTruthy();
   });
 

@@ -14,6 +14,7 @@ import { ROUTES, PATHS } from "@/lib/routes";
 import {
   DENEMELER_ACIK,
   KUTUPHANELER_ACIK,
+  MAGAZA_ACIK,
   OGREN_ACIK,
   TALEPLER_ACIK,
 } from "@/lib/ozellikBayraklari";
@@ -461,15 +462,17 @@ function App() {
             </>
           )}
 
-          {/* ── Mağaza (public: katalog/detay/sepet) ── */}
-          <Route path={PATHS.store} element={<StorePage />} />
-          <Route path={PATHS.storeProduct} element={<ProductDetailPage />} />
-          <Route path={PATHS.storeSeller} element={<SellerStorePage />} />
-          <Route path={PATHS.storeCart} element={<CartPage />} />
-          <Route path={PATHS.storeFavorites} element={<FavoritesPage />} />
-          <Route path={PATHS.storeCollectionShared} element={<SharedCollectionPage />} />
+          {/* ── Mağaza (public: katalog/detay/sepet) ──
+              Donmuş bölüm (bkz. lib/ozellikBayraklari.ts · MAGAZA_ACIK):
+              kapalıyken doğrudan adres yazan kullanıcı "Yakında" görür. */}
+          <Route path={PATHS.store} element={MAGAZA_ACIK ? <StorePage /> : <Yakinda />} />
+          <Route path={PATHS.storeProduct} element={MAGAZA_ACIK ? <ProductDetailPage /> : <Yakinda />} />
+          <Route path={PATHS.storeSeller} element={MAGAZA_ACIK ? <SellerStorePage /> : <Yakinda />} />
+          <Route path={PATHS.storeCart} element={MAGAZA_ACIK ? <CartPage /> : <Yakinda />} />
+          <Route path={PATHS.storeFavorites} element={MAGAZA_ACIK ? <FavoritesPage /> : <Yakinda />} />
+          <Route path={PATHS.storeCollectionShared} element={MAGAZA_ACIK ? <SharedCollectionPage /> : <Yakinda />} />
           {/* Manuel vitrin: kampanya sayfaları KODDA, sabit rotalarla. */}
-          <Route path={PATHS.storeOkulaDonus} element={<OkulaDonusKampanyasi />} />
+          <Route path={PATHS.storeOkulaDonus} element={MAGAZA_ACIK ? <OkulaDonusKampanyasi /> : <Yakinda />} />
           {/* Oturumsuz kargo takibi (SMS token'ı) — subdomain kökü buraya rewrite'lanır. */}
           <Route path={PATHS.cargoTracking} element={<CargoTrackingPage />} />
 

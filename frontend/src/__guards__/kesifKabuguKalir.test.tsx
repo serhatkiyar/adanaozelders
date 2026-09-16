@@ -130,7 +130,8 @@ describe("keşif kabuğu · kategori değişiminde remount YOK", () => {
 
   it("kategori şeridinin KENDİ düğümü de korunur", async () => {
     await uygulamayiBas("/");
-    const bagOnce = kategoriBagi("Mağaza");
+    // Mağaza sekmesi bayrakla gizli (16 Eyl 2026); tıklanmayan sekme Eğitmenler.
+    const bagOnce = kategoriBagi("Eğitmenler");
     expect(bagOnce).toBeTruthy();
 
     await act(async () => {
@@ -142,7 +143,7 @@ describe("keşif kabuğu · kategori değişiminde remount YOK", () => {
       });
     }
 
-    expect(kategoriBagi("Mağaza")).toBe(bagOnce);
+    expect(kategoriBagi("Eğitmenler")).toBe(bagOnce);
   });
 
   it("KAYNAK SÖZLEŞMESİ: hata sınırı `key` ile sıfırlanmaz", () => {

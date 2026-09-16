@@ -29,6 +29,8 @@ vi.mock("@/lib/ozellikBayraklari", () => ({
   KISISELLESTIRME_ACIK: true,
   // 6 Eyl: öğrenci talepleri. Aynı sözleşme yeni bayrak için de geçerli.
   TALEPLER_ACIK: true,
+  // 16 Eyl: mağaza. Aynı sözleşme.
+  MAGAZA_ACIK: true,
 }));
 
 import App from "@/App";

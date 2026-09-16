@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
-import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
+import { DENEMELER_ACIK, KUTUPHANELER_ACIK, MAGAZA_ACIK } from "@/lib/ozellikBayraklari";
 
 /**
  * Airbnb tarzı üst-seviye kategori çubuğu: küçük 3D ikon + altında etiket,
@@ -50,7 +50,8 @@ const CATEGORIES: Category[] = [
   // olarak donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
   { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries, gizli: !DENEMELER_ACIK },
   // Mağaza: kategori sekmesi değil, mağazaya geçiş kapısı (kullanıcı isteği, 29 Ağu).
-  { key: "magaza", label: "Mağaza", icon: "/icons/categories/magaza.webp", to: ROUTES.store },
+  // Kapalıyken tamamen gizli (bkz. lib/ozellikBayraklari.ts · MAGAZA_ACIK).
+  { key: "magaza", label: "Mağaza", icon: "/icons/categories/magaza.webp", to: ROUTES.store, gizli: !MAGAZA_ACIK },
 ];
 
 

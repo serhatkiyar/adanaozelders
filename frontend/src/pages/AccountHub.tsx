@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { MAGAZA_ACIK } from "@/lib/ozellikBayraklari";
 import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -14,6 +15,8 @@ interface AccountCard {
   title: string;
   desc: string;
   icon: ReactNode;
+  /** Yalnız mağaza açıkken çizilir (lib/ozellikBayraklari · MAGAZA_ACIK). */
+  magaza?: boolean;
 }
 
 const ICON = "h-7 w-7";
@@ -56,7 +59,7 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.storeFavorites,    title: "Mağaza Favorilerim & Listelerim",
+    to: ROUTES.storeFavorites,    title: "Mağaza Favorilerim & Listelerim", magaza: true,
     desc: "Beğendiğin ürünler ve oluşturduğun listeler.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -131,7 +134,7 @@ export default function AccountHub() {
       <h1 className={SAYFA_BASLIGI}>Hesabım</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {CARDS.map((c) => (
+        {CARDS.filter((c) => MAGAZA_ACIK || !c.magaza).map((c) => (
           <Link
             key={c.to + c.title}
             to={c.to}

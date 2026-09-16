@@ -45,6 +45,7 @@ import {
   DENEMELER_ACIK,
   KISISELLESTIRME_ACIK,
   KUTUPHANELER_ACIK,
+  MAGAZA_ACIK,
   OGREN_ACIK,
 } from "@/lib/ozellikBayraklari";
 
@@ -128,10 +129,11 @@ describe("A — kategori çubuğu (gerçek DOM)", () => {
       "sekme kipi geri gelmiş: tıklanınca adres değişmez"
     ).toEqual([]);
 
+    // Mağaza yalnız bayrak açıkken çubukta (16 Eyl 2026: kapalı, gizli).
     for (const [etiket, hedef] of [
       ["Eğitmenler", "/"],
       ["Kütüphaneler", "/kutuphaneler"],
-      ["Mağaza", "/magaza"],
+      ...(MAGAZA_ACIK ? ([["Mağaza", "/magaza"]] as const) : []),
     ] as const) {
       expect(
         screen.getByRole("link", { name: new RegExp(etiket) }).getAttribute("href"),

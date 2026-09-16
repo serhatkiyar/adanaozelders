@@ -34,6 +34,7 @@ vi.mock("@/lib/ozellikBayraklari", () => ({
   OGREN_ACIK: false,
   KISISELLESTIRME_ACIK: false,
   TALEPLER_ACIK: false,
+  MAGAZA_ACIK: false,
 }));
 
 import { CategoryBar } from "@/components/CategoryBar";
