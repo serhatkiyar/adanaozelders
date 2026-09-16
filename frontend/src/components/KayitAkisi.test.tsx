@@ -97,12 +97,17 @@ describe("KayitAkisi — ilk ekran", () => {
     expect(screen.queryByRole("heading", { name: /Üye/ })).toBeNull();
   });
 
-  it("ilk adımda rol GÖRÜNÜR ve öteki role geçiş sunulur", async () => {
+  it("üye kaydının ilk adımında altta 'Eğitmen misin?' satırı vardır", async () => {
+    // Metin satırı ("Üye olarak kaydoluyorsun · Eğitmen olarak kaydol")
+    // kalktı (16 Eyl 2026); eğitmen yolu giriş penceresiyle aynı satır.
+    kur();
+    expect(screen.queryByText(/olarak kaydoluyorsun/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Eğitmen misin\?/ })).toBeTruthy();
+  });
+
+  it("eğitmen kaydında 'Eğitmen misin?' satırı yoktur", async () => {
     kur("tutor");
-    expect(screen.getByText(/Eğitmen olarak kaydoluyorsun/)).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Üye olarak kaydol" })
-    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Eğitmen misin\?/ })).toBeNull();
   });
 
   it("ilk adımın düğmesi ne yapacağını söyler", async () => {

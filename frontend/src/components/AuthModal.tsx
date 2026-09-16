@@ -1,7 +1,7 @@
 import { FormEvent, useState, useEffect } from "react";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
-import { SIMGE_KUTUSU } from "@/components/ui/SecenekSatiri";
+import { EgitmenMisinSatiri } from "@/components/EgitmenMisinSatiri";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login, type RegisterRole } from "@/api/auth";
@@ -271,51 +271,13 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
           telefonda çiziliyordu çünkü masaüstünde üst barda "Ders Ver" duruyor.
           Ama giriş penceresi açıkken üst bar arkada; pencerenin içinden
           eğitmen yoluna aynı resimli satırla gidilmesi iki yüzeyi eşitler. */}
-      <div className="mt-5 border-t border-slate-100 pt-3">
-        <button
-          onClick={() => {
-            searchParams.set("modal", "register");
-            searchParams.set("role", "tutor");
-            setSearchParams(searchParams, { replace: true });
-          }}
-          className="flex w-full items-center gap-4 rounded-xl px-1 py-2 text-left transition hover:bg-slate-50 active:scale-[0.99]"
-        >
-          {/* Eğitmen görseli (kullanıcı kararı, 16 Eyl 2026): kategori
-              şeridindeki "Eğitmenler" ile AYNI kaynak — giriş ekranındaki
-              satır, ana sayfadaki kategoriyle aynı yüzü taşır. Kutu ölçüsü
-              sitenin tek seçenek satırı standardından (`SIMGE_KUTUSU`,
-              48px); 72px WebP burada 1,5x. */}
-          <span className={SIMGE_KUTUSU}>
-            <img
-              src="/icons/egitmen-misin.webp"
-              alt=""
-              aria-hidden
-              width={48}
-              height={48}
-              decoding="async"
-              className="h-full w-full object-contain"
-            />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-slate-900">
-              Eğitmen misin?
-            </span>
-            <span className="block text-xs text-slate-500">
-              İlanını oluştur, öğrencilerle buluş
-            </span>
-          </span>
-          <svg
-            className="h-5 w-5 shrink-0 text-slate-400"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
-          </svg>
-        </button>
-      </div>
+      <EgitmenMisinSatiri
+        onSec={() => {
+          searchParams.set("modal", "register");
+          searchParams.set("role", "tutor");
+          setSearchParams(searchParams, { replace: true });
+        }}
+      />
     </>
   );
 }
