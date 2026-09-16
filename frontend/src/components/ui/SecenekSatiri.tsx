@@ -15,8 +15,9 @@ import { PlainButton } from "@/components/ui/PlainButton";
  *   - Simge kutusu 48px, köşe `rounded-xl`, zemin `slate-100`. Çizgi ikon
  *     24px ve siyah, kutunun ortasında; fotoğraf kutuyu doldurur
  *     (`h-full w-full object-cover`).
- *   - Satır 64px, yatay boşluk 16px, başlık `text-base` yarı kalın, alt
- *     başlık `text-sm` gri.
+ *   - Satır 64px, yatay boşluk 16px, başlık 15px ORTA ağırlık (kalın değil;
+ *     kullanıcı kararı, 16 Eyl 2026: "biraz küçült, bold yapmışsın"), alt
+ *     başlık 13px gri.
  *
  * `h-16` blok akışta sabit yüksekliktir; flex sütunda taban ölçüdür ve
  * `shrink-0` ile küçülmez — telefondaki kart listenin altında kesilir,
@@ -55,8 +56,10 @@ export function SecenekSatiri({
     >
       {simge && <span className={SIMGE_KUTUSU}>{simge}</span>}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-base font-semibold text-slate-900">{baslik}</span>
-        {altBaslik && <span className="block truncate text-sm text-slate-500">{altBaslik}</span>}
+        <span className="block truncate text-[15px] font-medium text-slate-900">{baslik}</span>
+        {altBaslik && (
+          <span className="block truncate text-[13px] text-slate-500">{altBaslik}</span>
+        )}
       </span>
       {secili && (
         <svg

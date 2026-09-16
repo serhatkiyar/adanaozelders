@@ -9,7 +9,6 @@ import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { FullScreenSpinner } from "@/components/Spinner";
 import type { DersSekli } from "@/components/AramaSecicileri";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useDebounce } from "@/hooks/useDebounce";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import {
@@ -19,7 +18,7 @@ import {
 } from "@/lib/aramaUrl";
 import { TUTOR_NAV, UYE_NAV } from "@/lib/nav";
 import { PATHS } from "@/lib/routes";
-import { type YerSecimi } from "@/lib/yerArama";
+import { type YerSecimi, yerEtiketi } from "@/lib/yerArama";
 import { useAuthStore } from "@/store/authStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { ROLE_IDS, TeachingMode } from "@/types";
@@ -124,23 +123,8 @@ export function KesifKabugu() {
     ayarla: kAyarla,
     filtreli: kFiltreli,
   } = useAramaDurumu(KUTUPHANE_ARAMA);
-  const [kQ, setKQ] = useState(kDegerler.q);
-  const kDebounced = useDebounce(kQ);
-
-  /* Dış gezinme (geri/ileri, paylaşılan bağlantı) kutuyu günceller. */
-  useEffect(() => {
-    if (!kutuphaneMi) return;
-    setKQ((onceki) => (kDegerler.q !== onceki ? kDegerler.q : onceki));
-  }, [kDegerler.q, kutuphaneMi]);
-
-  /* Debounce'lu metin adrese `replace` ile yazılır: her harf ayrı bir geçmiş
-     girdisi olsaydı geri tuşu harf harf geri alırdı. `ayarla` tabanı KORUR,
-     yani olanak/sıralama/sayfa parametreleri düşmez. */
-  useEffect(() => {
-    if (!kutuphaneMi) return;
-    if (kDebounced.trim() !== kDegerler.q) kAyarla({ q: kDebounced }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kDebounced, kutuphaneMi]);
+  /* Kütüphane ad kutusu KALKTI (16 Eyl 2026); hap yalnız yer sorar. Eski
+     `q` senkron/debounce mantığı onunla gitti. */
 
   /* Kutu ADRESİ okur: mahalle seçiliyse o, değilse tek ilçe seçiliyse ilçe.
      Eskiden yalnız `konum.yer`e (mahalle) bakılıyordu; ilçe seçilince adres
@@ -245,8 +229,6 @@ export function KesifKabugu() {
      Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`. */
   const hap = kutuphaneMi ? (
     <KutuphaneArama
-      q={kQ}
-      setQ={setKQ}
       yer={kYer}
       setYer={setKYer}
       yakinimda={kDegerler.yakinimda}
@@ -271,7 +253,12 @@ export function KesifKabugu() {
     />
   );
 
-  const hapMetni = kutuphaneMi ? kQ : dersEtiket;
+  /* Kompakt hapın metni: kütüphanede yer (ya da "Yakınımda"), eğitmende ders. */
+  const hapMetni = kutuphaneMi
+    ? kDegerler.yakinimda
+      ? "Yakınımda"
+      : yerEtiketi(kYer)
+    : dersEtiket;
   const hapIlce = kutuphaneMi
     ? kIlce
     : sekil === TeachingMode.IN_PERSON && yer

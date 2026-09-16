@@ -1,4 +1,6 @@
 import { useId, useRef, useState } from "react";
+import { SecenekSatiri } from "@/components/ui/SecenekSatiri";
+import { DersSimgesi } from "@/components/kesif/AramaAdimlari";
 import { DistrictSelect } from "@/components/DistrictSelect";
 import {
   SekilSelect,
@@ -363,18 +365,20 @@ export function DersArama({
       {acik && (
         <div
           style={{ position: "fixed", top: pos!.top, left: pos!.left, width: pos!.width }}
-          className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 "
+          className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white px-2 py-2 shadow-xl ring-1 ring-slate-100 "
         >
           {oneriler.map((g) => (
             <div key={g.grup}>
-              <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ">
+              <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 ">
                 {g.baslik}
               </p>
               {g.dersler.map((s) => (
-                <button
+                /* Sitenin TEK seçenek satırı (`ui/SecenekSatiri`); simge
+                   telefondaki ders satırıyla aynı kitap. */
+                <SecenekSatiri
                   key={`${g.grup}:${s.id}`}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
+                  simge={<DersSimgesi />}
+                  baslik={s.name}
                   onClick={() => {
                     // `setText` ÇAĞRILMAZ: kutu artık kontrollü ve `setText`
                     // "seçimi boşalt" anlamına geliyor — hemen ardından
@@ -384,13 +388,7 @@ export function DersArama({
                     onDersChange(s.name, s.name);
                     setFocused(false);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
-                >
-                  <span className="shrink-0 text-slate-400">
-                    <SearchIconSvg className="h-4 w-4" />
-                  </span>
-                  <span>{s.name}</span>
-                </button>
+                />
               ))}
             </div>
           ))}
@@ -411,20 +409,17 @@ export function DersArama({
    (fiziksel mekân). Kabuk sınıfları `DersArama` ile ortak; biri değişirse
    diğeri de değişmeli — nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`. */
 
+/* AD KUTUSU YOK (kullanıcı kararı, 16 Eyl 2026): kimse kütüphaneyi adıyla
+   aramıyor, semtiyle arıyor. Telefonun adımlı yüzeyi 10 Eyl'den beri böyleydi;
+   masaüstü hapı da artık tek soru sorar: NEREDE? `q` alanı adres şemasında
+   duruyor (paylaşılan eski bağlantılar kırılmasın) ama hiçbir hap yazmıyor. */
 export function KutuphaneArama({
-  q,
-  setQ,
   yer,
   setYer,
   yakinimda = false,
   setYakinimda,
   onSubmit,
-  // Konum YANDAKİ alanda seçiliyor; ad kutusunda semtin işi yok
-  // (kullanıcı, 8 Eyl: "kütüphane semt araması ne alaka").
-  placeholder = "Kütüphane adı giriniz",
 }: {
-  q: string;
-  setQ: (v: string) => void;
   /** Seçili yer — ilçe ya da mahalle (bkz. lib/yerArama.ts). Ayrı bir ilçe
    *  listesi taşınmaz: `YerSecimi` ilçeyi zaten içinde tutuyor. */
   yer: YerSecimi | null;
@@ -433,10 +428,8 @@ export function KutuphaneArama({
   yakinimda?: boolean;
   setYakinimda?: (v: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
-  placeholder?: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const adId = useId();
   const ilceId = useId();
 
   return (
@@ -446,24 +439,8 @@ export function KutuphaneArama({
         onSubmit={onSubmit}
         className="flex w-full flex-col items-stretch rounded-3xl border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-marka-mid focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-marka-focus/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] md:flex-row md:items-center md:rounded-full "
       >
-        {/* İki bölme EŞİT genişlikte (flex-1 basis-0) — `DersArama` ile aynı. */}
-        <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-5 md:pr-3"}>
-          <label htmlFor={adId} className={ETIKET}>
-            Kütüphane
-          </label>
-          <input
-            id={adId}
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={placeholder}
-            className={GIRDI}
-          />
-        </div>
-
-        <div className="h-px w-full shrink-0 bg-slate-200 md:h-7 md:w-px " />
-
-        <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-3 md:pr-2"}>
+        {/* Tek bölme; kabuk sınıfı `DersArama` ile ortak (`BOLME`). */}
+        <div className={BOLME + " min-h-[52px] px-4 md:min-h-0 md:pl-5 md:pr-2"}>
           <label htmlFor={ilceId} className={ETIKET}>
             Yer
           </label>

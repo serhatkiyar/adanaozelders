@@ -168,7 +168,7 @@ function OneriSatiri({
  * kategorisinin dili. Karışmıyor çünkü bu liste yalnız Eğitmenler sekmesinde
  * çiziliyor ve satırın yanında ders adı yazıyor.
  */
-function DersSimgesi() {
+export function DersSimgesi() {
   return (
     <svg
       className="h-6 w-6 text-slate-900"

@@ -101,7 +101,7 @@ describe("ana sayfa arama hapları ikizdir", () => {
     expect(b).toBe(a);
   });
 
-  it("iki bölme de EŞİT genişlikte, her hapta iki tane", () => {
+  it("bölmeler EŞİT genişlikte; eğitmende üç, kütüphanede tek", () => {
     // 8 Eyl: sınıf dizesi iki bölmeye ELLE yazılmıyor artık, ortak `BOLME`
     // sabitinden geliyor (alan başlıkları eklenirken bölme `flex-col` bir
     // sarmalayıcıya dönüştü). Bu ikizliği ZAYIFLATMAZ, güçlendirir: eşitlik
@@ -119,10 +119,11 @@ describe("ana sayfa arama hapları ikizdir", () => {
         .filter((satir) => !satir.trim().startsWith("//"))
         .filter((satir) => satir.includes("{BOLME")).length;
     // Eğitmen hapı 8 Eyl'de ÜÇ bölme oldu: [Ders] [Ders şekli] ve yalnız
-    // "Yüz yüze" seçiliyken beliren [Yer]. Kütüphanede şekil kavramı yok
-    // ("uzaktan kütüphane" olmaz), o yüzden iki bölme kalıyor.
+    // "Yüz yüze" seçiliyken beliren [Yer]. Kütüphanede 16 Eyl'den beri TEK
+    // bölme var: ad kutusu kalktı (kimse kütüphaneyi adıyla aramıyor), hap
+    // yalnız yer sorar — telefonun adımlı yüzeyiyle aynı.
     expect(say(DERS)).toBe(3);
-    expect(say(KUTUPHANE)).toBe(2);
+    expect(say(KUTUPHANE)).toBe(1);
   });
 
   it("her bölmenin ETİKETİ var ve girdiye BAĞLI", () => {
@@ -134,7 +135,7 @@ describe("ana sayfa arama hapları ikizdir", () => {
       ["KutuphaneArama", KUTUPHANE],
     ] as const) {
       const etiket = (kaynak.match(/<label htmlFor=/g) ?? []).length;
-      const beklenen = ad === "DersArama" ? 3 : 2;
+      const beklenen = ad === "DersArama" ? 3 : 1;
       expect(etiket, `${ad}: her bölme etiketli olmalı`).toBe(beklenen);
     }
   });
