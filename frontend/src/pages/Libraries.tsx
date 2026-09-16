@@ -182,7 +182,7 @@ export default function Libraries() {
         /* Dolgu kuralı eğitmen ekranıyla AYNI: yalnız "olanaklar" değil,
            aramada etkin BİR filtre varsa düğme dolu çizilir. Eskiden ilçeye
            göre filtrelenmiş bir listede bile boş görünüyordu. */
-        className={`flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
+        className={`relative flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
           filtreli
             ? "border-slate-900 bg-white text-slate-900 "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
@@ -190,8 +190,12 @@ export default function Libraries() {
       >
         <FilterIconSvg />
         Filtreler
+        {/* Rozet eğitmen şeridiyle aynı: koyu, düğmenin sağ üst köşesinde. */}
         {amenities.length > 0 && (
-          <span className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[9px] font-bold text-marka-fg ">
+          <span
+            aria-hidden
+            className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white"
+          >
             {amenities.length}
           </span>
         )}
