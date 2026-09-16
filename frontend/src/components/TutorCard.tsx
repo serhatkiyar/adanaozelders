@@ -154,12 +154,11 @@ export function TutorCard({
             ücretsiz" rozeti yan yana sığmıyor, sarmadan taşıyordu. */}
         <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 pt-1">
           <div className="flex items-baseline text-slate-900 ">
+            {/* "/saat" eki YOK (kullanıcı kararı, 16 Eyl 2026): kartta yalnız
+                tutar; ders ücretinin saatlik olduğu ilan detayında anlatılır. */}
             <span className="text-sm font-bold">
               {rate !== null ? formatTRY(rate) : "Ücret belirtilmemiş"}
             </span>
-            {rate !== null && (
-              <span className="text-[11px] font-bold">/saat</span>
-            )}
           </div>
           {/* İlk ders ücretsiz etiketi — yalnız eğitmen sunuyorsa */}
           {tutor.first_lesson_free !== false && (

@@ -141,10 +141,19 @@ export function KesifKabugu() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kDebounced, kutuphaneMi]);
 
-  const kYer = kDegerler.konum.yer;
+  /* Kutu ADRESİ okur: mahalle seçiliyse o, değilse tek ilçe seçiliyse ilçe.
+     Eskiden yalnız `konum.yer`e (mahalle) bakılıyordu; ilçe seçilince adres
+     `?ilce=Seyhan` oluyor ama kutu "İlçe seçin" demeye devam ediyordu
+     (ölçüldü, 16 Eyl 2026). */
   const kIlce = kDegerler.konum.ilce;
+  const kYer: YerSecimi | null =
+    kDegerler.konum.yer ??
+    (kIlce.length === 1 ? { tur: "ilce", ilce: kIlce[0] } : null);
+  /* "Tüm yerler" (null) ilçeyi de DÜŞÜRÜR. Eskiden `ilce: kIlce` ile eski
+     ilçe korunuyordu; seçim kutudan silinmiş gibi görünüp adreste kalıyordu —
+     "Tüm yerler çalışmıyor" dediğin buydu. */
   const setKYer = (v: YerSecimi | null) =>
-    kAyarla({ konum: { yer: v, ilce: v ? [v.ilce] : kIlce } });
+    kAyarla({ konum: { yer: v, ilce: v ? [v.ilce] : [] } });
 
   /* ── Üst barın açık/kapalı hâli ──
      Airbnb davranışı: birazcık kaydırınca daralt. TELEFONDA ÇALIŞMAZ ve bu

@@ -264,8 +264,13 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
                DEĞİL: bu ekranda ikinci bir kart, formla yarışırdı.
             3. DİL — "Ders vermek istiyorum" (kullanıcının ağzından bir istek)
                yerine "Eğitmen misin?" (kendi kitlesini adıyla çağıran bir
-               soru). Soru formu kendi kendini eler: değilsen okumazsın. */}
-      <div className="mt-5 border-t border-slate-100 pt-3 md:hidden">
+               soru). Soru formu kendi kendini eler: değilsen okumazsın.
+
+          MASAÜSTÜNDE DE VAR (kullanıcı kararı, 16 Eyl 2026): önce yalnız
+          telefonda çiziliyordu çünkü masaüstünde üst barda "Ders Ver" duruyor.
+          Ama giriş penceresi açıkken üst bar arkada; pencerenin içinden
+          eğitmen yoluna aynı resimli satırla gidilmesi iki yüzeyi eşitler. */}
+      <div className="mt-5 border-t border-slate-100 pt-3">
         <button
           onClick={() => {
             searchParams.set("modal", "register");

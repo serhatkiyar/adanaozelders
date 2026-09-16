@@ -83,8 +83,10 @@ export default function PublicMarketplace() {
 
   const setSubjects = (v: string[]) => ayarla({ ders: v });
   const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
+  /* "Tüm yerler" (null) ilçeyi de düşürür; eskiden `konum.ilce` korunup
+     seçim kutudan silinmiş görünürken adreste kalıyordu (16 Eyl 2026). */
   const setYer = (v: YerSecimi | null) =>
-    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
+    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : [] } });
   const setExam = (v: string) => ayarla({ sinav: v });
 
   // Sıralama ADRESTE (9 Eyl 2026). Yerel state'teyken paylaşılamıyor,

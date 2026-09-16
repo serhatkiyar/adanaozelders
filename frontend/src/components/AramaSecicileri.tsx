@@ -70,14 +70,20 @@ const PinSvg = () => (
   </svg>
 );
 
-const EkranSvg = () => (
-  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18v11H3zM8 20h8m-4-4v4" />
-  </svg>
+/* Ders şekli satırında TELEFONLA AYNI FOTOĞRAF (kullanıcı kararı, 16 Eyl
+   2026): `/icons/ders-sekli/*.webp`, 40px yuvarlak kare. Çizgi ikon (ekran /
+   iğne) telefondaki adımla ayrışıyordu. */
+const SekilSvg = ({ deger }: { deger: DersSekli }) => (
+  <img
+    src={`/icons/ders-sekli/${deger === TeachingMode.ONLINE ? "uzaktan" : "yuzyuze"}.webp`}
+    alt=""
+    aria-hidden
+    width={40}
+    height={40}
+    decoding="async"
+    className="h-10 w-10 rounded-lg object-cover"
+  />
 );
-
-const SekilSvg = ({ deger }: { deger: DersSekli }) =>
-  deger === TeachingMode.ONLINE ? <EkranSvg /> : <PinSvg />;
 
 /** Panelin ortak kabuğu — iki seçici de AYNI görünümü paylaşır. */
 function Panel({
@@ -337,7 +343,10 @@ export function YerSelect({
             <Satir
               key={`${y.secim.tur}:${y.altBaslik}:${y.baslik}`}
               etiket={y.baslik}
-              altEtiket={y.altBaslik}
+              /* İlçe satırında alt yazı YOK (kullanıcı kararı, 16 Eyl 2026):
+                 her ilçenin altında "Adana" yazması bilgi değil gürültüydü.
+                 Mahallede ilçe adı kalır — onu ayırt ettiren o. */
+              altEtiket={y.secim.tur === "mahalle" ? y.altBaslik : undefined}
               ikon={<PinSvg />}
               onClick={() => sec(y.secim)}
             />
