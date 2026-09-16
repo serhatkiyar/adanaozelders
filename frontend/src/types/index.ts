@@ -722,6 +722,8 @@ export interface BookingOut {
   client_name?: string | null;
   client_avatar_url: string | null;
   reviewed: boolean;
+  /** Öğrenci bu dersi şimdi değerlendirebilir mi (sunucu kuralı). */
+  can_review: boolean;
   resources: BookingResourceOut[];
   comments: BookingCommentOut[];
   private_notes: BookingPrivateNoteOut[];

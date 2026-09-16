@@ -22,7 +22,12 @@ from models.booking_resource import BookingResource
 from models.booking_comment import BookingComment
 from models.booking_private_note import BookingPrivateNote
 from schemas.booking import BookingCreate, BookingResourceCreate, BookingCommentCreate, BookingLocationUpdate, BookingPrivateNoteCreate
-from services import messaging_service, notification_service, payment_service
+from services import (
+    messaging_service,
+    notification_service,
+    payment_service,
+    review_service,
+)
 from core import ws_outbox
 
 CurrentUser = "Admin | Tutor | Client"
@@ -410,6 +415,7 @@ async def get_booking(
         )
     )
     booking.reviewed = review_id is not None
+    booking.can_review = await review_service.degerlendirilebilir_mi(db, booking)
     # Özel notlar yalnızca sahibine döner. viewer verilmezse (örn. dahili çağrı)
     # güvenli tarafta kalıp tüm notları gizleriz.
     if viewer is not None:
@@ -487,6 +493,13 @@ async def list_bookings(
         booking.client_name = client_name
         booking.client_avatar_url = client_avatar
         booking.reviewed = reviewed
+        # Yalnız öğrencinin tamamlanmış dersleri için sorgu; ötekilerde bayrak
+        # zaten False ve her satıra ek sorgu atmak gereksiz.
+        booking.can_review = (
+            role_id == ROLE_IDS[RoleType.CLIENT]
+            and booking.status == BookingStatus.COMPLETED
+            and await review_service.degerlendirilebilir_mi(db, booking)
+        )
         # Özel notlar yalnızca isteği yapan tarafa döner.
         _filter_private_notes(booking, role_id=role_id, user_id=user_id)
         bookings.append(booking)

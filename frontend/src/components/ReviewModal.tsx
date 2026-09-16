@@ -41,8 +41,11 @@ export function ReviewModal({
           onClose();
         },
         onError: (err) => {
+          /* 409'un birden çok gerekçesi var (zaten değerlendirilmiş, kartla
+             ödenmemiş, eğitmene ikinci yorum); metin sunucudan gelir. Hepsinde
+             pencere kapanır: kullanıcı aynı formu tekrar gönderemez. */
           if (err instanceof AxiosError && err.response?.status === 409) {
-            toast.error("Bu rezervasyon zaten değerlendirilmiş.");
+            toast.error(getErrorMessage(err, "Bu ders değerlendirilemiyor."));
             onReviewed(bookingId);
             onClose();
             return;

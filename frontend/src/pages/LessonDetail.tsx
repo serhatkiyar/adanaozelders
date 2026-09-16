@@ -125,7 +125,6 @@ export default function LessonDetail() {
 
   const isPending = booking.status === BookingStatus.PENDING;
   const isAccepted = booking.status === BookingStatus.ACCEPTED;
-  const isCompleted = booking.status === BookingStatus.COMPLETED;
   const canMessage = isPending || isAccepted;
   const alreadyReviewed = !!review || reviewed;
 
@@ -410,7 +409,10 @@ export default function LessonDetail() {
                 İptal Et
               </button>
             )}
-            {isClient && isCompleted && !alreadyReviewed && (
+            {/* Düğme sunucunun `can_review` kararına bağlı (16 Eyl 2026):
+                tamamlanmış + kartla ödenmiş + bu eğitmene ilk yorum. Yerel
+                `alreadyReviewed`, pencere kapanır kapanmaz düğmeyi gizler. */}
+            {isClient && booking.can_review && !alreadyReviewed && (
               <button
                 onClick={() => setShowReview(true)}
                 className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
