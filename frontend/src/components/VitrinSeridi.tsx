@@ -56,7 +56,7 @@ const VITRIN_IC = "mx-auto w-full max-w-screen-2xl px-4 md:px-8";
 /** Rayın boşluk/snap sınıfları — kart formülüyle AYNI sayılar.
  * Snap masaüstünde de açık kalır: fare/trackpad kaydırması kart ortasında
  * biterse ilk/son kart kenarı raydan kopmasın. */
-const VITRIN_RAY = "snap-x snap-mandatory gap-3 pb-2 min-[744px]:gap-5";
+const VITRIN_RAY = "snap-x snap-mandatory items-start gap-3 pb-2 min-[744px]:gap-5";
 
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen
