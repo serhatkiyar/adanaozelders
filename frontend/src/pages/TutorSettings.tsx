@@ -435,8 +435,9 @@ export default function TutorSettings() {
                     </span>
                     <input id={`${uid}-saatlik-ucret`}
                       type="number"
-                      min={0}
-                      step={0.01}
+                      min={250}
+                      max={5000}
+                      step={1}
                       disabled={!editable}
                       value={hourlyRate}
                       onChange={(e) => setHourlyRate(e.target.value)}

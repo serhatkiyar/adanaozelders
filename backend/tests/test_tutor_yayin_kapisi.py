@@ -20,7 +20,7 @@ import inspect
 import pytest
 from fastapi import HTTPException
 
-from core.text import HEADLINE_MIN_WORDS
+from core.text import HEADLINE_MIN_WORDS, HOURLY_RATE_MAX, HOURLY_RATE_MIN
 from models.tutor import Tutor, TutorStatus
 from services import tutor_service
 
@@ -53,6 +53,23 @@ async def test_belgesiz_ilan_yayina_gonderilebilir():
     sonuc = await tutor_service.submit_for_approval(db, tutor)  # type: ignore[arg-type]
     assert sonuc.status is TutorStatus.PENDING_APPROVAL
     assert db.flush_sayisi == 1
+
+
+@pytest.mark.asyncio
+async def test_ucret_araligi_disi_reddedilir():
+    """Ücret kapısı (16 Eyl 2026): 250–5000 ₺ dışındaki ücretle yayına çıkılamaz;
+    boş ücret serbest (kart "Ücret belirtilmemiş" der)."""
+    for ucret in (HOURLY_RATE_MIN - 1, HOURLY_RATE_MAX + 1):
+        tutor = _egitmen(UZUN_BASLIK)
+        tutor.hourly_rate = ucret
+        with pytest.raises(HTTPException) as e:
+            await tutor_service.submit_for_approval(_SahteDb(), tutor)  # type: ignore[arg-type]
+        assert e.value.status_code == 422
+    for ucret in (HOURLY_RATE_MIN, 400, HOURLY_RATE_MAX, None):
+        tutor = _egitmen(UZUN_BASLIK)
+        tutor.hourly_rate = ucret
+        sonuc = await tutor_service.submit_for_approval(_SahteDb(), tutor)  # type: ignore[arg-type]
+        assert sonuc.status is TutorStatus.PENDING_APPROVAL
 
 
 @pytest.mark.asyncio
