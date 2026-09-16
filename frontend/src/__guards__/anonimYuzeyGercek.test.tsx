@@ -123,14 +123,16 @@ describe("anonim yüzey · filtreler GERÇEK", () => {
     await screen.findByText("Filtrele");
   };
 
-  it("pencerede reklam DEĞİL, üç gerçek grup var", async () => {
+  it("pencerede reklam DEĞİL, gerçek gruplar var", async () => {
     await filtreyiAc();
     // Ders işleme şekli 16 Eyl 2026'da pencereden ÇIKTI: arama hapının kendi
     // adımı; burada ikinci bir yerden değiştirilmesi hapla çelişiyordu.
-    for (const baslik of ["Mesafe", "Fiyat Aralığı", "Eğitmen cinsiyeti"]) {
+    // Mesafe yalnız "Yakınımda" seçiliyken görünür; adreste niyet yokken yok.
+    for (const baslik of ["Fiyat Aralığı", "Eğitmen cinsiyeti"]) {
       expect(screen.getByText(baslik), `${baslik} grubu yok`).toBeTruthy();
     }
     expect(screen.queryByText("Ders İşleme Şekli")).toBeNull();
+    expect(screen.queryByText("Mesafe")).toBeNull();
     // Sökülen reklam kartı.
     expect(screen.queryByText(/Daha fazla filtre mi arıyorsunuz/i)).toBeNull();
     expect(screen.queryByText(/hesap oluşturun/i)).toBeNull();

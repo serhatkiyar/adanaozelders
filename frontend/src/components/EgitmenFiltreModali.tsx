@@ -156,9 +156,11 @@ export function EgitmenFiltreModali({
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto p-6">
-          {/* Mesafe — yatay sabit seçenekler (kullanıcı kararı, 16 Eyl 2026):
-              Farketmez | 1 | 3 | 5 | 10 | 15 | 25 km. Açılır menü yerine
-              cinsiyetle aynı bölmeli seçici. "" = filtre yok. */}
+          {/* Mesafe — YALNIZ "Yakınımda" seçiliyken (kullanıcı kararı, 16 Eyl
+              2026): konum niyeti arama hapında verilir, bu pencere yalnız
+              yarıçapı ayarlar. Yatay sabit seçenekler: Farketmez | 1 | 3 | 5 |
+              10 | 15 | 25 km; Farketmez niyeti kaldırır ve bölüm kapanır. */}
+          {yakinimda && (
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
             <SegmentedControl<string>
@@ -184,6 +186,7 @@ export function EgitmenFiltreModali({
               <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>
             )}
           </div>
+          )}
 
           {/* Fiyat aralığı */}
           <div>
