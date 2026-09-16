@@ -351,7 +351,7 @@ export default function Libraries() {
           filtrelenmiş bir listenin üstünde "Çukurova Kütüphaneleri" şeridi hem
           çelişki hem de her tuş vuruşunda dört ek sorgu demek. */}
       {!filtreli && (
-        <div className="space-y-2">
+        <div className="space-y-8">
           {["Çukurova", "Seyhan", "Yüreğir", "Sarıçam"].map((ilce) => (
             <LibraryRow
               key={ilce}
