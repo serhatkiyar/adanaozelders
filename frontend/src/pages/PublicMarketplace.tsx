@@ -24,6 +24,7 @@ import { EGITMEN_ARAMA, egitmenIstegi } from "@/lib/aramaUrl";
 import { filtreliMi } from "@/lib/urlSemasi";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
 import { useKonumStore } from "@/store/konumStore";
+import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
 import { yerEtiketi } from "@/lib/yerArama";
@@ -98,6 +99,10 @@ export default function PublicMarketplace() {
   const [showFilters, setShowFilters] = useState(false);
   // Koordinat adrese YAZILMAZ; yalnız istekte kullanılır.
   const konumum = useKonumStore((s) => s.konum);
+  /* Adresteki "yakınımda" niyeti koordinat ister; izin yoksa bayrak düşer. */
+  useYakinimdaKonum(degerler.yakinimda, () =>
+    ayarla({ yakinimda: false, yaricap: undefined }, { replace: true })
+  );
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);

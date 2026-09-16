@@ -201,6 +201,8 @@ export function DersArama({
   setSekil,
   yer,
   setYer,
+  yakinimda = false,
+  setYakinimda,
   onSubmit,
 }: {
   /** Seçili dersin kanonik `q` değeri; "" = seçim yok. */
@@ -223,6 +225,9 @@ export function DersArama({
   /** Yer YALNIZ "Yüz yüze" seçiliyken sorulur (bkz. AramaSecicileri.tsx). */
   yer: YerSecimi | null;
   setYer: (v: YerSecimi | null) => void;
+  /** "Yakınımda" niyeti — telefonun adımlı yüzeyiyle aynı seçenek. */
+  yakinimda?: boolean;
+  setYakinimda?: (v: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
 }) {
   // Kutunun metni = `dersEtiket`. Seçim yapılınca etiket, yazılırken ham
@@ -321,7 +326,21 @@ export function DersArama({
               <YerSelect
                 id={yerId}
                 value={yer}
-                onChange={setYer}
+                onChange={(v) => {
+                  setYer(v);
+                  // İlçe ya da "Tüm yerler" seçimi yakınımda niyetini düşürür:
+                  // ikisi aynı anda anlamsız (aynı kural `AramaAdimlari`).
+                  setYakinimda?.(false);
+                }}
+                yakinimda={yakinimda}
+                onYakinimda={
+                  setYakinimda
+                    ? () => {
+                        setYer(null);
+                        setYakinimda(true);
+                      }
+                    : undefined
+                }
                 hizaRef={formRef}
                 triggerClassName="w-full min-w-0 bg-transparent text-base font-medium text-slate-700 outline-none md:text-sm"
               />
@@ -397,6 +416,8 @@ export function KutuphaneArama({
   setQ,
   yer,
   setYer,
+  yakinimda = false,
+  setYakinimda,
   onSubmit,
   // Konum YANDAKİ alanda seçiliyor; ad kutusunda semtin işi yok
   // (kullanıcı, 8 Eyl: "kütüphane semt araması ne alaka").
@@ -408,6 +429,9 @@ export function KutuphaneArama({
    *  listesi taşınmaz: `YerSecimi` ilçeyi zaten içinde tutuyor. */
   yer: YerSecimi | null;
   setYer: (v: YerSecimi | null) => void;
+  /** "Yakınımda" niyeti — adreste `yakinimda=1`. */
+  yakinimda?: boolean;
+  setYakinimda?: (v: boolean) => void;
   onSubmit: (e: React.FormEvent) => void;
   placeholder?: string;
 }) {
@@ -446,7 +470,19 @@ export function KutuphaneArama({
           <YerSelect
             id={ilceId}
             value={yer}
-            onChange={setYer}
+            onChange={(v) => {
+              setYer(v);
+              setYakinimda?.(false);
+            }}
+            yakinimda={yakinimda}
+            onYakinimda={
+              setYakinimda
+                ? () => {
+                    setYer(null);
+                    setYakinimda(true);
+                  }
+                : undefined
+            }
             hizaRef={formRef}
             triggerClassName="w-full min-w-0 bg-transparent text-base font-medium text-slate-700 outline-none md:text-sm"
           />

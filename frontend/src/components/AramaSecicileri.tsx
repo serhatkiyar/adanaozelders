@@ -292,6 +292,8 @@ export function YerSelect({
   id,
   // Telefondaki yer adımıyla aynı metin.
   placeholder = "İlçe seçin",
+  yakinimda = false,
+  onYakinimda,
 }: {
   value: YerSecimi | null;
   onChange: (next: YerSecimi | null) => void;
@@ -299,6 +301,16 @@ export function YerSelect({
   id?: string;
   hizaRef?: React.RefObject<HTMLElement>;
   placeholder?: string;
+  /** "Yakınımda" seçili mi — kutuda o yazar, ilçe seçimi yok sayılır. */
+  yakinimda?: boolean;
+  /**
+   * "Yakınımda" satırı YALNIZ bu verilince çizilir (kullanıcı sorusu, 16 Eyl
+   * 2026: "masaüstünde neden yakındakileri bulma yok"). Telefonun adımlı
+   * yüzeyiyle aynı satır: ilk sırada, kendi görseliyle. Seçilince çağıran
+   * konum niyetini adrese yazar; koordinatı sonuç sayfası ister
+   * (`useYakinimdaKonum`).
+   */
+  onYakinimda?: () => void;
 }) {
   const { open, setOpen, text, setText, pos, triggerRef, ac, kapat } = useSecici(hizaRef);
 
@@ -311,6 +323,7 @@ export function YerSelect({
   const yerler = yerAra(text);
   // "Tüm yerler" satırı seçimi TEMİZLER; olmasaydı seçim geri alınamazdı.
   const tumuGoster = !n || kucult("Tüm yerler").includes(n);
+  const yakinimdaGoster = !!onYakinimda && (!n || kucult("Yakınımda").includes(n));
 
   return (
     <>
@@ -325,10 +338,10 @@ export function YerSelect({
         onFocus={ac}
         onBlur={() => setOpen(false)}
         id={id}
-        placeholder={value ? yerEtiketi(value) : placeholder}
+        placeholder={yakinimda ? "Yakınımda" : value ? yerEtiketi(value) : placeholder}
         aria-label={id ? undefined : "Yer"}
         className={`${triggerClassName} ${
-          value
+          value || yakinimda
             ? "placeholder:font-semibold placeholder:text-slate-700 "
             : "placeholder:text-slate-400 "
         }`}
@@ -336,6 +349,28 @@ export function YerSelect({
 
       {open && pos && (
         <Panel pos={pos}>
+          {yakinimdaGoster && (
+            <Satir
+              etiket="Yakınımda"
+              altEtiket="Çevrendekileri bul"
+              ikon={
+                <img
+                  src="/icons/ilceler/yakinimda.webp"
+                  alt=""
+                  aria-hidden
+                  width={40}
+                  height={40}
+                  decoding="async"
+                  className="h-10 w-10 rounded-lg object-cover"
+                />
+              }
+              secili={yakinimda}
+              onClick={() => {
+                onYakinimda?.();
+                kapat();
+              }}
+            />
+          )}
           {tumuGoster && (
             <Satir etiket="Tüm yerler" ikon={<PinSvg />} onClick={() => sec(null)} />
           )}

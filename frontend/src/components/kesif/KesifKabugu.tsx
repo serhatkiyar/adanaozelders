@@ -111,12 +111,13 @@ export function KesifKabugu() {
      yazar, çünkü altındaki liste onu canlı okuyor. */
   /* Buradaki durum MASAÜSTÜ hapınındır; telefonun adımlı yüzeyi kendi
      taslağını `MobilAramaAkisi` içinde tutuyor. İkisi aynı anda ekranda
-     olmadığı için ayrışmaları görünür değil. "Yakınımda" yalnız adımlı
-     yüzeyde sorulduğu için burada karşılığı YOK. */
+     olmadığı için ayrışmaları görünür değil. "Yakınımda" artık burada da
+     var (16 Eyl 2026): yer seçicinin ilk satırı, telefondakiyle aynı. */
   const [ders, setDers] = useState("");
   const [dersEtiket, setDersEtiket] = useState("");
   const [sekil, setSekil] = useState<DersSekli>("");
   const [yer, setYer] = useState<YerSecimi | null>(null);
+  const [yakinimda, setYakinimda] = useState(false);
 
   const {
     degerler: kDegerler,
@@ -154,6 +155,15 @@ export function KesifKabugu() {
      "Tüm yerler çalışmıyor" dediğin buydu. */
   const setKYer = (v: YerSecimi | null) =>
     kAyarla({ konum: { yer: v, ilce: v ? [v.ilce] : [] } });
+  /* Kütüphanede niyet doğrudan adreste; koordinatı liste sayfası ister
+     (`useYakinimdaKonum`). Açılınca ilçe/mahalle düşer — ikisi birlikte
+     anlamsız. */
+  const setKYakinimda = (v: boolean) =>
+    kAyarla(
+      v
+        ? { yakinimda: true, konum: { yer: null, ilce: [] } }
+        : { yakinimda: false }
+    );
 
   /* ── Üst barın açık/kapalı hâli ──
      Airbnb davranışı: birazcık kaydırınca daralt. TELEFONDA ÇALIŞMAZ ve bu
@@ -210,6 +220,7 @@ export function KesifKabugu() {
           yer: yer?.tur === "mahalle" ? yer : null,
           ilce: yer ? [yer.ilce] : [],
         },
+        yakinimda,
       })
     );
     setMobilAramaAcik(false);
@@ -238,6 +249,8 @@ export function KesifKabugu() {
       setQ={setKQ}
       yer={kYer}
       setYer={setKYer}
+      yakinimda={kDegerler.yakinimda}
+      setYakinimda={setKYakinimda}
       onSubmit={submitKutuphane}
     />
   ) : (
@@ -252,6 +265,8 @@ export function KesifKabugu() {
       setSekil={setSekil}
       yer={yer}
       setYer={setYer}
+      yakinimda={yakinimda}
+      setYakinimda={setYakinimda}
       onSubmit={submitEgitmen}
     />
   );

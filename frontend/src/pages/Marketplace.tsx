@@ -22,6 +22,7 @@ import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
 import { useKonumStore } from "@/store/konumStore";
+import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { bosDeger, filtreliMi } from "@/lib/urlSemasi";
 import {
   EGITMEN_ARAMA,
@@ -189,6 +190,10 @@ export default function Marketplace() {
   // Konum artık `store/konumStore`da: YAZAN yer filtre penceresi (ortak
   // bileşen), OKUYAN yer bu sayfa. Yerel state ile paylaşılamazdı.
   const konumum = useKonumStore((s) => s.konum);
+  /* Adresteki "yakınımda" niyeti koordinat ister; izin yoksa bayrak düşer. */
+  useYakinimdaKonum(yakinimda, () =>
+    ayarla({ yakinimda: false, yaricap: undefined }, { replace: true })
+  );
 
   const modeSegment: AramaSekli | typeof MODE_ALL = modes[0] ?? MODE_ALL;
   const selectMode = (v: AramaSekli | typeof MODE_ALL) =>

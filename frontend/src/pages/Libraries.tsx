@@ -10,7 +10,6 @@ import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import { getErrorMessage } from "@/lib/errors";
-import { toast } from "@/store/toastStore";
 import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
@@ -21,6 +20,8 @@ import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
 import { ROUTES } from "@/lib/routes";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
+import { useKonumStore } from "@/store/konumStore";
 import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
 
@@ -115,41 +116,26 @@ export default function Libraries() {
    * KOORDİNAT ADRESE YAZILMAZ. Adres yalnız niyeti taşır
    * (`sirala=mesafe`); konum bağlantıyı açan kişiden yeniden istenir.
    */
-  const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoLoading, setGeoLoading] = useState(false);
+  /* KONUM ORTAK DEPODAN (16 Eyl 2026). Eskiden bu sayfa kendi `nearMe`
+     state'ini tutup yalnız "mesafe" sıralaması seçilince konum istiyordu;
+     adresteki `yakinimda=1` niyeti (telefonun adımlı yüzeyi, masaüstü hapı,
+     paylaşılan bağlantı) HİÇ okunmuyordu — liste "Tüm Adana" dönüyordu.
+     Artık niyet nereden gelirse gelsin tek hook konum ister; izin yoksa
+     niyet adresten düşer. Eğitmen sonuç sayfalarıyla aynı depo. */
+  const konumum = useKonumStore((s) => s.konum);
+  const geoLoading = useKonumStore((s) => s.yukleniyor);
   const [showFilters, setShowFilters] = useState(false);
   // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
   // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
   const limit = limitForPage(page, PER_PAGE);
-  // "Yakınımda" sıralaması konum ister; reddedilirse sıralamayı geri al.
-  const requestNearMe = (onFail?: () => void) => {
-    if (!navigator.geolocation) {
-      toast.error("Tarayıcınız konum servisini desteklemiyor.");
-      onFail?.();
-      return;
-    }
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setNearMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGeoLoading(false);
-      },
-      () => {
-        toast.error("Konum alınamadı. Lütfen izin verin.");
-        setGeoLoading(false);
-        onFail?.();
-      },
-      { enableHighAccuracy: false, timeout: 8000 }
-    );
-  };
+  useYakinimdaKonum(degerler.yakinimda || degerler.sirala === "distance", () =>
+    ayarla({ yakinimda: false, yaricap: undefined, sirala: "" }, { replace: true })
+  );
 
   const setSort = (value: LibrarySort) => ayarla({ sirala: value });
 
-  // Sıralama seçimi: "Yakınımda" ilk kez seçilince konum iste.
-  const handleSortChange = (value: LibrarySort) => {
-    setSort(value);
-    if (value === "distance" && !nearMe) requestNearMe(() => setSort(""));
-  };
+  // "Mesafe" sıralaması konumu `useYakinimdaKonum` üzerinden ister.
+  const handleSortChange = (value: LibrarySort) => setSort(value);
 
   const toggleAmenity = (a: string) =>
     ayarla({
@@ -167,9 +153,9 @@ export default function Libraries() {
     () =>
       kutuphaneIstegi(
         degerler,
-        { limit, offset: 0, konumum: nearMe }
+        { limit, offset: 0, konumum }
       ),
-    [degerler, limit, nearMe]
+    [degerler, limit, konumum]
   );
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
