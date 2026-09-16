@@ -1,6 +1,7 @@
 import { FormEvent, useState, useEffect } from "react";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { SIMGE_KUTUSU } from "@/components/ui/SecenekSatiri";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login, type RegisterRole } from "@/api/auth";
@@ -277,20 +278,20 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
             searchParams.set("role", "tutor");
             setSearchParams(searchParams, { replace: true });
           }}
-          className="flex w-full items-center gap-3 rounded-xl px-1 py-2.5 text-left transition hover:bg-slate-50 active:scale-[0.99]"
+          className="flex w-full items-center gap-4 rounded-xl px-1 py-2 text-left transition hover:bg-slate-50 active:scale-[0.99]"
         >
           {/* Eğitmen görseli (kullanıcı kararı, 16 Eyl 2026): kategori
               şeridindeki "Eğitmenler" ile AYNI kaynak — giriş ekranındaki
-              satır, ana sayfadaki kategoriyle aynı yüzü taşır. 72px WebP,
-              36px kutuda 2x. Önceki mezuniyet kepi çizgi ikonu, resimli
-              kategori diliyle uyuşmuyordu. */}
-          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100">
+              satır, ana sayfadaki kategoriyle aynı yüzü taşır. Kutu ölçüsü
+              sitenin tek seçenek satırı standardından (`SIMGE_KUTUSU`,
+              48px); 72px WebP burada 1,5x. */}
+          <span className={SIMGE_KUTUSU}>
             <img
               src="/icons/egitmen-misin.webp"
               alt=""
               aria-hidden
-              width={36}
-              height={36}
+              width={48}
+              height={48}
               decoding="async"
               className="h-full w-full object-contain"
             />

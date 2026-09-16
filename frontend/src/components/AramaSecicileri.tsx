@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SecenekSatiri } from "@/components/ui/SecenekSatiri";
 
 import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 import { TeachingMode } from "@/types";
@@ -63,11 +64,9 @@ const SEKIL_SATIRLARI: { deger: DersSekli; aciklama?: string }[] = [
 
 const kucult = (s: string) => s.toLocaleLowerCase("tr-TR").trim();
 
-/* Satır simgeleri TELEFONDAKİ dilde (16 Eyl 2026): 20px siyah çizgi ikon,
-   40px açık gri yuvarlak karenin içinde. Eskiden iğne çıplak 16px'ti ve
-   yanındaki 40px fotoğraflı "Yakınımda" satırıyla iki ayrı ölçek görünüyordu. */
+/* Satır simgesi: 24px siyah çizgi ikon, ölçü `ui/SecenekSatiri`nin kutusundan. */
 const PinSvg = () => (
-  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
   </svg>
@@ -99,14 +98,16 @@ function Panel({
   return (
     <div
       style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }}
-      className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 "
+      className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white px-2 py-2 shadow-xl ring-1 ring-slate-100 "
     >
       {children}
     </div>
   );
 }
 
-/** Ders önerileriyle aynı satır görünümü: ikon + etiket, tıkla-seç-kapan.
+/** Seçici satırı = sitenin TEK seçenek satırı (`ui/SecenekSatiri`); ölçü
+ *  orada. Bu sarmalayıcı yalnız ad çevirir (`aramaHapiIkizligi` nöbetçisi
+ *  dosyada tek bir `Satir` tanımı sayar).
  *  `altEtiket` mahalle satırlarında ilçeyi gösterir — Adana'da aynı mahalle
  *  adı birden fazla ilçede var, kırılım olmadan hangisi olduğu anlaşılmaz. */
 function Satir({
@@ -123,39 +124,13 @@ function Satir({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onMouseDown={(e) => e.preventDefault()}
+    <SecenekSatiri
+      simge={ikon}
+      baslik={etiket}
+      altBaslik={altEtiket}
+      secili={secili}
       onClick={onClick}
-      className="flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
-    >
-      {/* Simge kutusu her satırda AYNI 40px kare: çizgi ikon içinde ortalanır,
-          fotoğraf (Yakınımda, ders şekli) kutuyu doldurur. Böylece iğneli
-          ilçe satırı ile fotoğraflı satır aynı ritimde okunur. */}
-      <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-slate-900">
-        {ikon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={`block truncate ${secili ? "font-semibold text-slate-900" : ""}`}>
-          {etiket}
-        </span>
-        {altEtiket && (
-          <span className="block truncate text-xs text-slate-400">{altEtiket}</span>
-        )}
-      </span>
-      {secili && (
-        <svg
-          className="h-4 w-4 shrink-0 text-marka-metin"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          aria-hidden
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      )}
-    </button>
+    />
   );
 }
 

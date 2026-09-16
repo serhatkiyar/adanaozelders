@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { PlainButton } from "@/components/ui/PlainButton";
+import { SecenekSatiri } from "@/components/ui/SecenekSatiri";
 import { SEKIL_ADI, type DersSekli } from "@/components/AramaSecicileri";
 import { useSubjects } from "@/hooks/useSubjects";
 import { dersAra } from "@/lib/dersArama";
@@ -135,48 +136,23 @@ function Kutu({
   );
 }
 
-/** Öneri satırı — solda yuvarlak kare simge kabı, sağda iki satır metin. */
+/** Öneri satırı = sitenin TEK seçenek satırı (`ui/SecenekSatiri`): ölçü ve
+ *  görünüm orada, burada yalnız ad çevrilir. Ders önerilerinde simge yoktur
+ *  (kullanıcı kararı, 11 Eyl 2026): her derse aynı kitabı koymak hiçbir
+ *  dersi ötekinden ayırmıyordu. Yer ve ders şekli satırlarında simge
+ *  gerçekten ayırt edici olduğu için orada duruyor. */
 function OneriSatiri({
   simge,
   baslik,
   altBaslik,
   onSec,
 }: {
-  /** Yoksa satır simgesiz çizilir — ders önerilerinde durum bu. */
   simge?: ReactNode;
   baslik: string;
   altBaslik?: string;
   onSec: () => void;
 }) {
-  return (
-    <PlainButton
-      onClick={onSec}
-      /* Satır SABİT 64px, küçülmez: liste dar ekranda kartın altında kesilir
-         (Airbnb'deki gibi); sıkışıp cılızlaşmaz. */
-      className="flex h-16 w-full shrink-0 items-center gap-4 rounded-xl px-1 text-left transition active:scale-[0.99] hover:bg-slate-50"
-    >
-      {/* Simge kutuyu DOLDURUR: `text-xl` 48px'lik kabın içinde kayboluyordu
-          (referansta çizgi ikon kutuyu dolduruyor).
-
-          DERS önerilerinde simge YOKTUR (kullanıcı kararı, 11 Eyl 2026): her
-          derse aynı kitap emojisini koymak hiçbir dersi ötekinden ayırmıyor,
-          yalnız satırı şişiriyordu. Yer ve ders şekli satırlarında simge
-          gerçekten AYIRT EDİCİ olduğu için orada duruyor. */}
-      {simge && (
-        <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-[28px] leading-none">
-          {simge}
-        </span>
-      )}
-      <span className="min-w-0">
-        <span className="block truncate text-base font-semibold text-slate-900">
-          {baslik}
-        </span>
-        {altBaslik && (
-          <span className="block truncate text-sm text-slate-500">{altBaslik}</span>
-        )}
-      </span>
-    </PlainButton>
-  );
+  return <SecenekSatiri simge={simge} baslik={baslik} altBaslik={altBaslik} onClick={onSec} />;
 }
 
 /**
