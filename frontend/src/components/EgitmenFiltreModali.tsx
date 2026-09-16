@@ -13,6 +13,7 @@ import {
 } from "@/lib/aramaUrl";
 import { bosDeger } from "@/lib/urlSemasi";
 import { useKonumStore } from "@/store/konumStore";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { Gender } from "@/types";
 
 /**
@@ -43,7 +44,12 @@ import { Gender } from "@/types";
    arama hapının kendi adımı, burada ikinci bir yerden değiştirilmesi hapla
    çelişiyordu. */
 
-const GENDER_OPTIONS: { value: Gender.MALE | Gender.FEMALE; label: string }[] = [
+/* Cinsiyet, Airbnb'nin "Yerin türü" bölmeli seçicisiyle (kullanıcı kararı,
+   16 Eyl 2026): Tümü | Kadın | Erkek. "" = filtre yok. Faset sayısı etikete
+   eklenir ki seçim yapılmadan kaç eğitmen olduğu görülsün. */
+type CinsiyetSecimi = Gender.MALE | Gender.FEMALE | "";
+const GENDER_OPTIONS: { value: CinsiyetSecimi; label: string }[] = [
+  { value: "", label: "Tümü" },
   { value: Gender.FEMALE, label: "Kadın" },
   { value: Gender.MALE, label: "Erkek" },
 ];
@@ -209,35 +215,18 @@ export function EgitmenFiltreModali({
             />
           </div>
 
-          {/* Cinsiyet */}
+          {/* Eğitmen cinsiyeti — bölmeli seçici */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Cinsiyet</h3>
-            <div className="flex flex-wrap gap-2">
-              {GENDER_OPTIONS.map((opt) => {
-                const adet = fasetler?.[opt.value];
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() =>
-                      ayarla({ cinsiyet: gender === opt.value ? "" : opt.value })
-                    }
-                    className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                      gender === opt.value
-                        ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"
-                        : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
-                    }`}
-                  >
-                    {opt.label}
-                    {/* Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar. */}
-                    {adet !== undefined && (
-                      <span className={gender === opt.value ? "ml-1.5 opacity-80" : "ml-1.5 text-slate-400"}>
-                        {adet}
-                      </span>
-                    )}
-                  </button>
-                );
+            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Eğitmen cinsiyeti</h3>
+            <SegmentedControl<CinsiyetSecimi>
+              options={GENDER_OPTIONS.map((opt) => {
+                // Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar.
+                const adet = opt.value ? fasetler?.[opt.value] : undefined;
+                return { value: opt.value, label: adet !== undefined ? `${opt.label} (${adet})` : opt.label };
               })}
-            </div>
+              value={gender}
+              onChange={(v) => ayarla({ cinsiyet: v })}
+            />
             {/* SESSİZ ELEME artık sessiz değil: `gender == FEMALE`
                 karşılaştırması hem NULL hem UNSPECIFIED satırları eliyor.
                 Yalnız filtre ETKİNKEN gösterilir. */}

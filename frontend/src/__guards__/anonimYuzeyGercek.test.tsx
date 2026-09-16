@@ -127,7 +127,7 @@ describe("anonim yüzey · filtreler GERÇEK", () => {
     await filtreyiAc();
     // Ders işleme şekli 16 Eyl 2026'da pencereden ÇIKTI: arama hapının kendi
     // adımı; burada ikinci bir yerden değiştirilmesi hapla çelişiyordu.
-    for (const baslik of ["Mesafe", "Fiyat Aralığı", "Cinsiyet"]) {
+    for (const baslik of ["Mesafe", "Fiyat Aralığı", "Eğitmen cinsiyeti"]) {
       expect(screen.getByText(baslik), `${baslik} grubu yok`).toBeTruthy();
     }
     expect(screen.queryByText("Ders İşleme Şekli")).toBeNull();
@@ -139,8 +139,9 @@ describe("anonim yüzey · filtreler GERÇEK", () => {
   it("faset SAYILARI anonime de gösteriliyor", async () => {
     // Uçlar `require_roles` taşımıyor; sunucu bu sayıları zaten veriyordu.
     await filtreyiAc();
-    expect(screen.getByText("42")).toBeTruthy();
-    expect(screen.getByText("61")).toBeTruthy();
+    // 16 Eyl 2026: sayı bölmeli seçicinin etiketinde ("Kadın (42)").
+    expect(screen.getByRole("button", { name: /Kadın \(42\)/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Erkek \(61\)/ })).toBeTruthy();
   });
 
   it("ASIL İDDİA: cinsiyet seçimi hem ADRESE hem İSTEĞE ulaşıyor", async () => {
