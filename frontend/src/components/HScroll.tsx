@@ -72,10 +72,55 @@ export function HScroll({
   const startScroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
     if (!el) return;
-    // Bir "sayfa" = görünen genişlik (eksi bir kart payı), sabit 400px değil:
-    // geniş ekranda tek tık yarım kart kaydırıyordu.
-    const adim = Math.max(240, el.clientWidth - 80);
-    el.scrollBy({ left: dir === "left" ? -adim : adim, behavior: "smooth" });
+    /* Bir "sayfa" = görünen kart sayısı eksi bir (bir kart bağlam olarak
+       ekranda kalır). Mesafe MUTLAKA gerçek kart başlangıçlarından türetilir.
+
+       Eski `clientWidth - 80` değeri kart aralığının katı değildi; her ok
+       tıklaması rayı kartın ortasında durduruyor, başlangıçta kusursuz olan
+       sağ/sol hizayı ilk kaydırmada bozuyordu. Firefox'taki kesilme şikâyeti
+       incelenirken Chrome'da da aynı hata gerçek tarayıcıda görüldü. */
+    const kartlar = Array.from(el.children).filter(
+      (child): child is HTMLElement => child instanceof HTMLElement
+    );
+    const kapSol = el.getBoundingClientRect().left;
+    const konumlar = kartlar.map(
+      (kart) => el.scrollLeft + kart.getBoundingClientRect().left - kapSol
+    );
+    const kartGenisligi = kartlar[0]?.getBoundingClientRect().width ?? 0;
+    const kartAdimi = (konumlar[1] ?? 0) - (konumlar[0] ?? 0);
+
+    if (kartlar.length > 1 && kartAdimi > 0 && kartGenisligi > 0) {
+      const bosluk = Math.max(0, kartAdimi - kartGenisligi);
+      const gorunenKart = Math.max(
+        1,
+        Math.round((el.clientWidth + bosluk) / kartAdimi)
+      );
+      const mevcut = konumlar.reduce(
+        (enYakin, konum, index) =>
+          Math.abs(konum - el.scrollLeft) <
+          Math.abs(konumlar[enYakin] - el.scrollLeft)
+            ? index
+            : enYakin,
+        0
+      );
+      const yon = dir === "left" ? -1 : 1;
+      // Son kartın içindeki döndürülmüş/dekoratif görsel `scrollWidth`ü birkaç
+      // piksel büyütebilir. Sona `scrollWidth - clientWidth` ile gitmek o
+      // dekoru hizalar, son TAM KARTI 2px içeride bırakır. Azami başlangıç
+      // indeksi doğrudan kart sayısından türetilince bu taşan boya hesaba
+      // karışmaz: son görünümde tam `gorunenKart` kart kalır.
+      const sonBaslangic = Math.max(0, kartlar.length - gorunenKart);
+      const hedefIndex = Math.max(
+        0,
+        Math.min(sonBaslangic, mevcut + yon * Math.max(1, gorunenKart - 1))
+      );
+      const hedef = Math.max(0, konumlar[hedefIndex]);
+      el.scrollBy({ left: hedef - el.scrollLeft, behavior: "smooth" });
+    } else {
+      // Düzen ölçümü bulunamazsa (örn. jsdom) eski güvenli davranış.
+      const adim = Math.max(240, el.clientWidth - 80);
+      el.scrollBy({ left: dir === "left" ? -adim : adim, behavior: "smooth" });
+    }
 
     // Basılı tutunca sürekli kaydırma korundu — yeri değişti, davranışı değil.
     timeoutRef.current = setTimeout(() => {

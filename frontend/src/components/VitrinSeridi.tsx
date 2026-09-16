@@ -28,13 +28,18 @@ import type { TutorSearchOut } from "@/types";
  * doldurur; eşik geçilince sayı artar, kartlar küçülüp yeniden büyür.
  * Formüldeki sabitler (n−1)×boşluk; boşluk 744 altında 12px, üstünde 20px.
  *
+ * DİKKAT: CSS `calc()` içinde `/ N` KULLANILMAZ. Chromium'un kabul ettiği
+ * `calc((100% - 40px) / 3)` Firefox'ta geçersiz `width` olur; kartlar doğal
+ * genişliğine dönüp sağdan kesilir. Aşağıdaki yüzdeli biçimler aynı hesabın
+ * bölmesiz açılımıdır: `(100% - 40px) / 3` = `33.333333% - 13.333333px`.
+ *
  * HİZA: kap üst barla AYNI kaptır (`max-w-screen-2xl px-4 md:px-8`,
  * `PublicNavbar`/`DashboardHeader`). Kartların sol kenarı logonun, sağ kenarı
  * "Giriş Yap"ın hizasında biter — Airbnb'de de ray sayfa oluğuyla hizalı.
  * Önceki 1760px'lik kap barla hizasızdı (kullanıcı itirazı).
  */
 const VITRIN_KART =
-  "shrink-0 snap-start w-[calc((100%-48px)/2)] min-[744px]:w-[calc((100%-40px)/3)] min-[950px]:w-[calc((100%-60px)/4)] min-[1130px]:w-[calc((100%-80px)/5)] min-[1440px]:w-[calc((100%-100px)/6)] min-[1640px]:w-[calc((100%-120px)/7)]";
+  "shrink-0 snap-start w-[calc(50%-24px)] min-[744px]:w-[calc(33.333333%-13.333333px)] min-[950px]:w-[calc(25%-15px)] min-[1130px]:w-[calc(20%-16px)] min-[1440px]:w-[calc(16.666667%-16.666667px)] min-[1640px]:w-[calc(14.285714%-17.142857px)]";
 /**
  * Rayın kabı = üst barın kabı (hiza), İKİ KATMAN:
  *   dış  `VITRIN_KAP`: sayfa gövdesinin oluğunu (main: px-4 / sm:px-6) negatif
@@ -48,8 +53,10 @@ const VITRIN_KART =
  */
 const VITRIN_KAP = "-mx-4 sm:-mx-6";
 const VITRIN_IC = "mx-auto w-full max-w-screen-2xl px-4 md:px-8";
-/** Rayın boşluk/snap sınıfları — kart formülüyle AYNI sayılar. */
-const VITRIN_RAY = "snap-x snap-mandatory gap-3 pb-2 min-[744px]:snap-none min-[744px]:gap-5";
+/** Rayın boşluk/snap sınıfları — kart formülüyle AYNI sayılar.
+ * Snap masaüstünde de açık kalır: fare/trackpad kaydırması kart ortasında
+ * biterse ilk/son kart kenarı raydan kopmasın. */
+const VITRIN_RAY = "snap-x snap-mandatory gap-3 pb-2 min-[744px]:gap-5";
 
 function RowHeader({ heading, href }: { heading: string; href: string }) {
   // Airbnb deseni (29 Ağu): sağdaki "Tümü →" metni yerine başlığın hemen

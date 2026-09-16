@@ -105,6 +105,55 @@ describe("vitrin kuşağı · kaydırma okları", () => {
     expect(left).toBeGreaterThan(0);
   });
 
+  it("ok kart aralığının TAM katına gider; ilk kaydırmada hizayı bozmaz", () => {
+    ciz();
+    const kap = olcuKur({ scrollLeft: 0, clientWidth: 1000, scrollWidth: 2428 });
+    Object.defineProperty(kap, "getBoundingClientRect", {
+      value: () => ({ left: 32, right: 1032, width: 1000 }),
+      configurable: true,
+    });
+    // Beş görünür kart: 5×184 + 4×20 = 1000. Bir sayfalık ok hareketi
+    // dört karttır (bir kart bağlam için ekranda kalır): 4×(184+20) = 816.
+    Array.from(kap.children).forEach((kart, index) => {
+      Object.defineProperty(kart, "getBoundingClientRect", {
+        value: () => ({
+          left: 32 + index * 204,
+          right: 32 + index * 204 + 184,
+          width: 184,
+        }),
+        configurable: true,
+      });
+    });
+
+    fireEvent.pointerDown(sag());
+    expect(kap.scrollBy).toHaveBeenCalledWith({ left: 816, behavior: "smooth" });
+  });
+
+  it("sona karttan gider; taşan dekorun şişirdiği scrollWidth'ü hizalamaz", () => {
+    ciz();
+    const scrollLeft = 816;
+    const kap = olcuKur({ scrollLeft, clientWidth: 1000, scrollWidth: 2430 });
+    Object.defineProperty(kap, "getBoundingClientRect", {
+      value: () => ({ left: 32, right: 1032, width: 1000 }),
+      configurable: true,
+    });
+    Array.from(kap.children).forEach((kart, index) => {
+      Object.defineProperty(kart, "getBoundingClientRect", {
+        value: () => ({
+          left: 32 + index * 204 - scrollLeft,
+          right: 32 + index * 204 - scrollLeft + 184,
+          width: 184,
+        }),
+        configurable: true,
+      });
+    });
+
+    fireEvent.pointerDown(sag());
+    // 12 karttan 5'i görünür: son başlangıç indeksi 7 → 7×204 = 1428.
+    // scrollWidth'e göre sona gitseydi 1430'a gidip hizayı 2px bozardı.
+    expect(kap.scrollBy).toHaveBeenCalledWith({ left: 612, behavior: "smooth" });
+  });
+
   it("devre dışı ok kaydırmaz", () => {
     ciz();
     const kap = olcuKur({ scrollLeft: 0 });
