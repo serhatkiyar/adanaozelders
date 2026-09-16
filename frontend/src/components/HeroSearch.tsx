@@ -243,6 +243,19 @@ export function DersArama({
   // uzaktan ders arayana yer sormak anlamsız, üstelik uzaktan eğitmenlerin
   // ilçesi tasarım gereği boş olduğu için onları sessizce elerdi.
   const yerGorunur = sekil === TeachingMode.IN_PERSON;
+
+  /* ODAK BİR SONRAKİ BOŞ ALANA GEÇER (kullanıcı kararı, 16 Eyl 2026): telefon
+     adımlı yüzeyde seçim yapılınca sıradaki adım açılıyor; masaüstü hapı
+     seçimden sonra olduğu yerde kalıyordu. Seçiciler odaklanınca kendi
+     panelini açtığı için (`useSecici.ac`) odağı taşımak paneli de açar.
+     Zamanlayıcı `setTimeout(0)`: tıklama olayı bittiğinde React durumu
+     zaten işlemiş oluyor (ayrık olayda eşzamanlı flush), hedef bölme (Yer)
+     DOM'da. `requestAnimationFrame` DEĞİL: arka plandaki sekmede kare
+     çağrıları ertelenir, odak hiç gelmezdi (ölçüldü). Seçicinin kendi
+     `kapat`ı tetikleyiciyi eşzamanlı blur'lar; bizim odak ondan sonra gelir. */
+  const odagiTasi = (id: string) => {
+    window.setTimeout(() => document.getElementById(id)?.focus(), 0);
+  };
   // Öneri paneli seçicilerle AYNI desende `fixed` konumlanır: navbar'ın
   // max-height'la katlanan kabı `absolute` paneli akışa karıştırıyordu
   // ("seçenekler ana akışın altına yükleniyor" hatası).
@@ -308,6 +321,8 @@ export function DersArama({
               // alanın sessizce aramaya karışması, kullanıcının göremediği
               // bir filtre demektir.
               if (v !== TeachingMode.IN_PERSON) setYer(null);
+              if (v === TeachingMode.IN_PERSON && !yer && !yakinimda) odagiTasi(yerId);
+              else if (!ders && !dersEtiket) odagiTasi(dersId);
             }}
             hizaRef={formRef}
             // cursor-pointer YOK: burası artık yazılabilir bir metin alanı,
@@ -387,6 +402,7 @@ export function DersArama({
                     // turunda böyle yakalandı).
                     onDersChange(s.name, s.name);
                     setFocused(false);
+                    if (!sekil) odagiTasi(sekilId);
                   }}
                 />
               ))}
