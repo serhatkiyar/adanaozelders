@@ -280,7 +280,7 @@ export function DersArama({
             onChange={(e) => onDersChange("", e.target.value)}
             onFocus={odaklan}
             onBlur={() => setFocused(false)}
-            placeholder="Matematik, İngilizce…"
+            placeholder="Ders ekleyin"
             className={GIRDI}
           />
         </div>
@@ -400,7 +400,7 @@ export function KutuphaneArama({
   onSubmit,
   // Konum YANDAKİ alanda seçiliyor; ad kutusunda semtin işi yok
   // (kullanıcı, 8 Eyl: "kütüphane semt araması ne alaka").
-  placeholder = "Kütüphane adı",
+  placeholder = "Kütüphane adı giriniz",
 }: {
   q: string;
   setQ: (v: string) => void;

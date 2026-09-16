@@ -53,10 +53,12 @@ export function sekliCoz(ham: string | null): DersSekli {
   return ham === TeachingMode.ONLINE || ham === TeachingMode.IN_PERSON ? ham : "";
 }
 
+/* Telefonla AYNI liste (kullanıcı kararı, 16 Eyl 2026): önce Yüz yüze, sonra
+   Uzaktan; açıklama satırı yok. "Fark etmez" RAFTA — seçenek olarak
+   çizilmez; boş değer adreste geçerli kalır ve `SEKIL_ADI`de durur. */
 const SEKIL_SATIRLARI: { deger: DersSekli; aciklama?: string }[] = [
-  { deger: "", aciklama: "Uzaktan da olur, yüz yüze de" },
-  { deger: TeachingMode.ONLINE, aciklama: "Eğitmen nerede olursa olsun" },
-  { deger: TeachingMode.IN_PERSON, aciklama: "Nerede olacağını sonra seçersin" },
+  { deger: TeachingMode.IN_PERSON },
+  { deger: TeachingMode.ONLINE },
 ];
 
 const kucult = (s: string) => s.toLocaleLowerCase("tr-TR").trim();
@@ -240,7 +242,9 @@ export function SekilSelect({
         onFocus={ac}
         onBlur={() => setOpen(false)}
         id={id}
-        placeholder={SEKIL_ADI[value]}
+        /* Boşken davet ("Seçin"), telefondaki kapalı satırla aynı; "Fark
+           etmez" artık bir seçenek değil, yazılırsa seçilebilir sanılırdı. */
+        placeholder={value ? SEKIL_ADI[value] : "Seçin"}
         aria-label={id ? undefined : "Ders şekli"}
         className={`${triggerClassName} ${
           value
@@ -280,7 +284,8 @@ export function YerSelect({
   triggerClassName = "",
   hizaRef,
   id,
-  placeholder = "Hangi semtte?",
+  // Telefondaki yer adımıyla aynı metin.
+  placeholder = "İlçe seçin",
 }: {
   value: YerSecimi | null;
   onChange: (next: YerSecimi | null) => void;

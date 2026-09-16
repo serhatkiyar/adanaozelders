@@ -351,7 +351,7 @@ export default function Marketplace() {
         district={district}
         setDistrict={setDistrict}
         onSubmit={submitSearch}
-        placeholder="Matematik, İngilizce…"
+        placeholder="Ders ekleyin"
         yer={yer}
         setYer={setYer}
         solBaslik="Yer"

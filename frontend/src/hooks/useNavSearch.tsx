@@ -22,7 +22,7 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
 
   // Alan BAŞLIĞI ne arandığını söylüyor; placeholder yalnız örnek verir.
   const placeholder =
-    active === "kutuphaneler" ? "Kütüphane adı" : "Matematik, İngilizce…";
+    active === "kutuphaneler" ? "Kütüphane adı giriniz" : "Ders ekleyin";
   const sagBaslik = active === "kutuphaneler" ? "Kütüphane" : "Ders";
 
   const submit = (e: React.FormEvent) => {

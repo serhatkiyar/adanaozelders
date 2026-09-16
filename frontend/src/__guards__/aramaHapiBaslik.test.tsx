@@ -119,14 +119,14 @@ describe("arama hapı · alan başlıkları", () => {
         district={[]}
         setDistrict={yok}
         onSubmit={yok}
-        placeholder="Matematik, İngilizce…"
+        placeholder="Ders ekleyin"
         solBaslik="Yer"
         sagBaslik="Ders"
       />
     );
     baslikAlaninAdi("Yer");
     const q = baslikAlaninAdi("Ders");
-    expect(q.getAttribute("placeholder")).toBe("Matematik, İngilizce…");
+    expect(q.getAttribute("placeholder")).toBe("Ders ekleyin");
   });
 
   it("sağ başlık ZORUNLU — 'Ara' varsayılanı gönder düğmesiyle çakışıyordu", () => {
@@ -140,7 +140,7 @@ describe("arama hapı · alan başlıkları", () => {
         district={[]}
         setDistrict={yok}
         onSubmit={yok}
-        placeholder="Kütüphane adı"
+        placeholder="Kütüphane adı giriniz"
         sagBaslik="Kütüphane"
       />
     );
