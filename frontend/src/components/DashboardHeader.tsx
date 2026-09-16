@@ -222,9 +222,9 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   // px/py header elementine değil iç wrapper'a taşındı; böylece bottom slot
   // kendi max-width'ini bağımsız yönetebiliyor (çift girintileme önlenir).
   const headerClass = transparent
-    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    ? "sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md "
-    : "border-b border-slate-200 bg-[#fafafa] ";
+    // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    ? "sticky top-0 z-40 border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md "
+    : "border-b border-slate-200 bg-[#f4f4f4] ";
   /* `mobilSade` iken DOLGU DA GİZLENİR (16 Eyl 2026, ölçüldü): satır
      `hidden md:flex` olsa da dolgu bu sarmalayıcıda kaldığı için telefonda
      arama hapının üstünde 28px boş bant kalıyordu — anonim kabukta

@@ -46,8 +46,8 @@ export function PublicNavbar({
   const girisAdresiDegeri = useGirisAdresi();
   const egitmenKayitAdresi = useGirisAdresi("register", "tutor");
   return (
-    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md ">
+    // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md ">
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
         <div
           className={`w-full items-start justify-between gap-4 pt-5 pb-2 ${

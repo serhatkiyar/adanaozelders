@@ -279,7 +279,7 @@ export default function Libraries() {
   });
   const mobilBaslik = (
     <div
-      className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
+      className="-mx-4 mb-3 border-b border-slate-100 bg-[#f4f4f4]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
       style={{ top: "var(--yapiskan-ust, 0px)" }}
     >
       <AramaMobilBaslik
@@ -316,7 +316,7 @@ export default function Libraries() {
       {filtreli && mobil && mobilBaslik}
       {filtreli && (
         <div
-          className="-mx-4 mb-3 hidden border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 sm:-mx-6 md:block"
+          className="-mx-4 mb-3 hidden border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md sticky z-20 sm:-mx-6 md:block"
           style={{ top: "var(--yapiskan-ust, 0px)" }}
         >
           {filterBar}

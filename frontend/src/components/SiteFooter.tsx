@@ -105,8 +105,8 @@ export function SiteFooter() {
   }));
 
   return (
-    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <footer className="mt-auto w-full border-t border-slate-100 bg-[#fafafa] ">
+    // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    <footer className="mt-auto w-full border-t border-slate-100 bg-[#f4f4f4] ">
       {/* "Başa dön" — Amazon deseni (30 Ağu): yüzen FAB yerine footer'ın hemen
           üstünde tam genişlik şerit. Gerekçe: FAB içerik/aksiyonların üstünde
           yüzüp mobilde parmak alanı çalar; şerit ise tam kullanıcının "sayfa
