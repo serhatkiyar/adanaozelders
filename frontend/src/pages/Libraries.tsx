@@ -89,7 +89,6 @@ export default function Libraries() {
   const { degerler, ayarla, filtreli, params: searchParams } = useAramaDurumu(KUTUPHANE_ARAMA);
   const { konum, sayfa: page } = degerler;
   const district = konum.ilce;
-  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
 
   const [view, setView] = useState<ViewMode>("list");
   const mobil = useMobil();
@@ -251,17 +250,9 @@ export default function Libraries() {
         </div>
       </div>
 
-      {/* Aktif ilçe chip'leri */}
-      {district.map((d) => (
-        <button
-          key={d}
-          onClick={() => setDistrict(district.filter((x) => x !== d))}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
-        >
-          {d}
-          <span aria-hidden className="ml-0.5 text-xs">✕</span>
-        </button>
-      ))}
+      {/* İLÇE ÇİPİ YOK (16 Eyl 2026): konum hapta yazıyor ("Merkez"); Merkez
+          seçimi burada dört ayrı ilçe çipine açılıyordu. Eğitmen şeridiyle
+          aynı kural — hapta olan şeritte tekrar etmez. */}
 
       {/* Aktif olanak chip'leri */}
       {amenities.map((a) => (
@@ -288,13 +279,8 @@ export default function Libraries() {
      (`mobilUstGizle`) ve sayfa kendi başlığını çizer. Çipler ve sıralama
      `AramaMobilBaslik`in kendi şeridinde; masaüstündeki geniş filtre şeridi
      `md:` altında çizilmez, ikisi aynı anda görünmez. */
+  /* İlçe çipi yok: konum başlıkta (eğitmen ekranıyla aynı kural). */
   const mobilCipler: FiltreCipi[] = [
-    ...district.map((d) => ({
-      id: `ilce-${d}`,
-      etiket: `${d} ✕`,
-      aktif: true,
-      onClick: () => setDistrict(district.filter((x) => x !== d)),
-    })),
     ...amenities.map((a) => ({
       id: `olanak-${a}`,
       etiket: `${amenityLabel(a)} ✕`,
