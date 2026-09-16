@@ -17,7 +17,7 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
-import { ilceOzeti, yerEtiketi, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
+import { ilceOzeti, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
@@ -339,10 +339,24 @@ export default function Marketplace() {
         <div className="flex w-full justify-center">
           <CompactSearch
             active="egitmenler"
-            placeholder="Ders ara… (ör. Lise Matematik)"
-            q={q}
-            district={district}
-            remote={modeSegment === TeachingMode.ONLINE}
+            placeholder="Ders ekleyin"
+            /* Seçili ders de görünür (kullanıcı, 16 Eyl 2026: "Matematik
+               seçiyorum, çubukta yazmıyor"): `q` yalnız serbest metindi,
+               katalogdan seçilen `ders` hapa hiç gitmiyordu. */
+            q={
+              q ||
+              (subjects.length === 1
+                ? subjects[0]
+                : subjects.length
+                  ? `${subjects.length} ders`
+                  : "")
+            }
+            yer={konumOzeti({
+              yer,
+              ilce: district,
+              yakinimda: yakinimda,
+              uzaktan: modeSegment === TeachingMode.ONLINE,
+            })}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -517,7 +531,7 @@ export default function Marketplace() {
      şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
      neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
   const mobilAramaOzeti = [
-    yer ? yerEtiketi(yer) : (ilceOzeti(district) ?? "Tüm Adana"),
+    konumOzeti({ yer, ilce: district, yakinimda: yakinimda }) ?? "Tüm Adana",
     modeSegment === TeachingMode.ONLINE
       ? "Uzaktan"
       : modeSegment === TeachingMode.IN_PERSON

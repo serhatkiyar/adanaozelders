@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
-import { type YerSecimi } from "@/lib/yerArama";
+import { konumOzeti, type YerSecimi } from "@/lib/yerArama";
 import { egitmenAramaAdresi, kutuphaneAramaAdresi } from "@/lib/aramaUrl";
 
 /* ─── useNavSearch ────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
             active={active}
             placeholder={placeholder}
             q={q}
-            district={district}
+            yer={konumOzeti({ yer, ilce: district })}
             onOpen={() => setOpen(true)}
           />
         </div>

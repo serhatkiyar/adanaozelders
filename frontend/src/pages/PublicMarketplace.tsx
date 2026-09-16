@@ -26,7 +26,7 @@ import { useKonumStore } from "@/store/konumStore";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
-import { ilceOzeti, yerEtiketi, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
+import { konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -204,10 +204,24 @@ export default function PublicMarketplace() {
         <div className="flex w-full justify-center">
           <CompactSearch
             active="egitmenler"
-            placeholder="Ders ara… (ör. Lise Matematik)"
-            q={q}
-            district={district}
-            remote={sekil === TeachingMode.ONLINE}
+            placeholder="Ders ekleyin"
+            /* Seçili ders de görünür (kullanıcı, 16 Eyl 2026: "Matematik
+               seçiyorum, çubukta yazmıyor"): `q` yalnız serbest metindi,
+               katalogdan seçilen `ders` hapa hiç gitmiyordu. */
+            q={
+              q ||
+              (subjects.length === 1
+                ? subjects[0]
+                : subjects.length
+                  ? `${subjects.length} ders`
+                  : "")
+            }
+            yer={konumOzeti({
+              yer,
+              ilce: district,
+              yakinimda: degerler.yakinimda,
+              uzaktan: sekil === TeachingMode.ONLINE,
+            })}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -317,7 +331,7 @@ export default function PublicMarketplace() {
      şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
      neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
   const mobilAramaOzeti = [
-    yer ? yerEtiketi(yer) : (ilceOzeti(district) ?? "Tüm Adana"),
+    konumOzeti({ yer, ilce: district, yakinimda: degerler.yakinimda }) ?? "Tüm Adana",
     sekil === TeachingMode.ONLINE
       ? "Uzaktan"
       : sekil === TeachingMode.IN_PERSON

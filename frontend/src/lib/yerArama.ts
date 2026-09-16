@@ -183,6 +183,25 @@ export function yerEtiketi(secim: YerSecimi | null): string {
     : secim.ilce;
 }
 
+/**
+ * ARAMANIN KONUM ÖZETİ — hap ve başlıklarda görünen tek satır (16 Eyl 2026).
+ * Öncelik: Uzaktan (yer sorulmaz) › Yakınımda › mahalle › ilçe listesi
+ * (Merkez / tek ilçe / "N ilçe"). Hiçbiri yoksa null; çağıran "Tüm Adana"
+ * gibi kendi boş metnini koyar. Eskiden kompakt hap yalnız ilçe sayısını
+ * biliyordu: Merkez "4 ilçe", Yakınımda "Tüm ilçeler" diye basılıyordu.
+ */
+export function konumOzeti(a: {
+  yer: YerSecimi | null;
+  ilce: readonly string[];
+  yakinimda?: boolean;
+  uzaktan?: boolean;
+}): string | null {
+  if (a.uzaktan) return "Uzaktan";
+  if (a.yakinimda) return "Yakınımda";
+  if (a.yer) return yerEtiketi(a.yer);
+  return ilceOzeti(a.ilce);
+}
+
 /** İlçe listesinin özet satırlarındaki adı: Merkez / tek ilçe / "N ilçe". */
 export function ilceOzeti(ilceler: readonly string[]): string | null {
   if (merkezMi(ilceler)) return MERKEZ_ETIKETI;

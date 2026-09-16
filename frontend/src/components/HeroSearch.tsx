@@ -500,27 +500,22 @@ export function CompactSearch({
   active,
   placeholder,
   q,
-  district,
-  remote = false,
+  yer,
   onOpen,
 }: {
   active: CategoryKey;
   placeholder: string;
+  /** Aranan şey: seçili ders ya da serbest metin. Boşsa `placeholder`. */
   q: string;
-  district: string[];
-  remote?: boolean;
+  /** Konum özeti (`konumOzeti`): "Uzaktan" / "Yakınımda" / "Merkez" / ilçe /
+   *  mahalle. Null ise seçim yok. Hap ilçe dizisini KENDİSİ yorumlamaz —
+   *  Merkez'i "4 ilçe", Yakınımda'yı "Tüm ilçeler" diye basıyordu. */
+  yer: string | null;
   onOpen: () => void;
 }) {
   const meta = categoryMeta(active);
-  const yerSecili = district.length > 0 || remote;
-  const districtLabel =
-    district.length > 0
-      ? district.length === 1
-        ? district[0]
-        : `${district.length} ilçe`
-      : remote
-        ? "Uzaktan Eğitim"
-        : "Tüm ilçeler";
+  const yerSecili = !!yer;
+  const districtLabel = yer ?? "Tüm ilçeler";
 
   return (
     <button

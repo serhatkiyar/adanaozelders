@@ -21,7 +21,7 @@ import { PATHS } from "@/lib/routes";
 import {
   type YerSecimi,
   ilceListesindenYer,
-  yerEtiketi,
+  konumOzeti,
   yerinIlceleri,
 } from "@/lib/yerArama";
 import { useAuthStore } from "@/store/authStore";
@@ -259,16 +259,18 @@ export function KesifKabugu() {
   );
 
   /* Kompakt hapın metni: kütüphanede yer (ya da "Yakınımda"), eğitmende ders. */
-  const hapMetni = kutuphaneMi
-    ? kDegerler.yakinimda
-      ? "Yakınımda"
-      : yerEtiketi(kYer)
-    : dersEtiket;
-  const hapIlce = kutuphaneMi
-    ? kIlce
-    : sekil === TeachingMode.IN_PERSON
-      ? yerinIlceleri(yer)
-      : [];
+  /* Kütüphanede aranan "şey" yok (ad kutusu kalktı); konum sağdaki etikette. */
+  const hapMetni = kutuphaneMi ? "" : dersEtiket;
+  /* Konum özeti tek yardımcıdan: eğitmende Uzaktan/Yakınımda/yer, kütüphanede
+     Yakınımda/yer. Yer yalnız yüz yüzede anlamlı; uzaktan seçiliyken "Uzaktan". */
+  const hapYer = kutuphaneMi
+    ? konumOzeti({ yer: kYer, ilce: kIlce, yakinimda: kDegerler.yakinimda })
+    : konumOzeti({
+        yer: sekil === TeachingMode.IN_PERSON ? yer : null,
+        ilce: [],
+        yakinimda: sekil === TeachingMode.IN_PERSON && yakinimda,
+        uzaktan: sekil === TeachingMode.ONLINE,
+      });
 
   /* Telefonda swap YOK: kompakt hap `mobilUst` yuvasında kalıcı durur, bu yuva
      her zaman kategori çiplerini taşır. İkisi birden basılsaydı aynı hapın iki
@@ -287,8 +289,7 @@ export function KesifKabugu() {
             active={kategori}
             placeholder="Aramaya başlayın"
             q={hapMetni}
-            district={hapIlce}
-            remote={!kutuphaneMi && sekil === TeachingMode.ONLINE}
+            yer={hapYer}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -307,8 +308,7 @@ export function KesifKabugu() {
       // hemen altındaki çip şeridinde seçili, hapın işi davet etmek.
       placeholder="Aramaya başlayın"
       q={hapMetni}
-      district={hapIlce}
-      remote={!kutuphaneMi && sekil === TeachingMode.ONLINE}
+      yer={hapYer}
       onOpen={() => setMobilAramaAcik(true)}
     />
   ) : undefined;
