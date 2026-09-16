@@ -87,6 +87,139 @@ const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const GoogleDonus = lazy(() => import("@/pages/GoogleDonus"));
 const HesapSilmeOnayi = lazy(() => import("@/pages/HesapSilmeOnayi"));
 const AdminLayout = lazy(() => import("@/components/admin/layout/AdminLayout"));
+const PanelShell = lazy(() => import("@/panel/layout/PanelShell").then((m) => ({ default: m.PanelShell })));
+const GostergePaneli = lazy(() =>
+  import("@/panel/pages/gosterge/GostergePaneli").then((m) => ({ default: m.GostergePaneli })),
+);
+const StokSayimiListesi = lazy(() =>
+  import("@/panel/pages/urunler/StokSayimiListesi").then((m) => ({ default: m.StokSayimiListesi })),
+);
+const StokSayimiDetayi = lazy(() =>
+  import("@/panel/pages/urunler/StokSayimiDetayi").then((m) => ({ default: m.StokSayimiDetayi })),
+);
+const StokHareketleriListesi = lazy(() =>
+  import("@/panel/pages/urunler/StokHareketleriListesi").then((m) => ({ default: m.StokHareketleriListesi })),
+);
+const EnvanterGenelBakis = lazy(() =>
+  import("@/panel/pages/urunler/EnvanterGenelBakis").then((m) => ({ default: m.EnvanterGenelBakis })),
+);
+const HasarliStokListesi = lazy(() =>
+  import("@/panel/pages/urunler/HasarliStokListesi").then((m) => ({ default: m.HasarliStokListesi })),
+);
+const KategoriListesi = lazy(() =>
+  import("@/panel/pages/urunler/KategoriListesi").then((m) => ({ default: m.KategoriListesi })),
+);
+const Tanimlamalar = lazy(() =>
+  import("@/panel/pages/urunler/Tanimlamalar").then((m) => ({ default: m.Tanimlamalar })),
+);
+const TedarikciListesi = lazy(() =>
+  import("@/panel/pages/urunler/TedarikciListesi").then((m) => ({ default: m.TedarikciListesi })),
+);
+const SiparisDetayi = lazy(() =>
+  import("@/panel/pages/siparisler/SiparisDetayi").then((m) => ({ default: m.SiparisDetayi })),
+);
+const IadeListesi = lazy(() =>
+  import("@/panel/pages/siparisler/IadeListesi").then((m) => ({ default: m.IadeListesi })),
+);
+const KuponListesi = lazy(() =>
+  import("@/panel/pages/indirimler/KuponListesi").then((m) => ({ default: m.KuponListesi })),
+);
+const PaketListesi = lazy(() =>
+  import("@/panel/pages/paketleme/PaketListesi").then((m) => ({ default: m.PaketListesi })),
+);
+const EgitmenOnBasvurulari = lazy(() =>
+  import("@/panel/pages/egitmenler/EgitmenOnBasvurulari").then((m) => ({ default: m.EgitmenOnBasvurulari })),
+);
+const EgitmenOneCikarmalar = lazy(() =>
+  import("@/panel/pages/egitmenler/EgitmenOneCikarmalar").then((m) => ({ default: m.EgitmenOneCikarmalar })),
+);
+const EgitmenDiplomaDogrulama = lazy(() =>
+  import("@/panel/pages/egitmenler/EgitmenDiplomaDogrulama").then((m) => ({ default: m.EgitmenDiplomaDogrulama })),
+);
+const EgitmenIlanlari = lazy(() =>
+  import("@/panel/pages/egitmenler/EgitmenIlanlari").then((m) => ({ default: m.EgitmenIlanlari })),
+);
+const KutuphaneListesi = lazy(() =>
+  import("@/panel/pages/kutuphaneler/KutuphaneListesi").then((m) => ({ default: m.KutuphaneListesi })),
+);
+const DenemeKataloglari = lazy(() =>
+  import("@/panel/pages/kutuphaneler/DenemeKataloglari").then((m) => ({ default: m.DenemeKataloglari })),
+);
+const RezervasyonListesi = lazy(() =>
+  import("@/panel/pages/rezervasyonlar/RezervasyonListesi").then((m) => ({ default: m.RezervasyonListesi })),
+);
+const TalepListesi = lazy(() =>
+  import("@/panel/pages/rezervasyonlar/TalepListesi").then((m) => ({ default: m.TalepListesi })),
+);
+const SikayetListesi = lazy(() =>
+  import("@/panel/pages/moderasyon/SikayetListesi").then((m) => ({ default: m.SikayetListesi })),
+);
+const AdDegisiklikleri = lazy(() =>
+  import("@/panel/pages/moderasyon/AdDegisiklikleri").then((m) => ({ default: m.AdDegisiklikleri })),
+);
+const HakEdisler = lazy(() =>
+  import("@/panel/pages/finans/HakEdisler").then((m) => ({ default: m.HakEdisler })),
+);
+const DagitimTahtasi = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimTahtasi").then((m) => ({ default: m.DagitimTahtasi })),
+);
+const DagitimPerformans = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimPerformans").then((m) => ({ default: m.DagitimPerformans })),
+);
+const DagitimAraclar = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimAraclar").then((m) => ({ default: m.DagitimAraclar })),
+);
+const DagitimKuryeler = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimKuryeler").then((m) => ({ default: m.DagitimKuryeler })),
+);
+const DagitimTurDetayi = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimTurDetayi").then((m) => ({ default: m.DagitimTurDetayi })),
+);
+const DagitimTurlari = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimTurlari").then((m) => ({ default: m.DagitimTurlari })),
+);
+const DagitimSiparisleri = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimSiparisleri").then((m) => ({ default: m.DagitimSiparisleri })),
+);
+const DagitimBugun = lazy(() =>
+  import("@/panel/pages/dagitim/DagitimBugun").then((m) => ({ default: m.DagitimBugun })),
+);
+const GeriDonusKuyrugu = lazy(() =>
+  import("@/panel/pages/paketleme/GeriDonusKuyrugu").then((m) => ({ default: m.GeriDonusKuyrugu })),
+);
+const PaketlemeDetayi = lazy(() =>
+  import("@/panel/pages/paketleme/PaketlemeDetayi").then((m) => ({ default: m.PaketlemeDetayi })),
+);
+const PaketlemeKuyrugu = lazy(() =>
+  import("@/panel/pages/paketleme/PaketlemeKuyrugu").then((m) => ({ default: m.PaketlemeKuyrugu })),
+);
+const HataCozme = lazy(() =>
+  import("@/panel/pages/ayarlar/HataCozme").then((m) => ({ default: m.HataCozme })),
+);
+const PersonelYetkiler = lazy(() =>
+  import("@/panel/pages/ayarlar/PersonelYetkiler").then((m) => ({ default: m.PersonelYetkiler })),
+);
+const GenelAyarlar = lazy(() =>
+  import("@/panel/pages/ayarlar/GenelAyarlar").then((m) => ({ default: m.GenelAyarlar })),
+);
+const DenetimKayitlariListesi = lazy(() =>
+  import("@/panel/pages/ayarlar/DenetimKayitlariListesi").then((m) => ({ default: m.DenetimKayitlariListesi })),
+);
+const MusteriDetayi = lazy(() =>
+  import("@/panel/pages/musteriler/MusteriDetayi").then((m) => ({ default: m.MusteriDetayi })),
+);
+const UrunListesi = lazy(() =>
+  import("@/panel/pages/urunler/UrunListesi").then((m) => ({ default: m.UrunListesi })),
+);
+const UrunFormu = lazy(() =>
+  import("@/panel/pages/urunler/UrunFormu").then((m) => ({ default: m.UrunFormu })),
+);
+const SiparisListesi = lazy(() =>
+  import("@/panel/pages/siparisler/SiparisListesi").then((m) => ({ default: m.SiparisListesi })),
+);
+const MusteriListesi = lazy(() =>
+  import("@/panel/pages/musteriler/MusteriListesi").then((m) => ({ default: m.MusteriListesi })),
+);
 const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
 const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
 const AdminOperationsPage = lazy(() => import("@/pages/admin/AdminOperationsPage"));
@@ -668,6 +801,59 @@ function App() {
               <Route path="ayarlar" element={<AdminSettingsPage />} />
               <Route path="vitrin-gorselleri" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
               <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+            </Route>
+            <Route path={PATHS.adminNew} element={<PanelShell />}>
+              <Route index element={<GostergePaneli />} />
+              <Route path="urunler" element={<UrunListesi />} />
+              <Route path="urunler/yeni" element={<UrunFormu />} />
+              <Route path="urunler/stok-sayimi" element={<StokSayimiListesi />} />
+              <Route path="urunler/stok-sayimi/:id" element={<StokSayimiDetayi />} />
+              <Route path="urunler/stok-hareketleri" element={<StokHareketleriListesi />} />
+              <Route path="urunler/envanter" element={<EnvanterGenelBakis />} />
+              <Route path="urunler/hasarli-stok" element={<HasarliStokListesi />} />
+              <Route path="urunler/tanimlamalar" element={<Tanimlamalar />} />
+              <Route path="urunler/kategoriler" element={<KategoriListesi />} />
+              <Route path="urunler/tedarikciler" element={<TedarikciListesi />} />
+              <Route path="urunler/:id" element={<UrunFormu />} />
+              <Route path="siparisler" element={<SiparisListesi />} />
+              <Route path="siparisler/iadeler" element={<IadeListesi />} />
+              {/* Statik `iadeler` yukarıda; `:id` yalnız sayısal kimlik için. */}
+              <Route path="siparisler/:id" element={<SiparisDetayi />} />
+              <Route path="musteriler" element={<MusteriListesi />} />
+              <Route path="musteriler/:role/:id" element={<MusteriDetayi />} />
+              <Route path="ayarlar/genel" element={<GenelAyarlar />} />
+              <Route path="ayarlar/personel-yetkiler" element={<PersonelYetkiler />} />
+              <Route path="ayarlar/hata-cozme" element={<HataCozme />} />
+              <Route path="paketleme" element={<PaketlemeKuyrugu />} />
+              <Route path="paketleme/paketler" element={<PaketListesi />} />
+              {/* Statik `paketler` yukarıda; `paket/:id` yalnız sayısal kimlik için. */}
+              <Route path="paketleme/paket/:id" element={<PaketlemeDetayi />} />
+              <Route path="paketleme/geri-donus" element={<GeriDonusKuyrugu />} />
+              <Route path="dagitim" element={<DagitimBugun />} />
+              <Route path="dagitim/siparisler" element={<DagitimSiparisleri />} />
+              <Route path="dagitim/turlar" element={<DagitimTurlari />} />
+              {/* Statik `turlar` yukarıda; `turlar/:id` yalnız sayısal kimlik için. */}
+              <Route path="dagitim/turlar/:id" element={<DagitimTurDetayi />} />
+              <Route path="dagitim/kuryeler" element={<DagitimKuryeler />} />
+              <Route path="dagitim/araclar" element={<DagitimAraclar />} />
+              <Route path="dagitim/performans" element={<DagitimPerformans />} />
+              <Route path="dagitim/tahta" element={<DagitimTahtasi />} />
+              <Route path="egitmenler" element={<EgitmenIlanlari />} />
+              <Route path="egitmenler/on-basvurular" element={<EgitmenOnBasvurulari />} />
+              <Route path="egitmenler/diplomalar" element={<EgitmenDiplomaDogrulama />} />
+              <Route path="egitmenler/one-cikarmalar" element={<EgitmenOneCikarmalar />} />
+              <Route path="kutuphaneler" element={<KutuphaneListesi />} />
+              <Route path="kutuphaneler/deneme-kataloglari" element={<DenemeKataloglari />} />
+              <Route path="rezervasyonlar" element={<RezervasyonListesi />} />
+              <Route path="talepler" element={<TalepListesi />} />
+              <Route path="moderasyon/sikayetler" element={<SikayetListesi />} />
+              <Route path="moderasyon/ad-degisiklikleri" element={<AdDegisiklikleri />} />
+              <Route path="finans/hakedisler" element={<HakEdisler />} />
+              <Route path="pazarlama/blog" element={<AdminBlogListPage yeniPanel />} />
+              <Route path="pazarlama/blog/yeni" element={<AdminBlogEditorPage yeniPanel />} />
+              <Route path="pazarlama/blog/:postId" element={<AdminBlogEditorPage yeniPanel />} />
+              <Route path="ayarlar/denetim-kayitlari" element={<DenetimKayitlariListesi />} />
+              <Route path="indirimler/kuponlar" element={<KuponListesi />} />
             </Route>
           </Route>
 

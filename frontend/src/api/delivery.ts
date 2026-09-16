@@ -31,6 +31,15 @@ export interface DeliveryFeedbackPayload {
   comment?: string | null;
 }
 
+/**
+ * FormData gövdesi için Content-Type ELLE YAZILMAZ — sentinel `false` şart.
+ * Gerekçe (boundary'siz sabit → sunucu ayrıştıramaz; `undefined` axios'un
+ * post/put/patch url-encoded düşüşüyle ÜZERİNE YAZILIYOR; header'ı tamamen
+ * silmek bu instance'ın `application/json` varsayılanına düşüp FormData'yı
+ * JSON'a çeviriyor) ayrıntısıyla `api/store.ts`'teki aynı isimli sabitte.
+ */
+const MULTIPART = { headers: { "Content-Type": false as const } };
+
 export async function fetchEligibleOrders(): Promise<DeliveryEligibleOrder[]> {
   const { data } = await apiClient.get<DeliveryEligibleOrder[]>(
     "/delivery/eligible-orders"
@@ -344,7 +353,7 @@ export async function uploadCourierPhoto(
   const { data } = await apiClient.post<Courier>(
     `/delivery/couriers/${courierId}/photo`,
     form,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    MULTIPART
   );
   return data;
 }
@@ -560,7 +569,7 @@ export async function uploadStopPhoto(
   const { data } = await apiClient.post<DeliveryStop>(
     `/delivery/stops/${stopId}/photo`,
     form,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    MULTIPART
   );
   return data;
 }

@@ -78,8 +78,9 @@ export function SplitDialog({
 
 type Degerler = { adetler: Record<string, number>; tarih: string };
 
-/** Şema kaleme bağlıdır: her satırın tavanı kendi `expected_qty`sidir. */
-function splitSemasi(items: PackageItem[]) {
+/** Şema kaleme bağlıdır: her satırın tavanı kendi `expected_qty`sidir.
+ *  Yeni panelin bölme penceresi (`panel/pages/paketleme/PaketlemePencereleri`) de aynı şemayı kullanır. */
+export function splitSemasi(items: PackageItem[]) {
   const kutudaki = items.reduce((toplam, satir) => toplam + satir.expected_qty, 0);
   const sekil: Record<string, z.ZodTypeAny> = {};
   for (const satir of items) {

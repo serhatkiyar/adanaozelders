@@ -4,7 +4,15 @@
 import { useRef, useState } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+// Sözleşmeler ortak modülde: yeni panel `KuryePencereleri` ile birebir aynı nesneler.
+import {
+  hesapSemasi,
+  kuryeSemasi,
+  sifreSemasi,
+  type HesapFormDegerleri,
+  type KuryeFormDegerleri,
+  type SifreFormDegerleri,
+} from "@/components/admin/kuryeSemalari";
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Button, ConfirmDialog } from "@/components/admin/ui";
 import {
@@ -36,24 +44,6 @@ import type { Courier } from "@/types";
  * `CourierManager: 9`, tabanın en büyük kalemi).
  */
 
-const kuryeSemasi = z.object({
-  name: z.string().trim().min(2, "İsim en az 2 karakter olmalı."),
-  phone: z.string(),
-});
-type KuryeFormDegerleri = z.infer<typeof kuryeSemasi>;
-
-const hesapSemasi = z.object({
-  first_name: z.string().trim().min(1, "Ad gerekli."),
-  last_name: z.string().trim().min(1, "Soyad gerekli."),
-  email: z.string().trim().email("Geçerli bir e-posta girin."),
-  password: z.string().min(8, "Şifre en az 8 karakter olmalı."),
-});
-type HesapFormDegerleri = z.infer<typeof hesapSemasi>;
-
-const sifreSemasi = z.object({
-  password: z.string().min(8, "Şifre en az 8 karakter olmalı."),
-});
-type SifreFormDegerleri = z.infer<typeof sifreSemasi>;
 
 /**
  * Satır içi formların ortak "ilk hatalı alana odaklan" yardımcısı.
@@ -189,6 +179,8 @@ function CourierAccountPanel({ c }: { c: Courier }) {
                 toast.success("Giriş hesabı oluşturuldu.");
               },
               onError: hataYaz,
+              // Şifre taşıyan mutation: hata forma yazıldıktan sonra observer/cache kopyası silinir.
+              onSettled: () => createAccount.reset(),
             }
           )
         }
@@ -340,10 +332,11 @@ function SifreSifirlamaFormu({
     shouldFocusError: false,
   });
 
-  // Satır içi form — beyan zorunlu (bkz. `HesapOlusturmaFormu`).
+  // Satır içi form — beyan zorunlu (bkz. `HesapOlusturmaFormu`). Sunucu hatası mutation'dan değil form
+  // state'inden okunur: mutation settled sonrası `reset()` edilir (şifre bellekte kalmasın), hata formda yaşar.
   useYuzeyKirliFormBekcisi({
     form,
-    sunucuHatasi: resetPassword.error,
+    sunucuHatasi: form.formState.errors.root?.sunucu ?? null,
     pencereSiz: true,
   });
 
@@ -360,6 +353,7 @@ function SifreSifirlamaFormu({
           const kalan = sunucuHatasiniUygula(e, form, ["password"]);
           form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
         },
+        onSettled: () => resetPassword.reset(),
       }
     );
   }, ilkHatayaOdaklan(form, ["password"]));

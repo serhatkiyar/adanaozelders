@@ -204,6 +204,8 @@ export const OLCUM_TABANI = [
   "src/components/admin/StockLedgerPanel.tsx",
   "src/components/admin/StockMovementTable.tsx",
   "src/components/admin/StockMovementsPanel.tsx",
+  "src/components/admin/kuryeSemalari.ts",
+  "src/components/admin/aracSemalari.ts",
   "src/components/admin/data-table/DataTable.tsx",
   "src/components/admin/data-table/index.ts",
   "src/components/admin/delivery/CapacityStrip.tsx",
@@ -348,6 +350,128 @@ export const OLCUM_TABANI = [
   "src/pages/dashboards/OperatorHome.tsx",
   "src/pages/dashboards/OperatorLibrary.tsx",
   "src/pages/dashboards/OperatorSessions.tsx",
+  // ── İ9 · Boşluk 1: `src/panel/**` (ikas tarzı yeni panel) ──
+  //
+  // Bağımsız denetimin bulduğu ölçüm boşluğu: bu ağaç `OLCUM_TABANI`nın DIŞINDA
+  // doğdu, dört eşik de onu hiç ölçmeden yeşil kaldı. `kesfedilenTaban()`
+  // artık `src/panel`i DİZİN KURALIYLA yürüyor (yukarıdaki not), bu liste onun
+  // BUGÜNKÜ karşılığı. Panel AntD kullanıyor (`<Button>`, `<Input.Search>`,
+  // `<Modal>`…) — ham `<button>`/`<input>` JSX etiketi YAZMIYOR, bu yüzden
+  // `rawButton`/`adsizKontrol`a (kaynak AST metrikleri) katkısı sıfırdır; bu
+  // ikisinin doğruluk kaynağı zaten çalışma zamanı kapısıdır (bkz. dosya başı
+  // BULGU-1 notu) — `calismaZamaniKapisi.test.tsx` panel ekranlarını GERÇEK
+  // DOM üzerinden ölçer.
+  "src/panel/PanelProvider.tsx",
+  "src/panel/theme.ts",
+  "src/panel/layout/menu.ts",
+  "src/panel/layout/PanelShell.tsx",
+  "src/panel/components/Durum.tsx",
+  "src/panel/components/FormPage.tsx",
+  "src/panel/components/ListePage.tsx",
+  "src/panel/components/Matris.tsx",
+  "src/panel/components/MedyaSekmesi.tsx",
+  "src/panel/components/TipSecimi.tsx",
+  "src/panel/components/YanPencere.tsx",
+  "src/panel/components/pencereAlanlari.ts",
+  "src/panel/components/varlikKilidi.tsx",
+  // Kilide bağlı onay penceresi: kapanışı geri çağrı yönetir, AntD'ye söz dönmez.
+  "src/panel/components/onayPenceresi.ts",
+  // Müşteriler modülünün ilk ekranı. Test dosyaları (`musteriListesi.test.tsx`,
+  // `musteriListesiRota.test.ts`) kapsam dışıdır — walk ile aynı gerekçe
+  // (fixture'lardaki ham etiketler borç değildir).
+  "src/panel/pages/musteriler/MusteriListesi.tsx",
+  "src/panel/pages/musteriler/MusteriDetayi.tsx",
+  "src/panel/pages/musteriler/MusteriDetayPencereleri.tsx",
+  "src/panel/pages/ayarlar/DenetimKayitlariListesi.tsx",
+  "src/panel/pages/ayarlar/DenetimKaydiPenceresi.tsx",
+  "src/panel/pages/ayarlar/GenelAyarlar.tsx",
+  "src/panel/pages/ayarlar/BayrakGerekcePenceresi.tsx",
+  "src/panel/pages/ayarlar/PersonelYetkiler.tsx",
+  "src/panel/pages/ayarlar/RolCekmecesi.tsx",
+  "src/panel/pages/ayarlar/HataCozme.tsx",
+  "src/panel/pages/paketleme/PaketlemeKuyrugu.tsx",
+  "src/panel/pages/paketleme/usePaketlemeErisimi.ts",
+  "src/panel/pages/paketleme/PaketListesi.tsx",
+  "src/panel/pages/paketleme/PaketlemeDetayi.tsx",
+  "src/panel/pages/paketleme/PaketlemePencereleri.tsx",
+  "src/panel/pages/paketleme/GeriDonusKuyrugu.tsx",
+  "src/panel/pages/dagitim/DagitimBugun.tsx",
+  "src/panel/pages/dagitim/DagitimSiparisleri.tsx",
+  "src/panel/pages/dagitim/DagitimTurlari.tsx",
+  "src/panel/pages/dagitim/DagitimTurDetayi.tsx",
+  "src/panel/pages/dagitim/DagitimKuryeler.tsx",
+  "src/panel/pages/dagitim/KuryePencereleri.tsx",
+  "src/panel/pages/dagitim/DagitimAraclar.tsx",
+  "src/panel/pages/dagitim/DagitimPerformans.tsx",
+  "src/panel/pages/dagitim/DagitimTahtasi.tsx",
+  "src/panel/pages/egitmenler/EgitmenIlanlari.tsx",
+  "src/panel/pages/egitmenler/EgitmenOnBasvurulari.tsx",
+  "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx",
+  "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx",
+  "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx",
+  "src/panel/pages/egitmenler/EgitmenOneCikarmalar.tsx",
+  "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx",
+  // Hak edişlerin ödeme çekmecesi. Ayrı dosya olma gerekçesi
+  // `UrunAracCubugu.tsx`/`OneCikarmaPenceresi.tsx` ile AYNI: pencere ekranla
+  // aynı dosyada durduğunda açık/kapalı durumu ekranın `useState`ine düşüyor
+  // ve `modalDurumu` TABANINI (0) kırıyordu.
+  "src/panel/pages/finans/OdemePenceresi.tsx",
+  "src/panel/pages/kutuphaneler/KutuphaneListesi.tsx",
+  "src/panel/pages/kutuphaneler/DenemeKataloglari.tsx",
+  "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx",
+  "src/panel/pages/rezervasyonlar/TalepListesi.tsx",
+  "src/panel/pages/moderasyon/SikayetListesi.tsx",
+  "src/panel/pages/moderasyon/AdDegisiklikleri.tsx",
+  "src/panel/pages/finans/HakEdisler.tsx",
+  "src/panel/pages/dagitim/AracPencereleri.tsx",
+  "src/panel/pages/paketleme/DepoyaAlPenceresi.tsx",
+  "src/panel/pages/indirimler/KuponListesi.tsx",
+  "src/panel/pages/indirimler/KuponCekmecesi.tsx",
+  // Gösterge paneli (`/yonetim-yeni` iniş sayfası): saf AntD (Select, Tag,
+  // Link) — ham `<button>`/`<input>` yok, pencere durumu yok.
+  "src/panel/pages/gosterge/GostergePaneli.tsx",
+  // Siparişler modülünün ilk ekranı (commit `06ab4d2`). Test dosyaları
+  // (`siparisListesi.test.tsx`, `siparisListesiRota.test.ts`) kapsam dışıdır
+  // — walk ile aynı gerekçe (fixture'lardaki ham etiketler borç değildir).
+  "src/panel/pages/siparisler/SiparisListesi.tsx",
+  "src/panel/pages/siparisler/IadeListesi.tsx",
+  "src/panel/pages/siparisler/IadePenceresi.tsx",
+  "src/panel/pages/siparisler/SiparisDetayi.tsx",
+  "src/panel/pages/siparisler/SiparisDetayPencereleri.tsx",
+  "src/panel/pages/urunler/UrunFormu.tsx",
+  "src/panel/pages/urunler/UrunListesi.tsx",
+  "src/panel/pages/urunler/VaryantPenceresi.tsx",
+  // "Ürün Oluştur" çekmecesi (ikas referansı §4) — `TipSecimi` modalının
+  // yerini alan yeni hızlı-ekleme akışı. AntD kullanıyor (`Form`, `Upload`,
+  // `Select`…), ham `<button>`/`<input>` yazmıyor — `rawButton`/
+  // `adsızKontrol`a katkısı `UrunFormu.tsx`/`UrunListesi.tsx` gibi sıfır.
+  // Ayrı dosya (VaryantPenceresi/eski TipSecimi ile aynı desen) BİLEREK:
+  // `uiBaseline.test.ts::modalDurumu` yalnız AYNI DOSYADAKİ yerel bileşenleri
+  // izliyor, cross-file akış görünmez — bkz. o dosyadaki dosya başı notu.
+  "src/panel/pages/urunler/UrunOlusturCekmecesi.tsx",
+  // Ürün listesi araç çubuğunun yüzeyleri (ikas referansı §3): filtre
+  // çekmecesi, kolon ayarı, CSV içe aktarma ve ızgara görünümü. Ayrı dosya
+  // olma gerekçesi `UrunOlusturCekmecesi.tsx` ile AYNI (üstteki not):
+  // `<Drawer open={filtreAcik}>` `UrunListesi.tsx`e yazılsaydı `modalDurumu`
+  // kırılırdı. Saf AntD + bir tek `hidden` dosya girdisi (`aria-label`lı,
+  // dolayısıyla `olcumDisiKontrol`) — dört metriğe katkısı sıfır.
+  "src/panel/pages/urunler/UrunAracCubugu.tsx",
+  // Stok sayımı listesi ve yeni sayım çekmecesi: saf AntD, pencere durumu
+  // çekmece dosyasında prop olarak gelir.
+  "src/panel/pages/urunler/StokSayimiListesi.tsx",
+  "src/panel/pages/urunler/StokHareketleriListesi.tsx",
+  "src/panel/pages/urunler/EnvanterGenelBakis.tsx",
+  "src/panel/pages/urunler/HasarliStokListesi.tsx",
+  "src/panel/pages/urunler/HasarliStokPencereleri.tsx",
+  "src/panel/pages/urunler/KategoriListesi.tsx",
+  "src/panel/pages/urunler/KategoriCekmecesi.tsx",
+  "src/panel/pages/urunler/Tanimlamalar.tsx",
+  "src/panel/pages/urunler/TedarikciListesi.tsx",
+  "src/panel/pages/urunler/TedarikciCekmecesi.tsx",
+  "src/panel/pages/urunler/StokSayimiDetayi.tsx",
+  "src/panel/pages/urunler/StokSayimiPencereleri.tsx",
+  "src/panel/pages/urunler/UrunSecici.tsx",
+  "src/panel/pages/urunler/YeniSayimCekmecesi.tsx",
 ];
 
 /**
@@ -489,9 +613,27 @@ export function tsHamButonlari() {
     .sort();
 }
 
-/** Dizin kuralıyla BULUNAN taban adayları — artık ölçümün kaynağı DEĞİL, denetleyicisi. */
+/**
+ * Dizin kuralıyla BULUNAN taban adayları — artık ölçümün kaynağı DEĞİL,
+ * denetleyicisi.
+ *
+ * `src/panel/**` (İ9 · Boşluk 1) buraya eklendi. Bağımsız denetim ölçtü:
+ * `ikas` tarzı yeni panel `OLCUM_TABANI`nın (isimle sabit liste) DIŞINDA
+ * doğdu ve dört eşiğin dördü de onu hiç görmeden yeşil kaldı — TB-A5-1'in
+ * aynısı, yeni ağaçta. `admin/`/`pages/admin` gibi elle her dosyayı listeye
+ * eklemek yerine tüm alt ağaç DİZİN KURALINA bağlandı: yeni bir panel
+ * modülü doğduğu an `fazlaDosyalar`a düşer ve nöbetçi kırılır — yani 15
+ * modül boyunca bu satır bir daha ELLE güncellenmesi gerekmez, yalnız
+ * `OLCUM_TABANI` listesi (aşağıda) her yeni dosyada güncellenir. Bu, depoda
+ * zaten `components/admin`/`pages/admin` için kurulu olan ikinci-denetleyici
+ * desenin AYNISI — yeni bir mekanizma icat edilmedi.
+ */
 export function kesfedilenTaban() {
-  const files = [...walk("src/components/admin"), ...walk("src/pages/admin")];
+  const files = [
+    ...walk("src/components/admin"),
+    ...walk("src/pages/admin"),
+    ...walk("src/panel"),
+  ];
   for (const f of walk("src/pages/dashboards")) {
     if (/\/Admin[^/]*\.tsx$/.test(f)) files.push(f);
   }
@@ -645,6 +787,60 @@ const PENCERE_OZNITELIKLERI = new Set([
   "yuzey",
 ]);
 
+/**
+ * ── İ9 · Boşluk 1 kapanışı: GEZİNME ÇEKMECESİ, KAYIT DÜZENLEME'den AYRI KATEGORİ ──
+ *
+ * `PanelShell.tsx`'in mobil gezinme çekmecesi (`<Drawer open={mobilAcik}>`)
+ * yukarıdaki `PENCERE_BILESENI` deseniyle MEKANİK olarak eşleşiyor — bileşen
+ * adı `Drawer`, öznitelik `open`. Eşleşme YANLIŞ değil: sayaç sözdizimsel bir
+ * PENCERE durumu buluyor, tam istendiği gibi. Ama bu pencere
+ * `useDuzenlemeYuzeyi`nin ölçtüğü sınıftan (bir KAYIT düzenleme/yeni kayıt
+ * açma yüzeyi — `hedef: {tur:"kayit"|"yeni"}`, bkz.
+ * `components/admin/ui2/yuzeyDurumu.ts`) FARKLI bir şey: bir gezinme menüsü.
+ * Kaydı yok, "yeni" hâli yok, kapanırken kirli form onayı gerekmez.
+ *
+ * Çözüm eşiği gevşetmek DEĞİL (o korumayı değersizleştirirdi) ve pencereyi
+ * `useDuzenlemeYuzeyi`ye taşımak da DEĞİL (hook'un anlamını bozardı — bir
+ * gezinme menüsünü "düzenlenen kayıt" gibi göstermek yanlış olurdu). Yerine:
+ * bu BİLİNEN gezinme çekmecelerini isimle sabit bir listeyle KENDİ
+ * KATEGORİSİNE ayırmak — tıpkı `PRINT_LAYERS`in baskı katmanlarını overlay
+ * sayımından ayırdığı gibi, deponun zaten kullandığı desenin bir örneği daha.
+ *
+ * ## Eşleşme KATI'dır (yanlış tarafa kaçamaz)
+ *
+ * Bir bağ ancak HEM dosyası HEM adı HEM DE bağlandığı TEK bileşen adı bu
+ * listedeki bir kayıtla `dosya`+`ad`+`bilesen` olarak TAM eşleşirse gezinme
+ * çekmecesi sayılır. Varsayılan yön "kayıt düzenleme durumu"dur (katı, sıfır
+ * toleranslı `modalDurumu` kovası) — yeni/bilinmeyen bir bağ HER ZAMAN önce
+ * bu sert kovaya düşer:
+ *
+ *   - Başka bir dosyada aynı adla bir `Drawer` doğarsa → dosya eşleşmez →
+ *     KAYIT DÜZENLEME kovasına düşer, `modalDurumu` KIRILIR.
+ *   - Aynı dosyada farklı adla İKİNCİ bir gezinme çekmecesi doğarsa → ad
+ *     eşleşmez → aynı şekilde KIRILIR; insan listeye ekleyip bilinçli
+ *     onaylamadan geçemez.
+ *   - `mobilAcik` aynı dosyada GERÇEK bir düzenleme penceresine de
+ *     (`<KayitDialog open={mobilAcik}>` gibi) verilirse bağın bağlandığı
+ *     bileşen kümesi `{Drawer, KayitDialog}` olur — TEK bileşen şartı
+ *     bozulur, bağ yine KAYIT DÜZENLEME kovasına düşer.
+ *
+ * Yani liste bir "affet" listesi değil, dar bir eşleşmeyle çalışan İKİNCİ bir
+ * sınıflandırıcıdır; varsayılanı her zaman daha katı kovadır (aynı gerekçe
+ * `OLCUM_TABANI`/`PRINT_LAYERS`'ta da geçerli: bilinmeyen borç önce en sert
+ * kovaya düşer, listeye girmeden asla yumuşamaz). Kendi doğruluğu
+ * `uiBaseline.test.ts`teki iki mutasyon provasıyla sınanır (kayıt düzenleme
+ * kaçamaz / ikinci çekmece kaçamaz).
+ */
+export const GEZINME_CEKMECELERI = [
+  {
+    dosya: "src/panel/layout/PanelShell.tsx",
+    ad: "mobilAcik",
+    bilesen: "Drawer",
+    gerekce:
+      'mobil gezinme menüsü — kaydı yok, "yeni" hâli yok, kirli form onayı gerekmez',
+  },
+];
+
 /** Bir kontrolü "adlandırılmış" sayan sarmalayıcı bileşenler. */
 const KONTROL_SARMALAYICILARI = new Set(["Form.Control"]);
 
@@ -689,8 +885,12 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
     adsizKontrol: 0,
     adsizKontrolSatirlari: [],
     olcumDisiKontrol: 0,
-    // İP-A4: ekranda yaşayan pencere durumu (bağ adları).
+    // İP-A4: ekranda yaşayan pencere durumu (bağ adları) — KAYIT DÜZENLEME
+    // kovası (katı, sıfır toleranslı).
     modalDurumAdlari: [],
+    // İ9 · Boşluk 1 kapanışı: GEZİNME ÇEKMECESİ kovası — `GEZINME_CEKMECELERI`
+    // ile dosya+ad+bileşen TAM eşleşen bağlar (bkz. sabitin yanındaki not).
+    gezinmeCekmecesiAdlari: [],
   };
 
   // Kontrol ↔ etiket bağı DOSYA ÖLÇEĞİNDE kurulur: `<label htmlFor={x}>` ile
@@ -1069,7 +1269,10 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
     }
   }
 
-  const modalBaglari = new Set();
+  // Bağ → bağlandığı PENCERE bileşenlerinin adları (Set). Kategori ayrımı
+  // (kayıt düzenleme / gezinme çekmecesi) bu kümenin TEK bir bileşene mi
+  // indiğine bakar (bkz. `GEZINME_CEKMECELERI`nin yanındaki not).
+  const modalBagEtiketleri = new Map();
   const modalAra = (n) => {
     if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
       const etiket = n.tagName.getText(sf);
@@ -1092,16 +1295,39 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
         gezIfade(ifade.expression);
         for (const t of tanimlayicilar) {
           const bag = bagiCozumle(n, t);
-          if (bag) modalBaglari.add(bag);
+          if (!bag) continue;
+          if (!modalBagEtiketleri.has(bag)) modalBagEtiketleri.set(bag, new Set());
+          modalBagEtiketleri.get(bag).add(etiket);
         }
       }
     }
     ts.forEachChild(n, modalAra);
   };
   modalAra(sf);
+
+  // ── İ9 · Boşluk 1 kapanışı: KAYIT DÜZENLEME vs GEZİNME ÇEKMECESİ ──
+  //
+  // Varsayılan kova KAYIT DÜZENLEME'dir (katı, sıfır toleranslı). Bir bağ
+  // ancak `GEZINME_CEKMECELERI`nde dosya+ad eşleşen bir kayıt varsa VE o
+  // bağın bağlandığı bileşen kümesi TAM OLARAK o kaydın `bilesen`inden
+  // ibaretse (başka hiçbir pencereye de akmıyorsa) gezinme çekmecesi
+  // kovasına düşer. Aksi hâlde — dosya farklı, ad farklı, ya da bağ aynı
+  // zamanda başka bir pencereye de akıyorsa — KAYIT DÜZENLEME kovasında
+  // kalır. Gerekçe ve üç kaçamama senaryosu sabitin yanındaki yorumda.
+  const kayitBaglari = [];
+  const gezinmeBaglari = [];
+  for (const [bag, etiketler] of modalBagEtiketleri) {
+    const izinli = GEZINME_CEKMECELERI.find((g) => g.dosya === dosyaAdi && g.ad === bag.ad);
+    if (izinli && etiketler.size === 1 && etiketler.has(izinli.bilesen)) {
+      gezinmeBaglari.push(bag);
+    } else {
+      kayitBaglari.push(bag);
+    }
+  }
   // Çıktı hâlâ ADLARDIR (mevcut nöbetçiler ada bakıyor), ama artık BAĞ
   // sayısı kadar eleman taşır: aynı adlı iki ayrı bağ iki kez listelenir.
-  o.modalDurumAdlari = [...modalBaglari].map((b) => b.ad).sort();
+  o.modalDurumAdlari = kayitBaglari.map((b) => b.ad).sort();
+  o.gezinmeCekmecesiAdlari = gezinmeBaglari.map((b) => b.ad).sort();
 
   return o;
 }
@@ -1121,6 +1347,8 @@ export function sayim() {
   const adsizKontrolDosyalari = [];
   let modalDurumu = 0;
   const modalDurumDosyalari = [];
+  let gezinmeCekmecesiDurumu = 0;
+  const gezinmeCekmecesiDosyalari = [];
 
   for (const f of base) {
     const o = dosyaOlcumu(read(f), f);
@@ -1133,6 +1361,10 @@ export function sayim() {
     if (o.modalDurumAdlari.length > 0) {
       modalDurumu += o.modalDurumAdlari.length;
       modalDurumDosyalari.push({ dosya: f, adlar: o.modalDurumAdlari });
+    }
+    if (o.gezinmeCekmecesiAdlari.length > 0) {
+      gezinmeCekmecesiDurumu += o.gezinmeCekmecesiAdlari.length;
+      gezinmeCekmecesiDosyalari.push({ dosya: f, adlar: o.gezinmeCekmecesiAdlari });
     }
     olcumDisiKontrol += o.olcumDisiKontrol;
     if (o.adsizKontrol > 0) {
@@ -1194,9 +1426,15 @@ export function sayim() {
     adsizKontrol,
     olcumDisiKontrol,
     adsizKontrolDosyalari,
-    // İP-A4 nöbetçi metriği: ekranda yaşayan pencere (modal) durumu.
+    // İP-A4 nöbetçi metriği: ekranda yaşayan KAYIT DÜZENLEME pencere durumu
+    // (katı kova — gezinme çekmecesi hariç, bkz. `GEZINME_CEKMECELERI`).
     modalDurumu,
     modalDurumDosyalari,
+    // İ9 · Boşluk 1 kapanışı: ayrı kategori — bilinen gezinme çekmeceleri.
+    // Tavan değil KİMLİK: listeye yeni bir çekmece elle eklenmeden büyümez
+    // (`GEZINME_CEKMECELERI`nin uzunluğuyla aynı olması beklenir).
+    gezinmeCekmecesiDurumu,
+    gezinmeCekmecesiDosyalari,
     medusaDirectImports,
     unlabeledOverlays,
     overlayOffenders: overlayOffenders.sort(),

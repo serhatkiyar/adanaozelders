@@ -258,11 +258,12 @@ export function useRemoveFromCollection() {
  *  Uç düşerse `LOW_STOCK_THRESHOLD` bilinmez; çağıran taraf rozetleri nötr
  *  gösterir (yanlış eşikle amber basmaktansa renksiz basmak dürüsttür).
  */
-export function useStoreConfig() {
+export function useStoreConfig(enabled = true) {
   return useQuery({
     queryKey: ["store", "config"],
     queryFn: storeApi.fetchStoreConfig,
     staleTime: 60 * 60 * 1000,
+    enabled,
   });
 }
 
@@ -439,17 +440,56 @@ export function useDeriveVariant() {
   });
 }
 
-export function useAdminOrders(statusFilter?: string, limit?: number) {
+/**
+ * `offset` — EKLENTİ (bkz. `api/store.ts` `listOrdersAdmin` yorumu). Opsiyonel
+ * üçüncü parametre; verilmediğinde `storeApi.listOrdersAdmin`e `undefined`
+ * geçer ve istek eskisi gibi `offset` İÇERMEZ — eski panelin
+ * `useAdminOrders(durum)` (tek argümanlı) çağrısı birebir eskisi gibi
+ * çalışmaya devam eder. `queryKey`e dahil edilmesi şart: dahil olmasaydı
+ * sayfa değişince React Query aynı anahtarı görür ve önbellekteki ilk
+ * sayfayı döndürürdü (yeni istek atılmazdı).
+ */
+/** `enabled=false` (ör. `orders.view` yokken) isteği tamamen kapatır. */
+export function useAdminOrders(
+  statusFilter?: string,
+  limit?: number,
+  offset?: number,
+  enabled = true,
+) {
   return useQuery({
-    queryKey: ["store", "admin", "orders", statusFilter ?? "all", limit ?? 100],
-    queryFn: () => storeApi.listOrdersAdmin(statusFilter, limit),
+    queryKey: [
+      "store",
+      "admin",
+      "orders",
+      statusFilter ?? "all",
+      limit ?? 100,
+      offset ?? 0,
+    ],
+    queryFn: () => storeApi.listOrdersAdmin(statusFilter, limit, offset),
+    enabled,
   });
 }
 
-export function useAdminReturns(statusFilter?: string) {
+/**
+ * Tekil yönetim siparişi. Anahtar `["store","admin","orders","detail",id]`:
+ * `useInvalidateAdminStore`ın `["store","admin"]` öneki bunu da tazeler.
+ * Liste sayfalarını taramak ya da önbellekte sipariş aramak yok.
+ */
+export function useAdminOrder(id: number, enabled = true) {
+  const gecerli = Number.isSafeInteger(id) && id > 0;
+  return useQuery({
+    queryKey: ["store", "admin", "orders", "detail", id],
+    queryFn: () => storeApi.getOrderAdmin(id),
+    enabled: enabled && gecerli,
+  });
+}
+
+/** `enabled=false` (ör. `returns.view` yokken) isteği tamamen kapatır. */
+export function useAdminReturns(statusFilter?: string, enabled = true) {
   return useQuery({
     queryKey: ["store", "admin", "returns", statusFilter ?? "all"],
     queryFn: () => storeApi.listReturnsAdmin(statusFilter),
+    enabled,
   });
 }
 
@@ -486,10 +526,11 @@ export function useInvalidateAdminStore() {
 
 /* ── Kupon (ADMIN) ── */
 
-export function useCoupons() {
+export function useCoupons(enabled = true) {
   return useQuery({
     queryKey: ["store", "admin", "coupons"],
     queryFn: storeApi.listCoupons,
+    enabled,
   });
 }
 

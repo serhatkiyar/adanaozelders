@@ -326,7 +326,7 @@ export default function AdminLibraries() {
 
 /* ── Operatör hesapları ── */
 
-function OperatorsManager({ libraryId }: { libraryId: number }) {
+export function OperatorsManager({ libraryId }: { libraryId: number }) {
   const { data: operators } = useOperators(libraryId);
   const del = useDeleteOperator(libraryId);
   // Ekleme formu artık katlanır bir bölüm DEĞİL, kendi düzenleme yüzeyi

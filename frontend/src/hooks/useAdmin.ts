@@ -38,16 +38,16 @@ import {
 } from "@/api/admin";
 import type { AdminRoleCreate, AdminRoleInput, AdminUserRolePath } from "@/types";
 
-export function useAdminPermissions() {
-  return useQuery({ queryKey: ["admin", "access", "permissions"], queryFn: fetchAdminPermissions });
+export function useAdminPermissions(enabled = true) {
+  return useQuery({ queryKey: ["admin", "access", "permissions"], queryFn: fetchAdminPermissions, enabled });
 }
 
-export function useAdminRoles() {
-  return useQuery({ queryKey: ["admin", "access", "roles"], queryFn: fetchAdminRoles });
+export function useAdminRoles(enabled = true) {
+  return useQuery({ queryKey: ["admin", "access", "roles"], queryFn: fetchAdminRoles, enabled });
 }
 
-export function useAdminRoleAssignments() {
-  return useQuery({ queryKey: ["admin", "access", "assignments"], queryFn: fetchAdminRoleAssignments });
+export function useAdminRoleAssignments(enabled = true) {
+  return useQuery({ queryKey: ["admin", "access", "assignments"], queryFn: fetchAdminRoleAssignments, enabled });
 }
 
 function useInvalidateAdminAccess() {
@@ -88,19 +88,21 @@ export function useAdminStats() {
   });
 }
 
-export function useAdminRevenue(range: "day" | "week" | "month") {
+export function useAdminRevenue(range: "day" | "week" | "month", enabled = true) {
   return useQuery({
     queryKey: ["admin", "revenue", range],
     queryFn: () => fetchAdminRevenue(range),
     staleTime: 60_000,
+    enabled,
   });
 }
 
-export function useAdminDashboard(range: "day" | "week" | "month") {
+export function useAdminDashboard(range: "day" | "week" | "month", enabled = true) {
   return useQuery({
     queryKey: ["admin", "dashboard", range],
     queryFn: () => fetchAdminDashboard(range),
     refetchInterval: 60_000,
+    enabled,
   });
 }
 
@@ -112,27 +114,29 @@ export function useAdminUsers(params: AdminUsersParams = { limit: 25, offset: 0 
   });
 }
 
-export function useAdminUser(role: AdminUserRolePath | undefined, id: number) {
+export function useAdminUser(role: AdminUserRolePath | undefined, id: number, enabled = true) {
   return useQuery({
     queryKey: ["admin", "users", "detail", role, id],
     queryFn: () => fetchAdminUser(role!, id),
-    enabled: role !== undefined && Number.isInteger(id) && id > 0,
+    enabled: enabled && role !== undefined && Number.isInteger(id) && id > 0,
   });
 }
 
-export function useAdminAuditLogs(params: AdminAuditParams) {
+export function useAdminAuditLogs(params: AdminAuditParams, enabled = true) {
   return useQuery({
     queryKey: ["admin", "audit-logs", params],
     queryFn: () => fetchAdminAuditLogs(params),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
-export function useAdminDemands(params: AdminDemandsParams) {
+export function useAdminDemands(params: AdminDemandsParams, enabled = true) {
   return useQuery({
     queryKey: ["admin", "demands", params],
     queryFn: () => fetchAdminDemands(params),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
@@ -148,11 +152,12 @@ export function useCancelAdminDemand() {
   });
 }
 
-export function useAdminTutors() {
+export function useAdminTutors(enabled = true) {
   return useQuery({
     queryKey: ["admin", "tutors"],
     queryFn: fetchAdminTutors,
     refetchInterval: 30_000,
+    enabled,
   });
 }
 
@@ -213,11 +218,12 @@ export function useAdminBookings(params: { limit?: number; offset?: number } = {
   });
 }
 
-export function useAdminBookingList(params: AdminBookingsParams) {
+export function useAdminBookingList(params: AdminBookingsParams, enabled = true) {
   return useQuery({
     queryKey: ["admin", "bookings", "list", params],
     queryFn: () => fetchAdminBookingList(params),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
@@ -240,11 +246,19 @@ export function useAdminToggleDisputeBooking() {
 
 // ── Diploma doğrulama kuyruğu ──
 
-export function usePendingEducations() {
+/**
+ * Diploma doğrulama kuyruğu. Yanıt TCKN ve kısa ömürlü imzalı belge adresi taşır:
+ *  - `enabled=false` (yetkisiz oturum) hem ilk isteği hem 30 sn'lik yoklamayı tamamen kapatır;
+ *  - `gcTime: 0` ile son gözlemci gidince önbellekteki PII anında düşer (ekran kapanınca artık bellekte durmaz).
+ * Parametre varsayılanlı: eski çağıran (`AdminHome`) davranışını aynen korur.
+ */
+export function usePendingEducations(enabled = true) {
   return useQuery({
     queryKey: ["admin", "educations", "pending"],
     queryFn: fetchPendingEducations,
-    refetchInterval: 30_000,
+    enabled,
+    refetchInterval: enabled ? 30_000 : false,
+    gcTime: 0,
   });
 }
 
@@ -262,10 +276,11 @@ export function useVerifyEducation() {
 
 // ── Eğitmen ön başvuruları (lead) ──
 
-export function useAdminTutorPreApplications(status?: string) {
+export function useAdminTutorPreApplications(status?: string, enabled = true, limit = 100, offset = 0) {
   return useQuery({
-    queryKey: ["admin", "tutor-pre-applications", status ?? "all"],
-    queryFn: () => fetchAdminTutorPreApplications(status),
+    queryKey: ["admin", "tutor-pre-applications", status ?? "all", limit, offset],
+    queryFn: () => fetchAdminTutorPreApplications(status, limit, offset),
+    enabled,
   });
 }
 
@@ -282,10 +297,15 @@ export function useUpdateTutorPreApplicationStatus() {
 
 // ── İlan öne çıkarma ──
 
-export function useAdminPromotions(status?: string) {
+/**
+ * Öne çıkarma satışları. `enabled=false` (yetkisiz oturum) isteği tamamen kapatır; `limit`/`offset`
+ * gerçek sunucu sayfalamasıdır. Parametreler varsayılanlı: eski çağıran aynen çalışır.
+ */
+export function useAdminPromotions(status?: string, enabled = true, limit = 100, offset = 0) {
   return useQuery({
-    queryKey: ["admin", "promotions", status ?? "all"],
-    queryFn: () => fetchAdminPromotions(status),
+    queryKey: ["admin", "promotions", status ?? "all", limit, offset],
+    queryFn: () => fetchAdminPromotions(status, limit, offset),
+    enabled,
   });
 }
 

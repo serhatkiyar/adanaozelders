@@ -63,17 +63,22 @@ export function useCourierWorkspace(enabled = true) {
   });
 }
 
-export function useCourierAccount(courierId: number | null) {
+export function useCourierAccount(courierId: number | null, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "account", courierId],
     queryFn: () => deliveryApi.fetchCourierAccount(courierId!),
-    enabled: courierId != null,
+    enabled: courierId != null && enabled,
   });
 }
 
+/**
+ * Değişkenleri düz metin şifre taşır: mutation cache'inde bekletilmez (`gcTime: 0`). Tüketici, settled
+ * sonrasında yerel hata işlemeyi bitirince `reset()` çağırır ki observer state'inde de şifre kalmasın.
+ */
 export function useCreateCourierAccount() {
   const qc = useQueryClient();
   return useMutation({
+    gcTime: 0,
     mutationFn: ({
       courierId,
       ...payload
@@ -96,8 +101,10 @@ export function useCloseCourierAccount() {
   });
 }
 
+/** Şifre taşır: bkz. `useCreateCourierAccount` — `gcTime: 0` + tüketicide settled sonrası `reset()`. */
 export function useResetCourierPassword() {
   return useMutation({
+    gcTime: 0,
     mutationFn: ({ accountId, newPassword }: { accountId: number; newPassword: string }) =>
       deliveryApi.resetCourierPassword(accountId, newPassword),
   });
@@ -145,26 +152,29 @@ export function useSeedHolidays() {
 }
 
 /** Teslimat KPI özeti — söz tutma / ilk denemede teslim / neden dağılımı (ADMIN). */
-export function useDeliveryKpi(days = 30) {
+export function useDeliveryKpi(days = 30, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "kpi", days],
     queryFn: () => deliveryApi.fetchDeliveryKpi(days),
     staleTime: 60_000,
+    enabled,
   });
 }
 
-export function useRecentDeliveryFeedback(limit = 50) {
+export function useRecentDeliveryFeedback(limit = 50, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "feedback", limit],
     queryFn: () => deliveryApi.fetchRecentDeliveryFeedback(limit),
+    enabled,
   });
 }
 
 /** Admin kapasite şeridi — önümüzdeki günlerin söz doluluğu. Dakikada bir tazelenir. */
-export function useCapacityOverview(days = 14) {
+export function useCapacityOverview(days = 14, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "capacity", days],
     queryFn: () => deliveryApi.fetchCapacityOverview(days),
+    enabled,
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
@@ -182,15 +192,16 @@ export function useDeliveryInfo(enabled = true) {
   });
 }
 
-export function useDeliveryRuns(runDate?: string) {
+export function useDeliveryRuns(runDate?: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "runs", runDate ?? "all"],
     queryFn: () => deliveryApi.fetchDeliveryRuns(runDate),
+    enabled,
   });
 }
 
 /** Tur arşivi — sayfalı (offset). Dönen liste `limit`'ten kısaysa son sayfadır. */
-export function useDeliveryRunArchive(page: number, pageSize = 20) {
+export function useDeliveryRunArchive(page: number, pageSize = 20, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "runs", "archive", page, pageSize],
     queryFn: () =>
@@ -198,6 +209,7 @@ export function useDeliveryRunArchive(page: number, pageSize = 20) {
         limit: pageSize,
         offset: page * pageSize,
       }),
+    enabled,
   });
 }
 
@@ -216,13 +228,21 @@ export function useRoutingHealth(enabled = true) {
   });
 }
 
-export function useDeliveryRun(runId: number | null, opts?: { poll?: boolean }) {
+export function useDeliveryRun(
+  runId: number | null,
+  opts?: { poll?: boolean; pollWhenActive?: boolean; enabled?: boolean },
+) {
   return useQuery({
     queryKey: [...KEY, "run", runId],
     queryFn: () => deliveryApi.fetchDeliveryRun(runId!),
-    enabled: runId != null,
+    enabled: runId != null && (opts?.enabled ?? true),
     // Saha ekranı: iki dağıtıcı telefonu aynı turu görüyor olabilir — tazele.
-    refetchInterval: opts?.poll ? 15_000 : undefined,
+    // `pollWhenActive`: yalnız ACTIVE turda 15 sn (yeni panel detayı); PLANNED/DONE/CANCELLED'da poll yok.
+    refetchInterval: opts?.poll
+      ? 15_000
+      : opts?.pollWhenActive
+        ? (q) => (q.state.data?.status === "ACTIVE" ? 15_000 : false)
+        : undefined,
   });
 }
 
@@ -648,10 +668,11 @@ export function usePublicOrderTracking(token: string | null) {
 
 /** Gün tahtası: atanmamış havuz + araç bazlı turlar. Optimistic YOK — durak
  *  ekleyen mutasyon (`useAddStops`) KEY'i invalidate eder, tahta tazelenir. */
-export function useDeliveryBoard(date: string) {
+export function useDeliveryBoard(date: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "board", date],
     queryFn: () => deliveryApi.fetchDeliveryBoard(date),
+    enabled,
   });
 }
 
@@ -673,10 +694,11 @@ export function useAddBoardStops() {
 /* ── İP-19: operasyon metrikleri ── */
 
 /** Tarih aralıklı operasyon metrikleri (YYYY-MM-DD) — performans sayfası (ADMIN). */
-export function useDeliveryMetrics(fromDate: string, toDate: string) {
+export function useDeliveryMetrics(fromDate: string, toDate: string, enabled = true) {
   return useQuery({
     queryKey: [...KEY, "metrics", fromDate, toDate],
     queryFn: () => deliveryApi.fetchDeliveryMetrics(fromDate, toDate),
     staleTime: 60_000,
+    enabled,
   });
 }

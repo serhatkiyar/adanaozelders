@@ -184,7 +184,14 @@ export async function fetchLibraryEarningsTransactions(
 
 /* ── Admin görsel yönetimi (logo / banner / galeri) ── */
 
-const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+/**
+ * FormData gövdesi için Content-Type ELLE YAZILMAZ — sentinel `false` şart.
+ * Gerekçe (boundary'siz sabit → sunucu ayrıştıramaz; `undefined` axios'un
+ * post/put/patch url-encoded düşüşüyle ÜZERİNE YAZILIYOR; header'ı tamamen
+ * silmek bu instance'ın `application/json` varsayılanına düşüp FormData'yı
+ * JSON'a çeviriyor) ayrıntısıyla `api/store.ts`'teki aynı isimli sabitte.
+ */
+const MULTIPART = { headers: { "Content-Type": false as const } };
 
 export async function uploadLibraryLogo(
   id: number,

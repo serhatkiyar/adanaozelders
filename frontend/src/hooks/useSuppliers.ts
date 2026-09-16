@@ -40,10 +40,11 @@ export const TEDARIKCI_ANAHTARI = ["suppliers"] as const;
 /** Mağaza yönetim listesinin anahtarı (`hooks/useStore.ts::useAdminProducts`). */
 const URUN_LISTESI_ANAHTARI = ["store", "admin", "products"] as const;
 
-export function useSuppliers() {
+export function useSuppliers(enabled = true) {
   return useQuery({
     queryKey: TEDARIKCI_ANAHTARI,
     queryFn: fetchSuppliers,
+    enabled,
   });
 }
 
@@ -57,11 +58,12 @@ export function useSuppliers() {
 export function useSupplierProducts(
   supplierId: number | undefined,
   params: SupplierProductParams = {},
+  enabled = true,
 ) {
   return useQuery({
     queryKey: ["suppliers", supplierId, "products", params],
     queryFn: () => listSupplierProducts(supplierId!, params),
-    enabled: supplierId != null,
+    enabled: enabled && supplierId != null,
     placeholderData: (onceki) => onceki,
   });
 }

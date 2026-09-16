@@ -874,7 +874,7 @@ export function ProductForm({
   );
 }
 
-function ProductManagedAttributes({ productId }: { productId: number }) {
+export function ProductManagedAttributes({ productId }: { productId: number }) {
   const { data: rawDefinitions } = useStoreAttributes(true);
   const definitions = Array.isArray(rawDefinitions) ? rawDefinitions : [];
   const { data: rawInitialIds } = useQuery({

@@ -13,13 +13,13 @@ from decimal import Decimal
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from core.database import AsyncSessionLocal
 from core.promotion_packages import MAX_OPEN_PER_TUTOR, SLOT_LIMIT
 from models.tutor import Tutor, TutorStatus
 from models.tutor_promotion import PromotionPaymentStatus, TutorPromotion
-from services import search_service, tutor_promotion_service
+from services import audit_service, search_service, tutor_promotion_service
 
 pytestmark = pytest.mark.usefixtures("pg")
 
@@ -265,14 +265,23 @@ async def test_T9_paidPrice_uyusmazsa_KESINLESMEZ_ve_iade_edilir(
     assert iadeler == [("cf-tutar", Decimal("1.00"))]
 
 
+@pytest.mark.parametrize(
+    "durum",
+    [PromotionPaymentStatus.PENDING.value, PromotionPaymentStatus.FAILED.value],
+)
 async def test_T10_iptal_edilmis_kayda_gelen_tahsilat_iade_akisina_girer(
-    promo_fab, promo_kol_acik
+    promo_fab, promo_kol_acik, durum
 ):
-    """T-10/S-12: ölü kayda gelen para kara delikte kalmaz."""
+    """T-10/S-12: ölü kayda gelen para kara delikte kalmaz.
+
+    FAILED de kapsanır: admin iptali para durumunu DEĞİŞTİRMEDİĞİ için kayıt
+    `FAILED + cancelled_at` olarak durabiliyor; iade claim'i yalnız PENDING
+    kabul etseydi geç doğrulanan bu tahsilat sağlayıcıda kalırdı.
+    """
     tutor_id = await promo_fab.tutor()
     promo_id = await promo_fab.promotion(
         tutor_id,
-        payment_status=PromotionPaymentStatus.PENDING.value,
+        payment_status=durum,
         provider_ref="cf-olu",
         cancelled_at=_now(),
     )
@@ -286,10 +295,10 @@ async def test_T10_iptal_edilmis_kayda_gelen_tahsilat_iade_akisina_girer(
 
     kayit = await _promo(promo_id)
     # PAID olmadı; iade akışına claim edildi (fake sağlayıcı anında başarır).
-    assert kayit.payment_status in (
-        PromotionPaymentStatus.REFUNDED.value,
-        PromotionPaymentStatus.REFUNDING.value,
-    )
+    assert kayit.payment_status == PromotionPaymentStatus.REFUNDED.value
+    # Defter de yazılır: bu yol REFUNDING'de kalmadığı için reconciler onu bir
+    # daha görmez; tutar burada yazılmazsa kalıcı olarak 0 kalırdı.
+    assert Decimal(str(kayit.refunded_amount)) == Decimal(str(kayit.price))
     assert kayit.starts_at is None
 
 
@@ -485,3 +494,227 @@ async def test_T14b_ayni_kayit_iki_kez_iptal_edilemez(promo_fab):
         with pytest.raises(HTTPException) as exc:
             await tutor_promotion_service.cancel_by_admin(s, promo_id, reason="ikinci")
         assert exc.value.status_code == 409
+
+
+# ═══════════ Admin iptali: atomiklik, audit ve bildirim (para akışı) ═══════════
+#
+# Bu blok tek bir arıza sınıfını kapatır: iptal damgası ile iade niyeti AYRI
+# commit'lerde yazıldığında, araya düşen bir çökme "cancelled ama hâlâ PAID"
+# yetim kaydı bırakıyordu. Reconciler yalnız REFUNDING tarar, yeniden deneme ise
+# `cancelled_at` dolu olduğu için 409 alırdı: para kurumda kalır, görünürlük
+# kapanmıştır ve kimse haberdar olmaz.
+
+
+class _Aktor:
+    """`audit_service.record` yalnız `id`/`role_id` okur; audit_logs FK taşımaz."""
+
+    def __init__(self, id: int = 1, role_id: int = 1) -> None:
+        self.id = id
+        self.role_id = role_id
+
+
+async def _audit_sayisi(promo_id: int) -> int:
+    async with AsyncSessionLocal() as s:
+        return (
+            await s.execute(
+                text(
+                    "SELECT count(*) FROM audit_logs"
+                    " WHERE action = 'promotion.cancel' AND target_id = :i"
+                ),
+                {"i": promo_id},
+            )
+        ).scalar_one()
+
+
+async def _bildirim_sayisi(tutor_id: int) -> int:
+    async with AsyncSessionLocal() as s:
+        return (
+            await s.execute(
+                text(
+                    "SELECT count(*) FROM notifications WHERE user_id = :t"
+                    " AND role_id = 2 AND message LIKE '%iade ediliyor%'"
+                ),
+                {"t": tutor_id},
+            )
+        ).scalar_one()
+
+
+async def _audit_temizle(promo_id: int) -> None:
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "DELETE FROM audit_logs WHERE action = 'promotion.cancel'"
+                " AND target_id = :i"
+            ),
+            {"i": promo_id},
+        )
+        await s.commit()
+
+
+async def _iptal_et(promo_id: int, *, reason: str = "test", aktor=None):
+    """Router'ın sırasını birebir taklit eder: audit ÖNCE stage edilir."""
+    async with AsyncSessionLocal() as s:
+        await audit_service.record(
+            s,
+            actor=aktor or _Aktor(),
+            action="promotion.cancel",
+            target_type="tutor_promotion",
+            target_id=promo_id,
+            reason=reason,
+        )
+        try:
+            return await tutor_promotion_service.cancel_by_admin(
+                s, promo_id, reason=reason
+            )
+        except HTTPException:
+            # `get_db` istisnada rollback eder; stage edilmiş audit de silinir.
+            await s.rollback()
+            raise
+
+
+async def test_T14c_saglayici_patlarsa_kayit_cancelled_REFUNDING_kalir(
+    promo_fab, provider
+):
+    """Faz 1 kalıcı, faz 2 başarısız: yetim (cancelled + PAID) kayıt DOĞMAZ."""
+    tutor_id = await promo_fab.tutor()
+    promo_id = await promo_fab.promotion(tutor_id)
+    provider.refund_result = False  # sağlayıcı iadeyi reddetti
+
+    await _iptal_et(promo_id, reason="saglayici testi")
+
+    kayit = await _promo(promo_id)
+    assert kayit.cancelled_at is not None
+    # PAID'e ASLA geri dönülmez; reconciler'ın tarayabileceği durumda kalır.
+    assert kayit.payment_status == PromotionPaymentStatus.REFUNDING.value
+    assert kayit.refund_requested_at is not None
+    assert kayit.refund_attempts == 1
+    assert await _yururlukte_mi(promo_id) is False
+    # İade kesinleşmediği için defter tutarı da yazılmaz.
+    assert Decimal(str(kayit.refunded_amount)) == Decimal("0")
+    # Denetim izi kazanan geçişin commit'ine bindi.
+    assert await _audit_sayisi(promo_id) == 1
+    await _audit_temizle(promo_id)
+
+
+async def test_T14c2_basarili_iptalde_iade_tutari_deftere_yazilir(promo_fab, provider):
+    """REFUNDED ama `refunded_amount = 0` satırı mutabakatı yanıltırdı."""
+    tutor_id = await promo_fab.tutor()
+    promo_id = await promo_fab.promotion(tutor_id)
+    provider.refund_result = True
+    try:
+        await _iptal_et(promo_id, reason="defter")
+        kayit = await _promo(promo_id)
+        assert kayit.payment_status == PromotionPaymentStatus.REFUNDED.value
+        assert Decimal(str(kayit.refunded_amount)) == Decimal(str(kayit.price))
+    finally:
+        await _audit_temizle(promo_id)
+
+
+async def test_T14d_sarkan_iade_reconciler_tarafindan_tamamlanir(promo_fab, provider):
+    """T-14c'nin devamı: kayıt otomatik telafi yolundan çıkmaz."""
+    from services import escrow_reconciler
+
+    tutor_id = await promo_fab.tutor()
+    promo_id = await promo_fab.promotion(tutor_id)
+    provider.refund_result = False
+    await _iptal_et(promo_id)
+    assert (await _promo(promo_id)).payment_status == (
+        PromotionPaymentStatus.REFUNDING.value
+    )
+
+    # Karantina penceresini geçir ve sağlayıcıyı ayağa kaldır.
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "UPDATE tutor_promotions SET refund_requested_at ="
+                " now() - interval '2 hours' WHERE id = :i"
+            ),
+            {"i": promo_id},
+        )
+        await s.commit()
+    provider.refund_result = True
+    provider.refund_calls.clear()
+
+    async with AsyncSessionLocal() as s:
+        await escrow_reconciler.reconcile_refunding(s)
+
+    kayit = await _promo(promo_id)
+    assert kayit.payment_status == PromotionPaymentStatus.REFUNDED.value
+    assert kayit.cancelled_at is not None
+    assert len(provider.refund_calls) == 1
+    # Telafi yolu canlı istekle AYNI sonucu üretir: tutar deftere yazılır.
+    assert Decimal(str(kayit.refunded_amount)) == Decimal(str(kayit.price))
+    await _audit_temizle(promo_id)
+
+
+async def test_T14e_es_zamanli_iki_iptalden_YALNIZ_biri_kazanir(promo_fab, provider):
+    """Kaybeden 409 alır: ikinci sağlayıcı isteği, bildirimi ve audit'i YOK."""
+    import asyncio
+
+    tutor_id = await promo_fab.tutor()
+    promo_id = await promo_fab.promotion(tutor_id)
+    provider.refund_result = True
+
+    sonuclar = await asyncio.gather(
+        _iptal_et(promo_id, reason="a"),
+        _iptal_et(promo_id, reason="b"),
+        return_exceptions=True,
+    )
+    hatalar = [r for r in sonuclar if isinstance(r, HTTPException)]
+    basarililar = [r for r in sonuclar if not isinstance(r, Exception)]
+    assert len(basarililar) == 1, "iki taraf da kazandı — atomik claim kırık"
+    assert len(hatalar) == 1 and hatalar[0].status_code == 409
+
+    assert len(provider.refund_calls) == 1
+    assert await _audit_sayisi(promo_id) == 1
+    assert await _bildirim_sayisi(tutor_id) == 1
+    await _audit_temizle(promo_id)
+
+
+@pytest.mark.parametrize(
+    "durum",
+    [PromotionPaymentStatus.PENDING.value, PromotionPaymentStatus.FAILED.value],
+)
+async def test_T14f_tahsilatsiz_iptalde_para_yolu_hic_acilmaz(
+    promo_fab, provider, durum
+):
+    """PENDING/FAILED: kayıt kapanır ama iade niyeti ve bildirim ÜRETİLMEZ."""
+    tutor_id = await promo_fab.tutor()
+    promo_id = await promo_fab.promotion(tutor_id, payment_status=durum)
+    provider.refund_calls.clear()
+
+    await _iptal_et(promo_id, reason="tahsilatsiz")
+
+    kayit = await _promo(promo_id)
+    assert kayit.cancelled_at is not None
+    # Para durumu DEĞİŞMEZ: REFUNDING'e geçirilmez.
+    assert kayit.payment_status == durum
+    assert kayit.refund_requested_at is None
+    assert kayit.refund_attempts == 0
+    assert provider.refund_calls == []
+    assert await _bildirim_sayisi(tutor_id) == 0
+    assert await _audit_sayisi(promo_id) == 1
+    await _audit_temizle(promo_id)
+
+
+async def test_T14g_ikinci_iptal_409_ve_EK_YAN_ETKI_URETMEZ(promo_fab, provider):
+    """Sonuçlanmış kayda ikinci iptal: ERKEN guard 409 verir, yan etki bırakmaz.
+
+    Atomik claim'in KAYBEDİLDİĞİ dal T14e'de ölçülür; burada ölçülen, önceden
+    iptal edilmiş kaydın `cancelled_at` guard'ında durdurulması ve stage edilen
+    audit satırının rollback'te gitmesidir.
+    """
+    tutor_id = await promo_fab.tutor()
+    promo_id = await promo_fab.promotion(tutor_id)
+    provider.refund_result = True
+
+    await _iptal_et(promo_id, reason="ilk")
+    ilk_cagri = len(provider.refund_calls)
+    with pytest.raises(HTTPException) as exc:
+        await _iptal_et(promo_id, reason="ikinci")
+    assert exc.value.status_code == 409
+
+    assert len(provider.refund_calls) == ilk_cagri
+    assert await _audit_sayisi(promo_id) == 1
+    assert await _bildirim_sayisi(tutor_id) == 1
+    await _audit_temizle(promo_id)

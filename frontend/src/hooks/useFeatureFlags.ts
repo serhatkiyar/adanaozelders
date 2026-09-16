@@ -26,12 +26,12 @@ export function usePaymentAvailability() {
   });
 }
 
-export function useFeatureFlags() {
-  return useQuery({ queryKey: ["admin", "feature-flags"], queryFn: fetchFeatureFlags });
+export function useFeatureFlags(enabled = true) {
+  return useQuery({ queryKey: ["admin", "feature-flags"], queryFn: fetchFeatureFlags, enabled });
 }
 
-export function usePaymentBranches() {
-  return useQuery({ queryKey: ["admin", "payment-branches"], queryFn: fetchPaymentBranches });
+export function usePaymentBranches(enabled = true) {
+  return useQuery({ queryKey: ["admin", "payment-branches"], queryFn: fetchPaymentBranches, enabled });
 }
 
 export function useUpdateFeatureFlag() {
