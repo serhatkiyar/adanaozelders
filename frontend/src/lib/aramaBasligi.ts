@@ -68,7 +68,14 @@ export function kutuphaneHapBasligi(a: {
   konum: string | null;
   olanakSayisi: number;
 }): { baslik: string; ozet: string; parcalar: string[] } {
-  const baslik = a.konum ?? "Tüm kütüphaneler";
+  /* Kütüphanede "bölgesindeki" eki DURUR (kullanıcı kararı, 16 Eyl 2026):
+     "Çukurova bölgesindeki kütüphaneler"; Yakınımda için "Yakınımdaki
+     kütüphaneler". Eğitmende kaldırıldı, burada sorun görülmedi. */
+  const baslik = a.konum
+    ? a.konum === "Yakınımda"
+      ? "Yakınımdaki kütüphaneler"
+      : `${a.konum} bölgesindeki kütüphaneler`
+    : "Tüm kütüphaneler";
   const olanak = a.olanakSayisi ? `${a.olanakSayisi} olanak` : "Olanak ekleyin";
   return {
     baslik,
