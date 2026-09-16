@@ -161,6 +161,8 @@ export const OLCUM_TABANI = [
   "src/components/HScroll.tsx",
   "src/components/ImageCropModal.tsx",
   "src/components/LibrariesMap.tsx",
+  // SiteFooter oturumlu kabuğa (DashboardShell) girdi (16 Eyl 2026); ağaçta.
+  "src/components/SiteFooter.tsx",
   "src/components/LibraryBookmarkButton.tsx",
   "src/components/LibraryEditorModal.tsx",
   "src/components/LibraryMapPanel.tsx",

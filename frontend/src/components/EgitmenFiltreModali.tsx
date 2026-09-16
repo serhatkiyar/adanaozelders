@@ -14,6 +14,7 @@ import {
 import { bosDeger } from "@/lib/urlSemasi";
 import { useKonumStore } from "@/store/konumStore";
 import { SegmentedControl } from "@/components/SegmentedControl";
+import { MESAFE_SECENEKLERI } from "@/lib/aramaBasligi";
 import { Gender } from "@/types";
 
 /**
@@ -48,10 +49,6 @@ import { Gender } from "@/types";
    16 Eyl 2026): Tümü | Kadın | Erkek. "" = filtre yok. Faset sayısı etikete
    eklenir ki seçim yapılmadan kaç eğitmen olduğu görülsün. */
 type CinsiyetSecimi = Gender.MALE | Gender.FEMALE | "";
-const MESAFE_SECENEKLERI: { value: string; label: string }[] = [
-  { value: "", label: "Farketmez" },
-  ...[1, 3, 5, 10, 15, 25].map((km) => ({ value: String(km), label: `${km} km` })),
-];
 const GENDER_OPTIONS: { value: CinsiyetSecimi; label: string }[] = [
   { value: "", label: "Tümü" },
   { value: Gender.FEMALE, label: "Kadın" },

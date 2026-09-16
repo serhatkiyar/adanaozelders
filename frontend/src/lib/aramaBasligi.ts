@@ -1,3 +1,4 @@
+import { VARSAYILAN_YARICAP_KM } from "@/lib/aramaUrl";
 import { TeachingMode } from "@/types";
 
 /**
@@ -90,3 +91,16 @@ export function kutuphaneHapBasligi(a: {
     parcalar: [...(a.konum ? [baslik] : []), ...(olanak ? [olanak] : [])],
   };
 }
+
+/* "Yakınımda" seçiliyken şeritteki ÇİP (kullanıcı kararı, 16 Eyl 2026):
+   yarıçap adreste yoksa varsayılan (5 km) yazılır; kullanıcı Yakınımda'yı
+   seçince hangi mesafede arandığını "Filtreler |" ayracından sonra görür. */
+export function uzaklikCipi(yaricap: number | undefined): string {
+  return `Uzaklık ${yaricap ?? VARSAYILAN_YARICAP_KM} km`;
+}
+
+/** Filtre penceresindeki Mesafe seçenekleri — eğitmen ve kütüphane ORTAK. */
+export const MESAFE_SECENEKLERI: { value: string; label: string }[] = [
+  { value: "", label: "Farketmez" },
+  ...[1, 3, 5, 10, 15, 25].map((km) => ({ value: String(km), label: `${km} km` })),
+];

@@ -24,8 +24,8 @@ import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
 import { useKonumStore } from "@/store/konumStore";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
-import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
-import { egitmenHapBasligi } from "@/lib/aramaBasligi";
+import { AramaMobilBaslik, cipSinifi, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { egitmenHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
 import { ilceListesindenYer, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
@@ -336,6 +336,14 @@ export default function PublicMarketplace() {
           uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
+      {/* UZAKLIK ÇİPİ (kullanıcı kararı, 16 Eyl 2026): Yakınımda seçiliyken
+          yarıçap burada yazar; dokununca filtre penceresi açılır. */}
+      {degerler.yakinimda && (
+        <button onClick={() => setShowFilters(true)} className={cipSinifi(true)}>
+          {uzaklikCipi(degerler.yaricap)}
+        </button>
+      )}
+
       {/* Aktif sınav chip'i */}
       {exam && (
         <button
@@ -379,6 +387,9 @@ export default function PublicMarketplace() {
      şeritte tekrarı gürültüydü. Değiştirmek için hap dokunulur. Sınav çipi
      kalıyor — hap onu taşımıyor. */
   const mobilCipler: FiltreCipi[] = [
+    ...(degerler.yakinimda
+      ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
     ...(exam
       ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }]
       : []),

@@ -1,7 +1,7 @@
 import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { AramaMobilBaslik, cipSinifi, type FiltreCipi } from "@/components/AramaMobilBaslik";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
@@ -17,7 +17,7 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
-import { egitmenHapBasligi } from "@/lib/aramaBasligi";
+import { egitmenHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
 import { ilceListesindenYer, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
@@ -467,6 +467,15 @@ export default function Marketplace() {
 
       {/* SIRALAMA YOK (kullanıcı kararı, 16 Eyl 2026): şerit "Filtreler |
           uygulanan filtreler" — tek ayraç. */}
+      <div className="h-5 w-px shrink-0 bg-slate-200 " />
+
+      {/* UZAKLIK ÇİPİ (kullanıcı kararı, 16 Eyl 2026): Yakınımda seçiliyken
+          yarıçap burada yazar; dokununca filtre penceresi açılır. */}
+      {degerler.yakinimda && (
+        <button onClick={() => setShowFilters(true)} className={cipSinifi(true)}>
+          {uzaklikCipi(degerler.yaricap)}
+        </button>
+      )}
 
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
@@ -545,6 +554,9 @@ export default function Marketplace() {
      şeritte tekrarı gürültüydü. Değiştirmek için hap dokunulur. Sınav çipi
      kalıyor — hap onu taşımıyor. */
   const mobilCipler: FiltreCipi[] = [
+    ...(degerler.yakinimda
+      ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
     ...(exam
       ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }]
       : []),

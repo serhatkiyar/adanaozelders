@@ -14,17 +14,18 @@ import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
 import { LibraryRow } from "@/components/VitrinSeridi";
-import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { AramaMobilBaslik, cipSinifi, type FiltreCipi } from "@/components/AramaMobilBaslik";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
 import { ROUTES } from "@/lib/routes";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { kutuphaneHapBasligi } from "@/lib/aramaBasligi";
+import { MESAFE_SECENEKLERI, kutuphaneHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
+import { SegmentedControl } from "@/components/SegmentedControl";
 import { konumOzeti } from "@/lib/yerArama";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useKonumStore } from "@/store/konumStore";
-import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
+import { KUTUPHANE_ARAMA, VARSAYILAN_YARICAP_KM, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
 
 type ViewMode = "list" | "map";
@@ -112,6 +113,10 @@ export default function Libraries() {
      niyet adresten düşer. Eğitmen sonuç sayfalarıyla aynı depo. */
   const konumum = useKonumStore((s) => s.konum);
   const geoLoading = useKonumStore((s) => s.yukleniyor);
+  const konumIste = useKonumStore((s) => s.iste);
+  const konumUnut = useKonumStore((s) => s.unut);
+  /* Rozet: olanaklar + Yakınımda (eğitmen ekranıyla aynı sayım). */
+  const filtreSayisi = amenities.length + (degerler.yakinimda ? 1 : 0);
   const [showFilters, setShowFilters] = useState(false);
   // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
   // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
@@ -191,12 +196,12 @@ export default function Libraries() {
         <FilterIconSvg />
         Filtreler
         {/* Rozet eğitmen şeridiyle aynı: koyu, düğmenin sağ üst köşesinde. */}
-        {amenities.length > 0 && (
+        {filtreSayisi > 0 && (
           <span
             aria-hidden
             className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white"
           >
-            {amenities.length}
+            {filtreSayisi}
           </span>
         )}
       </button>
@@ -204,6 +209,14 @@ export default function Libraries() {
       {/* SIRALAMA YOK (kullanıcı kararı, 16 Eyl 2026): şerit "Filtreler |
           uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
+
+      {/* UZAKLIK ÇİPİ (kullanıcı kararı, 16 Eyl 2026): Yakınımda seçiliyken
+          yarıçap burada yazar; dokununca filtre penceresi açılır. */}
+      {degerler.yakinimda && (
+        <button onClick={() => setShowFilters(true)} className={cipSinifi(true)}>
+          {uzaklikCipi(degerler.yaricap)}
+        </button>
+      )}
 
       {/* İLÇE ÇİPİ YOK (16 Eyl 2026): konum hapta yazıyor ("Merkez"); Merkez
           seçimi burada dört ayrı ilçe çipine açılıyordu. Eğitmen şeridiyle
@@ -236,6 +249,9 @@ export default function Libraries() {
      `md:` altında çizilmez, ikisi aynı anda görünmez. */
   /* İlçe çipi yok: konum başlıkta (eğitmen ekranıyla aynı kural). */
   const mobilCipler: FiltreCipi[] = [
+    ...(degerler.yakinimda
+      ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
     ...amenities.map((a) => ({
       id: `olanak-${a}`,
       etiket: `${amenityLabel(a)} ✕`,
@@ -259,7 +275,7 @@ export default function Libraries() {
         onHap={() => setAramaAcik(true)}
         onGeri={geriDon}
         onFiltre={() => setShowFilters(true)}
-        filtreSayisi={amenities.length}
+        filtreSayisi={filtreSayisi}
         cipler={mobilCipler}
         filtreIkonu={<FilterIconSvg />}
       />
@@ -449,7 +465,34 @@ export default function Libraries() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 space-y-8 overflow-y-auto p-6">
+                {/* Mesafe — eğitmen penceresiyle AYNI kural: yalnız Yakınımda
+                    seçiliyken; Farketmez niyeti kaldırır. */}
+                {degerler.yakinimda && (
+                  <div>
+                    <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
+                    <SegmentedControl<string>
+                      options={MESAFE_SECENEKLERI}
+                      value={String(degerler.yaricap ?? VARSAYILAN_YARICAP_KM)}
+                      onChange={(val) => {
+                        if (!val) {
+                          konumUnut();
+                          ayarla({ yakinimda: false, yaricap: undefined, sirala: "" });
+                          return;
+                        }
+                        ayarla({ yakinimda: true, yaricap: Number(val) });
+                        if (!konumum) konumIste(() => ayarla({ yakinimda: false, yaricap: undefined, sirala: "" }));
+                      }}
+                    />
+                    {geoLoading && (
+                      <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>
+                    )}
+                    {konumum && !geoLoading && (
+                      <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>
+                    )}
+                  </div>
+                )}
+                <div>
                 <p className="mb-3 text-sm text-slate-500 ">
                   Aradığın özelliklere sahip mekânları süz.
                 </p>
@@ -471,6 +514,7 @@ export default function Libraries() {
                       </button>
                     );
                   })}
+                </div>
                 </div>
               </div>
 
