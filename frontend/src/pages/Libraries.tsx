@@ -200,7 +200,7 @@ export default function Libraries() {
            göre filtrelenmiş bir listede bile boş görünüyordu. */
         className={`flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
           filtreli
-            ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
+            ? "border-slate-900 bg-white text-slate-900 "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
       >
@@ -229,7 +229,7 @@ export default function Libraries() {
           aria-label="Sıralama"
           className={`min-h-[44px] appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 md:min-h-0 ${
             sort
-              ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
+              ? "border-slate-900 bg-white text-slate-900 "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >

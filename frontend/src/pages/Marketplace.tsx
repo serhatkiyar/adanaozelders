@@ -458,9 +458,9 @@ export default function Marketplace() {
       {/* Filtreler butonu */}
       <button
         onClick={() => setShowFilters(true)}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
+        className={`relative flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
           hasModalFilters
-            ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
+            ? "border-slate-900 bg-white text-slate-900 "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
       >
@@ -470,7 +470,10 @@ export default function Marketplace() {
             (koyu, küçük). Turuncu onay işareti marka aksanını aksiyon dışı
             bir yerde kullanıyordu. */}
         {hasModalFilters && (
-          <span className="ml-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white">
+          <span
+            aria-hidden
+            className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white"
+          >
             {mobilFiltreSayisi}
           </span>
         )}
@@ -485,7 +488,7 @@ export default function Marketplace() {
           onChange={(e) => setSort(e.target.value as TutorSort)}
           className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
             sort !== TutorSort.RELEVANCE
-              ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
+              ? "border-slate-900 bg-white text-slate-900 "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
@@ -508,7 +511,7 @@ export default function Marketplace() {
           onClick={togglePricePopover}
           className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
             minRate || maxRate
-              ? "border-slate-900 bg-white text-slate-900 ring-1 ring-inset ring-slate-900 "
+              ? "border-slate-900 bg-white text-slate-900 "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
