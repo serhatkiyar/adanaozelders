@@ -16,7 +16,6 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
-import { type YerSecimi } from "@/lib/yerArama";
 import { type DersSekli } from "@/components/AramaSecicileri";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
@@ -27,7 +26,7 @@ import { useKonumStore } from "@/store/konumStore";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
-import { yerEtiketi } from "@/lib/yerArama";
+import { ilceOzeti, yerEtiketi, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -87,7 +86,9 @@ export default function PublicMarketplace() {
   /* "Tüm yerler" (null) ilçeyi de düşürür; eskiden `konum.ilce` korunup
      seçim kutudan silinmiş görünürken adreste kalıyordu (16 Eyl 2026). */
   const setYer = (v: YerSecimi | null) =>
-    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : [] } });
+    ayarla({
+      konum: { yer: v?.tur === "mahalle" ? v : null, ilce: yerinIlceleri(v) },
+    });
   const setExam = (v: string) => ayarla({ sinav: v });
 
   // Sıralama ADRESTE (9 Eyl 2026). Yerel state'teyken paylaşılamıyor,
@@ -316,13 +317,7 @@ export default function PublicMarketplace() {
      şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
      neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
   const mobilAramaOzeti = [
-    yer
-      ? yerEtiketi(yer)
-      : district.length === 1
-        ? district[0]
-        : district.length
-          ? `${district.length} ilçe`
-          : "Tüm Adana",
+    yer ? yerEtiketi(yer) : (ilceOzeti(district) ?? "Tüm Adana"),
     sekil === TeachingMode.ONLINE
       ? "Uzaktan"
       : sekil === TeachingMode.IN_PERSON

@@ -17,7 +17,7 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
-import { yerEtiketi, type YerSecimi } from "@/lib/yerArama";
+import { ilceOzeti, yerEtiketi, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
@@ -117,7 +117,9 @@ export default function Marketplace() {
   /* "Tüm yerler" (null) ilçeyi de düşürür; eskiden `konum.ilce` korunup
      seçim kutudan silinmiş görünürken adreste kalıyordu (16 Eyl 2026). */
   const setYer = (v: YerSecimi | null) =>
-    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : [] } });
+    ayarla({
+      konum: { yer: v?.tur === "mahalle" ? v : null, ilce: yerinIlceleri(v) },
+    });
   const setExam = (v: string) => ayarla({ sinav: v });
   const setModes = (v: AramaSekli[]) => ayarla({ sekil: v });
   const setSort = (v: TutorSort) =>
@@ -515,13 +517,7 @@ export default function Marketplace() {
      şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
      neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
   const mobilAramaOzeti = [
-    yer
-      ? yerEtiketi(yer)
-      : district.length === 1
-        ? district[0]
-        : district.length
-          ? `${district.length} ilçe`
-          : "Tüm Adana",
+    yer ? yerEtiketi(yer) : (ilceOzeti(district) ?? "Tüm Adana"),
     modeSegment === TeachingMode.ONLINE
       ? "Uzaktan"
       : modeSegment === TeachingMode.IN_PERSON

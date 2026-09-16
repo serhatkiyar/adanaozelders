@@ -33,7 +33,54 @@ export const YER_YARICAP_KM = 3;
 
 export type YerSecimi =
   | { tur: "ilce"; ilce: string }
-  | { tur: "mahalle"; ilce: string; mahalle: string; lat: number; lng: number };
+  | { tur: "mahalle"; ilce: string; mahalle: string; lat: number; lng: number }
+  /** Adana MERKEZ: dört merkez ilçe birden (bkz. `MERKEZ_ILCELER`). */
+  | { tur: "merkez" };
+
+/**
+ * "MERKEZ" seçeneği (kullanıcı kararı, 16 Eyl 2026): "Tüm yerler" diye bir
+ * seçenek olmaz — kimse "her yer"i seçmez, ya semtini ya şehir merkezini
+ * arar. Merkez, Adana Büyükşehir'in dört merkez ilçesidir; adreste ayrı bir
+ * anahtar YOK, dört ilçe olarak yazılır (`?ilce=Seyhan&ilce=Çukurova…`) ve
+ * geri okunurken küme aynıysa yeniden "Merkez" olarak tanınır. Böylece
+ * paylaşılan bağlantı ve sunucu isteği ilçe listesinden başka bir şey
+ * bilmek zorunda kalmaz.
+ */
+export const MERKEZ_ILCELER: readonly string[] = ["Seyhan", "Çukurova", "Yüreğir", "Sarıçam"];
+const MERKEZ_ETIKETI = "Merkez";
+const MERKEZ_ALT = "Seyhan · Çukurova · Yüreğir · Sarıçam";
+
+/** Verilen ilçe listesi tam olarak merkez kümesi mi (sıra önemsiz)? */
+export function merkezMi(ilceler: readonly string[]): boolean {
+  if (ilceler.length !== MERKEZ_ILCELER.length) return false;
+  const k = new Set(ilceler.map((i) => normalize(i)));
+  return MERKEZ_ILCELER.every((i) => k.has(normalize(i)));
+}
+
+/** Seçimin adrese/isteğe giden ilçe listesi. TEK yerde: eskiden yedi çağıran
+ *  `[v.ilce]` yazıyordu, merkezin dört ilçeye açılması her birinde
+ *  unutulabilirdi. */
+export function yerinIlceleri(secim: YerSecimi | null): string[] {
+  if (!secim) return [];
+  if (secim.tur === "merkez") return [...MERKEZ_ILCELER];
+  return [secim.ilce];
+}
+
+/**
+ * Adresten (mahalle çapası + ilçe listesi) kutuda gösterilecek seçimi türetir:
+ * mahalle varsa o; ilçe listesi merkez kümesiyse "Merkez"; tek ilçeyse o.
+ * Çoklu ama merkez olmayan liste (yalnız oturumlu pazaryerinin onay
+ * kutularından gelir) tek seçime indirgenemez → null.
+ */
+export function ilceListesindenYer(
+  yer: YerSecimi | null,
+  ilceler: readonly string[],
+): YerSecimi | null {
+  if (yer) return yer;
+  if (merkezMi(ilceler)) return { tur: "merkez" };
+  if (ilceler.length === 1) return { tur: "ilce", ilce: ilceler[0] };
+  return null;
+}
 
 export interface YerOnerisi {
   /** Listede gösterilecek birincil satır. */
@@ -54,6 +101,13 @@ const ilceOnerisi = (ilce: string): YerOnerisi => ({
   altBaslik: "Adana",
   secim: { tur: "ilce", ilce },
 });
+
+/** Listenin başındaki "Merkez" satırı — alt başlığı hangi ilçeleri kapsadığını söyler. */
+const MERKEZ_ONERISI: YerOnerisi = {
+  baslik: MERKEZ_ETIKETI,
+  altBaslik: MERKEZ_ALT,
+  secim: { tur: "merkez" },
+};
 
 const mahalleOnerisi = (y: AdanaYer): YerOnerisi => ({
   baslik: y.mahalle,
@@ -92,8 +146,14 @@ const MAHALLE_ONERISI_ACIK = false;
 
 export function yerAra(sorgu: string, limit = 40): YerOnerisi[] {
   const q = normalize(sorgu);
-  if (!q) return TUM_ILCELER.map(ilceOnerisi);
+  if (!q) return [MERKEZ_ONERISI, ...TUM_ILCELER.map(ilceOnerisi)];
 
+  // "Merkez" yazan ya da merkez ilçelerinden birini yazan kişiye Merkez de sunulur.
+  const merkez =
+    normalize(MERKEZ_ETIKETI).includes(q) ||
+    MERKEZ_ILCELER.some((d) => normalize(d).startsWith(q))
+      ? [MERKEZ_ONERISI]
+      : [];
   const ilceler = TUM_ILCELER.filter((d) => normalize(d).includes(q));
   const mahalleler = MAHALLE_ONERISI_ACIK
     ? ADANA_YERLER.filter((y) => normalize(y.mahalle).includes(q))
@@ -108,6 +168,7 @@ export function yerAra(sorgu: string, limit = 40): YerOnerisi[] {
     });
 
   return [
+    ...merkez,
     ...onekOnce(ilceler, (d) => d).map(ilceOnerisi),
     ...onekOnce(mahalleler, (y) => y.mahalle).map(mahalleOnerisi),
   ].slice(0, limit);
@@ -116,9 +177,18 @@ export function yerAra(sorgu: string, limit = 40): YerOnerisi[] {
 /** Seçimin kutuda ve özet satırlarında görünen adı. */
 export function yerEtiketi(secim: YerSecimi | null): string {
   if (!secim) return "";
+  if (secim.tur === "merkez") return MERKEZ_ETIKETI;
   return secim.tur === "mahalle"
     ? `${secim.mahalle}, ${secim.ilce}`
     : secim.ilce;
+}
+
+/** İlçe listesinin özet satırlarındaki adı: Merkez / tek ilçe / "N ilçe". */
+export function ilceOzeti(ilceler: readonly string[]): string | null {
+  if (merkezMi(ilceler)) return MERKEZ_ETIKETI;
+  if (ilceler.length === 1) return ilceler[0];
+  if (ilceler.length) return `${ilceler.length} ilçe`;
+  return null;
 }
 
 /**

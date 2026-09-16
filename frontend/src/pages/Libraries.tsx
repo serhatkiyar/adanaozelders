@@ -20,6 +20,7 @@ import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
 import { ROUTES } from "@/lib/routes";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { ilceOzeti } from "@/lib/yerArama";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useKonumStore } from "@/store/konumStore";
 import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
@@ -308,7 +309,7 @@ export default function Libraries() {
     >
       <AramaMobilBaslik
         baslik={degerler.q || "Kütüphane ara"}
-        ozet={district.length ? district.join(", ") : "Tüm Adana"}
+        ozet={ilceOzeti(district) ?? "Tüm Adana"}
         onHap={() => setAramaAcik(true)}
         onGeri={geriDon}
         onFiltre={() => setShowFilters(true)}

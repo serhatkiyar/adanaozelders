@@ -303,9 +303,10 @@ export function YerSelect({
   };
 
   const n = kucult(text);
+  /* "Tüm yerler" satırı YOK (kullanıcı kararı, 16 Eyl 2026): listenin ilk
+     satırı "Merkez" (`yerAra` üretir). Seçimi geri almanın yolu başka bir
+     yer seçmek ya da sonuç ekranındaki çipi kaldırmak. */
   const yerler = yerAra(text);
-  // "Tüm yerler" satırı seçimi TEMİZLER; olmasaydı seçim geri alınamazdı.
-  const tumuGoster = !n || kucult("Tüm yerler").includes(n);
   const yakinimdaGoster = !!onYakinimda && (!n || kucult("Yakınımda").includes(n));
 
   return (
@@ -354,9 +355,6 @@ export function YerSelect({
               }}
             />
           )}
-          {tumuGoster && (
-            <Satir etiket="Tüm yerler" ikon={<PinSvg />} onClick={() => sec(null)} />
-          )}
           {yerler.map((y) => (
             <Satir
               key={`${y.secim.tur}:${y.altBaslik}:${y.baslik}`}
@@ -364,7 +362,7 @@ export function YerSelect({
               /* İlçe satırında alt yazı YOK (kullanıcı kararı, 16 Eyl 2026):
                  her ilçenin altında "Adana" yazması bilgi değil gürültüydü.
                  Mahallede ilçe adı kalır — onu ayırt ettiren o. */
-              altEtiket={y.secim.tur === "mahalle" ? y.altBaslik : undefined}
+              altEtiket={y.secim.tur === "ilce" ? undefined : y.altBaslik}
               ikon={<PinSvg />}
               onClick={() => sec(y.secim)}
             />

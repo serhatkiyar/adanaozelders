@@ -18,7 +18,12 @@ import {
 } from "@/lib/aramaUrl";
 import { TUTOR_NAV, UYE_NAV } from "@/lib/nav";
 import { PATHS } from "@/lib/routes";
-import { type YerSecimi, yerEtiketi } from "@/lib/yerArama";
+import {
+  type YerSecimi,
+  ilceListesindenYer,
+  yerEtiketi,
+  yerinIlceleri,
+} from "@/lib/yerArama";
 import { useAuthStore } from "@/store/authStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { ROLE_IDS, TeachingMode } from "@/types";
@@ -131,14 +136,14 @@ export function KesifKabugu() {
      `?ilce=Seyhan` oluyor ama kutu "İlçe seçin" demeye devam ediyordu
      (ölçüldü, 16 Eyl 2026). */
   const kIlce = kDegerler.konum.ilce;
-  const kYer: YerSecimi | null =
-    kDegerler.konum.yer ??
-    (kIlce.length === 1 ? { tur: "ilce", ilce: kIlce[0] } : null);
+  const kYer: YerSecimi | null = ilceListesindenYer(kDegerler.konum.yer, kIlce);
   /* "Tüm yerler" (null) ilçeyi de DÜŞÜRÜR. Eskiden `ilce: kIlce` ile eski
      ilçe korunuyordu; seçim kutudan silinmiş gibi görünüp adreste kalıyordu —
      "Tüm yerler çalışmıyor" dediğin buydu. */
   const setKYer = (v: YerSecimi | null) =>
-    kAyarla({ konum: { yer: v, ilce: v ? [v.ilce] : [] } });
+    kAyarla({
+      konum: { yer: v?.tur === "mahalle" ? v : null, ilce: yerinIlceleri(v) },
+    });
   /* Kütüphanede niyet doğrudan adreste; koordinatı liste sayfası ister
      (`useYakinimdaKonum`). Açılınca ilçe/mahalle düşer — ikisi birlikte
      anlamsız. */
@@ -202,7 +207,7 @@ export function KesifKabugu() {
         sekil: sekil ? [sekil] : [],
         konum: {
           yer: yer?.tur === "mahalle" ? yer : null,
-          ilce: yer ? [yer.ilce] : [],
+          ilce: yerinIlceleri(yer),
         },
         yakinimda,
       })
@@ -261,8 +266,8 @@ export function KesifKabugu() {
     : dersEtiket;
   const hapIlce = kutuphaneMi
     ? kIlce
-    : sekil === TeachingMode.IN_PERSON && yer
-      ? [yer.ilce]
+    : sekil === TeachingMode.IN_PERSON
+      ? yerinIlceleri(yer)
       : [];
 
   /* Telefonda swap YOK: kompakt hap `mobilUst` yuvasında kalıcı durur, bu yuva

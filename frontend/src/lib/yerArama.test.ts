@@ -9,7 +9,16 @@
 import { describe, expect, it } from "vitest";
 
 import { ADANA_YERLER } from "@/lib/adanaYerler";
-import { mahalleyiCoz, yerAra, yerEtiketi } from "@/lib/yerArama";
+import {
+  MERKEZ_ILCELER,
+  ilceListesindenYer,
+  ilceOzeti,
+  mahalleyiCoz,
+  merkezMi,
+  yerAra,
+  yerEtiketi,
+  yerinIlceleri,
+} from "@/lib/yerArama";
 
 describe("yerAra · veri seti", () => {
   it("DOLULUK: veri seti gerçekten dolu ve 15 ilçeyi kapsıyor", () => {
@@ -35,10 +44,15 @@ describe("yerAra · veri seti", () => {
 });
 
 describe("yerAra · eşleşme", () => {
-  it("boş sorguda YALNIZ ilçeler döner", () => {
+  it("boş sorguda önce MERKEZ, sonra yalnız ilçeler döner", () => {
+    // 16 Eyl 2026: "Tüm yerler" gitti, listenin başı "Merkez" (dört merkez
+    // ilçe). Mahalle yine yok — o bayrak ayrı (aşağıda).
     const sonuc = yerAra("");
-    expect(sonuc.length).toBe(15);
-    expect(sonuc.every((o) => o.secim.tur === "ilce")).toBe(true);
+    expect(sonuc[0].secim).toEqual({ tur: "merkez" });
+    expect(sonuc[0].altBaslik).toBe("Seyhan · Çukurova · Yüreğir · Sarıçam");
+    const kalan = sonuc.slice(1);
+    expect(kalan.length).toBe(15);
+    expect(kalan.every((o) => o.secim.tur === "ilce")).toBe(true);
   });
 
   /* MAHALLE ÖNERİSİ KAPALI (kullanıcı kararı, 10 Eyl 2026 — gerekçe
@@ -82,7 +96,10 @@ describe("yerAra · eşleşme", () => {
     // DOLULUK: hem önekle başlayan hem yalnız içinde geçen ilçeler var.
     expect(adlar).toContain("Seyhan");
     expect(adlar).toContain("Karataş");
-    expect(sonuc[0].baslik.toLocaleLowerCase("tr-TR").startsWith("s")).toBe(true);
+    // "s" bir merkez ilçesinin (Seyhan, Sarıçam) öneki: Merkez satırı da
+    // sunulur ve ilçelerden ÖNCE gelir; onu izleyen ilk ilçe önekle başlar.
+    expect(sonuc[0].secim).toEqual({ tur: "merkez" });
+    expect(sonuc[1].baslik.toLocaleLowerCase("tr-TR").startsWith("s")).toBe(true);
   });
 
   it("eşleşmeyen sorgu boş döner", () => {
@@ -94,6 +111,29 @@ describe("yerAra · eşleşme", () => {
     // aynı "Adana" yazıyordu), masaüstü seçicisi çiziyor.
     const r = yerAra("Seyhan").find((o) => o.baslik === "Seyhan")!;
     expect(r.altBaslik).toBe("Adana");
+  });
+});
+
+describe("Merkez · dört ilçe tek seçim", () => {
+  it("seçim adrese dört ilçe olarak açılır, geri okununca Merkez olur", () => {
+    expect(yerinIlceleri({ tur: "merkez" })).toEqual([...MERKEZ_ILCELER]);
+    expect(merkezMi([...MERKEZ_ILCELER].reverse())).toBe(true);
+    expect(merkezMi(["Seyhan", "Çukurova"])).toBe(false);
+    expect(ilceListesindenYer(null, [...MERKEZ_ILCELER])).toEqual({ tur: "merkez" });
+    expect(ilceListesindenYer(null, ["Seyhan"])).toEqual({ tur: "ilce", ilce: "Seyhan" });
+    expect(ilceListesindenYer(null, ["Seyhan", "Kozan"])).toBeNull();
+  });
+
+  it("etiket ve özet 'Merkez' der", () => {
+    expect(yerEtiketi({ tur: "merkez" })).toBe("Merkez");
+    expect(ilceOzeti([...MERKEZ_ILCELER])).toBe("Merkez");
+    expect(ilceOzeti(["Seyhan"])).toBe("Seyhan");
+    expect(ilceOzeti(["Seyhan", "Kozan"])).toBe("2 ilçe");
+    expect(ilceOzeti([])).toBeNull();
+  });
+
+  it("'merkez' yazınca da bulunur", () => {
+    expect(yerAra("merk")[0].secim).toEqual({ tur: "merkez" });
   });
 });
 

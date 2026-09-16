@@ -1,6 +1,6 @@
 import { Suspense, lazy, useRef, useState } from "react";
 import { SEARCH_PRIMARY_DISTRICTS, SEARCH_MORE_DISTRICTS } from "@/lib/districts";
-import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
+import { yerAra, yerEtiketi, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
 /* Harita modalı TEMBEL yüklenir. Ana sayfanın arama kutusu bu bileşeni
    kullanıyor; doğrudan import edildiğinde Leaflet + react-leaflet + ilçe
@@ -69,7 +69,7 @@ export function DistrictSelect({
         ? value.length === 1
           ? value[0]
           : `${value.length} ilçe`
-        : "Tüm yerler";
+        : "İlçe seçin";
 
   const toggle = (d: string) => {
     // İlçe kutusuna dokunmak mahalle çapasını geçersiz kılar: kutuda
@@ -85,7 +85,7 @@ export function DistrictSelect({
       onChange([secim.ilce]);
     } else {
       onYerChange?.(null);
-      onChange([secim.ilce]);
+      onChange(yerinIlceleri(secim));
     }
     setAra("");
     setOpen(false);
