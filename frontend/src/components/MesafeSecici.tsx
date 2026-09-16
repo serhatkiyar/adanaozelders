@@ -8,10 +8,18 @@ import { useKonumStore } from "@/store/konumStore";
  * "Uzaklık ⌄" açılırının ORTAK gövdesi (kullanıcı kararı, 16 Eyl 2026).
  * Yatay sabit seçenekler: Farketmez | 1 | 3 | 5 | 10 | 15 | 25 km.
  *
+ * "Farketmez" YAKINIMDA MODUNDAN ÇIKARMAZ (kullanıcı kararı, 16 Eyl 2026):
+ * kullanıcı çevresini aramaya geldi; Farketmez yalnız yarıçap sınırını
+ * kaldırır (`YARICAP_FARKETMEZ`), seçili kalır ve tekrar 5 km seçilebilir.
+ * Moddan çıkmak ayrı bir eylemdir (Temizle / hapta yer seçmek).
+ *
+ * Konum BİR KEZ alınır ve bellekte kalır; seçenek değiştirmek yeniden
+ * istemez. "Konum alınıyor / kullanılıyor" notları kaldırıldı — kullanıcıya
+ * bir şey söylemiyordu. İzin reddi zaten uyarı gösterir ve `kaldir` ile
+ * niyeti düşürür.
+ *
  * Adres şeması sayfaya göre değişir (kütüphanede `sirala` da düşer), o yüzden
- * adrese yazan iki geri çağrı dışarıdan gelir; konum isteği ve durum notu
- * burada tektir. İzin verilmezse `kaldir` çağrılır — adreste hiçbir şey
- * yapmayan bir filtre asılı kalmaz.
+ * adrese yazan geri çağrılar dışarıdan gelir.
  */
 export function MesafeSecici({
   yaricap,
@@ -19,33 +27,21 @@ export function MesafeSecici({
   kaldir,
 }: {
   yaricap: number | undefined;
-  /** Yarıçap seçildi: adrese `yakinimda=1&yaricap=km` yaz. */
+  /** Yarıçap seçildi: adrese `yakinimda=1&yaricap=km` yaz (0 = Farketmez). */
   sec: (km: number) => void;
-  /** "Farketmez" ya da izin reddi: niyeti adresten düşür. */
+  /** Yalnız izin reddi: niyeti adresten düşür. */
   kaldir: () => void;
 }) {
-  const { konum, yukleniyor, iste, unut } = useKonumStore();
+  const konum = useKonumStore((s) => s.konum);
+  const iste = useKonumStore((s) => s.iste);
   return (
-    <div>
-      <SegmentedControl<string>
-        options={MESAFE_SECENEKLERI}
-        value={String(yaricap ?? VARSAYILAN_YARICAP_KM)}
-        onChange={(val) => {
-          if (!val) {
-            unut();
-            kaldir();
-            return;
-          }
-          sec(Number(val));
-          if (!konum) iste(kaldir);
-        }}
-      />
-      {yukleniyor && (
-        <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>
-      )}
-      {konum && !yukleniyor && (
-        <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>
-      )}
-    </div>
+    <SegmentedControl<string>
+      options={MESAFE_SECENEKLERI}
+      value={String(yaricap ?? VARSAYILAN_YARICAP_KM)}
+      onChange={(val) => {
+        sec(Number(val));
+        if (!konum) iste(kaldir);
+      }}
+    />
   );
 }

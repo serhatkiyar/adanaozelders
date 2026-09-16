@@ -32,11 +32,15 @@ interface KonumDurumu {
   unut: () => void;
 }
 
-export const useKonumStore = create<KonumDurumu>((set) => ({
+export const useKonumStore = create<KonumDurumu>((set, get) => ({
   konum: null,
   yukleniyor: false,
 
   iste: (basarisiz) => {
+    // Konum bir kez alınır; bellekteyse ya da zaten isteniyorsa tarayıcıya
+    // ikinci soru gitmez (ölçüldü, 16 Eyl 2026: StrictMode çift efekt ve
+    // aynı anda iki yüzeyin istemesi iki izin isteği üretiyordu).
+    if (get().konum || get().yukleniyor) return;
     if (!navigator.geolocation) {
       toast.error("Tarayıcınız konum servisini desteklemiyor.");
       basarisiz?.();

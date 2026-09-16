@@ -52,6 +52,17 @@ import {
 import type { TutorSearchParams } from "@/api/tutors";
 import type { LibrarySearchParams } from "@/api/libraries";
 
+export const VARSAYILAN_YARICAP_KM = 5;
+/**
+ * "Uzaklık: Farketmez" (kullanıcı kararı, 16 Eyl 2026): kullanıcı YAKINIMDA
+ * modundan ÇIKMAZ — konumu referans kalır, yalnız yarıçap sınırı kalkar.
+ * Adreste `yaricap=0`; isteğe `radius_km` yazılmaz, koordinat gider.
+ * Eskiden Farketmez niyeti düşürüyor ve konumu unutturuyordu; kullanıcı
+ * tekrar 5 km seçemiyor, konum yeniden isteniyordu.
+ */
+export const YARICAP_FARKETMEZ = 0;
+
+
 /* ─── Ortak alanlar ──────────────────────────────────────────────────── */
 
 /**
@@ -213,7 +224,7 @@ export const EGITMEN_ARAMA: Sema<EgitmenAramasi> = {
     minYas: sayi("min_yas", { min: 0, max: 120 }),
     maxYas: sayi("max_yas", { min: 0, max: 120 }),
     yakinimda: bayrak("yakinimda"),
-    yaricap: sayi("yaricap", { min: 1, max: 200 }),
+    yaricap: sayi("yaricap", { min: YARICAP_FARKETMEZ, max: 200 }),
     sayfa: sayfaAlani(),
   },
   /**
@@ -263,7 +274,7 @@ export const KUTUPHANE_ARAMA: Sema<KutuphaneAramasi> = {
     olanaklar: enumCoklu("olanak", OLANAK_ETIKETLERI, ["amenities"]),
     sirala: enumTek("sirala", KUTUPHANE_SIRALAMA, ["sort"]),
     yakinimda: bayrak("yakinimda"),
-    yaricap: sayi("yaricap", { min: 1, max: 200 }),
+    yaricap: sayi("yaricap", { min: YARICAP_FARKETMEZ, max: 200 }),
     sayfa: sayfaAlani(),
   },
   // "Mesafeye göre" sıralama kullanıcının konumu olmadan anlamsızdır; ikisi
@@ -360,6 +371,12 @@ export interface IstekEki {
   konumum?: { lat: number; lng: number } | null;
 }
 
+/** Adresteki yarıçap → istek: yok = varsayılan, 0 = sınırsız (Farketmez). */
+function yaricapIstegi(yaricap: number | undefined): number | undefined {
+  if (yaricap === undefined) return VARSAYILAN_YARICAP_KM;
+  return yaricap === YARICAP_FARKETMEZ ? undefined : yaricap;
+}
+
 export function egitmenIstegi(
   d: EgitmenAramasi,
   ek: IstekEki = {}
@@ -387,12 +404,12 @@ export function egitmenIstegi(
    */
   const cevre =
     d.yakinimda && ek.konumum
-      ? { ...ek.konumum, radius_km: d.yaricap ?? VARSAYILAN_YARICAP_KM }
+      ? { ...ek.konumum, radius_km: yaricapIstegi(d.yaricap) }
       : yerinArananKonumu(d.konum.yer);
   if (cevre) {
     p.lat = cevre.lat;
     p.lng = cevre.lng;
-    p.radius_km = cevre.radius_km;
+    if (cevre.radius_km !== undefined) p.radius_km = cevre.radius_km;
   }
   return p;
 }
@@ -410,12 +427,12 @@ export function kutuphaneIstegi(
 
   const yakin = d.yakinimda && ek.konumum ? ek.konumum : null;
   const cevre = yakin
-    ? { ...yakin, radius_km: d.yaricap ?? VARSAYILAN_YARICAP_KM }
+    ? { ...yakin, radius_km: yaricapIstegi(d.yaricap) }
     : yerinArananKonumu(d.konum.yer);
   if (cevre) {
     p.lat = cevre.lat;
     p.lng = cevre.lng;
-    p.radius_km = cevre.radius_km;
+    if (cevre.radius_km !== undefined) p.radius_km = cevre.radius_km;
   }
   // Mesafe sıralaması KOORDİNATSIZ istenemez: sunucuya "mesafeye göre sırala"
   // deyip referans nokta vermemek sessiz bir sıralama kaybıdır.
@@ -428,4 +445,3 @@ export function kutuphaneIstegi(
 /** "Yakınımda" için varsayılan yarıçap (km). */
 /* 5 km (kullanıcı kararı, 16 Eyl 2026; eskiden 25). "Yakınımda" seçilince ve
    adreste yarıçap yoksa bu kullanılır. */
-export const VARSAYILAN_YARICAP_KM = 5;
