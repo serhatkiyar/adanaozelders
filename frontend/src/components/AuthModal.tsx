@@ -274,23 +274,21 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
           }}
           className="flex w-full items-center gap-3 rounded-xl px-1 py-2.5 text-left transition hover:bg-slate-50 active:scale-[0.99]"
         >
-          {/* Mezuniyet kepi: ortak ikon setindeki `listing` 20px'te boş bir
-              belge gibi okunuyordu ve "eğitmen" demiyordu. */}
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-900">
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* Eğitmen görseli (kullanıcı kararı, 16 Eyl 2026): kategori
+              şeridindeki "Eğitmenler" ile AYNI kaynak — giriş ekranındaki
+              satır, ana sayfadaki kategoriyle aynı yüzü taşır. 72px WebP,
+              36px kutuda 2x. Önceki mezuniyet kepi çizgi ikonu, resimli
+              kategori diliyle uyuşmuyordu. */}
+          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100">
+            <img
+              src="/icons/egitmen-misin.webp"
+              alt=""
               aria-hidden
-            >
-              <path d="M12 3.5 22 8.6l-10 5.1L2 8.6l10-5.1Z" />
-              <path d="M6.2 10.6v4.7c0 1.5 2.6 2.7 5.8 2.7s5.8-1.2 5.8-2.7v-4.7" />
-              <path d="M22 8.6v5.2" />
-            </svg>
+              width={36}
+              height={36}
+              decoding="async"
+              className="h-full w-full object-contain"
+            />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold text-slate-900">
