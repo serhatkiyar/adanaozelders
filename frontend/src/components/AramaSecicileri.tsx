@@ -362,7 +362,9 @@ export function YerSelect({
               /* İlçe satırında alt yazı YOK (kullanıcı kararı, 16 Eyl 2026):
                  her ilçenin altında "Adana" yazması bilgi değil gürültüydü.
                  Mahallede ilçe adı kalır — onu ayırt ettiren o. */
-              altEtiket={y.secim.tur === "ilce" ? undefined : y.altBaslik}
+              /* İlçe ve Merkez'de alt yazı yok (kullanıcı kararı, 16 Eyl
+                 2026); yalnız mahallede ilçe adı kalır. */
+              altEtiket={y.secim.tur === "mahalle" ? y.altBaslik : undefined}
               ikon={<PinSvg />}
               onClick={() => sec(y.secim)}
             />

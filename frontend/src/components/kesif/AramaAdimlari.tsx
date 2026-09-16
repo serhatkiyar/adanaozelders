@@ -456,9 +456,9 @@ export function AramaAdimlari({
         key={`${o.secim.tur}-${o.baslik}-${o.altBaslik}`}
         simge={<KonumSimgesi />}
         baslik={o.baslik}
-        /* İlçede alt başlık YOK: hepsinin altında aynı "Adana" yazıyordu.
-           Merkez'de var — hangi dört ilçeyi kapsadığını söylüyor. */
-        altBaslik={o.secim.tur === "ilce" ? undefined : o.altBaslik}
+        /* İlçe ve Merkez'de alt başlık YOK (kullanıcı kararı, 16 Eyl 2026);
+           yalnız mahallede ilçe adı kalır. */
+        altBaslik={o.secim.tur === "mahalle" ? o.altBaslik : undefined}
         onSec={() => {
           /* Semt seçmek "yakınımda"yı iptal eder: ikisi aynı anda anlamsız. */
           setYakinimda(false);
