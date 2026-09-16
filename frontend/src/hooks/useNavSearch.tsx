@@ -54,8 +54,7 @@ export function useNavSearch(active: CategoryKey = "egitmenler") {
           <CompactSearch
             active={active}
             placeholder={placeholder}
-            q={q}
-            yer={konumOzeti({ yer, ilce: district })}
+            parcalar={[konumOzeti({ yer, ilce: district }) ?? "", q]}
             onOpen={() => setOpen(true)}
           />
         </div>

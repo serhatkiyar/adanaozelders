@@ -14,12 +14,11 @@ import { getErrorMessage } from "@/lib/errors";
 import { TeachingMode, TutorSort } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
-import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { CompactSearch, DersArama } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { type DersSekli } from "@/components/AramaSecicileri";
-import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import { EGITMEN_ARAMA, egitmenIstegi } from "@/lib/aramaUrl";
+import { EGITMEN_ARAMA, dersSorgusu, egitmenIstegi } from "@/lib/aramaUrl";
 import { filtreliMi } from "@/lib/urlSemasi";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
 import { useKonumStore } from "@/store/konumStore";
@@ -27,7 +26,7 @@ import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
 import { egitmenHapBasligi } from "@/lib/aramaBasligi";
-import { konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
+import { ilceListesindenYer, konumOzeti, yerinIlceleri } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
 
@@ -82,13 +81,6 @@ export default function PublicMarketplace() {
   const yer = konum.yer;
   const limit = limitForPage(page, PER_PAGE);
 
-  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
-  /* "Tüm yerler" (null) ilçeyi de düşürür; eskiden `konum.ilce` korunup
-     seçim kutudan silinmiş görünürken adreste kalıyordu (16 Eyl 2026). */
-  const setYer = (v: YerSecimi | null) =>
-    ayarla({
-      konum: { yer: v?.tur === "mahalle" ? v : null, ilce: yerinIlceleri(v) },
-    });
   const setExam = (v: string) => ayarla({ sinav: v });
 
   // Sıralama ADRESTE (9 Eyl 2026). Yerel state'teyken paylaşılamıyor,
@@ -186,8 +178,33 @@ export default function PublicMarketplace() {
 
   // Geniş aramada arama butonuna basınca (q/district zaten canlı state'i
   // sürdüğü için) yalnızca geniş paneli kapat.
+  /* Taslak: geniş hap her AÇILIŞTA adresten yeniden çözülür — kullanıcı
+     hapı kapatıp çipten filtre değiştirse bile bir sonraki açılış güncel. */
+  const taslagiCoz = () => ({
+    ders: subjects[0] ?? "",
+    dersEtiket: subjects[0] ?? q,
+    sekil: sekil as DersSekli,
+    yer: ilceListesindenYer(yer, district),
+    yakinimda: degerler.yakinimda,
+  });
+  const [taslak, setTaslak] = useState(taslagiCoz);
+  const [oncekiAcik, setOncekiAcik] = useState(false);
+  if (searchOpen !== oncekiAcik) {
+    setOncekiAcik(searchOpen);
+    if (searchOpen) setTaslak(taslagiCoz());
+  }
+
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    ayarla({
+      ...dersSorgusu(taslak.ders, taslak.dersEtiket),
+      sekil: taslak.sekil ? [taslak.sekil] : [],
+      konum: {
+        yer: taslak.yer?.tur === "mahalle" ? taslak.yer : null,
+        ilce: yerinIlceleri(taslak.yer),
+      },
+      yakinimda: taslak.yakinimda,
+    });
     setSearchOpen(false);
   };
 
@@ -220,10 +237,9 @@ export default function PublicMarketplace() {
             /* Seçili ders de görünür (kullanıcı, 16 Eyl 2026: "Matematik
                seçiyorum, çubukta yazmıyor"): `q` yalnız serbest metindi,
                katalogdan seçilen `ders` hapa hiç gitmiyordu. */
-            /* Telefon başlığıyla AYNI iki satır: koyu yuva "Çukurova
-               bölgesindeki eğitmenler", açık yuva "Matematik • Yüz yüze". */
-            q={mobilHap.ozet}
-            yer={mobilHap.baslik}
+            /* Telefon başlığıyla aynı kaynaktan; masaüstünde "|" ile
+               ayrılmış parçalar: "Çukurova | Matematik | Yüz yüze". */
+            parcalar={mobilHap.parcalar}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -233,20 +249,27 @@ export default function PublicMarketplace() {
 
   /* ── Navbar altı ──
      Açık: ana sayfadaki büyük arama hapı. Kapalı: filtre çubuğu. */
+  /* GENİŞ ARAMA = ANA SAYFADAKİ HAP, ADRESTEN DOLU (kullanıcı kararı,
+     16 Eyl 2026: "tekrar çubuğa tıklayınca aramayı yaparkenki bilgiler
+     orada girili olmalı"). Eskiden burada ayrı bir `BigSearch` vardı (yer +
+     ders); ders şeklini ve Yakınımda'yı bilmiyor, seçilmiş dersi de
+     göstermiyordu. Taslak hap açıldığında adresten çözülür; Ara adrese
+     yazar. Telefonun adımlı yüzeyi (`MobilAramaAkisi`) aynı şeyi yapıyor. */
   const bigSearchRow = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      <BigSearch
-        q={q}
-        setQ={setQ}
-        district={district}
-        setDistrict={setDistrict}
+      <DersArama
+        ders={taslak.ders}
+        dersEtiket={taslak.dersEtiket}
+        onDersChange={(qDeger, etiket) =>
+          setTaslak((o) => ({ ...o, ders: qDeger, dersEtiket: etiket }))
+        }
+        sekil={taslak.sekil}
+        setSekil={(v) => setTaslak((o) => ({ ...o, sekil: v }))}
+        yer={taslak.yer}
+        setYer={(v) => setTaslak((o) => ({ ...o, yer: v }))}
+        yakinimda={taslak.yakinimda}
+        setYakinimda={(v) => setTaslak((o) => ({ ...o, yakinimda: v }))}
         onSubmit={submitSearch}
-        placeholder="Ders ekleyin"
-        yer={yer}
-        setYer={setYer}
-        solBaslik="Yer"
-        sagBaslik="Ders"
-        trending={TRENDING_SEARCHES}
       />
     </div>
   );

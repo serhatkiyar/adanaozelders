@@ -499,23 +499,23 @@ export function KutuphaneArama({
 export function CompactSearch({
   active,
   placeholder,
-  q,
-  yer,
+  parcalar,
   onOpen,
 }: {
   active: CategoryKey;
+  /** Hiç parça yokken görünen davet ("Aramaya başlayın"). */
   placeholder: string;
-  /** Aranan şey: seçili ders ya da serbest metin. Boşsa `placeholder`. */
-  q: string;
-  /** Konum özeti (`konumOzeti`): "Uzaktan" / "Yakınımda" / "Merkez" / ilçe /
-   *  mahalle. Null ise seçim yok. Hap ilçe dizisini KENDİSİ yorumlamaz —
-   *  Merkez'i "4 ilçe", Yakınımda'yı "Tüm ilçeler" diye basıyordu. */
-  yer: string | null;
+  /**
+   * Aramanın parçaları, soldan sağa, "|" ile ayrılır: masaüstünde
+   * "Çukurova | Matematik | Yüz yüze" (Airbnb: "Anywhere | Any week | Add
+   * guests"). Boş dizi → placeholder. Hap parçaları YORUMLAMAZ; sırayı ve
+   * metni `lib/aramaBasligi` verir, böylece telefon başlığıyla ayrışamaz.
+   */
+  parcalar: string[];
   onOpen: () => void;
 }) {
   const meta = categoryMeta(active);
-  const yerSecili = !!yer;
-  const districtLabel = yer ?? "Tüm ilçeler";
+  const dolu = parcalar.filter(Boolean);
 
   return (
     <button
@@ -524,10 +524,8 @@ export function CompactSearch({
       aria-label="Aramayı aç"
       className="flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white py-4 pl-4 pr-4 shadow-[0_1px_8px_rgba(15,23,42,0.10)] transition hover:shadow-md md:w-[460px] md:max-w-[82vw] md:justify-start md:py-1.5 md:pl-2.5 md:pr-1.5 "
     >
-      {/* TELEFONDA yalnız büyüteç. Burada eskiden seçili kategorinin resmi
-          (`meta.icon`) duruyordu; referans alınan Airbnb hapında öyle bir şey
-          YOK ve kullanıcı bunu itiraz olarak bildirdi. Resim masaüstünde
-          kalıyor — orada hap zaten geniş ve kategori bilgisini taşıyor. */}
+      {/* TELEFONDA yalnız büyüteç (referans Airbnb hapında kategori resmi
+          yok, kullanıcı itirazı). Masaüstünde kategori resmi kalır. */}
       <SearchIconSvg className="h-5 w-5 shrink-0 text-slate-500 md:hidden" />
       <img
         src={meta.icon}
@@ -535,35 +533,30 @@ export function CompactSearch({
         className="hidden h-7 w-7 shrink-0 object-contain md:block"
       />
 
-      {/* İlçe etiketi — TELEFONDA yalnız gerçekten bir yer seçiliyken.
-          "Tüm ilçeler" hiçbir şey söylemeyen bir varsayılandır ve 390px'te
-          kalan yerin üçte birini yiyip asıl arama yazısını kesiyordu
-          ("Ders, eğitmen ya da ko…"). Masaüstünde ölçü bol, orada duruyor. */}
-      <span
-        className={`${yerSecili ? "inline" : "hidden"} shrink-0 text-sm md:inline ${
-          yerSecili ? "font-semibold text-slate-800 " : "text-slate-500 "
-        }`}
-      >
-        {districtLabel}
-      </span>
+      {dolu.length === 0 ? (
+        <span className="min-w-0 truncate text-center text-[15px] font-semibold text-slate-800 md:flex-1 md:text-left md:text-sm md:font-normal md:text-slate-400">
+          {placeholder}
+        </span>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center justify-center gap-2 md:justify-start">
+          {dolu.map((parca, i) => (
+            <span key={`${i}:${parca}`} className="flex min-w-0 items-center gap-2">
+              {i > 0 && (
+                /* "|" ayraç — telefonda ilk parçadan sonrası gizli (hap dar). */
+                <span className="hidden h-5 w-px shrink-0 bg-slate-200 md:block" />
+              )}
+              <span
+                className={`min-w-0 truncate text-[15px] text-slate-800 md:text-sm ${
+                  i === 0 ? "font-semibold" : "hidden font-normal md:inline"
+                }`}
+              >
+                {parca}
+              </span>
+            </span>
+          ))}
+        </span>
+      )}
 
-      {/* Ayraç — etiketle birlikte görünür/gizlenir. */}
-      <div
-        className={`${yerSecili ? "block" : "hidden"} h-5 w-px shrink-0 bg-slate-200 md:block`}
-      />
-
-      {/* Arama yazısı — telefonda ortalı ve koyu (hapın tek içeriği o),
-          masaüstünde sola yaslı ve ikincil. */}
-      <span
-        className={`min-w-0 truncate text-center text-[15px] font-semibold text-slate-800 md:flex-1 md:text-left md:text-sm md:font-normal ${
-          q ? "md:text-slate-800 " : "md:text-slate-400 "
-        }`}
-      >
-        {q || placeholder}
-      </span>
-
-      {/* Turuncu gönder düğmesi TELEFONDA YOK: hapın kendisi zaten düğme,
-          içine ikinci bir düğme koymak hem yanıltıcı hem de referansta yok. */}
       <span className="ml-1 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-marka to-marka-hover text-marka-fg md:flex">
         <SearchIconSvg className="h-4 w-4" />
       </span>

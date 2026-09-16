@@ -288,8 +288,7 @@ export function KesifKabugu() {
           <CompactSearch
             active={kategori}
             placeholder="Aramaya başlayın"
-            q={hapMetni}
-            yer={hapYer}
+            parcalar={[hapYer ?? "", hapMetni]}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -307,8 +306,7 @@ export function KesifKabugu() {
       // Telefonda hap kategoriye göre değişen bir metin taşımaz: kategori zaten
       // hemen altındaki çip şeridinde seçili, hapın işi davet etmek.
       placeholder="Aramaya başlayın"
-      q={hapMetni}
-      yer={hapYer}
+      parcalar={[hapYer ?? "", hapMetni]}
       onOpen={() => setMobilAramaAcik(true)}
     />
   ) : undefined;
