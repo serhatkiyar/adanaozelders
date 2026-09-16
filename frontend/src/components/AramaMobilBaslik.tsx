@@ -36,8 +36,6 @@ export type FiltreCipi = {
   onClick: () => void;
 };
 
-export type SiralamaSecenegi = { value: string; kisa: string };
-
 /** Dokunma kabuğu — 44px, zeminsiz. */
 const KABUK = "flex h-11 shrink-0 snap-start items-center py-[5px]";
 
@@ -144,7 +142,6 @@ export function AramaMobilBaslik({
   onGeri,
   onFiltre,
   filtreSayisi,
-  siralama,
   cipler,
   filtreIkonu,
 }: {
@@ -158,13 +155,6 @@ export function AramaMobilBaslik({
   /** Filtre penceresindeki ETKİN filtre sayısı — düğmenin köşesinde rozet
    *  olur (Airbnb'deki gibi). 0 ise rozet çizilmez. */
   filtreSayisi: number;
-  siralama: {
-    deger: string;
-    secenekler: SiralamaSecenegi[];
-    onChange: (v: string) => void;
-    /** Varsayılan (nötr) değer — çip yalnız bundan farklıysa dolu çizilir. */
-    varsayilan: string;
-  };
   cipler: FiltreCipi[];
   filtreIkonu: ReactNode;
 }) {
@@ -228,7 +218,7 @@ export function AramaMobilBaslik({
       >
         <div className="min-h-0 overflow-hidden">
           <div className="pt-2">
-            <FiltreSeridi siralama={siralama} cipler={cipler} />
+            <FiltreSeridi cipler={cipler} />
           </div>
         </div>
       </div>
@@ -236,55 +226,15 @@ export function AramaMobilBaslik({
   );
 }
 
-function FiltreSeridi({
-  siralama,
-  cipler,
-}: {
-  siralama: {
-    deger: string;
-    secenekler: SiralamaSecenegi[];
-    onChange: (v: string) => void;
-    varsayilan: string;
-  };
-  cipler: FiltreCipi[];
-}) {
-  const siralamaAktif = siralama.deger !== siralama.varsayilan;
+function FiltreSeridi({ cipler }: { cipler: FiltreCipi[] }) {
 
   return (
     <div
       className="arama-filtre-serit flex snap-x items-center gap-2 overflow-x-auto"
       style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as CSSProperties}
     >
-      {/* GÖRÜNEN çip bir `span`, DOKUNULAN öğe onun üstüne serilmiş şeffaf
-          `select`. Doğrudan `select`i çip gibi biçimlendirmek ikisini
-          birbirine kilitliyordu: çipi 34px'e inceltince dokunma hedefi de
-          34px'e düşüyor ve 44px eşiği kırılıyordu. */}
-      <span className={`relative ${KABUK}`}>
-        <span aria-hidden className={`${cipSinifi(siralamaAktif)} pr-8`}>
-          {siralama.secenekler.find((o) => o.value === siralama.deger)?.kisa}
-        </span>
-        <span
-          aria-hidden
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-600"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </span>
-        <select
-          value={siralama.deger}
-          aria-label="Sıralama"
-          onChange={(e) => siralama.onChange(e.target.value)}
-          className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-full opacity-0 outline-none"
-        >
-          {siralama.secenekler.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.kisa}
-            </option>
-          ))}
-        </select>
-      </span>
-
+      {/* SIRALAMA ÇİPİ YOK (kullanıcı kararı, 16 Eyl 2026): şeritte yalnız
+          uygulanan filtreler. */}
       {cipler.map((c) => (
         <button
           key={c.id}

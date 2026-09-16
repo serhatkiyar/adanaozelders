@@ -11,7 +11,7 @@ import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
-import { TeachingMode, TutorSort } from "@/types";
+import { TeachingMode } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
@@ -29,12 +29,6 @@ import { egitmenHapBasligi } from "@/lib/aramaBasligi";
 import { ilceListesindenYer, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
 /* ─── options ─────────────────────────────────────────── */
-
-const SORT_OPTIONS: { value: TutorSort; label: string; kisa: string }[] = [
-  { value: TutorSort.RELEVANCE, label: "Sıralama: Önerilen", kisa: "Önerilen" },
-  { value: TutorSort.RATING_DESC, label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
-  { value: TutorSort.PRICE_ASC, label: "Sıralama: En Düşük Fiyat", kisa: "En düşük fiyat" },
-];
 
 /* ─── icon helpers ─────────────────────────────────────── */
 
@@ -85,10 +79,6 @@ export default function PublicMarketplace() {
 
   // Sıralama ADRESTE (9 Eyl 2026). Yerel state'teyken paylaşılamıyor,
   // yenilemede sıfırlanıyor ve geri tuşu onu geri almıyordu — incelenen yedi
-  // platformun yedisinde de sıralama adreste.
-  const sort = degerler.sirala || TutorSort.RELEVANCE;
-  const setSort = (v: TutorSort) =>
-    ayarla({ sirala: v === TutorSort.RELEVANCE ? "" : v });
   const [showFilters, setShowFilters] = useState(false);
   // Koordinat adrese YAZILMAZ; yalnız istekte kullanılır.
   const konumum = useKonumStore((s) => s.konum);
@@ -342,27 +332,9 @@ export default function PublicMarketplace() {
         )}
       </button>
 
+      {/* SIRALAMA YOK (kullanıcı kararı, 16 Eyl 2026): şerit "Filtreler |
+          uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
-
-      {/* Sıralama açılır menüsü */}
-      <div className="relative shrink-0">
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as TutorSort)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
-            sort !== TutorSort.RELEVANCE
-              ? "border-slate-900 bg-white text-slate-900 "
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
-          }`}
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${sort !== TutorSort.RELEVANCE ? 'text-slate-900 ' : 'text-slate-400 '}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </div>
-      </div>
 
       {/* Aktif sınav chip'i */}
       {exam && (
@@ -420,12 +392,6 @@ export default function PublicMarketplace() {
       onGeri={() => navigate(-1)}
       onFiltre={() => setShowFilters(true)}
       filtreSayisi={mobilFiltreSayisi}
-      siralama={{
-        deger: sort,
-        secenekler: SORT_OPTIONS.map((o) => ({ value: o.value, kisa: o.kisa })),
-        onChange: (v) => setSort(v as TutorSort),
-        varsayilan: TutorSort.RELEVANCE,
-      }}
       cipler={mobilCipler}
       filtreIkonu={<FilterIconSvg />}
     />

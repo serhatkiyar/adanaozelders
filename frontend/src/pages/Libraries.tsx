@@ -28,19 +28,7 @@ import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
 
 type ViewMode = "list" | "map";
-type LibrarySort = "rating" | "distance" | "";
 
-/* `label` masaüstü açılır menüsü için ("Sıralama:" öneki menü kapalıyken ne
-   seçildiğini söyler), `kisa` telefon şeridindeki çip için — orada yer dar ve
-   önek her çipte tekrar ederdi. Eğitmen ekranındaki ayrımın aynısı. */
-const SORT_OPTIONS: { value: LibrarySort; label: string; kisa: string }[] = [
-  { value: "", label: "Sıralama: Önerilen", kisa: "Önerilen" },
-  /* "Sıralama:" öneki menü KAPALIYKEN ne seçildiğini söyler — eğitmen
-     ekranındaki kuralın aynısı. Emoji YOK: her platformda başka çiziliyor ve
-     kendi rengini getiriyor. */
-  { value: "rating", label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
-  { value: "distance", label: "Sıralama: Yakınımda", kisa: "Yakınımda" },
-];
 
 const FilterIconSvg = () => (
   /* Çizgi "ayar sürgüleri" (Airbnb'deki ikon dili): dolu huni, dolu siyah
@@ -111,7 +99,6 @@ export default function Libraries() {
    * URL'de, ötekisi değil.
    */
   const amenities = degerler.olanaklar;
-  const sort = degerler.sirala;
 
   /*
    * KOORDİNAT ADRESE YAZILMAZ. Adres yalnız niyeti taşır
@@ -133,10 +120,7 @@ export default function Libraries() {
     ayarla({ yakinimda: false, yaricap: undefined, sirala: "" }, { replace: true })
   );
 
-  const setSort = (value: LibrarySort) => ayarla({ sirala: value });
 
-  // "Mesafe" sıralaması konumu `useYakinimdaKonum` üzerinden ister.
-  const handleSortChange = (value: LibrarySort) => setSort(value);
 
   const toggleAmenity = (a: string) =>
     ayarla({
@@ -213,42 +197,9 @@ export default function Libraries() {
         )}
       </button>
 
+      {/* SIRALAMA YOK (kullanıcı kararı, 16 Eyl 2026): şerit "Filtreler |
+          uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
-
-      {/* Sıralama AÇILIR MENÜ — eğitmen sonuç ekranıyla birebir aynı bileşen
-          dili (11 Eyl 2026). Burada üç ayrı çip vardı: aynı şeridin içinde
-          "Filtreler" bir düğme, sıralama üç çip, aktif filtreler yine çip
-          oluyordu — üç ayrı anlam tek bir görsel dille yazılınca hangisinin ne
-          yaptığı okunmuyordu. Sıralama tek bir yerden seçilen TEK değerdir,
-          açılır menü tam olarak bunu söyler ve şeridin genişliğini de üç
-          çipten tek kutuya indirir. */}
-      <div className="relative shrink-0">
-        <select
-          value={sort}
-          onChange={(e) => handleSortChange(e.target.value as LibrarySort)}
-          aria-label="Sıralama"
-          className={`min-h-[44px] appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 md:min-h-0 ${
-            sort
-              ? "border-slate-900 bg-white text-slate-900 "
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
-          }`}
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value || "default"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <div
-          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
-            sort ? "text-slate-900 " : "text-slate-400 "
-          }`}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </div>
-      </div>
 
       {/* İLÇE ÇİPİ YOK (16 Eyl 2026): konum hapta yazıyor ("Merkez"); Merkez
           seçimi burada dört ayrı ilçe çipine açılıyordu. Eğitmen şeridiyle
@@ -305,12 +256,6 @@ export default function Libraries() {
         onGeri={geriDon}
         onFiltre={() => setShowFilters(true)}
         filtreSayisi={amenities.length}
-        siralama={{
-          deger: sort,
-          secenekler: SORT_OPTIONS.map((o) => ({ value: o.value, kisa: o.kisa })),
-          onChange: (v) => handleSortChange(v as LibrarySort),
-          varsayilan: "",
-        }}
         cipler={mobilCipler}
         filtreIkonu={<FilterIconSvg />}
       />
