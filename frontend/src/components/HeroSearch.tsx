@@ -11,6 +11,7 @@ import { TeachingMode } from "@/types";
 import { categoryMeta, type CategoryKey } from "@/components/CategoryBar";
 import { dersAra } from "@/lib/dersArama";
 import { useSubjects } from "@/hooks/useSubjects";
+import { yakinimdaSecildi } from "@/store/konumStore";
 
 /* ─── Alan başlığı deseni (Airbnb, kullanıcı kararı 8 Eyl) ──────────────
    Alan adı önce PLACEHOLDER'ın kendisiydi (`Ders "Matematik"`) ve kod bunu
@@ -218,6 +219,7 @@ export function DersArama({
                     ? () => {
                         setYer(null);
                         setYakinimda(true);
+                        yakinimdaSecildi(() => setYakinimda(false));
                       }
                     : undefined
                 }
@@ -336,6 +338,7 @@ export function KutuphaneArama({
                 ? () => {
                     setYer(null);
                     setYakinimda(true);
+                    yakinimdaSecildi(() => setYakinimda(false));
                   }
                 : undefined
             }

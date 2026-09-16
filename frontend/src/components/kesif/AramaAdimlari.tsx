@@ -7,6 +7,7 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { dersAra } from "@/lib/dersArama";
 import { LIBRARY_TRENDING_SEARCHES, TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
+import { yakinimdaSecildi } from "@/store/konumStore";
 import { TeachingMode } from "@/types";
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -445,6 +446,8 @@ export function AramaAdimlari({
         setYakinimda(true);
         setYer(null);
         setYerMetni("");
+        // İzin sorusu seçim anında; reddedilirse seçim düşer.
+        yakinimdaSecildi(() => setYakinimda(false));
         ilerle({ yerDolu: true });
       }}
     />
