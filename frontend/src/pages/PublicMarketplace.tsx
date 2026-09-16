@@ -82,7 +82,6 @@ export default function PublicMarketplace() {
   const yer = konum.yer;
   const limit = limitForPage(page, PER_PAGE);
 
-  const setSubjects = (v: string[]) => ayarla({ ders: v });
   const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
   /* "Tüm yerler" (null) ilçeyi de düşürür; eskiden `konum.ilce` korunup
      seçim kutudan silinmiş görünürken adreste kalıyordu (16 Eyl 2026). */
@@ -124,8 +123,6 @@ export default function PublicMarketplace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ]);
 
-  const removeSubject = (s: string) =>
-    setSubjects(subjects.filter((x) => x !== s));
 
   /*
    * Şema değeri → API isteği: `Marketplace` ile AYNI fonksiyon.
@@ -197,6 +194,20 @@ export default function PublicMarketplace() {
   /* ── Navbar ortası ──
      Kapalı: kompakt arama pill'i (tıklayınca geniş hali açar).
      Açık:  ana sayfadaki kategori çubuğu (sekmeler başka sayfaya götürür). */
+  /* Hapın iki satırı (telefonda başlık, masaüstünde daralmış hap) `lib/aramaBasligi`den: konum seçiliyse başlık konumu
+     söyler ("Çukurova bölgesindeki eğitmenler"), alt satır ders + şekil. */
+  const mobilHap = egitmenHapBasligi({
+    q,
+    dersler: subjects,
+    konum: konumOzeti({
+      yer,
+      ilce: district,
+      yakinimda: degerler.yakinimda,
+      uzaktan: sekil === TeachingMode.ONLINE,
+    }),
+    sekil: sekil,
+  });
+
   const navCenter = (
     <div key={searchOpen ? "cats" : "compact"} className="w-full animate-in fade-in duration-300">
       {searchOpen ? (
@@ -209,20 +220,10 @@ export default function PublicMarketplace() {
             /* Seçili ders de görünür (kullanıcı, 16 Eyl 2026: "Matematik
                seçiyorum, çubukta yazmıyor"): `q` yalnız serbest metindi,
                katalogdan seçilen `ders` hapa hiç gitmiyordu. */
-            q={
-              q ||
-              (subjects.length === 1
-                ? subjects[0]
-                : subjects.length
-                  ? `${subjects.length} ders`
-                  : "")
-            }
-            yer={konumOzeti({
-              yer,
-              ilce: district,
-              yakinimda: degerler.yakinimda,
-              uzaktan: sekil === TeachingMode.ONLINE,
-            })}
+            /* Telefon başlığıyla AYNI iki satır: koyu yuva "Çukurova
+               bölgesindeki eğitmenler", açık yuva "Matematik • Yüz yüze". */
+            q={mobilHap.ozet}
+            yer={mobilHap.baslik}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -302,17 +303,10 @@ export default function PublicMarketplace() {
         </button>
       )}
 
-      {/* Aktif ders chip'leri */}
-      {subjects.map((s) => (
-        <button
-          key={s}
-          onClick={() => removeSubject(s)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
-        >
-          {s}
-          <span aria-hidden className="ml-0.5 text-xs">✕</span>
-        </button>
-      ))}
+      {/* DERS ÇİPİ ve DERS ŞEKLİ ŞERİTTE YOK (kullanıcı kararı, 16 Eyl 2026):
+          ikisi de üstteki hapta yazıyor ("Çukurova bölgesindeki eğitmenler /
+          Matematik • Yüz yüze"); şeritte tekrar gürültüydü. Değiştirmek için
+          hap açılır. Sınav çipi kalıyor — hap onu taşımıyor. */}
       </div>
     </div>
   );
@@ -331,19 +325,6 @@ export default function PublicMarketplace() {
      "Herhangi hafta • Misafir ekleyin" gibi): yer yoksa "Tüm Adana", ders
      şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
      neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
-  /* Hapın iki satırı `lib/aramaBasligi`den: konum seçiliyse başlık konumu
-     söyler ("Çukurova bölgesindeki eğitmenler"), alt satır ders + şekil. */
-  const mobilHap = egitmenHapBasligi({
-    q,
-    dersler: subjects,
-    konum: konumOzeti({
-      yer,
-      ilce: district,
-      yakinimda: degerler.yakinimda,
-      uzaktan: sekil === TeachingMode.ONLINE,
-    }),
-    sekil: sekil,
-  });
 
   /* Çipler UYDURMA DEĞİL: hepsi zaten adreste yaşayan ve arama isteğine giden
      filtrelerdir. Ders şekli TEK seçimdir — aynı çipe tekrar dokunmak filtreyi

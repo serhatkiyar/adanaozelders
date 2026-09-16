@@ -6,9 +6,10 @@ import { TeachingMode } from "@/types";
  * ekleyin").
  *
  * Kural:
- *   - Konum seçiliyse başlık konumu söyler: "Çukurova bölgesindeki eğitmenler",
- *     "Merkez bölgesindeki eğitmenler", "Yakınımdaki eğitmenler". Alt satır
- *     dersi ve ders şeklini taşır; boş parça davet olarak yazılır.
+ *   - Konum seçiliyse başlık YALNIZ konumun adıdır: "Çukurova", "Merkez",
+ *     "Yakınımda" ("bölgesindeki eğitmenler" eki kaldırıldı — kullanıcı
+ *     kararı, 16 Eyl 2026). Alt satır dersi ve ders şeklini taşır; boş parça
+ *     davet olarak yazılır.
  *   - Konum yoksa başlık dersi söyler ("Matematik eğitmenleri"), alt satır
  *     "Tüm Adana • Uzaktan" gibi.
  *
@@ -43,11 +44,7 @@ export function egitmenHapBasligi(a: {
   const yerKonumu = a.konum && a.konum !== "Uzaktan" ? a.konum : null;
 
   if (yerKonumu) {
-    const baslik =
-      yerKonumu === "Yakınımda"
-        ? "Yakınımdaki eğitmenler"
-        : `${yerKonumu} bölgesindeki eğitmenler`;
-    return { baslik, ozet: `${ders || "Ders ekleyin"}  •  ${sekilAdi}` };
+    return { baslik: yerKonumu, ozet: `${ders || "Ders ekleyin"}  •  ${sekilAdi}` };
   }
   const baslik = ders
     ? a.dersler.length > 1 && !a.q
@@ -62,11 +59,7 @@ export function kutuphaneHapBasligi(a: {
   konum: string | null;
   olanakSayisi: number;
 }): { baslik: string; ozet: string } {
-  const baslik = a.konum
-    ? a.konum === "Yakınımda"
-      ? "Yakınımdaki kütüphaneler"
-      : `${a.konum} bölgesindeki kütüphaneler`
-    : "Tüm kütüphaneler";
+  const baslik = a.konum ?? "Tüm kütüphaneler";
   const olanak = a.olanakSayisi ? `${a.olanakSayisi} olanak` : "Olanak ekleyin";
   return { baslik, ozet: `${a.konum ? "Adana" : "Tüm Adana"}  •  ${olanak}` };
 }
