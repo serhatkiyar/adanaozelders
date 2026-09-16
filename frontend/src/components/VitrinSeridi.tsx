@@ -36,16 +36,18 @@ import type { TutorSearchOut } from "@/types";
 const VITRIN_KART =
   "shrink-0 snap-start w-[calc((100%-48px)/2)] min-[744px]:w-[calc((100%-40px)/3)] min-[950px]:w-[calc((100%-60px)/4)] min-[1130px]:w-[calc((100%-80px)/5)] min-[1440px]:w-[calc((100%-100px)/6)] min-[1640px]:w-[calc((100%-120px)/7)]";
 /**
- * Rayın kabı = üst barın kabı (hiza). Üst bar `max-w-screen-2xl px-4 md:px-8`
- * (1536px, oluk 16/32). Vitrin ise sayfa gövdesinin İÇİNDE ve gövdenin kendi
- * oluğu var (`main`: px-4, sm:px-6). O oluk telafi edilir:
- *   < 640   gövde 16 + kap 0  = 16 (üst bar 16)
- *   640–767 gövde 24, üst bar 16 → kap 8px dışarı taşar (-mx-2)
- *   ≥ 768   gövde 24 + kap 8  = 32 (üst bar 32); azami genişlik 1536−48
- * Ölçüldü (16 Eyl 2026): önceki kap barla 24px hizasızdı (kullanıcı itirazı).
+ * Rayın kabı = üst barın kabı (hiza), İKİ KATMAN:
+ *   dış  `VITRIN_KAP`: sayfa gövdesinin oluğunu (main: px-4 / sm:px-6) negatif
+ *        kenar boşluğuyla İPTAL eder — genişliği `auto`, yani gövde + oluk.
+ *   iç   `VITRIN_IC`:  üst barla birebir aynı kap (`max-w-screen-2xl px-4
+ *        md:px-8`, bkz. PublicNavbar/DashboardHeader).
+ * Böylece kartların sol kenarı logo, sağ kenarı "Giriş Yap" hizasında biter.
+ * Tek katmanlı `w-[calc(100%+16px)]` + `mx-auto` denemesi Firefox'ta hizayı
+ * tutturamadı (kullanıcı görüntüsü, 16 Eyl 2026); auto genişlikli negatif
+ * kenar boşluğu her tarayıcıda aynı hesaplanır.
  */
-const VITRIN_KAP =
-  "mx-auto w-full max-w-[1488px] px-0 sm:-mx-2 sm:w-[calc(100%+16px)] md:mx-auto md:w-full md:px-2";
+const VITRIN_KAP = "-mx-4 sm:-mx-6";
+const VITRIN_IC = "mx-auto w-full max-w-screen-2xl px-4 md:px-8";
 /** Rayın boşluk/snap sınıfları — kart formülüyle AYNI sayılar. */
 const VITRIN_RAY = "snap-x snap-mandatory gap-3 pb-2 min-[744px]:snap-none min-[744px]:gap-5";
 
@@ -157,6 +159,7 @@ export function FeaturedTutorRow() {
 
   return (
     <section aria-label="Reklam" className={VITRIN_KAP}>
+      <div className={VITRIN_IC}>
       <HScroll
         className={VITRIN_RAY}
         etiket="Reklam"
@@ -181,6 +184,7 @@ export function FeaturedTutorRow() {
         ))}
       </HScroll>
       <div className="mt-8 h-px w-full bg-slate-200" />
+    </div>
     </section>
   );
 }
@@ -204,6 +208,7 @@ export function TutorRow({
 
   return (
     <section className={VITRIN_KAP}>
+      <div className={VITRIN_IC}>
       {isLoading ? (
         <>
           <div className="mb-4">
@@ -235,6 +240,7 @@ export function TutorRow({
           </div>
         </HScroll>
       )}
+    </div>
     </section>
   );
 }
@@ -256,6 +262,7 @@ export function LibraryRow({
 
   return (
     <section className={VITRIN_KAP}>
+      <div className={VITRIN_IC}>
       {isLoading ? (
         <>
           <div className="mb-4">
@@ -289,6 +296,7 @@ export function LibraryRow({
           </div>
         </HScroll>
       )}
+    </div>
     </section>
   );
 }
