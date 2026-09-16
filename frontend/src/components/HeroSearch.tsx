@@ -545,9 +545,12 @@ export function CompactSearch({
                 /* "|" ayraç — telefonda ilk parçadan sonrası gizli (hap dar). */
                 <span className="hidden h-5 w-px shrink-0 bg-slate-200 md:block" />
               )}
+              {/* HEPSİ AYNI AĞIRLIKTA (kullanıcı kararı, 16 Eyl 2026): ilk parça
+                  kalın, ötekiler inceyken hap "bir ince bir kalın" okunuyordu.
+                  Telefonda ilk parçadan sonrası gizli (hap dar). */}
               <span
-                className={`min-w-0 truncate text-[15px] text-slate-800 md:text-sm ${
-                  i === 0 ? "font-semibold" : "hidden font-normal md:inline"
+                className={`min-w-0 truncate text-[15px] font-semibold text-slate-800 md:text-sm ${
+                  i === 0 ? "" : "hidden md:inline"
                 }`}
               >
                 {parca}
