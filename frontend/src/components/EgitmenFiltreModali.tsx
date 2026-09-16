@@ -48,6 +48,10 @@ import { Gender } from "@/types";
    16 Eyl 2026): Tümü | Kadın | Erkek. "" = filtre yok. Faset sayısı etikete
    eklenir ki seçim yapılmadan kaç eğitmen olduğu görülsün. */
 type CinsiyetSecimi = Gender.MALE | Gender.FEMALE | "";
+const MESAFE_SECENEKLERI: { value: string; label: string }[] = [
+  { value: "", label: "Farketmez" },
+  ...[1, 3, 5, 10, 15, 25].map((km) => ({ value: String(km), label: `${km} km` })),
+];
 const GENDER_OPTIONS: { value: CinsiyetSecimi; label: string }[] = [
   { value: "", label: "Tümü" },
   { value: Gender.FEMALE, label: "Kadın" },
@@ -152,41 +156,27 @@ export function EgitmenFiltreModali({
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto p-6">
-          {/* Mesafe */}
+          {/* Mesafe — yatay sabit seçenekler (kullanıcı kararı, 16 Eyl 2026):
+              Farketmez | 1 | 3 | 5 | 10 | 15 | 25 km. Açılır menü yerine
+              cinsiyetle aynı bölmeli seçici. "" = filtre yok. */}
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
-            <div className="relative">
-              <select
-                aria-label="Mesafe"
-                value={yakinimda ? radiusKm : ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val) {
-                    unut();
-                    ayarla({ yakinimda: false, yaricap: undefined });
-                    return;
-                  }
-                  // Niyet ADRESTE, koordinat yalnız bellekte. İzin
-                  // verilmezse niyet geri alınır, yoksa adreste hiçbir şey
-                  // yapmayan bir filtre asılı kalırdı.
-                  ayarla({ yakinimda: true, yaricap: Number(val) });
-                  if (!konum) iste(() => ayarla({ yakinimda: false, yaricap: undefined }));
-                }}
-                className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-              >
-                <option value="">Farketmez (Her Yer)</option>
-                <option value="5">En fazla 5 km</option>
-                <option value="10">En fazla 10 km</option>
-                <option value="25">En fazla 25 km</option>
-                <option value="50">En fazla 50 km</option>
-                <option value="100">En fazla 100 km</option>
-              </select>
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </div>
+            <SegmentedControl<string>
+              options={MESAFE_SECENEKLERI}
+              value={yakinimda ? String(radiusKm) : ""}
+              onChange={(val) => {
+                if (!val) {
+                  unut();
+                  ayarla({ yakinimda: false, yaricap: undefined });
+                  return;
+                }
+                // Niyet ADRESTE, koordinat yalnız bellekte. İzin verilmezse
+                // niyet geri alınır, yoksa adreste hiçbir şey yapmayan bir
+                // filtre asılı kalırdı.
+                ayarla({ yakinimda: true, yaricap: Number(val) });
+                if (!konum) iste(() => ayarla({ yakinimda: false, yaricap: undefined }));
+              }}
+            />
             {yukleniyor && (
               <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>
             )}

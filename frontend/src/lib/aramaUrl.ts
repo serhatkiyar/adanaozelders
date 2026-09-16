@@ -426,4 +426,6 @@ export function kutuphaneIstegi(
 }
 
 /** "Yakınımda" için varsayılan yarıçap (km). */
-export const VARSAYILAN_YARICAP_KM = 25;
+/* 5 km (kullanıcı kararı, 16 Eyl 2026; eskiden 25). "Yakınımda" seçilince ve
+   adreste yarıçap yoksa bu kullanılır. */
+export const VARSAYILAN_YARICAP_KM = 5;
