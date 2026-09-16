@@ -357,6 +357,7 @@ const KAPI_KAPSAMI = [
   "src/components/HScroll.tsx",
   "src/components/ImageCropModal.tsx",
   "src/components/LibraryBookmarkButton.tsx",
+  "src/components/SiteFooter.tsx",
   "src/components/LibraryMediaManager.tsx",
   "src/components/LibraryPayoutForm.tsx",
   "src/components/MapPicker.tsx",
@@ -649,6 +650,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/ExamSessionsManager.tsx": "kosullu",
   "src/components/HScroll.tsx": "kosullu",
   "src/components/LibraryBookmarkButton.tsx": "sunum",
+  // Ortak alt bilgi: yalnız bağlantı ve "Başa dön" (etiketli PlainButton).
+  "src/components/SiteFooter.tsx": "kabuk",
   "src/components/LibraryMediaManager.tsx": "kosullu",
   // Alt sekme çubuğu yalnız `NavLink`/`Link` basar; hesap penceresi de
   // bağlantılardan oluşur ve durumu URL'de yaşar (`?modal=hesap`). Form

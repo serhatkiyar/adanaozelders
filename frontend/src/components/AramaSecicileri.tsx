@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SecenekSatiri } from "@/components/ui/SecenekSatiri";
 
 import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
 import { TeachingMode } from "@/types";
@@ -53,29 +54,38 @@ export function sekliCoz(ham: string | null): DersSekli {
   return ham === TeachingMode.ONLINE || ham === TeachingMode.IN_PERSON ? ham : "";
 }
 
+/* Telefonla AYNI liste (kullanıcı kararı, 16 Eyl 2026): önce Yüz yüze, sonra
+   Uzaktan; açıklama satırı yok. "Fark etmez" RAFTA — seçenek olarak
+   çizilmez; boş değer adreste geçerli kalır ve `SEKIL_ADI`de durur. */
 const SEKIL_SATIRLARI: { deger: DersSekli; aciklama?: string }[] = [
-  { deger: "", aciklama: "Uzaktan da olur, yüz yüze de" },
-  { deger: TeachingMode.ONLINE, aciklama: "Eğitmen nerede olursa olsun" },
-  { deger: TeachingMode.IN_PERSON, aciklama: "Nerede olacağını sonra seçersin" },
+  { deger: TeachingMode.IN_PERSON },
+  { deger: TeachingMode.ONLINE },
 ];
 
 const kucult = (s: string) => s.toLocaleLowerCase("tr-TR").trim();
 
+/* Satır simgesi: 24px siyah çizgi ikon, ölçü `ui/SecenekSatiri`nin kutusundan. */
 const PinSvg = () => (
-  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+  <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
   </svg>
 );
 
-const EkranSvg = () => (
-  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18v11H3zM8 20h8m-4-4v4" />
-  </svg>
+/* Ders şekli satırında TELEFONLA AYNI FOTOĞRAF (kullanıcı kararı, 16 Eyl
+   2026): `/icons/ders-sekli/*.webp`, 40px yuvarlak kare. Çizgi ikon (ekran /
+   iğne) telefondaki adımla ayrışıyordu. */
+const SekilSvg = ({ deger }: { deger: DersSekli }) => (
+  <img
+    src={`/icons/ders-sekli/${deger === TeachingMode.ONLINE ? "uzaktan" : "yuzyuze"}.webp`}
+    alt=""
+    aria-hidden
+    width={40}
+    height={40}
+    decoding="async"
+    className="h-full w-full object-cover"
+  />
 );
-
-const SekilSvg = ({ deger }: { deger: DersSekli }) =>
-  deger === TeachingMode.ONLINE ? <EkranSvg /> : <PinSvg />;
 
 /** Panelin ortak kabuğu — iki seçici de AYNI görünümü paylaşır. */
 function Panel({
@@ -88,14 +98,16 @@ function Panel({
   return (
     <div
       style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }}
-      className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 "
+      className="z-[90] max-h-[min(360px,50vh)] overflow-y-auto rounded-2xl bg-white px-2 py-2 shadow-xl ring-1 ring-slate-100 "
     >
       {children}
     </div>
   );
 }
 
-/** Ders önerileriyle aynı satır görünümü: ikon + etiket, tıkla-seç-kapan.
+/** Seçici satırı = sitenin TEK seçenek satırı (`ui/SecenekSatiri`); ölçü
+ *  orada. Bu sarmalayıcı yalnız ad çevirir (`aramaHapiIkizligi` nöbetçisi
+ *  dosyada tek bir `Satir` tanımı sayar).
  *  `altEtiket` mahalle satırlarında ilçeyi gösterir — Adana'da aynı mahalle
  *  adı birden fazla ilçede var, kırılım olmadan hangisi olduğu anlaşılmaz. */
 function Satir({
@@ -112,34 +124,13 @@ function Satir({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onMouseDown={(e) => e.preventDefault()}
+    <SecenekSatiri
+      simge={ikon}
+      baslik={etiket}
+      altBaslik={altEtiket}
+      secili={secili}
       onClick={onClick}
-      className="flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 "
-    >
-      <span className="shrink-0 text-slate-400">{ikon}</span>
-      <span className="min-w-0 flex-1">
-        <span className={`block truncate ${secili ? "font-semibold text-slate-900" : ""}`}>
-          {etiket}
-        </span>
-        {altEtiket && (
-          <span className="block truncate text-xs text-slate-400">{altEtiket}</span>
-        )}
-      </span>
-      {secili && (
-        <svg
-          className="h-4 w-4 shrink-0 text-marka-metin"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.5}
-          aria-hidden
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      )}
-    </button>
+    />
   );
 }
 
@@ -240,7 +231,9 @@ export function SekilSelect({
         onFocus={ac}
         onBlur={() => setOpen(false)}
         id={id}
-        placeholder={SEKIL_ADI[value]}
+        /* Boşken davet ("Seçin"), telefondaki kapalı satırla aynı; "Fark
+           etmez" artık bir seçenek değil, yazılırsa seçilebilir sanılırdı. */
+        placeholder={value ? SEKIL_ADI[value] : "Seçin"}
         aria-label={id ? undefined : "Ders şekli"}
         className={`${triggerClassName} ${
           value
@@ -280,7 +273,10 @@ export function YerSelect({
   triggerClassName = "",
   hizaRef,
   id,
-  placeholder = "Hangi semtte?",
+  // Telefondaki yer adımıyla aynı metin.
+  placeholder = "İlçe seçin",
+  yakinimda = false,
+  onYakinimda,
 }: {
   value: YerSecimi | null;
   onChange: (next: YerSecimi | null) => void;
@@ -288,6 +284,16 @@ export function YerSelect({
   id?: string;
   hizaRef?: React.RefObject<HTMLElement>;
   placeholder?: string;
+  /** "Yakınımda" seçili mi — kutuda o yazar, ilçe seçimi yok sayılır. */
+  yakinimda?: boolean;
+  /**
+   * "Yakınımda" satırı YALNIZ bu verilince çizilir (kullanıcı sorusu, 16 Eyl
+   * 2026: "masaüstünde neden yakındakileri bulma yok"). Telefonun adımlı
+   * yüzeyiyle aynı satır: ilk sırada, kendi görseliyle. Seçilince çağıran
+   * konum niyetini adrese yazar; koordinatı sonuç sayfası ister
+   * (`useYakinimdaKonum`).
+   */
+  onYakinimda?: () => void;
 }) {
   const { open, setOpen, text, setText, pos, triggerRef, ac, kapat } = useSecici(hizaRef);
 
@@ -297,9 +303,11 @@ export function YerSelect({
   };
 
   const n = kucult(text);
+  /* "Tüm yerler" satırı YOK (kullanıcı kararı, 16 Eyl 2026): listenin ilk
+     satırı "Merkez" (`yerAra` üretir). Seçimi geri almanın yolu başka bir
+     yer seçmek ya da sonuç ekranındaki çipi kaldırmak. */
   const yerler = yerAra(text);
-  // "Tüm yerler" satırı seçimi TEMİZLER; olmasaydı seçim geri alınamazdı.
-  const tumuGoster = !n || kucult("Tüm yerler").includes(n);
+  const yakinimdaGoster = !!onYakinimda && (!n || kucult("Yakınımda").includes(n));
 
   return (
     <>
@@ -314,10 +322,10 @@ export function YerSelect({
         onFocus={ac}
         onBlur={() => setOpen(false)}
         id={id}
-        placeholder={value ? yerEtiketi(value) : placeholder}
+        placeholder={yakinimda ? "Yakınımda" : value ? yerEtiketi(value) : placeholder}
         aria-label={id ? undefined : "Yer"}
         className={`${triggerClassName} ${
-          value
+          value || yakinimda
             ? "placeholder:font-semibold placeholder:text-slate-700 "
             : "placeholder:text-slate-400 "
         }`}
@@ -325,14 +333,38 @@ export function YerSelect({
 
       {open && pos && (
         <Panel pos={pos}>
-          {tumuGoster && (
-            <Satir etiket="Tüm yerler" ikon={<PinSvg />} onClick={() => sec(null)} />
+          {yakinimdaGoster && (
+            <Satir
+              etiket="Yakınımda"
+              altEtiket="Çevrendekileri bul"
+              ikon={
+                <img
+                  src="/icons/ilceler/yakinimda.webp"
+                  alt=""
+                  aria-hidden
+                  width={40}
+                  height={40}
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              }
+              secili={yakinimda}
+              onClick={() => {
+                onYakinimda?.();
+                kapat();
+              }}
+            />
           )}
           {yerler.map((y) => (
             <Satir
               key={`${y.secim.tur}:${y.altBaslik}:${y.baslik}`}
               etiket={y.baslik}
-              altEtiket={y.altBaslik}
+              /* İlçe satırında alt yazı YOK (kullanıcı kararı, 16 Eyl 2026):
+                 her ilçenin altında "Adana" yazması bilgi değil gürültüydü.
+                 Mahallede ilçe adı kalır — onu ayırt ettiren o. */
+              /* İlçe ve Merkez'de alt yazı yok (kullanıcı kararı, 16 Eyl
+                 2026); yalnız mahallede ilçe adı kalır. */
+              altEtiket={y.secim.tur === "mahalle" ? y.altBaslik : undefined}
               ikon={<PinSvg />}
               onClick={() => sec(y.secim)}
             />

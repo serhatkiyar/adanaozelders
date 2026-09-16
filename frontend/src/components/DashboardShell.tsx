@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PanelSekmeleri } from "@/components/PanelSekmeleri";
 import { MobilAltSekmeler } from "@/components/MobilAltSekmeler";
+import { SiteFooter } from "@/components/SiteFooter";
 import { useAuthStore } from "@/store/authStore";
 import { resendEmailVerification } from "@/api/auth";
 import { toast } from "@/store/toastStore";
@@ -93,6 +94,14 @@ interface DashboardShellProps {
    */
   mobilUstGizle?: boolean;
   /**
+   * Sayfanın altındaki `SiteFooter`ı çizme. `PublicShell`deki eşiyle AYNI
+   * sözleşme. ALTBİLGİ VARSAYILAN OLARAK VAR (kullanıcı, 16 Eyl 2026: "hesap
+   * giriliyken footer koyulmuyor mu?"): girişli kabuk altbilgiyi hiç
+   * çizmiyordu, aynı sayfa anonimken altbilgili girişliyken altbilgisizdi.
+   * `flush` (mesajlaşma) ekranı zaten tam boy, orada çizilmez.
+   */
+  altBilgiGizli?: boolean;
+  /**
    * Üst barın ALT SATIRI (arama hapı) açık mı?
    *
    * `true` (varsayılan) bugünkü davranıştır: satır her zaman açık. Ana sayfa
@@ -138,6 +147,7 @@ export function DashboardShell({
   genislik,
   mobilDetayEkrani = false,
   mobilUstGizle = false,
+  altBilgiGizli = false,
   expanded = true,
   icerikSiki = false,
 }: DashboardShellProps) {
@@ -211,7 +221,9 @@ export function DashboardShell({
       className={
         flush
           ? "flex h-screen flex-col overflow-hidden bg-slate-50 "
-          : "min-h-screen bg-slate-50 "
+          : /* flex kolon: içerik kısa olsa da altbilgi `mt-auto` ile sayfanın
+               altına iner (`PublicShell` ile aynı). */
+            "flex min-h-screen flex-col bg-slate-50 "
       }
       /* `--sabit-serit` — bkz. `PublicShell`deki aynı satırın gerekçesi. */
       style={
@@ -309,10 +321,10 @@ export function DashboardShell({
           flush
             ? "min-h-0 flex-1 overflow-hidden"
             : mobilDetayEkrani
-              ? "p-0 md:p-6"
+              ? "flex-1 p-0 md:p-6"
               : icerikSiki
-                ? "px-4 pb-8 pt-2 sm:px-6"
-                : "p-4 sm:p-6"
+                ? "flex-1 px-4 pb-8 pt-8 sm:px-6"
+                : "flex-1 p-4 sm:p-6"
         }
       >
         {genislik ? (
@@ -321,6 +333,7 @@ export function DashboardShell({
           children
         )}
       </main>
+      {!flush && !altBilgiGizli && <SiteFooter />}
       {/* Çubuk HER rolde çizilir (ea4724c): panel rolleri de telefonda
           gezinmesiz kalıyordu. Tek istisna `mobilDetayEkrani` — bkz. propun
           açıklaması ve `PublicShell`deki eşi. */}

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PlainButton } from "@/components/ui/PlainButton";
 import { LEGAL_ROUTES, ROUTES } from "@/lib/routes";
 import { LEGAL_NAV } from "@/lib/legalNav";
 
@@ -104,15 +105,14 @@ export function SiteFooter() {
   }));
 
   return (
-    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <footer className="mt-auto w-full border-t border-slate-100 bg-[#fafafa] ">
+    // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    <footer className="mt-auto w-full border-t border-slate-100 bg-[#f4f4f4] ">
       {/* "Başa dön" — Amazon deseni (30 Ağu): yüzen FAB yerine footer'ın hemen
           üstünde tam genişlik şerit. Gerekçe: FAB içerik/aksiyonların üstünde
           yüzüp mobilde parmak alanı çalar; şerit ise tam kullanıcının "sayfa
           bitti, şimdi ne yapacağım" anına yerleşir, layout'la yarışmaz ve tüm
           sayfalarda (ortak footer) kendiliğinden var olur. */}
-      <button
-        type="button"
+      <PlainButton
         onClick={() => {
           const az = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           window.scrollTo({ top: 0, behavior: az ? "auto" : "smooth" });
@@ -144,7 +144,7 @@ export function SiteFooter() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m-7 7 7-7 7 7" />
         </svg>
         Başa dön
-      </button>
+      </PlainButton>
       <div className="mx-auto max-w-[1216px] px-6 py-5 md:py-12">
         <nav
           aria-label="Site bağlantıları"

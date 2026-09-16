@@ -36,7 +36,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BigSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
+import { DersArama, KutuphaneArama } from "@/components/HeroSearch";
 
 // `DersArama` ders katalogunu React Query ile çekiyor; sağlayıcı olmadan
 // bileşen render edilemiyor. Ağ yok — sorgu boşta kalır, başlıklar yine basılır.
@@ -101,56 +101,11 @@ describe("arama hapı · alan başlıkları", () => {
     expect(ders.getAttribute("placeholder")).toBeTruthy();
   });
 
-  it("`KutuphaneArama`: başlıklar 'Kütüphane' ve 'Yer'", () => {
-    sar(<KutuphaneArama q="" setQ={yok} yer={null} setYer={yok} onSubmit={yok} />);
-    const ad = baslikAlaninAdi("Kütüphane");
-    baslikAlaninAdi("Yer");
-    expect(ad.getAttribute("placeholder")).toBeTruthy();
-  });
-
-  it("`BigSearch`: başlıkları ÇAĞIRAN verir, ikisi de alana bağlanır", () => {
-    // İlçe tarafı bir <button>; `<label htmlFor>` ona bağlanmaz, ad
-    // `aria-labelledby` ile gelir. Bu testin görmesi gereken şey ikisinin de
-    // aynı sonucu vermesi: başlık = erişilebilir ad.
-    sar(
-      <BigSearch
-        q=""
-        setQ={yok}
-        district={[]}
-        setDistrict={yok}
-        onSubmit={yok}
-        placeholder="Matematik, İngilizce…"
-        solBaslik="Yer"
-        sagBaslik="Ders"
-      />
-    );
-    baslikAlaninAdi("Yer");
-    const q = baslikAlaninAdi("Ders");
-    expect(q.getAttribute("placeholder")).toBe("Matematik, İngilizce…");
-  });
-
-  it("sağ başlık ZORUNLU — 'Ara' varsayılanı gönder düğmesiyle çakışıyordu", () => {
-    // Bu ölçülmüş bir kusur: `sagBaslik` varsayılanı "Ara" iken hapta iki
-    // "Ara" oluyordu (alan başlığı + gönder düğmesinin `aria-label`ı). Ekran
-    // okuyucuda ayırt edilemezdi. Varsayılan kaldırıldı, prop zorunlu oldu.
-    sar(
-      <BigSearch
-        q=""
-        setQ={yok}
-        district={[]}
-        setDistrict={yok}
-        onSubmit={yok}
-        placeholder="Kütüphane adı"
-        sagBaslik="Kütüphane"
-      />
-    );
-    baslikAlaninAdi("Yer"); // sol başlık varsayılanı hâlâ çalışıyor
-    baslikAlaninAdi("Kütüphane");
-
-    // Hapta "Ara" adında TEK öğe kalmalı: gönder düğmesi.
-    const aralar = screen.getAllByLabelText("Ara");
-    expect(aralar).toHaveLength(1);
-    expect(aralar[0].tagName).toBe("BUTTON");
+  it("`KutuphaneArama`: tek başlık 'Yer' — ad kutusu yok (16 Eyl 2026)", () => {
+    sar(<KutuphaneArama yer={null} setYer={yok} onSubmit={yok} />);
+    const yer = baslikAlaninAdi("Yer");
+    expect(yer.getAttribute("placeholder")).toBeTruthy();
+    expect(screen.queryByLabelText("Kütüphane")).toBeNull();
   });
 
   it("TERS PROVA: `aria-label` görünür başlığı gölgelerse yakalanır", () => {

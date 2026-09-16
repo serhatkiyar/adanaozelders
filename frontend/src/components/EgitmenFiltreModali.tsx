@@ -1,21 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
-import { SegmentedControl } from "@/components/SegmentedControl";
-import {
-  useTutorGenderFacets,
-  useTutorPriceHistogram,
-} from "@/hooks/useTutorSearch";
+import { FiyatAraligi, useHistogramParametreleri } from "@/components/FiyatAraligi";
+import { MesafeSecici } from "@/components/MesafeSecici";
+import { useTutorGenderFacets } from "@/hooks/useTutorSearch";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
-import {
-  EGITMEN_ARAMA,
-  VARSAYILAN_YARICAP_KM,
-  egitmenIstegi,
-  type EgitmenAramasi,
-} from "@/lib/aramaUrl";
+import { EGITMEN_ARAMA } from "@/lib/aramaUrl";
 import { bosDeger } from "@/lib/urlSemasi";
 import { useKonumStore } from "@/store/konumStore";
-import { Gender, TeachingMode } from "@/types";
+import { SegmentedControl } from "@/components/SegmentedControl";
+import { Gender } from "@/types";
 
 /**
  * Eğitmen arama filtreleri — İKİ YÜZEYİN ORTAK penceresi.
@@ -41,28 +34,19 @@ import { Gender, TeachingMode } from "@/types";
  * adresi yazar ve ayrışamazlar.
  */
 
-const MODE_ALL = "ALL" as const;
-type AramaSekli = EgitmenAramasi["sekil"][number];
+/* DERS İŞLEME ŞEKLİ BU PENCEREDE YOK (kullanıcı kararı, 16 Eyl 2026): şekil
+   arama hapının kendi adımı, burada ikinci bir yerden değiştirilmesi hapla
+   çelişiyordu. */
 
-const MODE_SEGMENTS: { value: AramaSekli | typeof MODE_ALL; label: string }[] = [
-  { value: MODE_ALL, label: "Tümü" },
-  { value: TeachingMode.ONLINE, label: "Uzaktan" },
-  { value: TeachingMode.IN_PERSON, label: "Yüzyüze" },
-];
-
-const GENDER_OPTIONS: { value: Gender.MALE | Gender.FEMALE; label: string }[] = [
+/* Cinsiyet, Airbnb'nin "Yerin türü" bölmeli seçicisiyle (kullanıcı kararı,
+   16 Eyl 2026): Tümü | Kadın | Erkek. "" = filtre yok. Faset sayısı etikete
+   eklenir ki seçim yapılmadan kaç eğitmen olduğu görülsün. */
+type CinsiyetSecimi = Gender.MALE | Gender.FEMALE | "";
+const GENDER_OPTIONS: { value: CinsiyetSecimi; label: string }[] = [
+  { value: "", label: "Tümü" },
   { value: Gender.FEMALE, label: "Kadın" },
   { value: Gender.MALE, label: "Erkek" },
 ];
-
-/** Kutu metni ↔ şema değeri: boş kutu = filtre YOK, "0" geçerli alt sınır. */
-const sayiMetni = (n: number | undefined) => (n === undefined ? "" : String(n));
-const metinSayisi = (t: string): number | undefined => {
-  const kirpik = t.trim();
-  if (!kirpik) return undefined;
-  const n = Number(kirpik);
-  return Number.isFinite(n) && n >= 0 ? n : undefined;
-};
 
 export function EgitmenFiltreModali({
   acik,
@@ -75,43 +59,13 @@ export function EgitmenFiltreModali({
   onTemizle?: () => void;
 }) {
   const { degerler, ayarla } = useAramaDurumu(EGITMEN_ARAMA);
-  const { konum, yukleniyor, iste, unut } = useKonumStore();
+  const unut = useKonumStore((s) => s.unut);
 
-  const { sekil: modes, cinsiyet: gender, yakinimda } = degerler;
-  const radiusKm = degerler.yaricap ?? VARSAYILAN_YARICAP_KM;
+  const { cinsiyet: gender, yakinimda } = degerler;
 
-  // Fiyat kutusunun anlık metni YEREL, değeri adreste: her sürüklemede adres
-  // yazmak geçmişi kirletir.
-  const [minRate, setMinRate] = useState(sayiMetni(degerler.minFiyat));
-  const [maxRate, setMaxRate] = useState(sayiMetni(degerler.maxFiyat));
-
-  // Adres → kutu (geri tuşu, paylaşılan bağlantı, "Temizle").
-  useEffect(() => {
-    setMinRate((o) => (metinSayisi(o) === degerler.minFiyat ? o : sayiMetni(degerler.minFiyat)));
-    setMaxRate((o) => (metinSayisi(o) === degerler.maxFiyat ? o : sayiMetni(degerler.maxFiyat)));
-  }, [degerler.minFiyat, degerler.maxFiyat]);
-
-  /*
-   * Histogram ve fasetler, SONUÇ LİSTESİYLE AYNI kümeyi ölçmeli — yoksa
-   * çubuklar listede olmayan eğitmenleri sayar. Küme elle ikinci kez
-   * kurulmuyor, listenin isteğinden ÇIKARILARAK türetiliyor.
-   */
-  const istek = useMemo(
-    () => egitmenIstegi(degerler, { konumum: konum }),
-    [degerler, konum]
-  );
-  const histParams = useMemo(() => {
-    const {
-      sort: _sort,
-      exam: _exam,
-      limit: _limit,
-      offset: _offset,
-      min_rate: _min,
-      max_rate: _max,
-      ...rest
-    } = istek;
-    return rest;
-  }, [istek]);
+  /* Fiyat gövdesi ve histogram kümesi `FiyatAraligi`de — şeritteki "Fiyat ⌄"
+     açılırıyla ORTAK. Faset yalnız aynı kümeden kendi eksenini düşürür. */
+  const histParams = useHistogramParametreleri();
   // Faset KENDİ eksenini saymaz: "Kadın" seçiliyken "Erkek 0" görünürdü ve
   // sayılar seçim yapmayı imkânsız kılardı.
   const fasetParams = useMemo(() => {
@@ -119,21 +73,11 @@ export function EgitmenFiltreModali({
     return kalan;
   }, [histParams]);
 
-  const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(
-    histParams,
-    acik
-  );
   const { data: fasetler } = useTutorGenderFacets(fasetParams, acik);
 
   if (!acik) return null;
 
-  const modeSegment: AramaSekli | typeof MODE_ALL = modes[0] ?? MODE_ALL;
-  const selectMode = (v: AramaSekli | typeof MODE_ALL) =>
-    ayarla({ sekil: v === MODE_ALL ? [] : [v] });
-
   const temizle = () => {
-    setMinRate("");
-    setMaxRate("");
     unut();
     ayarla(bosDeger(EGITMEN_ARAMA));
     onTemizle?.();
@@ -157,104 +101,40 @@ export function EgitmenFiltreModali({
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto p-6">
-          {/* Ders işleme şekli */}
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Ders İşleme Şekli</h3>
-            <SegmentedControl options={MODE_SEGMENTS} value={modeSegment} onChange={selectMode} />
-          </div>
-
-          {/* Mesafe */}
+          {/* Mesafe — YALNIZ "Yakınımda" seçiliyken (kullanıcı kararı, 16 Eyl
+              2026): konum niyeti arama hapında verilir, bu pencere yalnız
+              yarıçapı ayarlar. Yatay sabit seçenekler: Farketmez | 1 | 3 | 5 |
+              10 | 15 | 25 km; Farketmez niyeti kaldırır ve bölüm kapanır. */}
+          {yakinimda && (
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
-            <div className="relative">
-              <select
-                aria-label="Mesafe"
-                value={yakinimda ? radiusKm : ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (!val) {
-                    unut();
-                    ayarla({ yakinimda: false, yaricap: undefined });
-                    return;
-                  }
-                  // Niyet ADRESTE, koordinat yalnız bellekte. İzin
-                  // verilmezse niyet geri alınır, yoksa adreste hiçbir şey
-                  // yapmayan bir filtre asılı kalırdı.
-                  ayarla({ yakinimda: true, yaricap: Number(val) });
-                  if (!konum) iste(() => ayarla({ yakinimda: false, yaricap: undefined }));
-                }}
-                className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-              >
-                <option value="">Farketmez (Her Yer)</option>
-                <option value="5">En fazla 5 km</option>
-                <option value="10">En fazla 10 km</option>
-                <option value="25">En fazla 25 km</option>
-                <option value="50">En fazla 50 km</option>
-                <option value="100">En fazla 100 km</option>
-              </select>
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </div>
-            {yukleniyor && (
-              <p className="mt-2 animate-pulse text-xs font-medium text-marka-metin">Konum alınıyor…</p>
-            )}
-            {konum && !yukleniyor && (
-              <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>
-            )}
+            <MesafeSecici
+              yaricap={degerler.yaricap}
+              sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+              kaldir={() => ayarla({ yakinimda: false, yaricap: undefined })}
+            />
           </div>
+          )}
 
           {/* Fiyat aralığı */}
           <div>
             <h3 className="text-sm font-semibold text-slate-900 ">Fiyat Aralığı</h3>
             <p className="mb-4 mt-0.5 text-xs text-slate-500 ">Saatlik ders ücreti</p>
-            <PriceRangeHistogram
-              rates={rateDist ?? []}
-              loading={histLoading}
-              minRate={minRate}
-              maxRate={maxRate}
-              onChange={(mn, mx) => {
-                setMinRate(mn);
-                setMaxRate(mx);
-                ayarla(
-                  { minFiyat: metinSayisi(mn), maxFiyat: metinSayisi(mx) },
-                  { replace: true }
-                );
-              }}
-            />
+            <FiyatAraligi acik={acik} />
           </div>
 
-          {/* Cinsiyet */}
+          {/* Eğitmen cinsiyeti — bölmeli seçici */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Cinsiyet</h3>
-            <div className="flex flex-wrap gap-2">
-              {GENDER_OPTIONS.map((opt) => {
-                const adet = fasetler?.[opt.value];
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() =>
-                      ayarla({ cinsiyet: gender === opt.value ? "" : opt.value })
-                    }
-                    className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                      gender === opt.value
-                        ? "bg-marka text-marka-fg shadow-sm ring-1 ring-marka-focus"
-                        : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
-                    }`}
-                  >
-                    {opt.label}
-                    {/* Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar. */}
-                    {adet !== undefined && (
-                      <span className={gender === opt.value ? "ml-1.5 opacity-80" : "ml-1.5 text-slate-400"}>
-                        {adet}
-                      </span>
-                    )}
-                  </button>
-                );
+            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Eğitmen cinsiyeti</h3>
+            <SegmentedControl<CinsiyetSecimi>
+              options={GENDER_OPTIONS.map((opt) => {
+                // Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar.
+                const adet = opt.value ? fasetler?.[opt.value] : undefined;
+                return { value: opt.value, label: adet !== undefined ? `${opt.label} (${adet})` : opt.label };
               })}
-            </div>
+              value={gender}
+              onChange={(v) => ayarla({ cinsiyet: v })}
+            />
             {/* SESSİZ ELEME artık sessiz değil: `gender == FEMALE`
                 karşılaştırması hem NULL hem UNSPECIFIED satırları eliyor.
                 Yalnız filtre ETKİNKEN gösterilir. */}

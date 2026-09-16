@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { DashboardShell } from "@/components/DashboardShell";
 import Messages from "@/pages/Messages";
 import { NotificationsPanel } from "@/pages/Notifications";
@@ -45,7 +46,7 @@ export default function MessageCenter() {
   return (
     <DashboardShell title="Mesaj Merkezi" navItems={navItems}>
       <div className="mx-auto max-w-screen-2xl">
-        <h1 className="text-2xl font-bold text-slate-900 ">Mesaj Merkezi</h1>
+        <h1 className={SAYFA_BASLIGI}>Mesaj Merkezi</h1>
 
         <div className="mt-6 grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]">
           {/* Sol: bölüm seçici */}

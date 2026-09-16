@@ -42,7 +42,9 @@ export function SegmentedControl<T extends string>({
               type="button"
               onClick={() => onChange(opt.value)}
               aria-pressed={active}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
+              /* `whitespace-nowrap` + dar iç boşluk: yedi parçalı mesafe
+                 seçicide "1 km" iki satıra kırılıyordu (16 Eyl 2026). */
+              className={`flex-1 whitespace-nowrap rounded-xl px-2 py-2.5 text-sm font-medium transition ${
                 active
                   ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-900 "
                   : "text-slate-600 hover:text-slate-900 "

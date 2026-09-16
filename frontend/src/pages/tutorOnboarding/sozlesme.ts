@@ -115,7 +115,8 @@ export interface Adim {
 }
 
 /** Ücret rehberliği. Sunucu üst sınır koymuyor; bunlar kullanıcıyı uyarır. */
-export const UCRET_EN_AZ = 50;
+/* 250 ₺ (kullanıcı kararı, 16 Eyl 2026); arama filtresinin ekseni de bu aralık. */
+export const UCRET_EN_AZ = 250;
 export const UCRET_EN_COK = 5000;
 
 export const YONTEM_EN_AZ_KELIME = 25;

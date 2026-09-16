@@ -103,7 +103,10 @@ const EGITMEN_SEKMELERI: Sekme[] = [
   KESFET,
   FAVORILER,
   MESAJLAR,
-  { key: "pano", to: ROUTES.bookings, label: "Pano", icon: "dashboard", end: true },
+  /* `clipboard` (kullanıcı kararı, 16 Eyl 2026): `dashboard` bir ev çizimi ve
+     "Pano" için yanlış metafordu; ikon 8 Eyl'de bu amaçla çizilmişti ama alt
+     sekmeye bağlanmamıştı. */
+  { key: "pano", to: ROUTES.bookings, label: "Pano", icon: "clipboard", end: true },
   HESABIM,
 ];
 

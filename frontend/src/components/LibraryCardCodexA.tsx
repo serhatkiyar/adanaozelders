@@ -109,7 +109,6 @@ export function LibraryCardCodexA({ library }: { library: LibrarySearchOut }) {
           {library.study_hourly_price != null ? (
             <p className="text-right text-sm font-semibold text-slate-950 ">
               {formatTRY(library.study_hourly_price)}
-              <span className="ml-1 font-normal text-slate-500 ">/ saat</span>
             </p>
           ) : library.capacity != null ? (
             <p className="text-xs text-slate-500 ">{library.capacity} kişilik</p>

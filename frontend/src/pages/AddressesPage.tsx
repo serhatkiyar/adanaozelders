@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UYE_NAV } from "@/lib/nav";
@@ -34,7 +35,7 @@ export default function AddressesPage() {
         </nav>
 
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 ">Adreslerim</h1>
+          <h1 className={SAYFA_BASLIGI}>Adreslerim</h1>
           <button
             type="button"
             onClick={() => setAdding(true)}

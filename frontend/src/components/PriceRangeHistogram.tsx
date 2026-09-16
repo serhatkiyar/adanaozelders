@@ -11,6 +11,9 @@ import { useEffect, useMemo, useState } from "react";
    boş döner.
    ──────────────────────────────────────────────────────────────────────── */
 
+/** Filtre ekseni = ilan ücret aralığı. */
+const FIYAT_ALANI_EN_AZ = 250;
+const FIYAT_ALANI_EN_COK = 5000;
 const BIN_COUNT = 34;
 
 interface Props {
@@ -23,11 +26,6 @@ interface Props {
   onChange: (min: string, max: string) => void;
 }
 
-function roundTo(value: number, step: number, dir: "down" | "up"): number {
-  const fn = dir === "down" ? Math.floor : Math.ceil;
-  return fn(value / step) * step;
-}
-
 export function PriceRangeHistogram({
   rates,
   loading = false,
@@ -35,20 +33,15 @@ export function PriceRangeHistogram({
   maxRate,
   onChange,
 }: Props) {
-  // Domain gerçek ücret dağılımından türetilir; sınırlar temiz görünsün diye 10'a
-  // yuvarlanır ama slider/kutular 1'er 1'er SERBEST artar (step = 1).
+  // ALAN SABİT: 250–5000 ₺ (kullanıcı kararı, 16 Eyl 2026). Eskiden gerçek
+  // dağılımdan türetiliyordu; tek bir uç ilan (ör. 100 000 ₺) ekseni
+  // uzatıp kaydırıcıyı işe yaramaz hâle getiriyordu. Sınırlar eğitmenin
+  // girebileceği ücret aralığıyla aynı (`tutorOnboarding/sozlesme.ts`:
+  // UCRET_EN_AZ / UCRET_EN_COK); alan dışına düşen eski ücretler kenar
+  // kovasına sayılır. Slider/kutular 1'er 1'er SERBEST artar (step = 1).
   const step = 1;
-  const { domainMin, domainMax } = useMemo(() => {
-    if (!rates.length) {
-      return { domainMin: 0, domainMax: 2000 };
-    }
-    const lo = Math.min(...rates);
-    const hi = Math.max(...rates);
-    let dMin = roundTo(lo, 10, "down");
-    let dMax = roundTo(hi, 10, "up");
-    if (dMax - dMin < 10) dMax = dMin + 10; // dağılım tek noktada toplanmışsa
-    return { domainMin: dMin, domainMax: dMax };
-  }, [rates]);
+  const domainMin = FIYAT_ALANI_EN_AZ;
+  const domainMax = FIYAT_ALANI_EN_COK;
 
   // Histogram kovaları (bins).
   const bins = useMemo(() => {

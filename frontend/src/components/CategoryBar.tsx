@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
-import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
+import { DENEMELER_ACIK, KUTUPHANELER_ACIK, MAGAZA_ACIK } from "@/lib/ozellikBayraklari";
 
 /**
  * Airbnb tarzı üst-seviye kategori çubuğu: küçük 3D ikon + altında etiket,
@@ -50,7 +50,8 @@ const CATEGORIES: Category[] = [
   // olarak donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
   { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries, gizli: !DENEMELER_ACIK },
   // Mağaza: kategori sekmesi değil, mağazaya geçiş kapısı (kullanıcı isteği, 29 Ağu).
-  { key: "magaza", label: "Mağaza", icon: "/icons/categories/magaza.webp", to: ROUTES.store },
+  // Kapalıyken tamamen gizli (bkz. lib/ozellikBayraklari.ts · MAGAZA_ACIK).
+  { key: "magaza", label: "Mağaza", icon: "/icons/categories/magaza.webp", to: ROUTES.store, gizli: !MAGAZA_ACIK },
 ];
 
 
@@ -106,8 +107,20 @@ export function categoryMeta(key: CategoryKey): Category {
 export function CategoryBar({
   active,
   sekmeKipi = false,
+  onSec,
 }: {
   active?: CategoryKey;
+  /**
+   * GENİŞ ARAMA İÇİNDE sekme YERİNDE değişir (kullanıcı kararı, 16 Eyl 2026):
+   * sonuç ekranında hapa tıklayıp açılan aramada "Kütüphaneler"e basmak
+   * sayfayı DEĞİŞTİRMEMELİ — yalnız formu kütüphane hapına çevirmeli; sayfa
+   * Ara'ya basınca değişir, eğitmen seçimleri de kaybolmaz. Bu, 9 Eyl'deki
+   * "her kategori bir bağlantıdır" kararını BOZMAZ: o karar ana sayfanın
+   * gezinmesi için; burada şerit bir formun sekmesi. Verilirse Eğitmenler ve
+   * Kütüphaneler düğme olur, Mağaza başka bir yüzey olduğu için bağlantı
+   * kalır.
+   */
+  onSec?: (key: CategoryKey) => void;
   /**
    * SEKME kipini HER genişlikte zorla (alt çizgili), telefonda bile.
    *
@@ -161,10 +174,16 @@ export function CategoryBar({
                   ? "border-slate-900 bg-transparent "
                   : "border-transparent bg-transparent hover:border-slate-200 "
               }`
-            : `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-full border px-3.5 py-2.5 shadow-sm transition-colors duration-200 md:rounded-none md:border-0 md:border-b-2 md:px-0 md:py-0 md:pb-2 md:shadow-none ${
+            : /* Telefonda seçili çip DOLMAZ (kullanıcı kararı, 16 Eyl 2026):
+                 beyaz zeminde kalın (2px) koyu çerçeve. Sonuç sayfasındaki
+                 filtre çipleriyle (`AramaMobilBaslik.cipSinifi`) aynı dil.
+                 Kalınlık 1px kenarlık + 1px İÇE halka: `border-2` çipi
+                 komşularından 2px yüksek yapıyordu (ölçüldü). Masaüstü kipi
+                 alt çizgi olarak kalır. */
+              `group flex shrink-0 snap-start flex-row items-center gap-2 rounded-full border bg-white px-3.5 py-2.5 shadow-sm transition-colors duration-200 md:rounded-none md:border-0 md:border-b-2 md:bg-transparent md:px-0 md:py-0 md:pb-2 md:shadow-none md:ring-0 ${
                 isActive
-                  ? "border-slate-900 bg-slate-900 md:bg-transparent "
-                  : "border-slate-200 bg-white hover:border-slate-300 md:border-transparent md:bg-transparent md:hover:border-slate-200 "
+                  ? "border-slate-900 ring-1 ring-inset ring-slate-900 "
+                  : "border-slate-200 hover:border-slate-300 md:border-transparent md:hover:border-slate-200 "
               }`;
           const inner = (
             <>
@@ -190,9 +209,7 @@ export function CategoryBar({
                   sekmeKipi ? "text-[13px]" : "text-sm md:text-[15px]"
                 } ${
                   isActive
-                    ? sekmeKipi
-                      ? "text-slate-900 "
-                      : "text-white md:text-slate-900 "
+                    ? "text-slate-900 "
                     : "text-slate-600 group-hover:text-slate-900 "
                 }`}
               >
@@ -228,6 +245,24 @@ export function CategoryBar({
            * iki tür öğe. Kullanıcı: *"tıklayınca /egitmenler /kutuphaneler
            * olsa daha mantıklı değil mi?"*
            */
+          const sekmeAnahtari = c.key;
+          if (
+            onSec &&
+            (sekmeAnahtari === "egitmenler" || sekmeAnahtari === "kutuphaneler")
+          ) {
+            return (
+              <button
+                key={c.key}
+                type="button"
+                aria-pressed={isActive}
+                className={cls}
+                onClick={() => onSec(sekmeAnahtari)}
+              >
+                {inner}
+              </button>
+            );
+          }
+
           return (
             <Link
               key={c.key}

@@ -11,6 +11,7 @@
 // Geçmiş kayıtlar varsayılan olarak KAPALI: ekranın işi "sırada ne var",
 // arşiv değil.
 import { useMemo, useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
 
 import { DashboardShell } from "@/components/DashboardShell";
@@ -37,9 +38,13 @@ export default function Reservations() {
   useCheckoutResultToast(); // iyzico dönüşü: ?odeme=basarili|basarisiz
 
   return (
-    <DashboardShell title="Rezervasyonlar" navItems={UYE_NAV}>
+    /* Telefonda ÜST BAR YOK (kullanıcı kararı, 16 Eyl 2026): alt sekme çubuğu
+       zaten Keşfet · Favoriler · Mesajlar · Rezervasyon · Hesabım'ı taşıyor; üstte
+       logo, kalp ve hamburger ikinci bir gezinmeydi. Mesajlar ekranıyla aynı
+       bayrak. Masaüstünde üst bar olduğu gibi kalır. */
+    <DashboardShell title="Rezervasyonlar" navItems={UYE_NAV} mobilUstGizle>
       <div className="mx-auto max-w-3xl px-1 pb-16 pt-2 sm:px-2">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <h1 className={SAYFA_BASLIGI}>
           Rezervasyonlar
         </h1>
         <p className="mt-1 text-sm text-slate-500 ">

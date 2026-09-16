@@ -46,8 +46,8 @@ export function PublicNavbar({
   const girisAdresiDegeri = useGirisAdresi();
   const egitmenKayitAdresi = useGirisAdresi("register", "tutor");
   return (
-    // Zemin saf beyaz DEĞİL (#fafafa): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md ">
+    // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
+    <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md ">
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
         <div
           className={`w-full items-start justify-between gap-4 pt-5 pb-2 ${
@@ -76,12 +76,17 @@ export function PublicNavbar({
               {/* 30 Ağu: telefonda da TAM (yazılı) logo — kategori şeridi <md'de
                   ikinci satıra indiği için üstte çakışacak orta sütun yok.
                   Simge logo yalnız md..xl bandında kalır (yukarıdaki ölçüm). */}
-              <img src="/logo-compact.svg" alt="" aria-hidden className="hidden h-8 w-auto object-contain md:block xl:hidden" />
+              {/* 16 Eyl 2026: telefonun "masaüstü sitesi" kipi ~980px açar ve
+                  orada simge logo çıkıyordu (kullanıcı: "başka logo yükleniyor").
+                  Ölçüldü: sekme şeridi 950'de 246px, 980'de 261px'ten başlıyor;
+                  28px yüksekliğindeki yazılı logo 32+200=232'de bitiyor → 950'den
+                  itibaren çakışmadan sığar. Simge logo yalnız 768–949 bandı. */}
+              <img src="/logo-compact.svg" alt="" aria-hidden className="hidden h-8 w-auto object-contain md:block min-[950px]:hidden" />
               <img
                 src="/logo.svg"
                 alt=""
                 aria-hidden
-                className="block h-8 w-auto object-contain md:hidden xl:block xl:h-9"
+                className="block h-8 w-auto object-contain md:hidden min-[950px]:block min-[950px]:h-7 xl:h-9"
               />
             </Link>
           </div>

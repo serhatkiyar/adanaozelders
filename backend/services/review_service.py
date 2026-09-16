@@ -6,9 +6,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import payments
 from core.moderation import mask_contact_info
 from models.booking import Booking, BookingStatus
 from models.client import Client
+from models.payment import Payment, PaymentStatus
 from models.review import Review
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
@@ -41,6 +43,84 @@ def _adjust_tutor_rating(tutor_id: int, count_delta: int, sum_delta: int):
     )
 
 
+# ── Değerlendirme uygunluğu ───────────────────────────────────────────────
+#
+# Kullanıcı kararı (16 Eyl 2026):
+#   1. Bir öğrenci bir eğitmeni YALNIZ BİR KEZ değerlendirir. Eskiden kural
+#      "booking başına bir yorum"du; aynı eğitmenden üç ders alan öğrenci üç
+#      yorum yazabiliyordu (canlı veride görüldü: bir öğrenci-eğitmen çiftinde
+#      3 aktif yorum).
+#   2. Yalnız KARTLA (iyzico ile) ÖDENMİŞ ders değerlendirilebilir. Ücretsiz
+#      ilk ders ya da ödemesi tamamlanmamış ders yorum hakkı vermez.
+#
+# Sağlayıcı adı sabit "iyzico" DEĞİL, yapılandırılmış sağlayıcıdır: üretimde
+# `core/config.py` PAYMENT_PROVIDER=iyzico'yu zorlar; geliştirmede "fake"
+# sağlayıcı aynı akışı taklit eder ve kural yerelde de denenebilir kalır.
+#
+# Karar SAF bir fonksiyonda (`degerlendirme_engeli`) verilir: hem yorum
+# oluşturma hem rezervasyon çıktısındaki `can_review` bayrağı aynı fonksiyonu
+# çağırır, ikisi ayrışamaz; fonksiyon veritabanısız test edilir.
+
+ODENMIS_DURUMLAR = frozenset({PaymentStatus.HELD, PaymentStatus.RELEASED})
+
+
+def degerlendirme_engeli(
+    booking: Booking,
+    payment: Payment | None,
+    *,
+    saglayici: str,
+    egitmen_zaten_degerlendirildi: bool,
+    booking_zaten_degerlendirildi: bool = False,
+) -> str | None:
+    """Değerlendirme yapılamıyorsa kullanıcıya gösterilecek gerekçe, yoksa None."""
+    if booking.status != BookingStatus.COMPLETED:
+        return "Yalnız tamamlanmış dersler değerlendirilebilir."
+    if (
+        payment is None
+        or payment.deleted_at is not None
+        or payment.status not in ODENMIS_DURUMLAR
+        or payment.provider != saglayici
+    ):
+        return "Yalnız kartla ödenmiş dersler değerlendirilebilir."
+    if booking_zaten_degerlendirildi:
+        return "Bu ders zaten değerlendirilmiş."
+    if egitmen_zaten_degerlendirildi:
+        return "Bu eğitmeni zaten değerlendirdiniz."
+    return None
+
+
+async def egitmen_degerlendirildi_mi(
+    db: AsyncSession, *, client_id: int, tutor_id: int
+) -> bool:
+    """Öğrencinin bu eğitmene aktif (silinmemiş) bir yorumu var mı?"""
+    return (
+        await db.scalar(
+            select(Review.id)
+            .where(
+                Review.client_id == client_id,
+                Review.tutor_id == tutor_id,
+                Review.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+    ) is not None
+
+
+async def degerlendirilebilir_mi(db: AsyncSession, booking: Booking) -> bool:
+    """Rezervasyon çıktısındaki `can_review` bayrağı — `create_review` ile aynı kural."""
+    if booking.status != BookingStatus.COMPLETED:
+        return False
+    engel = degerlendirme_engeli(
+        booking,
+        booking.payment,
+        saglayici=payments.get_payment_provider().name,
+        egitmen_zaten_degerlendirildi=await egitmen_degerlendirildi_mi(
+            db, client_id=booking.client_id, tutor_id=booking.tutor_id
+        ),
+    )
+    return engel is None
+
+
 async def create_review(
     db: AsyncSession, client: Client, data: ReviewCreate
 ) -> Review:
@@ -51,21 +131,24 @@ async def create_review(
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "You can only review your own bookings"
         )
-    if booking.status != BookingStatus.COMPLETED:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "Only completed bookings can be reviewed"
-        )
-    existing = (
-        await db.execute(
+    booking_degerlendirildi = (
+        await db.scalar(
             select(Review.id).where(
                 Review.booking_id == data.booking_id, Review.deleted_at.is_(None)
             )
         )
-    ).first()
-    if existing is not None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "This booking has already been reviewed"
-        )
+    ) is not None
+    engel = degerlendirme_engeli(
+        booking,
+        booking.payment,
+        saglayici=payments.get_payment_provider().name,
+        egitmen_zaten_degerlendirildi=await egitmen_degerlendirildi_mi(
+            db, client_id=booking.client_id, tutor_id=booking.tutor_id
+        ),
+        booking_zaten_degerlendirildi=booking_degerlendirildi,
+    )
+    if engel is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, engel)
 
     review = Review(
         booking_id=booking.id,

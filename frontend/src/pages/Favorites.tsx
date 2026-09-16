@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { navForRole } from "@/lib/nav";
@@ -39,11 +40,19 @@ export default function Favorites() {
   const backToIndex = () => setView("index");
 
   return (
-    <DashboardShell title="Favoriler" navItems={navForRole(user?.role_id)}>
+    /* Telefonda ÜST BAR YOK (kullanıcı kararı, 16 Eyl 2026): alt sekme çubuğu
+       zaten Keşfet · Favoriler · Mesajlar · Rezervasyon · Hesabım'ı taşıyor; üstte
+       logo, kalp ve hamburger ikinci bir gezinmeydi. Mesajlar ekranıyla aynı
+       bayrak. Masaüstünde üst bar olduğu gibi kalır. */
+    <DashboardShell
+      title="Favoriler"
+      navItems={navForRole(user?.role_id)}
+      mobilUstGizle
+    >
       <div className="mx-auto max-w-[1050px]">
         {view === "index" && (
           <>
-            <h1 className="mb-8 mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+            <h1 className={`mb-8 mt-2 ${SAYFA_BASLIGI}`}>
               Favoriler
             </h1>
             <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
@@ -242,7 +251,7 @@ function Detail({
           </svg>
         </button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h1 className={SAYFA_BASLIGI}>
             {title}
           </h1>
           <p className="text-sm text-slate-500 ">{count}</p>

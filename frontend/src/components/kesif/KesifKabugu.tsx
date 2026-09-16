@@ -6,20 +6,26 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
+import { kutuphaneHapBasligi } from "@/lib/aramaBasligi";
 import { FullScreenSpinner } from "@/components/Spinner";
 import type { DersSekli } from "@/components/AramaSecicileri";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useDebounce } from "@/hooks/useDebounce";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import {
   KUTUPHANE_ARAMA,
   dersSorgusu,
   egitmenAramaAdresi,
+  kutuphaneAramaAdresi,
 } from "@/lib/aramaUrl";
 import { TUTOR_NAV, UYE_NAV } from "@/lib/nav";
 import { PATHS } from "@/lib/routes";
-import { type YerSecimi } from "@/lib/yerArama";
+import {
+  type YerSecimi,
+  ilceListesindenYer,
+  konumOzeti,
+  yerinIlceleri,
+} from "@/lib/yerArama";
 import { useAuthStore } from "@/store/authStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { ROLE_IDS, TeachingMode } from "@/types";
@@ -111,40 +117,44 @@ export function KesifKabugu() {
      yazar, çünkü altındaki liste onu canlı okuyor. */
   /* Buradaki durum MASAÜSTÜ hapınındır; telefonun adımlı yüzeyi kendi
      taslağını `MobilAramaAkisi` içinde tutuyor. İkisi aynı anda ekranda
-     olmadığı için ayrışmaları görünür değil. "Yakınımda" yalnız adımlı
-     yüzeyde sorulduğu için burada karşılığı YOK. */
+     olmadığı için ayrışmaları görünür değil. "Yakınımda" artık burada da
+     var (16 Eyl 2026): yer seçicinin ilk satırı, telefondakiyle aynı. */
   const [ders, setDers] = useState("");
   const [dersEtiket, setDersEtiket] = useState("");
   const [sekil, setSekil] = useState<DersSekli>("");
   const [yer, setYer] = useState<YerSecimi | null>(null);
+  const [yakinimda, setYakinimda] = useState(false);
 
   const {
     degerler: kDegerler,
     ayarla: kAyarla,
     filtreli: kFiltreli,
   } = useAramaDurumu(KUTUPHANE_ARAMA);
-  const [kQ, setKQ] = useState(kDegerler.q);
-  const kDebounced = useDebounce(kQ);
+  /* Kütüphane ad kutusu KALKTI (16 Eyl 2026); hap yalnız yer sorar. Eski
+     `q` senkron/debounce mantığı onunla gitti. */
 
-  /* Dış gezinme (geri/ileri, paylaşılan bağlantı) kutuyu günceller. */
-  useEffect(() => {
-    if (!kutuphaneMi) return;
-    setKQ((onceki) => (kDegerler.q !== onceki ? kDegerler.q : onceki));
-  }, [kDegerler.q, kutuphaneMi]);
-
-  /* Debounce'lu metin adrese `replace` ile yazılır: her harf ayrı bir geçmiş
-     girdisi olsaydı geri tuşu harf harf geri alırdı. `ayarla` tabanı KORUR,
-     yani olanak/sıralama/sayfa parametreleri düşmez. */
-  useEffect(() => {
-    if (!kutuphaneMi) return;
-    if (kDebounced.trim() !== kDegerler.q) kAyarla({ q: kDebounced }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kDebounced, kutuphaneMi]);
-
-  const kYer = kDegerler.konum.yer;
+  /* Kutu ADRESİ okur: mahalle seçiliyse o, değilse tek ilçe seçiliyse ilçe.
+     Eskiden yalnız `konum.yer`e (mahalle) bakılıyordu; ilçe seçilince adres
+     `?ilce=Seyhan` oluyor ama kutu "İlçe seçin" demeye devam ediyordu
+     (ölçüldü, 16 Eyl 2026). */
   const kIlce = kDegerler.konum.ilce;
+  const kYer: YerSecimi | null = ilceListesindenYer(kDegerler.konum.yer, kIlce);
+  /* "Tüm yerler" (null) ilçeyi de DÜŞÜRÜR. Eskiden `ilce: kIlce` ile eski
+     ilçe korunuyordu; seçim kutudan silinmiş gibi görünüp adreste kalıyordu —
+     "Tüm yerler çalışmıyor" dediğin buydu. */
   const setKYer = (v: YerSecimi | null) =>
-    kAyarla({ konum: { yer: v, ilce: v ? [v.ilce] : kIlce } });
+    kAyarla({
+      konum: { yer: v?.tur === "mahalle" ? v : null, ilce: yerinIlceleri(v) },
+    });
+  /* Kütüphanede niyet doğrudan adreste; koordinatı liste sayfası ister
+     (`useYakinimdaKonum`). Açılınca ilçe/mahalle düşer — ikisi birlikte
+     anlamsız. */
+  const setKYakinimda = (v: boolean) =>
+    kAyarla(
+      v
+        ? { yakinimda: true, konum: { yer: null, ilce: [] } }
+        : { yakinimda: false }
+    );
 
   /* ── Üst barın açık/kapalı hâli ──
      Airbnb davranışı: birazcık kaydırınca daralt. TELEFONDA ÇALIŞMAZ ve bu
@@ -154,6 +164,20 @@ export function KesifKabugu() {
      kapanıyordu. `Landing`den olduğu gibi taşındı. */
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  /* Geniş aramadaki sekme seçimi — YALNIZ hap tıklanarak açıldığında (16 Eyl
+     2026). Sayfa değişmez, yalnız hangi hapın çizildiği değişir; Ara'ya
+     basınca gidilir. Kapanınca sıfırlanır: bir sonraki açılış sayfanın kendi
+     kategorisinden başlar. */
+  const [aramaKategori, setAramaKategori] = useState<CategoryKey | null>(null);
+  useEffect(() => {
+    if (!searchOpen) setAramaKategori(null);
+  }, [searchOpen]);
+  const hapKategori: CategoryKey = (searchOpen && aramaKategori) || kategori;
+  const hapKutuphane = hapKategori === "kutuphaneler";
+  /* Eğitmen sayfasındayken kütüphane sekmesine geçilirse taslak YERELDİR:
+     adres bu sayfanın; kütüphane şemasına yazılamaz. Ara → /kutuphaneler. */
+  const [kYerTaslak, setKYerTaslak] = useState<YerSecimi | null>(null);
+  const [kYakinimdaTaslak, setKYakinimdaTaslak] = useState(false);
   const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
 
   useEffect(() => {
@@ -199,8 +223,9 @@ export function KesifKabugu() {
         sekil: sekil ? [sekil] : [],
         konum: {
           yer: yer?.tur === "mahalle" ? yer : null,
-          ilce: yer ? [yer.ilce] : [],
+          ilce: yerinIlceleri(yer),
         },
+        yakinimda,
       })
     );
     setMobilAramaAcik(false);
@@ -223,14 +248,42 @@ export function KesifKabugu() {
      İkisi TASARIM OLARAK ikiz (7 Eyl kullanıcı kararı) — aynı kabuk, aynı
      sıralama, aynı eşit bölmeler; fark yalnız sağ bölmenin seçicisinde.
      Nöbetçi: `__guards__/aramaHapiIkizligi.test.ts`. */
-  const hap = kutuphaneMi ? (
-    <KutuphaneArama
-      q={kQ}
-      setQ={setKQ}
-      yer={kYer}
-      setYer={setKYer}
-      onSubmit={submitKutuphane}
-    />
+  const hap = hapKutuphane ? (
+    kutuphaneMi ? (
+      <KutuphaneArama
+        yer={kYer}
+        setYer={setKYer}
+        yakinimda={kDegerler.yakinimda}
+        setYakinimda={setKYakinimda}
+        onSubmit={submitKutuphane}
+      />
+    ) : (
+      <KutuphaneArama
+        yer={kYerTaslak}
+        setYer={(v) => {
+          setKYerTaslak(v);
+          if (v) setKYakinimdaTaslak(false);
+        }}
+        yakinimda={kYakinimdaTaslak}
+        setYakinimda={(v) => {
+          setKYakinimdaTaslak(v);
+          if (v) setKYerTaslak(null);
+        }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          navigate(
+            kutuphaneAramaAdresi({
+              konum: {
+                yer: kYerTaslak?.tur === "mahalle" ? kYerTaslak : null,
+                ilce: yerinIlceleri(kYerTaslak),
+              },
+              yakinimda: kYakinimdaTaslak,
+            })
+          );
+          setSearchOpen(false);
+        }}
+      />
+    )
   ) : (
     <DersArama
       ders={ders}
@@ -243,16 +296,30 @@ export function KesifKabugu() {
       setSekil={setSekil}
       yer={yer}
       setYer={setYer}
+      yakinimda={yakinimda}
+      setYakinimda={setYakinimda}
       onSubmit={submitEgitmen}
     />
   );
 
-  const hapMetni = kutuphaneMi ? kQ : dersEtiket;
-  const hapIlce = kutuphaneMi
-    ? kIlce
-    : sekil === TeachingMode.IN_PERSON && yer
-      ? [yer.ilce]
-      : [];
+  /* Kompakt hapın metni: kütüphanede yer (ya da "Yakınımda"), eğitmende ders. */
+  /* Kütüphanede aranan "şey" yok (ad kutusu kalktı); konum sağdaki etikette. */
+  const hapMetni = kutuphaneMi ? "" : dersEtiket;
+  /* Konum özeti tek yardımcıdan: eğitmende Uzaktan/Yakınımda/yer, kütüphanede
+     Yakınımda/yer. Yer yalnız yüz yüzede anlamlı; uzaktan seçiliyken "Uzaktan". */
+  const hapYer = kutuphaneMi
+    ? konumOzeti({ yer: kYer, ilce: kIlce, yakinimda: kDegerler.yakinimda })
+    : konumOzeti({
+        yer: sekil === TeachingMode.IN_PERSON ? yer : null,
+        ilce: [],
+        yakinimda: sekil === TeachingMode.IN_PERSON && yakinimda,
+        uzaktan: sekil === TeachingMode.ONLINE,
+      });
+  /* Kompakt hapın parçaları: kütüphanede sonuç başlığıyla aynı kaynak
+     ("Çukurova bölgesindeki kütüphaneler"), eğitmende taslak [yer, ders]. */
+  const hapParcalari = kutuphaneMi
+    ? kutuphaneHapBasligi({ konum: hapYer, olanakSayisi: kDegerler.olanaklar.length }).parcalar
+    : [hapYer ?? "", hapMetni];
 
   /* Telefonda swap YOK: kompakt hap `mobilUst` yuvasında kalıcı durur, bu yuva
      her zaman kategori çiplerini taşır. İkisi birden basılsaydı aynı hapın iki
@@ -264,15 +331,18 @@ export function KesifKabugu() {
       className="w-full animate-in fade-in duration-300"
     >
       {expanded || mobil ? (
-        <CategoryBar active={kategori} />
+        <CategoryBar
+          active={hapKategori}
+          /* Hap tıklanarak açıldıysa sekme formu değiştirir; ana sayfanın
+             kendi açık hâlinde (kaydırılmamış) sekmeler gezinmedir. */
+          onSec={searchOpen && !mobil ? setAramaKategori : undefined}
+        />
       ) : (
         <div className="flex w-full justify-center">
           <CompactSearch
             active={kategori}
             placeholder="Aramaya başlayın"
-            q={hapMetni}
-            district={hapIlce}
-            remote={!kutuphaneMi && sekil === TeachingMode.ONLINE}
+            parcalar={hapParcalari}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -290,9 +360,7 @@ export function KesifKabugu() {
       // Telefonda hap kategoriye göre değişen bir metin taşımaz: kategori zaten
       // hemen altındaki çip şeridinde seçili, hapın işi davet etmek.
       placeholder="Aramaya başlayın"
-      q={hapMetni}
-      district={hapIlce}
-      remote={!kutuphaneMi && sekil === TeachingMode.ONLINE}
+      parcalar={hapParcalari}
       onOpen={() => setMobilAramaAcik(true)}
     />
   ) : undefined;

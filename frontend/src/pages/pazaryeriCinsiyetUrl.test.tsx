@@ -195,13 +195,15 @@ describe("pazaryeri · SESSİZ ELEME görünür kılındı", () => {
     expect(screen.queryByText(/görünmüyor/)).toBeNull();
     // DOLULUK: çekmece gerçekten açıldı mı; açılmasaydı yukarıdaki `queryBy`
     // her koşulda null dönerdi ve iddia bedava geçerdi.
-    expect(screen.getByText("Cinsiyet")).toBeTruthy();
+    // Bölüm başlığı 16 Eyl 2026'dan beri "Eğitmen cinsiyeti" (bölmeli seçici).
+    expect(screen.getByText("Eğitmen cinsiyeti")).toBeTruthy();
   });
 
   it("çip başına sayı, filtre TIKLANMADAN ÖNCE görünür", () => {
     ciz("/egitmenler");
     cekmeceyiAc();
-    expect(screen.getByText("42")).toBeTruthy();
-    expect(screen.getByText("61")).toBeTruthy();
+    // Sayı seçenek etiketinin içinde: "Kadın (42)" / "Erkek (61)".
+    expect(screen.getByRole("button", { name: "Kadın (42)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Erkek (61)" })).toBeTruthy();
   });
 });

@@ -142,6 +142,9 @@ class BookingOut(BaseModel):
     client_avatar_url: str | None = None
     # Bu rezervasyon için aktif bir değerlendirme var mı? list_bookings/get_booking doldurur.
     reviewed: bool = False
+    # Öğrenci bu dersi ŞİMDİ değerlendirebilir mi? Kural `review_service`
+    # içinde tek yerde: tamamlanmış + kartla ödenmiş + bu eğitmene ilk yorum.
+    can_review: bool = False
     resources: list[BookingResourceOut] = []
     comments: list[BookingCommentOut] = []
     private_notes: list[BookingPrivateNoteOut] = []

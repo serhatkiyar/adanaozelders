@@ -123,16 +123,16 @@ describe("anonim yüzey · filtreler GERÇEK", () => {
     await screen.findByText("Filtrele");
   };
 
-  it("pencerede reklam DEĞİL, dört gerçek grup var", async () => {
+  it("pencerede reklam DEĞİL, gerçek gruplar var", async () => {
     await filtreyiAc();
-    for (const baslik of [
-      "Ders İşleme Şekli",
-      "Mesafe",
-      "Fiyat Aralığı",
-      "Cinsiyet",
-    ]) {
+    // Ders işleme şekli 16 Eyl 2026'da pencereden ÇIKTI: arama hapının kendi
+    // adımı; burada ikinci bir yerden değiştirilmesi hapla çelişiyordu.
+    // Mesafe yalnız "Yakınımda" seçiliyken görünür; adreste niyet yokken yok.
+    for (const baslik of ["Fiyat Aralığı", "Eğitmen cinsiyeti"]) {
       expect(screen.getByText(baslik), `${baslik} grubu yok`).toBeTruthy();
     }
+    expect(screen.queryByText("Ders İşleme Şekli")).toBeNull();
+    expect(screen.queryByText("Mesafe")).toBeNull();
     // Sökülen reklam kartı.
     expect(screen.queryByText(/Daha fazla filtre mi arıyorsunuz/i)).toBeNull();
     expect(screen.queryByText(/hesap oluşturun/i)).toBeNull();
@@ -141,8 +141,9 @@ describe("anonim yüzey · filtreler GERÇEK", () => {
   it("faset SAYILARI anonime de gösteriliyor", async () => {
     // Uçlar `require_roles` taşımıyor; sunucu bu sayıları zaten veriyordu.
     await filtreyiAc();
-    expect(screen.getByText("42")).toBeTruthy();
-    expect(screen.getByText("61")).toBeTruthy();
+    // 16 Eyl 2026: sayı bölmeli seçicinin etiketinde ("Kadın (42)").
+    expect(screen.getByRole("button", { name: /Kadın \(42\)/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Erkek \(61\)/ })).toBeTruthy();
   });
 
   it("ASIL İDDİA: cinsiyet seçimi hem ADRESE hem İSTEĞE ulaşıyor", async () => {

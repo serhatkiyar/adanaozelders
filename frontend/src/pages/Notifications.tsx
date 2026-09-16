@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { navForRole } from "@/lib/nav";
@@ -107,7 +108,7 @@ export function NotificationsPanel() {
         {/* ── Başlık alanı ── */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 ">
+            <h1 className={SAYFA_BASLIGI}>
               Bildirimler
             </h1>
             <p className="mt-1 text-sm text-slate-500 ">

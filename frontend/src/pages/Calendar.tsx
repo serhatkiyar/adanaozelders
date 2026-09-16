@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { FullScreenSpinner } from "@/components/Spinner";
@@ -133,7 +134,7 @@ export default function Calendar() {
         {/* Hafta navigasyonu */}
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-slate-800 ">
+            <h1 className={SAYFA_BASLIGI}>
               Haftalık Takvim
             </h1>
             <p className="text-sm text-slate-500 ">

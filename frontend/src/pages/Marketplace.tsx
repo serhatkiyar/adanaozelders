@@ -1,7 +1,10 @@
-import { type CSSProperties, useMemo, useState, useEffect, useRef } from "react";
+import { type CSSProperties, useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { FiltreAcilir } from "@/components/FiltreAcilir";
+import { FiyatAraligi } from "@/components/FiyatAraligi";
+import { MesafeSecici } from "@/components/MesafeSecici";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
@@ -12,22 +15,26 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
 import { useSurfaceStore } from "@/store/surfaceStore";
-import { ROLE_IDS, TeachingMode, TutorSort } from "@/types";
+import { ROLE_IDS, TeachingMode } from "@/types";
 import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
-import { CategoryBar } from "@/components/CategoryBar";
-import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
+import { CompactSearch, DersArama, KutuphaneArama } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
-import { yerEtiketi, type YerSecimi } from "@/lib/yerArama";
-import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
+import { egitmenHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
+import { ilceListesindenYer, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
 import { useKonumStore } from "@/store/konumStore";
+import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
 import { bosDeger, filtreliMi } from "@/lib/urlSemasi";
 import {
   EGITMEN_ARAMA,
+  dersSorgusu,
   egitmenIstegi,
+  kutuphaneAramaAdresi,
   type EgitmenAramasi,
 } from "@/lib/aramaUrl";
+import { type DersSekli } from "@/components/AramaSecicileri";
 
 /**
  * Sayısal alanın kutu metni ↔ şema değeri çevirisi.
@@ -48,15 +55,6 @@ const esitle = (kutu: string, deger: number | undefined) =>
 
 /* ─── options ─────────────────────────────────────────── */
 
-const SORT_OPTIONS: { value: TutorSort; label: string; kisa: string }[] = [
-  // `label` masaüstü açılır menüsü (orada yer bol ve "Sıralama:" öneki menünün
-  // ne olduğunu söylüyor), `kisa` telefon çipi — yanındaki ok zaten bunun bir
-  // seçim olduğunu söylüyor ve uzun etiket 390px'te şeridin yarısını yiyor.
-  { value: TutorSort.RELEVANCE, label: "Sıralama: Önerilen", kisa: "Önerilen" },
-  { value: TutorSort.RATING_DESC, label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
-  { value: TutorSort.PRICE_ASC, label: "Sıralama: En Düşük Fiyat", kisa: "En düşük fiyat" },
-];
-
 const MODE_ALL = "ALL" as const;
 /** Aramada yalnız iki şekil vardır; `BOTH` filtre olarak anlamsızdır. */
 type AramaSekli = EgitmenAramasi["sekil"][number];
@@ -64,8 +62,20 @@ type AramaSekli = EgitmenAramasi["sekil"][number];
 /* ─── icon helpers ─────────────────────────────────────── */
 
 const FilterIconSvg = () => (
-  <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
+  /* Çizgi "ayar sürgüleri" (Airbnb'deki ikon dili): dolu huni, dolu siyah
+     daireyle birlikte ağır duruyordu (kullanıcı itirazı, 16 Eyl 2026). */
+  <svg
+    className="h-5 w-5 shrink-0"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    aria-hidden
+  >
+    <path d="M4 7h16M4 17h16" />
+    <circle cx="9" cy="7" r="2.2" fill="white" />
+    <circle cx="15" cy="17" r="2.2" fill="white" />
   </svg>
 );
 
@@ -92,22 +102,12 @@ export default function Marketplace() {
     sekil: modes,
     sinav: exam,
     cinsiyet: gender,
-    sirala,
     yakinimda,
   } = degerler;
-  const sort = sirala || TutorSort.RELEVANCE;
   const district = konum.ilce;
   const yer = konum.yer;
 
-  const setSubjects = (v: string[]) => ayarla({ ders: v });
-  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
-  const setYer = (v: YerSecimi | null) =>
-    ayarla({ konum: { yer: v, ilce: v ? [v.ilce] : konum.ilce } });
   const setExam = (v: string) => ayarla({ sinav: v });
-  const setModes = (v: AramaSekli[]) => ayarla({ sekil: v });
-  const setSort = (v: TutorSort) =>
-    // `RELEVANCE` varsayılan: adrese yazılmaz, boşa çekilir.
-    ayarla({ sirala: v === TutorSort.RELEVANCE ? "" : v });
 
   // Serbest metin YEREL: her tuş vuruşunda adres yazmak geçmişi kirletir.
   const [q, setQ] = useState(degerler.q);
@@ -116,6 +116,9 @@ export default function Marketplace() {
   }, [degerler.q]);
 
   const [showFilters, setShowFilters] = useState(false);
+  /* Şeritteki açılır çipler: tek seferde tek pencere. */
+  const [acikFiltre, setAcikFiltre] = useState<"fiyat" | "uzaklik" | null>(null);
+  const kapatAcilir = useCallback(() => setAcikFiltre(null), []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
   const mobil = useMobil();
@@ -175,14 +178,13 @@ export default function Marketplace() {
   // Konum artık `store/konumStore`da: YAZAN yer filtre penceresi (ortak
   // bileşen), OKUYAN yer bu sayfa. Yerel state ile paylaşılamazdı.
   const konumum = useKonumStore((s) => s.konum);
+  /* Adresteki "yakınımda" niyeti koordinat ister; izin yoksa bayrak düşer. */
+  useYakinimdaKonum(yakinimda, () =>
+    ayarla({ yakinimda: false, yaricap: undefined }, { replace: true })
+  );
 
   const modeSegment: AramaSekli | typeof MODE_ALL = modes[0] ?? MODE_ALL;
-  const selectMode = (v: AramaSekli | typeof MODE_ALL) =>
-    setModes(v === MODE_ALL ? [] : [v]);
-  const isAllMode = modes.length === 0;
 
-  const removeSubject = (s: string) =>
-    setSubjects(subjects.filter((x) => x !== s));
 
   const debouncedQ = useDebounce(q);
 
@@ -280,6 +282,13 @@ export default function Marketplace() {
 
   const hasModalFilters =
     !!minRate || !!maxRate || !!gender || !!minAge || !!maxAge || yakinimda;
+  /* Filtre PENCERESİNDEKİ etkin grup sayısı (başlıktaki rozet); fiyat ve yaş
+     aralığı birer grup. */
+  const mobilFiltreSayisi =
+    (minRate || maxRate ? 1 : 0) +
+    (gender ? 1 : 0) +
+    (minAge || maxAge ? 1 : 0) +
+    (yakinimda ? 1 : 0);
 
   // "Filtre var mı" artık şemadan gelir: yeni bir alan eklendiğinde bu satırı
   // güncellemeyi unutmak, temizle düğmesini sessizce yanlış gösterirdi.
@@ -295,26 +304,92 @@ export default function Marketplace() {
 
   // Geniş aramada arama butonuna basınca (q/district zaten canlı state'i
   // sürdüğü için) yalnızca geniş paneli kapat.
+  /* Taslak: geniş hap her AÇILIŞTA adresten yeniden çözülür — kullanıcı
+     hapı kapatıp çipten filtre değiştirse bile bir sonraki açılış güncel. */
+  const taslagiCoz = () => ({
+    ders: subjects[0] ?? "",
+    dersEtiket: subjects[0] ?? q,
+    sekil: (modes[0] ?? "") as DersSekli,
+    yer: ilceListesindenYer(yer, district),
+    yakinimda: yakinimda,
+  });
+  const [taslak, setTaslak] = useState(taslagiCoz);
+  /* Geniş aramadaki sekme (16 Eyl 2026): "Kütüphaneler"e basmak sayfayı
+     değiştirmez, formu kütüphane hapına çevirir; Ara → /kutuphaneler. Eğitmen
+     taslağı bu arada durur, sekme geri gelince aynen görünür. */
+  const [aramaKategori, setAramaKategori] = useState<CategoryKey>("egitmenler");
+  const [kTaslak, setKTaslak] = useState<{ yer: YerSecimi | null; yakinimda: boolean }>({
+    yer: null,
+    yakinimda: false,
+  });
+  const [oncekiAcik, setOncekiAcik] = useState(false);
+  if (searchOpen !== oncekiAcik) {
+    setOncekiAcik(searchOpen);
+    if (searchOpen) {
+      setTaslak(taslagiCoz());
+      setAramaKategori("egitmenler");
+    }
+  }
+  const submitKutuphane = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate(
+      kutuphaneAramaAdresi({
+        konum: {
+          yer: kTaslak.yer?.tur === "mahalle" ? kTaslak.yer : null,
+          ilce: yerinIlceleri(kTaslak.yer),
+        },
+        yakinimda: kTaslak.yakinimda,
+      })
+    );
+    setSearchOpen(false);
+  };
+
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    ayarla({
+      ...dersSorgusu(taslak.ders, taslak.dersEtiket),
+      sekil: taslak.sekil ? [taslak.sekil] : [],
+      konum: {
+        yer: taslak.yer?.tur === "mahalle" ? taslak.yer : null,
+        ilce: yerinIlceleri(taslak.yer),
+      },
+      yakinimda: taslak.yakinimda,
+    });
     setSearchOpen(false);
   };
 
   /* ── Navbar ortası ──
      Kapalı: kompakt arama pill'i (tıklayınca geniş hali açar).
      Açık:  ana sayfadaki kategori çubuğu (sekmeler başka sayfaya götürür). */
+  /* Hapın iki satırı (telefonda başlık, masaüstünde daralmış hap) `lib/aramaBasligi`den: konum seçiliyse başlık konumu
+     söyler ("Çukurova bölgesindeki eğitmenler"), alt satır ders + şekil. */
+  const mobilHap = egitmenHapBasligi({
+    q,
+    dersler: subjects,
+    konum: konumOzeti({
+      yer,
+      ilce: district,
+      yakinimda: yakinimda,
+      uzaktan: modeSegment === TeachingMode.ONLINE,
+    }),
+    sekil: modeSegment,
+  });
+
   const navCenter = (
     <div key={searchOpen ? "cats" : "compact"} className="w-full animate-in fade-in duration-300">
       {searchOpen ? (
-        <CategoryBar active="egitmenler" />
+        <CategoryBar active={aramaKategori} onSec={setAramaKategori} />
       ) : (
         <div className="flex w-full justify-center">
           <CompactSearch
             active="egitmenler"
-            placeholder="Ders ara… (ör. Lise Matematik)"
-            q={q}
-            district={district}
-            remote={modeSegment === TeachingMode.ONLINE}
+            placeholder="Aramaya başlayın"
+            /* Seçili ders de görünür (kullanıcı, 16 Eyl 2026: "Matematik
+               seçiyorum, çubukta yazmıyor"): `q` yalnız serbest metindi,
+               katalogdan seçilen `ders` hapa hiç gitmiyordu. */
+            /* Telefon başlığıyla aynı kaynaktan; masaüstünde "|" ile
+               ayrılmış parçalar: "Çukurova | Matematik | Yüz yüze". */
+            parcalar={mobilHap.parcalar}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -324,21 +399,45 @@ export default function Marketplace() {
 
   /* ── Navbar altı ──
      Açık: ana sayfadaki büyük arama hapı. Kapalı: filtre çubuğu. */
+  /* GENİŞ ARAMA = ANA SAYFADAKİ HAP, ADRESTEN DOLU (kullanıcı kararı,
+     16 Eyl 2026: "tekrar çubuğa tıklayınca aramayı yaparkenki bilgiler
+     orada girili olmalı"). Eskiden burada ayrı bir `BigSearch` vardı (yer +
+     ders); ders şeklini ve Yakınımda'yı bilmiyor, seçilmiş dersi de
+     göstermiyordu. Taslak hap açıldığında adresten çözülür; Ara adrese
+     yazar. Telefonun adımlı yüzeyi (`MobilAramaAkisi`) aynı şeyi yapıyor. */
   const bigSearchRow = (
     <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
-      <BigSearch
-        q={q}
-        setQ={setQ}
-        district={district}
-        setDistrict={setDistrict}
+      {aramaKategori === "kutuphaneler" ? (
+        <KutuphaneArama
+          yer={kTaslak.yer}
+          /* Fonksiyonel güncelleme ŞART: hap yer seçince art arda setYer ve
+             setYakinimda(false) çağırır; ikincisi eski kapanıştaki `yer`i
+             (null) geri yazıyordu, Merkez seçimi kayboluyordu (ölçüldü). */
+          setYer={(v) =>
+            setKTaslak((o) => ({ yer: v, yakinimda: v ? false : o.yakinimda }))
+          }
+          yakinimda={kTaslak.yakinimda}
+          setYakinimda={(v) =>
+            setKTaslak((o) => ({ yer: v ? null : o.yer, yakinimda: v }))
+          }
+          onSubmit={submitKutuphane}
+        />
+      ) : (
+      <DersArama
+        ders={taslak.ders}
+        dersEtiket={taslak.dersEtiket}
+        onDersChange={(qDeger, etiket) =>
+          setTaslak((o) => ({ ...o, ders: qDeger, dersEtiket: etiket }))
+        }
+        sekil={taslak.sekil}
+        setSekil={(v) => setTaslak((o) => ({ ...o, sekil: v }))}
+        yer={taslak.yer}
+        setYer={(v) => setTaslak((o) => ({ ...o, yer: v }))}
+        yakinimda={taslak.yakinimda}
+        setYakinimda={(v) => setTaslak((o) => ({ ...o, yakinimda: v }))}
         onSubmit={submitSearch}
-        placeholder="Matematik, İngilizce…"
-        yer={yer}
-        setYer={setYer}
-        solBaslik="Yer"
-        sagBaslik="Ders"
-        trending={TRENDING_SEARCHES}
       />
+      )}
     </div>
   );
 
@@ -351,42 +450,60 @@ export default function Marketplace() {
       {/* Filtreler butonu */}
       <button
         onClick={() => setShowFilters(true)}
-        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
+        className={`relative flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow ${
           hasModalFilters
-            ? "border-slate-900 bg-slate-900 text-white "
+            ? "border-slate-900 bg-white text-slate-900 "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
       >
         <FilterIconSvg />
         Filtreler
+        {/* Etkin filtre SAYISI, telefon başlığındaki rozetle aynı dil
+            (koyu, küçük). Turuncu onay işareti marka aksanını aksiyon dışı
+            bir yerde kullanıyordu. */}
         {hasModalFilters && (
-          <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-marka text-[9px] font-bold text-marka-fg ">
-            ✓
+          <span
+            aria-hidden
+            className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white"
+          >
+            {mobilFiltreSayisi}
           </span>
         )}
       </button>
 
+      {/* SIRALAMA YOK (kullanıcı kararı, 16 Eyl 2026): şerit "Filtreler |
+          uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
-      {/* Sıralama açılır menüsü */}
-      <div className="relative shrink-0">
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as TutorSort)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
-            sort !== TutorSort.RELEVANCE
-              ? "border-slate-900 bg-slate-900 text-white "
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
-          }`}
+      {/* AÇILIR ÇİPLER — Airbnb "Fiyat ⌄ / Yerin türü ⌄" (kullanıcı kararı,
+          16 Eyl 2026). Gövdeler filtre penceresiyle ORTAK bileşen. */}
+      <FiltreAcilir
+        etiket="Fiyat"
+        aktif={degerler.minFiyat !== undefined || degerler.maxFiyat !== undefined}
+        acik={acikFiltre === "fiyat"}
+        onAc={() => setAcikFiltre("fiyat")}
+        onKapat={kapatAcilir}
+        onTemizle={() => ayarla({ minFiyat: undefined, maxFiyat: undefined })}
+      >
+        <FiyatAraligi acik={acikFiltre === "fiyat"} />
+      </FiltreAcilir>
+      {degerler.yakinimda && (
+        <FiltreAcilir
+          etiket={uzaklikCipi(degerler.yaricap)}
+          aktif
+          acik={acikFiltre === "uzaklik"}
+          onAc={() => setAcikFiltre("uzaklik")}
+          onKapat={kapatAcilir}
+          onTemizle={() => ayarla({ yakinimda: false, yaricap: undefined })}
+          genislik="w-[460px]"
         >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${sort !== TutorSort.RELEVANCE ? 'text-white ' : 'text-slate-400 '}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </div>
-      </div>
+          <MesafeSecici
+            yaricap={degerler.yaricap}
+            sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+            kaldir={() => ayarla({ yakinimda: false, yaricap: undefined })}
+          />
+        </FiltreAcilir>
+      )}
 
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
@@ -398,7 +515,7 @@ export default function Marketplace() {
           onClick={togglePricePopover}
           className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
             minRate || maxRate
-              ? "border-slate-900 bg-slate-900 text-white "
+              ? "border-slate-900 bg-white text-slate-900 "
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
           }`}
         >
@@ -426,28 +543,6 @@ export default function Marketplace() {
         )}
       </div>
 
-      <div className="h-5 w-px shrink-0 bg-slate-200 " />
-
-      {/* Ders şekli açılır menüsü */}
-      <div className="relative shrink-0">
-        <select
-          value={modeSegment}
-          onChange={(e) => selectMode(e.target.value as any)}
-          className={`appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 ${
-            !isAllMode
-              ? "border-slate-900 bg-slate-900 text-white "
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
-          }`}
-        >
-          <option value={MODE_ALL}>Eğitim Şekli</option>
-          <option value={TeachingMode.ONLINE}>Uzaktan</option>
-          <option value={TeachingMode.IN_PERSON}>Yüzyüze</option>
-        </select>
-        <div className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${!isAllMode ? 'text-white ' : 'text-slate-400 '}`}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
-        </div>
-      </div>
-
       {/* Aktif sınav chip'i */}
       {exam && (
         <button
@@ -459,17 +554,10 @@ export default function Marketplace() {
         </button>
       )}
 
-      {/* Aktif ders chip'leri */}
-      {subjects.map((s) => (
-        <button
-          key={s}
-          onClick={() => removeSubject(s)}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
-        >
-          {s}
-          <span aria-hidden className="ml-0.5 text-xs">✕</span>
-        </button>
-      ))}
+      {/* DERS ÇİPİ ve DERS ŞEKLİ ŞERİTTE YOK (kullanıcı kararı, 16 Eyl 2026):
+          ikisi de üstteki hapta yazıyor ("Çukurova bölgesindeki eğitmenler /
+          Matematik • Yüz yüze"); şeritte tekrar gürültüydü. Değiştirmek için
+          hap açılır. Sınav çipi kalıyor — hap onu taşımıyor. */}
       </div>
     </div>
   );
@@ -484,72 +572,35 @@ export default function Marketplace() {
      Filtre modeli iki sayfada farklıdır ve bu yüzden çipleri her sayfa KENDİ
      durumundan üretir: burada ders şekli `modes` DİZİSİdir (`selectMode` tek
      değere indirger), anonim tarafta tek bir `sekil` değeridir. */
-  const mobilAramaOzeti = [
-    yer
-      ? yerEtiketi(yer)
-      : district.length === 1
-        ? district[0]
-        : district.length
-          ? `${district.length} ilçe`
-          : null,
-    modeSegment === TeachingMode.ONLINE
-      ? "Uzaktan"
-      : modeSegment === TeachingMode.IN_PERSON
-        ? "Yüz yüze"
-        : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  /* Hap İKİ bilgiyi HER ZAMAN söyler (kullanıcı kararı, 16 Eyl 2026; Airbnb
+     "Herhangi hafta • Misafir ekleyin" gibi): yer yoksa "Tüm Adana", ders
+     şekli yoksa "Ders şekli ekleyin" daveti. Boş parça gizlenmez — kullanıcı
+     neyi SEÇMEDİĞİNİ de görür ve hap onu tamamlamaya çağırır. */
 
+  /* Şeritte DERS ŞEKLİ ve DERS ÇİPİ YOK (kullanıcı kararı, 16 Eyl 2026):
+     ikisi de hapın iki satırında zaten yazıyor ("Matematik • Uzaktan");
+     şeritte tekrarı gürültüydü. Değiştirmek için hap dokunulur. Sınav çipi
+     kalıyor — hap onu taşımıyor. */
   const mobilCipler: FiltreCipi[] = [
-    {
-      id: "uzaktan",
-      etiket: "Uzaktan",
-      aktif: modeSegment === TeachingMode.ONLINE,
-      onClick: () =>
-        selectMode(modeSegment === TeachingMode.ONLINE ? MODE_ALL : TeachingMode.ONLINE),
-    },
-    {
-      id: "yuzyuze",
-      etiket: "Yüz yüze",
-      aktif: modeSegment === TeachingMode.IN_PERSON,
-      onClick: () =>
-        selectMode(
-          modeSegment === TeachingMode.IN_PERSON ? MODE_ALL : TeachingMode.IN_PERSON
-        ),
-    },
+    ...(degerler.minFiyat !== undefined || degerler.maxFiyat !== undefined
+      ? [{ id: "fiyat", etiket: "Fiyat", aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
+    ...(degerler.yakinimda
+      ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
     ...(exam
       ? [{ id: "exam", etiket: `${exam} ✕`, aktif: true, onClick: () => setExam("") }]
       : []),
-    ...subjects.map((s) => ({
-      id: `subject-${s}`,
-      etiket: `${s} ✕`,
-      aktif: true,
-      onClick: () => removeSubject(s),
-    })),
   ];
 
   const mobilUst = mobil ? (
     <AramaMobilBaslik
-      baslik={
-        q ||
-        (subjects.length === 1
-          ? subjects[0]
-          : subjects.length
-            ? `${subjects.length} ders`
-            : "Eğitmen ara")
-      }
-      ozet={mobilAramaOzeti || "Tüm Adana"}
+      baslik={mobilHap.baslik}
+      ozet={mobilHap.ozet}
       onHap={() => setMobilAramaAcik(true)}
       onGeri={() => navigate(-1)}
       onFiltre={() => setShowFilters(true)}
-      filtreAktif={hasModalFilters}
-      siralama={{
-        deger: sort,
-        secenekler: SORT_OPTIONS.map((o) => ({ value: o.value, kisa: o.kisa })),
-        onChange: (v) => setSort(v as TutorSort),
-        varsayilan: TutorSort.RELEVANCE,
-      }}
+      filtreSayisi={mobilFiltreSayisi}
       cipler={mobilCipler}
       filtreIkonu={<FilterIconSvg />}
     />

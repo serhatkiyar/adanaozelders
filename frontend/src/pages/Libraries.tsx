@@ -10,38 +10,43 @@ import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import { getErrorMessage } from "@/lib/errors";
-import { toast } from "@/store/toastStore";
 import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
 import { LibraryRow } from "@/components/VitrinSeridi";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
+import { FiltreAcilir } from "@/components/FiltreAcilir";
+import { MesafeSecici } from "@/components/MesafeSecici";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
 import { ROUTES } from "@/lib/routes";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { kutuphaneHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
+import { konumOzeti } from "@/lib/yerArama";
+import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
+import { useKonumStore } from "@/store/konumStore";
 import { KUTUPHANE_ARAMA, kutuphaneIstegi } from "@/lib/aramaUrl";
 import type { LibrarySearchParams } from "@/api/libraries";
 
 type ViewMode = "list" | "map";
-type LibrarySort = "rating" | "distance" | "";
 
-/* `label` masaüstü açılır menüsü için ("Sıralama:" öneki menü kapalıyken ne
-   seçildiğini söyler), `kisa` telefon şeridindeki çip için — orada yer dar ve
-   önek her çipte tekrar ederdi. Eğitmen ekranındaki ayrımın aynısı. */
-const SORT_OPTIONS: { value: LibrarySort; label: string; kisa: string }[] = [
-  { value: "", label: "Sıralama: Önerilen", kisa: "Önerilen" },
-  /* "Sıralama:" öneki menü KAPALIYKEN ne seçildiğini söyler — eğitmen
-     ekranındaki kuralın aynısı. Emoji YOK: her platformda başka çiziliyor ve
-     kendi rengini getiriyor. */
-  { value: "rating", label: "Sıralama: En Yüksek Puan", kisa: "En yüksek puan" },
-  { value: "distance", label: "Sıralama: Yakınımda", kisa: "Yakınımda" },
-];
 
 const FilterIconSvg = () => (
-  <svg className="h-4 w-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
+  /* Çizgi "ayar sürgüleri" (Airbnb'deki ikon dili): dolu huni, dolu siyah
+     daireyle birlikte ağır duruyordu (kullanıcı itirazı, 16 Eyl 2026). */
+  <svg
+    className="h-5 w-5 shrink-0"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    aria-hidden
+  >
+    <path d="M4 7h16M4 17h16" />
+    <circle cx="9" cy="7" r="2.2" fill="white" />
+    <circle cx="15" cy="17" r="2.2" fill="white" />
   </svg>
 );
 
@@ -74,7 +79,6 @@ export default function Libraries() {
   const { degerler, ayarla, filtreli, params: searchParams } = useAramaDurumu(KUTUPHANE_ARAMA);
   const { konum, sayfa: page } = degerler;
   const district = konum.ilce;
-  const setDistrict = (v: string[]) => ayarla({ konum: { ...konum, ilce: v } });
 
   const [view, setView] = useState<ViewMode>("list");
   const mobil = useMobil();
@@ -97,47 +101,33 @@ export default function Libraries() {
    * URL'de, ötekisi değil.
    */
   const amenities = degerler.olanaklar;
-  const sort = degerler.sirala;
 
   /*
    * KOORDİNAT ADRESE YAZILMAZ. Adres yalnız niyeti taşır
    * (`sirala=mesafe`); konum bağlantıyı açan kişiden yeniden istenir.
    */
-  const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoLoading, setGeoLoading] = useState(false);
+  /* KONUM ORTAK DEPODAN (16 Eyl 2026). Eskiden bu sayfa kendi `nearMe`
+     state'ini tutup yalnız "mesafe" sıralaması seçilince konum istiyordu;
+     adresteki `yakinimda=1` niyeti (telefonun adımlı yüzeyi, masaüstü hapı,
+     paylaşılan bağlantı) HİÇ okunmuyordu — liste "Tüm Adana" dönüyordu.
+     Artık niyet nereden gelirse gelsin tek hook konum ister; izin yoksa
+     niyet adresten düşer. Eğitmen sonuç sayfalarıyla aynı depo. */
+  const konumum = useKonumStore((s) => s.konum);
+  const geoLoading = useKonumStore((s) => s.yukleniyor);
+  /* Şeritteki açılır çip. */
+  const [uzaklikAcik, setUzaklikAcik] = useState(false);
+  const yakinimdaKaldir = () => ayarla({ yakinimda: false, yaricap: undefined, sirala: "" });
+  /* Rozet: olanaklar + Yakınımda (eğitmen ekranıyla aynı sayım). */
+  const filtreSayisi = amenities.length + (degerler.yakinimda ? 1 : 0);
   const [showFilters, setShowFilters] = useState(false);
   // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
   // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
   const limit = limitForPage(page, PER_PAGE);
-  // "Yakınımda" sıralaması konum ister; reddedilirse sıralamayı geri al.
-  const requestNearMe = (onFail?: () => void) => {
-    if (!navigator.geolocation) {
-      toast.error("Tarayıcınız konum servisini desteklemiyor.");
-      onFail?.();
-      return;
-    }
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setNearMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGeoLoading(false);
-      },
-      () => {
-        toast.error("Konum alınamadı. Lütfen izin verin.");
-        setGeoLoading(false);
-        onFail?.();
-      },
-      { enableHighAccuracy: false, timeout: 8000 }
-    );
-  };
+  useYakinimdaKonum(degerler.yakinimda || degerler.sirala === "distance", () =>
+    ayarla({ yakinimda: false, yaricap: undefined, sirala: "" }, { replace: true })
+  );
 
-  const setSort = (value: LibrarySort) => ayarla({ sirala: value });
 
-  // Sıralama seçimi: "Yakınımda" ilk kez seçilince konum iste.
-  const handleSortChange = (value: LibrarySort) => {
-    setSort(value);
-    if (value === "distance" && !nearMe) requestNearMe(() => setSort(""));
-  };
 
   const toggleAmenity = (a: string) =>
     ayarla({
@@ -155,9 +145,9 @@ export default function Libraries() {
     () =>
       kutuphaneIstegi(
         degerler,
-        { limit, offset: 0, konumum: nearMe }
+        { limit, offset: 0, konumum }
       ),
-    [degerler, limit, nearMe]
+    [degerler, limit, konumum]
   );
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
@@ -199,69 +189,51 @@ export default function Libraries() {
         /* Dolgu kuralı eğitmen ekranıyla AYNI: yalnız "olanaklar" değil,
            aramada etkin BİR filtre varsa düğme dolu çizilir. Eskiden ilçeye
            göre filtrelenmiş bir listede bile boş görünüyordu. */
-        className={`flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
+        className={`relative flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition hover:shadow md:min-h-0 ${
           filtreli
-            ? "border-slate-900 bg-slate-900 text-white "
+            ? "border-slate-900 bg-white text-slate-900 "
             : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 "
         }`}
       >
         <FilterIconSvg />
         Filtreler
-        {amenities.length > 0 && (
-          <span className="ml-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[9px] font-bold text-marka-fg ">
-            {amenities.length}
+        {/* Rozet eğitmen şeridiyle aynı: koyu, düğmenin sağ üst köşesinde. */}
+        {filtreSayisi > 0 && (
+          <span
+            aria-hidden
+            className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white"
+          >
+            {filtreSayisi}
           </span>
         )}
       </button>
 
+      {/* SIRALAMA YOK (kullanıcı kararı, 16 Eyl 2026): şerit "Filtreler |
+          uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
-      {/* Sıralama AÇILIR MENÜ — eğitmen sonuç ekranıyla birebir aynı bileşen
-          dili (11 Eyl 2026). Burada üç ayrı çip vardı: aynı şeridin içinde
-          "Filtreler" bir düğme, sıralama üç çip, aktif filtreler yine çip
-          oluyordu — üç ayrı anlam tek bir görsel dille yazılınca hangisinin ne
-          yaptığı okunmuyordu. Sıralama tek bir yerden seçilen TEK değerdir,
-          açılır menü tam olarak bunu söyler ve şeridin genişliğini de üç
-          çipten tek kutuya indirir. */}
-      <div className="relative shrink-0">
-        <select
-          value={sort}
-          onChange={(e) => handleSortChange(e.target.value as LibrarySort)}
-          aria-label="Sıralama"
-          className={`min-h-[44px] appearance-none rounded-full border px-3.5 py-1.5 pr-8 text-sm font-medium outline-none transition focus:ring-2 focus:ring-marka-focus/20 md:min-h-0 ${
-            sort
-              ? "border-slate-900 bg-slate-900 text-white "
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
-          }`}
+      {/* AÇILIR UZAKLIK ÇİPİ — eğitmen şeridiyle aynı bileşen (16 Eyl 2026). */}
+      {degerler.yakinimda && (
+        <FiltreAcilir
+          etiket={uzaklikCipi(degerler.yaricap)}
+          aktif
+          acik={uzaklikAcik}
+          onAc={() => setUzaklikAcik(true)}
+          onKapat={() => setUzaklikAcik(false)}
+          onTemizle={yakinimdaKaldir}
+          genislik="w-[460px]"
         >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value || "default"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <div
-          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
-            sort ? "text-white " : "text-slate-400 "
-          }`}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </div>
-      </div>
+          <MesafeSecici
+            yaricap={degerler.yaricap}
+            sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+            kaldir={yakinimdaKaldir}
+          />
+        </FiltreAcilir>
+      )}
 
-      {/* Aktif ilçe chip'leri */}
-      {district.map((d) => (
-        <button
-          key={d}
-          onClick={() => setDistrict(district.filter((x) => x !== d))}
-          className="shrink-0 inline-flex items-center gap-1 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
-        >
-          {d}
-          <span aria-hidden className="ml-0.5 text-xs">✕</span>
-        </button>
-      ))}
+      {/* İLÇE ÇİPİ YOK (16 Eyl 2026): konum hapta yazıyor ("Merkez"); Merkez
+          seçimi burada dört ayrı ilçe çipine açılıyordu. Eğitmen şeridiyle
+          aynı kural — hapta olan şeritte tekrar etmez. */}
 
       {/* Aktif olanak chip'leri */}
       {amenities.map((a) => (
@@ -288,13 +260,11 @@ export default function Libraries() {
      (`mobilUstGizle`) ve sayfa kendi başlığını çizer. Çipler ve sıralama
      `AramaMobilBaslik`in kendi şeridinde; masaüstündeki geniş filtre şeridi
      `md:` altında çizilmez, ikisi aynı anda görünmez. */
+  /* İlçe çipi yok: konum başlıkta (eğitmen ekranıyla aynı kural). */
   const mobilCipler: FiltreCipi[] = [
-    ...district.map((d) => ({
-      id: `ilce-${d}`,
-      etiket: `${d} ✕`,
-      aktif: true,
-      onClick: () => setDistrict(district.filter((x) => x !== d)),
-    })),
+    ...(degerler.yakinimda
+      ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
     ...amenities.map((a) => ({
       id: `olanak-${a}`,
       etiket: `${amenityLabel(a)} ✕`,
@@ -303,24 +273,22 @@ export default function Libraries() {
     })),
   ];
 
+  const mobilHap = kutuphaneHapBasligi({
+    konum: konumOzeti({ yer: konum.yer, ilce: district, yakinimda: degerler.yakinimda }),
+    olanakSayisi: amenities.length,
+  });
   const mobilBaslik = (
     <div
-      className="-mx-4 mb-3 border-b border-slate-100 bg-[#fafafa]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
+      className="-mx-4 mb-3 border-b border-slate-100 bg-[#f4f4f4]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
       style={{ top: "var(--yapiskan-ust, 0px)" }}
     >
       <AramaMobilBaslik
-        baslik={degerler.q || "Kütüphane ara"}
-        ozet={district.length ? district.join(", ") : "Tüm Adana"}
+        baslik={mobilHap.baslik}
+        ozet={mobilHap.ozet}
         onHap={() => setAramaAcik(true)}
         onGeri={geriDon}
         onFiltre={() => setShowFilters(true)}
-        filtreAktif={amenities.length > 0}
-        siralama={{
-          deger: sort,
-          secenekler: SORT_OPTIONS.map((o) => ({ value: o.value, kisa: o.kisa })),
-          onChange: (v) => handleSortChange(v as LibrarySort),
-          varsayilan: "",
-        }}
+        filtreSayisi={filtreSayisi}
         cipler={mobilCipler}
         filtreIkonu={<FilterIconSvg />}
       />
@@ -348,7 +316,7 @@ export default function Libraries() {
       {filtreli && mobil && mobilBaslik}
       {filtreli && (
         <div
-          className="-mx-4 mb-3 hidden border-b border-slate-100 bg-[#fafafa]/85 backdrop-blur-md sticky z-20 sm:-mx-6 md:block"
+          className="-mx-4 mb-3 hidden border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md sticky z-20 sm:-mx-6 md:block"
           style={{ top: "var(--yapiskan-ust, 0px)" }}
         >
           {filterBar}
@@ -383,7 +351,7 @@ export default function Libraries() {
           filtrelenmiş bir listenin üstünde "Çukurova Kütüphaneleri" şeridi hem
           çelişki hem de her tuş vuruşunda dört ek sorgu demek. */}
       {!filtreli && (
-        <div className="space-y-2">
+        <div className="space-y-8">
           {["Çukurova", "Seyhan", "Yüreğir", "Sarıçam"].map((ilce) => (
             <LibraryRow
               key={ilce}
@@ -510,7 +478,20 @@ export default function Libraries() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 space-y-8 overflow-y-auto p-6">
+                {/* Mesafe — eğitmen penceresiyle AYNI kural: yalnız Yakınımda
+                    seçiliyken; Farketmez niyeti kaldırır. */}
+                {degerler.yakinimda && (
+                  <div>
+                    <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Mesafe</h3>
+                    <MesafeSecici
+                      yaricap={degerler.yaricap}
+                      sec={(km) => ayarla({ yakinimda: true, yaricap: km })}
+                      kaldir={yakinimdaKaldir}
+                    />
+                  </div>
+                )}
+                <div>
                 <p className="mb-3 text-sm text-slate-500 ">
                   Aradığın özelliklere sahip mekânları süz.
                 </p>
@@ -532,6 +513,7 @@ export default function Libraries() {
                       </button>
                     );
                   })}
+                </div>
                 </div>
               </div>
 

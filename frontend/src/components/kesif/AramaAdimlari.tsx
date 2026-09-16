@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { PlainButton } from "@/components/ui/PlainButton";
+import { SecenekSatiri } from "@/components/ui/SecenekSatiri";
 import { SEKIL_ADI, type DersSekli } from "@/components/AramaSecicileri";
 import { useSubjects } from "@/hooks/useSubjects";
 import { dersAra } from "@/lib/dersArama";
 import { LIBRARY_TRENDING_SEARCHES, TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { yerAra, yerEtiketi, type YerSecimi } from "@/lib/yerArama";
+import { yakinimdaSecildi } from "@/store/konumStore";
 import { TeachingMode } from "@/types";
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -58,7 +60,7 @@ function KapaliSatir({
       /* 52px: referansta kapalı satır ekran genişliğinin ~%13'ü (390px'te
          ≈50px), bende 64px ile %16,4'tü — kapalıyken satır gereğinden kalın
          duruyordu. 44px'in (dokunma eşiği) altına inilmiyor. */
-      className="flex min-h-[52px] w-full items-center justify-between gap-4 rounded-2xl bg-white px-5 text-left shadow-sm ring-1 ring-slate-100 transition active:scale-[0.99]"
+      className="flex min-h-[52px] w-full shrink-0 items-center justify-between gap-4 rounded-2xl bg-white px-5 text-left shadow-sm ring-1 ring-slate-100 transition active:scale-[0.99]"
     >
       <span className="text-sm font-medium text-slate-500">{etiket}</span>
       {/* Sağdaki yazı DEĞER OLMASA DA koyu ve kalın (referans ekran: "Tarih
@@ -72,11 +74,29 @@ function KapaliSatir({
 }
 
 /** Açık kart: başlık + içerik. */
-function AcikKart({ baslik, children }: { baslik: string; children: ReactNode }) {
+function AcikKart({
+  baslik,
+  dolgu = false,
+  children,
+}: {
+  baslik: string;
+  /** Kart, kapalı satırlar ve alt çubuktan ARTAN yeri doldurur (liste adımları). */
+  dolgu?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
-      <h2 className="text-[26px] font-bold leading-tight text-slate-900">{baslik}</h2>
-      <div className="mt-4">{children}</div>
+    /* ESNEK KART (kullanıcı kararı, 16 Eyl 2026, referans: Airbnb telefon
+       arama yüzeyi): seçim ekranı KAYDIRMAZ. Liste adımlarında kart artan yeri
+       doldurur, öneri listesi kartın altında KESİLİR (son satır yarım kalır,
+       aşağı ok devamını açar). Seçenek adımında (ders şekli) kart içerik
+       kadar; ekranın altındaki boşluk orada doğal. */
+    <section
+      className={`flex min-h-0 shrink flex-col rounded-2xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-100 ${
+        dolgu ? "flex-1" : ""
+      }`}
+    >
+      <h2 className="text-2xl font-bold leading-tight text-slate-900">{baslik}</h2>
+      <div className="mt-3 flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );
 }
@@ -94,7 +114,7 @@ function Kutu({
   etiket: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 px-4 focus-within:border-marka-mid focus-within:ring-2 focus-within:ring-marka-focus/30">
+    <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-slate-200 px-4 focus-within:border-marka-mid focus-within:ring-2 focus-within:ring-marka-focus/30">
       <svg
         className="h-5 w-5 shrink-0 text-slate-500"
         viewBox="0 0 24 24"
@@ -111,52 +131,29 @@ function Kutu({
         onChange={(e) => onDegis(e.target.value)}
         placeholder={ipucu}
         aria-label={etiket}
-        className="min-h-[56px] w-full border-0 bg-transparent text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+        className="min-h-[48px] w-full border-0 bg-transparent text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
       />
     </div>
   );
 }
 
-/** Öneri satırı — solda yuvarlak kare simge kabı, sağda iki satır metin. */
+/** Öneri satırı = sitenin TEK seçenek satırı (`ui/SecenekSatiri`): ölçü ve
+ *  görünüm orada, burada yalnız ad çevrilir. Ders önerilerinde simge yoktur
+ *  (kullanıcı kararı, 11 Eyl 2026): her derse aynı kitabı koymak hiçbir
+ *  dersi ötekinden ayırmıyordu. Yer ve ders şekli satırlarında simge
+ *  gerçekten ayırt edici olduğu için orada duruyor. */
 function OneriSatiri({
   simge,
   baslik,
   altBaslik,
   onSec,
 }: {
-  /** Yoksa satır simgesiz çizilir — ders önerilerinde durum bu. */
   simge?: ReactNode;
   baslik: string;
   altBaslik?: string;
   onSec: () => void;
 }) {
-  return (
-    <PlainButton
-      onClick={onSec}
-      className="flex min-h-[64px] w-full items-center gap-4 rounded-xl px-1 text-left transition active:scale-[0.99] hover:bg-slate-50"
-    >
-      {/* Simge kutuyu DOLDURUR: `text-xl` 48px'lik kabın içinde kayboluyordu
-          (referansta çizgi ikon kutuyu dolduruyor).
-
-          DERS önerilerinde simge YOKTUR (kullanıcı kararı, 11 Eyl 2026): her
-          derse aynı kitap emojisini koymak hiçbir dersi ötekinden ayırmıyor,
-          yalnız satırı şişiriyordu. Yer ve ders şekli satırlarında simge
-          gerçekten AYIRT EDİCİ olduğu için orada duruyor. */}
-      {simge && (
-        <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-[28px] leading-none">
-          {simge}
-        </span>
-      )}
-      <span className="min-w-0">
-        <span className="block truncate text-base font-semibold text-slate-900">
-          {baslik}
-        </span>
-        {altBaslik && (
-          <span className="block truncate text-sm text-slate-500">{altBaslik}</span>
-        )}
-      </span>
-    </PlainButton>
-  );
+  return <SecenekSatiri simge={simge} baslik={baslik} altBaslik={altBaslik} onClick={onSec} />;
 }
 
 /**
@@ -172,7 +169,7 @@ function OneriSatiri({
  * kategorisinin dili. Karışmıyor çünkü bu liste yalnız Eğitmenler sekmesinde
  * çiziliyor ve satırın yanında ders adı yazıyor.
  */
-function DersSimgesi() {
+export function DersSimgesi() {
   return (
     <svg
       className="h-6 w-6 text-slate-900"
@@ -234,14 +231,18 @@ function KonumSimgesi() {
  */
 function AsagiOk({ onAc }: { onAc: () => void }) {
   return (
-    <div className="mt-2 border-t border-slate-100 pt-1">
+    <div className="-mb-2 mt-1 shrink-0 border-t border-slate-100">
+      {/* İNCE şerit (kullanıcı kararı, 16 Eyl 2026): 44px'lik düğme ve kartın
+          alt boşluğu üst üste binince ok kartın altında koca bir boşlukta
+          yüzüyordu. Düğme 32px, kartın p-5 alt boşluğunu -mb-3 ile yiyor;
+          tam genişlik olduğu için dokunma alanı yine rahat. */}
       <PlainButton
         onClick={onAc}
         aria-label="Tümünü göster"
-        className="flex min-h-[44px] w-full items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-50 active:scale-[0.99]"
+        className="flex min-h-[32px] w-full items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 active:scale-[0.99]"
       >
         <svg
-          className="h-6 w-6"
+          className="h-5 w-5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -301,7 +302,9 @@ export function AramaAdimlari({
      çıkar, içine geri oku girer, altında listenin tamamı akar. Sekmeler ve alt
      eylem çubuğu o görünümde yoktur; ekranda tek iş vardır. */
   const [tamListe, setTamListe] = useState<Adim | null>(null);
-  const KISA = 3;
+  /* Görünen sayıyı ekran belirler (liste kartın altında kesilir); bu yalnız
+     üst sınır — kesilen satırların hepsi zaten tam listede. */
+  const KISA = 6;
 
   /* "Fark etmez" GEÇERLİ bir seçimdir ama değeri boş dizedir; yani `sekil`e
      bakarak kullanıcının bu adımı geçip geçmediği anlaşılamaz. Adres zaten bir
@@ -443,6 +446,8 @@ export function AramaAdimlari({
         setYakinimda(true);
         setYer(null);
         setYerMetni("");
+        // İzin sorusu seçim anında; reddedilirse seçim düşer.
+        yakinimdaSecildi(() => setYakinimda(false));
         ilerle({ yerDolu: true });
       }}
     />
@@ -454,8 +459,9 @@ export function AramaAdimlari({
         key={`${o.secim.tur}-${o.baslik}-${o.altBaslik}`}
         simge={<KonumSimgesi />}
         baslik={o.baslik}
-        /* Alt başlık YOK: liste yalnız ilçelerden oluşuyor ve hepsinin altında
-           aynı "Adana" yazıyordu — hiçbir şey ayırt etmeyen bir tekrar. */
+        /* İlçe ve Merkez'de alt başlık YOK (kullanıcı kararı, 16 Eyl 2026);
+           yalnız mahallede ilçe adı kalır. */
+        altBaslik={o.secim.tur === "mahalle" ? o.altBaslik : undefined}
         onSec={() => {
           /* Semt seçmek "yakınımda"yı iptal eder: ikisi aynı anda anlamsız. */
           setYakinimda(false);
@@ -535,10 +541,10 @@ export function AramaAdimlari({
       {/* `min-h-0` ŞART: flex çocuğunun varsayılan `min-height:auto`'su
           içeriğe göre büyür ve `overflow-y-auto` hiçbir şey yapmaz — alt
           eylem çubuğu ekranın dışına taşardı (ölçüldü, 10 Eyl 2026). */}
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-2">
         {/* ── 1. NE ── */}
         {kutuphaneMi ? null : adim === "ne" ? (
-          <AcikKart baslik={neBasligi}>
+          <AcikKart baslik={neBasligi} dolgu>
             <Kutu
               deger={metin}
               onDegis={(v) =>
@@ -547,10 +553,10 @@ export function AramaAdimlari({
               ipucu={kutuphaneMi ? "Kütüphane adı giriniz" : "Ders ekleyin"}
               etiket={neBasligi}
             />
-            <p className="mt-5 text-base font-medium text-slate-500">
+            <p className="mt-3 shrink-0 text-base font-medium text-slate-500">
               {metin.trim() ? "Sonuçlar" : "Popüler aramalar"}
             </p>
-            <div className="mt-1">{neSatirlari(KISA)}</div>
+            <div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden">{neSatirlari(KISA)}</div>
             {/* Kartın altındaki aşağı ok: listenin devamını açar (referans
                 ekranda da kart bir okla kesiliyor). Üstündeki saç-teli çizgi
                 listenin bittiğini değil DEVAM ETTİĞİNİ söyler. */}
@@ -569,33 +575,22 @@ export function AramaAdimlari({
         {!kutuphaneMi &&
           (adim === "nasil" ? (
             <AcikKart baslik="Ders nasıl işlensin?">
-              <div className="space-y-1">
+              <div className="flex min-h-0 flex-col gap-1">
+                {/* SIRA ve İÇERİK (kullanıcı kararı, 16 Eyl 2026): önce Yüz
+                    yüze, sonra Uzaktan; açıklama satırı YOK — iki ad kendini
+                    anlatıyor. "Fark etmez" RAFTA: seçenek olarak çizilmiyor,
+                    ama boş değer (`""`) adreste hâlâ geçerli ve `SEKIL_ADI`
+                    sözlüğünde duruyor; geri gelirse buraya bir satır eklenir. */}
                 {([
-                  ["", "Fark etmez", "Uzaktan ve yüz yüze eğitmenlerin hepsi"],
-                  [TeachingMode.ONLINE, SEKIL_ADI[TeachingMode.ONLINE], "Görüntülü ders"],
-                  [
-                    TeachingMode.IN_PERSON,
-                    SEKIL_ADI[TeachingMode.IN_PERSON],
-                    "Belirli bir konumda buluşarak",
-                  ],
-                ] as const).map(([deger, baslik, alt]) => (
+                  [TeachingMode.IN_PERSON, SEKIL_ADI[TeachingMode.IN_PERSON]],
+                  [TeachingMode.ONLINE, SEKIL_ADI[TeachingMode.ONLINE]],
+                ] as const).map(([deger, baslik]) => (
                   <OneriSatiri
                     key={baslik}
-                    /* Uzaktan ve yüz yüze kendi görselleriyle; "Fark etmez"
-                       bir ders şekli değil, ikisini birden kapsayan seçenek —
-                       ona sahne çizmek yanıltıcı olurdu, nötr simge kalıyor. */
-                    /* "Fark etmez" iki şekli birden kapsıyor: simgesi de iki
-                       kartın üst üste binmiş hâli + sağ altta çift yönlü ok.
-                       Bileşik görsel `scripts/…` ile değil, kaynak iki karttan
-                       üretildi; üçü de aynı sahne dilinden geliyor. */
                     simge={
                       <img
                         src={`/icons/ders-sekli/${
-                          deger === TeachingMode.ONLINE
-                            ? "uzaktan"
-                            : deger === TeachingMode.IN_PERSON
-                              ? "yuzyuze"
-                              : "farketmez"
+                          deger === TeachingMode.ONLINE ? "uzaktan" : "yuzyuze"
                         }.webp`}
                         alt=""
                         aria-hidden
@@ -606,7 +601,6 @@ export function AramaAdimlari({
                       />
                     }
                     baslik={baslik}
-                    altBaslik={alt}
                     onSec={() => {
                       setSekil(deger as DersSekli);
                       setSekilSecildi(true);
@@ -620,22 +614,22 @@ export function AramaAdimlari({
             <KapaliSatir
               etiket="Ders şekli"
               deger={sekil ? SEKIL_ADI[sekil] : null}
-              davet="Fark etmez"
+              davet="Seçin"
               onAc={() => setAdim("nasil")}
             />
           ))}
 
         {/* ── 3. NEREDE ── */}
         {adim === "nerede" ? (
-          <AcikKart baslik="Nerede?">
+          <AcikKart baslik="Nerede?" dolgu>
             <Kutu
               deger={yerMetni}
               onDegis={setYerMetni}
               ipucu="İlçe seçin"
               etiket="Yer"
             />
-            <p className="mt-5 text-base font-medium text-slate-500">Önerilen yerler</p>
-            <div className="mt-1">
+            <p className="mt-3 shrink-0 text-base font-medium text-slate-500">Önerilen yerler</p>
+            <div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden">
               {yer && (
                 <OneriSatiri
                   simge="✕"
@@ -648,10 +642,10 @@ export function AramaAdimlari({
                 />
               )}
               {yakinimdaSatiri}
-              {/* ÜÇ büyük ilçenin ÜÇÜ de görünür (kullanıcı kararı, 10 Eyl
-                  2026): "Yakınımda" bir ilçe değil, bir kısayol — onu üçlü
-                  kotadan saymak Yüreğir'i katlamanın altına itiyordu. */}
-              {yerSatirlari(3)}
+              {/* Görünen ilçe sayısını artık EKRAN BOYU belirler (16 Eyl 2026):
+                  liste kartın altında kesilir, kalanı aşağı ok açar. Uzun
+                  telefonlarda üç büyük ilçe ("Yakınımda" hariç) yine görünür. */}
+              {yerSatirlari(KISA)}
             </div>
             <AsagiOk onAc={() => setTamListe("nerede")} />
           </AcikKart>
@@ -669,7 +663,7 @@ export function AramaAdimlari({
       <div
         /* Çizgi YOK: referansta alt çubuk gri zeminde serbest duruyor,
            üstünde ayırıcı bir hat bulunmuyor. */
-        className="flex items-center justify-between gap-4 px-1 pt-4"
+        className="flex shrink-0 items-center justify-between gap-4 px-1 pt-3"
         style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
       >
         <PlainButton

@@ -72,12 +72,12 @@ export function MobilAramaSheet({
           altına kaymasın. */}
       {/* Üstte belirgin boşluk: ikonlar ekranın tepesine YAPIŞMAMALI
           (referans ekranda şerit yukarıdan ~28px aşağıda başlıyor). */}
-      <div className="relative px-4 pb-3 pt-7">
+      <div className="relative shrink-0 px-4 pb-2 pt-5">
         <div className="pr-14">{ust}</div>
         <PlainButton
           onClick={onClose}
           aria-label="Aramayı kapat"
-          className="absolute right-4 top-9 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-100 active:scale-95"
+          className="absolute right-4 top-7 grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-100 active:scale-95"
         >
           <svg
             className="h-5 w-5"

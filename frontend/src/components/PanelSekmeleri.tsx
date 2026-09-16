@@ -9,7 +9,7 @@ import type { NavItem } from "@/lib/nav";
  * Kullanıcı kararı (8 Eyl 2026, Superprof'un eğitmen paneli gösterilerek):
  * panele giriş tek bir avatar açılırından olmasın, bölümler her sayfada
  * yerinde dursun. Görünüm Superprof'un koyu bandı DEĞİL — site tek tema ve
- * açık; şerit üst barla aynı zemini (#fafafa) taşır, aktif sekme marka
+ * açık; şerit üst barla aynı zemini (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı) taşır, aktif sekme marka
  * turuncusu bir alt çizgiyle işaretlenir.
  *
  * Metin-only (ikon yok): altı sekme mobilde yatay kayıyor, ikon satırı
@@ -24,7 +24,7 @@ export function PanelSekmeleri({ items }: { items: NavItem[] }) {
   const { pathname } = useLocation();
 
   return (
-    <div className="border-b border-slate-200 bg-[#fafafa]">
+    <div className="border-b border-slate-200 bg-[#f4f4f4]">
       <nav
         aria-label="Panel bölümleri"
         // Mobilde altı sekme sığmaz: yatay kayar, çubuk gizlenir. Aynı reçete

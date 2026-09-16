@@ -153,7 +153,8 @@ describe("EgitmenIlanlari", () => {
     expect(within(screen.getByTestId("ilan-14")).getByText("Ayşe Bekleyen")).toBeInTheDocument();
     expect(s.getByText("Onay Bekliyor")).toBeInTheDocument();
     expect(s.getByText("Matematik öğretmeni")).toBeInTheDocument();
-    expect(s.getByText("250 TL / saat")).toBeInTheDocument();
+    // "/ saat" eki her yerden kalktı (kullanıcı kararı, 16 Eyl 2026): yalnız tutar.
+    expect(s.getByText("250 TL")).toBeInTheDocument();
     expect(satir(13).getByRole("img", { name: "Berk Yayında" })).toHaveAttribute("src", "https://x/a.jpg");
     const taslak = satir(10);
     expect(taslak.getByText("Taslak")).toBeInTheDocument();

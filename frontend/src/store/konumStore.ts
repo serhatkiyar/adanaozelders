@@ -32,11 +32,15 @@ interface KonumDurumu {
   unut: () => void;
 }
 
-export const useKonumStore = create<KonumDurumu>((set) => ({
+export const useKonumStore = create<KonumDurumu>((set, get) => ({
   konum: null,
   yukleniyor: false,
 
   iste: (basarisiz) => {
+    // Konum bir kez alınır; bellekteyse ya da zaten isteniyorsa tarayıcıya
+    // ikinci soru gitmez (ölçüldü, 16 Eyl 2026: StrictMode çift efekt ve
+    // aynı anda iki yüzeyin istemesi iki izin isteği üretiyordu).
+    if (get().konum || get().yukleniyor) return;
     if (!navigator.geolocation) {
       toast.error("Tarayıcınız konum servisini desteklemiyor.");
       basarisiz?.();
@@ -63,3 +67,17 @@ export const useKonumStore = create<KonumDurumu>((set) => ({
 
   unut: () => set({ konum: null }),
 }));
+
+/**
+ * "Yakınımda" SEÇİLDİĞİ AN konum izni istenir (kullanıcı kararı, 16 Eyl
+ * 2026: "aramayı yapıp konum bilgisi yok demek saçmalık"). Sonuç sayfasına
+ * gidildikten sonra değil, hapta/adımda seçim yapılır yapılmaz tarayıcı
+ * sorar. Konum zaten bellekteyse sormaz. İzin verilmezse `geriAl` seçimi
+ * düşürür; store zaten kullanıcıya uyarı gösterir. Sonuç sayfasındaki
+ * `useYakinimdaKonum` yalnız paylaşılan bağlantılar için yedek kalır.
+ */
+export function yakinimdaSecildi(geriAl: () => void) {
+  const { konum, yukleniyor, iste } = useKonumStore.getState();
+  if (konum || yukleniyor) return;
+  iste(geriAl);
+}

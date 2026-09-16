@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
+import { EgitmenMisinSatiri } from "@/components/EgitmenMisinSatiri";
 import { Field } from "@/components/ui/Field";
 import {
   GirisAyirici,
@@ -178,32 +179,9 @@ export function KayitAkisi({
         </h1>
       </div>
 
-      {/* ROL SATIRI — yalnız ilk adımda.
-          Ne olduğunu söyler ve öteki kapıyı açar. Kutu DEĞİL, tek satır: rol
-          bu ekranın konusu değil, bir ÖN KABULÜ; kutuya alınsaydı e-posta
-          alanıyla dikkat için yarışırdı. Renk de nötr — marka rengi bu
-          ekranda birincil eylemin (kaydol) işareti.
-
-          Son adımlarda çizilmez: rolü artık başlık taşıyor ve kullanıcı
-          e-postasını girdikten sonra rol değiştirmek formu baştan kurmak
-          anlamına gelirdi. */}
-      {adim === "eposta" && (
-        <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-slate-500">
-          <span>
-            {role === "tutor"
-              ? "Eğitmen olarak kaydoluyorsun."
-              : "Üye olarak kaydoluyorsun."}
-          </span>
-          <button
-            type="button"
-            onClick={() => rolDegistir(role === "tutor" ? "client" : "tutor")}
-            className="font-semibold text-slate-700 underline underline-offset-2 transition hover:text-slate-900"
-          >
-            {role === "tutor" ? "Üye olarak kaydol" : "Eğitmen olarak kaydol"}
-          </button>
-        </p>
-      )}
-
+      {/* ROL METİN SATIRI YOK (kullanıcı kararı, 16 Eyl 2026): "Üye olarak
+          kaydoluyorsun · Eğitmen olarak kaydol" kalktı. Eğitmen yolu formun
+          ALTINDA, giriş penceresiyle aynı resimli "Eğitmen misin?" satırı. */}
       <form onSubmit={ilerle} className="mt-6 space-y-4">
         {adim === "eposta" && (
           <>
@@ -325,6 +303,13 @@ export function KayitAkisi({
       )}
 
       {girisBaglantisi}
+
+      {/* Yalnız ÜYE kaydının ilk adımında: eğitmen yolunu açar. Eğitmen
+          kaydına "Ders Ver" ya da bu satırdan gelinir; oradan geri dönüş
+          giriş bağlantısı ve üst bar. */}
+      {adim === "eposta" && role === "client" && (
+        <EgitmenMisinSatiri onSec={() => rolDegistir("tutor")} />
+      )}
     </>
   );
 }

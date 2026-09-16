@@ -27,6 +27,16 @@
 export const KUTUPHANELER_ACIK = true;
 
 /**
+ * Mağaza (D&R tarzı katalog, ürün detayı, sepet, kampanya sayfaları).
+ * 16 Eyl 2026: kullanıcı kararıyla KAPATILDI — "şu anlık localde
+ * geliştirelim, public olmasın". Kapalıyken kategori şeridinde GİZLİ
+ * (donuk değil), mağaza adresleri "Yakında" açar, Hesabım'daki mağaza
+ * kartları çizilmez. Geliştirirken yerelde `true` yapılır; sipariş, adres
+ * ve yönetim panelinin mağaza modülü bayraktan bağımsız çalışmaya devam eder.
+ */
+export const MAGAZA_ACIK = false;
+
+/**
  * "Denemeler" — İKİ yüzeyi birden kapsar:
  *  1. Kütüphanelerin ücretli deneme oturumları (bilet/QR) — keşif sekmesi,
  *  2. `/denemeler` öğrencinin kendi deneme net takibi (Öğren hub'ı kartı).

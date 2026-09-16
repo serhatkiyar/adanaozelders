@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.moderation import mask_contact_info
-from core.text import HEADLINE_MIN_WORDS, count_words
+from core.text import HEADLINE_MIN_WORDS, HOURLY_RATE_MAX, HOURLY_RATE_MIN, count_words
 from models.role import ROLE_IDS, RoleType
 from models.tutor import (
     Tutor,
@@ -261,6 +261,15 @@ async def submit_for_approval(db: AsyncSession, tutor: Tutor) -> Tutor:
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"İlan başlığın en az {HEADLINE_MIN_WORDS} sözcük olmalı. "
             "Branşını, sınav türünü ve deneyimini içeren açıklayıcı bir başlık yaz.",
+        )
+    # Ücret kapısı: ücret yazılmışsa 250–5000 ₺ aralığında olmalı. Boş ücret
+    # (belirtilmemiş) yayına engel değil; kart "Ücret belirtilmemiş" der.
+    if tutor.hourly_rate is not None and not (
+        HOURLY_RATE_MIN <= float(tutor.hourly_rate) <= HOURLY_RATE_MAX
+    ):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Saatlik ücret {HOURLY_RATE_MIN}–{HOURLY_RATE_MAX} ₺ aralığında olmalı.",
         )
     _transition(tutor, TutorStatus.PENDING_APPROVAL)
     await db.flush()

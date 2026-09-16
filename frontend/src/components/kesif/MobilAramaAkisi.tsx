@@ -15,7 +15,7 @@ import {
   type EgitmenAramasi,
 } from "@/lib/aramaUrl";
 import { PATHS } from "@/lib/routes";
-import { type YerSecimi } from "@/lib/yerArama";
+import { type YerSecimi, ilceListesindenYer, yerinIlceleri } from "@/lib/yerArama";
 
 /* ────────────────────────────────────────────────────────────────────────────
    TELEFONDAKİ ADIMLI ARAMA AKIŞI — tek yer.
@@ -49,7 +49,6 @@ import { type YerSecimi } from "@/lib/yerArama";
 
 /** Adresteki arama → adımlı yüzeyin taslağı. */
 function taslagaCoz(d: EgitmenAramasi) {
-  const ilce = d.konum.ilce[0];
   return {
     /* Katalogdan seçilmiş ders `ders`te, serbest metin `q`da yaşar
        (`dersSorgusu`); yüzeyde ikisi de aynı kutuyu doldurur. */
@@ -57,8 +56,7 @@ function taslagaCoz(d: EgitmenAramasi) {
     dersEtiket: d.ders[0] ?? d.q,
     /* Yüzey TEK şekil sorar; adres çoklu taşıyabilir, ilki alınır. */
     sekil: (d.sekil[0] ?? "") as DersSekli,
-    yer: (d.konum.yer ??
-      (ilce ? { tur: "ilce", ilce } : null)) as YerSecimi | null,
+    yer: ilceListesindenYer(d.konum.yer, d.konum.ilce),
     yakinimda: d.yakinimda,
   };
 }
@@ -118,7 +116,7 @@ export function MobilAramaAkisi({
       sekil: taslak.sekil ? [taslak.sekil] : [],
       konum: {
         yer: taslak.yer?.tur === "mahalle" ? taslak.yer : null,
-        ilce: taslak.yer ? [taslak.yer.ilce] : [],
+        ilce: yerinIlceleri(taslak.yer),
       },
       yakinimda: taslak.yakinimda,
     };
@@ -154,7 +152,9 @@ export function MobilAramaAkisi({
     kDegerler.konum.yer ?? (kIlce ? { tur: "ilce", ilce: kIlce } : null);
 
   const setKYer = (v: YerSecimi | null) =>
-    kAyarla({ konum: { yer: v, ilce: v ? [v.ilce] : [] } });
+    kAyarla({
+      konum: { yer: v?.tur === "mahalle" ? v : null, ilce: yerinIlceleri(v) },
+    });
 
   return (
     <MobilAramaSheet

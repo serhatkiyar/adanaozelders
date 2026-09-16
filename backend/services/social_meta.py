@@ -30,7 +30,7 @@ from models.store import Product, ProductStatus
 from models.tutor import Tutor, TutorStatus
 
 SITE_NAME = "Adana Özel Ders"
-DEFAULT_TITLE = "Adana Özel Ders — Uzman Eğitmenle Öğren"
+DEFAULT_TITLE = "Adana Özel Ders, Uzman Eğitmenle Öğren"
 DEFAULT_DESCRIPTION = (
     "Adana'da alanında uzman eğitmenlerle birebir özel ders al, "
     "kütüphane ve etüt merkezlerini keşfet, kaynak kitaplarını kapına getirelim."

@@ -1,4 +1,5 @@
 import { FormEvent, ReactNode, useEffect, useState, useId } from "react";
+import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { useSearchParams } from "react-router-dom";
@@ -169,7 +170,7 @@ export default function Settings() {
   return (
     <DashboardShell title="Hesap Ayarları" navItems={roleNav} genislik="orta">
       <div className="px-1 pb-16 pt-2 sm:px-2">
-        <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <h1 className={`mb-6 ${SAYFA_BASLIGI}`}>
           Hesap ayarları
         </h1>
 

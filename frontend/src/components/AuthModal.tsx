@@ -1,6 +1,7 @@
 import { FormEvent, useState, useEffect } from "react";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { EgitmenMisinSatiri } from "@/components/EgitmenMisinSatiri";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login, type RegisterRole } from "@/api/auth";
@@ -264,54 +265,19 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
                DEĞİL: bu ekranda ikinci bir kart, formla yarışırdı.
             3. DİL — "Ders vermek istiyorum" (kullanıcının ağzından bir istek)
                yerine "Eğitmen misin?" (kendi kitlesini adıyla çağıran bir
-               soru). Soru formu kendi kendini eler: değilsen okumazsın. */}
-      <div className="mt-5 border-t border-slate-100 pt-3 md:hidden">
-        <button
-          onClick={() => {
-            searchParams.set("modal", "register");
-            searchParams.set("role", "tutor");
-            setSearchParams(searchParams, { replace: true });
-          }}
-          className="flex w-full items-center gap-3 rounded-xl px-1 py-2.5 text-left transition hover:bg-slate-50 active:scale-[0.99]"
-        >
-          {/* Mezuniyet kepi: ortak ikon setindeki `listing` 20px'te boş bir
-              belge gibi okunuyordu ve "eğitmen" demiyordu. */}
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-900">
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.8}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M12 3.5 22 8.6l-10 5.1L2 8.6l10-5.1Z" />
-              <path d="M6.2 10.6v4.7c0 1.5 2.6 2.7 5.8 2.7s5.8-1.2 5.8-2.7v-4.7" />
-              <path d="M22 8.6v5.2" />
-            </svg>
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-slate-900">
-              Eğitmen misin?
-            </span>
-            <span className="block text-xs text-slate-500">
-              İlanını oluştur, öğrencilerle buluş
-            </span>
-          </span>
-          <svg
-            className="h-5 w-5 shrink-0 text-slate-400"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
-          </svg>
-        </button>
-      </div>
+               soru). Soru formu kendi kendini eler: değilsen okumazsın.
+
+          MASAÜSTÜNDE DE VAR (kullanıcı kararı, 16 Eyl 2026): önce yalnız
+          telefonda çiziliyordu çünkü masaüstünde üst barda "Ders Ver" duruyor.
+          Ama giriş penceresi açıkken üst bar arkada; pencerenin içinden
+          eğitmen yoluna aynı resimli satırla gidilmesi iki yüzeyi eşitler. */}
+      <EgitmenMisinSatiri
+        onSec={() => {
+          searchParams.set("modal", "register");
+          searchParams.set("role", "tutor");
+          setSearchParams(searchParams, { replace: true });
+        }}
+      />
     </>
   );
 }

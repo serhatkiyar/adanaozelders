@@ -212,12 +212,18 @@ describe("mobil alt sekme çubuğu", () => {
     expect(kaynak, "giriş ekranında eğitmen kaydı kapısı yok").toContain(
       '"role", "tutor"'
     );
+    // Kapı 16 Eyl 2026'dan beri ORTAK bileşen (`EgitmenMisinSatiri`): giriş
+    // ve üye kayıt pencereleri aynı satırı çizer. AuthModal onu rolü
+    // `tutor` yapan bir `onSec` ile basar; düğme ve etiket bileşende ölçülür.
     const i = kaynak.indexOf('"role", "tutor"');
-    // Pencere İKİ YÖNE bakar: `<button` rolü yazan `onClick`ten ÖNCE, görünür
-    // etiket ise sonra gelir.
-    const blok = kaynak.slice(Math.max(0, i - 400), i + 900);
-    expect(blok, "kapı tıklanabilir bir denetim değil").toContain("<button");
-    expect(blok, "kapının görünür bir etiketi yok").toMatch(/Eğitmen/);
+    const blok = kaynak.slice(Math.max(0, i - 400), i + 400);
+    expect(blok, "kapı ortak satır bileşeni değil").toContain("<EgitmenMisinSatiri");
+    const satir = readFileSync(
+      join(KOK, "src", "components", "EgitmenMisinSatiri.tsx"),
+      "utf8"
+    );
+    expect(satir, "kapı tıklanabilir bir denetim değil").toContain("<button");
+    expect(satir, "kapının görünür bir etiketi yok").toMatch(/Eğitmen/);
   });
 
   it("favoriler ve mesajlar rota kaynağından gelir (elle yazılmış yol yok)", () => {
