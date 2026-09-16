@@ -17,7 +17,7 @@ import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
-import { ilceOzeti, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
+import { konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
