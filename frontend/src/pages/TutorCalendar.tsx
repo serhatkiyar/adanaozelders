@@ -95,32 +95,6 @@ export default function TutorCalendar() {
   const [izinAraligi, setIzinAraligi] = useState<IzinAraligi | null>(null);
   const [silinecekIzin, setSilinecekIzin] = useState<TimeOff | null>(null);
 
-  // Izgara tam boy çizilir (sayfa içinde ikinci bir kaydırma çubuğu olmasın);
-  // bunun bedeli, açılışta gecenin ilk saatlerinin görünmesi. Bu yüzden ilk
-  // çizimde sayfa "şimdi − 4 saat" satırına kaydırılır. Yalnız bir kez.
-  const kaydirildi = useRef(false);
-  useEffect(() => {
-    if (kaydirildi.current || mobil || !pencere) return;
-    // Izgara `datesSet`ten birkaç kare sonra çizilebiliyor; satır gelene kadar
-    // dene, en fazla ~1 sn.
-    let kalan = 30;
-    let id = 0;
-    const dene = () => {
-      // `data-time` hücrede (td) durur, satırda değil.
-      const satir = document.querySelector<HTMLElement>(
-        `.fc-timegrid-slot[data-time="${scrollTime}"]`
-      );
-      if (satir) {
-        kaydirildi.current = true;
-        window.scrollTo({ top: satir.getBoundingClientRect().top + window.scrollY - 24 });
-        return;
-      }
-      if (kalan-- > 0) id = window.requestAnimationFrame(dene);
-    };
-    dene();
-    return () => window.cancelAnimationFrame(id);
-  }, [mobil, pencere, scrollTime]);
-
   // Telefonda ajanda, geniş ekranda haftalık ızgara.
   useEffect(() => {
     const api = takvimRef.current?.getApi();
@@ -299,7 +273,12 @@ export default function TutorCalendar() {
               />
             )}
 
-            <div aria-busy={dersler.isFetching || izinler.isFetching}>
+            <div
+              aria-busy={dersler.isFetching || izinler.isFetching}
+              // Preply ölçüsü: ızgara görünüm yüksekliğini doldurur ve KENDİ içinde
+              // kayar; sayfa büyümez, gün başlıkları yerinde kalır.
+              className="md:h-[calc(100dvh-330px)] md:min-h-[520px]"
+            >
           <FullCalendar
             ref={takvimRef}
             plugins={[timeGridPlugin, listPlugin, interactionPlugin]}
@@ -315,7 +294,7 @@ export default function TutorCalendar() {
             slotLabelFormat={SAAT_BICIMI}
             eventTimeFormat={SAAT_BICIMI}
             dayHeaderFormat={{ day: "numeric", month: "short", weekday: "short" }}
-            height="auto"
+            height={mobil ? "auto" : "100%"}
             editable={false}
             selectable
             selectMirror

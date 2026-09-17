@@ -581,11 +581,12 @@ path.district-poly {
   border-radius: 8px;
 }
 
-/* Izgara ölçüleri — Preply takvimi örnek alındı (17 Eyl 2026):
-   30 dk satır 44px, saat etiketi 12px ikincil, yarım saat çizgisi soluk,
-   gün başlığı 14px 600 ve bugün koyu + alt çizgi. */
+/* Izgara ölçüleri — Preply'ın kendi takvim DOM'undan ölçüldü (17 Eyl 2026;
+   16:00 olayı 1280px ⇒ saat 80px): 30 dk satır 40px, saat etiketi 12px
+   ikincil, yarım saat çizgisi soluk, gün başlığı 14px 600, bugün koyu +
+   alt çizgi. Preply de FullCalendar kullanıyor, sınıf adları birebir aynı. */
 .fc .fc-timegrid-slot {
-  height: 44px;
+  height: 40px;
 }
 .fc .fc-timegrid-slot-minor {
   border-top-color: theme("colors.slate.100");
