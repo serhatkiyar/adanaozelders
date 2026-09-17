@@ -243,7 +243,9 @@ export function DashboardShell({
       >
         <DashboardHeader
           navItems={menuOgeleri}
-          transparent
+          // Sekme şeridi olan panel sayfalarında beyaz, 72px panel üst barı
+          // (17 Eyl 2026, Preply ölçüsü); diğer sayfalar eski görünümde.
+          transparent={!(panelSekmeleri && panelSekmeleri.length > 0)}
           center={center}
           bottom={bottom}
           mobilUst={mobilUst}

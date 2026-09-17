@@ -1,8 +1,8 @@
 interface AvatarProps {
   name: string;
   avatar_url?: string | null;
-  size?: "sm" | "md" | "lg" | "xl";
-  shape?: "circle" | "square";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  shape?: "circle" | "square" | "kare";
 }
 
 // İsme göre deterministik renk paleti (rastgele/sahte değil).
@@ -18,6 +18,8 @@ const PALETTE = [
 ];
 
 const SIZES = {
+  // Üst bar (Preply ölçüsü): 32px.
+  xs: "h-8 w-8 text-xs",
   sm: "h-9 w-9 text-xs",
   md: "h-11 w-11 text-sm",
   lg: "h-16 w-16 text-xl",
@@ -49,7 +51,8 @@ export function colorFor(name: string): string {
 }
 
 export function Avatar({ name, avatar_url, size = "md", shape = "circle" }: AvatarProps) {
-  const roundedClass = shape === "square" ? "rounded-3xl" : "rounded-full";
+  const roundedClass =
+    shape === "square" ? "rounded-3xl" : shape === "kare" ? "rounded" : "rounded-full";
 
   if (avatar_url) {
     return (

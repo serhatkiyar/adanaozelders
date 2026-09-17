@@ -14,13 +14,13 @@ export function AcilSerit({
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-2xl bg-white px-5 py-3.5 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50"
+      className="flex min-h-14 items-center gap-4 rounded-lg border border-slate-200 bg-white px-6 py-3 transition hover:border-slate-900"
     >
-      <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-marka px-1.5 text-xs font-bold text-marka-fg">
+      <span className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-marka px-2 text-sm font-bold text-marka-fg">
         {count > 99 ? "99+" : count}
       </span>
-      <span className="min-w-0 flex-1 text-sm font-medium text-slate-800">{metin}</span>
-      <span aria-hidden className="text-slate-400">
+      <span className="min-w-0 flex-1 text-base font-semibold leading-6 text-slate-900">{metin}</span>
+      <span aria-hidden className="text-lg text-slate-500">
         →
       </span>
     </Link>

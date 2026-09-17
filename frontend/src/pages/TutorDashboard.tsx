@@ -8,6 +8,7 @@ import { DersKarti } from "@/components/pano/DersKarti";
 import { GorunurlukBandi } from "@/components/pano/GorunurlukBandi";
 import { OzetKartlari } from "@/components/pano/OzetKartlari";
 import { SiradakiDersKarti } from "@/components/pano/SiradakiDersKarti";
+import { ACIKLAMA, BOLUM_BASLIGI, METIN_BAGLANTI, SAYFA_BASLIGI } from "@/components/pano/stil";
 import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
@@ -37,8 +38,8 @@ function Bolum({
 }) {
   return (
     <section id={id} className="scroll-mt-28">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-slate-900">{baslik}</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className={BOLUM_BASLIGI}>{baslik}</h2>
         {sag}
       </div>
       <div className="space-y-3">{children}</div>
@@ -55,28 +56,28 @@ function TumDersler({ onJoinMeeting }: { onJoinMeeting: (b: BookingOut) => void 
   const { data, isLoading, isError, error } = useBookings({ limit: 100 }, { enabled: acik });
 
   return (
-    <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+    <section className="rounded-lg border border-slate-200 bg-white">
       <button
         type="button"
         aria-expanded={acik}
         onClick={() => setAcik((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+        className="flex min-h-14 w-full items-center justify-between gap-3 px-6 py-4 text-left"
       >
-        <span className="text-sm font-semibold text-slate-900">Tüm derslerim</span>
-        <span aria-hidden className="text-slate-400">
+        <span className={BOLUM_BASLIGI}>Tüm derslerim</span>
+        <span aria-hidden className="text-2xl leading-none text-slate-500">
           {acik ? "−" : "+"}
         </span>
       </button>
       {acik && (
-        <div className="space-y-3 border-t border-slate-100 p-4">
+        <div className="space-y-3 border-t border-slate-200 p-4 sm:p-6">
           {isLoading ? (
-            <div className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-20 animate-pulse rounded-lg bg-slate-100" />
           ) : isError ? (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="text-base text-red-700">
               {getErrorMessage(error, "Dersler yüklenemedi.")}
             </p>
           ) : (data ?? []).length === 0 ? (
-            <p className="py-4 text-center text-sm text-slate-500">Henüz dersin yok.</p>
+            <p className={`py-4 text-center ${ACIKLAMA}`}>Henüz dersin yok.</p>
           ) : (
             (data ?? []).map((b) => (
               <DersKarti key={b.id} booking={b} onJoinMeeting={onJoinMeeting} />
@@ -114,22 +115,22 @@ export default function TutorDashboard() {
 
   return (
     <DashboardShell title="Pano" navItems={TUTOR_NAV} genislik="orta">
-      <div className="space-y-6 pb-12">
+      <div className="space-y-8 pb-16 pt-2">
         <header>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className={SAYFA_BASLIGI}>
             {selamlama(now)}
             {ad ? `, ${ad}` : ""}
           </h1>
-          {altSatir && <p className="mt-1 text-sm text-slate-500">{altSatir}</p>}
+          {altSatir && <p className={`mt-2 ${ACIKLAMA}`}>{altSatir}</p>}
         </header>
 
         {isLoading ? (
           <div className="space-y-3" aria-busy="true">
-            <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-44 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-16 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-44 animate-pulse rounded-lg bg-slate-100" />
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+                <div key={i} className="h-24 animate-pulse rounded-lg bg-slate-100" />
               ))}
             </div>
           </div>
@@ -175,7 +176,7 @@ export default function TutorDashboard() {
                   pano.upcoming_count > pano.upcoming.length ? (
                     <Link
                       to={ROUTES.calendar}
-                      className="text-xs font-semibold text-marka-metin hover:text-marka-metin-hover"
+                      className={METIN_BAGLANTI}
                     >
                       Tümünü gör ({pano.upcoming_count})
                     </Link>

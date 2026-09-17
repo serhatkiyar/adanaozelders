@@ -250,7 +250,11 @@ describe("D — hesap menüsünde DONMUŞ girdi mekanizması (gerçek DOM)", () 
     // Bu olmadan yukarıdaki üç olumsuz iddia, menü hiç render olmadığında da
     // yeşil kalırdı.
     menuyuAc([CANLI, DONMUS]);
-    const linkler = screen.getAllByRole("link", { name: /Mesajlar/ });
+    // Üst bardaki ikon da "Mesajlar" adını taşır (ÜK-2, 17 Eyl 2026); ölçülen
+    // şey hesap MENÜSÜNDEKİ girdi, ikonlar `aria-label` ile ayrılır.
+    const linkler = screen
+      .getAllByRole("link", { name: /Mesajlar/ })
+      .filter((a) => !a.hasAttribute("aria-label"));
     expect(linkler.length).toBeGreaterThan(0);
     for (const a of linkler) expect(a.getAttribute("href")).toBe("/mesajlar");
   });

@@ -184,7 +184,7 @@ export default function Settings() {
             {/* ── Sol kategori rayı ── */}
             <nav
               aria-label="Hesap ayarları kategorileri"
-              className="flex gap-2 overflow-x-auto pb-1 md:sticky md:top-24 md:h-fit md:flex-col md:overflow-visible md:pb-0"
+              className="flex gap-2 overflow-x-auto pb-1 md:sticky md:top-24 md:h-fit md:flex-col md:gap-3 md:overflow-visible md:pb-0"
             >
               {categories.map((c) => {
                 const isActive = c.key === active;
@@ -194,13 +194,15 @@ export default function Settings() {
                     type="button"
                     aria-current={isActive ? "page" : undefined}
                     onClick={() => setActive(c.key)}
-                    className={`flex shrink-0 items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition md:w-full ${
+                    // Ölçüler Preply ayarlar menüsünden (17 Eyl 2026): 16px/24px
+                    // 600; aktif satır koyu + 4px marka çizgisi (masaüstünde
+                    // solda, telefonda yatay kaydığı için altta), dolgu yok.
+                    className={`relative flex shrink-0 items-center gap-3 whitespace-nowrap px-4 py-2 text-left md:py-0 text-base font-semibold leading-6 transition md:w-full ${
                       isActive
-                        ? "bg-slate-100 text-slate-900 "
-                        : "text-slate-600 hover:bg-slate-50 "
+                        ? "text-slate-900 after:absolute after:inset-x-4 after:bottom-0 after:h-1 after:bg-marka after:content-[''] md:after:inset-x-auto md:after:inset-y-0 md:after:left-0 md:after:h-auto md:after:w-1"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
-                    <c.icon className="h-6 w-6 shrink-0" />
                     {c.label}
                   </button>
                 );

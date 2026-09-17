@@ -24,12 +24,12 @@ export function PanelSekmeleri({ items }: { items: NavItem[] }) {
   const { pathname } = useLocation();
 
   return (
-    <div className="border-b border-slate-200 bg-[#f4f4f4]">
+    <div className="border-b border-slate-200 bg-white">
       <nav
         aria-label="Panel bölümleri"
         // Mobilde altı sekme sığmaz: yatay kayar, çubuk gizlenir. Aynı reçete
         // üst bardaki kategori şeridinde de kullanılıyor (DashboardHeader).
-        className="mx-auto flex w-full max-w-screen-2xl gap-1 overflow-x-auto px-4 md:px-8"
+        className="mx-auto flex w-full max-w-screen-2xl gap-2 overflow-x-auto px-0 md:px-2"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {items.map((item) =>
@@ -40,7 +40,7 @@ export function PanelSekmeleri({ items }: { items: NavItem[] }) {
               key={item.to}
               aria-disabled="true"
               tabIndex={-1}
-              className="shrink-0 cursor-default whitespace-nowrap px-3 py-3.5 text-sm font-medium text-slate-400 opacity-70"
+              className="shrink-0 cursor-default whitespace-nowrap px-4 py-4 text-base font-semibold leading-6 text-slate-400 opacity-70"
             >
               {item.label}
             </span>
@@ -59,10 +59,10 @@ export function PanelSekmeleri({ items }: { items: NavItem[] }) {
                   end={item.end}
                   aria-current={altAktif ? "page" : undefined}
                   className={({ isActive }) =>
-                    `relative shrink-0 whitespace-nowrap px-3 py-3.5 text-sm transition after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-full after:content-[''] ${
+                    `relative shrink-0 whitespace-nowrap px-4 py-4 text-base font-semibold leading-6 transition after:absolute after:inset-x-4 after:-bottom-px after:h-1 after:content-[''] ${
                       isActive || altAktif
-                        ? "font-semibold text-slate-900 after:bg-marka"
-                        : "font-medium text-slate-500 after:bg-transparent hover:text-slate-900"
+                        ? "text-slate-900 after:bg-marka"
+                        : "text-slate-600 after:bg-transparent hover:text-slate-900"
                     }`
                   }
                 >

@@ -24,7 +24,7 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 | # | Karar | Durum | Nöbetçi |
 |---|---|---|---|
 | **ÜK-1** | Site aksanı turuncu; dolgu PARLAK, yazı KOYU | uygulandı | `__guards__/markaAksani.test.ts`, `gecerliMarkaSinifi.test.ts` |
-| **ÜK-2** | Üst barda tek kısayol; gerisi hesap menüsünde | uygulandı | `__guards__/ustBarSadeligi.test.tsx` |
+| **ÜK-2** | Üst barda mesaj + bildirim + favori; gerisi hesap menüsünde (17 Eyl 2026 güncellendi) | uygulandı | `__guards__/ustBarSadeligi.test.tsx` |
 | **ÜK-3** | Öğrenci ders talepleri donduruldu | uygulandı | `__guards__/bolumDondurma*.test.tsx` |
 | **ÜK-4** | "Öğrenci" rol adı değildir → **"Üye"** | uygulandı | `__guards__/rolEtiketi.test.ts` |
 | **ÜK-5** | Bir e-posta = bir hesap (çapraz tablo) | uygulandı | `tests/integration/test_ayni_eposta_iki_tablo_pg.py` |
@@ -89,10 +89,16 @@ Ayrıntı: `docs/tasarim-dili.md` §1.2/§1.4 · kanıt: `docs/ip-c4/README.md`.
 
 ---
 
-## ÜK-2 — Üst barda tek kısayol
+## ÜK-2 — Üst bar kısayolları
 
-**Karar.** Üst barda yalnız **Favorilerim** durur. Rol kısayolları, bildirimler
-ve panel bağlantıları hesap (avatar) menüsüne indi.
+**Güncel karar (17 Eyl 2026).** Üst barda **Mesajlar**, **Bildirimler** ve rol
+menüsünde varsa **Favorilerim** durur; okunmamış sayılar ikon üzerinde görünür.
+Kalan rol kısayolları ve panel bağlantıları hesap (avatar) menüsündedir.
+Kullanıcı Preply'ın üst menüsünü örnek gösterdi. Eğitmen panelinde (sekme
+şeridi olan sayfalar) üst bar ve şerit beyaz, üst bar 72px.
+
+**Önceki karar (6 Eyl 2026).** Üst barda yalnız **Favorilerim** durur. Rol
+kısayolları, bildirimler ve panel bağlantıları hesap (avatar) menüsüne indi.
 
 **Gerekçe.** Kullanıcı: *"navbarda bir ton gereksiz kısayol var … navbar böyle
 çok gereksiz kalabalık oldu, sadece favoriler kalsın."*

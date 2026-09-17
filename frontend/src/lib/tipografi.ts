@@ -10,4 +10,5 @@
  * kullanmaz — onlar sayfa başlığından bilerek küçüktür.
  */
 export const SAYFA_BASLIGI =
-  "text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl";
+  // 17 Eyl 2026: masaüstü ölçüsü Preply'dan (32px / 36px, 700); telefonda 24px.
+  "text-2xl font-bold leading-8 tracking-tight text-slate-900 sm:text-[32px] sm:leading-9";

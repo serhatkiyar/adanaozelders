@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { CancelModal } from "@/components/CancelModal";
 import { PaymentBadge } from "@/components/PaymentBadge";
+import {
+  ACIKLAMA,
+  DUGME_SATIR_BIRINCIL,
+  DUGME_SATIR_IKINCIL,
+  DUGME_SATIR_TEHLIKE,
+  ETIKET,
+  METIN_BAGLANTI,
+} from "@/components/pano/stil";
 import { useBookingAction } from "@/hooks/useBookings";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { formatRange } from "@/lib/datetime";
@@ -45,34 +53,34 @@ export function DersKarti({
   const yuzYuze = booking.mode === "IN_PERSON";
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
       <Link
         to={ROUTES.uyeProfili(booking.client_id)}
         className="flex min-w-0 items-start gap-3 transition hover:opacity-80"
       >
-        <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />
+        <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="md" />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">{clientName}</p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className={`truncate ${ETIKET}`}>{clientName}</p>
+          <p className={`mt-1 ${ACIKLAMA}`}>
             {formatRange(booking.start_at, booking.end_at)}
             {" · "}
             {yuzYuze ? "Yüz yüze" : "Online"}
             {price !== null && ` · ${formatTRY(booking.price)}`}
           </p>
           {booking.notes && (
-            <p className="mt-1.5 line-clamp-2 text-xs italic text-slate-400">
+            <p className="mt-2 line-clamp-2 text-sm italic leading-5 text-slate-500">
               "{booking.notes}"
             </p>
           )}
         </div>
       </Link>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-3">
         <Link
           to={ROUTES.lesson(booking.id)}
-          className="text-xs font-semibold text-marka-metin transition hover:text-marka-metin-hover"
+          className={METIN_BAGLANTI}
         >
-          Detay →
+          Detay
         </Link>
         {isPending ? (
           <>
@@ -80,7 +88,7 @@ export function DersKarti({
               type="button"
               disabled={busy}
               onClick={() => run(accept, "Ders talebi kabul edildi.")}
-              className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className={DUGME_SATIR_BIRINCIL}
             >
               {accept.isPending ? "…" : "Kabul et"}
             </button>
@@ -88,7 +96,7 @@ export function DersKarti({
               type="button"
               disabled={busy}
               onClick={() => run(reject, "Ders talebi reddedildi.")}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className={DUGME_SATIR_TEHLIKE}
             >
               {reject.isPending ? "…" : "Reddet"}
             </button>
@@ -99,7 +107,7 @@ export function DersKarti({
               <button
                 type="button"
                 onClick={() => onJoinMeeting(booking)}
-                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
+                className={DUGME_SATIR_BIRINCIL}
               >
                 Derse katıl
               </button>
@@ -108,7 +116,7 @@ export function DersKarti({
               type="button"
               disabled={busy}
               onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className={DUGME_SATIR_IKINCIL}
             >
               {complete.isPending ? "…" : "Tamamla"}
             </button>
@@ -116,14 +124,14 @@ export function DersKarti({
               type="button"
               disabled={busy}
               onClick={() => setShowCancel(true)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              className={DUGME_SATIR_IKINCIL}
             >
               İptal
             </button>
           </>
         ) : (
           <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${BOOKING_STATUS_STYLE[booking.status]}`}
+            className={`rounded-full px-3 py-1 text-sm font-medium ${BOOKING_STATUS_STYLE[booking.status]}`}
           >
             {BOOKING_STATUS_LABEL[booking.status]}
           </span>

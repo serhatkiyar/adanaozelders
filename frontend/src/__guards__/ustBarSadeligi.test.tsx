@@ -88,13 +88,22 @@ function ustBardakiHedefler(): string[] {
   return [...new Set(hepsi)].sort();
 }
 
-describe("üst bar · en fazla TEK kısayol", () => {
-  it("öğrencide yalnız Favorilerim kalır", () => {
+/*
+ * ÜK-2 17 Eylül 2026'da DEĞİŞTİ (kullanıcı kararı, Preply üst menüsü
+ * örnek gösterilerek): üst barda mesaj + bildirim + (rol menüsünde varsa)
+ * favori durur; okunmamış sayılar doğrudan görünür. Kalan her şey hâlâ hesap
+ * menüsünde. Nöbetçinin asıl işi değişmedi: menüde ne varsa üst bara
+ * basılmasın, üst bardaki kümeyi bilinçli karar belirlesin.
+ */
+const UST_BAR_SABIT = [ROUTES.messages, ROUTES.notifications];
+
+describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
+  it("öğrencide mesaj, bildirim ve Favorilerim", () => {
     sar(UYE_NAV);
-    expect(ustBardakiHedefler()).toEqual([ROUTES.favorites]);
+    expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT, ROUTES.favorites].sort());
   });
 
-  it("eğitmende de yalnız Favorilerim kalır", () => {
+  it("eğitmende de mesaj, bildirim ve Favorilerim", () => {
     // 6 Eyl 2026'da DEĞİŞTİ. Önce "eğitmende HİÇ kısayol yok" iddia
     // ediliyordu, sebebi favorilerin eğitmene kapalı olmasıydı — kararın
     // kendisi değil, o günkü kısıtın yansımasıydı. ÜK-6 favoriyi eğitmene
@@ -104,16 +113,19 @@ describe("üst bar · en fazla TEK kısayol", () => {
       user: { id: 2, role_id: ROLE_IDS.TUTOR, display_name: "Eğitmen", email: "e@example.com" },
     } as never);
     sar(TUTOR_NAV);
-    expect(ustBardakiHedefler()).toEqual([ROUTES.favorites]);
+    expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT, ROUTES.favorites].sort());
   });
 
-  it("üst bara TEK kısayol sızabilir — ikinci ikon eklenirse kırılır", () => {
-    // ÜK-2'nin sayısal çıpası. Yukarıdaki iki iddia rol menüsüne bakıyor;
-    // bu düğüm "menüde ne varsa üst bara basılmasın" kuralını tutar.
+  it("üst bara menüden BAŞKA kısayol sızmaz — dördüncü ikon eklenirse kırılır", () => {
+    // ÜK-2'nin sayısal çıpası: sabit iki ikon + en fazla favori.
     for (const nav of [UYE_NAV, TUTOR_NAV, OPERATOR_NAV]) {
       cleanup();
       sar(nav);
-      expect(ustBardakiHedefler().length).toBeLessThanOrEqual(1);
+      const hedefler = ustBardakiHedefler();
+      expect(hedefler.length).toBeLessThanOrEqual(3);
+      for (const h of hedefler) {
+        expect([...UST_BAR_SABIT, ROUTES.favorites]).toContain(h);
+      }
     }
   });
 
@@ -136,7 +148,9 @@ describe("üst bar · en fazla TEK kısayol", () => {
      * gelmiyor olsun. Bu yüzden kapı iki yüzeyin BİRLEŞİMİNE bakar — hangisine
      * yazıldığı bu düğümün işi değil, var olması onun işi.
      */
-    expect(TUTOR_NAV.length + TUTOR_PANO_SEKMELERI.length).toBeGreaterThanOrEqual(6);
+    // 6 → 5 (17 Eyl 2026): "Bakiyem" sekmesi kalktı; kazanç dökümü panodaki
+    // özet kartlarından açılıyor (erişilebilirliği `panoSeridi.test.tsx` korur).
+    expect(TUTOR_NAV.length + TUTOR_PANO_SEKMELERI.length).toBeGreaterThanOrEqual(5);
     expect(UYE_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
     // ÜK-6: eğitmen menüsünde de var (eskiden `false` çıpalıydı).
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);

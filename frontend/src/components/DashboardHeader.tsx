@@ -15,19 +15,28 @@ import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { NavItem } from "@/lib/nav";
 
+// Üst bar ikonları (17 Eyl 2026, Preply ölçüsü): 24px ikon, arada 12px,
+// dolgu yok; aktif ikon koyu, pasif ikincil renk.
 const navIconClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-lg p-2 transition ${
-    isActive
-      ? "bg-marka text-marka-fg"
-      : "text-slate-600 hover:bg-slate-100 "
+  `relative inline-flex h-10 w-10 items-center justify-center rounded-lg transition ${
+    isActive ? "text-slate-900" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
   }`;
 
 const menuItemClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition ${
+  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium leading-6 transition ${
     isActive
-      ? "bg-marka-soft text-marka-metin-hover "
-      : "text-slate-700 hover:bg-slate-50 "
+      ? "bg-slate-100 font-semibold text-slate-900"
+      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
   }`;
+
+function SayiRozeti({ n }: { n: number }) {
+  if (n <= 0) return null;
+  return (
+    <span className="absolute right-0.5 top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
+      {n > 9 ? "9+" : n}
+    </span>
+  );
+}
 
 interface DashboardHeaderProps {
   navItems?: NavItem[];
@@ -208,7 +217,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
             onClick();
             logout();
           }}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 "
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-base font-medium leading-6 text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
         >
           <Icon name="logout" className="h-5 w-5" />
           Çıkış yap
@@ -224,18 +233,20 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   const headerClass = transparent
     // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
     ? "sticky top-0 z-40 border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md "
-    : "border-b border-slate-200 bg-[#f4f4f4] ";
+    // Panel üst barı BEYAZ (17 Eyl 2026 kullanıcı kararı, Preply gibi; önceki
+    // #f4f4f4 kararı yalnız ana sayfa/anonim kabukta sürüyor).
+    : "border-b border-slate-200 bg-white ";
   /* `mobilSade` iken DOLGU DA GİZLENİR (16 Eyl 2026, ölçüldü): satır
      `hidden md:flex` olsa da dolgu bu sarmalayıcıda kaldığı için telefonda
      arama hapının üstünde 28px boş bant kalıyordu — anonim kabukta
      (`PublicNavbar`) dolgu gizlenen satırın kendisinde olduğundan orada
      yoktu; giriş yapınca "boşluk belirdi" sanılan fark buydu. */
-  const innerPad = `px-4 md:px-8 pt-5 pb-2 ${mobilSade ? "hidden md:block" : ""}`;
+  const innerPad = transparent
+    ? `px-4 md:px-8 pt-5 pb-2 ${mobilSade ? "hidden md:block" : ""}`
+    : `px-4 md:px-6 ${mobilSade ? "hidden md:block" : ""}`;
   // 30 Ağu: telefonda da TAM (yazılı) logo — kategori şeridi mobilde ikinci
   // satırda olduğundan üstte çakışma yok; yazısız simge devre dışı.
-  const logoClass = transparent
-    ? "block h-8 md:h-9 w-auto object-contain"
-    : "block h-7 md:h-8 w-auto object-contain";
+  const logoClass = "block h-8 md:h-9 w-auto object-contain";
   const logoCompactClass = "hidden";
 
   return (
@@ -243,9 +254,9 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     <header className={headerClass}>
       <div className={innerPad}>
       <div
-        className={`mx-auto w-full max-w-screen-2xl items-start justify-between gap-3 ${
-          mobilSade ? "hidden md:flex" : "flex"
-        }`}
+        className={`mx-auto w-full max-w-screen-2xl justify-between gap-3 ${
+          transparent ? "items-start" : "h-16 items-center md:h-[72px]"
+        } ${mobilSade ? "hidden md:flex" : "flex"}`}
       >
         <div className="flex-1 flex justify-start">
           <Link
@@ -266,6 +277,16 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
 
         {/* Masaüstü: nav ikonları + avatar dropdown */}
         <div className="hidden flex-1 shrink-0 items-center justify-end gap-1 sm:flex">
+          {/* ÜK-2 (17 Eyl 2026'da güncellendi): mesaj + bildirim + favori.
+              Preply gibi okunmamış sayılar doğrudan üst barda görünür. */}
+          <NavLink to={ROUTES.messages} title="Mesajlar" aria-label="Mesajlar" className={navIconClass}>
+            <Icon name="messages" className="h-6 w-6" />
+            <SayiRozeti n={msgUnread} />
+          </NavLink>
+          <NavLink to={ROUTES.notifications} title="Bildirimler" aria-label="Bildirimler" className={navIconClass}>
+            <Icon name="notifications" className="h-6 w-6" />
+            <SayiRozeti n={bildirimOkunmamis} />
+          </NavLink>
           {favoriKisayolu && (
             <NavLink
               to={favoriKisayolu.to}
@@ -273,23 +294,23 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               aria-label={favoriKisayolu.label}
               className={navIconClass}
             >
-              <Icon name={favoriKisayolu.icon ?? "favorites"} className="h-5 w-5" />
+              <Icon name={favoriKisayolu.icon ?? "favorites"} className="h-6 w-6" />
             </NavLink>
           )}
 
 
-          <div ref={accountRef} className="relative ml-1">
+          <div ref={accountRef} className="relative ml-2">
             <button
               type="button"
               aria-label="Hesap menüsü"
               aria-expanded={accountOpen}
               onClick={() => setAccountOpen((o) => !o)}
-              className="rounded-full ring-2 ring-transparent transition hover:ring-marka/20 "
+              className="rounded ring-2 ring-transparent transition hover:ring-slate-300"
             >
-              <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="sm" />
+              <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="xs" shape="kare" />
             </button>
             {accountOpen && (
-              <div className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 ">
+              <div className="absolute right-0 top-full z-40 mt-3 w-72 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_8px_32px_rgba(18,17,23,0.15)]">
 
                 <div className="mt-1 flex flex-col">
                   {accountLinks(() => {
@@ -310,6 +331,14 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               açılan bir ekrana giden ikon duruyordu. Operatörün işi fiziksel
               olarak mobildir (QR kapıda okutulur), yani yanlış ikonu en çok o
               görüyordu. Tek türev, iki yüzey — bir daha ayrışamaz. */}
+          <NavLink to={ROUTES.messages} title="Mesajlar" aria-label="Mesajlar" className={navIconClass}>
+            <Icon name="messages" className="h-6 w-6" />
+            <SayiRozeti n={msgUnread} />
+          </NavLink>
+          <NavLink to={ROUTES.notifications} title="Bildirimler" aria-label="Bildirimler" className={navIconClass}>
+            <Icon name="notifications" className="h-6 w-6" />
+            <SayiRozeti n={bildirimOkunmamis} />
+          </NavLink>
           {favoriKisayolu && (
             <NavLink
               to={favoriKisayolu.to}
