@@ -15,8 +15,8 @@ import {
   DUGME_IKINCIL,
   DUGME_SATIR_IKINCIL,
   DUGME_SATIR_TEHLIKE,
-  SAYFA_BASLIGI,
 } from "@/components/pano/stil";
+import { DersTeklifModal, type TeklifAraligi } from "@/components/takvim/DersTeklifModal";
 import { IzinModal, izinAraligiMetni, type IzinAraligi } from "@/components/takvim/IzinModal";
 import { Modal } from "@/components/ui/Modal";
 import { DaireDugme } from "@/components/ui/DaireDugme";
@@ -71,6 +71,15 @@ function kaydirmaSaati(): string {
   return `${String(saat).padStart(2, "0")}:00:00`;
 }
 
+/** "Ders planla" düğmesinin varsayılanı: yarın 10:00, bir saat. */
+function varsayilanDersAraligi(): TeklifAraligi {
+  const baslangic = new Date();
+  baslangic.setDate(baslangic.getDate() + 2);
+  baslangic.setHours(10, 0, 0, 0);
+  const bitis = new Date(baslangic.getTime() + 60 * 60 * 1000);
+  return { baslangic, bitis };
+}
+
 /** "İzin ekle" düğmesinin varsayılanı: bugün, tüm gün. */
 function bugunTumGun(): IzinAraligi {
   const baslangic = new Date();
@@ -94,6 +103,9 @@ export default function TutorCalendar() {
   const [pencere, setPencere] = useState<{ start: Date; end: Date; baslik: string } | null>(null);
   const [izinAraligi, setIzinAraligi] = useState<IzinAraligi | null>(null);
   const [silinecekIzin, setSilinecekIzin] = useState<TimeOff | null>(null);
+  const [teklifAraligi, setTeklifAraligi] = useState<TeklifAraligi | null>(null);
+  // Boş alan seçilince önce NE yapılacağı sorulur (Preply: Ders planla / İzin ekle).
+  const [secim, setSecim] = useState<{ baslangic: Date; bitis: Date } | null>(null);
 
   // Telefonda ajanda, geniş ekranda haftalık ızgara.
   useEffect(() => {
@@ -187,7 +199,7 @@ export default function TutorCalendar() {
 
   const secildi = useCallback((arg: DateSelectArg) => {
     arg.view.calendar.unselect();
-    setIzinAraligi({ baslangic: arg.start, bitis: arg.end, tumGun: false });
+    setSecim({ baslangic: arg.start, bitis: arg.end });
   }, []);
 
   const izniKaldir = () => {
@@ -213,7 +225,7 @@ export default function TutorCalendar() {
   return (
     <DashboardShell title="Takvim" navItems={TUTOR_NAV} genislik="genis" altBilgiGizli>
       <div className="pb-6 pt-2">
-        <h1 className={`mb-6 ${SAYFA_BASLIGI}`}>Takvim</h1>
+        <h1 className="sr-only">Takvim</h1>
 
         {/* Preply düzeni (17 Eyl 2026): solda eylemler ve renk açıklaması,
             sağda hafta gezinme satırı ve ızgara. */}
@@ -223,6 +235,13 @@ export default function TutorCalendar() {
               <button
                 type="button"
                 className={`${DUGME_BIRINCIL} w-full`}
+                onClick={() => setTeklifAraligi(varsayilanDersAraligi())}
+              >
+                Ders planla
+              </button>
+              <button
+                type="button"
+                className={`${DUGME_IKINCIL} w-full`}
                 onClick={() => setIzinAraligi(bugunTumGun())}
               >
                 İzin ekle
@@ -317,6 +336,46 @@ export default function TutorCalendar() {
       {izinAraligi && (
         <IzinModal aralik={izinAraligi} onClose={() => setIzinAraligi(null)} />
       )}
+
+      {teklifAraligi && (
+        <DersTeklifModal aralik={teklifAraligi} onClose={() => setTeklifAraligi(null)} />
+      )}
+
+      <Modal
+        open={secim !== null}
+        onClose={() => setSecim(null)}
+        title="Bu saatte ne yapalım?"
+        description={
+          secim
+            ? izinAraligiMetni(secim.baslangic.toISOString(), secim.bitis.toISOString())
+            : undefined
+        }
+      >
+        <div className="space-y-3">
+          <button
+            type="button"
+            className={`${DUGME_BIRINCIL} w-full`}
+            onClick={() => {
+              if (!secim) return;
+              setTeklifAraligi({ baslangic: secim.baslangic, bitis: secim.bitis });
+              setSecim(null);
+            }}
+          >
+            Ders planla
+          </button>
+          <button
+            type="button"
+            className={`${DUGME_IKINCIL} w-full`}
+            onClick={() => {
+              if (!secim) return;
+              setIzinAraligi({ baslangic: secim.baslangic, bitis: secim.bitis, tumGun: false });
+              setSecim(null);
+            }}
+          >
+            İzin ekle
+          </button>
+        </div>
+      </Modal>
 
       <Modal
         open={silinecekIzin !== null}

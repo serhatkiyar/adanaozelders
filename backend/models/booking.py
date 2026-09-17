@@ -103,6 +103,11 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     cancelled_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    #: Dersi eğitmen teklif etti (Modül 8). PENDING'de bekleyen taraf DEĞİŞİR:
+    #: normal talepte eğitmen yanıtlar, teklifte öğrenci kabul edip öder.
+    offered_by_tutor: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     tutor: Mapped["Tutor"] = relationship(back_populates="bookings")
     client: Mapped["Client"] = relationship(back_populates="bookings")

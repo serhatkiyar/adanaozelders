@@ -109,6 +109,32 @@ class BookingCreate(BaseModel):
         return self
 
 
+class BookingOffer(BaseModel):
+    """Eğitmenin kendi öğrencisine gönderdiği ders teklifi (Modül 8).
+
+    Fiyat burada İSTİSNAİ olarak istemciden gelebilir: teklif eden taraf
+    eğitmendir ve indirim yapabilmesi istenir. Sunucu yine de sınırı uygular —
+    ilan ücretinin ÜSTÜNE çıkılamaz (bkz. booking_service.offer_lesson), yani
+    öğrenci ilanda gördüğünden fazlasını ödemez.
+    """
+
+    client_id: int
+    start_at: datetime.datetime
+    end_at: datetime.datetime
+    mode: TeachingMode | None = None
+    notes: str | None = Field(default=None, max_length=500)
+    location: str | None = Field(default=None, max_length=300)
+    location_lat: float | None = None
+    location_lng: float | None = None
+    #: Boş bırakılırsa ilan ücreti × süre kullanılır.
+    price: Decimal | None = Field(default=None, ge=0, le=100000, decimal_places=2)
+
+    @model_validator(mode="after")
+    def _validate_window(self) -> "BookingOffer":
+        _validate_lesson_window(self.start_at, self.end_at)
+        return self
+
+
 class BookingCancel(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
@@ -166,6 +192,8 @@ class BookingOut(BaseModel):
     private_notes: list[BookingPrivateNoteOut] = []
     # Escrow ödeme durumu (booking.payment 1:1, selectin yüklenir).
     payment: PaymentOut | None = None
+    #: Dersi eğitmen teklif etti; PENDING'de yanıtı öğrenci verir (Modül 8).
+    offered_by_tutor: bool = False
     # Öğrenci onayı / sorun bildirimi / geç iptal (Modül 2).
     is_disputed: bool = False
     student_confirmed_at: datetime.datetime | None = None

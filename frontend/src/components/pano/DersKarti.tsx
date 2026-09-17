@@ -48,7 +48,10 @@ export function DersKarti({
       onError: (err) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
     });
 
-  const isPending = booking.status === BookingStatus.PENDING;
+  // Bu kart eğitmen panosunda çizilir. Eğitmenin KENDİ teklifi de PENDING'dir
+  // ama yanıtı öğrenci verir (Modül 8) — Kabul/Reddet çıkmaz, "bekliyor" kalır.
+  const isPending =
+    booking.status === BookingStatus.PENDING && !booking.offered_by_tutor;
   const isAccepted = booking.status === BookingStatus.ACCEPTED;
   const yuzYuze = booking.mode === "IN_PERSON";
 

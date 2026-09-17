@@ -667,6 +667,135 @@ async def create_booking(
     return await get_booking(db, booking.id, viewer=client)
 
 
+async def offer_lesson(db: AsyncSession, tutor: Tutor, data) -> Booking:
+    """Eğitmen kendi öğrencisine ders TEKLİF eder (Modül 8).
+
+    Teklif de `PENDING` bir rezervasyondur; farkı `offered_by_tutor` ile
+    işaretlenir ve yanıtı ÖĞRENCİ verir: kabul edince `accept` çalışır, ödeme
+    kaydı doğar. Böylece öğrencinin rızası ve emanet akışı korunur — eğitmen tek
+    başına öğrenciye borç çıkaramaz.
+
+    Kurallar öğrenci talebiyle AYNI yerden gelir: 24 saat kuralı, 14 günlük
+    pencere, izin ve müsaitlik. Fark yalnız iki yerde:
+      * yalnız daha önce ilişkisi olan öğrenciye teklif edilebilir,
+      * fiyat indirilebilir ama ilan ücretinin üstüne çıkamaz.
+    """
+    _assert_booking_rules(data.start_at, _utcnow())
+    if not await has_relationship(db, tutor_id=tutor.id, client_id=data.client_id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Yalnız daha önce dersi olan öğrencine ders teklif edebilirsin.",
+        )
+    client = await db.get(Client, data.client_id)
+    if client is None or getattr(client, "deleted_at", None) is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Öğrenci bulunamadı")
+
+    await _lock_tutor(db, tutor.id)
+    await _assert_not_on_time_off(db, tutor.id, data.start_at, data.end_at)
+    await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)
+
+    requested = data.mode.value if data.mode else None
+    if tutor.teaching_mode in ("ONLINE", "IN_PERSON"):
+        if requested and requested != tutor.teaching_mode:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Bu ders biçimini sunmuyorsun.",
+            )
+        mode = tutor.teaching_mode
+    else:
+        mode = requested or "ONLINE"
+
+    ilan_ucreti = _compute_price(tutor, data.start_at, data.end_at)
+    if data.price is None:
+        price = ilan_ucreti
+    else:
+        price = Decimal(str(data.price))
+        if ilan_ucreti is not None and price > ilan_ucreti:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Teklif ücreti ilanındaki ücretten yüksek olamaz.",
+            )
+
+    booking = Booking(
+        client_id=client.id,
+        tutor_id=tutor.id,
+        start_at=data.start_at,
+        end_at=data.end_at,
+        price=price,
+        notes=data.notes,
+        mode=mode,
+        location=data.location,
+        location_lat=data.location_lat,
+        location_lng=data.location_lng,
+        offered_by_tutor=True,
+    )
+    db.add(booking)
+    await db.flush()  # çakışma → GiST exclusion → IntegrityError → 409
+    await db.refresh(booking)
+    await notification_service.notify(
+        db,
+        user_id=booking.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=f"{tutor.full_name} sana ders teklif etti.",
+        link=f"/ders-talepleri/{booking.id}",
+    )
+    _notify_booking_update(db, booking)
+    await messaging_service.inject_system_message(
+        db,
+        client_id=client.id,
+        tutor_id=tutor.id,
+        msg_type="booking_card",
+        body=f"{tutor.full_name} sana ders teklif etti.",
+        meta_data={
+            "booking_id": booking.id,
+            "status": booking.status.value,
+            "start_at": booking.start_at.isoformat(),
+            "end_at": booking.end_at.isoformat(),
+            "price": str(booking.price) if booking.price else None,
+            "is_free_lesson": booking.is_free_lesson,
+            "mode": booking.mode,
+            "notes": booking.notes,
+            "offered_by_tutor": True,
+            "client_name": client.full_name,
+        },
+    )
+    return await get_booking(db, booking.id, viewer=tutor)
+
+
+async def list_tutor_students(db: AsyncSession, tutor: Tutor, *, limit: int = 100):
+    """Eğitmenin ders ilişkisi olan öğrencileri (Modül 8, ders teklifi için).
+
+    Ölçüt `has_relationship` ile AYNI: silinmemiş herhangi bir rezervasyon.
+    Sıra en son dersi yaklaşan/yeni olana göre; ad ve avatar dışında öğrenci
+    verisi dönmez.
+    """
+    stmt = (
+        select(
+            Client.id,
+            Client.full_name,
+            Client.avatar_url,
+            func.max(Booking.start_at).label("son_ders"),
+            func.count(Booking.id).label("ders_sayisi"),
+        )
+        .join(Booking, Booking.client_id == Client.id)
+        .where(Booking.tutor_id == tutor.id, Booking.deleted_at.is_(None))
+        .group_by(Client.id, Client.full_name, Client.avatar_url)
+        .order_by(func.max(Booking.start_at).desc())
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "client_id": r.id,
+            "full_name": r.full_name,
+            "avatar_url": r.avatar_url,
+            "last_lesson_at": r.son_ders,
+            "lesson_count": int(r.ders_sayisi),
+        }
+        for r in rows
+    ]
+
+
 async def count_completed(db: AsyncSession, *, role_id: int, user_id: int) -> int:
     column = (
         Booking.tutor_id
@@ -869,13 +998,22 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
     if booking.mode != "IN_PERSON" and not booking.meeting_room:
         booking.meeting_room = f"adana-{booking.id}-{secrets.token_urlsafe(6)}"
     await db.flush()
-    await notification_service.notify(
-        db,
-        user_id=booking.client_id,
-        role_id=ROLE_IDS[RoleType.CLIENT],
-        message="Rezervasyon talebin kabul edildi.",
-        link="/student/bookings",
-    )
+    if booking.offered_by_tutor:
+        await notification_service.notify(
+            db,
+            user_id=booking.tutor_id,
+            role_id=ROLE_IDS[RoleType.TUTOR],
+            message="Ders teklifin kabul edildi; öğrenci ödeme adımında.",
+            link=f"/ders-talepleri/{booking.id}",
+        )
+    else:
+        await notification_service.notify(
+            db,
+            user_id=booking.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message="Rezervasyon talebin kabul edildi.",
+            link="/student/bookings",
+        )
     # Escrow ödeme kaydını oluştur (PENDING); öğrenci ödemeye yönlendirilir.
     await payment_service.create_for_booking(db, booking)
     _notify_booking_update(db, booking)
@@ -899,16 +1037,29 @@ async def reject(
     if reason:
         booking.cancel_reason = reason
     await db.flush()
-    message = "Rezervasyon talebin reddedildi."
-    if reason:
-        message += f" Neden: {reason}"
-    await notification_service.notify(
-        db,
-        user_id=booking.client_id,
-        role_id=ROLE_IDS[RoleType.CLIENT],
-        message=message,
-        link="/student/bookings",
-    )
+    # Haber, YANITI BEKLEYEN tarafa değil, teklifi/talebi YAPAN tarafa gider.
+    if booking.offered_by_tutor:
+        message = "Ders teklifin öğrenci tarafından reddedildi."
+        if reason:
+            message += f" Neden: {reason}"
+        await notification_service.notify(
+            db,
+            user_id=booking.tutor_id,
+            role_id=ROLE_IDS[RoleType.TUTOR],
+            message=message,
+            link=f"/ders-talepleri/{booking.id}",
+        )
+    else:
+        message = "Rezervasyon talebin reddedildi."
+        if reason:
+            message += f" Neden: {reason}"
+        await notification_service.notify(
+            db,
+            user_id=booking.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message=message,
+            link="/student/bookings",
+        )
     # Emanette ödeme varsa öğrenciye iade et (yoksa no-op). Taraf iptaliyle AYNI
     # yol: `escrow.refund_escrow` (claim + iki faz) — paralel bir iade uygulaması
     # yazılmaz, idempotency ve sağlayıcı-başarısızlığı davranışı devralınır.

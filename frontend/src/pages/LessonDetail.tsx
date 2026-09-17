@@ -380,7 +380,29 @@ export default function LessonDetail() {
               </button>
             )} */}
 
-            {role === "TUTOR" && isPending && (
+            {/* Bekleyen dersin yanıtını KİM verir: öğrencinin talebinde eğitmen,
+                eğitmenin teklifinde öğrenci (Modül 8). Sunucu da aynı kuralı
+                uygular; buradaki tek iş doğru düğmeyi doğru tarafa göstermek. */}
+            {role === "CLIENT" && isPending && booking.offered_by_tutor && (
+              <>
+                <button
+                  disabled={busy}
+                  onClick={() => run(accept, "Ders teklifini kabul ettin; ödeme adımına geçebilirsin.")}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
+                >
+                  Teklifi Kabul Et
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => run(reject, "Ders teklifini reddettin.")}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 active:scale-95 disabled:opacity-60 "
+                >
+                  Reddet
+                </button>
+              </>
+            )}
+
+            {role === "TUTOR" && isPending && !booking.offered_by_tutor && (
               <>
                 <button
                   disabled={busy}

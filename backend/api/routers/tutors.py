@@ -35,7 +35,7 @@ from schemas.time_off import (
     TimeOffPreviewOut,
 )
 from schemas.tutor_analytics import Period, SuccessGoalOut, TutorOverviewOut
-from schemas.tutor_dashboard import TutorDashboardOut
+from schemas.tutor_dashboard import TutorDashboardOut, TutorStudentOut
 from services import (
     booking_service,
     search_service,
@@ -275,6 +275,18 @@ async def read_my_dashboard(
     return await tutor_dashboard_service.build_dashboard(
         db, tutor, now=datetime.datetime.now(datetime.timezone.utc)
     )
+
+
+@router.get("/me/students", response_model=list[TutorStudentOut])
+async def list_my_students(
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ders ilişkisi olan öğrenciler — ders teklifi ekranı için (Modül 8).
+
+    ``/{tutor_id}`` rotasından ÖNCE tanımlı kalmalı.
+    """
+    return await booking_service.list_tutor_students(db, tutor)
 
 
 # ── Takvim: izinler (Modül 7) — hepsi `/{tutor_id}`'den ÖNCE ─────────────────

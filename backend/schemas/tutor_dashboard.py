@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from typing import Literal
 
 from pydantic import BaseModel
@@ -31,3 +32,13 @@ class TutorDashboardOut(BaseModel):
     completed_this_month: int
     completed_total: int
     visibility_issues: list[VisibilityIssue]
+
+
+class TutorStudentOut(BaseModel):
+    """Eğitmenin ders ilişkisi olan öğrencisi (Modül 8, ders teklifi ekranı)."""
+
+    client_id: int
+    full_name: str | None = None
+    avatar_url: str | None = None
+    last_lesson_at: datetime.datetime | None = None
+    lesson_count: int = 0

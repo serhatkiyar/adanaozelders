@@ -532,6 +532,8 @@ export interface BookingCardMetadata {
   end_at: string;
   price?: string | null;
   is_free_lesson?: boolean;
+  /** Dersi eğitmen teklif etti; yanıtı öğrenci verir (Modül 8). */
+  offered_by_tutor?: boolean;
   mode?: string | null;
   notes?: string | null;
   client_name?: string | null;
@@ -735,6 +737,8 @@ export interface BookingOut {
   end_at: string;
   price?: string | null; // Decimal -> string
   is_free_lesson?: boolean;
+  /** Dersi eğitmen teklif etti; PENDING'de yanıtı öğrenci verir (Modül 8). */
+  offered_by_tutor?: boolean;
   notes?: string | null;
   cancel_reason?: string | null;
   mode?: string | null; // ONLINE | IN_PERSON
@@ -839,6 +843,27 @@ export interface TimeOffCreated {
   cancelled_count: number;
   /** Yarışta işlenemeyen (durumu değişmiş) ders id'leri. */
   skipped_ids: number[];
+}
+
+/* ============================ DERS TEKLİFİ (Modül 8) ============================ */
+
+/** Eğitmenin ders ilişkisi olan öğrencisi. */
+export interface TutorStudent {
+  client_id: number;
+  full_name: string | null;
+  avatar_url: string | null;
+  last_lesson_at: string | null;
+  lesson_count: number;
+}
+
+/** Eğitmenin gönderdiği ders teklifi; fiyat boşsa ilan ücreti kullanılır. */
+export interface BookingOfferCreate {
+  client_id: number;
+  start_at: string;
+  end_at: string;
+  mode?: TeachingMode | null;
+  notes?: string | null;
+  price?: string | null;
 }
 
 /* ============================ EĞİTMEN ANALİZİ (Modül 7) ============================ */

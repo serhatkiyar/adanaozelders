@@ -21,6 +21,7 @@ from models.tutor import Tutor
 from schemas.booking import (
     BookingCancel,
     BookingCreate,
+    BookingOffer,
     BookingIssueReport,
     BookingOut,
     BookingReschedule,
@@ -88,6 +89,21 @@ async def create_booking(
     return await booking_service.create_booking(db, client, payload)
 
 
+@router.post(
+    "/offer",
+    response_model=BookingOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_create_limit)],
+)
+async def offer_lesson(
+    payload: BookingOffer,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Eğitmen kendi öğrencisine ders teklif eder; yanıtı öğrenci verir."""
+    return await booking_service.offer_lesson(db, tutor, payload)
+
+
 @router.get("", response_model=list[BookingOut])
 async def list_my_bookings(
     status_filter: BookingStatus | None = Query(default=None, alias="status"),
@@ -144,10 +160,30 @@ async def get_booking(
     return booking
 
 
+def _assert_yanit_verecek_taraf(booking: Booking, user: CurrentUser) -> None:
+    """Bekleyen bir rezervasyonu KİM yanıtlar?
+
+    Öğrencinin talebinde eğitmen, eğitmenin teklifinde öğrenci (Modül 8).
+    Yanlış taraf çağırırsa 403 — teklifi eğitmen kendi kabul edip öğrenciye
+    ödeme yükümlülüğü çıkaramaz.
+    """
+    _assert_party(booking, user)
+    beklenen = (
+        ROLE_IDS[RoleType.CLIENT]
+        if booking.offered_by_tutor
+        else ROLE_IDS[RoleType.TUTOR]
+    )
+    if user.role_id != beklenen:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Bu rezervasyonun yanıtı karşı tarafta.",
+        )
+
+
 @router.post("/{booking_id}/accept", response_model=BookingOut)
 async def accept_booking(
     booking_id: int,
-    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     # Kabul, ogrenciye odenecek bir yukumluluk dogurur (PENDING escrow).
@@ -155,19 +191,19 @@ async def accept_booking(
     await payment_gates.assert_branch_open(
         db, payment_gates.PaymentBranch.TUTOR_MARKETPLACE
     )
-    booking = await _get_booking_or_404(db, booking_id, tutor)
-    _assert_owner_tutor(booking, tutor)
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_yanit_verecek_taraf(booking, user)
     return await booking_service.accept(db, booking)
 
 
 @router.post("/{booking_id}/reject", response_model=BookingOut)
 async def reject_booking(
     booking_id: int,
-    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id, tutor)
-    _assert_owner_tutor(booking, tutor)
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_yanit_verecek_taraf(booking, user)
     return await booking_service.reject(db, booking)
 
 

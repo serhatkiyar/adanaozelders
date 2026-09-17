@@ -90,9 +90,15 @@ async def build_dashboard(
             db, rows, role_id=tutor_role, user_id=tutor.id
         )
 
-    pending_count = await _count(Booking.status == BookingStatus.PENDING)
+    # Eğitmenin KENDİ teklifleri "yanıt bekleyen istek" değildir: onları
+    # öğrenci yanıtlar (Modül 8).
+    pending_count = await _count(
+        Booking.status == BookingStatus.PENDING,
+        Booking.offered_by_tutor.is_(False),
+    )
     pending = await _rows(
         Booking.status == BookingStatus.PENDING,
+        Booking.offered_by_tutor.is_(False),
         Booking.start_at >= now,
         limit=PENDING_LIMIT,
     )
