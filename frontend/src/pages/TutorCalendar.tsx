@@ -233,9 +233,12 @@ export default function TutorCalendar() {
     pencere !== null && Date.now() >= pencere.start.getTime() && Date.now() < pencere.end.getTime();
   const hata = dersler.isError ? dersler.error : izinler.isError ? izinler.error : null;
 
+  // `altBilgiGizli`: ızgara 24 saati çizdiği için sayfa zaten uzun; altına
+  // pazarlama bağlantıları koymak takvimi bitmiyormuş gibi gösteriyordu
+  // (kullanıcı, 17 Eyl 2026). Preply'ın panel ekranlarında da footer yok.
   return (
-    <DashboardShell title="Takvim" navItems={TUTOR_NAV} genislik="genis">
-      <div className="pb-16 pt-2">
+    <DashboardShell title="Takvim" navItems={TUTOR_NAV} genislik="genis" altBilgiGizli>
+      <div className="pb-6 pt-2">
         <h1 className={`mb-6 ${SAYFA_BASLIGI}`}>Takvim</h1>
 
         {/* Preply düzeni (17 Eyl 2026): solda eylemler ve renk açıklaması,
