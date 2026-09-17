@@ -202,7 +202,7 @@ export default function TutorCalendar() {
   const hata = dersler.isError ? dersler.error : izinler.isError ? izinler.error : null;
 
   return (
-    <DashboardShell title="Takvim" navItems={TUTOR_NAV} genislik="orta">
+    <DashboardShell title="Takvim" navItems={TUTOR_NAV} genislik="genis">
       <div className="pb-16 pt-2">
         <h1 className={`mb-6 ${SAYFA_BASLIGI}`}>Takvim</h1>
 

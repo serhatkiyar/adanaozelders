@@ -126,12 +126,19 @@ interface DashboardShellProps {
   icerikSiki?: boolean;
 }
 
-export type PanelGenisligi = "dar" | "orta";
+export type PanelGenisligi = "dar" | "orta" | "genis";
 
-/** Adlandırılmış genişlik sınıfları — tek kaynak. */
+/**
+ * Adlandırılmış genişlik sınıfları — tek kaynak.
+ *
+ * `genis` 17 Eyl 2026'da eklendi: Preply'ın eğitmen ekranları (takvim, pano)
+ * geniş ekranda 1152px'e sıkışmıyor, kenar boşluğu dışında ekranı kullanıyor.
+ * Okuma kolonu olan sayfalar (`dar`) ve kart listeleri (`orta`) değişmedi.
+ */
 export const PANEL_GENISLIKLERI: Record<PanelGenisligi, string> = {
   dar: "mx-auto w-full max-w-3xl",
   orta: "mx-auto w-full max-w-6xl",
+  genis: "mx-auto w-full max-w-[1600px]",
 };
 
 export function DashboardShell({

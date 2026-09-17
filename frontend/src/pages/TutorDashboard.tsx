@@ -114,7 +114,7 @@ export default function TutorDashboard() {
   const gizleyenVar = pano?.visibility_issues.some((i) => i.severity === "hidden") ?? false;
 
   return (
-    <DashboardShell title="Pano" navItems={TUTOR_NAV} genislik="orta">
+    <DashboardShell title="Pano" navItems={TUTOR_NAV} genislik="genis">
       <div className="space-y-8 pb-16 pt-2">
         <header>
           <h1 className={SAYFA_BASLIGI}>
@@ -141,6 +141,8 @@ export default function TutorDashboard() {
           />
         ) : (
           <>
+            {/* Geniş ekranda iki sütun (17 Eyl 2026): kartlar 1600px'e yayılıp
+                okunmaz hale gelmesin; sağ sütun özet ve durum bilgisi taşır. */}
             <GorunurlukBandi issues={pano.visibility_issues} />
             {/* Müsaitlik ve belge ilan yayına girdikten SONRA burada
                 tamamlanıyor; ilan zaten gizliyse önce o nedenler çözülür. */}
@@ -159,6 +161,8 @@ export default function TutorDashboard() {
               />
             </div>
 
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+              <div className="min-w-0 space-y-8">
             <SiradakiDersKarti
               lesson={pano.next_lesson}
               bosMetin={
@@ -197,13 +201,17 @@ export default function TutorDashboard() {
               </Bolum>
             )}
 
-            <OzetKartlari
-              earnings={earnings}
-              completedThisMonth={pano.completed_this_month}
-              escrowWording={escrowWording}
-            />
+                <TumDersler onJoinMeeting={derseKatil} />
+              </div>
 
-            <TumDersler onJoinMeeting={derseKatil} />
+              <div className="min-w-0 space-y-8">
+                <OzetKartlari
+                  earnings={earnings}
+                  completedThisMonth={pano.completed_this_month}
+                  escrowWording={escrowWording}
+                />
+              </div>
+            </div>
           </>
         )}
       </div>

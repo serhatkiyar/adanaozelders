@@ -67,9 +67,12 @@ describe("panel genişliği · adlandırılmış sınıf", () => {
   it("DOLULUK: sınıf listesi gerçekten dolu ve Tailwind sınıfı taşıyor", () => {
     // Bu olmadan aşağıdaki iddialar BOŞ bir sözlükle de geçerdi.
     const anahtarlar = Object.keys(PANEL_GENISLIKLERI);
-    expect(anahtarlar.sort()).toEqual(["dar", "orta"]);
+    // "genis" 17 Eyl 2026'da eklendi: takvim ızgarası ve pano geniş ekranda
+    // 1152px'e sıkışmasın (kullanıcı kararı, Preply eğitmen ekranları örnek).
+    expect(anahtarlar.sort()).toEqual(["dar", "genis", "orta"]);
     for (const [ad, sinif] of Object.entries(PANEL_GENISLIKLERI)) {
-      expect(sinif, `${ad} max-w taşımıyor`).toMatch(/\bmax-w-\w+\b/);
+      // Köşeli parantezli keyfi değer de (`max-w-[1600px]`) geçerli sayılır.
+      expect(sinif, `${ad} max-w taşımıyor`).toMatch(/\bmax-w-(?:\w+|\[[^\]]+\])/);
       expect(sinif, `${ad} ortalanmıyor`).toContain("mx-auto");
     }
   });
