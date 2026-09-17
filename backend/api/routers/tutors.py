@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import re
 from decimal import Decimal
 
@@ -24,7 +25,8 @@ from schemas.tutor_promotion import (
     TutorPromotionPurchaseIn,
     TutorPromotionPurchaseOut,
 )
-from services import search_service, tutor_promotion_service, tutor_service
+from schemas.tutor_dashboard import TutorDashboardOut
+from services import search_service, tutor_dashboard_service, tutor_promotion_service, tutor_service
 
 router = APIRouter(prefix="/tutors", tags=["tutors"])
 
@@ -222,6 +224,21 @@ async def buy_promotion(
     return TutorPromotionPurchaseOut(
         promotion=TutorPromotionOut.model_validate(promo),
         redirect_url=redirect_url,
+    )
+
+
+@router.get("/me/dashboard", response_model=TutorDashboardOut)
+async def read_my_dashboard(
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Eğitmen panosu: sayılar, sıradaki/yaklaşan dersler, görünürlük nedenleri.
+
+    Sahiplik sorguda sağlanır (yalnız `tutor.id`); dışarıdan kimlik almaz.
+    ``/{tutor_id}`` rotasından ÖNCE tanımlı kalmalı.
+    """
+    return await tutor_dashboard_service.build_dashboard(
+        db, tutor, now=datetime.datetime.now(datetime.timezone.utc)
     )
 
 

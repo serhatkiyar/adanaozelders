@@ -17,9 +17,15 @@ export function mapsUrl(
 }
 
 // Derse katılım, ders saatinden 15 dk önce açılır, bitişten 30 dk sonra kapanır.
-export function isLessonJoinable(startIso: string, endIso: string): boolean {
-  const now = Date.now();
-  const open = new Date(startIso).getTime() - 15 * 60 * 1000;
-  const close = new Date(endIso).getTime() + 30 * 60 * 1000;
+export const JOIN_OPENS_BEFORE_MIN = 15;
+export const JOIN_CLOSES_AFTER_MIN = 30;
+
+export function isLessonJoinable(
+  startIso: string,
+  endIso: string,
+  now: number = Date.now()
+): boolean {
+  const open = new Date(startIso).getTime() - JOIN_OPENS_BEFORE_MIN * 60 * 1000;
+  const close = new Date(endIso).getTime() + JOIN_CLOSES_AFTER_MIN * 60 * 1000;
   return now >= open && now <= close;
 }

@@ -451,22 +451,19 @@ async def resolve_signal_target(
     return None
 
 
-async def list_bookings(
-    db: AsyncSession,
-    *,
-    role_id: int,
-    user_id: int,
-    status_filter: BookingStatus | None = None,
-    limit: int = 20,
-    offset: int = 0,
-) -> list[Booking]:
+def _hydrated_booking_select():
+    """Ad/avatar ve ``reviewed`` bayrağıyla birlikte ders satırı seçer.
+
+    Listeleme ve eğitmen panosu aynı zenginleştirmeyi kullanır; sahiplik ve
+    durum filtreleri çağıran tarafta eklenir.
+    """
     reviewed_col = (
         select(Review.id)
         .where(Review.booking_id == Booking.id, Review.deleted_at.is_(None))
         .exists()
         .label("reviewed")
     )
-    stmt = (
+    return (
         select(Booking, Tutor.full_name, Tutor.avatar_url, Client.full_name, Client.avatar_url, reviewed_col)
         .options(
             selectinload(Booking.resources),
@@ -476,18 +473,13 @@ async def list_bookings(
         .join(Client, Booking.client_id == Client.id)
         .where(Booking.deleted_at.is_(None))
     )
-    if role_id == ROLE_IDS[RoleType.CLIENT]:
-        stmt = stmt.where(Booking.client_id == user_id)
-    elif role_id == ROLE_IDS[RoleType.TUTOR]:
-        stmt = stmt.where(Booking.tutor_id == user_id)
-    else:
-        return []
-    if status_filter is not None:
-        stmt = stmt.where(Booking.status == status_filter)
-    stmt = stmt.order_by(Booking.start_at.desc()).limit(limit).offset(offset)
 
+
+async def _hydrate_booking_rows(
+    db: AsyncSession, rows, *, role_id: int, user_id: int
+) -> list[Booking]:
     bookings: list[Booking] = []
-    for booking, tutor_name, tutor_avatar, client_name, client_avatar, reviewed in (await db.execute(stmt)).all():
+    for booking, tutor_name, tutor_avatar, client_name, client_avatar, reviewed in rows:
         booking.tutor_name = tutor_name
         booking.tutor_avatar_url = tutor_avatar
         booking.client_name = client_name
@@ -504,6 +496,29 @@ async def list_bookings(
         _filter_private_notes(booking, role_id=role_id, user_id=user_id)
         bookings.append(booking)
     return bookings
+
+
+async def list_bookings(
+    db: AsyncSession,
+    *,
+    role_id: int,
+    user_id: int,
+    status_filter: BookingStatus | None = None,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[Booking]:
+    stmt = _hydrated_booking_select()
+    if role_id == ROLE_IDS[RoleType.CLIENT]:
+        stmt = stmt.where(Booking.client_id == user_id)
+    elif role_id == ROLE_IDS[RoleType.TUTOR]:
+        stmt = stmt.where(Booking.tutor_id == user_id)
+    else:
+        return []
+    if status_filter is not None:
+        stmt = stmt.where(Booking.status == status_filter)
+    stmt = stmt.order_by(Booking.start_at.desc()).limit(limit).offset(offset)
+    rows = (await db.execute(stmt)).all()
+    return await _hydrate_booking_rows(db, rows, role_id=role_id, user_id=user_id)
 
 
 async def accept(db: AsyncSession, booking: Booking) -> Booking:

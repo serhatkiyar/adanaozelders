@@ -120,6 +120,9 @@ export const PATHS = {
   sellerProducts: "/dijital-urunlerim",
   /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
   balance: "/pano/bakiyem",
+  // Eğitmen kazanç dökümü. "Bakiyem" yalnız kütüphane operatöründe kaldı;
+  // eğitmen eski adresten buraya yönlendirilir (Balance.tsx).
+  tutorEarnings: "/pano/kazanclar",
   leaderboard: "/liderlik",
   // Öğren bölümü (aralıklı tekrar / odak / grafik / alışkanlıklar)
   learn: "/ogren",
@@ -361,6 +364,7 @@ export const ROUTES = {
   orderDetail: (id: string | number) => `/siparislerim/${id}`,
   sellerProducts: PATHS.sellerProducts,
   balance: PATHS.balance,
+  tutorEarnings: PATHS.tutorEarnings,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,
   deepwork: PATHS.deepwork,

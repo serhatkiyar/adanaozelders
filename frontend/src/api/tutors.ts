@@ -4,6 +4,7 @@ import type {
   TutorOut,
   TutorProfileUpdate,
   TutorSearchOut,
+  TutorDashboardOut,
   TutorSort,
 } from "@/types";
 
@@ -149,6 +150,12 @@ export async function fetchTutor(id: number): Promise<TutorSearchOut> {
 // Giriş yapmış eğitmenin kendi ilan profili (status + headline/bio/hourly_rate).
 export async function fetchMyTutorProfile(): Promise<TutorOut> {
   const { data } = await apiClient.get<TutorOut>("/tutors/me");
+  return data;
+}
+
+// Eğitmen panosu özeti (sayılar, sıradaki/yaklaşan dersler, görünürlük nedenleri).
+export async function fetchMyTutorDashboard(): Promise<TutorDashboardOut> {
+  const { data } = await apiClient.get<TutorDashboardOut>("/tutors/me/dashboard");
   return data;
 }
 

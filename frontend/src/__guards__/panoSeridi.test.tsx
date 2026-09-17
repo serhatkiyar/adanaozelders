@@ -99,14 +99,18 @@ function seritHedefleri(): string[] {
 afterEach(() => cleanup());
 
 describe("panel şeridi · kimlik", () => {
-  it("DOLULUK: beş sekme, hepsi gerçek bir ROUTES hedefi", () => {
+  it("DOLULUK: dört sekme, hepsi gerçek bir ROUTES hedefi", () => {
     // Bu olmadan aşağıdaki "şerit çiziliyor" iddiaları BOŞ bir listeyle de
     // geçerdi — hiçbir sekme çizilmez, hiçbir şey itiraz etmezdi.
     //
     // ALTI DEĞİL BEŞ (8 Eyl 2026, ikinci tur): "Hesabım" şeritten çıktı,
     // gerekçesi `lib/nav.ts`te. Sayı burada dondurulmuyor, ölçülüyor —
     // değişirse gerekçesiyle birlikte değişsin diye açık yazılı.
-    expect(TUTOR_PANO_SEKMELERI).toHaveLength(5);
+    //
+    // DÖRT (17 Eyl 2026, kullanıcı kararı): "Bakiyem" şeritten kalktı. Kazanç
+    // dökümü panodaki özet kartlarından açılan "Kazançlar" sayfasına taşındı;
+    // erişilebilirliği aşağıdaki "Kazançlar" düğümü korur.
+    expect(TUTOR_PANO_SEKMELERI).toHaveLength(4);
     const bilinen = new Set(
       Object.values(ROUTES).filter((v): v is string => typeof v === "string")
     );
@@ -151,7 +155,7 @@ describe("panel şeridi · gerçekten çiziliyor", () => {
     ["yönetici", ROLE_IDS.ADMIN],
   ])("%s için şerit HİÇ çizilmez", (_ad, rol) => {
     // Kapsam kararı: şerit bu turda yalnız eğitmende. Üyeye sızarsa üye
-    // "İlanım" ve "Bakiyem" sekmeleri görür — hiçbiri onun ekranı değil.
+    // "İlanım" ve "Değerlendirmeler" sekmeleri görür — hiçbiri onun ekranı değil.
     girisYap(rol);
     kabuguCiz(rol);
     expect(seritHedefleri()).toEqual([]);
@@ -179,6 +183,20 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
       eksik.map((i) => `${i.label} → ${i.to}`),
       "ne şeritte ne menüde: bu ekrana artık gidilemiyor"
     ).toEqual([]);
+  });
+
+  it("Kazançlar: Bakiyem şeritte yok, sayfa panodan açılıyor ve Pano sekmesi aktif kalıyor", () => {
+    // Sekme kalktığında ekranın erişilemez kalması sessiz olur. Kazançlar'a
+    // tek giriş panodaki özet kartlarıdır; kart bağlantısı düşerse burası konuşur.
+    expect(TUTOR_PANO_SEKMELERI.map((s) => s.label)).not.toContain("Bakiyem");
+    expect(TUTOR_PANO_SEKMELERI.map((s) => s.to)).not.toContain(ROUTES.balance);
+    const ozet = readFileSync(
+      join(KOK, "src", "components", "pano", "OzetKartlari.tsx"),
+      "utf8"
+    );
+    expect(ozet).toContain("ROUTES.tutorEarnings");
+    const pano = TUTOR_PANO_SEKMELERI.find((s) => s.label === "Pano");
+    expect(pano?.altYollar).toContain(ROUTES.tutorEarnings);
   });
 
   it("şeritteki hedefler rol menüsünde TEKRARLANMAZ", () => {

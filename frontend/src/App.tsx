@@ -302,6 +302,7 @@ const Profile = lazy(() => import("@/pages/Profile"));
 const MessageCenter = lazy(() => import("@/pages/MessageCenter"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Balance = lazy(() => import("@/pages/Balance"));
+const TutorEarnings = lazy(() => import("@/pages/TutorEarnings"));
 const Demands = lazy(() => import("@/pages/Demands"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
@@ -676,6 +677,7 @@ function App() {
             <Route path={PATHS.tasks} element={<Tasks />} />
             {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
             <Route path={PATHS.balance} element={<Balance />} />
+            <Route path={PATHS.tutorEarnings} element={<TutorEarnings />} />
             {/* Talepler — rol delegasyonu sayfa içinde (CLIENT açar, TUTOR yanıtlar) */}
             {TALEPLER_ACIK && (
               <Route path={PATHS.demands} element={<Demands />} />

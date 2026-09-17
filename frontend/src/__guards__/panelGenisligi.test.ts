@@ -59,7 +59,6 @@ const SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
   { rota: ROUTES.messages, dosya: ["pages", "Messages.tsx"], etiket: "Mesajlarım" },
   { rota: ROUTES.tutorListing, dosya: ["pages", "TutorSettings.tsx"], etiket: "İlanım" },
   { rota: ROUTES.tutorReviews, dosya: ["pages", "TutorReviews.tsx"], etiket: "Değerlendirmeler" },
-  { rota: ROUTES.balance, dosya: ["pages", "Balance.tsx"], etiket: "Bakiyem" },
 ];
 
 describe("panel genişliği · adlandırılmış sınıf", () => {

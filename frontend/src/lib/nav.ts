@@ -124,6 +124,8 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
       PATHS.lesson.replace(":id", ""),
       // Kütüphane rezervasyon detayı da panonun altındadır.
       PATHS.libraryReservation.replace(":tur/:id", ""),
+      // Kazançlar sekmesi kaldırıldı (Bakiyem); özet kartlarından açılır.
+      ROUTES.tutorEarnings,
     ],
   },
   { to: ROUTES.messages, label: "Mesajlarım" },
@@ -134,7 +136,6 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
     altYollar: [ROUTES.tutorPromotion, ROUTES.tutorOnboarding],
   },
   { to: ROUTES.tutorReviews, label: "Değerlendirmeler" },
-  { to: ROUTES.balance, label: "Bakiyem" },
 ];
 
 /**

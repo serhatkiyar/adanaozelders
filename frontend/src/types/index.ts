@@ -700,6 +700,32 @@ export interface BookingPrivateNoteOut {
   created_at: string;
 }
 
+export type VisibilityIssueCode =
+  | "DRAFT"
+  | "PENDING_APPROVAL"
+  | "REJECTED"
+  | "SUSPENDED"
+  | "NO_SUBJECTS"
+  | "NO_AVAILABILITY"
+  | "PAYOUT_NOT_ACTIVE";
+
+export interface VisibilityIssue {
+  code: VisibilityIssueCode;
+  severity: "hidden" | "warning";
+}
+
+/** `GET /tutors/me/dashboard` — sayılar ve pencereler sunucuda hesaplanır. */
+export interface TutorDashboardOut {
+  pending_count: number;
+  pending: BookingOut[];
+  next_lesson: BookingOut | null;
+  upcoming: BookingOut[];
+  upcoming_count: number;
+  completed_this_month: number;
+  completed_total: number;
+  visibility_issues: VisibilityIssue[];
+}
+
 export interface BookingOut {
   id: number;
   tutor_id: number;

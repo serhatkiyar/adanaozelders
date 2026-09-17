@@ -2,15 +2,13 @@ import { Link, Navigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PaymentStatusBadge } from "@/components/PaymentBadge";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
-import { useEarnings, useEarningsTransactions } from "@/hooks/usePayments";
-import { useMyPayout } from "@/hooks/usePayout";
 import {
   useLibraryEarnings,
   useLibraryEarningsTransactions,
 } from "@/hooks/useLibraries";
 import { useOperatorMe } from "@/hooks/useLibraryExams";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { OPERATOR_NAV, TUTOR_NAV } from "@/lib/nav";
+import { OPERATOR_NAV } from "@/lib/nav";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
@@ -41,7 +39,7 @@ const PAYOUT_STATUS_META: Record<PayoutStatus, { label: string; cls: string }> =
 };
 
 /** Bakiyem'de ödeme hesabının yalnız özetini gösterir; düzenleme Ayarlar'da. */
-function PayoutSummaryCard({
+export function PayoutSummaryCard({
   status,
   ibanMasked,
 }: {
@@ -76,16 +74,6 @@ function PayoutSummaryCard({
   );
 }
 
-function TutorPayoutSummary() {
-  const { data: payout } = useMyPayout();
-  return (
-    <PayoutSummaryCard
-      status={payout?.payout_status ?? "NONE"}
-      ibanMasked={payout?.iban_masked}
-    />
-  );
-}
-
 const SOURCE_LABEL: Record<EarningTransaction["source"], string> = {
   LESSON: "Özel ders",
   EXAM: "Deneme oturumu",
@@ -97,38 +85,10 @@ const SOURCE_LABEL: Record<EarningTransaction["source"], string> = {
 export default function Balance() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
-  if (user.role_id === ROLE_IDS.TUTOR) return <TutorBalance />;
+  // Eğitmende "Bakiyem" yok; eski adres ve bildirim linkleri Kazançlar'a gider.
+  if (user.role_id === ROLE_IDS.TUTOR) return <Navigate to={ROUTES.tutorEarnings} replace />;
   if (user.role_id === ROLE_IDS.LIBRARY_OPERATOR) return <OperatorBalance />;
   return <Navigate to={ROUTES.home} replace />;
-}
-
-/* ── Eğitmen bakiyesi ─────────────────────────────────────────────────────── */
-function TutorBalance() {
-  const { data: summary, isLoading: sumLoading } = useEarnings();
-  const {
-    data: txns,
-    isLoading: txnLoading,
-    isError: txnError,
-    refetch: txnRefetch,
-  } = useEarningsTransactions();
-
-  return (
-    <BalanceView
-      navItems={TUTOR_NAV}
-      loading={sumLoading}
-      net={summary?.released}
-      escrow={summary?.pending}
-      thisMonth={summary?.this_month}
-      refunded={summary?.refunded}
-      escrowLabel="Emanette bekleyen"
-      escrowHint="Ders tamamlanınca kazancına geçer"
-      transactions={txns}
-      txnLoading={txnLoading}
-      txnError={txnError}
-      onRetryTransactions={() => void txnRefetch()}
-      payout={<TutorPayoutSummary />}
-    />
-  );
 }
 
 /* ── Kütüphane (operatör) bakiyesi ────────────────────────────────────────── */
@@ -174,6 +134,14 @@ function OperatorBalance() {
 /* ── Ortak görünüm ────────────────────────────────────────────────────────── */
 interface BalanceViewProps {
   navItems?: NavItem[];
+  /** Sayfa başlığı; operatörde "Bakiyem". */
+  title?: string;
+  /** Başlık altı açıklama; verilmezse havale açıklaması. */
+  description?: ReactNode;
+  netLabel?: string;
+  netHint?: string;
+  /** Nötr özet kartları (eğitmen Kazançlar). Operatör görünümü değişmez. */
+  sade?: boolean;
   loading: boolean;
   net?: string;
   escrow?: string;
@@ -189,8 +157,13 @@ interface BalanceViewProps {
   payout: ReactNode;
 }
 
-function BalanceView({
+export function BalanceView({
   navItems,
+  title = "Bakiyem",
+  description,
+  netLabel = "Toplam kazanç",
+  netHint = "Tamamlanan işlemlerden net",
+  sade = false,
   loading,
   net,
   escrow,
@@ -207,11 +180,11 @@ function BalanceView({
   const refundedNum = Number(refunded ?? 0);
 
   return (
-    <DashboardShell title="Bakiyem" navItems={navItems} genislik="orta">
+    <DashboardShell title={title} navItems={navItems} genislik="orta">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 ">
-            Bakiyem
+            {title}
           </h1>
           {/* Eski metin "tutarlar iyzico üzerinden doğrudan IBAN'ına geçer"
               diyordu; kurulu mekanizma bu DEĞİL. Hakediş defteri admin
@@ -224,9 +197,13 @@ function BalanceView({
             data-testid="bakiye-odeme-aciklamasi"
             className="mt-1 text-sm text-slate-500 "
           >
-            Kazançların, emanetteki ödemeler ve tüm işlem dökümün. Hakedişin,
-            kayıtlı IBAN'ına <b className="font-semibold">banka havalesiyle</b>{" "}
-            ödenir; ödeme kaydı platformda tutulur.
+            {description ?? (
+              <>
+                Kazançların, emanetteki ödemeler ve tüm işlem dökümün. Hakedişin,
+                kayıtlı IBAN'ına <b className="font-semibold">banka havalesiyle</b>{" "}
+                ödenir; ödeme kaydı platformda tutulur.
+              </>
+            )}
           </p>
         </div>
 
@@ -242,18 +219,26 @@ function BalanceView({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-sm">
-              <p className="text-xs font-medium text-emerald-50">Toplam kazanç</p>
-              <p className="mt-1 text-2xl font-bold">{formatTRY(net)}</p>
-              <p className="mt-0.5 text-[11px] text-emerald-100">
-                Tamamlanan işlemlerden net
-              </p>
-            </div>
+            {sade ? (
+              <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+                <p className="text-xs font-medium text-slate-500">{netLabel}</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{formatTRY(net)}</p>
+                <p className="mt-0.5 text-[11px] text-slate-400">{netHint}</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-sm">
+                <p className="text-xs font-medium text-emerald-50">{netLabel}</p>
+                <p className="mt-1 text-2xl font-bold">{formatTRY(net)}</p>
+                <p className="mt-0.5 text-[11px] text-emerald-100">
+                  {netHint}
+                </p>
+              </div>
+            )}
             <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
               <p className="text-xs font-medium text-slate-500 ">
                 {escrowLabel}
               </p>
-              <p className="mt-1 text-2xl font-bold text-amber-600 ">
+              <p className={`mt-1 text-2xl font-bold tabular-nums ${sade ? "text-slate-900" : "text-amber-600"}`}>
                 {formatTRY(escrow)}
               </p>
               <p className="mt-0.5 text-[11px] text-slate-400">{escrowHint}</p>

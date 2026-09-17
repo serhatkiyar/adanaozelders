@@ -19,6 +19,7 @@ import {
   type ListBookingsParams,
 } from "@/api/bookings";
 import { BookingStatus, type BookingCreate, type BookingOut } from "@/types";
+import { TUTOR_DASHBOARD_KEY } from "@/hooks/useTutorDashboard";
 
 /**
  * Optimistic durum güncellemesini ["bookings"] ön ekiyle eşleşen TÜM cache'lere
@@ -44,10 +45,14 @@ function patchBookingCaches(
   );
 }
 
-export function useBookings(params: ListBookingsParams) {
+export function useBookings(
+  params: ListBookingsParams,
+  options: { enabled?: boolean } = {}
+) {
   return useQuery({
     queryKey: ["bookings", params],
     queryFn: () => listBookings(params),
+    enabled: options.enabled ?? true,
   });
 }
 
@@ -92,7 +97,10 @@ export function useCancelBooking() {
       ctx?.snapshots.forEach(([key, data]) =>
         queryClient.setQueryData(key, data)
       ),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["bookings"] }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: TUTOR_DASHBOARD_KEY });
+    },
   });
 }
 
@@ -152,6 +160,7 @@ export function useBookingAction(action: BookingActionType) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: TUTOR_DASHBOARD_KEY });
     },
   });
 }

@@ -39,6 +39,7 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(PATHS.tutorListing).toBe("/pano/ilanim");
     expect(PATHS.tutorReviews).toBe("/pano/degerlendirmeler");
     expect(PATHS.balance).toBe("/pano/bakiyem");
+    expect(PATHS.tutorEarnings).toBe("/pano/kazanclar");
     expect(PATHS.profile).toBe("/pano/hesabim");
     expect(PATHS.profileEdit).toBe("/pano/hesabim/profil");
     expect(PATHS.libraryReservation).toBe("/pano/rezervasyon/:tur/:id");
