@@ -168,10 +168,10 @@ export default function Settings() {
   }, [active, user, showPayments]);
 
   return (
-    <DashboardShell title="Hesap Ayarları" navItems={roleNav} genislik="orta">
+    <DashboardShell title="Ayarlar" navItems={roleNav} genislik="orta">
       <div className="px-1 pb-16 pt-2 sm:px-2">
         <h1 className={`mb-6 ${SAYFA_BASLIGI}`}>
-          Hesap ayarları
+          Ayarlar
         </h1>
 
         {isLoading || !user ? (
@@ -183,7 +183,7 @@ export default function Settings() {
           <div className="grid gap-8 md:grid-cols-[16rem_1fr]">
             {/* ── Sol kategori rayı ── */}
             <nav
-              aria-label="Hesap ayarları kategorileri"
+              aria-label="Ayarlar kategorileri"
               className="flex gap-2 overflow-x-auto pb-1 md:sticky md:top-24 md:h-fit md:flex-col md:gap-3 md:overflow-visible md:pb-0"
             >
               {categories.map((c) => {

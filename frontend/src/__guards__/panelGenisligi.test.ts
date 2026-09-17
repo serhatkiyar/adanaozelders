@@ -56,9 +56,8 @@ const oku = (...parcalar: string[]) =>
 /** Şerit sekmesi → onu çizen sayfa dosyası. */
 const SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
   { rota: ROUTES.bookings, dosya: ["pages", "TutorDashboard.tsx"], etiket: "Pano" },
-  { rota: ROUTES.messages, dosya: ["pages", "Messages.tsx"], etiket: "Mesajlarım" },
+  { rota: ROUTES.messages, dosya: ["pages", "Messages.tsx"], etiket: "Mesajlar" },
   { rota: ROUTES.tutorListing, dosya: ["pages", "TutorSettings.tsx"], etiket: "İlanım" },
-  { rota: ROUTES.tutorReviews, dosya: ["pages", "TutorReviews.tsx"], etiket: "Değerlendirmeler" },
 ];
 
 describe("panel genişliği · adlandırılmış sınıf", () => {

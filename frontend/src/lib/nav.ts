@@ -128,14 +128,15 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
       ROUTES.tutorEarnings,
     ],
   },
-  { to: ROUTES.messages, label: "Mesajlarım" },
+  { to: ROUTES.messages, label: "Mesajlar" },
   {
     to: ROUTES.tutorListing,
     label: "İlanım",
-    // Öne çıkarma ve ilan sihirbazı ilanın alt sayfalarıdır.
-    altYollar: [ROUTES.tutorPromotion, ROUTES.tutorOnboarding],
+    // Öne çıkarma, ilan sihirbazı ve değerlendirmeler ilanın alt sayfalarıdır.
+    // "Değerlendirmeler" sekmesi 17 Eyl 2026'da şeritten kalktı (kullanıcı
+    // kararı); sayfa hesap menüsünden açılır, açıkken İlanım sekmesi aktiftir.
+    altYollar: [ROUTES.tutorPromotion, ROUTES.tutorOnboarding, ROUTES.tutorReviews],
   },
-  { to: ROUTES.tutorReviews, label: "Değerlendirmeler" },
 ];
 
 /**
@@ -151,6 +152,8 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
  */
 export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
+  // Şeritten kalktı (17 Eyl 2026); yorumları görme ve yanıtlama burada kalır.
+  { to: ROUTES.tutorReviews, label: "Değerlendirmeler", icon: "trophy" },
   ...(TALEPLER_ACIK
     ? [{ to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" } as NavItem]
     : []),

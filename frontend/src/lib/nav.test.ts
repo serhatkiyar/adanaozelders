@@ -61,7 +61,7 @@ describe("Öğren hub'ı — donduruldu", () => {
     expect(mesajlar?.visible, "navbar: Mesajlar görünür değil").toBe(true);
     expect(
       TUTOR_PANO_SEKMELERI.some((i) => i.to === ROUTES.messages),
-      "eğitmenin Mesajlarım sekmesi şeritten düşmüş"
+      "eğitmenin Mesajlar sekmesi şeritten düşmüş"
     ).toBe(true);
   });
 

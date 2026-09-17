@@ -110,7 +110,8 @@ describe("panel şeridi · kimlik", () => {
     // DÖRT (17 Eyl 2026, kullanıcı kararı): "Bakiyem" şeritten kalktı. Kazanç
     // dökümü panodaki özet kartlarından açılan "Kazançlar" sayfasına taşındı;
     // erişilebilirliği aşağıdaki "Kazançlar" düğümü korur.
-    expect(TUTOR_PANO_SEKMELERI).toHaveLength(4);
+    // ÜÇ (17 Eyl 2026): "Değerlendirmeler" şeritten hesap menüsüne taşındı.
+    expect(TUTOR_PANO_SEKMELERI).toHaveLength(3);
     const bilinen = new Set(
       Object.values(ROUTES).filter((v): v is string => typeof v === "string")
     );
@@ -141,12 +142,12 @@ describe("panel şeridi · gerçekten çiziliyor", () => {
 
   it("aktif sekme `aria-current` taşır", () => {
     girisYap(ROLE_IDS.TUTOR);
-    kabuguCiz(ROLE_IDS.TUTOR, ROUTES.tutorReviews);
+    kabuguCiz(ROLE_IDS.TUTOR, ROUTES.tutorListing);
     const aktif = screen
       .getByRole("navigation", { name: "Panel bölümleri" })
       .querySelectorAll('a[aria-current="page"]');
     expect(aktif).toHaveLength(1);
-    expect(aktif[0].getAttribute("href")).toBe(ROUTES.tutorReviews);
+    expect(aktif[0].getAttribute("href")).toBe(ROUTES.tutorListing);
   });
 
   it.each([
@@ -155,7 +156,7 @@ describe("panel şeridi · gerçekten çiziliyor", () => {
     ["yönetici", ROLE_IDS.ADMIN],
   ])("%s için şerit HİÇ çizilmez", (_ad, rol) => {
     // Kapsam kararı: şerit bu turda yalnız eğitmende. Üyeye sızarsa üye
-    // "İlanım" ve "Değerlendirmeler" sekmeleri görür — hiçbiri onun ekranı değil.
+    // "İlanım" sekmesini görür — hiçbiri onun ekranı değil.
     girisYap(rol);
     kabuguCiz(rol);
     expect(seritHedefleri()).toEqual([]);
@@ -235,7 +236,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
      * HİÇBİR YERDEN açamaz. Rota ayakta kalır, sayfa çalışır, tip kontrolü
      * geçer — yalnız yol kapanır. Sessiz kaybın tam tanımı.
      */
-    const hesapAyarlari = screen.getAllByRole("link", { name: /Hesap ayarları/ });
+    const hesapAyarlari = screen.getAllByRole("link", { name: /^Ayarlar$/ });
     expect(hesapAyarlari.length, "menüde hesap ayarları girişi yok").toBeGreaterThan(0);
     expect(hesapAyarlari[0].getAttribute("href")).toBe(ROUTES.settings);
 

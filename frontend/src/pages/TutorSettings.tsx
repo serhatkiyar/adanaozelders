@@ -639,9 +639,9 @@ export default function TutorSettings() {
                     to={`${ROUTES.settings}?bolum=kisisel`}
                     className="font-semibold text-marka-metin hover:underline "
                   >
-                    Hesap ayarları
+                    Ayarlar
                   </Link>{" "}
-                  sayfandan düzenleyebilirsin; ilanında ve aramada gösterilir.
+                  sayfasından düzenleyebilirsin; ilanında ve aramada gösterilir.
                 </div>
 
                 {/* Biyografi */}

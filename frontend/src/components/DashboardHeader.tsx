@@ -15,10 +15,10 @@ import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { NavItem } from "@/lib/nav";
 
-// Üst bar ikonları (17 Eyl 2026, Preply ölçüsü): 24px ikon, arada 12px,
+// Üst bar ikonları (17 Eyl 2026, Preply ölçüsü): 24px ikon, merkezler arası 36px,
 // dolgu yok; aktif ikon koyu, pasif ikincil renk.
 const navIconClass = ({ isActive }: { isActive: boolean }) =>
-  `relative inline-flex h-10 w-10 items-center justify-center rounded-lg transition ${
+  `relative inline-flex h-10 w-9 items-center justify-center rounded-lg transition ${
     isActive ? "text-slate-900" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
   }`;
 
@@ -204,12 +204,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           )}
         </NavLink>
 
-        {/* Etiket sayfanın kendi başlığıyla aynı ("Hesap ayarları").
+        {/* Etiket sayfanın kendi başlığıyla aynı ("Ayarlar", 17 Eyl 2026).
             Eğitmende bu satır artık hesabın TEK girişi: "Hesabım" sekmesi
             şeritten kalktı ve içeriği gerçek sahiplerine dağıldı. */}
         <NavLink to={ROUTES.settings} onClick={onClick} className={menuItemClass}>
           <Icon name="settings" className="h-5 w-5" />
-          Hesap ayarları
+          Ayarlar
         </NavLink>
         <div className="my-1 border-t border-slate-100 " />
         <button
@@ -276,7 +276,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         )}
 
         {/* Masaüstü: nav ikonları + avatar dropdown */}
-        <div className="hidden flex-1 shrink-0 items-center justify-end gap-1 sm:flex">
+        <div className="hidden flex-1 shrink-0 items-center justify-end gap-0 sm:flex">
           {/* ÜK-2 (17 Eyl 2026'da güncellendi): mesaj + bildirim + favori.
               Preply gibi okunmamış sayılar doğrudan üst barda görünür. */}
           <NavLink to={ROUTES.messages} title="Mesajlar" aria-label="Mesajlar" className={navIconClass}>
@@ -323,7 +323,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         </div>
 
         {/* Mobil: bildirim + hamburger */}
-        <div className="flex flex-1 items-center justify-end gap-1 sm:hidden">
+        <div className="flex flex-1 items-center justify-end gap-0 sm:hidden">
           {/* Masaüstüyle AYNI türev (`favoriKisayolu`). Burada eskiden ayrı
               bir rol kontrolü yazılıydı ve bir kez zaten yanlış yazılmıştı:
               kısayol role bakmadan basılınca eğitmenin ve kütüphane

@@ -247,15 +247,15 @@ export default function Profile() {
                   <p className="text-sm text-slate-500 ">
                     Ad, kullanıcı adı, doğum tarihi, cinsiyet, şifre ve ödeme bilgileri{" "}
                     <span className="font-medium text-slate-700 ">
-                      Hesap Ayarları
+                      Ayarlar
                     </span>
-                    'nda.
+                    'da.
                   </p>
                   <Link
                     to={ROUTES.settings}
                     className="shrink-0 rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 "
                   >
-                    Hesap Ayarları
+                    Ayarlar
                   </Link>
                 </div>
               )}
