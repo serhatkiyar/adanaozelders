@@ -43,6 +43,27 @@ export function buildUpcomingDays(count = 14): UpcomingDay[] {
 }
 
 /**
+ * Sunucudan gelen "YYYY-MM-DD" (İstanbul) tarihlerinden şerit günleri.
+ * Tarih aritmetiği UTC üzerinde yapılır; tarayıcı saat dilimi etkilemez.
+ */
+export function buildDaysFromDates(dates: string[], todayStr: string): UpcomingDay[] {
+  const gunFarki = (a: string, b: string) =>
+    Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
+  return dates.map((value) => {
+    const [, m, g] = value.split("-").map(Number);
+    const wd = weekdayOfDateStr(value);
+    const fark = gunFarki(value, todayStr);
+    return {
+      value,
+      dayNum: g,
+      month: MONTHS_SHORT[m - 1],
+      weekday: WEEKDAYS_SHORT[wd],
+      label: fark === 0 ? "Bugün" : fark === 1 ? "Yarın" : WEEKDAYS_SHORT[wd],
+    };
+  });
+}
+
+/**
  * Yatay kaydırılabilir tarih kartı şeridi (14 gün). Seçili kart vurgulanır.
  * Hem ders rezervasyonu hem çalışma alanı rezervasyonunda kullanılır.
  */
@@ -50,22 +71,30 @@ export function DateStrip({
   value,
   onChange,
   days,
+  hasAvailable,
 }: {
   value: string;
   onChange: (v: string) => void;
   days: UpcomingDay[];
+  /** İsteğe bağlı: gün → boş saati var mı. `false` olan gün soluk çizilir. */
+  hasAvailable?: Record<string, boolean>;
 }) {
   return (
     <div className="-mx-1 px-1">
       <ScrollableRow className="gap-3 pb-2 snap-x" showArrows>
         {days.map((d) => {
           const active = value === d.value;
+          const bos = hasAvailable?.[d.value] === false;
           return (
             <button
               key={d.value}
               type="button"
               onClick={() => onChange(d.value)}
+              aria-pressed={active}
+              aria-label={bos ? `${d.dayNum} ${d.month} ${d.label}, boş saat yok` : undefined}
               className={`flex-shrink-0 snap-start flex flex-col items-center justify-center w-[72px] h-[84px] rounded-2xl border-2 transition-all ${
+                bos && !active ? "opacity-50 " : ""
+              }${
                 active
                   ? "border-marka bg-marka shadow-md "
                   : "border-slate-100 bg-white hover:border-marka-line hover:bg-marka-soft "

@@ -193,7 +193,9 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
             provider_ref=result.provider_ref,
             token=token, paid_price=result.paid_price,
         )
-        return _checkout_redirect(_BOOKINGS_PAGE, ok=result.success)
+        # Ders detayı `/ders-talepleri/:id`; çıplak `/ders-talepleri` istemcide
+        # rota değildir (ödemesini yapan öğrenci 404 görüyordu).
+        return _checkout_redirect(f"{_BOOKINGS_PAGE}/{entity_id}", ok=result.success)
     if kind == "order":
         await order_service.complete_checkout(
             db, order_id=entity_id, success=result.success,

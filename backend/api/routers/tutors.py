@@ -9,9 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_roles, user_rate_limit
 from core.config import settings
+from core.ratelimit import rate_limit
 from core.database import get_db
 from models.role import RoleType
 from models.tutor import Gender, Tutor
+from schemas.booking import LESSON_DURATIONS_MIN, SlotsOut
 from schemas.tutor import (
     TeachingMode,
     TutorOut,
@@ -35,6 +37,7 @@ from schemas.time_off import (
 from schemas.tutor_analytics import Period, SuccessGoalOut, TutorOverviewOut
 from schemas.tutor_dashboard import TutorDashboardOut
 from services import (
+    booking_service,
     search_service,
     time_off_service,
     tutor_analytics_service,
@@ -55,6 +58,13 @@ _promotion_limit = user_rate_limit(
 _time_off_limit = user_rate_limit(
     key="time_off",
     limit=settings.RATE_LIMIT_BOOKING,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+
+# Slot listesi anonim ve DB okur: IP bazlı okuma bütçesi.
+_slots_limit = rate_limit(
+    key="tutor_slots",
+    limit=settings.RATE_LIMIT_TRACKING,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 
@@ -402,6 +412,48 @@ async def activate_my_listing(
     return await tutor_service.activate(db, tutor)
 
 
+def _tutor_id_coz(tutor_id: str) -> int:
+    """Sayısal id ("42") ya da SEO slug'ı ("ahmet-yilmaz-42") → id."""
+    match = re.search(r"(\d+)$", tutor_id)
+    if not match:
+        raise HTTPException(status_code=404, detail="Eğitmen bulunamadı.")
+    return int(match.group(1))
+
+
+@router.get(
+    "/{tutor_id}/slots",
+    response_model=SlotsOut,
+    dependencies=[Depends(_slots_limit)],
+)
+async def get_tutor_slots(
+    tutor_id: str,
+    day_from: datetime.date | None = Query(default=None, alias="from"),
+    days: int = Query(default=7, ge=1, le=7),
+    duration: int = Query(default=60),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ders talep ızgarası (Modül 3) — anonim.
+
+    Boş ve dolu slotlar, gün bölümleri, bildirim/pencere kuralları ve seçilen
+    süre için sunucuda hesaplanmış fiyat. Kuralların kendisi `POST /bookings`
+    içinde yeniden uygulanır; bu uç yalnız önceden gösterir.
+    """
+    if duration not in LESSON_DURATIONS_MIN:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Ders süresi 30, 60, 90 ya da 120 dakika olmalı.",
+        )
+    tutor = await booking_service.get_bookable_tutor(db, _tutor_id_coz(tutor_id))
+    now = _utcnow()
+    if day_from is None:
+        day_from = now.astimezone(
+            datetime.timezone(datetime.timedelta(hours=settings.APP_UTC_OFFSET_HOURS))
+        ).date()
+    return await booking_service.list_slots(
+        db, tutor, day_from=day_from, days=days, duration_min=duration, now=now
+    )
+
+
 # Dinamik path; statik /me ve /search rotalarından SONRA tanımlanmalı.
 # Herkese açık (login gerekmez) — kayıt öncesi keşif. Rezervasyon/mesaj yine login ister.
 # Hem sayısal id ("42") hem de SEO slug'ı ("ahmet-yilmaz-42") kabul eder; her iki
@@ -411,7 +463,4 @@ async def get_tutor(
     tutor_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    match = re.search(r"(\d+)$", tutor_id)
-    if not match:
-        raise HTTPException(status_code=404, detail="Eğitmen bulunamadı.")
-    return await search_service.get_tutor_public(db, int(match.group(1)))
+    return await search_service.get_tutor_public(db, _tutor_id_coz(tutor_id))

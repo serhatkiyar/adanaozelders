@@ -73,6 +73,21 @@ class BookingLocationUpdate(BaseModel):
     location_lat: float | None = None
     location_lng: float | None = None
 
+#: Talep edilebilir ders süreleri (dakika). Slot ucu `duration` da bu kümeyle sınırlıdır.
+LESSON_DURATIONS_MIN: tuple[int, ...] = (30, 60, 90, 120)
+
+
+def _validate_lesson_window(start_at: datetime.datetime, end_at: datetime.datetime) -> None:
+    if start_at.tzinfo is None or end_at.tzinfo is None:
+        raise ValueError("start_at and end_at must be timezone-aware")
+    if end_at <= start_at:
+        raise ValueError("end_at must be after start_at")
+    if (end_at - start_at) not in {
+        datetime.timedelta(minutes=m) for m in LESSON_DURATIONS_MIN
+    }:
+        raise ValueError("Ders süresi 30, 60, 90 ya da 120 dakika olmalı.")
+
+
 class BookingCreate(BaseModel):
     tutor_id: int
     start_at: datetime.datetime
@@ -90,10 +105,7 @@ class BookingCreate(BaseModel):
 
     @model_validator(mode="after")
     def _validate_window(self) -> "BookingCreate":
-        if self.start_at.tzinfo is None or self.end_at.tzinfo is None:
-            raise ValueError("start_at and end_at must be timezone-aware")
-        if self.end_at <= self.start_at:
-            raise ValueError("end_at must be after start_at")
+        _validate_lesson_window(self.start_at, self.end_at)
         return self
 
 
@@ -116,10 +128,7 @@ class BookingReschedule(BaseModel):
 
     @model_validator(mode="after")
     def _validate_window(self) -> "BookingReschedule":
-        if self.start_at.tzinfo is None or self.end_at.tzinfo is None:
-            raise ValueError("start_at and end_at must be timezone-aware")
-        if self.end_at <= self.start_at:
-            raise ValueError("end_at must be after start_at")
+        _validate_lesson_window(self.start_at, self.end_at)
         return self
 
 
@@ -186,6 +195,19 @@ class BookingOut(BaseModel):
             hours=settings.LESSON_LATE_CANCEL_HOURS
         )
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def free_cancel_until(self) -> datetime.datetime | None:
+        """Onaylı derste ücretsiz iptalin son anı (başlangıç − geç iptal eşiği).
+
+        Onay bekleyen talep her zaman ücretsiz iptal edilir; terminal derste
+        iptal yoktur. İkisinde de null.
+        """
+        if self.status != BookingStatus.ACCEPTED:
+            return None
+        start = self.start_at if self.start_at.tzinfo else self.start_at.replace(tzinfo=datetime.timezone.utc)
+        return start - datetime.timedelta(hours=settings.LESSON_LATE_CANCEL_HOURS)
+
     @model_validator(mode="after")
     def _gate_meeting_room(self) -> "BookingOut":
         """Canlı ders odası, ödeme yapılmadan ifşa edilmesin (anti-bedava ders).
@@ -202,3 +224,41 @@ class BookingOut(BaseModel):
         if not (paid or free):
             self.meeting_room = None
         return self
+
+
+# ── Ders talep ızgarası (Modül 3): GET /tutors/{id}/slots ────────────────────
+
+
+class SlotOut(BaseModel):
+    start_at: datetime.datetime
+    end_at: datetime.datetime
+    status: Literal["available", "busy"]
+    part_of_day: Literal["night", "morning", "afternoon", "evening"]
+
+
+class SlotDayOut(BaseModel):
+    date: datetime.date  # İstanbul tarihi
+    has_available: bool
+    slots: list[SlotOut]
+
+
+class SlotPolicyOut(BaseModel):
+    min_notice_hours: int
+    window_days: int
+    late_cancel_hours: int
+
+
+class SlotPriceOut(BaseModel):
+    # Seçilen süre için sunucuda hesaplanır; eğitmen ücret girmediyse null.
+    amount: str | None
+    currency: Literal["TRY"] = "TRY"
+
+
+class SlotsOut(BaseModel):
+    days: list[SlotDayOut]
+    # Eğitmenin hiç müsaitlik penceresi var mı (yoksa talep gönderilemez).
+    has_availability: bool
+    # Bu andan (dahil) sonra talep edilemez.
+    window_end: datetime.datetime
+    policy: SlotPolicyOut
+    price: SlotPriceOut

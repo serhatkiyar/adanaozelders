@@ -178,6 +178,47 @@ async def test_izin_araligina_rezervasyon_yapilamaz(ip1a, provider, ip1a_http):
     assert r.json()["detail"] == "Eğitmen bu tarihte izinde"
 
 
+async def test_talep_24_saat_ve_14_gun_kurali(ip1a, provider, ip1a_http):
+    """Modül 3: bildirim süresi ve talep penceresi sunucuda zorunlu (422)."""
+    ders = await ip1a.ders()
+
+    async def talep(start: datetime.datetime):
+        return await ip1a_http.post(
+            "/api/v1/bookings",
+            json={
+                "tutor_id": ders.tutor_id,
+                "start_at": start.isoformat(),
+                "end_at": (start + datetime.timedelta(hours=1)).isoformat(),
+            },
+            headers=ders.client_auth,
+        )
+
+    r = await talep(_saat_basi(datetime.timedelta(hours=5)))
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"] == "Ders en az 24 saat önceden talep edilmeli."
+
+    r = await talep(_saat_basi(datetime.timedelta(days=15)))
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"] == "Ders en fazla 14 gün sonrası için talep edilebilir."
+
+
+async def test_onizleme_mevcut_izinle_cakismayi_bildirir(ip1a, provider, ip1a_http):
+    ders = await ip1a.ders()
+    izin_bas = _saat_basi(datetime.timedelta(days=3))
+    govde = _govde(izin_bas, izin_bas + datetime.timedelta(hours=4))
+
+    r = await ip1a_http.post(f"{KOK}/preview", json=govde, headers=ders.tutor_auth)
+    assert r.status_code == 200, r.text
+    assert r.json()["overlap"] is False
+
+    r = await ip1a_http.post(KOK, json=govde, headers=ders.tutor_auth)
+    assert r.status_code == 201, r.text
+
+    r = await ip1a_http.post(f"{KOK}/preview", json=govde, headers=ders.tutor_auth)
+    assert r.status_code == 200, r.text
+    assert r.json()["overlap"] is True
+
+
 async def test_asama_2de_yarisi_kaybeden_ders_atlanir_izin_kalir(ip1a, provider, ip1a_http):
     ders = await ip1a.odenmis(start_at=_saat_basi(datetime.timedelta(days=5)))
     ikinci_id = await _ayni_egitmene_ders(

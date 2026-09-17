@@ -27,6 +27,7 @@ import {
   type BookingOut,
 } from "@/types";
 import { TUTOR_DASHBOARD_KEY } from "@/hooks/useTutorDashboard";
+import { tutorSlotsKey } from "@/hooks/useTutorSlots";
 
 /**
  * Optimistic durum güncellemesini ["bookings"] ön ekiyle eşleşen TÜM cache'lere
@@ -80,9 +81,35 @@ export function useBooking(id: number) {
   });
 }
 
+/**
+ * Seçilen saat bu arada başkası tarafından alındı mı? Sunucunun GiST çakışması
+ * (`core/exceptions.py`) 409 + "time slot conflicts" döner. Aynı kodu taşıyan
+ * "ücretsiz ders hakkı kullanılmış" 409'u bu değildir; o sunucu metniyle gösterilir.
+ */
+export function isSlotConflictError(error: unknown): boolean {
+  const res = (error as { response?: { status?: number; data?: { detail?: unknown } } })
+    ?.response;
+  return (
+    res?.status === 409 &&
+    typeof res.data?.detail === "string" &&
+    /time slot conflicts/i.test(res.data.detail)
+  );
+}
+
 export function useCreateBooking() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: BookingCreate) => createBooking(payload),
+    onSuccess: (_booking, payload) => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: tutorSlotsKey(payload.tutor_id) });
+    },
+    onError: (error, payload) => {
+      // Saat az önce doldu: güncel slotları yeniden iste.
+      if (isSlotConflictError(error)) {
+        queryClient.invalidateQueries({ queryKey: tutorSlotsKey(payload.tutor_id) });
+      }
+    },
   });
 }
 

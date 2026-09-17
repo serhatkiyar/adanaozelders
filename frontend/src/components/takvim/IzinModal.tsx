@@ -10,7 +10,7 @@ import {
 } from "@/components/pano/stil";
 import { Modal } from "@/components/ui/Modal";
 import { useCreateTimeOff, usePreviewTimeOff } from "@/hooks/useTimeOff";
-import { formatDateTime, formatRange } from "@/lib/datetime";
+import { formatDateTime, formatRange, istanbulInputToIso } from "@/lib/datetime";
 import { getErrorDetail } from "@/lib/errors";
 import { ADSIZ_UYE } from "@/lib/roles";
 import { toast } from "@/store/toastStore";
@@ -43,17 +43,17 @@ function anDegeri(d: Date): string {
   return `${gunDegeri(d)}T${iki(d.getHours())}:${iki(d.getMinutes())}`;
 }
 
-/** "yyyy-MM-dd" → yerel gece yarısı. */
+/** "yyyy-MM-dd" → İstanbul gece yarısı (tarayıcı saat diliminden bağımsız). */
 function gunBasi(deger: string): Date {
-  const [y, m, g] = deger.split("-").map(Number);
-  return new Date(y, m - 1, g);
+  return new Date(istanbulInputToIso(`${deger}T00:00`));
 }
 
 const ILK_GORUNEN = 3;
 const NOT_EN_AZ = 3;
 
 /**
- * İzin ekleme penceresi (Modül 7). Önce sunucuya önizleme sorulur; üç dal:
+ * İzin ekleme penceresi (Modül 7). Önce sunucuya önizleme sorulur; dört dal:
+ *  • çakışan izin: aralıkta zaten izin var → kaydetme yok,
  *  • engelli: 12 saatten yakın onaylı ders var → kaydetme yok,
  *  • iptal edilecek dersler var → öğrenciye zorunlu not + tehlike düğmesi,
  *  • çakışma yok → doğrudan kaydedilir.
@@ -97,8 +97,8 @@ export function IzinModal({ aralik, onClose }: { aralik: IzinAraligi; onClose: (
     let son: Date;
     if (tumGun) {
       bas = gunBasi(baslangic);
-      son = gunBasi(bitis);
-      son.setDate(son.getDate() + 1);
+      // Son günün ertesi İstanbul gece yarısı (sabit UTC+3, DST yok: +24 sa).
+      son = new Date(gunBasi(bitis).getTime() + 24 * 60 * 60 * 1000);
     } else {
       bas = new Date(baslangic);
       son = new Date(bitis);
@@ -134,8 +134,20 @@ export function IzinModal({ aralik, onClose }: { aralik: IzinAraligi; onClose: (
         },
         onError: (e) => {
           setHata(getErrorDetail(e, "İzin eklenemedi."));
-          // Engel ya da çakışma arada değişmiş olabilir: güncel tabloyu yeniden sor.
-          setOnizleme(null);
+          const durum = (e as { response?: { status?: number } })?.response?.status;
+          if (durum !== 409) {
+            setOnizleme(null);
+            return;
+          }
+          // Yarış: engel ya da çakışma arada değişti. Güncel önizlemeyi yeniden
+          // iste ve yaz; yazılan not korunur, kayıt otomatik tekrarlanmaz.
+          onizle.mutate(range, {
+            onSuccess: (sonuc) => {
+              setHepsiAcik(false);
+              setOnizleme(sonuc);
+            },
+            onError: () => setOnizleme(null),
+          });
         },
       }
     );
@@ -148,7 +160,7 @@ export function IzinModal({ aralik, onClose }: { aralik: IzinAraligi; onClose: (
     if (!range) return;
     onizle.mutate(range, {
       onSuccess: (sonuc) => {
-        if (!sonuc.blocked && sonuc.bookings.length === 0) {
+        if (!sonuc.blocked && !sonuc.overlap && sonuc.bookings.length === 0) {
           kaydet(range, null);
           return;
         }
@@ -174,6 +186,24 @@ export function IzinModal({ aralik, onClose }: { aralik: IzinAraligi; onClose: (
       {hata}
     </p>
   );
+
+  // ── Dal 0: aralık mevcut bir izinle çakışıyor ──
+  if (onizleme?.overlap) {
+    return (
+      <Modal open onClose={onClose} title="Bu aralığa izin eklenemez" maxWidth="max-w-lg">
+        <p className={ACIKLAMA}>Bu aralıkta zaten iznin var.</p>
+        {hataKutusu}
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => setOnizleme(null)}>
+            Tarihleri değiştir
+          </button>
+          <button type="button" className={DUGME_SATIR_IKINCIL} onClick={onClose}>
+            Kapat
+          </button>
+        </div>
+      </Modal>
+    );
+  }
 
   // ── Dal 1: engelli ──
   if (onizleme?.blocked) {

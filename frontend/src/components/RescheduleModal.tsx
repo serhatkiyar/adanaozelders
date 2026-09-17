@@ -2,7 +2,7 @@ import { FormEvent, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { AxiosError } from "axios";
 import { useRescheduleBooking } from "@/hooks/useBookings";
-import { localInputToIso } from "@/lib/datetime";
+import { istanbulNow, localInputToIso } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
@@ -30,7 +30,11 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
   const [time, setTime] = useState("");
   const [duration, setDuration] = useState(60);
   const reschedule = useRescheduleBooking();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Talep penceresi İstanbul tarihiyle bugün dahil 14 gün (sunucu yine denetler).
+  const todayStr = istanbulNow().dateStr;
+  const maxDateStr = new Date(Date.parse(`${todayStr}T00:00:00Z`) + 13 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -57,7 +61,13 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
             return;
           }
           if (err instanceof AxiosError && err.response?.status === 422) {
-            toast.error("Seçtiğin saat eğitmenin müsaitliği dışında.");
+            // Kural 422'lerinin Türkçe metni gösterilir; pydantic listesi yedek metne düşer.
+            const detail = err.response.data?.detail;
+            toast.error(
+              typeof detail === "string" && detail.trim()
+                ? detail
+                : "Seçtiğin saat eğitmenin müsaitliği dışında."
+            );
             return;
           }
           toast.error(getErrorMessage(err, "Ertelenemedi."));
@@ -85,6 +95,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
           <input
             type="date"
             min={todayStr}
+            max={maxDateStr}
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className={fieldCls}

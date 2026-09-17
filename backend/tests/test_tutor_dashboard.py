@@ -159,11 +159,12 @@ _TAM = datetime.datetime(2026, 9, 18, 9, 0, tzinfo=datetime.timezone.utc)
     [
         # Geçerli aralık aynen döner.
         (_TAM, _TAM + _SAAT, (_TAM, _TAM + _SAAT)),
-        # "Bugün tüm gün": geçmişte kalan başlangıç şimdiye kırpılır.
+        # "Bugün tüm gün": geçmişte kalan başlangıç şimdiden sonraki ilk
+        # 15 dakikalık ana kırpılır (10:07 → 10:15).
         (
             datetime.datetime(2026, 9, 17, 0, 0, tzinfo=datetime.timezone.utc),
             _TAM,
-            (_SIMDI, _TAM),
+            (_SIMDI.replace(minute=15), _TAM),
         ),
         # 60 gün sınırı kırpılmış süreye uygulanır.
         (_TAM, _TAM + 60 * _GUN, (_TAM, _TAM + 60 * _GUN)),

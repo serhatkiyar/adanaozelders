@@ -768,6 +768,8 @@ export interface BookingOut {
   /** İptal eden rol (ROLE_IDS); eski kayıtlarda null (Modül 7). */
   cancelled_by_role?: number | null;
   cancelled_at?: string | null;
+  /** Ücretsiz iptalin son anı: yalnız ACCEPTED'da başlangıç − 12 sa; diğerlerinde null. */
+  free_cancel_until?: string | null;
 }
 
 export type BookingIssueReason = "TUTOR_ABSENT" | "LESSON_NOT_HELD" | "OTHER";
@@ -794,6 +796,37 @@ export interface TimeOffPreview {
   bookings: { booking: BookingOut; can_cancel: boolean }[];
   /** 12 saatten yakın (ya da başlamış) onaylı ders var → izin eklenemez. */
   blocked: boolean;
+  /** Aralık mevcut bir izinle çakışıyor → yeni izin eklenemez. */
+  overlap: boolean;
+}
+
+// ── Ders ayırtma saatleri (Modül 3) — GET /tutors/{id}/slots ──
+export type SlotStatus = "available" | "busy";
+export type PartOfDay = "night" | "morning" | "afternoon" | "evening";
+
+export interface SlotOut {
+  start_at: string;
+  end_at: string;
+  status: SlotStatus;
+  part_of_day: PartOfDay;
+}
+
+export interface SlotDayOut {
+  /** "YYYY-MM-DD" — İstanbul tarihi. */
+  date: string;
+  has_available: boolean;
+  slots: SlotOut[];
+}
+
+export interface SlotsOut {
+  days: SlotDayOut[];
+  /** Eğitmenin hiç müsaitlik penceresi var mı. */
+  has_availability: boolean;
+  /** Bu andan (dahil) sonrası talep edilemez. */
+  window_end: string;
+  policy: { min_notice_hours: number; window_days: number; late_cancel_hours: number };
+  /** Seçilen süre için sunucuda hesaplanmış ücret. */
+  price: { amount: string | null; currency: "TRY" };
 }
 
 export interface TimeOffCreate extends TimeOffRange {

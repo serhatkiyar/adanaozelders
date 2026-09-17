@@ -47,6 +47,8 @@ class TimeOffPreviewOut(BaseModel):
     end_at: datetime.datetime
     bookings: list[TimeOffConflictOut]
     blocked: bool
+    # Aralık mevcut bir izinle kesişiyor mu (kayıt 409 alır).
+    overlap: bool
 
 
 class TimeOffCreatedOut(BaseModel):

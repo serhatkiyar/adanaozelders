@@ -6,6 +6,7 @@ import type {
   TutorSearchOut,
   TutorDashboardOut,
   TutorSort,
+  SlotsOut,
 } from "@/types";
 
 export interface TutorSearchParams {
@@ -144,6 +145,25 @@ export async function buyPromotion(payload: {
 
 export async function fetchTutor(id: number): Promise<TutorSearchOut> {
   const { data } = await apiClient.get<TutorSearchOut>(`/tutors/${id}`);
+  return data;
+}
+
+export interface TutorSlotsParams {
+  /** "YYYY-MM-DD" (İstanbul). */
+  from: string;
+  days?: number;
+  /** Ders süresi (dk): 30 | 60 | 90 | 120. */
+  duration: number;
+}
+
+// Ders ayırtma saatleri: boş ve dolu slotlar, kural ve ücret sunucuda hesaplanır.
+export async function getTutorSlots(
+  tutorId: number,
+  { from, days = 7, duration }: TutorSlotsParams
+): Promise<SlotsOut> {
+  const { data } = await apiClient.get<SlotsOut>(`/tutors/${tutorId}/slots`, {
+    params: { from, days, duration },
+  });
   return data;
 }
 

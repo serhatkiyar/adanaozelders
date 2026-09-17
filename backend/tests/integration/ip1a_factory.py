@@ -50,7 +50,7 @@ from models.admin import Admin
 from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.payment import Payment, PaymentStatus
-from models.tutor import Tutor, TutorStatus
+from models.tutor import Tutor, TutorAvailability, TutorStatus
 from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service, booking_service, payment_service
 
@@ -61,6 +61,30 @@ def _now() -> datetime.datetime:
 
 def _uniq() -> str:
     return uuid.uuid4().hex[:10]
+
+
+def tum_hafta_musaitlik(tutor_id: int) -> list[TutorAvailability]:
+    """Her gün 00:00–24:00 müsaitlik (Modül 3).
+
+    Ders talebi ve erteleme artık müsaitlik penceresi ister; fabrika eğitmeni
+    yayındaki gerçek bir eğitmen gibi kurar. Satırlar eğitmenle CASCADE silinir.
+    """
+    return [
+        TutorAvailability(tutor_id=tutor_id, weekday=g, start_minute=0, end_minute=1440)
+        for g in range(7)
+    ]
+
+
+def pencere_ici_an(gun: int) -> datetime.datetime:
+    """Talep kurallarına uyan bir ders anı: ``gun`` gün sonra 09:00 UTC (12:00 İstanbul).
+
+    Sabit saat, dersin İstanbul'da gece yarısını aşmamasını garanti eder.
+    ``gun`` 2..13 arasında olmalı (24 saat bildirim süresi, 14 günlük pencere).
+    """
+    assert 2 <= gun <= 13, "ders anı talep penceresinin dışında"
+    return (_now() + datetime.timedelta(days=gun)).replace(
+        hour=9, minute=0, second=0, microsecond=0
+    )
 
 
 def auth_header(
@@ -196,6 +220,8 @@ class Ip1aFabrika:
             phone_verified_at=_now(),
         )
         s.add_all([tutor, client])
+        await s.flush()
+        s.add_all(tum_hafta_musaitlik(tutor.id))
         await s.flush()
         return tutor, client
 

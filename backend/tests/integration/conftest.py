@@ -211,7 +211,11 @@ class MoneyFactory:
             )
             s.add_all([tutor, client])
             await s.flush()
-            start = _now() + datetime.timedelta(days=30)
+            # Ertelemeler talep kurallarına tabi (Modül 3): müsaitlik + 14 gün.
+            from tests.integration.ip1a_factory import pencere_ici_an, tum_hafta_musaitlik
+
+            s.add_all(tum_hafta_musaitlik(tutor.id))
+            start = pencere_ici_an(10)
             booking = Booking(
                 tutor_id=tutor.id, client_id=client.id, status=booking_status,
                 start_at=start, end_at=start + datetime.timedelta(hours=1),

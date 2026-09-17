@@ -33,6 +33,7 @@ from decimal import Decimal
 
 from models.booking import BookingStatus
 from models.payment import PaymentStatus
+from tests.integration.ip1a_factory import pencere_ici_an
 
 KOK = "/api/v1/bookings"
 
@@ -49,9 +50,9 @@ def _iso(dt: datetime.datetime) -> str:
     return dt.isoformat()
 
 
-async def _yeni_saate_tasi(ip1a_http, ders, *, gun: int = 40, saat: int = 1):
+async def _yeni_saate_tasi(ip1a_http, ders, *, gun: int = 10, saat: int = 1):
     """Süreyi DEĞİŞTİRMEDEN saati taşır — fiyat aynı kalır, 409 tetiklenmez."""
-    start = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=gun)
+    start = pencere_ici_an(gun)
     return await ip1a_http.post(
         f"{KOK}/{ders.booking_id}/reschedule",
         json={"start_at": _iso(start), "end_at": _iso(start + datetime.timedelta(hours=saat))},
@@ -256,7 +257,7 @@ async def test_YESIL_odenmis_dersin_UCRETI_DEGISTIRILEMEZ(ip1a, provider, ip1a_h
     p_once = await ip1a.payment(ders.booking_id)
     async_once = (await ip1a.durumlar(ders.booking_id))[0]
 
-    r = await _yeni_saate_tasi(ip1a_http, ders, saat=3)  # 1 saat → 3 saat: fiyat değişir
+    r = await _yeni_saate_tasi(ip1a_http, ders, saat=2)  # 1 saat → 2 saat: fiyat değişir
     assert r.status_code == 409, (
         f"ödemesi alınmış dersin ücreti değiştirilebildi ({r.status_code})"
     )

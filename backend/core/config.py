@@ -449,6 +449,12 @@ class Settings(BaseSettings):
     # Derse bu kadar saatten az kala: eğitmen iptal edemez; öğrenci erteleyemez,
     # iptal ederse ödenmiş ücret iade edilmez, eğitmene geçer.
     LESSON_LATE_CANCEL_HOURS: int = 12
+    # Ders talebi kuralları (Modül 3). Ders en az BOOKING_MIN_NOTICE_HOURS saat
+    # önceden, en fazla İstanbul'da bugünden BOOKING_WINDOW_DAYS gün sonrasının
+    # gece yarısına kadar talep edilir. Slot listesi bu adımla üretilir.
+    BOOKING_MIN_NOTICE_HOURS: int = 24
+    BOOKING_WINDOW_DAYS: int = 14
+    BOOKING_SLOT_STEP_MINUTES: int = 30
 
     # Görev son tarihi bu kadar dakika kala (ve geçmiş ama hatırlatılmamış görevler için)
     # bir kez hatırlatma bildirimi gönderilir.

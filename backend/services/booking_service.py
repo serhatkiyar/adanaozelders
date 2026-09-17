@@ -225,22 +225,78 @@ async def _para_egitmene_gecti_mi(db: AsyncSession, booking: Booking) -> bool:
     )
 
 
+ERR_NO_AVAILABILITY = "Eğitmen henüz ders saati açmadı."
+
+
+def _yerel_tz() -> datetime.timezone:
+    return datetime.timezone(datetime.timedelta(hours=settings.APP_UTC_OFFSET_HOURS))
+
+
+def booking_window_end(now: datetime.datetime) -> datetime.datetime:
+    """Talep edilebilecek son anın hemen sonrası (dahil değil).
+
+    İstanbul'da bugünden ``BOOKING_WINDOW_DAYS`` gün sonrasının gece yarısı:
+    bugün dahil tam ``BOOKING_WINDOW_DAYS`` takvim günü açıktır. Slot listesi ve
+    talep kuralı aynı ucu kullanır.
+    """
+    tz = _yerel_tz()
+    son_gun = now.astimezone(tz).date() + datetime.timedelta(
+        days=settings.BOOKING_WINDOW_DAYS
+    )
+    return datetime.datetime.combine(son_gun, datetime.time(0), tzinfo=tz).astimezone(
+        datetime.timezone.utc
+    )
+
+
+def _assert_booking_rules(
+    start_at: datetime.datetime,
+    now: datetime.datetime,
+    *,
+    past_message: str = "Cannot book a time slot in the past",
+) -> None:
+    """Talep ve erteleme için zaman kuralları (Modül 3).
+
+    Geçmiş saat 400 olarak kalır (mevcut sözleşme); 24 saat bildirim süresi ve
+    14 günlük pencere 422'dir. Kurallar sunucuda zorunludur; slot listesi
+    yalnız aynı kuralı önceden gösterir.
+    """
+    if start_at <= now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, past_message)
+    if start_at < now + datetime.timedelta(hours=settings.BOOKING_MIN_NOTICE_HOURS):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Ders en az {settings.BOOKING_MIN_NOTICE_HOURS} saat önceden talep edilmeli.",
+        )
+    if start_at >= booking_window_end(now):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Ders en fazla {settings.BOOKING_WINDOW_DAYS} gün sonrası için talep edilebilir.",
+        )
+
+
 async def _assert_within_availability(
     db: AsyncSession,
     tutor_id: int,
     start_at: datetime.datetime,
     end_at: datetime.datetime,
 ) -> None:
-    """Eğitmen müsaitlik penceresi tanımladıysa istenen saat bir pencereye sığmalı.
-    Tanımlamamışsa kısıt yok (geriye dönük uyumlu). Sabit UTC+3 yerel saat."""
+    """İstenen saat eğitmenin bir müsaitlik penceresine sığmalı. Sabit UTC+3.
+
+    Modül 3 (kullanıcı kararı): hiç pencere tanımlamamış eğitmene talep
+    gönderilemez. Eskiden bu durumda kısıt yoktu; öğrenci her saati seçebiliyor
+    ve eğitmen reddetmek zorunda kalıyordu. Slot listesi (`build_slots`) aynı
+    sığma kuralını kullanır.
+    """
     availability = (
         await db.execute(
             select(TutorAvailability).where(TutorAvailability.tutor_id == tutor_id)
         )
     ).scalars().all()
     if not availability:
-        return
-    tz = datetime.timezone(datetime.timedelta(hours=settings.APP_UTC_OFFSET_HOURS))
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, ERR_NO_AVAILABILITY
+        )
+    tz = _yerel_tz()
     local_start = start_at.astimezone(tz)
     local_end = end_at.astimezone(tz)
     s_min = local_start.hour * 60 + local_start.minute
@@ -335,10 +391,9 @@ async def _is_eligible_for_free_lesson(
     return int((await db.scalar(stmt)) or 0) == 0
 
 
-async def create_booking(
-    db: AsyncSession, client: Client, data: BookingCreate
-) -> Booking:
-    tutor = await db.get(Tutor, data.tutor_id)
+async def get_bookable_tutor(db: AsyncSession, tutor_id: int) -> Tutor:
+    """Ders talep edilebilir (yayında) eğitmen; değilse 404."""
+    tutor = await db.get(Tutor, tutor_id)
     if (
         tutor is None
         or tutor.deleted_at is not None
@@ -348,15 +403,191 @@ async def create_booking(
         raise HTTPException(
             status.HTTP_404_NOT_FOUND, "Tutor not found or not available"
         )
+    return tutor
 
-    if data.start_at <= datetime.datetime.now(datetime.timezone.utc):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "Cannot book a time slot in the past"
+
+def _part_of_day(hour: int) -> str:
+    if hour < 6:
+        return "night"
+    if hour < 12:
+        return "morning"
+    if hour < 18:
+        return "afternoon"
+    return "evening"
+
+
+def _cakisir(
+    start: datetime.datetime,
+    end: datetime.datetime,
+    araliklar: list[tuple[datetime.datetime, datetime.datetime]],
+) -> bool:
+    return any(a < end and b > start for a, b in araliklar)
+
+
+def build_slots(
+    windows,
+    busy: list[tuple[datetime.datetime, datetime.datetime]],
+    time_off: list[tuple[datetime.datetime, datetime.datetime]],
+    *,
+    day_from: datetime.date,
+    days: int,
+    duration_min: int,
+    now: datetime.datetime,
+) -> list[dict]:
+    """Saf slot üreticisi (DB'siz; birim testi `tests/test_slots.py`).
+
+    ``windows``: ``weekday``/``start_minute``/``end_minute`` taşıyan haftalık
+    müsaitlik pencereleri (İstanbul saati). Her pencerede
+    ``BOOKING_SLOT_STEP_MINUTES`` adımla, ders süresi pencereye tamamen sığan
+    ve aynı günde biten başlangıçlar üretilir — `_assert_within_availability`
+    ile aynı kural. Aktif ders, izin, 24 saat bildirim süresi ya da pencere
+    sonu sonrası slot ``busy`` olur (dolu saat gizlenmez, soluk gösterilir).
+
+    Günler İstanbul tarihidir; bugünden önceki ``day_from`` bugüne kırpılır,
+    pencere dışına taşan günler listeye girmez.
+    """
+    tz = _yerel_tz()
+    bugun = now.astimezone(tz).date()
+    pencere_sonu = booking_window_end(now)
+    en_erken = now + datetime.timedelta(hours=settings.BOOKING_MIN_NOTICE_HOURS)
+    sure = datetime.timedelta(minutes=duration_min)
+    adim = settings.BOOKING_SLOT_STEP_MINUTES
+    ilk_gun = max(day_from, bugun)
+
+    sonuc: list[dict] = []
+    for i in range(days):
+        gun = ilk_gun + datetime.timedelta(days=i)
+        gece_yarisi = datetime.datetime.combine(gun, datetime.time(0), tzinfo=tz)
+        if gece_yarisi >= pencere_sonu:
+            break
+        baslangiclar: set[int] = set()
+        for w in windows:
+            if w.weekday != gun.weekday():
+                continue
+            dakika = w.start_minute
+            # Ders aynı gün bitmeli: 24:00'te biten ders ertesi güne sayılır.
+            while dakika + duration_min <= min(w.end_minute, 1439):
+                baslangiclar.add(dakika)
+                dakika += adim
+        slots = []
+        for dakika in sorted(baslangiclar):
+            yerel = gece_yarisi + datetime.timedelta(minutes=dakika)
+            start = yerel.astimezone(datetime.timezone.utc)
+            end = start + sure
+            dolu = (
+                start < en_erken
+                or start >= pencere_sonu
+                or _cakisir(start, end, busy)
+                or _cakisir(start, end, time_off)
+            )
+            slots.append(
+                {
+                    "start_at": start,
+                    "end_at": end,
+                    "status": "busy" if dolu else "available",
+                    "part_of_day": _part_of_day(yerel.hour),
+                }
+            )
+        sonuc.append(
+            {
+                "date": gun,
+                "has_available": any(x["status"] == "available" for x in slots),
+                "slots": slots,
+            }
         )
+    return sonuc
+
+
+async def list_slots(
+    db: AsyncSession,
+    tutor: Tutor,
+    *,
+    day_from: datetime.date,
+    days: int,
+    duration_min: int,
+    now: datetime.datetime,
+) -> dict:
+    """Eğitmen profilindeki ders talep ızgarası: slotlar, kurallar ve fiyat."""
+    from services import time_off_service  # döngüsel import: o modül bizi içe aktarır
+
+    windows = (
+        await db.execute(
+            select(TutorAvailability).where(TutorAvailability.tutor_id == tutor.id)
+        )
+    ).scalars().all()
+    tz = _yerel_tz()
+    bugun = now.astimezone(tz).date()
+    # Pencere dışı "from" pencerenin son ucuna kırpılır: çok ileri tarihte
+    # (ör. 9999-12-31) tarih aritmetiği taşmaz, sonuç boş gün listesidir.
+    ilk_gun = min(
+        max(day_from, bugun),
+        bugun + datetime.timedelta(days=settings.BOOKING_WINDOW_DAYS),
+    )
+    aralik_bas = datetime.datetime.combine(ilk_gun, datetime.time(0), tzinfo=tz)
+    aralik_son = min(
+        aralik_bas + datetime.timedelta(days=days), booking_window_end(now)
+    )
+
+    busy: list[tuple[datetime.datetime, datetime.datetime]] = []
+    time_off: list[tuple[datetime.datetime, datetime.datetime]] = []
+    if windows and aralik_son > aralik_bas:
+        rows = (
+            await db.execute(
+                select(Booking.start_at, Booking.end_at).where(
+                    Booking.tutor_id == tutor.id,
+                    Booking.deleted_at.is_(None),
+                    Booking.status.in_([BookingStatus.PENDING, BookingStatus.ACCEPTED]),
+                    Booking.time_slot.op("&&")(
+                        func.tstzrange(aralik_bas, aralik_son, "[)")
+                    ),
+                )
+            )
+        ).all()
+        busy = [(_utc(a), _utc(b)) for a, b in rows]
+        time_off = [
+            (_utc(t.start_at), _utc(t.end_at))
+            for t in await time_off_service.list_time_off(
+                db, tutor, start=aralik_bas, end=aralik_son
+            )
+        ]
+
+    price = _compute_price(
+        tutor, aralik_bas, aralik_bas + datetime.timedelta(minutes=duration_min)
+    )
+    return {
+        "days": build_slots(
+            windows,
+            busy,
+            time_off,
+            day_from=ilk_gun,
+            days=days,
+            duration_min=duration_min,
+            now=now,
+        ),
+        "has_availability": bool(windows),
+        "window_end": booking_window_end(now),
+        "policy": {
+            "min_notice_hours": settings.BOOKING_MIN_NOTICE_HOURS,
+            "window_days": settings.BOOKING_WINDOW_DAYS,
+            "late_cancel_hours": settings.LESSON_LATE_CANCEL_HOURS,
+        },
+        "price": {
+            "amount": str(price) if price is not None else None,
+            "currency": "TRY",
+        },
+    }
+
+
+async def create_booking(
+    db: AsyncSession, client: Client, data: BookingCreate
+) -> Booking:
+    tutor = await get_bookable_tutor(db, data.tutor_id)
+    _assert_booking_rules(data.start_at, _utcnow())
 
     await _lock_tutor(db, tutor.id)
-    await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)
+    # İzin önce: izinli günde öğrenci "pencere dışı" yerine asıl nedeni görür.
     await _assert_not_on_time_off(db, tutor.id, data.start_at, data.end_at)
+    await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)
 
     # Ücretsiz ilk ders: eğitmen sunuyor + öğrencinin bu eğitmenle geçmiş dersi yok.
     is_free_lesson = False
@@ -952,14 +1183,13 @@ async def reschedule(
             status.HTTP_409_CONFLICT,
             f"Derse {settings.LESSON_LATE_CANCEL_HOURS} saatten az kaldığı için ders ertelenemez.",
         )
-    if start_at <= datetime.datetime.now(datetime.timezone.utc):
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "Cannot reschedule to the past"
-        )
+    _assert_booking_rules(
+        start_at, _utcnow(), past_message="Cannot reschedule to the past"
+    )
     # Eğitmen kilidi claim'den (ders satırı kilidi) ÖNCE alınır.
     await _lock_tutor(db, booking.tutor_id)
-    await _assert_within_availability(db, booking.tutor_id, start_at, end_at)
     await _assert_not_on_time_off(db, booking.tutor_id, start_at, end_at)
+    await _assert_within_availability(db, booking.tutor_id, start_at, end_at)
     # ── Atomik claim: yeni saati YAZMADAN ÖNCE geçişi kazan (P1-B) ──
     #
     # Buradaki yazım eskiden `booking.status = PENDING` biçiminde koşulsuz bir

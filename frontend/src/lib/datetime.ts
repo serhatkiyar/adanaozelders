@@ -81,6 +81,18 @@ export function formatIstanbulTime(iso: string): string {
   return istanbulTf.format(new Date(iso));
 }
 
+// Türkiye tarihi: "17 Eylül Perşembe" — tarayıcı saat diliminden bağımsız.
+const istanbulGunDf = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  day: "numeric",
+  month: "long",
+  weekday: "long",
+});
+
+export function formatIstanbulDay(iso: string): string {
+  return istanbulGunDf.format(new Date(iso));
+}
+
 // Sohbet listesi için kısa zaman: bugünse "14:30", değilse "20 Mar".
 export function formatChatTime(iso?: string | null): string {
   if (!iso) return "";

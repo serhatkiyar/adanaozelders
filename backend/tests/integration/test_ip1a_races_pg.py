@@ -76,6 +76,7 @@ from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.payment import PaymentStatus
 from services import admin_service, booking_service
+from tests.integration.ip1a_factory import pencere_ici_an
 
 COZULMUS = (PaymentStatus.REFUNDING, PaymentStatus.REFUNDED)
 LOCK_TIMEOUT = "5s"
@@ -347,7 +348,7 @@ async def test_reject_ile_ogrenci_iptali_yarisinda_TEK_KAZANAN_olur(
     olarak P0-1'in ürettiği durumdur.
     """
     ders = await ip1a.odenmis()
-    start = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=45)
+    start = pencere_ici_an(11)
     r = await ip1a_http.post(
         f"/api/v1/bookings/{ders.booking_id}/reschedule",
         json={
@@ -812,8 +813,8 @@ async def _ders_zamani(booking_id: int):
         return booking.start_at, booking.end_at
 
 
-def _yeni_saat(*, gun: int = 40, saat: int = 1):
-    start = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=gun)
+def _yeni_saat(*, gun: int = 10, saat: int = 1):
+    start = pencere_ici_an(gun)
     return start, start + datetime.timedelta(hours=saat)
 
 

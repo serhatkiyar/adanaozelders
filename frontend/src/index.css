@@ -570,7 +570,7 @@ path.district-poly {
   --fc-today-bg-color: rgb(var(--marka-soft) / 0.5);
   --fc-now-indicator-color: rgb(var(--marka-mid));
   --fc-highlight-color: rgb(var(--marka) / 0.25);
-  --fc-non-business-color: theme("colors.slate.100 / 60%");
+  --fc-non-business-color: theme("colors.slate.200 / 50%");
   --fc-list-event-hover-bg-color: theme("colors.slate.50");
   font-size: 14px;
 }

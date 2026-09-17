@@ -43,7 +43,8 @@ def _hata(mesaj: str) -> HTTPException:
 def normalize_range(
     start: datetime.datetime, end: datetime.datetime, now: datetime.datetime
 ) -> tuple[datetime.datetime, datetime.datetime]:
-    """İzin aralığını doğrular; geçmişte kalan başlangıcı ``now``'a kırpar.
+    """İzin aralığını doğrular; geçmişte kalan başlangıcı ``now``'dan sonraki
+    ilk 15 dakikalık ana kırpar.
 
     Kırpma "bugün tüm gün" seçimini çalışır kılar: 00:00'dan başlayan izin,
     geçmiş kısmı atılarak şimdiden itibaren kaydedilir.
@@ -55,7 +56,15 @@ def normalize_range(
         raise _hata("İzin bitişi başlangıçtan sonra olmalı.")
     if end <= now:
         raise _hata("Geçmiş bir tarihe izin eklenemez.")
-    start = max(start, now)
+    if start < now:
+        # Kırpılan başlangıç bir sonraki 15 dakikaya yuvarlanır: saniye taşıyan
+        # bir an kaydedilmez ve takvim ızgarasına oturur.
+        kalan = now.replace(second=0, microsecond=0)
+        if kalan != now or kalan.minute % _SLOT_MINUTES:
+            kalan += datetime.timedelta(minutes=_SLOT_MINUTES - kalan.minute % _SLOT_MINUTES)
+        start = kalan
+        if end <= start:
+            raise _hata("Geçmiş bir tarihe izin eklenemez.")
     if end - start > datetime.timedelta(days=MAX_TIME_OFF_DAYS):
         raise _hata(f"İzin en fazla {MAX_TIME_OFF_DAYS} gün olabilir.")
     return start, end
@@ -129,6 +138,8 @@ async def preview(
         "end_at": end,
         "bookings": [{"booking": b, "can_cancel": ok} for b, ok in pairs],
         "blocked": any(not ok for _b, ok in pairs),
+        # Kayıt aynı kontrolü kilit altında tekrarlar (409); önizleme önceden söyler.
+        "overlap": bool(await list_time_off(db, tutor, start=start, end=end)),
     }
 
 

@@ -1,20 +1,27 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
-import { useCreateBooking } from "@/hooks/useBookings";
+import { isSlotConflictError, useCreateBooking } from "@/hooks/useBookings";
+import { useTutorSlots } from "@/hooks/useTutorSlots";
 import { toast } from "@/store/toastStore";
-import { getErrorMessage } from "@/lib/errors";
-import { istanbulInputToIso, istanbulNow } from "@/lib/datetime";
-import {
-  WEEKDAYS_SHORT,
-  hhmmToMin,
-  summarize,
-  weekdayOfDateStr,
-} from "@/lib/availability";
+import { getErrorDetail, getErrorMessage } from "@/lib/errors";
+import { formatIstanbulDay, formatIstanbulTime, istanbulNow } from "@/lib/datetime";
+import { formatTRY } from "@/lib/money";
+import { ROUTES } from "@/lib/routes";
+import { googleTakvimLinki, icsIcerigi, icsIndir } from "@/lib/takvim";
 import { TeachingMode } from "@/types";
-import type { SavedAddress, TutorSearchOut } from "@/types";
-import { TimeStepper } from "@/components/booking/TimeStepper";
-import { DateStrip, buildUpcomingDays } from "@/components/booking/DateStrip";
+import type { BookingOut, PartOfDay, SavedAddress, SlotOut, TutorSearchOut } from "@/types";
+import { DateStrip, buildDaysFromDates } from "@/components/booking/DateStrip";
+import {
+  ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_SATIR_BIRINCIL,
+  DUGME_SATIR_IKINCIL,
+  ETIKET,
+  KART,
+  KUCUK_ACIKLAMA,
+} from "@/components/pano/stil";
 import { SavedAddressCard } from "@/components/address/SavedAddressCard";
 import { AddressForm } from "@/components/address/AddressForm";
 import {
@@ -32,7 +39,33 @@ const DURATIONS = [
   { label: "2 saat", value: 120 },
 ];
 
-const NEXT_14_DAYS = buildUpcomingDays();
+/** Gün bölümleri saat sırasıyla; Gece yalnız slotu varsa görünür. */
+const GUN_BOLUMLERI: { key: PartOfDay; label: string }[] = [
+  { key: "night", label: "Gece" },
+  { key: "morning", label: "Sabah" },
+  { key: "afternoon", label: "Öğleden sonra" },
+  { key: "evening", label: "Akşam" },
+];
+
+// Slot düğmeleri: satır içi ikincil düğme; seçili marka çerçeveli, dolu soluk ve çizili.
+const SLOT_DUGME = `${DUGME_SATIR_IKINCIL.replace("disabled:opacity-60", "disabled:opacity-40")} w-full`;
+const SLOT_SECILI = `${DUGME_SATIR_IKINCIL.replace("border-slate-200", "border-marka")
+  .replace("bg-white", "bg-marka-soft")
+  .replace("hover:border-slate-900", "")} w-full`;
+const SLOT_DOLU = `${SLOT_DUGME} opacity-40 line-through`;
+
+/** "YYYY-MM-DD" + n gün (UTC aritmetiği; tarayıcı saat diliminden bağımsız). */
+function gunEkle(gun: string, n: number): string {
+  return new Date(Date.parse(`${gun}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+}
+
+function gunFarki(a: string, b: string): number {
+  return Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
+}
+
+function saatAraligi(startIso: string, endIso: string): string {
+  return `${formatIstanbulTime(startIso)}–${formatIstanbulTime(endIso)}`;
+}
 
 function Pill({
   active,
@@ -77,14 +110,18 @@ export function BookingModal({
   canRequestFreeLesson = false,
 }: BookingModalProps) {
   const [step, setStep] = useState(1);
-  // Önseçili tarih yalnızca 14 günlük listede yer alıyorsa seedle (geçmiş/uzak değilse).
-  const [selectedDate, setSelectedDate] = useState(
-    initialDate && NEXT_14_DAYS.some((d) => d.value === initialDate)
-      ? initialDate
-      : ""
-  );
-  const [selectedTime, setSelectedTime] = useState("");
+  // Günler İstanbul tarihiyle; hafta 0 = bugünden, 1 = 7 gün sonrasından (en fazla 14 gün).
+  const bugun = istanbulNow().dateStr;
+  const [hafta, setHafta] = useState(() => {
+    const fark = initialDate ? gunFarki(initialDate, bugun) : 0;
+    return fark >= 7 && fark < 14 ? 1 : 0;
+  });
+  // Önseçili tarih, sunucunun döndüğü günlerde varsa kullanılır (aşağıdaki effect).
+  const [selectedDate, setSelectedDate] = useState(initialDate ?? "");
+  const [selectedSlot, setSelectedSlot] = useState<SlotOut | null>(null);
+  const [slotDoldu, setSlotDoldu] = useState(false);
   const [duration, setDuration] = useState(60);
+  const [basari, setBasari] = useState<BookingOut | null>(null);
   const [notes, setNotes] = useState("");
   const [freeLesson, setFreeLesson] = useState(false);
   
@@ -123,36 +160,39 @@ export function BookingModal({
   const [selectedSavedId, setSelectedSavedId] = useState<number | null>(null);
 
   const createBooking = useCreateBooking();
-  // Geçmiş kontrolleri Türkiye saatiyle (backend de UTC+3) — tarayıcı tz'inden bağımsız.
-  const { dateStr: todayStr, hour: nowHour } = istanbulNow();
 
-  const startLocal =
-    selectedDate && selectedTime ? `${selectedDate}T${selectedTime}` : "";
+  // Boş/dolu saatler, kurallar ve ücret sunucuda hesaplanır.
+  const from = gunEkle(bugun, 7 * hafta);
+  const slotlar = useTutorSlots(tutor.id, from, duration);
+  const slotVerisi = slotlar.data;
+  const gunler = slotVerisi?.days;
+  const sonrakiHaftaVar =
+    !!slotVerisi &&
+    hafta < 1 &&
+    Date.parse(`${gunEkle(bugun, 7 * (hafta + 1))}T00:00:00+03:00`) < Date.parse(slotVerisi.window_end);
+  const haftadaBosVar = (gunler ?? []).some((g) => g.has_available);
+  const seciliGun = gunler?.find((g) => g.date === selectedDate);
 
-  const hasAvailability = (tutor.availability?.length ?? 0) > 0;
-  
-  const dayWindows = useMemo(() => {
-    if (!selectedDate || !hasAvailability) return null;
-    const wd = weekdayOfDateStr(selectedDate);
-    return (tutor.availability ?? []).filter((a) => a.weekday === wd);
-  }, [selectedDate, hasAvailability, tutor.availability]);
-
-  const isTimeDisabled = (time: string) => {
-    if (selectedDate && selectedDate < todayStr) return true;
-    if (selectedDate === todayStr && parseInt(time.slice(0, 2), 10) <= nowHour)
-      return true;
-    if (dayWindows !== null) {
-      const t = hhmmToMin(time);
-      return !dayWindows.some(
-        (w) => w.start_minute <= t && t + duration <= w.end_minute
-      );
-    }
-    return false;
-  };
-
+  // Varsayılan gün: listede yoksa ilk boş slotu olan gün, o da yoksa ilk gün.
   useEffect(() => {
-    if (selectedTime && isTimeDisabled(selectedTime)) setSelectedTime("");
-  }, [selectedDate, duration, dayWindows]);
+    if (!gunler || gunler.some((g) => g.date === selectedDate)) return;
+    const ilk = gunler.find((g) => g.has_available) ?? gunler[0];
+    setSelectedDate(ilk?.date ?? "");
+  }, [gunler, selectedDate]);
+
+  const gunSec = (gun: string) => {
+    setSelectedDate(gun);
+    setSelectedSlot(null);
+  };
+  const haftaDegistir = (yeni: number) => {
+    setHafta(yeni);
+    setSelectedDate("");
+    setSelectedSlot(null);
+  };
+  const sureDegistir = (yeni: number) => {
+    setDuration(yeni);
+    setSelectedSlot(null);
+  };
 
   // Form'dan gelen adresi kaydet/güncelle; başarılı olunca buluşma adresi olarak seç.
   const handleSaveAddress = (payload: SavedAddressCreate) => {
@@ -188,16 +228,10 @@ export function BookingModal({
 
   const handleBooking = (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime) {
+    if (!selectedSlot) {
       toast.error("Lütfen tarih ve saat seçin.");
       return;
     }
-    // Seçilen saat Türkiye duvar-saati kabul edilir (+03:00); start ve end aynı
-    // UTC anından türetilir, böylece tarayıcı tz'inden bağımsız ve tutarlıdır.
-    const startIso = istanbulInputToIso(startLocal);
-    const endIso = new Date(
-      new Date(startIso).getTime() + duration * 60_000
-    ).toISOString();
     const canChoose =
       !tutor.teaching_mode || tutor.teaching_mode === TeachingMode.BOTH;
     const lessonMode = canChoose ? mode : tutor.teaching_mode || TeachingMode.ONLINE;
@@ -210,8 +244,9 @@ export function BookingModal({
     createBooking.mutate(
       {
         tutor_id: tutor.id,
-        start_at: startIso,
-        end_at: endIso,
+        // Slot uçları sunucudan UTC gelir; istemci saat hesaplamaz.
+        start_at: selectedSlot.start_at,
+        end_at: selectedSlot.end_at,
         mode: lessonMode,
         location: lessonMode === TeachingMode.IN_PERSON ? bookingLocation.trim() : null,
         location_lat: lessonMode === TeachingMode.IN_PERSON ? locationLat : null,
@@ -220,13 +255,24 @@ export function BookingModal({
         free_lesson: canRequestFreeLesson && freeLesson,
       },
       {
-        onSuccess: () => {
-          // Adres kaydetme işlemi artık önceden yapılıyor.
-          toast.success("Ders talebin gönderildi.");
-          onClose();
+        onSuccess: (booking) => setBasari(booking),
+        onError: (err) => {
+          if (isSlotConflictError(err)) {
+            // Slotlar hook'ta yeniden istenir; öğrenci saat adımına döner.
+            setSelectedSlot(null);
+            setSlotDoldu(true);
+            setStep(2);
+            toast.error("Bu saat az önce doldu. Başka bir saat seç.");
+            return;
+          }
+          const durum = (err as { response?: { status?: number } })?.response?.status;
+          // 409 (ör. ücretsiz ders hakkı) ve 422 kuralları sunucu metniyle gösterilir.
+          toast.error(
+            durum === 409 || durum === 422
+              ? getErrorDetail(err, "Ders talebi oluşturulamadı.")
+              : getErrorMessage(err, "Ders talebi oluşturulamadı.")
+          );
         },
-        onError: (err) =>
-          toast.error(getErrorMessage(err, "Ders talebi oluşturulamadı.")),
       }
     );
   };
@@ -235,7 +281,7 @@ export function BookingModal({
 
   const handleNext = () => {
     if (step === 2) {
-      if (!selectedDate || !selectedTime) {
+      if (!selectedSlot) {
         toast.error("Lütfen tarih ve saat seçin.");
         return;
       }
@@ -304,7 +350,7 @@ export function BookingModal({
       panelClassName="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
     >
         <div className="flex items-center justify-between mb-4">
-          {step > 1 ? (
+          {step > 1 && !basari ? (
             <button
               onClick={handleBack}
               className="rounded-full p-2 -ml-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
@@ -329,6 +375,10 @@ export function BookingModal({
           </button>
         </div>
 
+        {basari ? (
+          <BasariEkrani booking={basari} tutor={tutor} onClose={onClose} />
+        ) : (
+        <>
         {/* Progress Bar */}
         <div className="mb-6 flex gap-2">
           {Array.from({ length: totalSteps }).map((_, i) => {
@@ -404,7 +454,7 @@ export function BookingModal({
             </div>
           )}
 
-          {/* STEP 2: TARİH & SAAT */}
+          {/* STEP 2: TARİH & SAAT — sunucu slot ızgarası */}
           {step === 2 && (
             <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
               <div>
@@ -413,73 +463,166 @@ export function BookingModal({
                 </h3>
               </div>
 
-              {hasAvailability && (
-                <div className="rounded-xl bg-marka-soft px-4 py-3 text-xs leading-relaxed text-marka-metin-hover ">
-                  <span className="font-semibold">Müsait saatler:</span>{" "}
-                  {summarize(tutor.availability ?? [])
-                    .map((s) => `${WEEKDAYS_SHORT[s.weekday]} ${s.ranges}`)
-                    .join(" · ")}
+              {slotlar.isLoading ? (
+                <p className={KUCUK_ACIKLAMA}>Saatler yükleniyor…</p>
+              ) : slotlar.isError || !slotVerisi ? (
+                <div className="space-y-3">
+                  <p role="alert" className={ACIKLAMA}>Saatler yüklenemedi.</p>
+                  <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => slotlar.refetch()}>
+                    Tekrar dene
+                  </button>
                 </div>
+              ) : !slotVerisi.has_availability ? (
+                <div className={`${KART} space-y-3`}>
+                  <p className={ETIKET}>Eğitmen henüz ders saati açmadı</p>
+                  <p className={ACIKLAMA}>Uygun olduğu zamanı mesajla sorabilirsin.</p>
+                  <Link
+                    to={ROUTES.messageWith(tutor.id, tutor.display_name, "TUTOR")}
+                    className={DUGME_SATIR_IKINCIL}
+                    onClick={onClose}
+                  >
+                    Mesaj gönder
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {/* Süre — değişince seçili saat sıfırlanır */}
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
+                      Süre
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {DURATIONS.map((d) => (
+                        <Pill
+                          key={d.value}
+                          active={duration === d.value}
+                          onClick={() => sureDegistir(d.value)}
+                        >
+                          {d.label}
+                        </Pill>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tarih */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
+                        Tarih
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className={DUGME_SATIR_IKINCIL}
+                          onClick={() => haftaDegistir(hafta - 1)}
+                          disabled={hafta === 0}
+                          aria-label="Önceki hafta"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          className={DUGME_SATIR_IKINCIL}
+                          onClick={() => haftaDegistir(hafta + 1)}
+                          disabled={!sonrakiHaftaVar}
+                          aria-label="Sonraki hafta"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <DateStrip
+                      value={selectedDate}
+                      onChange={gunSec}
+                      days={buildDaysFromDates(slotVerisi.days.map((g) => g.date), bugun)}
+                      hasAvailable={Object.fromEntries(
+                        slotVerisi.days.map((g) => [g.date, g.has_available])
+                      )}
+                    />
+                  </div>
+
+                  {/* Saat */}
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
+                      Saat
+                    </p>
+                    {slotDoldu && (
+                      <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        Bu saat az önce doldu. Başka bir saat seç.
+                      </p>
+                    )}
+                    {!haftadaBosVar ? (
+                      <div className="space-y-3">
+                        <p className={ACIKLAMA}>Bu hafta {duration} dakikalık boş saat yok</p>
+                        {sonrakiHaftaVar && (
+                          <button
+                            type="button"
+                            className={DUGME_SATIR_IKINCIL}
+                            onClick={() => haftaDegistir(hafta + 1)}
+                          >
+                            Sonraki haftaya bak
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {GUN_BOLUMLERI.map((bolum) => {
+                          const liste = (seciliGun?.slots ?? []).filter(
+                            (sl) => sl.part_of_day === bolum.key
+                          );
+                          if (bolum.key === "night" && liste.length === 0) return null;
+                          return (
+                            <div key={bolum.key}>
+                              <p className={`mb-2 ${ETIKET}`}>{bolum.label}</p>
+                              {liste.length === 0 ? (
+                                <p className={KUCUK_ACIKLAMA}>Boş saat yok</p>
+                              ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                  {liste.map((sl) => {
+                                    const saat = formatIstanbulTime(sl.start_at);
+                                    const dolu = sl.status === "busy";
+                                    const secili = selectedSlot?.start_at === sl.start_at;
+                                    return (
+                                      <button
+                                        key={sl.start_at}
+                                        type="button"
+                                        disabled={dolu}
+                                        aria-pressed={dolu ? undefined : secili}
+                                        aria-label={dolu ? `${saat} Dolu` : undefined}
+                                        className={dolu ? SLOT_DOLU : secili ? SLOT_SECILI : SLOT_DUGME}
+                                        onClick={() => {
+                                          setSelectedSlot(sl);
+                                          setSlotDoldu(false);
+                                        }}
+                                      >
+                                        {saat}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <p className={`mt-3 ${KUCUK_ACIKLAMA}`}>Saatler Türkiye saatiyle.</p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={!selectedSlot}
+                    className="mt-6 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Devam Et
+                  </button>
+                </>
               )}
-
-              {/* Tarih */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-                  Tarih
-                </p>
-                <DateStrip value={selectedDate} onChange={setSelectedDate} days={NEXT_14_DAYS} />
-              </div>
-
-              {/* Saat */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-                  Saat
-                </p>
-                <TimeStepper value={selectedTime} onChange={setSelectedTime} />
-                
-                {dayWindows !== null && dayWindows.length === 0 && selectedDate ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs font-medium text-amber-700 border border-amber-100 ">
-                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    Eğitmen bu gün müsait değil, lütfen üstten başka bir tarih seçin.
-                  </div>
-                ) : selectedTime && isTimeDisabled(selectedTime) ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 border border-red-100 ">
-                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Eğitmen bu saatte müsait değil.
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Süre */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-                  Süre
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {DURATIONS.map((d) => (
-                    <Pill
-                      key={d.value}
-                      active={duration === d.value}
-                      onClick={() => setDuration(d.value)}
-                    >
-                      {d.label}
-                    </Pill>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!selectedDate || !selectedTime || isTimeDisabled(selectedTime)}
-                className="mt-6 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Devam Et
-              </button>
             </div>
           )}
 
@@ -586,6 +729,16 @@ export function BookingModal({
                 </h3>
               </div>
 
+              {selectedSlot && (
+                <OzetKarti
+                  slot={selectedSlot}
+                  mode={mode}
+                  ucretsiz={canRequestFreeLesson && freeLesson}
+                  ucret={slotVerisi?.price.amount ?? null}
+                  gecIptalSaati={slotVerisi?.policy.late_cancel_hours ?? 12}
+                />
+              )}
+
               {/* Ücretsiz ilk ders */}
               {canRequestFreeLesson && (
                 <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 ">
@@ -635,6 +788,109 @@ export function BookingModal({
             </div>
           )}
         </form>
+        </>
+        )}
     </Modal>
+  );
+}
+
+const MOD_ETIKETI: Record<string, string> = {
+  [TeachingMode.ONLINE]: "Uzaktan",
+  [TeachingMode.IN_PERSON]: "Yüzyüze",
+};
+
+/** Son adım özeti: tarih, saat, mod, ücret, ödeme zamanı ve iptal kuralı. */
+function OzetKarti({
+  slot,
+  mode,
+  ucretsiz,
+  ucret,
+  gecIptalSaati,
+}: {
+  slot: SlotOut;
+  mode: TeachingMode;
+  ucretsiz: boolean;
+  ucret: string | null;
+  gecIptalSaati: number;
+}) {
+  const iptalSonu = new Date(
+    Date.parse(slot.start_at) - gecIptalSaati * 60 * 60 * 1000
+  ).toISOString();
+  return (
+    <div className={`${KART} space-y-3`}>
+      <div>
+        <p className={ETIKET}>{formatIstanbulDay(slot.start_at)}</p>
+        <p className={ACIKLAMA}>
+          {saatAraligi(slot.start_at, slot.end_at)} · {MOD_ETIKETI[mode] ?? mode}
+        </p>
+      </div>
+      {ucretsiz ? (
+        <p className={ETIKET}>İlk ders ücretsiz</p>
+      ) : (
+        <>
+          {ucret !== null && <p className={ETIKET}>{formatTRY(ucret)}</p>}
+          <p className={KUCUK_ACIKLAMA}>
+            Şimdi ödeme alınmaz. Eğitmen kabul edince ödersin; para ders onaylanana kadar
+            bekletilir.
+          </p>
+        </>
+      )}
+      <p className={KUCUK_ACIKLAMA}>
+        Eğitmen kabul etmeden önce istediğin zaman, kabul ettikten sonra{" "}
+        {formatIstanbulDay(iptalSonu)} {formatIstanbulTime(iptalSonu)} tarihine kadar ücretsiz
+        iptal.
+      </p>
+    </div>
+  );
+}
+
+/** Talep gönderildikten sonra modal içinde kalan başarı ekranı. */
+function BasariEkrani({
+  booking,
+  tutor,
+  onClose,
+}: {
+  booking: BookingOut;
+  tutor: TutorSearchOut;
+  onClose: () => void;
+}) {
+  const baslik = `${tutor.display_name} ile ders`;
+  const detay = `Ders talebi: ${window.location.origin}${ROUTES.lesson(booking.id)}`;
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className={BOLUM_BASLIGI}>Ders talebin eğitmene iletildi</h3>
+        <p className={`mt-2 ${ACIKLAMA}`}>
+          {formatIstanbulDay(booking.start_at)}, {saatAraligi(booking.start_at, booking.end_at)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-3">
+        <a
+          href={googleTakvimLinki(booking, baslik, detay)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={DUGME_SATIR_IKINCIL}
+        >
+          Google Takvim&apos;e ekle
+        </a>
+        <button
+          type="button"
+          className={DUGME_SATIR_IKINCIL}
+          onClick={() => icsIndir(icsIcerigi(booking, baslik, detay), `ders-${booking.id}.ics`)}
+        >
+          Takvim dosyası indir (.ics)
+        </button>
+        <Link
+          to={ROUTES.messageWith(tutor.id, tutor.display_name, "TUTOR")}
+          className={DUGME_SATIR_IKINCIL}
+          onClick={onClose}
+        >
+          Öğretmene mesaj gönder
+        </Link>
+        <Link to={ROUTES.lesson(booking.id)} className={DUGME_SATIR_BIRINCIL} onClick={onClose}>
+          Ders talebimi gör
+        </Link>
+      </div>
+    </div>
   );
 }
