@@ -580,6 +580,54 @@ path.district-poly {
 .fc .fc-highlight {
   border-radius: 8px;
 }
+
+/* Izgara ölçüleri — Preply takvimi örnek alındı (17 Eyl 2026):
+   30 dk satır 44px, saat etiketi 12px ikincil, yarım saat çizgisi soluk,
+   gün başlığı 14px 600 ve bugün koyu + alt çizgi. */
+.fc .fc-timegrid-slot {
+  height: 44px;
+}
+.fc .fc-timegrid-slot-minor {
+  border-top-color: theme("colors.slate.100");
+}
+.fc .fc-timegrid-slot-label-cushion {
+  padding-right: 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: theme("colors.slate.500");
+}
+.fc .fc-col-header-cell {
+  background-color: #fff;
+}
+.fc .fc-col-header-cell-cushion {
+  padding: 12px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: theme("colors.slate.500");
+}
+.fc .fc-col-header-cell.fc-day-today {
+  border-bottom: 2px solid theme("colors.slate.900");
+}
+.fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  color: theme("colors.slate.900");
+}
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 3px 8px;
+}
+.fc .fc-timegrid-event .fc-event-time {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+.fc .fc-timegrid-event .fc-event-title {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.fc .fc-timegrid-event {
+  box-shadow: none;
+}
 .fc .takvim-bekliyor {
   --fc-event-bg-color: theme("colors.amber.50");
   --fc-event-border-color: theme("colors.amber.400");

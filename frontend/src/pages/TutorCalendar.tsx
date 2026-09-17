@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import type { DateSelectArg, DatesSetArg, EventClickArg, EventInput } from "@fullcalendar/core";
 import trLocale from "@fullcalendar/core/locales/tr";
@@ -12,6 +12,7 @@ import { ErrorState } from "@/components/admin/ui/PageState";
 import {
   ACIKLAMA,
   DUGME_BIRINCIL,
+  DUGME_IKINCIL,
   DUGME_SATIR_IKINCIL,
   DUGME_SATIR_TEHLIKE,
   SAYFA_BASLIGI,
@@ -39,10 +40,10 @@ const OLAY_SINIFI: Partial<Record<BookingStatus, string>> = {
 };
 
 const LEJANT: { etiket: string; sinif: string }[] = [
-  { etiket: "Onay bekliyor", sinif: "border-amber-400 bg-amber-50" },
-  { etiket: "Onaylı", sinif: "border-marka-mid bg-marka-soft" },
-  { etiket: "Tamamlandı", sinif: "border-slate-300 bg-slate-100" },
-  { etiket: "İzin", sinif: "border-slate-300 takvim-lejant-izin" },
+  { etiket: "Onay bekliyor", sinif: "bg-amber-400" },
+  { etiket: "Onaylı", sinif: "bg-marka-mid" },
+  { etiket: "Tamamlandı", sinif: "bg-slate-400" },
+  { etiket: "İzin", sinif: "takvim-lejant-izin" },
 ];
 
 const SAAT_BICIMI = { hour: "2-digit", minute: "2-digit", hour12: false } as const;
@@ -202,49 +203,63 @@ export default function TutorCalendar() {
 
   return (
     <DashboardShell title="Takvim" navItems={TUTOR_NAV} genislik="orta">
-      <div className="space-y-6 pb-16 pt-2">
-        <header className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className={SAYFA_BASLIGI}>Takvim</h1>
-            <button
-              type="button"
-              className={DUGME_BIRINCIL}
-              onClick={() => setIzinAraligi(bugunTumGun())}
-            >
-              İzin ekle
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <DaireDugme yon="sol" aria-label="Önceki hafta" onClick={() => api()?.prev()} />
-            <DaireDugme yon="sag" aria-label="Sonraki hafta" onClick={() => api()?.next()} />
-            <p className="min-w-0 flex-1 text-base font-semibold leading-6 text-slate-900" aria-live="polite">
-              {pencere?.baslik ?? ""}
-            </p>
-            <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => api()?.today()}>
-              Bugün
-            </button>
-          </div>
-          <ul className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Renk açıklaması">
-            {LEJANT.map((l) => (
-              <li key={l.etiket} className="flex items-center gap-2 text-sm leading-5 text-slate-600">
-                <span aria-hidden className={`h-3.5 w-3.5 rounded border ${l.sinif}`} />
-                {l.etiket}
-              </li>
-            ))}
-          </ul>
-        </header>
+      <div className="pb-16 pt-2">
+        <h1 className={`mb-6 ${SAYFA_BASLIGI}`}>Takvim</h1>
 
-        {hata && (
-          <ErrorState
-            description={getErrorMessage(hata, "Takvim yüklenemedi.")}
-            onRetry={() => {
-              void dersler.refetch();
-              void izinler.refetch();
-            }}
-          />
-        )}
+        {/* Preply düzeni (17 Eyl 2026): solda eylemler ve renk açıklaması,
+            sağda hafta gezinme satırı ve ızgara. */}
+        <div className="gap-6 lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
+          <aside className="mb-6 space-y-6 lg:mb-0">
+            <div className="space-y-3">
+              <button
+                type="button"
+                className={`${DUGME_BIRINCIL} w-full`}
+                onClick={() => setIzinAraligi(bugunTumGun())}
+              >
+                İzin ekle
+              </button>
+              <Link to={ROUTES.tutorListing} className={`${DUGME_IKINCIL} w-full`}>
+                Müsaitliği düzenle
+              </Link>
+            </div>
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Etiketler</p>
+              <ul className="space-y-2" aria-label="Renk açıklaması">
+                {LEJANT.map((l) => (
+                  <li key={l.etiket} className="flex items-center gap-3 text-base leading-6 text-slate-700">
+                    <span aria-hidden className={`h-5 w-1 rounded-full ${l.sinif}`} />
+                    {l.etiket}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </aside>
 
-        <div aria-busy={dersler.isFetching || izinler.isFetching}>
+          <div className="min-w-0 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <DaireDugme yon="sol" aria-label="Önceki hafta" onClick={() => api()?.prev()} />
+                <DaireDugme yon="sag" aria-label="Sonraki hafta" onClick={() => api()?.next()} />
+              </div>
+              <p className="min-w-0 flex-1 text-xl font-semibold leading-7 text-slate-900" aria-live="polite">
+                {pencere?.baslik ?? ""}
+              </p>
+              <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => api()?.today()}>
+                Bugün
+              </button>
+            </div>
+
+            {hata && (
+              <ErrorState
+                description={getErrorMessage(hata, "Takvim yüklenemedi.")}
+                onRetry={() => {
+                  void dersler.refetch();
+                  void izinler.refetch();
+                }}
+              />
+            )}
+
+            <div aria-busy={dersler.isFetching || izinler.isFetching}>
           <FullCalendar
             ref={takvimRef}
             plugins={[timeGridPlugin, listPlugin, interactionPlugin]}
@@ -259,8 +274,8 @@ export default function TutorCalendar() {
             scrollTime={scrollTime}
             slotLabelFormat={SAAT_BICIMI}
             eventTimeFormat={SAAT_BICIMI}
-            dayHeaderFormat={{ weekday: "short", day: "numeric" }}
-            height={mobil ? "auto" : 720}
+            dayHeaderFormat={{ day: "numeric", month: "short", weekday: "short" }}
+            height={mobil ? "auto" : 760}
             editable={false}
             selectable
             selectMirror
@@ -275,6 +290,8 @@ export default function TutorCalendar() {
             datesSet={datesSet}
             noEventsContent="Bu hafta ders ya da izin yok."
           />
+            </div>
+          </div>
         </div>
       </div>
 
