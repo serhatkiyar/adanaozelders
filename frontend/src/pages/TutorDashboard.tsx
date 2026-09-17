@@ -175,7 +175,7 @@ export default function TutorDashboard() {
                 sag={
                   pano.upcoming_count > pano.upcoming.length ? (
                     <Link
-                      to={ROUTES.calendar}
+                      to={ROUTES.tutorCalendar}
                       className={METIN_BAGLANTI}
                     >
                       Tümünü gör ({pano.upcoming_count})

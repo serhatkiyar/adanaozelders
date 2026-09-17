@@ -128,3 +128,59 @@ async def test_her_ders_sorgusu_egitmene_ve_silinmemise_bagli():
         assert "bookings.deleted_at IS NULL" in sql, sql
     assert out["next_lesson"] is None
     assert out["pending_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "yol",
+    [
+        "/api/v1/tutors/me/time-off",
+        "/api/v1/tutors/me/time-off/preview",
+        "/api/v1/tutors/me/time-off/{time_off_id}",
+        "/api/v1/tutors/me/analytics/overview",
+        "/api/v1/tutors/me/analytics/goals",
+    ],
+)
+def test_modul7_rotalari_tutor_id_rotasindan_once(yol):
+    """Takvim izinleri ve analiz uçları da `/{tutor_id}` tarafından yutulmamalı."""
+    from main import app
+
+    paths = list(app.openapi()["paths"])
+    assert paths.index(yol) < paths.index("/api/v1/tutors/{tutor_id}")
+
+
+_SIMDI = datetime.datetime(2026, 9, 17, 10, 7, tzinfo=datetime.timezone.utc)
+_GUN = datetime.timedelta(days=1)
+_SAAT = datetime.timedelta(hours=1)
+_TAM = datetime.datetime(2026, 9, 18, 9, 0, tzinfo=datetime.timezone.utc)
+
+
+@pytest.mark.parametrize(
+    "baslangic,bitis,beklenen",
+    [
+        # Geçerli aralık aynen döner.
+        (_TAM, _TAM + _SAAT, (_TAM, _TAM + _SAAT)),
+        # "Bugün tüm gün": geçmişte kalan başlangıç şimdiye kırpılır.
+        (
+            datetime.datetime(2026, 9, 17, 0, 0, tzinfo=datetime.timezone.utc),
+            _TAM,
+            (_SIMDI, _TAM),
+        ),
+        # 60 gün sınırı kırpılmış süreye uygulanır.
+        (_TAM, _TAM + 60 * _GUN, (_TAM, _TAM + 60 * _GUN)),
+        (_TAM, _TAM + 60 * _GUN + datetime.timedelta(minutes=15), None),
+        (_TAM, _TAM, None),  # bitiş başlangıçtan sonra değil
+        (_TAM - 2 * _GUN, _TAM - _GUN, None),  # tamamen geçmiş
+        (_TAM + datetime.timedelta(minutes=10), _TAM + _SAAT, None),  # 15'in katı değil
+    ],
+)
+def test_izin_araligi_normalizasyonu(baslangic, bitis, beklenen):
+    from fastapi import HTTPException
+
+    from services import time_off_service
+
+    if beklenen is None:
+        with pytest.raises(HTTPException) as exc:
+            time_off_service.normalize_range(baslangic, bitis, _SIMDI)
+        assert exc.value.status_code == 422
+    else:
+        assert time_off_service.normalize_range(baslangic, bitis, _SIMDI) == beklenen

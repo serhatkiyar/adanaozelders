@@ -18,6 +18,7 @@ from models.payment import PaymentStatus
 from models.review import Review
 from models.role import ROLE_IDS, RoleType, role_name
 from models.tutor import Tutor, TutorAvailability, TutorStatus
+from models.tutor_time_off import TutorTimeOff
 from models.booking_resource import BookingResource
 from models.booking_comment import BookingComment
 from models.booking_private_note import BookingPrivateNote
@@ -257,6 +258,41 @@ async def _assert_within_availability(
         )
 
 
+async def _lock_tutor(db: AsyncSession, tutor_id: int) -> None:
+    """Eğitmen satırını ``FOR UPDATE`` ile kilitler (Modül 7).
+
+    İzin yazma ile ders ayırtma/onaylama/erteleme aynı kilitte sıraya girer:
+    "izin kaydedildi ama arada o aralığa ders girdi" yarışı kapanır.
+
+    Kilit sırası: **önce eğitmen, sonra ders satırı.** Bu fonksiyonu çağıran
+    yollar ders satırını (`_claim_transition` / `_lock_booking`) bundan SONRA
+    kilitler; ters sıra deadlock üretir.
+    """
+    await db.execute(select(Tutor.id).where(Tutor.id == tutor_id).with_for_update())
+
+
+async def _assert_not_on_time_off(
+    db: AsyncSession,
+    tutor_id: int,
+    start_at: datetime.datetime,
+    end_at: datetime.datetime,
+) -> None:
+    """Ders aralığı eğitmenin bir izniyle çakışıyorsa 422."""
+    overlap = await db.scalar(
+        select(
+            exists().where(
+                TutorTimeOff.tutor_id == tutor_id,
+                TutorTimeOff.start_at < end_at,
+                TutorTimeOff.end_at > start_at,
+            )
+        )
+    )
+    if overlap:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Eğitmen bu tarihte izinde"
+        )
+
+
 def _compute_price(
     tutor: Tutor,
     start_at: datetime.datetime,
@@ -318,7 +354,9 @@ async def create_booking(
             status.HTTP_400_BAD_REQUEST, "Cannot book a time slot in the past"
         )
 
+    await _lock_tutor(db, tutor.id)
     await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)
+    await _assert_not_on_time_off(db, tutor.id, data.start_at, data.end_at)
 
     # Ücretsiz ilk ders: eğitmen sunuyor + öğrencinin bu eğitmenle geçmiş dersi yok.
     is_free_lesson = False
@@ -563,7 +601,11 @@ async def list_bookings(
     status_filter: BookingStatus | None = None,
     limit: int = 20,
     offset: int = 0,
+    start_from: datetime.datetime | None = None,
+    start_to: datetime.datetime | None = None,
 ) -> list[Booking]:
+    """``start_from``/``start_to`` verilirse `[start_from, start_to)` ile kesişen
+    dersler döner (takvim haftası). Aralık sınırı router'da denetlenir."""
     stmt = _hydrated_booking_select()
     if role_id == ROLE_IDS[RoleType.CLIENT]:
         stmt = stmt.where(Booking.client_id == user_id)
@@ -573,6 +615,10 @@ async def list_bookings(
         return []
     if status_filter is not None:
         stmt = stmt.where(Booking.status == status_filter)
+    if start_from is not None and start_to is not None:
+        stmt = stmt.where(
+            Booking.time_slot.op("&&")(func.tstzrange(start_from, start_to, "[)"))
+        )
     stmt = stmt.order_by(Booking.start_at.desc()).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
     return await _hydrate_booking_rows(db, rows, role_id=role_id, user_id=user_id)
@@ -583,6 +629,9 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
     # Bellek içi `_transition` burada YETMEZ — kabul, `create_for_booking` ile
     # ödeme YÜKÜMLÜLÜĞÜ doğurur; iptal edilmiş bir dersin üzerine yazan bir
     # accept, öğrenciye artık var olmayan bir ders için ödeme borcu çıkarır.
+    # Eğitmen kilidi claim'den ÖNCE: izin ekleme ile aynı sırada beklenir.
+    await _lock_tutor(db, booking.tutor_id)
+    await _assert_not_on_time_off(db, booking.tutor_id, booking.start_at, booking.end_at)
     if not await _claim_transition(db, booking, BookingStatus.ACCEPTED):
         raise _claim_hatasi(booking, BookingStatus.ACCEPTED)
     # Canlı ders odası yalnızca uzaktan (ONLINE) derslerde üretilir.
@@ -602,7 +651,9 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
     return booking
 
 
-async def reject(db: AsyncSession, booking: Booking) -> Booking:
+async def reject(
+    db: AsyncSession, booking: Booking, *, reason: str | None = None
+) -> Booking:
     """Eğitmen dersi reddeder — emanette para varsa öğrenciye iade edilir.
 
     İade neden BURADA: `reschedule` ödemesi alınmış (HELD) bir dersi yeniden
@@ -614,12 +665,17 @@ async def reject(db: AsyncSession, booking: Booking) -> Booking:
     """
     if not await _claim_transition(db, booking, BookingStatus.REJECTED):
         raise _claim_hatasi(booking, BookingStatus.REJECTED)
+    if reason:
+        booking.cancel_reason = reason
     await db.flush()
+    message = "Rezervasyon talebin reddedildi."
+    if reason:
+        message += f" Neden: {reason}"
     await notification_service.notify(
         db,
         user_id=booking.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message="Rezervasyon talebin reddedildi.",
+        message=message,
         link="/student/bookings",
     )
     # Emanette ödeme varsa öğrenciye iade et (yoksa no-op). Taraf iptaliyle AYNI
@@ -860,6 +916,8 @@ async def resolve_dispute(
             raise HTTPException(status.HTTP_409_CONFLICT, "Bu derste iade yapılamaz.")
         locked.is_disputed = False
         locked.cancel_reason = "Sorun bildirimi sonucu iade"
+        locked.cancelled_by_role = ROLE_IDS[RoleType.ADMIN]
+        locked.cancelled_at = _utcnow()
         await db.flush()
         mesajlar = (
             (locked.tutor_id, RoleType.TUTOR,
@@ -898,7 +956,10 @@ async def reschedule(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Cannot reschedule to the past"
         )
+    # Eğitmen kilidi claim'den (ders satırı kilidi) ÖNCE alınır.
+    await _lock_tutor(db, booking.tutor_id)
     await _assert_within_availability(db, booking.tutor_id, start_at, end_at)
+    await _assert_not_on_time_off(db, booking.tutor_id, start_at, end_at)
     # ── Atomik claim: yeni saati YAZMADAN ÖNCE geçişi kazan (P1-B) ──
     #
     # Buradaki yazım eskiden `booking.status = PENDING` biçiminde koşulsuz bir
@@ -1094,6 +1155,8 @@ async def cancel(
         )
     if reason:
         booking.cancel_reason = reason
+    booking.cancelled_by_role = cancelled_by.role_id
+    booking.cancelled_at = now
     if late:
         booking.late_cancel = True
     await db.flush()
@@ -1173,6 +1236,8 @@ async def cancel_by_admin(
     booking.cancel_reason = (
         f"Admin İptali: {reason}" if reason else "Admin tarafından iptal edildi."
     )
+    booking.cancelled_by_role = ROLE_IDS[RoleType.ADMIN]
+    booking.cancelled_at = _utcnow()
     await db.flush()
     mesaj = "Bir dersin yönetici tarafından iptal edildi."
     if reason:

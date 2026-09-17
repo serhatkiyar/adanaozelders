@@ -4,7 +4,7 @@ import datetime
 import re
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_roles, user_rate_limit
@@ -25,8 +25,23 @@ from schemas.tutor_promotion import (
     TutorPromotionPurchaseIn,
     TutorPromotionPurchaseOut,
 )
+from schemas.time_off import (
+    TimeOffCreatedOut,
+    TimeOffIn,
+    TimeOffOut,
+    TimeOffPreviewIn,
+    TimeOffPreviewOut,
+)
+from schemas.tutor_analytics import Period, SuccessGoalOut, TutorOverviewOut
 from schemas.tutor_dashboard import TutorDashboardOut
-from services import search_service, tutor_dashboard_service, tutor_promotion_service, tutor_service
+from services import (
+    search_service,
+    time_off_service,
+    tutor_analytics_service,
+    tutor_dashboard_service,
+    tutor_promotion_service,
+    tutor_service,
+)
 
 router = APIRouter(prefix="/tutors", tags=["tutors"])
 
@@ -36,6 +51,16 @@ _promotion_limit = user_rate_limit(
     limit=settings.RATE_LIMIT_PAYMENT,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
+# İzin ekleme dersleri toplu iptal edip iade başlatabilir: ders yazma bütçesi.
+_time_off_limit = user_rate_limit(
+    key="time_off",
+    limit=settings.RATE_LIMIT_BOOKING,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+
+
+def _utcnow() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
 
 
 @router.get("/search", response_model=list[TutorSearchOut])
@@ -239,6 +264,99 @@ async def read_my_dashboard(
     """
     return await tutor_dashboard_service.build_dashboard(
         db, tutor, now=datetime.datetime.now(datetime.timezone.utc)
+    )
+
+
+# ── Takvim: izinler (Modül 7) — hepsi `/{tutor_id}`'den ÖNCE ─────────────────
+
+
+@router.get("/me/time-off", response_model=list[TimeOffOut])
+async def list_my_time_off(
+    start: datetime.datetime = Query(...),
+    end: datetime.datetime = Query(...),
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    if start.tzinfo is None or end.tzinfo is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "start ve end saat dilimi içermeli"
+        )
+    if end <= start or end - start > datetime.timedelta(
+        days=time_off_service.MAX_LIST_DAYS
+    ):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Aralık en fazla {time_off_service.MAX_LIST_DAYS} gün olabilir.",
+        )
+    return await time_off_service.list_time_off(db, tutor, start=start, end=end)
+
+
+@router.post("/me/time-off/preview", response_model=TimeOffPreviewOut)
+async def preview_my_time_off(
+    payload: TimeOffPreviewIn,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Salt okunur: izin eklenirse etkilenecek dersler ve engel durumu."""
+    return await time_off_service.preview(
+        db, tutor, start=payload.start_at, end=payload.end_at, now=_utcnow()
+    )
+
+
+@router.post(
+    "/me/time-off",
+    response_model=TimeOffCreatedOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_time_off_limit)],
+)
+async def create_my_time_off(
+    payload: TimeOffIn,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await time_off_service.create_time_off(
+        db,
+        tutor,
+        start=payload.start_at,
+        end=payload.end_at,
+        title=payload.title,
+        note=payload.note,
+        now=_utcnow(),
+    )
+
+
+@router.delete("/me/time-off/{time_off_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_time_off(
+    time_off_id: int,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    await time_off_service.delete_time_off(db, tutor, time_off_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── Analizler (Modül 7) ─────────────────────────────────────────────────────
+
+
+@router.get("/me/analytics/overview", response_model=TutorOverviewOut)
+async def read_my_analytics_overview(
+    period: Period = Query(default="month"),
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await tutor_analytics_service.build_overview(
+        db, tutor, period=period, now=_utcnow()
+    )
+
+
+@router.get("/me/analytics/goals", response_model=list[SuccessGoalOut])
+async def read_my_analytics_goals(
+    period: Period = Query(default="month"),
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await tutor_analytics_service.build_goals(
+        db, tutor, period=period, now=_utcnow()
     )
 
 

@@ -68,3 +68,20 @@ export function weeklySchedule(availability: Availability[]): {
     ranges: byDay.get(weekday) ?? null,
   }));
 }
+
+/**
+ * Haftalık şablon → FullCalendar `businessHours` (takvim zemini).
+ *
+ * FullCalendar'ın `daysOfWeek` alanı JS düzenindedir (0=Pazar); bizim
+ * `weekday` 0=Pazartesi. Tip bilerek yerel tanımlı: bu dosya takvim
+ * paketini import etmez, FullCalendar yalnız takvim sayfasının chunk'ında kalır.
+ */
+export function toBusinessHours(
+  availability: Availability[] | null | undefined
+): { daysOfWeek: number[]; startTime: string; endTime: string }[] {
+  return (availability ?? []).map((a) => ({
+    daysOfWeek: [(a.weekday + 1) % 7],
+    startTime: minToHHMM(a.start_minute),
+    endTime: minToHHMM(a.end_minute),
+  }));
+}

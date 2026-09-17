@@ -128,7 +128,11 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
       ROUTES.tutorEarnings,
     ],
   },
+  // Takvim ve Analizler şeride girdi (Modül 7, 17 Eyl 2026, kullanıcı kararı):
+  // Pano · Takvim · Mesajlar · Analizler · İlanım. Mobil alt çubuk değişmez.
+  { to: ROUTES.tutorCalendar, label: "Takvim" },
   { to: ROUTES.messages, label: "Mesajlar" },
+  { to: ROUTES.tutorAnalytics, label: "Analizler" },
   {
     to: ROUTES.tutorListing,
     label: "İlanım",

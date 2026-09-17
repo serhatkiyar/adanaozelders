@@ -164,6 +164,9 @@ class BookingOut(BaseModel):
     issue_reason: str | None = None
     issue_note: str | None = None
     late_cancel: bool = False
+    # İptali yapan rol id'si ve anı (Modül 7); eski iptallerde NULL.
+    cancelled_by_role: int | None = None
+    cancelled_at: datetime.datetime | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

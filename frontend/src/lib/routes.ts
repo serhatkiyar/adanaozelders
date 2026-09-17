@@ -123,6 +123,10 @@ export const PATHS = {
   // Eğitmen kazanç dökümü. "Bakiyem" yalnız kütüphane operatöründe kaldı;
   // eğitmen eski adresten buraya yönlendirilir (Balance.tsx).
   tutorEarnings: "/pano/kazanclar",
+  /** Eğitmen takvimi — saat ızgarası, izin ekleme (Modül 7). `/takvim` eğitmeni buraya yollar. */
+  tutorCalendar: "/pano/takvim",
+  /** Eğitmen analizleri — genel bakış ve başarı hedefleri (Modül 7). */
+  tutorAnalytics: "/pano/analizler",
   leaderboard: "/liderlik",
   // Öğren bölümü (aralıklı tekrar / odak / grafik / alışkanlıklar)
   learn: "/ogren",
@@ -365,6 +369,8 @@ export const ROUTES = {
   sellerProducts: PATHS.sellerProducts,
   balance: PATHS.balance,
   tutorEarnings: PATHS.tutorEarnings,
+  tutorCalendar: PATHS.tutorCalendar,
+  tutorAnalytics: PATHS.tutorAnalytics,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,
   deepwork: PATHS.deepwork,

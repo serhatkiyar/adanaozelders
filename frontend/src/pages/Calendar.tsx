@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { SAYFA_BASLIGI } from "@/lib/tipografi";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { NewLessonRequestModal } from "@/components/NewLessonRequestModal";
@@ -67,7 +67,20 @@ function sameDay(a: Date, b: Date): boolean {
 const timeFmt = new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit" });
 const rangeFmt = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long" });
 
+/**
+ * Eğitmenin takvimi saat ızgaralı `/pano/takvim` sayfasıdır (Modül 7); eski
+ * `/takvim` ve ona yönlenen `/panel/takvim` eğitmeni oraya taşır. Üyenin
+ * haftalık listesi değişmedi.
+ */
 export default function Calendar() {
+  const { data: user } = useCurrentUser();
+  if (user?.role_id === ROLE_IDS.TUTOR) {
+    return <Navigate to={ROUTES.tutorCalendar} replace />;
+  }
+  return <CalendarView />;
+}
+
+function CalendarView() {
   const { data: user } = useCurrentUser();
   const isTutor = user?.role_id === ROLE_IDS.TUTOR;
   const isStudent = user?.role_id === ROLE_IDS.CLIENT;

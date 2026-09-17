@@ -561,3 +561,61 @@ path.district-poly {
     animation: none;
   }
 }
+
+/* ── Eğitmen takvimi (FullCalendar, Modül 7 · 17 Eyl 2026) ──
+   En az override: marka seçim rengi, 8px köşe, durum renkleri. Renkler
+   FullCalendar'ın kendi değişkenleri üzerinden verilir; tek açık tema. */
+.fc {
+  --fc-border-color: theme("colors.slate.200");
+  --fc-today-bg-color: rgb(var(--marka-soft) / 0.5);
+  --fc-now-indicator-color: rgb(var(--marka-mid));
+  --fc-highlight-color: rgb(var(--marka) / 0.25);
+  --fc-non-business-color: theme("colors.slate.100 / 60%");
+  --fc-list-event-hover-bg-color: theme("colors.slate.50");
+  font-size: 14px;
+}
+.fc .fc-event {
+  border-radius: 8px;
+}
+.fc .fc-highlight {
+  border-radius: 8px;
+}
+.fc .takvim-bekliyor {
+  --fc-event-bg-color: theme("colors.amber.50");
+  --fc-event-border-color: theme("colors.amber.400");
+  --fc-event-text-color: theme("colors.amber.900");
+}
+.fc .takvim-onayli {
+  --fc-event-bg-color: rgb(var(--marka-soft));
+  --fc-event-border-color: rgb(var(--marka-mid));
+  --fc-event-text-color: rgb(var(--marka-metin));
+}
+.fc .takvim-tamamlandi {
+  --fc-event-bg-color: theme("colors.slate.100");
+  --fc-event-border-color: theme("colors.slate.300");
+  --fc-event-text-color: theme("colors.slate.700");
+}
+.fc .takvim-izin {
+  --fc-event-bg-color: theme("colors.slate.100");
+  --fc-event-border-color: theme("colors.slate.300");
+  --fc-event-text-color: theme("colors.slate.700");
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    theme("colors.slate.200") 6px 12px
+  );
+}
+.fc .fc-list .takvim-izin {
+  background-image: none;
+}
+.fc .fc-event:focus-visible {
+  outline: 2px solid rgb(var(--marka-focus));
+  outline-offset: 1px;
+}
+.takvim-lejant-izin {
+  background-image: repeating-linear-gradient(
+    135deg,
+    theme("colors.slate.100") 0 3px,
+    theme("colors.slate.300") 3px 6px
+  );
+}

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { summarize, weeklySchedule, minToHHMM, hhmmToMin } from "@/lib/availability";
+import {
+  summarize,
+  weeklySchedule,
+  minToHHMM,
+  hhmmToMin,
+  toBusinessHours,
+} from "@/lib/availability";
 import type { Availability } from "@/types";
 
 const win = (weekday: number, start_minute: number, end_minute: number): Availability => ({
@@ -50,5 +56,14 @@ describe("weeklySchedule", () => {
     const out = weeklySchedule([]);
     expect(out).toHaveLength(7);
     expect(out.every((d) => d.ranges === null)).toBe(true);
+  });
+});
+
+describe("toBusinessHours", () => {
+  it("Pazartesi=0 düzenini FullCalendar'ın Pazar=0 düzenine çevirir", () => {
+    expect(toBusinessHours([win(0, 1080, 1200), win(6, 540, 1440)])).toEqual([
+      { daysOfWeek: [1], startTime: "18:00", endTime: "20:00" },
+      { daysOfWeek: [0], startTime: "09:00", endTime: "24:00" },
+    ]);
   });
 });

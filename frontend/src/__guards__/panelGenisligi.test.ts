@@ -56,7 +56,10 @@ const oku = (...parcalar: string[]) =>
 /** Şerit sekmesi → onu çizen sayfa dosyası. */
 const SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
   { rota: ROUTES.bookings, dosya: ["pages", "TutorDashboard.tsx"], etiket: "Pano" },
+  // Takvim ve Analizler şeride girdi (Modül 7, 17 Eyl 2026).
+  { rota: ROUTES.tutorCalendar, dosya: ["pages", "TutorCalendar.tsx"], etiket: "Takvim" },
   { rota: ROUTES.messages, dosya: ["pages", "Messages.tsx"], etiket: "Mesajlar" },
+  { rota: ROUTES.tutorAnalytics, dosya: ["pages", "TutorAnalytics.tsx"], etiket: "Analizler" },
   { rota: ROUTES.tutorListing, dosya: ["pages", "TutorSettings.tsx"], etiket: "İlanım" },
 ];
 

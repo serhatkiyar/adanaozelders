@@ -168,6 +168,7 @@ from models.tutor import (
     TutorSubject,
     TutorSubjectLevel,
 )
+from models.tutor_time_off import TutorTimeOff
 from models.tutor_pre_application import (
     PreApplicationStatus,
     TutorPreApplication,
@@ -366,6 +367,7 @@ __all__ = [
     "TutorStatus",
     "TutorSubject",
     "TutorSubjectLevel",
+    "TutorTimeOff",
     "PromotionPaymentStatus",
     "VerificationToken",
     "PhoneOtp",

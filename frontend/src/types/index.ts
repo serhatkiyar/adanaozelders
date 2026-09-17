@@ -765,9 +765,85 @@ export interface BookingOut {
   issue_report_deadline?: string;
   /** Kabul edilmiş derse 12 saatten az mı kaldı (sunucu saati). */
   late_for_changes?: boolean;
+  /** İptal eden rol (ROLE_IDS); eski kayıtlarda null (Modül 7). */
+  cancelled_by_role?: number | null;
+  cancelled_at?: string | null;
 }
 
 export type BookingIssueReason = "TUTOR_ABSENT" | "LESSON_NOT_HELD" | "OTHER";
+
+/* ============================ İZİN (Modül 7) ============================ */
+
+/** `GET /tutors/me/time-off` satırı — eğitmenin izin aralığı. */
+export interface TimeOff {
+  id: number;
+  start_at: string;
+  end_at: string;
+  title: string | null;
+}
+
+export interface TimeOffRange {
+  start_at: string;
+  end_at: string;
+}
+
+/** `POST /tutors/me/time-off/preview` — izne düşen dersler; hesap sunucuda. */
+export interface TimeOffPreview {
+  start_at: string;
+  end_at: string;
+  bookings: { booking: BookingOut; can_cancel: boolean }[];
+  /** 12 saatten yakın (ya da başlamış) onaylı ders var → izin eklenemez. */
+  blocked: boolean;
+}
+
+export interface TimeOffCreate extends TimeOffRange {
+  title?: string | null;
+  note?: string | null;
+}
+
+export interface TimeOffCreated {
+  time_off: TimeOff;
+  cancelled_count: number;
+  /** Yarışta işlenemeyen (durumu değişmiş) ders id'leri. */
+  skipped_ids: number[];
+}
+
+/* ============================ EĞİTMEN ANALİZİ (Modül 7) ============================ */
+
+export type AnalyticsPeriod = "week" | "month" | "quarter";
+
+export interface MetricTrend {
+  value: number;
+  previous: number;
+  /** Önceki dönem 0 ise null (trend gizlenir). */
+  trend_pct: number | null;
+}
+
+export interface TutorOverview {
+  period: AnalyticsPeriod;
+  current_start: string;
+  current_end: string;
+  previous_start: string;
+  previous_end: string;
+  /** TL */
+  earnings: MetricTrend;
+  lessons: MetricTrend;
+  active_students: MetricTrend;
+  new_students: MetricTrend;
+}
+
+export type SuccessGoalCode = "CANCEL_RATE" | "MISSED_LESSONS" | "RESPONSE_24H" | "RATING";
+
+export interface SuccessGoal {
+  code: SuccessGoalCode;
+  /** Oranlar 0–1 kesir; null → veri yetersiz. */
+  value: number | null;
+  target: number;
+  comparator: "lte" | "gte" | "eq";
+  achieved: boolean | null;
+  sample: number;
+  live: boolean;
+}
 
 /* ============================ PAYMENT ============================ */
 

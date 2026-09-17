@@ -96,6 +96,13 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     late_cancel: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # İptali kimin yaptığı (Modül 7): rol id'si (ADMIN/TUTOR/CLIENT) ve anı.
+    # Analizlerdeki iptal oranı ve kaçırılan ders metrikleri buradan okur;
+    # bu kolonlardan önce iptal edilmiş derslerde NULL kalır.
+    cancelled_by_role: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    cancelled_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     tutor: Mapped["Tutor"] = relationship(back_populates="bookings")
     client: Mapped["Client"] = relationship(back_populates="bookings")

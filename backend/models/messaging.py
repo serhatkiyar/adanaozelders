@@ -107,6 +107,12 @@ class Message(Base, TimestampMixin):
         back_populates="message", cascade="all, delete-orphan"
     )
 
+    __table_args__ = (
+        # Eğitmen analizlerinde "24 saatte yanıt" sorgusu sohbet başına mesajları
+        # zamana göre tarar (Modül 7).
+        Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+    )
+
 
 class MessageReaction(Base, TimestampMixin):
     """Bir mesaja emoji tepkisi. Kullanıcı (role_id,user_id) bir emojiyi bir kez

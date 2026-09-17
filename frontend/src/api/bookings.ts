@@ -21,6 +21,9 @@ export interface ListBookingsParams {
   status?: BookingStatus;
   limit?: number;
   offset?: number;
+  /** Takvim penceresi (ISO, tz'li). İkisi birlikte verilir; aralık ≤ 8 gün. */
+  start_from?: string;
+  start_to?: string;
 }
 
 export async function listBookings(

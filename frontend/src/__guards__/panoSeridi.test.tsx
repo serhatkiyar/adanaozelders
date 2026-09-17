@@ -111,7 +111,16 @@ describe("panel şeridi · kimlik", () => {
     // dökümü panodaki özet kartlarından açılan "Kazançlar" sayfasına taşındı;
     // erişilebilirliği aşağıdaki "Kazançlar" düğümü korur.
     // ÜÇ (17 Eyl 2026): "Değerlendirmeler" şeritten hesap menüsüne taşındı.
-    expect(TUTOR_PANO_SEKMELERI).toHaveLength(3);
+    // BEŞ (17 Eyl 2026, Modül 7, kullanıcı kararı): Takvim ve Analizler girdi.
+    // Sıra da karardır: Pano · Takvim · Mesajlar · Analizler · İlanım.
+    expect(TUTOR_PANO_SEKMELERI).toHaveLength(5);
+    expect(TUTOR_PANO_SEKMELERI.map((s) => s.label)).toEqual([
+      "Pano",
+      "Takvim",
+      "Mesajlar",
+      "Analizler",
+      "İlanım",
+    ]);
     const bilinen = new Set(
       Object.values(ROUTES).filter((v): v is string => typeof v === "string")
     );

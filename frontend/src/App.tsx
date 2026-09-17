@@ -287,6 +287,9 @@ const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDe
 const Messages = lazy(() => import("@/pages/Messages"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
+// FullCalendar yalnız bu chunk'a girer (Modül 7).
+const TutorCalendar = lazy(() => import("@/pages/TutorCalendar"));
+const TutorAnalytics = lazy(() => import("@/pages/TutorAnalytics"));
 const Learn = lazy(() => import("@/pages/Learn"));
 const DeepWork = lazy(() => import("@/pages/DeepWork"));
 const Grapher = lazy(() => import("@/pages/Grapher"));
@@ -735,6 +738,8 @@ function App() {
             />
             <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
             <Route path={PATHS.tutorReviews} element={<TutorReviews />} />
+            <Route path={PATHS.tutorCalendar} element={<TutorCalendar />} />
+            <Route path={PATHS.tutorAnalytics} element={<TutorAnalytics />} />
             <Route path={PATHS.uyeProfili} element={<UyeProfili />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>

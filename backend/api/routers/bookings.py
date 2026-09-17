@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,6 +43,11 @@ _upload_limit = user_rate_limit(
     limit=settings.RATE_LIMIT_BOOKING,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
+
+_LIMIT_MAX = 100
+# Tarih aralığı verildiğinde bir haftanın tüm dersleri tek istekte gelsin.
+_RANGE_LIMIT_MAX = 300
+_RANGE_MAX = datetime.timedelta(days=8)
 
 
 async def _get_booking_or_404(
@@ -84,11 +91,35 @@ async def create_booking(
 @router.get("", response_model=list[BookingOut])
 async def list_my_bookings(
     status_filter: BookingStatus | None = Query(default=None, alias="status"),
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=_RANGE_LIMIT_MAX),
     offset: int = Query(default=0, ge=0),
+    # Takvim haftası (Modül 7): ikisi birlikte, en fazla 8 gün.
+    start_from: datetime.datetime | None = Query(default=None),
+    start_to: datetime.datetime | None = Query(default=None),
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if (start_from is None) != (start_to is None):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "start_from ve start_to birlikte verilmeli",
+        )
+    if start_from is not None and start_to is not None:
+        if start_from.tzinfo is None or start_to.tzinfo is None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "start_from ve start_to saat dilimi içermeli",
+            )
+        if start_to <= start_from or start_to - start_from > _RANGE_MAX:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Tarih aralığı en fazla 8 gün olabilir",
+            )
+    elif limit > _LIMIT_MAX:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"limit en fazla {_LIMIT_MAX} olabilir",
+        )
     # Özel not filtrelemesi servis katmanında (list_bookings) yapılır.
     return await booking_service.list_bookings(
         db,
@@ -97,6 +128,8 @@ async def list_my_bookings(
         status_filter=status_filter,
         limit=limit,
         offset=offset,
+        start_from=start_from,
+        start_to=start_to,
     )
 
 
