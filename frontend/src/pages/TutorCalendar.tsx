@@ -42,6 +42,7 @@ const OLAY_SINIFI: Partial<Record<BookingStatus, string>> = {
 const LEJANT: { etiket: string; sinif: string }[] = [
   { etiket: "Onay bekliyor", sinif: "bg-amber-400" },
   { etiket: "Onaylı", sinif: "bg-marka-mid" },
+  { etiket: "Ücretsiz ilk ders", sinif: "bg-teal-600" },
   { etiket: "Tamamlandı", sinif: "bg-slate-400" },
   { etiket: "İzin", sinif: "takvim-lejant-izin" },
 ];
@@ -94,6 +95,32 @@ export default function TutorCalendar() {
   const [izinAraligi, setIzinAraligi] = useState<IzinAraligi | null>(null);
   const [silinecekIzin, setSilinecekIzin] = useState<TimeOff | null>(null);
 
+  // Izgara tam boy çizilir (sayfa içinde ikinci bir kaydırma çubuğu olmasın);
+  // bunun bedeli, açılışta gecenin ilk saatlerinin görünmesi. Bu yüzden ilk
+  // çizimde sayfa "şimdi − 4 saat" satırına kaydırılır. Yalnız bir kez.
+  const kaydirildi = useRef(false);
+  useEffect(() => {
+    if (kaydirildi.current || mobil || !pencere) return;
+    // Izgara `datesSet`ten birkaç kare sonra çizilebiliyor; satır gelene kadar
+    // dene, en fazla ~1 sn.
+    let kalan = 30;
+    let id = 0;
+    const dene = () => {
+      // `data-time` hücrede (td) durur, satırda değil.
+      const satir = document.querySelector<HTMLElement>(
+        `.fc-timegrid-slot[data-time="${scrollTime}"]`
+      );
+      if (satir) {
+        kaydirildi.current = true;
+        window.scrollTo({ top: satir.getBoundingClientRect().top + window.scrollY - 24 });
+        return;
+      }
+      if (kalan-- > 0) id = window.requestAnimationFrame(dene);
+    };
+    dene();
+    return () => window.cancelAnimationFrame(id);
+  }, [mobil, pencere, scrollTime]);
+
   // Telefonda ajanda, geniş ekranda haftalık ızgara.
   useEffect(() => {
     const api = takvimRef.current?.getApi();
@@ -120,8 +147,10 @@ export default function TutorCalendar() {
     const liste: EventInput[] = [];
     for (const b of dersler.data ?? []) {
       // İptal/reddedilen dersler takvimde yer tutmaz.
-      const sinif = OLAY_SINIFI[b.status];
+      let sinif = OLAY_SINIFI[b.status];
       if (!sinif) continue;
+      // Ücretsiz ilk ders kendi rengini taşır; tamamlandıysa geçmiş rengi kalır.
+      if (b.is_free_lesson && b.status !== BookingStatus.COMPLETED) sinif = "takvim-deneme";
       liste.push({
         id: `ders-${b.id}`,
         title: b.client_name || ADSIZ_UYE,
@@ -199,6 +228,9 @@ export default function TutorCalendar() {
   };
 
   const api = () => takvimRef.current?.getApi();
+  // Görünen aralık bugünü kapsıyorsa "Bugün" bir işe yaramaz — Preply'da da pasif.
+  const buHafta =
+    pencere !== null && Date.now() >= pencere.start.getTime() && Date.now() < pencere.end.getTime();
   const hata = dersler.isError ? dersler.error : izinler.isError ? izinler.error : null;
 
   return (
@@ -244,7 +276,12 @@ export default function TutorCalendar() {
               <p className="min-w-0 flex-1 text-xl font-semibold leading-7 text-slate-900" aria-live="polite">
                 {pencere?.baslik ?? ""}
               </p>
-              <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => api()?.today()}>
+              <button
+                type="button"
+                className={DUGME_SATIR_IKINCIL}
+                onClick={() => api()?.today()}
+                disabled={buHafta}
+              >
                 Bugün
               </button>
             </div>
@@ -275,7 +312,7 @@ export default function TutorCalendar() {
             slotLabelFormat={SAAT_BICIMI}
             eventTimeFormat={SAAT_BICIMI}
             dayHeaderFormat={{ day: "numeric", month: "short", weekday: "short" }}
-            height={mobil ? "auto" : 760}
+            height="auto"
             editable={false}
             selectable
             selectMirror

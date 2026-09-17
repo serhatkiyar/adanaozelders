@@ -638,6 +638,13 @@ path.district-poly {
   --fc-event-border-color: rgb(var(--marka-mid));
   --fc-event-text-color: rgb(var(--marka-metin));
 }
+/* Ücretsiz ilk ders ayrı renkte (Preply'da deneme dersi teal) — eğitmen
+   haftasında hangi dersin tanışma dersi olduğu bir bakışta görünsün. */
+.fc .takvim-deneme {
+  --fc-event-bg-color: theme("colors.teal.50");
+  --fc-event-border-color: theme("colors.teal.600");
+  --fc-event-text-color: theme("colors.teal.900");
+}
 .fc .takvim-tamamlandi {
   --fc-event-bg-color: theme("colors.slate.100");
   --fc-event-border-color: theme("colors.slate.300");
