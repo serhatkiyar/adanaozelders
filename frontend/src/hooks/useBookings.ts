@@ -3,6 +3,8 @@ import {
   acceptBooking,
   cancelBooking,
   completeBooking,
+  confirmBooking,
+  reportBookingIssue,
   createBooking,
   fetchBooking,
   listBookings,
@@ -18,7 +20,12 @@ import {
   deleteBookingPrivateNote,
   type ListBookingsParams,
 } from "@/api/bookings";
-import { BookingStatus, type BookingCreate, type BookingOut } from "@/types";
+import {
+  BookingStatus,
+  type BookingCreate,
+  type BookingIssueReason,
+  type BookingOut,
+} from "@/types";
 import { TUTOR_DASHBOARD_KEY } from "@/hooks/useTutorDashboard";
 
 /**
@@ -76,6 +83,30 @@ export function useBooking(id: number) {
 export function useCreateBooking() {
   return useMutation({
     mutationFn: (payload: BookingCreate) => createBooking(payload),
+  });
+}
+
+function dersVerisiniYenile(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: ["bookings"] });
+  queryClient.invalidateQueries({ queryKey: TUTOR_DASHBOARD_KEY });
+}
+
+/** Öğrenci "ders gerçekleşti" der; ücret eğitmene geçer. */
+export function useConfirmBooking() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => confirmBooking(id),
+    onSettled: () => dersVerisiniYenile(queryClient),
+  });
+}
+
+/** Öğrenci ders sonrası sorun bildirir; ücret incelemeye kadar bekler. */
+export function useReportBookingIssue() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason, note }: { id: number; reason: BookingIssueReason; note?: string }) =>
+      reportBookingIssue(id, reason, note),
+    onSettled: () => dersVerisiniYenile(queryClient),
   });
 }
 

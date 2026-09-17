@@ -2,9 +2,11 @@
 
 ## Ölçülen iş kuralı
 
-**Yapılmamış ders tamamlanamaz.** `complete`, emanetteki parayı eğitmene
-`RELEASED` yapan tek kapıdır ve `released_at` damgalandığı anda para **geri
-alınamaz** hâle gelir (`escrow.begin_refund`'ın `released_at IS NULL` guard'ı,
+**Yapılmamış ders tamamlanamaz.** `complete` eskiden emanetteki parayı eğitmene
+`RELEASED` yapan tek kapıydı; Modül 2'den (17 Eyl 2026) beri para öğrenci
+onayında (`/confirm`) ya da 72 saatlik pencere dolunca serbest kalır, ama
+tamamlama yine onay/pencere akışını başlatan kapıdır. `released_at`
+damgalandığı anda para **geri alınamaz** hâle gelir (`escrow.begin_refund`'ın `released_at IS NULL` guard'ı,
 `services/escrow.py:226-230`). Bu yüzden bu kapının zaman kontrolü bir konfor
 özelliği değil, tek yönlü bir para hareketinin ön koşuludur.
 
@@ -111,12 +113,15 @@ async def test_ders_baslangicindan_hemen_ONCE_de_tamamlanamaz(ip1a, provider, ip
 # ═══════════════════════ YEŞİL NÖBETÇİLER ════════════════════════════════════
 
 
-async def test_YESIL_baslamis_ders_TAMAMLANIR_ve_para_serbest_kalir(ip1a, provider, ip1a_http):
-    """Meşru tamamlama hâlâ çalışmalı — ve parayı gerçekten serbest bırakmalı.
+async def test_YESIL_baslamis_ders_TAMAMLANIR_ogrenci_onayiyla_para_serbest_kalir(
+    ip1a, provider, ip1a_http
+):
+    """Meşru tamamlama çalışır; para öğrenci onayında eğitmene geçer (Modül 2).
 
-    Bu, P0-3 düzeltmesinin fazla katı yazılmasını engelleyen nöbetçidir: eşiği
-    yanlış koyan bir guard bütün tamamlamaları kilitlerdi ve eğitmenler hiç para
-    alamazdı. Kırmızı testler bu yanlışı göremez, bu görür.
+    17 Eyl 2026 kararı: eğitmenin "Tamamla"sı dersi COMPLETED yapar ama parayı
+    serbest bırakmaz — öğrenci onaylar ya da 72 saatlik pencere sorunsuz dolar.
+    Nöbetçi iki şeyi birlikte tutar: tamamlama kilitlenmedi, onay parayı
+    gerçekten eğitmene geçiriyor.
     """
     ders = await ip1a.odenmis()
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
@@ -126,10 +131,17 @@ async def test_YESIL_baslamis_ders_TAMAMLANIR_ve_para_serbest_kalir(ip1a, provid
 
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.COMPLETED
-    assert payment_status is PaymentStatus.RELEASED
+    assert payment_status is PaymentStatus.HELD, (
+        "eğitmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
+    )
+    assert (await ip1a.payment(ders.booking_id))["released_at"] is None
+
+    r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/confirm", headers=ders.client_auth)
+    assert r.status_code == 200, r.text
+    assert (await ip1a.durumlar(ders.booking_id))[1] is PaymentStatus.RELEASED
 
     p = await ip1a.payment(ders.booking_id)
-    assert p["released_at"] is not None, "tamamlanan derste released_at damgalanmadı"
+    assert p["released_at"] is not None, "onaylanan derste released_at damgalanmadı"
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal(str(p["tutor_earning"])), (
         "tamamlanan dersin kazancı payout defterine yansımadı"
     )
@@ -148,9 +160,10 @@ async def test_YESIL_ders_SIRASINDA_tamamlama_serbesttir(ip1a, provider, ip1a_ht
 
     r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/complete", headers=ders.tutor_auth)
     assert r.status_code == 200, r.text
+    # Modül 2: tamamlama parayı serbest bırakmaz; onay/pencere bekler.
     assert (await ip1a.durumlar(ders.booking_id)) == (
         BookingStatus.COMPLETED,
-        PaymentStatus.RELEASED,
+        PaymentStatus.HELD,
     )
 
 
@@ -202,6 +215,9 @@ async def test_YESIL_release_IKI_KEZ_cagrilsa_bile_damga_DEGISMEZ(ip1a, provider
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
     r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/complete", headers=ders.tutor_auth)
     assert r.status_code == 200, r.text
+    # Modül 2: ilk release öğrenci onayıyla üretilir (tamamlama parayı HELD bırakır).
+    r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/confirm", headers=ders.client_auth)
+    assert r.status_code == 200, r.text
     ilk = await ip1a.payment(ders.booking_id)
     assert ilk["released_at"] is not None, "kurulum: ilk release gerçekleşmedi"
 
@@ -224,6 +240,9 @@ async def test_YESIL_odenmemis_ders_tamamlansa_bile_para_ACILMAZ(ip1a, provider,
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
 
     r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/complete", headers=ders.tutor_auth)
+    assert r.status_code == 200, r.text
+    # Modül 2: release öğrenci onayında çağrılır; emanet yoksa yine no-op olmalı.
+    r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/confirm", headers=ders.client_auth)
     assert r.status_code == 200, r.text
 
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)

@@ -5,7 +5,9 @@ doğrulandı; ders yolu `payment_service` %17 kapsamayla en eski ve en çok
 kullanılan yüzey olmasına rağmen gerçek davranışıyla hiç sınanmamıştı.
 
 Doğrulanan zincir: **tutor kabul eder → PENDING · öğrenci öder → HELD (emanet) →
-ders tamamlanır → RELEASED (komisyon düşülür) · iptalde → REFUNDED.**
+öğrenci onaylar ya da 72 sa onay penceresi dolar → RELEASED (komisyon düşülür) ·
+iptalde → REFUNDED.** (Modül 2, 17 Eyl 2026: eğitmenin "Tamamla"sı parayı artık
+serbest bırakmaz; buradaki testler `payment_service` katmanını doğrudan sınar.)
 
 Kritik değişmezler:
 
@@ -196,7 +198,7 @@ async def test_iade_sonrasi_release_EDILEMEZ(db, booking_factory, fake_provider)
 
 
 async def test_release_iki_kez_cagrilirsa_damga_degismez(db, booking_factory):
-    """Auto-complete ile elle tamamlama aynı derse denk gelebilir."""
+    """Otomatik onay (72 sa) ile öğrenci onayı aynı derse denk gelebilir."""
     b = await booking_factory()
     p = await _held(db, b)
     await payment_service.release(db, b)

@@ -218,6 +218,11 @@ async def test_YESIL_SERBEST_BIRAKILMIS_emanet_asla_iade_edilmez(ip1a, provider,
         f"/api/v1/bookings/{ders.booking_id}/complete", headers=ders.tutor_auth
     )
     assert r.status_code == 200, r.text
+    # Modül 2: tamamlama parayı serbest bırakmaz; release öğrenci onayıyla gelir.
+    r = await ip1a_http.post(
+        f"/api/v1/bookings/{ders.booking_id}/confirm", headers=ders.client_auth
+    )
+    assert r.status_code == 200, r.text
     # Tamamlanmış dersi terminal bir duruma zorla: "COMPLETED + RELEASED" değil,
     # veri bozulmasıyla oluşabilecek "CANCELLED + RELEASED" hâli sınanır.
     await ip1a.terminal_yap(ders.booking_id, BookingStatus.CANCELLED)
@@ -258,6 +263,11 @@ async def test_YESIL_RELEASED_odemeye_DOGRUDAN_iade_denemesi_reddedilir(
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
     r = await ip1a_http.post(
         f"/api/v1/bookings/{ders.booking_id}/complete", headers=ders.tutor_auth
+    )
+    assert r.status_code == 200, r.text
+    # Modül 2: tamamlama parayı serbest bırakmaz; release öğrenci onayıyla gelir.
+    r = await ip1a_http.post(
+        f"/api/v1/bookings/{ders.booking_id}/confirm", headers=ders.client_auth
     )
     assert r.status_code == 200, r.text
     ilk = await ip1a.payment(ders.booking_id)

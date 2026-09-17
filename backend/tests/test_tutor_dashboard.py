@@ -75,10 +75,15 @@ def test_ay_basi_istanbul_saatine_gore():
 
 
 def test_pano_rotasi_tutor_id_rotasindan_once():
-    from api.routers.tutors import router
+    """`/{tutor_id}` önce tanımlanırsa `/me/dashboard` ona düşer (422).
 
-    paths = [r.path for r in router.routes]
-    assert paths.index("/tutors/me/dashboard") < paths.index("/tutors/{tutor_id}")
+    OpenAPI `paths` sözlüğü rotaları tanımlanma sırasıyla taşır (N9 nöbetçisi:
+    rota tablosu `app.routes`'tan okunmaz).
+    """
+    from main import app
+
+    paths = list(app.openapi()["paths"])
+    assert paths.index("/api/v1/tutors/me/dashboard") < paths.index("/api/v1/tutors/{tutor_id}")
 
 
 class _Sonuc:

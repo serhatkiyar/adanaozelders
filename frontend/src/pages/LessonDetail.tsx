@@ -11,6 +11,7 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { QuestionModal } from "@/components/QuestionModal";
 import { QaThreadChat } from "@/components/QaThreadChat";
 import { LessonTasksCard } from "@/components/LessonTasksCard";
+import { DersOnayKarti } from "@/components/booking/DersOnayKarti";
 import {
   useBooking,
   useBookingAction,
@@ -350,6 +351,20 @@ export default function LessonDetail() {
             </p>
           )}
 
+          {/* Öğrenci onayı / sorun bildirimi (Modül 2) */}
+          {isClient && (
+            <div className="mt-4">
+              <DersOnayKarti booking={booking} />
+            </div>
+          )}
+          {role === "TUTOR" && booking.status === BookingStatus.COMPLETED && booking.payment?.status === "HELD" && (
+            <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              {booking.is_disputed
+                ? "Öğrenci bu ders için sorun bildirdi; ekibimiz inceliyor. Karar verilene kadar ücret aktarılmaz."
+                : "Öğrenci onayladığında ya da ders bitişinden 72 saat sonra ücret kazancına eklenir."}
+            </p>
+          )}
+
           {/* ── Actions ── */}
           <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 ">
             {/* {canMessage && (
@@ -393,7 +408,7 @@ export default function LessonDetail() {
               </button>
             )}
 
-            {isClient && canMessage && (
+            {isClient && canMessage && !booking.late_for_changes && (
               <button
                 onClick={() => setShowReschedule(true)}
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 "
@@ -609,6 +624,9 @@ export default function LessonDetail() {
           bookingId={bookingId}
           counterpartName={counterpartName}
           onClose={() => setShowCancel(false)}
+          booking={booking}
+          rol={isClient ? "CLIENT" : "TUTOR"}
+          onReschedule={isClient ? () => setShowReschedule(true) : undefined}
         />
       )}
       {showReschedule && (

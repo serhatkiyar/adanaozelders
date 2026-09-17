@@ -441,6 +441,15 @@ class Settings(BaseSettings):
     # plan görevi tarafından otomatik COMPLETED'a geçirilir (review/QA açılsın diye).
     AUTO_COMPLETE_GRACE_HOURS: int = 12
 
+    # Özel ders onayı (17 Eyl 2026, kullanıcı kararı). Öğrenci dersi onaylamaz ya
+    # da sorun bildirmezse, bitişinden bu kadar saat sonra ders onaylanmış sayılır
+    # ve emanet eğitmene geçer. Öğrencinin "sorun bildir" penceresi de budur.
+    # (Kütüphane sınav/çalışma tarafı AUTO_COMPLETE_GRACE_HOURS'ta kalır.)
+    LESSON_CONFIRM_WINDOW_HOURS: int = 72
+    # Derse bu kadar saatten az kala: eğitmen iptal edemez; öğrenci erteleyemez,
+    # iptal ederse ödenmiş ücret iade edilmez, eğitmene geçer.
+    LESSON_LATE_CANCEL_HOURS: int = 12
+
     # Görev son tarihi bu kadar dakika kala (ve geçmiş ama hatırlatılmamış görevler için)
     # bir kez hatırlatma bildirimi gönderilir.
     TASK_REMINDER_LEAD_MINUTES: int = 60

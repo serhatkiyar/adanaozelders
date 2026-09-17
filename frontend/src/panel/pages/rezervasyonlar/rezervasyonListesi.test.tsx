@@ -6,6 +6,7 @@ import { RezervasyonListesi } from "@/panel/pages/rezervasyonlar/RezervasyonList
 import {
   useAdminBookingList,
   useAdminCancelBooking,
+  useAdminResolveDisputeBooking,
   useAdminToggleDisputeBooking,
 } from "@/hooks/useAdmin";
 import { ERISIM_REDDEDILDI_BASLIK } from "@/components/admin/AccessState";
@@ -23,6 +24,7 @@ vi.mock("@/hooks/useAdmin", () => ({
   useAdminBookingList: vi.fn(),
   useAdminCancelBooking: vi.fn(),
   useAdminToggleDisputeBooking: vi.fn(),
+  useAdminResolveDisputeBooking: vi.fn(),
 }));
 vi.mock("@/components/admin/ui", () => ({
   ReasonDialog: ({
@@ -61,6 +63,7 @@ vi.mock("@/components/admin/ui", () => ({
 
 const iptal = vi.fn();
 const ihtilaf = vi.fn();
+const cozum = vi.fn();
 
 const rezervasyon = (ek: Partial<AdminBookingOut> = {}) =>
   ({
@@ -120,6 +123,10 @@ beforeEach(() => {
   vi.mocked(useAdminCancelBooking).mockReturnValue({ mutate: iptal, isPending: false } as never);
   vi.mocked(useAdminToggleDisputeBooking).mockReturnValue({
     mutate: ihtilaf,
+    isPending: false,
+  } as never);
+  vi.mocked(useAdminResolveDisputeBooking).mockReturnValue({
+    mutate: cozum,
     isPending: false,
   } as never);
   izin("bookings.view", "bookings.manage", "users.view");
@@ -213,6 +220,47 @@ describe("RezervasyonListesi", () => {
     );
     expect(ihtilaf).toHaveBeenCalledWith(
       { id: 41, is_disputed: false },
+      expect.any(Object),
+    );
+  });
+
+  it("ihtilaflı derste iade / eğitmene ödeme kararı ve öğrencinin bildirdiği sorun görünür", () => {
+    vi.mocked(useAdminBookingList).mockReturnValue(
+      sonuc([
+        rezervasyon({
+          status: BookingStatus.COMPLETED,
+          is_disputed: true,
+          issue_reported_at: "2026-09-15T12:00:00+03:00",
+          issue_reason: "TUTOR_ABSENT",
+          issue_note: "Kapıya gelmedi",
+        }),
+      ]),
+    );
+    const gorunum = kur();
+    expect(screen.getByText(/Eğitmen derse gelmedi — Kapıya gelmedi/)).toBeTruthy();
+    // Tamamlanmış derste "İptal / iade" yok; para kararı ihtilaf düğmeleriyle verilir.
+    expect(screen.queryByRole("button", { name: "İptal / iade" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Öğrenciye iade et" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Öğrenciye iade et" })).getByRole("button", {
+        name: "İade et",
+      }),
+    );
+    expect(cozum).toHaveBeenCalledWith(
+      { id: 41, decision: "refund", note: "Geçerli gerekçe" },
+      expect.any(Object),
+    );
+    gorunum.unmount();
+
+    kur();
+    fireEvent.click(screen.getByRole("button", { name: "Eğitmene öde" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Eğitmene öde" })).getByRole("button", {
+        name: "Eğitmene öde",
+      }),
+    );
+    expect(cozum).toHaveBeenCalledWith(
+      { id: 41, decision: "release", note: "Geçerli gerekçe" },
       expect.any(Object),
     );
   });

@@ -80,6 +80,23 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     )
     admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Öğrenci onayı / sorun bildirimi (Modül 2). Onay ya da onay penceresinin
+    # dolması emaneti eğitmene geçirir; sorun bildirimi `is_disputed`'ı açar ve
+    # para admin kararına kadar emanette kalır.
+    student_confirmed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    issue_reported_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: TUTOR_ABSENT | LESSON_NOT_HELD | OTHER
+    issue_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    issue_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: Öğrenci derse 12 saatten az kala iptal etti; ödenmiş ücret eğitmene geçti.
+    late_cancel: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
     tutor: Mapped["Tutor"] = relationship(back_populates="bookings")
     client: Mapped["Client"] = relationship(back_populates="bookings")
     review: Mapped["Review | None"] = relationship(

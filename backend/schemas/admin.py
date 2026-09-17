@@ -134,6 +134,11 @@ class AdminBookingOut(BaseModel):
     is_disputed: bool
     admin_notes: str | None = None
     created_at: datetime.datetime
+    student_confirmed_at: datetime.datetime | None = None
+    issue_reported_at: datetime.datetime | None = None
+    issue_reason: str | None = None
+    issue_note: str | None = None
+    late_cancel: bool = False
 
     tutor_name: str | None = None
     client_name: str | None = None

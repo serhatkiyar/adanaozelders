@@ -306,7 +306,7 @@ const TERMS: LegalDoc = {
   title: "Kullanım Koşulları",
   description:
     "Adana Özel Ders platformunun üyelik, rezervasyon, ödeme ve kullanım esaslarını düzenleyen kullanım koşulları.",
-  updatedAt: "2026-06-11",
+  updatedAt: "2026-09-17",
   sections: [
     {
       id: "kabul",
@@ -355,7 +355,7 @@ const TERMS: LegalDoc = {
       heading: "5. Rezervasyon, Ödeme ve Emanet (Escrow)",
       blocks: [
         p(
-          "Rezervasyon eğitmen tarafından kabul edildiğinde öğrenciden ödeme alınır ve tutar Platform nezdinde emanette tutulur. Ders tamamlandığında platform hizmet komisyonu düşülerek kalan tutar eğitmene aktarılır; ders gerçekleşmeden iptal edilirse ödeme iade edilir. Ödemeler iyzico altyapısıyla alınır; tüm fiyatlar sunucu tarafında hesaplanır. Ayrıntılar İptal ve İade Politikası ile Mesafeli Satış Sözleşmesi'nde düzenlenmiştir."
+          "Rezervasyon eğitmen tarafından kabul edildiğinde öğrenciden ödeme alınır ve tutar Platform nezdinde emanette tutulur. Öğrenci dersin gerçekleştiğini onayladığında ya da ders bitiminden itibaren 72 saat içinde sorun bildirilmediğinde platform hizmet komisyonu düşülerek kalan tutar eğitmene aktarılır. Derse 12 saatten fazla süre varken yapılan iptallerde ödeme iade edilir; derse 12 saatten az kala öğrencinin yaptığı iptallerde ödeme iade edilmez ve eğitmene aktarılır. Ödemeler iyzico altyapısıyla alınır; tüm fiyatlar sunucu tarafında hesaplanır. Ayrıntılar İptal ve İade Politikası ile Mesafeli Satış Sözleşmesi'nde düzenlenmiştir."
         ),
       ],
     },
@@ -430,7 +430,7 @@ const DISTANCE_SALES: LegalDoc = {
   title: "Mesafeli Satış Sözleşmesi",
   description:
     "Adana Özel Ders üzerinden satın alınan özel ders, deneme sınavı oturumu, çalışma alanı hizmetleri ve basılı kitap siparişlerine ilişkin mesafeli satış sözleşmesi.",
-  updatedAt: "2026-08-17",
+  updatedAt: "2026-09-17",
   sections: [
     {
       id: "taraflar",
@@ -514,7 +514,7 @@ const DISTANCE_SALES: LegalDoc = {
           "Mesafeli Sözleşmeler Yönetmeliği m.15/1-g uyarınca; BELİRLİ BİR TARİHTE veya dönemde yapılması gereken, konaklama, eşya taşıma, araba kiralama, yiyecek-içecek tedariki ve eğlence veya dinlenme amacıyla yapılan BOŞ ZAMANIN DEĞERLENDİRİLMESİNE İLİŞKİN hizmetlere dair sözleşmelerde cayma hakkı kullanılamaz. Bu kapsamda, belirli tarih ve saate bağlanan deneme sınavı oturumu katılım hakkı ve çalışma alanı rezervasyonlarında cayma hakkı BULUNMAZ. Bununla birlikte SATICI, kanuni bir zorunluluk olmaksızın kendi ticari politikası gereği, oturum/rezervasyon başlangıcına 24 SAATTEN FAZLA süre kalması hâlinde iptal ve tam iade imkânı tanır; bu süreden sonra iptal yapılamaz ve katılım sağlanmaması (no-show) hâlinde iade yapılmaz."
         ),
         p(
-          "Özel ders rezervasyonlarında ders henüz ifa edilmeden yapılan iptallerde ödeme emanetten iade edilir. Hizmetin ifasına ALICI onayı ile başlanmış ve hizmet tamamlanmışsa cayma hakkı kullanılamaz (Yönetmelik m.15/1-h). Ayrıntılı iptal/iade kuralları İptal ve İade Politikası'nda yer alır ve bu sözleşmenin ayrılmaz parçasıdır."
+          "Özel ders rezervasyonlarında, ders başlangıcına 12 SAATTEN FAZLA süre varken yapılan iptallerde ödeme emanetten iade edilir. Ders belirli bir tarih ve saate bağlı olduğundan, SATICI'nın ticari politikası gereği ders başlangıcına 12 saatten az kala ALICI tarafından yapılan iptallerde ödeme iade edilmez ve eğitmene aktarılır. Hizmetin ifasına ALICI onayı ile başlanmış ve hizmet tamamlanmışsa cayma hakkı kullanılamaz (Yönetmelik m.15/1-h). Ayrıntılı iptal/iade kuralları İptal ve İade Politikası'nda yer alır ve bu sözleşmenin ayrılmaz parçasıdır."
         ),
         p(
           "FİZİKSEL ÜRÜNLERDE (basılı kitap) durum farklıdır: Mesafeli Sözleşmeler Yönetmeliği m.9 uyarınca ALICI, ürünü teslim aldığı günden itibaren ON DÖRT GÜN içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin sözleşmeden cayabilir. Cayma hakkı, sözleşmenin kurulmasından teslime kadar olan sürede de kullanılabilir. Cayma bildirimini hesabınızdaki sipariş detayından iade talebi oluşturarak veya aşağıdaki iletişim kanallarından yazılı olarak iletebilirsiniz."
@@ -584,7 +584,7 @@ const REFUND: LegalDoc = {
   title: "Teslimat, İptal ve İade Politikası",
   description:
     "Adana Özel Ders'te özel ders, deneme sınavı oturumu, çalışma alanı rezervasyonları ve basılı kitap siparişlerinin teslimat, iptal ve iade kuralları.",
-  updatedAt: "2026-08-17",
+  updatedAt: "2026-09-17",
   sections: [
     {
       // Bu bölüm, `lib/legalDebt.ts::escrow-tum-odemeler` kaydının konusuydu:
@@ -618,9 +618,10 @@ const REFUND: LegalDoc = {
       blocks: [
         list(
           "Eğitmen talebi henüz kabul etmemişse: ödeme alınmamıştır, talebi serbestçe iptal edebilirsiniz.",
-          "Ödeme yapıldı ancak ders henüz gerçekleşmediyse: dersin iptali hâlinde (öğrenci veya eğitmen tarafından) emanetteki tutarın TAMAMI iade edilir.",
-          "Eğitmen derse gelmezse veya ders gerçekleşmezse: destek üzerinden bildirmeniz hâlinde tutar iade edilir.",
-          "Ders tamamlandıktan sonra: bedel eğitmene aktarılır; hizmete ilişkin itirazlarınızı 48 saat içinde destek ekibine iletebilirsiniz, Platform itirazı inceleyerek karara bağlar."
+          "Ders başlangıcına 12 SAATTEN FAZLA süre varsa: dersi iptal edebilir veya erteleyebilirsiniz; ödeme yaptıysanız emanetteki tutarın TAMAMI iade edilir.",
+          "Ders başlangıcına 12 SAATTEN AZ süre kaldıysa: ders ertelenemez. Öğrenci dersi iptal edebilir ancak ödenmiş tutar İADE EDİLMEZ ve eğitmene aktarılır. Eğitmen bu süre içinde dersi iptal edemez.",
+          "Ders sonrasında: dersin gerçekleştiğini onayladığınızda bedel eğitmene aktarılır. Ders gerçekleşmediyse veya bir sorun yaşandıysa, ders bitiminden itibaren 72 SAAT içinde ders sayfasındaki \"Sorun bildir\" seçeneğiyle bildirebilirsiniz; bu durumda bedel Platform itirazı inceleyip karara bağlayana kadar emanette tutulur ve karara göre size iade edilir ya da eğitmene aktarılır.",
+          "72 saat içinde onay verilmez veya sorun bildirilmezse ders gerçekleşmiş kabul edilir ve bedel eğitmene aktarılır."
         ),
       ],
     },

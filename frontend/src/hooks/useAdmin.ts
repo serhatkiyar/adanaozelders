@@ -13,6 +13,7 @@ import {
   fetchAdminBookings,
   cancelAdminBooking,
   toggleDisputeAdminBooking,
+  resolveDisputeAdminBooking,
   fetchPendingEducations,
   verifyEducation,
   fetchAdminPromotions,
@@ -231,6 +232,15 @@ export function useAdminCancelBooking() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) => cancelAdminBooking(id, reason),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAdminResolveDisputeBooking() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: ({ id, decision, note }: { id: number; decision: "refund" | "release"; note?: string }) =>
+      resolveDisputeAdminBooking(id, decision, note),
     onSuccess: invalidate,
   });
 }

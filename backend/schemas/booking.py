@@ -3,9 +3,11 @@ from __future__ import annotations
 import datetime
 import re
 from decimal import Decimal
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
+from core.config import settings
 from models.booking import BookingStatus
 from models.payment import PaymentStatus
 from schemas.payment import PaymentOut
@@ -99,6 +101,11 @@ class BookingCancel(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class BookingIssueReport(BaseModel):
+    reason: Literal["TUTOR_ABSENT", "LESSON_NOT_HELD", "OTHER"]
+    note: str | None = Field(default=None, max_length=1000)
+
+
 class BookingLocation(BaseModel):
     location: str = Field(min_length=1, max_length=300)
 
@@ -150,6 +157,31 @@ class BookingOut(BaseModel):
     private_notes: list[BookingPrivateNoteOut] = []
     # Escrow ödeme durumu (booking.payment 1:1, selectin yüklenir).
     payment: PaymentOut | None = None
+    # Öğrenci onayı / sorun bildirimi / geç iptal (Modül 2).
+    is_disputed: bool = False
+    student_confirmed_at: datetime.datetime | None = None
+    issue_reported_at: datetime.datetime | None = None
+    issue_reason: str | None = None
+    issue_note: str | None = None
+    late_cancel: bool = False
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def issue_report_deadline(self) -> datetime.datetime:
+        """Öğrencinin sorun bildirebileceği son an (bitiş + onay penceresi)."""
+        end = self.end_at if self.end_at.tzinfo else self.end_at.replace(tzinfo=datetime.timezone.utc)
+        return end + datetime.timedelta(hours=settings.LESSON_CONFIRM_WINDOW_HOURS)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def late_for_changes(self) -> bool:
+        """Kabul edilmiş derse iptal/erteleme eşiğinden az mı kaldı (sunucu saati)."""
+        if self.status != BookingStatus.ACCEPTED:
+            return False
+        start = self.start_at if self.start_at.tzinfo else self.start_at.replace(tzinfo=datetime.timezone.utc)
+        return start - datetime.datetime.now(datetime.timezone.utc) < datetime.timedelta(
+            hours=settings.LESSON_LATE_CANCEL_HOURS
+        )
 
     @model_validator(mode="after")
     def _gate_meeting_room(self) -> "BookingOut":

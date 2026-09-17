@@ -240,6 +240,19 @@ export async function cancelAdminBooking(id: number, reason: string): Promise<Ad
   return data;
 }
 
+/** İhtilaflı derste karar: öğrenciye iade ya da eğitmene ödeme. */
+export async function resolveDisputeAdminBooking(
+  id: number,
+  decision: "refund" | "release",
+  note?: string
+): Promise<AdminBookingOut> {
+  const { data } = await apiClient.post<AdminBookingOut>(`/admin/bookings/${id}/dispute/resolve`, {
+    decision,
+    note: note ?? null,
+  });
+  return data;
+}
+
 export async function toggleDisputeAdminBooking(id: number, is_disputed: boolean, admin_notes?: string): Promise<AdminBookingOut> {
   const { data } = await apiClient.post<AdminBookingOut>(`/admin/bookings/${id}/dispute`, { is_disputed, admin_notes });
   return data;

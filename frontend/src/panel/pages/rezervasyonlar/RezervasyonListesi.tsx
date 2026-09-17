@@ -9,6 +9,7 @@ import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import {
   useAdminBookingList,
   useAdminCancelBooking,
+  useAdminResolveDisputeBooking,
   useAdminToggleDisputeBooking,
 } from "@/hooks/useAdmin";
 import { useUrlDurumu } from "@/hooks/useUrlDurumu";
@@ -18,6 +19,7 @@ import {
   parseAdminBookingQuery,
 } from "@/lib/adminOperationsQuery";
 import { BOOKING_STATUS_LABEL } from "@/lib/bookingStatus";
+import { sorunNedeniEtiketi } from "@/lib/dersOnayi";
 import { rolEtiketi } from "@/lib/roles";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
@@ -53,7 +55,7 @@ const DURUM_RENGI: Partial<Record<BookingStatus, string>> = {
 };
 
 type Karar = {
-  kind: "cancel" | "dispute" | "clear";
+  kind: "cancel" | "dispute" | "clear" | "refund" | "release";
   booking: AdminBookingOut;
 };
 
@@ -100,7 +102,8 @@ export function RezervasyonListesi() {
   );
   const iptal = useAdminCancelBooking();
   const ihtilaf = useAdminToggleDisputeBooking();
-  const mesgul = iptal.isPending || ihtilaf.isPending;
+  const cozum = useAdminResolveDisputeBooking();
+  const mesgul = iptal.isPending || ihtilaf.isPending || cozum.isPending;
 
   useEffect(() => setArama(durum.q), [durum.q]);
 
@@ -147,8 +150,25 @@ export function RezervasyonListesi() {
         >
           {booking.is_disputed ? "İhtilafı kaldır" : "İhtilaf işaretle"}
         </Button>
+        {booking.is_disputed ? (
+          <>
+            <Button
+              disabled={mesgul}
+              onClick={() => kararYuzeyi.ac({ kind: "refund", booking })}
+            >
+              Öğrenciye iade et
+            </Button>
+            <Button
+              disabled={mesgul}
+              onClick={() => kararYuzeyi.ac({ kind: "release", booking })}
+            >
+              Eğitmene öde
+            </Button>
+          </>
+        ) : null}
         {booking.status !== BookingStatus.CANCELLED &&
-        booking.status !== BookingStatus.REJECTED ? (
+        booking.status !== BookingStatus.REJECTED &&
+        booking.status !== BookingStatus.COMPLETED ? (
           <Button
             danger
             disabled={mesgul}
@@ -222,6 +242,17 @@ export function RezervasyonListesi() {
       key: "notes",
       render: (_, booking) => (
         <div style={{ minWidth: 180, maxWidth: 320, overflowWrap: "anywhere" }}>
+          {booking.issue_reported_at ? (
+            <Typography.Text type="danger" style={{ display: "block", fontSize: 12 }}>
+              Öğrenci sorunu: {sorunNedeniEtiketi(booking.issue_reason)}
+              {booking.issue_note ? ` — ${booking.issue_note}` : ""}
+            </Typography.Text>
+          ) : null}
+          {booking.late_cancel ? (
+            <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
+              Geç iptal (12 saatten az kala); ücret eğitmene aktarıldı.
+            </Typography.Text>
+          ) : null}
           {booking.admin_notes ? (
             <Typography.Text type="warning" style={{ display: "block", fontSize: 12 }}>
               Admin notu: {booking.admin_notes}
@@ -232,7 +263,7 @@ export function RezervasyonListesi() {
               İptal: {booking.cancel_reason}
             </Typography.Text>
           ) : null}
-          {!booking.admin_notes && !booking.cancel_reason ? (
+          {!booking.admin_notes && !booking.cancel_reason && !booking.issue_reported_at && !booking.late_cancel ? (
             <Typography.Text type="secondary">-</Typography.Text>
           ) : null}
         </div>
@@ -268,6 +299,23 @@ export function RezervasyonListesi() {
 
   const gerekceGonder = (reason: string) => {
     if (!karar) return;
+    if (karar.kind === "refund" || karar.kind === "release") {
+      cozum.mutate(
+        { id: karar.booking.id, decision: karar.kind, note: reason },
+        {
+          onSuccess: () => {
+            toast.success(
+              karar.kind === "refund"
+                ? "Ders iptal edildi, ücret öğrenciye iade ediliyor."
+                : "İhtilaf kapandı, ücret eğitmene aktarıldı.",
+            );
+            kararYuzeyi.kapat();
+          },
+          onError: (error) => toast.error(getErrorMessage(error, "Karar kaydedilemedi.")),
+        },
+      );
+      return;
+    }
     if (karar.kind === "cancel") {
       iptal.mutate(
         { id: karar.booking.id, reason },
@@ -371,6 +419,24 @@ export function RezervasyonListesi() {
         birimEtiket="Rezervasyon"
       />
 
+      <ReasonDialog
+        open={karar?.kind === "refund" || karar?.kind === "release"}
+        title={karar?.kind === "refund" ? "Öğrenciye iade et" : "Eğitmene öde"}
+        description={
+          karar?.kind === "refund"
+            ? "Ders iptal edilir ve emanetteki ücret öğrenciye iade edilir. Bu işlem geri alınamaz."
+            : "İhtilaf kapanır, ders tamamlanmış sayılır ve ücret eğitmene aktarılır. Bu işlem geri alınamaz."
+        }
+        label="Karar notu"
+        required
+        minLength={3}
+        maxLength={500}
+        danger={karar?.kind === "refund"}
+        confirmLabel={karar?.kind === "refund" ? "İade et" : "Eğitmene öde"}
+        isPending={mesgul}
+        onClose={kararYuzeyi.kapat}
+        onConfirm={gerekceGonder}
+      />
       <ReasonDialog
         open={karar?.kind === "cancel" || karar?.kind === "dispute"}
         title={karar?.kind === "cancel" ? "Rezervasyonu iptal et" : "İhtilaf işaretle"}

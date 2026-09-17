@@ -1,5 +1,5 @@
 import { apiClient } from "@/api/axios";
-import type { BookingCreate, BookingOut, BookingStatus } from "@/types";
+import type { BookingCreate, BookingIssueReason, BookingOut, BookingStatus } from "@/types";
 
 /**
  * FormData gövdesi için Content-Type ELLE YAZILMAZ — sentinel `false` şart.
@@ -61,6 +61,23 @@ export async function rejectBooking(id: number): Promise<BookingOut> {
 
 export async function completeBooking(id: number): Promise<BookingOut> {
   const { data } = await apiClient.post<BookingOut>(`/bookings/${id}/complete`);
+  return data;
+}
+
+export async function confirmBooking(id: number): Promise<BookingOut> {
+  const { data } = await apiClient.post<BookingOut>(`/bookings/${id}/confirm`);
+  return data;
+}
+
+export async function reportBookingIssue(
+  id: number,
+  reason: BookingIssueReason,
+  note?: string
+): Promise<BookingOut> {
+  const { data } = await apiClient.post<BookingOut>(`/bookings/${id}/report-issue`, {
+    reason,
+    note: note?.trim() ? note.trim() : null,
+  });
   return data;
 }
 

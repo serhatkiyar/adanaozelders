@@ -58,13 +58,16 @@ TAM_IZIN = ["bookings.view", "bookings.manage"]
 async def _tamamlanmis_ders(ip1a, ip1a_http):
     """Gerçek yoldan COMPLETED + RELEASED bir ders üretir.
 
-    Ders geçmişe kaydırılır ve eğitmen `POST /bookings/{id}/complete` ile
-    tamamlar — yani `RELEASED` durumu elle yazılmaz, `payment_service.release`
+    Ders geçmişe kaydırılır, eğitmen `POST /bookings/{id}/complete` ile
+    tamamlar ve öğrenci `POST /bookings/{id}/confirm` ile onaylar (Modül 2:
+    para onayla serbest kalır) — `RELEASED` elle yazılmaz, `payment_service.release`
     üretir (`released_at` damgası da böylece gerçek olur).
     """
     ders = await ip1a.odenmis()
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
     r = await ip1a_http.post(f"{BOOKING_KOK}/{ders.booking_id}/complete", headers=ders.tutor_auth)
+    assert r.status_code == 200, r.text
+    r = await ip1a_http.post(f"{BOOKING_KOK}/{ders.booking_id}/confirm", headers=ders.client_auth)
     assert r.status_code == 200, r.text
     assert (await ip1a.durumlar(ders.booking_id))[1] is PaymentStatus.RELEASED
     return ders

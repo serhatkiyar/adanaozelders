@@ -17,7 +17,7 @@ yoktur.**
 Daha genel bulgu: `is_disputed` (`models/booking.py:78-80`) **hiçbir para veya FSM
 kararında okunmaz**. Tek yazma yolu `admin_service.toggle_dispute`; okuma yolları
 yalnız admin listesi filtresi ve dashboard sayacı. Yani bayrak bugün salt bir
-etikettir ve `AUTO_COMPLETE_GRACE_HOURS` (=12) sonra para yine eğitmene geçer.
+etikettir ve `LESSON_CONFIRM_WINDOW_HOURS` (=72, Modül 2) sonra para yine eğitmene geçer.
 
 ## Neden yalnız sorgu satırı test edilmiyor
 
@@ -49,7 +49,7 @@ ADMIN_KOK = "/api/v1/admin/bookings"
 BOOKING_KOK = "/api/v1/bookings"
 TAM_IZIN = ["bookings.view", "bookings.manage"]
 
-#: `AUTO_COMPLETE_GRACE_HOURS` (=12) fazlasıyla aşılsın.
+#: `LESSON_CONFIRM_WINDOW_HOURS` (=72) fazlasıyla aşılsın.
 GECMIS = datetime.timedelta(days=40)
 
 
@@ -215,13 +215,16 @@ async def test_YESIL_auto_complete_IPTAL_EDILMIS_dersi_diriltmez(ip1a, provider,
     nöbetçi o atomik claim'in düşürülmediğini sabitler.
     """
     ders = await ip1a.odenmis()
-    await ip1a.zamani_kaydir(ders.booking_id, delta=-GECMIS)
+    # Modül 2: başlamış ders öğrenci tarafından iptal edilemez (409). Ders önce
+    # (+30 gün, tam iade) iptal edilir, SONRA tarama kapsamına girsin diye
+    # geçmişe kaydırılır.
     r = await ip1a_http.post(
         f"{BOOKING_KOK}/{ders.booking_id}/cancel",
         json={"reason": "İP-1a nöbetçi"},
         headers=ders.client_auth,
     )
     assert r.status_code == 200, r.text
+    await ip1a.zamani_kaydir(ders.booking_id, delta=-GECMIS)
     iade_once = len(provider.refund_calls)
 
     await _auto_complete_turu()
@@ -304,20 +307,24 @@ async def test_SORGUDAN_SONRA_acilan_ihtilaf_CLAIM_ANINDA_yakalanir(
     """
     ders = await _gecmis_ihtilafli_ders(ip1a, ip1a_http, ihtilafli=False)
 
+    # Modül 2 (17 Eyl 2026): tarama artık claim'den ÖNCE satırı `FOR UPDATE`
+    # ile kilitleyip güncel hâlini yeniden okuyor (`_lock_booking`). Kapı bu
+    # yüzden kilidin HEMEN ÖNCESİNDE durur; kilidin içinde dursaydı admin'in
+    # UPDATE'i o kilidi bekler ve test kendi kendini kilitlerdi.
     claim_kapisinda, devam = asyncio.Event(), asyncio.Event()
-    orijinal_claim = booking_service._claim_transition
+    orijinal_kilit = booking_service._lock_booking
 
-    async def kapili_claim(db, booking, target, **kw):
-        """YALNIZ hedef booking'in COMPLETED claim'ini kapıya bağlar."""
-        if booking.id == ders.booking_id and target is BookingStatus.COMPLETED:
+    async def kapili_kilit(db, booking, **kw):
+        """YALNIZ hedef booking'in kilidini kapıya bağlar."""
+        if booking.id == ders.booking_id:
             claim_kapisinda.set()
             await _event_bekle(
                 devam,
-                aciklama="test, claim'in 'devam' kapısını hiç açmadı",
+                aciklama="test, kilidin 'devam' kapısını hiç açmadı",
             )
-        return await orijinal_claim(db, booking, target, **kw)
+        return await orijinal_kilit(db, booking, **kw)
 
-    monkeypatch.setattr(booking_service, "_claim_transition", kapili_claim)
+    monkeypatch.setattr(booking_service, "_lock_booking", kapili_kilit)
 
     gorev = asyncio.create_task(_auto_complete_turu(), name="auto-complete")
     try:
@@ -350,8 +357,8 @@ async def test_SORGUDAN_SONRA_acilan_ihtilaf_CLAIM_ANINDA_yakalanir(
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.ACCEPTED, (
         f"SORGUDAN SONRA AÇILAN İHTİLAF YAKALANMADI: ders {booking_status.value} "
-        "oldu. Aday sorgusundaki filtre bu pencereyi göremez; kararı claim'in "
-        "WHERE koşulu (extra_where=_IHTILAFSIZ) vermek zorundadır."
+        "oldu. Aday sorgusundaki filtre bu pencereyi göremez; kararı kilitli "
+        "yeniden okuma ve claim'in WHERE koşulu (extra_where=_IHTILAFSIZ) verir."
     )
     assert payment_status is PaymentStatus.HELD, (
         f"ihtilaflı dersin emaneti {payment_status} oldu — para hareket etti"

@@ -52,6 +52,11 @@ class DisputeToggle(BaseModel):
     admin_notes: str | None = None
 
 
+class DisputeResolveIn(BaseModel):
+    decision: Literal["refund", "release"]
+    note: str | None = None
+
+
 class PasswordResetIn(BaseModel):
     role: Literal["tutor", "client"]
     user_id: int
@@ -694,6 +699,32 @@ async def cancel_booking(
         target_type="booking",
         target_id=booking_id,
         details=payload.reason,
+    )
+    items, _ = await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id)
+    return items[0]
+
+
+@router.post("/bookings/{booking_id}/dispute/resolve", response_model=AdminBookingOut)
+async def resolve_booking_dispute(
+    booking_id: int,
+    payload: DisputeResolveIn,
+    admin: Admin = Depends(require_admin_permission("bookings.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """İhtilaflı derste karar: öğrenciye iade (`refund`) ya da eğitmene ödeme (`release`)."""
+    from services import booking_service
+
+    booking = await _get_booking_or_404(db, booking_id)
+    booking = await booking_service.resolve_dispute(
+        db, booking, decision=payload.decision, note=payload.note
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action=f"booking.dispute_resolve.{payload.decision}",
+        target_type="booking",
+        target_id=booking_id,
+        details=payload.note,
     )
     items, _ = await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id)
     return items[0]

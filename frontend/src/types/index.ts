@@ -754,7 +754,20 @@ export interface BookingOut {
   comments: BookingCommentOut[];
   private_notes: BookingPrivateNoteOut[];
   payment?: Payment | null;
+  // Öğrenci onayı / sorun bildirimi / geç iptal (Modül 2).
+  is_disputed?: boolean;
+  student_confirmed_at?: string | null;
+  issue_reported_at?: string | null;
+  issue_reason?: BookingIssueReason | null;
+  issue_note?: string | null;
+  late_cancel?: boolean;
+  /** Sorun bildiriminin son anı (bitiş + 72 sa); sunucu hesaplar. */
+  issue_report_deadline?: string;
+  /** Kabul edilmiş derse 12 saatten az mı kaldı (sunucu saati). */
+  late_for_changes?: boolean;
 }
+
+export type BookingIssueReason = "TUTOR_ABSENT" | "LESSON_NOT_HELD" | "OTHER";
 
 /* ============================ PAYMENT ============================ */
 
@@ -1127,6 +1140,11 @@ export interface AdminBookingOut {
   created_at: string;
   tutor_name?: string | null;
   client_name?: string | null;
+  student_confirmed_at?: string | null;
+  issue_reported_at?: string | null;
+  issue_reason?: string | null;
+  issue_note?: string | null;
+  late_cancel?: boolean;
 }
 
 /* ============================ LIBRARY (Kütüphane) ============================ */

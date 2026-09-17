@@ -19,6 +19,7 @@ from models.tutor import Tutor
 from schemas.booking import (
     BookingCancel,
     BookingCreate,
+    BookingIssueReport,
     BookingOut,
     BookingReschedule,
     BookingResourceCreate,
@@ -146,6 +147,39 @@ async def complete_booking(
     booking = await _get_booking_or_404(db, booking_id, tutor)
     _assert_owner_tutor(booking, tutor)
     return await booking_service.complete(db, booking)
+
+
+@router.post("/{booking_id}/confirm", response_model=BookingOut)
+async def confirm_booking(
+    booking_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğrenci dersin gerçekleştiğini onaylar; emanet eğitmene geçer."""
+    booking = await _get_booking_or_404(db, booking_id, client)
+    if booking.client_id != client.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
+    return await booking_service.confirm_by_student(db, booking)
+
+
+@router.post(
+    "/{booking_id}/report-issue",
+    response_model=BookingOut,
+    dependencies=[Depends(_create_limit)],
+)
+async def report_booking_issue(
+    booking_id: int,
+    payload: BookingIssueReport,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğrenci ders sonrası sorun bildirir; para admin kararına kadar emanette kalır."""
+    booking = await _get_booking_or_404(db, booking_id, client)
+    if booking.client_id != client.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
+    return await booking_service.report_issue(
+        db, booking, reason=payload.reason, note=payload.note
+    )
 
 
 @router.post("/{booking_id}/cancel", response_model=BookingOut)

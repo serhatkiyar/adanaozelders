@@ -499,11 +499,25 @@ async def toggle_dispute(db: AsyncSession, booking: Booking, is_disputed: bool, 
     her durumda serbesttir (admin çözümü kilit bırakmamalı).
     """
     if is_disputed:
+        from models.payment import Payment, PaymentStatus
+
+        # Modül 2: eğitmen "Tamamla" dedikten sonra para öğrenci onayına kadar
+        # emanette bekler; o aralıkta (COMPLETED + dağıtılmamış para) ihtilaf
+        # hâlâ açılabilir. Parası dağıtılmış ders yine reddedilir.
+        dagitilmis = (
+            select(Payment.id)
+            .where(
+                Payment.booking_id == Booking.id,
+                (Payment.status == PaymentStatus.RELEASED) | Payment.released_at.is_not(None),
+            )
+            .exists()
+        )
         result = await db.execute(
             update(Booking)
             .where(
                 Booking.id == booking.id,
-                Booking.status.in_(_DISPUTE_ACILABILIR),
+                Booking.status.in_(_DISPUTE_ACILABILIR)
+                | ((Booking.status == BookingStatus.COMPLETED) & ~dagitilmis),
                 Booking.deleted_at.is_(None),
             )
             .values(is_disputed=True)

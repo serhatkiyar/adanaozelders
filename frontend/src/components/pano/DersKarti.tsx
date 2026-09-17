@@ -136,6 +136,8 @@ export function DersKarti({
           bookingId={booking.id}
           counterpartName={clientName}
           onClose={() => setShowCancel(false)}
+          booking={booking}
+          rol="TUTOR"
         />
       )}
     </div>

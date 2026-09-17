@@ -167,6 +167,63 @@ def _claim_hatasi(booking: Booking, target: BookingStatus) -> HTTPException:
     )
 
 
+def _utc(dt: datetime.datetime) -> datetime.datetime:
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=datetime.timezone.utc)
+
+
+def _utcnow() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def is_late_for_changes(booking: Booking, now: datetime.datetime | None = None) -> bool:
+    """Kabul edilmiş derse ``LESSON_LATE_CANCEL_HOURS``'tan az mı kaldı?
+
+    Kural yalnız ACCEPTED derste işler: onay bekleyen talepte ödeme de yükümlülük
+    de yoktur. Başlamış ders de "geç" sayılır.
+    """
+    if booking.status != BookingStatus.ACCEPTED:
+        return False
+    now = now or _utcnow()
+    return _utc(booking.start_at) - now < datetime.timedelta(
+        hours=settings.LESSON_LATE_CANCEL_HOURS
+    )
+
+
+def issue_report_deadline(booking: Booking) -> datetime.datetime:
+    """Öğrencinin sorun bildirebileceği son an (ders bitişi + onay penceresi)."""
+    return _utc(booking.end_at) + datetime.timedelta(
+        hours=settings.LESSON_CONFIRM_WINDOW_HOURS
+    )
+
+
+async def _lock_booking(
+    db: AsyncSession, booking: Booking, *, skip_locked: bool = False
+) -> Booking | None:
+    """Ders satırını ``FOR UPDATE`` ile kilitleyip güncel hâlini döndürür.
+
+    Onay, sorun bildirimi, otomatik onay ve admin kararı aynı satırda sıraya
+    girer: "sorun bildirilmiş ders + eğitmene geçmiş para" hiç oluşamaz.
+    """
+    stmt = (
+        select(Booking)
+        .where(Booking.id == booking.id, Booking.deleted_at.is_(None))
+        # `populate_existing` nesneyi yeniden doldurur; varsayılan (lazy) yüklenen
+        # `resources` ilişkisi boşalırsa yanıt serileştirilirken async ortamda
+        # tembel yükleme patlar (MissingGreenlet). Kilit sorgusunda birlikte yüklenir.
+        .options(selectinload(Booking.resources))
+        .with_for_update(skip_locked=skip_locked)
+        .execution_options(populate_existing=True)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def _para_egitmene_gecti_mi(db: AsyncSession, booking: Booking) -> bool:
+    payment = await payment_service.get_for_booking(db, booking.id)
+    return payment is not None and (
+        payment.status is PaymentStatus.RELEASED or payment.released_at is not None
+    )
+
+
 async def _assert_within_availability(
     db: AsyncSession,
     tutor_id: int,
@@ -616,17 +673,208 @@ async def complete(db: AsyncSession, booking: Booking) -> Booking:
         db, booking, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
     ):
         raise _claim_hatasi(booking, BookingStatus.COMPLETED)
+    # Para burada SERBEST BIRAKILMAZ (Modül 2): öğrenci onaylayınca ya da onay
+    # penceresi (LESSON_CONFIRM_WINDOW_HOURS) sorunsuz dolunca eğitmene geçer.
     await notification_service.notify(
         db,
         user_id=booking.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message="Dersin tamamlandı. Değerlendirme yapabilir ve eğitmene soru sorabilirsin.",
-        link="/student/bookings",
+        message=(
+            "Eğitmenin dersi tamamlandı olarak işaretledi. Ders gerçekleştiyse onayla; "
+            f"sorun varsa {settings.LESSON_CONFIRM_WINDOW_HOURS} saat içinde bildir."
+        ),
+        link=f"/ders-talepleri/{booking.id}",
     )
-    # Emanetteki ödemeyi (varsa) eğitmene serbest bırak.
-    await payment_service.release(db, booking)
     _notify_booking_update(db, booking)
     return booking
+
+
+ISSUE_REASONS = frozenset({"TUTOR_ABSENT", "LESSON_NOT_HELD", "OTHER"})
+
+
+async def confirm_by_student(db: AsyncSession, booking: Booking) -> Booking:
+    """Öğrenci "ders gerçekleşti" der: ders tamamlanır, emanet eğitmene geçer."""
+    if booking.status not in (BookingStatus.ACCEPTED, BookingStatus.COMPLETED):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu ders onaylanamaz.")
+    now = _utcnow()
+    if _utc(booking.start_at) > now:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ders başlamadan onaylanamaz.")
+    locked = await _lock_booking(db, booking)
+    if locked is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    if locked.student_confirmed_at is not None:
+        return locked
+    if locked.is_disputed:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu ders için sorun bildirdin; yönetici incelemesi sürüyor.",
+        )
+    if locked.status == BookingStatus.ACCEPTED:
+        if not await _claim_transition(
+            db, locked, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
+        ):
+            raise _claim_hatasi(locked, BookingStatus.COMPLETED)
+    elif locked.status != BookingStatus.COMPLETED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu ders onaylanamaz.")
+    locked.student_confirmed_at = now
+    await db.flush()
+    await notification_service.notify(
+        db,
+        user_id=locked.tutor_id,
+        role_id=ROLE_IDS[RoleType.TUTOR],
+        message="Öğrencin dersi onayladı.",
+        link=f"/ders-talepleri/{locked.id}",
+    )
+    await payment_service.release(db, locked)
+    _notify_booking_update(db, locked)
+    return locked
+
+
+async def report_issue(
+    db: AsyncSession, booking: Booking, *, reason: str, note: str | None
+) -> Booking:
+    """Öğrenci ders sonrası sorun bildirir; para admin kararına kadar emanette kalır."""
+    if reason not in ISSUE_REASONS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Geçersiz sorun nedeni."
+        )
+    if booking.status not in (BookingStatus.ACCEPTED, BookingStatus.COMPLETED):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu ders için sorun bildirilemez.")
+    now = _utcnow()
+    if _utc(booking.start_at) > now:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Ders başlamadan sorun bildirilemez; gerekirse dersi iptal edebilirsin.",
+        )
+    locked = await _lock_booking(db, booking)
+    if locked is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    if locked.student_confirmed_at is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Onayladığın bir ders için sorun bildirilemez."
+        )
+    if locked.is_disputed:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu ders için zaten sorun bildirdin.")
+    if now > issue_report_deadline(locked):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Sorun bildirme süresi ({settings.LESSON_CONFIRM_WINDOW_HOURS} saat) doldu.",
+        )
+    if await _para_egitmene_gecti_mi(db, locked):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu dersin ücreti eğitmene aktarıldı; destek ekibiyle iletişime geç.",
+        )
+    locked.is_disputed = True
+    locked.issue_reported_at = now
+    locked.issue_reason = reason
+    locked.issue_note = mask_contact_info(note.strip()) if note and note.strip() else None
+    await db.flush()
+    await notification_service.notify(
+        db,
+        user_id=locked.tutor_id,
+        role_id=ROLE_IDS[RoleType.TUTOR],
+        message="Öğrencin bir ders için sorun bildirdi; ekibimiz inceleyecek.",
+        link=f"/ders-talepleri/{locked.id}",
+    )
+    _notify_booking_update(db, locked)
+    return locked
+
+
+async def resolve_dispute(
+    db: AsyncSession,
+    booking: Booking,
+    *,
+    decision: str,
+    note: str | None = None,
+) -> Booking:
+    """Admin kararı: ihtilaflı derste parayı öğrenciye iade et ya da eğitmene öde.
+
+    ``refund``: ders iptal sayılır ve emanet iade edilir. COMPLETED→CANCELLED
+    geçişi `_TRANSITIONS` tablosunda **bilerek yok** — tabloya girerse kullanıcı
+    `cancel` yolu tamamlanmış dersi iptal edip iade alabilirdi. Bu geçiş yalnız
+    burada, ihtilaflı ve parası dağıtılmamış satıra koşullu UPDATE ile yapılır.
+    ``release``: ihtilaf kapanır, ders tamamlanır ve emanet eğitmene geçer.
+    """
+    if decision not in ("refund", "release"):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Geçersiz karar.")
+    locked = await _lock_booking(db, booking)
+    if locked is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    if not locked.is_disputed:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu derste açık bir ihtilaf yok.")
+    if await _para_egitmene_gecti_mi(db, locked):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Kazancı eğitmene serbest bırakılmış bir derste karar verilemez.",
+        )
+    etiket = "iade" if decision == "refund" else "eğitmene ödeme"
+    not_satiri = f"İhtilaf kararı ({etiket})" + (f": {note}" if note else "")
+    locked.admin_notes = (
+        f"{locked.admin_notes}\n{not_satiri}" if locked.admin_notes else not_satiri
+    )
+
+    if decision == "release":
+        locked.is_disputed = False
+        await db.flush()
+        if locked.status == BookingStatus.ACCEPTED:
+            if not await _claim_transition(
+                db, locked, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
+            ):
+                raise _claim_hatasi(locked, BookingStatus.COMPLETED)
+        elif locked.status != BookingStatus.COMPLETED:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Bu derste ödeme yapılamaz.")
+        mesajlar = (
+            (locked.tutor_id, RoleType.TUTOR,
+             "Sorun bildirimi incelendi; ders ücreti kazancına eklendi."),
+            (locked.client_id, RoleType.CLIENT,
+             "Bildirdiğin sorun incelendi; ders gerçekleşmiş kabul edildi."),
+        )
+        for user_id, role, mesaj in mesajlar:
+            await notification_service.notify(
+                db, user_id=user_id, role_id=ROLE_IDS[role], message=mesaj,
+                link=f"/ders-talepleri/{locked.id}",
+            )
+        await payment_service.release(db, locked)
+    else:
+        if locked.status == BookingStatus.ACCEPTED:
+            if not await _claim_transition(db, locked, BookingStatus.CANCELLED):
+                raise _claim_hatasi(locked, BookingStatus.CANCELLED)
+        elif locked.status == BookingStatus.COMPLETED:
+            result = await db.execute(
+                update(Booking)
+                .where(
+                    Booking.id == locked.id,
+                    Booking.status == BookingStatus.COMPLETED,
+                    Booking.is_disputed.is_(True),
+                    Booking.deleted_at.is_(None),
+                )
+                .values(status=BookingStatus.CANCELLED)
+                .execution_options(synchronize_session=False)
+            )
+            if result.rowcount != 1:
+                await db.refresh(locked)
+                raise _claim_hatasi(locked, BookingStatus.CANCELLED)
+            locked.status = BookingStatus.CANCELLED
+        else:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Bu derste iade yapılamaz.")
+        locked.is_disputed = False
+        locked.cancel_reason = "Sorun bildirimi sonucu iade"
+        await db.flush()
+        mesajlar = (
+            (locked.tutor_id, RoleType.TUTOR,
+             "Öğrencinin bildirdiği sorun incelendi; ders iptal edildi ve ücret iade edildi."),
+            (locked.client_id, RoleType.CLIENT,
+             "Bildirdiğin sorun incelendi; ders ücretin iade ediliyor."),
+        )
+        for user_id, role, mesaj in mesajlar:
+            await notification_service.notify(
+                db, user_id=user_id, role_id=ROLE_IDS[role], message=mesaj,
+                link=f"/ders-talepleri/{locked.id}",
+            )
+        await payment_service.refund(db, locked)
+    _notify_booking_update(db, locked)
+    return locked
 
 
 async def reschedule(
@@ -640,6 +888,11 @@ async def reschedule(
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Only pending or accepted bookings can be rescheduled",
+        )
+    if is_late_for_changes(booking):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Derse {settings.LESSON_LATE_CANCEL_HOURS} saatten az kaldığı için ders ertelenemez.",
         )
     if start_at <= datetime.datetime.now(datetime.timezone.utc):
         raise HTTPException(
@@ -758,37 +1011,56 @@ async def auto_complete_past_bookings(db: AsyncSession) -> int:
     koşulundan gelir, yani kural tek yerde tanımlıdır ve biri güncellenip diğeri
     unutulamaz.
     """
+    # Modül 2 (17 Eyl 2026): pencere artık LESSON_CONFIRM_WINDOW_HOURS (72 sa).
+    # Eğitmenin "Tamamla"sı parayı serbest bırakmadığı için COMPLETED + HELD
+    # dersler de burada öğrenci onayı gibi sonuçlanır. Parası dağıtılmış ya da
+    # ödemesiz tamamlanmış ders sorguya girmez (her dakika yeniden seçilmesin).
+    # Satır FOR UPDATE SKIP LOCKED ile kilitlenir: eşzamanlı sorun bildirimi
+    # aynı kilide girer, "sorun bildirilmiş ders + serbest para" oluşamaz.
+    from models.payment import Payment
+
     now = datetime.datetime.now(datetime.timezone.utc)
-    cutoff = now - datetime.timedelta(hours=settings.AUTO_COMPLETE_GRACE_HOURS)
+    cutoff = now - datetime.timedelta(hours=settings.LESSON_CONFIRM_WINDOW_HOURS)
+    held_payment = (
+        select(Payment.id)
+        .where(Payment.booking_id == Booking.id, Payment.status == PaymentStatus.HELD)
+        .exists()
+    )
     rows = (
         await db.execute(
             select(Booking).where(
-                Booking.status == BookingStatus.ACCEPTED,
                 Booking.deleted_at.is_(None),
                 Booking.end_at <= cutoff,
+                Booking.student_confirmed_at.is_(None),
                 *_IHTILAFSIZ,
+                (Booking.status == BookingStatus.ACCEPTED)
+                | ((Booking.status == BookingStatus.COMPLETED) & held_payment),
             )
         )
     ).scalars().all()
     count = 0
     for booking in rows:
-        # Atomik claim: eşzamanlı bir manuel complete/cancel ya da ihtilaf açma
-        # ile yarışırsa yalnız biri kazanır (kaybeden para hareketi tetiklemez).
-        if not await _claim_transition(
-            db, booking, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
-        ):
+        locked = await _lock_booking(db, booking, skip_locked=True)
+        if locked is None or locked.is_disputed or locked.student_confirmed_at is not None:
+            continue
+        if locked.status == BookingStatus.ACCEPTED:
+            # Atomik claim: eşzamanlı cancel ile yarışırsa yalnız biri kazanır.
+            if not await _claim_transition(
+                db, locked, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
+            ):
+                continue
+            await notification_service.notify(
+                db,
+                user_id=locked.client_id,
+                role_id=ROLE_IDS[RoleType.CLIENT],
+                message="Dersin tamamlandı. Değerlendirme yapabilir ve eğitmene soru sorabilirsin.",
+                link=f"/ders-talepleri/{locked.id}",
+            )
+        elif locked.status != BookingStatus.COMPLETED:
             continue
         count += 1
-        await notification_service.notify(
-            db,
-            user_id=booking.client_id,
-            role_id=ROLE_IDS[RoleType.CLIENT],
-            message="Dersin tamamlandı. Değerlendirme yapabilir ve eğitmene soru sorabilirsin.",
-            link="/student/bookings",
-        )
-        # Emanetteki ödemeyi de eğitmene serbest bırak (varsa).
-        await payment_service.release(db, booking)
-        _notify_booking_update(db, booking)
+        await payment_service.release(db, locked)
+        _notify_booking_update(db, locked)
     return count
 
 
@@ -799,6 +1071,22 @@ async def cancel(
     cancelled_by: "Client | Tutor",
     reason: str | None = None,
 ) -> Booking:
+    # 12 saat kuralı (Modül 2, 17 Eyl 2026). Karar claim'den önce verilir; ders
+    # saati eşzamanlı değişemez (erteleme de aynı kurala bağlı).
+    is_client = cancelled_by.role_id == ROLE_IDS[RoleType.CLIENT]
+    now = _utcnow()
+    late = is_late_for_changes(booking, now)
+    if late and not is_client:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Derse {settings.LESSON_LATE_CANCEL_HOURS} saatten az kala dersi iptal "
+            "edemezsin. Öğrencinle konuş; ders yapılamayacaksa destek ekibine yaz.",
+        )
+    if late and _utc(booking.start_at) <= now:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Başlamış bir ders iptal edilemez; ders yapılmadıysa sorun bildir.",
+        )
     if not await _claim_transition(db, booking, BookingStatus.CANCELLED):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -806,6 +1094,8 @@ async def cancel(
         )
     if reason:
         booking.cancel_reason = reason
+    if late:
+        booking.late_cancel = True
     await db.flush()
 
     # Karşı tarafı bilgilendir (iptal eden client ise tutor'a, tutor ise client'a).
@@ -831,8 +1121,13 @@ async def cancel(
         message=message,
         link=link,
     )
-    # Emanette ödeme varsa öğrenciye iade et (yoksa no-op).
-    await payment_service.refund(db, booking)
+    if late:
+        # Öğrencinin geç iptali: emanetteki ücret iade edilmez, eğitmene geçer
+        # (ödenmemişse para hareketi yoktur).
+        await payment_service.release(db, booking)
+    else:
+        # Emanette ödeme varsa öğrenciye iade et (yoksa no-op).
+        await payment_service.refund(db, booking)
     _notify_booking_update(db, booking)
     return booking
 

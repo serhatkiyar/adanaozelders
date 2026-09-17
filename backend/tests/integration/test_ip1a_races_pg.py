@@ -404,8 +404,10 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(
     """admin cancel ↔ tutor complete: hem iade hem hakediş birlikte olamaz.
 
     Admin yolu read-modify-write olduğu için (`admin_service.py:397-404`) status
-    ile para durumu ayrışabilir: complete parayı `RELEASED` yaparken admin aynı
-    satıra `CANCELLED` yazabilir. Sonuç: "iptal edilmiş ders, eğitmene ödenmiş para".
+    ile para durumu ayrışabilir: tamamlanmış satıra admin `CANCELLED` yazabilir.
+    Modül 2 (17 Eyl 2026): `complete` artık parayı serbest bırakmaz (öğrenci
+    onayı/72 sa pencere bekler), bu yüzden tamamlama kazanırsa beklenen sonuç
+    `COMPLETED + HELD`'dir; invariant aynıdır — ders durumu ile para ayrışmaz.
     """
     ders = await ip1a.odenmis()
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
@@ -443,7 +445,7 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(
         "hem release hem refund gerçekleşti: eğitmen kazancı + öğrenci iadesi"
     )
     izinli = {
-        (BookingStatus.COMPLETED, PaymentStatus.RELEASED),
+        (BookingStatus.COMPLETED, PaymentStatus.HELD),
         (BookingStatus.CANCELLED, PaymentStatus.REFUNDING),
         (BookingStatus.CANCELLED, PaymentStatus.REFUNDED),
     }
@@ -451,6 +453,7 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(
         f"TUTARSIZ SONUÇ: booking={booking_status.value}, ödeme={payment_status}. "
         "Admin iptali claim kullanmadığı için ders durumu ile para durumu ayrıştı."
     )
+    assert p["released_at"] is None, "eğitmen tamamlaması parayı serbest bıraktı (Modül 2)"
     assert len(provider.refund_calls) <= 1
 
 
@@ -506,7 +509,7 @@ async def test_ihtilaf_acilmasi_ile_auto_complete_yarisinda_PARA_ACILMAZ(
 # ═══════════════════════ YEŞİL NÖBETÇİLER ════════════════════════════════════
 
 
-async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(
+async def test_YESIL_iki_esZamanli_tamamlama_TEK_gecis_uretir(
     ip1a, provider, ip1a_http, yaris
 ):
     """`complete`'in **atomik claim'i** çalışıyor: bayat okumayla yazan kaybeder.
@@ -532,8 +535,10 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(
 
     ## Ölçülenler
 
-    Tek final durum · tek `released_at` damgası · tek hakediş · kaybedende
-    **hiçbir yan etki** (bildirim dahil) · kaybedene güvenli 409.
+    Tek final durum · kaybedende **hiçbir yan etki** (bildirim dahil) ·
+    kaybedene güvenli 409. Modül 2 (17 Eyl 2026): `complete` parayı serbest
+    bırakmaz; para HELD kalır. Ardından öğrencinin onayı TEK release üretir —
+    tek hakediş hâlâ ölçülür (ikinci onay yeni hareket üretmez).
     """
     ders = await ip1a.odenmis()
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
@@ -576,8 +581,9 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(
         await booking_service.complete(s, booking)
         await s.commit()
 
-    kazanan_damga = (await ip1a.payment(ders.booking_id))["released_at"]
-    assert kazanan_damga is not None, "kurulum: kazanan taraf release üretmedi"
+    assert (await ip1a.payment(ders.booking_id))["released_at"] is None, (
+        "eğitmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
+    )
 
     kazanan_bitti.set()
     kaybeden_yazabildi = await _gorev_bekle(
@@ -593,18 +599,30 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert (booking_status, payment_status) == (
         BookingStatus.COMPLETED,
-        PaymentStatus.RELEASED,
+        PaymentStatus.HELD,
     )
-    p = await ip1a.payment(ders.booking_id)
-    assert p["released_at"] == kazanan_damga, (
-        "ikinci tamamlama `released_at` damgasını yeniden yazdı — hakediş anı kaydı bozuldu"
-    )
-    assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal(str(p["tutor_earning"])), (
-        "kazanç iki kez sayıldı"
+    assert (await ip1a.payment(ders.booking_id))["released_at"] is None, (
+        "kaybeden tamamlama parayı serbest bıraktı"
     )
     assert await ip1a.bildirim_sayisi(user_id=ders.client_id, role_id=3) == bildirim_once + 1, (
         "kaybeden taraf da 'dersin tamamlandı' bildirimi yazdı — 409 alması "
         "gerekirken akışın gövdesini koşturmuş"
+    )
+
+    # Para öğrenci onayıyla eğitmene geçer; ikinci onay yeni hareket üretmez.
+    damgalar = []
+    for _ in range(2):
+        async with AsyncSessionLocal() as s:
+            booking = await s.get(Booking, ders.booking_id)
+            await booking_service.confirm_by_student(s, booking)
+            await s.commit()
+        damgalar.append((await ip1a.payment(ders.booking_id))["released_at"])
+    assert damgalar[0] is not None and damgalar[0] == damgalar[1], (
+        "ikinci onay `released_at` damgasını yeniden yazdı — hakediş anı kaydı bozuldu"
+    )
+    p = await ip1a.payment(ders.booking_id)
+    assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal(str(p["tutor_earning"])), (
+        "kazanç iki kez sayıldı"
     )
 
 
@@ -672,7 +690,7 @@ async def test_YESIL_iki_esZamanli_iptal_TEK_IADE_uretir(ip1a, provider, ip1a_ht
     assert payment_status in COZULMUS
 
 
-async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
+async def test_YESIL_onay_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
     ip1a, provider, ip1a_http, yaris
 ):
     """release ↔ refund: `released_at` ve `refunded_at` aynı satırda dolamaz.
@@ -680,17 +698,23 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
     Ders katmanındaki karşılığı; escrow katmanındaki eşdeğeri
     `test_money_pg.py::test_c1_release_refund_race` ile korunuyor.
 
+    Modül 2 (17 Eyl 2026): parayı serbest bırakan kullanıcı yolu artık eğitmenin
+    `complete`'i değil, öğrencinin onayıdır (`confirm_by_student`). Başlamış ders
+    öğrenci/eğitmen tarafından iptal edilemediği için iade tarafı admin
+    iptalidir (`cancel_by_admin`) — başlamış derste iade üretebilen kullanıcı
+    dışı yol.
+
     Kurulum `sleep(0.3)` yerine iki olayla kurulur ve bu sayede **bayat okuma**
-    yarışı olur: tamamlama tarafı satırı iptalden ÖNCE okur (`okundu`), iptal
+    yarışı olur: onay tarafı satırı iptalden ÖNCE okur (`okundu`), iptal
     faz-1'ini commit'leyip sağlayıcıda asılır (`refund_entered`), ancak ondan
-    sonra tamamlama elindeki bayat ACCEPTED ile yazmayı dener.
+    sonra onay elindeki bayat ACCEPTED ile yazmayı dener.
     """
     ders = await ip1a.odenmis()
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
     provider.refund_gate = asyncio.Event()
     okundu, iptal_kapida = asyncio.Event(), asyncio.Event()
 
-    async def tamamla():
+    async def onayla():
         async with AsyncSessionLocal() as s:
             await s.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
             booking = await s.get(Booking, ders.booking_id)
@@ -698,31 +722,29 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
             await _event_bekle(
                 iptal_kapida,
                 aciklama=(
-                    "iptal tarafı sağlayıcı kapısına varmadı, tamamlama kapısı "
+                    "iptal tarafı sağlayıcı kapısına varmadı, onay kapısı "
                     "hiç açılmadı"
                 ),
             )
             try:
-                await booking_service.complete(s, booking)
+                await booking_service.confirm_by_student(s, booking)
                 await s.commit()
             except HTTPException as exc:
                 if exc.status_code != 409:
                     raise
 
-    tamamla_gorevi = yaris(tamamla(), ad="tamamla")
+    onay_gorevi = yaris(onayla(), ad="onay")
     await _event_bekle(
         okundu,
-        aciklama="tamamlama tarafı booking satırını hiç okumadı (bayat okuma kurulmadı)",
-        ureticiler=(tamamla_gorevi,),
+        aciklama="onay tarafı booking satırını hiç okumadı (bayat okuma kurulmadı)",
+        ureticiler=(onay_gorevi,),
     )
 
     async def iptal_et():
         async with AsyncSessionLocal() as s:
             booking = await s.get(Booking, ders.booking_id)
             try:
-                await booking_service.cancel(
-                    s, booking, cancelled_by=await _client_of(s, ders)
-                )
+                await admin_service.cancel_booking(s, booking, reason="İP-1a yarış")
                 await s.commit()
             except HTTPException as exc:
                 if exc.status_code != 409:
@@ -740,7 +762,7 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
     )
 
     iptal_kapida.set()
-    await _gorev_bekle(tamamla_gorevi, aciklama="tamamlama görevi bitmedi")
+    await _gorev_bekle(onay_gorevi, aciklama="onay görevi bitmedi")
 
     provider.refund_gate.set()
     await _gorev_bekle(iptal_gorevi, aciklama="iptal görevi bitmedi")
@@ -748,6 +770,9 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
     p = await ip1a.payment(ders.booking_id)
     assert not (p["released_at"] is not None and p["refunded_at"] is not None), (
         "hem eğitmene kazanç yazıldı hem öğrenciye iade edildi"
+    )
+    assert p["released_at"] is None, (
+        "iptal edilmiş dersin parası bayat onayla eğitmene geçti"
     )
     assert len(provider.refund_calls) <= 1
 
@@ -764,6 +789,20 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
 # `released_at` guard'ı yüzünden KALICI olarak kapanmıştı. Aşağıdaki iki test
 # yarışın **her iki yönünü** de deterministik olarak ölçer: kazanan hangisi
 # olursa olsun, ikisi birden başarılı olamaz.
+#
+# Modül 2 (17 Eyl 2026): iki kural bu yarışı üst katmanda zaten keser —
+# `complete` başlamamış derse, `reschedule` ise derse 12 saatten az kalmış
+# (başlamış dahil) derse 409 verir; ayrıca `complete` parayı serbest bırakmaz.
+# Testler claim'in KENDİSİNİ ölçmeye devam etsin diye 12 saat kuralı burada
+# `_gec_kurali_kapat` ile devre dışı bırakılır (savunmanın ikinci hattı).
+
+
+@pytest.fixture
+def _gec_kurali_kapat(monkeypatch):
+    """Geçmişteki dersi de "geç" saymayacak kadar küçük eşik: yalnız claim sınanır."""
+    from core.config import settings
+
+    monkeypatch.setattr(settings, "LESSON_LATE_CANCEL_HOURS", -24 * 365)
 
 
 async def _ders_zamani(booking_id: int):
@@ -778,7 +817,9 @@ def _yeni_saat(*, gun: int = 40, saat: int = 1):
     return start, start + datetime.timedelta(hours=saat)
 
 
-async def test_reschedule_KAZANIRSA_tamamlama_PARAYI_ACAMAZ(ip1a, provider, ip1a_http, yaris):
+async def test_reschedule_KAZANIRSA_tamamlama_PARAYI_ACAMAZ(
+    ip1a, provider, ip1a_http, _gec_kurali_kapat, yaris
+):
     """Sıralama A: reschedule commit'lendikten sonra gelen `complete` kaybeder.
 
     Kaybeden taraf bayat `ACCEPTED` okumasıyla gelir; onu yalnız `complete`'in
@@ -837,7 +878,7 @@ async def test_reschedule_KAZANIRSA_tamamlama_PARAYI_ACAMAZ(ip1a, provider, ip1a
 
 
 async def test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ(
-    ip1a, provider, ip1a_http, yaris
+    ip1a, provider, ip1a_http, _gec_kurali_kapat, yaris
 ):
     """Sıralama B: `complete` commit'lendikten sonra gelen reschedule kaybeder.
 
@@ -845,7 +886,8 @@ async def test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ(
     bayat `ACCEPTED` ile gelir, bellek içi durum kontrolünü GEÇER ve eski kodda
     `booking.status = PENDING` atamasıyla terminal durumun üzerine yazardı.
     Ölçülen: durum · para · `released_at` damgası · **ders saatinin
-    değiştirilmediği** (kaybeden taraf hiçbir alan yazmamalı).
+    değiştirilmediği** (kaybeden taraf hiçbir alan yazmamalı). Modül 2:
+    tamamlama parayı HELD bırakır; ardından öğrenci onayı tek release üretir.
     """
     ders = await ip1a.odenmis()
     await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
@@ -874,8 +916,9 @@ async def test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ(
         booking = await s.get(Booking, ders.booking_id)
         await booking_service.complete(s, booking)
         await s.commit()
-    kazanan_damga = (await ip1a.payment(ders.booking_id))["released_at"]
-    assert kazanan_damga is not None, "kurulum: kazanan taraf release üretmedi"
+    assert (await ip1a.payment(ders.booking_id))["released_at"] is None, (
+        "eğitmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
+    )
 
     kapi.set()
     tasinabildi = await _gorev_bekle(
@@ -889,20 +932,24 @@ async def test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ(
     p_son = await ip1a.payment(ders.booking_id)
     assert (booking_status, payment_status) == (
         BookingStatus.COMPLETED,
-        PaymentStatus.RELEASED,
+        PaymentStatus.HELD,
     ), (
         f"TUTARSIZ SONUÇ: booking={booking_status.value}, ödeme={payment_status}, "
-        f"released_at={p_son['released_at']}. Ders tamamlanmamış görünürken para "
-        "eğitmene dağıtılmış olamaz — iade released_at yüzünden kalıcı kapanır."
+        f"released_at={p_son['released_at']}. Tamamlanmış ders öğrenci onayına "
+        "kadar emanette kalmalı; tamamlanmamış görünen ders + dağıtılmış para olamaz."
     )
     assert not tasinabildi, (
-        "KAYIP GÜNCELLEME: tamamlanmış (parası RELEASED) dersin üzerine "
-        "reschedule PENDING yazdı."
+        "KAYIP GÜNCELLEME: tamamlanmış dersin üzerine reschedule PENDING yazdı."
     )
 
+    # Tamamlanmış ders hâlâ onaylanabilir; onay tek release üretir.
+    async with AsyncSessionLocal() as s:
+        booking = await s.get(Booking, ders.booking_id)
+        await booking_service.confirm_by_student(s, booking)
+        await s.commit()
     p = await ip1a.payment(ders.booking_id)
-    assert p["released_at"] == kazanan_damga, (
-        "released_at damgası yeniden yazıldı — hakediş anı kaydı bozuldu"
+    assert p["status"] == PaymentStatus.RELEASED.value, (
+        "tamamlanmış dersin onayı parayı eğitmene geçirmedi"
     )
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal(str(p["tutor_earning"])), (
         "kazanç iki kez sayıldı"
