@@ -2,7 +2,7 @@ interface AvatarProps {
   name: string;
   avatar_url?: string | null;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
-  shape?: "circle" | "square" | "kare";
+  shape?: "circle" | "square";
 }
 
 // İsme göre deterministik renk paleti (rastgele/sahte değil).
@@ -51,8 +51,7 @@ export function colorFor(name: string): string {
 }
 
 export function Avatar({ name, avatar_url, size = "md", shape = "circle" }: AvatarProps) {
-  const roundedClass =
-    shape === "square" ? "rounded-3xl" : shape === "kare" ? "rounded" : "rounded-full";
+  const roundedClass = shape === "square" ? "rounded-3xl" : "rounded-full";
 
   if (avatar_url) {
     return (

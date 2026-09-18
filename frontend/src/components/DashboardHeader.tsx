@@ -308,7 +308,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               onClick={() => setAccountOpen((o) => !o)}
               className="rounded ring-2 ring-transparent transition hover:ring-slate-300"
             >
-              <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="xs" shape="kare" />
+              <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="xs" />
             </button>
             {accountOpen && (
               <div className="absolute right-0 top-full z-40 mt-3 w-72 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_8px_32px_rgba(18,17,23,0.15)]">
