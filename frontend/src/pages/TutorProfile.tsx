@@ -67,12 +67,6 @@ export default function TutorProfile() {
   const { data: reviews } = useReviewsByTutor(tutorId);
   const { data: ratingDist } = useTutorRatingDistribution(tutorId);
   const { data: myBookings } = useBookings({ limit: 100 });
-  const hasActiveBooking = (myBookings ?? []).some(
-    (b) =>
-      b.tutor_id === tutorId &&
-      (b.status === BookingStatus.PENDING ||
-        b.status === BookingStatus.ACCEPTED)
-  );
 
   const [showBookingModal, setShowBookingModal] = useState(false);
 
@@ -83,6 +77,10 @@ export default function TutorProfile() {
   const geriDon = useGeriDonus(ROUTES.tutors);
   const isOwnerTutor =
     currentUser?.role_id === ROLE_IDS.TUTOR && currentUser.id === tutorId;
+  // Modül 5: giriş yapmış öğrenci ders ayırtmadan da yazabilir; ders öncesi
+  // sohbetin sınırları ve korumaları sunucuda uygulanır.
+  const mesajGonderebilir =
+    !isOwnerTutor && currentUser?.role_id === ROLE_IDS.CLIENT;
   /*
    * Anonimken "Ders Talep Et"e basan ziyaretçi giriş yapınca pencere
    * KENDİLİĞİNDEN açılır (ÜK-10). `TutorProfilePage` token'a göre bu bileşenle
@@ -184,6 +182,11 @@ export default function TutorProfile() {
               }
               onGeri={geriDon}
               onYorumlar={() => setShowReviews(true)}
+              onMesaj={
+                mesajGonderebilir
+                  ? () => navigate(ROUTES.messageWith(tutor.id, tutor.display_name))
+                  : undefined
+              }
             />
           )}
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
@@ -196,7 +199,7 @@ export default function TutorProfile() {
             <section className="rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
               <div className="mb-2 flex items-center justify-end gap-2">
-                {!isOwnerTutor && hasActiveBooking && (
+                {mesajGonderebilir && (
                   <button
                     type="button"
                     title="Mesaj Gönder"

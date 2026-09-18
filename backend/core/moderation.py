@@ -16,6 +16,7 @@ olmadığına karar verir (saf fonksiyon, testli).
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 _PLACEHOLDER = "[gizlendi]"
 
@@ -80,3 +81,47 @@ def mask_contact_info(text: str | None) -> str | None:
         return _PLACEHOLDER
 
     return _CANDIDATE.sub(_maybe_mask, out)
+
+
+# Genel web bağlantısı: şema (http/https) ya da "www." ile başlayan dizi.
+# Şemasız ve "www."suz alan adları ("x.com/y") bilinçli olarak yakalanmaz:
+# düz metindeki "a.b" kalıbı yanlış pozitif üretir.
+_URL = re.compile(r"\b(?:https?://|www\.)[^\s<>\"']+", re.IGNORECASE)
+
+
+def _norm_host(host: str | None) -> str:
+    h = (host or "").lower()
+    return h[4:] if h.startswith("www.") else h
+
+
+def mask_external_links(
+    text: str | None, allowed_hosts: frozenset[str]
+) -> str | None:
+    """Ders öncesi sohbette dış bağlantıları gizler; izinli (kendi) alan adı kalır.
+
+    Karşılaştırma küçük harfle ve "www." öneki atılarak yapılır; port
+    karşılaştırmaya girmez. Host çıkarılamayan bağlantı dış sayılır.
+    """
+    if not text:
+        return text
+    allowed = {_norm_host(h) for h in allowed_hosts if h}
+
+    def _maybe_mask(m: re.Match[str]) -> str:
+        raw = m.group(0)
+        url = raw if raw.lower().startswith(("http://", "https://")) else "https://" + raw
+        # Tarayıcı (WHATWG URL) http(s) adreslerinde "\\" karakterini "/" sayar;
+        # urlsplit saymaz. Aynı host'u görmek için önce normalize edilir.
+        url = url.replace("\\", "/")
+        try:
+            parts = urlsplit(url)
+            host = parts.hostname
+        except ValueError:
+            parts, host = None, None
+        # Kullanıcı bilgisi ("x@host") içeren adres aldatıcıdır; dış sayılır.
+        if parts is not None and "@" in parts.netloc:
+            return _PLACEHOLDER
+        if host and _norm_host(host) in allowed:
+            return raw
+        return _PLACEHOLDER
+
+    return _URL.sub(_maybe_mask, text)

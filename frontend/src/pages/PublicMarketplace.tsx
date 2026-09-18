@@ -471,9 +471,9 @@ export default function PublicMarketplace() {
           * Buradaki koşulsuz turuncu bant, ziyaretçi tek bir eğitmen bile
           * görmeden hesap istiyordu — NN/g'nin "Login Walls" başlığında
           * ölçtüğü kusur. Üstelik yanlış vaat veriyordu: "mesaj için hesap aç"
-          * diyordu ama mesajlaşma aktif rezervasyona bağlı
-          * (`TutorProfile` · `hasActiveBooking`), yani hesap açmak tek başına
-          * mesajlaşmayı AÇMIYOR.
+          * diyordu ama mesajlaşma giriş + telefon doğrulaması ister; ders
+          * öncesi yazışma da sınırlıdır (Modül 5), yani hesap açmak tek
+          * başına mesajlaşmayı AÇMIYOR.
           *
           * Kapı artık eylemde: kalbe ya da "Ders Talep Et"e basıldığında
           * pencere açılıyor ve sayfa kaybolmuyor. Yerine hiçbir şey KONMADI —

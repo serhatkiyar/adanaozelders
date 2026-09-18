@@ -115,6 +115,14 @@ class Settings(BaseSettings):
     # Kullanıcı bazlı (yazma uçları; pencere = RATE_LIMIT_WINDOW_SECONDS):
     RATE_LIMIT_BOOKING: int = 10
     RATE_LIMIT_MESSAGE: int = 30
+    # Ders öncesi (INQUIRY) sohbet korumaları — veritabanından sayılır, Redis
+    # yokken de uygulanır (fail-closed; Modül 5):
+    # öğrencinin son 24 saatte ilk mesaj atabileceği yeni eğitmen sayısı,
+    MESSAGE_INQUIRY_DAILY_NEW: int = 5
+    # eğitmen hiç yanıt vermemişken öğrencinin o sohbete atabileceği mesaj sayısı.
+    MESSAGE_INQUIRY_MAX_UNANSWERED: int = 3
+    # Eğitmenin öğrenci engelleme ucu (kullanıcı bazlı, pencere başına).
+    RATE_LIMIT_BLOCK: int = 10
     RATE_LIMIT_QA: int = 15
     RATE_LIMIT_DEMAND: int = 10
     RATE_LIMIT_REVIEW: int = 10

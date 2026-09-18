@@ -596,6 +596,10 @@ async def create_booking(
     db: AsyncSession, client: Client, data: BookingCreate
 ) -> Booking:
     tutor = await get_bookable_tutor(db, data.tutor_id)
+    # Engellenen öğrenci o eğitmene yeni ders talebi açamaz (Modül 5).
+    await messaging_service.assert_booking_not_blocked(
+        db, tutor_id=tutor.id, client_id=client.id
+    )
     _assert_booking_rules(data.start_at, _utcnow())
 
     await _lock_tutor(db, tutor.id)
@@ -1764,6 +1768,10 @@ async def add_comment(
     actor: "Client | Tutor",
     data: BookingCommentCreate,
 ) -> Booking:
+    if actor.role_id == ROLE_IDS[RoleType.CLIENT]:
+        await messaging_service.assert_client_not_blocked(
+            db, tutor_id=booking.tutor_id, client_id=booking.client_id
+        )
     comment = BookingComment(
         booking_id=booking.id,
         sender_role=role_name(actor.role_id),

@@ -8,11 +8,14 @@ from core.config import settings
 from core.database import get_db
 from models.role import ROLE_IDS, RoleType
 from schemas.messaging import (
+    BlockCreate,
+    BlockOut,
     ConversationOut,
     MessageCreate,
     MessageOut,
     MessageSearchResults,
     MessagesUnreadCounts,
+    MessagingEligibilityOut,
     ReactionOut,
     ReactionRequest,
 )
@@ -25,6 +28,16 @@ _send_limit = user_rate_limit(
     limit=settings.RATE_LIMIT_MESSAGE,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
+_block_limit = user_rate_limit(
+    key="message_block",
+    limit=settings.RATE_LIMIT_BLOCK,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+
+
+def _require_role(user: CurrentUser, role: RoleType) -> None:
+    if user.role_id != ROLE_IDS[role]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu işlem için yetkin yok.")
 
 
 @router.get("/conversations", response_model=list[ConversationOut])
@@ -112,6 +125,52 @@ async def list_messages(
     return await messaging_service.list_messages(
         db, user, conversation_id, limit=limit, offset=offset
     )
+
+
+# ── Ders öncesi korumalı mesaj (Modül 5) ──
+# DİKKAT: bu uçlar `POST /{counterparty_id}`'den ÖNCE tanımlı kalmalı; o uç her
+# yol parçasını yakalar ve sonra tanımlanan `POST /blocks` 422 alırdı.
+
+
+@router.get(
+    "/tutors/{tutor_id}/eligibility", response_model=MessagingEligibilityOut
+)
+async def messaging_eligibility(
+    tutor_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_role(user, RoleType.CLIENT)
+    return await messaging_service.messaging_eligibility(db, user, tutor_id)
+
+
+@router.post(
+    "/blocks",
+    response_model=BlockOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_block_limit)],
+)
+async def block_client(
+    payload: BlockCreate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_role(user, RoleType.TUTOR)
+    return await messaging_service.block_client(db, user, payload)
+
+
+@router.delete(
+    "/blocks/{client_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(_block_limit)],
+)
+async def unblock_client(
+    client_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_role(user, RoleType.TUTOR)
+    await messaging_service.unblock_client(db, user, client_id)
 
 
 @router.post(

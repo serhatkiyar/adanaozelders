@@ -5,6 +5,8 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import {
+  blockClient,
+  getMessagingEligibility,
   listConversations,
   listMessages,
   markConversationRead,
@@ -12,9 +14,11 @@ import {
   sendMessage,
   setConversationArchived,
   toggleReaction,
+  unblockClient,
   unreadCount,
 } from "@/api/messages";
 import { useAuthStore } from "@/store/authStore";
+import { ROLE_IDS, type BlockCreate } from "@/types";
 
 export function useConversations(archived = false) {
   const token = useAuthStore((s) => s.token);
@@ -105,6 +109,46 @@ export function useArchiveConversation() {
       setConversationArchived(id, archived),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
+/**
+ * Öğrencinin bir eğitmene yazma uygunluğu (engel, ders öncesi kalan haklar).
+ * Anahtar `["messages", ...]` altında: `useSendMessage` başarıda `["messages"]`
+ * tazelediği için kalan hak sayısı her gönderimden sonra kendiliğinden güncellenir.
+ */
+export function useMessagingEligibility(tutorId: number | null) {
+  const token = useAuthStore((s) => s.token);
+  const roleId = useAuthStore((s) => s.user?.role_id);
+  return useQuery({
+    queryKey: ["messages", "eligibility", tutorId],
+    queryFn: () => getMessagingEligibility(tutorId as number),
+    enabled: !!token && roleId === ROLE_IDS.CLIENT && tutorId !== null,
+    retry: false,
+    // Engel/engel kaldırma öğrenciye WS ile gelmez; sekmeye dönünce tazelensin.
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useBlockClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: BlockCreate) => blockClient(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["messages"] });
+    },
+  });
+}
+
+export function useUnblockClient() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (clientId: number) => unblockClient(clientId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["messages"] });
     },
   });
 }

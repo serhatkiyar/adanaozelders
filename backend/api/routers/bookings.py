@@ -45,6 +45,12 @@ _upload_limit = user_rate_limit(
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 
+_comment_limit = user_rate_limit(
+    key="booking_comment",
+    limit=settings.RATE_LIMIT_MESSAGE,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+
 _LIMIT_MAX = 100
 # Tarih aralığı verildiğinde bir haftanın tüm dersleri tek istekte gelsin.
 _RANGE_LIMIT_MAX = 300
@@ -360,7 +366,11 @@ async def upload_booking_resource(
     )
 
 
-@router.post("/{booking_id}/comments", response_model=BookingOut)
+@router.post(
+    "/{booking_id}/comments",
+    response_model=BookingOut,
+    dependencies=[Depends(_comment_limit)],
+)
 async def add_booking_comment(
     booking_id: int,
     payload: BookingCommentCreate,

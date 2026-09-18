@@ -84,7 +84,13 @@ from models.library_exam import (
 )
 from models.library_exam_catalog import ExamType, LibraryExamCatalog
 from models.library_operator import LibraryOperator
-from models.messaging import Conversation, Message, MessageReaction
+from models.messaging import (
+    BlockReason,
+    Conversation,
+    Message,
+    MessageReaction,
+    TutorClientBlock,
+)
 from models.name_change_request import NameChangeRequest
 from models.study_reservation import StudyReservation
 from models.notification import Notification
@@ -195,6 +201,7 @@ __all__ = [
     "AdminRoleAssignment",
     "AdminRolePermission",
     "AuditLog",
+    "BlockReason",
     "Booking",
     "BookingComment",
     "BookingPrivateNote",
@@ -360,6 +367,7 @@ __all__ = [
     "TokenPurpose",
     "Tutor",
     "TutorAvailability",
+    "TutorClientBlock",
     "TutorEducation",
     "TutorPreApplication",
     "PreApplicationStatus",

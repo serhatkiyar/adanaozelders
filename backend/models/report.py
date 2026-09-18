@@ -53,6 +53,9 @@ class Report(Base, TimestampMixin):
         SAEnum(ReportReason, name="report_reason"), nullable=False
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Şikâyet anında hedef içeriğin kopyası (ör. mesaj gövdesi); admin
+    # kuyruğunda gösterilir, içerik sonradan değişse de kanıt kalır (Modül 5).
+    target_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     status: Mapped[ReportStatus] = mapped_column(
         SAEnum(ReportStatus, name="report_status"),

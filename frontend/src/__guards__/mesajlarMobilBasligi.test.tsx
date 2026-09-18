@@ -67,6 +67,9 @@ vi.mock("@/hooks/useMessages", () => ({
   useSendMessage: () => bosMutasyon,
   useToggleReaction: () => bosMutasyon,
   useArchiveConversation: () => bosMutasyon,
+  useMessagingEligibility: () => ({ data: undefined }),
+  useBlockClient: () => bosMutasyon,
+  useUnblockClient: () => bosMutasyon,
 }));
 
 function ekraniBas(roleId: number) {

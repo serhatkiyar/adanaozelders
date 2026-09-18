@@ -41,6 +41,7 @@ export function EgitmenMobilUst({
   ilkDersMetni,
   onGeri,
   onYorumlar,
+  onMesaj,
 }: {
   tutor: TutorSearchOut;
   /** Biçimlendirilmiş saatlik ücret; `null` ise sütun basılmaz. */
@@ -61,6 +62,11 @@ export function EgitmenMobilUst({
    */
   onGeri: () => void;
   onYorumlar: () => void;
+  /**
+   * "Mesaj gönder" dairesi. Yalnız giriş yapmış öğrenciye verilir; anonim
+   * kabuk (`PublicTutorProfile`) vermez ve daire çizilmez.
+   */
+  onMesaj?: () => void;
 }) {
   // Hangi ölçülerin basılacağı masaüstü tablosuyla ORTAK kaynaktan gelir
   // (`ozetSatirlari`); burada değişen yalnız yerleşim ve etiketin kısa hâli.
@@ -127,6 +133,29 @@ export function EgitmenMobilUst({
           </PlainButton>
 
           <div className="flex items-center gap-2">
+            {onMesaj && (
+              <PlainButton
+                aria-label="Mesaj gönder"
+                title="Mesaj gönder"
+                onClick={onMesaj}
+                className={GORSEL_USTU_DAIRE}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  className="h-5 w-5"
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+                  />
+                </svg>
+              </PlainButton>
+            )}
             <ShareButton gorselUstu />
             {!favoriGizli && <BookmarkButton tutorId={tutor.id} gorselUstu />}
           </div>

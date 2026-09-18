@@ -156,6 +156,7 @@ export default function AdminReportsPage() {
                 <Badge tone={STATUS_TONE[report.status]}>{STATUS_LABEL[report.status]}</Badge>
               </div>
               {report.description && <p className="mt-3 text-sm text-slate-600 ">{report.description}</p>}
+              {report.target_snapshot && <p className="mt-2 whitespace-pre-line break-words rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700">Bildirilen içerik: {report.target_snapshot}</p>}
               <div className="mt-3">{actionButtons(report)}</div>
             </div>
           )}

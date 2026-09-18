@@ -32,6 +32,8 @@ class ReportOut(BaseModel):
     target_id: int
     reason: ReportReason
     description: str | None = None
+    # Şikâyet anındaki içerik kopyası (MESSAGE hedefinde mesaj gövdesi).
+    target_snapshot: str | None = None
     status: ReportStatus
     resolution: str | None = None
     resolved_at: datetime.datetime | None = None

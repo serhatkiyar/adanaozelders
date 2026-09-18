@@ -17,7 +17,16 @@ def _now() -> datetime.datetime:
 
 async def create(db: AsyncSession, *, reporter, data: ReportCreate) -> Report:
     """Yeni şikayet oluşturur. Aynı kullanıcı aynı hedefi açık bir şikayetle
-    tekrar bildiremez (spam önleme → 409)."""
+    tekrar bildiremez (spam önleme → 409).
+
+    MESSAGE hedefinde mesajın varlığı ve şikâyet edenin sohbetin tarafı olduğu
+    doğrulanır; içerik kayda kopyalanır ki admin kuyruğunda görülebilsin."""
+    snapshot: str | None = None
+    if data.target_type == "MESSAGE":
+        from services import messaging_service
+
+        msg = await messaging_service.message_for_report(db, reporter, data.target_id)
+        snapshot = f"[{msg.sender_role} #{msg.sender_id}] {msg.body}"[:2000]
     dup = await db.scalar(
         select(Report.id).where(
             Report.reporter_role == reporter.role_id,
@@ -39,6 +48,7 @@ async def create(db: AsyncSession, *, reporter, data: ReportCreate) -> Report:
         target_id=data.target_id,
         reason=data.reason,
         description=data.description,
+        target_snapshot=snapshot,
     )
     db.add(report)
     await db.flush()

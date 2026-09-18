@@ -469,6 +469,53 @@ export interface ConversationOut {
   counterparty_last_read_at?: string | null;
   /** İstek sahibi bu sohbeti arşivlemiş mi? */
   archived?: boolean;
+  /**
+   * Öğrenci↔eğitmen sohbetinin aşaması (Modül 5). `LESSON`: aralarında ders
+   * ya da talep yanıtı var; `INQUIRY`: ders öncesi, korumalı yazışma.
+   * Kütüphane sohbetinde `null`.
+   */
+  stage?: MessagingStage | null;
+  /** Eğitmen görünümünde "ben engelledim", öğrencide "karşı taraf beni engelledi". */
+  blocked?: boolean;
+}
+
+export type MessagingStage = "LESSON" | "INQUIRY";
+
+/** Eğitmenin öğrenciyi engelleme gerekçeleri (sunucudaki `BlockReason`). */
+export type BlockReason =
+  | "OFF_PLATFORM"
+  | "HARASSMENT"
+  | "SCAM"
+  | "NOT_A_FIT"
+  | "PRICE_MISMATCH"
+  | "NO_SHOW"
+  | "OTHER";
+
+export interface BlockCreate {
+  client_id: number;
+  reason: BlockReason;
+  note?: string | null;
+}
+
+export interface BlockOut {
+  client_id: number;
+  reason: BlockReason;
+  note?: string | null;
+  created_at: string;
+}
+
+/** Öğrencinin bir eğitmene yazıp yazamayacağı (`GET /messages/tutors/{id}/eligibility`). */
+export interface MessagingEligibility {
+  can_send: boolean;
+  stage: MessagingStage;
+  blocked: boolean;
+  reason_code: "MESSAGE_BLOCKED" | "INQUIRY_DAILY_LIMIT" | "INQUIRY_AWAITING_REPLY" | null;
+  reason_message: string | null;
+  conversation_id: number | null;
+  /** Yalnız ders öncesi ve eğitmen hiç yazmamışken sayı. */
+  remaining_before_reply: number | null;
+  /** Yalnız ders öncesi ve sohbette henüz öğrenci mesajı yokken sayı. */
+  new_conversations_left_today: number | null;
 }
 
 /** Mesaj aramasında gövdesi eşleşen tek bir mesaj (her eşleşme ayrı satır). */
@@ -522,6 +569,8 @@ export interface MessageOut {
   msg_type?: string;
   /** Zengin mesajlar (booking_card vb.) için JSON yük. */
   meta_data?: BookingCardMetadata | null;
+  /** Gönderim yanıtında: gövdeden iletişim bilgisi ya da dış bağlantı gizlendi mi? */
+  contact_masked?: boolean;
 }
 
 /** booking_card tipi mesajlarda metadata yapısı. */
@@ -1028,6 +1077,8 @@ export interface ReportOut {
   resolution?: string | null;
   resolved_at?: string | null;
   created_at: string;
+  /** Bildirilen içeriğin şikâyet anındaki kopyası (ör. mesaj gövdesi). */
+  target_snapshot?: string | null;
 }
 
 /* ============================ REVIEW ============================ */

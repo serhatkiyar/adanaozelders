@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import datetime
+import math
 from collections import defaultdict
+from typing import Literal
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException, status
-from sqlalchemy import exists, func, or_, select, text
+from sqlalchemy import delete, exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,17 +18,27 @@ from models.demand import Demand
 from models.demand_response import DemandResponse
 from models.library import Library
 from models.library_operator import LibraryOperator
-from models.messaging import Conversation, Message, MessageReaction
+from models.messaging import (
+    BlockReason,
+    Conversation,
+    Message,
+    MessageReaction,
+    TutorClientBlock,
+)
+from models.report import Report, ReportReason, ReportStatus
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from core import ws_outbox
-from core.moderation import mask_contact_info
+from core.config import settings
+from core.moderation import mask_contact_info, mask_external_links
 from schemas.messaging import (
+    BlockCreate,
     ConversationOut,
     MessageOut,
     MessageSearchHit,
     MessageSearchResults,
     MessagesUnreadCounts,
+    MessagingEligibilityOut,
     ReactionOut,
     ReplyPreview,
 )
@@ -131,7 +144,9 @@ async def _can_message(
 ) -> bool:
     """Çift bazlı ilişki politikası (İP-3 §1) — `a` GÖNDEREN, `b` hedef.
 
-    - CLIENT↔TUTOR: rezervasyon/talep-yanıtı kuralı.
+    - CLIENT↔TUTOR: bu fonksiyondan geçmez; `send_message` çifti doğrudan
+      `_assert_client_tutor_send` ile karşılar (aşama + engel + ders öncesi
+      sınırlar, Modül 5). Buraya düşerse kapalıdır.
     - CLIENT→LIBRARY: açık (public işletmeye destek talebi; hedefin ACTIVE
       olduğu `_validate_target`'ta doğrulanır). Bu sohbet ilişkiyi doğurur.
     - LIBRARY→CLIENT: yalnız GERÇEK, kütüphane bazlı iş ilişkisi.
@@ -139,8 +154,6 @@ async def _can_message(
     """
     roles = {a[0], b[0]}
     parties = {a[0]: a[1], b[0]: b[1]}
-    if roles == {"CLIENT", "TUTOR"}:
-        return await _can_message_client_tutor(db, parties["CLIENT"], parties["TUTOR"])
     if roles == {"CLIENT", "LIBRARY"}:
         if a[0] == "CLIENT":
             return True
@@ -210,28 +223,416 @@ async def _assert_sender_library_active(
         )
 
 
-async def _can_message_client_tutor(
-    db: AsyncSession, client_id: int, tutor_id: int
-) -> bool:
-    """Aktif/bekleyen rezervasyon VEYA eğitmenin bu öğrencinin bir talebine verdiği
-    yanıt mesajlaşmayı açar (talep yanıtı = eğitmen tarafından başlatılan iletişim)."""
+# ── Öğrenci ↔ eğitmen: aşama, engel ve ders öncesi sınırlar (Modül 5) ──
+
+Stage = Literal["LESSON", "INQUIRY"]
+
+# Bu durumlardan birinde silinmemiş rezervasyon "ders ilişkisi" sayılır.
+# Geçmiş (COMPLETED) ders de ilişkidir: eski öğrenci sınırsız yazabilir.
+_DERS_ILISKISI = (BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.COMPLETED)
+
+# Otomatik şikâyet açan engel gerekçeleri → şikâyet nedeni.
+_BLOCK_REPORT_REASON = {
+    BlockReason.OFF_PLATFORM: ReportReason.CONTACT_INFO,
+    BlockReason.HARASSMENT: ReportReason.HARASSMENT,
+    BlockReason.SCAM: ReportReason.SCAM,
+}
+
+_MSG_BLOCKED_CLIENT = "Bu eğitmen şu anda senden mesaj kabul etmiyor."
+_MSG_BLOCKED_TUTOR = "Bu öğrenciyi engelledin. Yazmak için önce engeli kaldır."
+_MSG_TUTOR_CANNOT_START = (
+    "Bu öğrenciye yazabilmen için aranızda bir ders ya da öğrencinin "
+    "başlattığı bir sohbet olmalı."
+)
+_INQUIRY_WINDOW = datetime.timedelta(hours=24)
+
+
+def _now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _site_hosts() -> frozenset[str]:
+    """Ders öncesi sohbette serbest bırakılan tek alan adı: sitenin kendisi."""
+    host = urlsplit(settings.FRONTEND_BASE_URL).hostname
+    return frozenset({host}) if host else frozenset()
+
+
+def _daily_limit_message() -> str:
+    return (
+        f"Bugün en fazla {settings.MESSAGE_INQUIRY_DAILY_NEW} yeni eğitmene ilk "
+        "mesaj gönderebilirsin. Yarın yeniden dene ya da hemen ders talep et."
+    )
+
+
+def _awaiting_reply_message() -> str:
+    return (
+        "Eğitmen yanıt verene kadar en fazla "
+        f"{settings.MESSAGE_INQUIRY_MAX_UNANSWERED} mesaj gönderebilirsin."
+    )
+
+
+def _error(
+    status_code: int, code: str, message: str, headers: dict | None = None
+) -> HTTPException:
+    """Mesajlaşma hataları yapılandırılmış gövde döner: {code, message}."""
+    return HTTPException(
+        status_code, detail={"code": code, "message": message}, headers=headers
+    )
+
+
+async def client_tutor_stage(
+    db: AsyncSession, *, client_id: int, tutor_id: int
+) -> Stage:
+    """Çiftin aşaması: ders ilişkisi (rezervasyon PENDING/ACCEPTED/COMPLETED ya da
+    eğitmenin öğrencinin bir talebine yanıtı) varsa LESSON, yoksa INQUIRY."""
     has_booking = exists().where(
         Booking.client_id == client_id,
         Booking.tutor_id == tutor_id,
-        Booking.status.in_([BookingStatus.PENDING, BookingStatus.ACCEPTED]),
+        Booking.status.in_(_DERS_ILISKISI),
         Booking.deleted_at.is_(None),
     )
-    has_demand_response = (
-        exists()
-        .where(
-            DemandResponse.tutor_id == tutor_id,
-            DemandResponse.demand_id == Demand.id,
-            DemandResponse.deleted_at.is_(None),
-            Demand.client_id == client_id,
-            Demand.deleted_at.is_(None),
+    has_demand_response = exists().where(
+        DemandResponse.tutor_id == tutor_id,
+        DemandResponse.demand_id == Demand.id,
+        DemandResponse.deleted_at.is_(None),
+        Demand.client_id == client_id,
+        Demand.deleted_at.is_(None),
+    )
+    lesson = await db.scalar(select(or_(has_booking, has_demand_response)))
+    return "LESSON" if lesson else "INQUIRY"
+
+
+async def is_blocked(db: AsyncSession, *, tutor_id: int, client_id: int) -> bool:
+    return bool(
+        await db.scalar(
+            select(
+                exists().where(
+                    TutorClientBlock.tutor_id == tutor_id,
+                    TutorClientBlock.client_id == client_id,
+                )
+            )
         )
     )
-    return bool(await db.scalar(select(or_(has_booking, has_demand_response))))
+
+
+async def assert_client_not_blocked(
+    db: AsyncSession, *, tutor_id: int, client_id: int
+) -> None:
+    """Engellenen öğrencinin eğitmene serbest metin yollarını (ders yorumu,
+    ders sonrası soru-cevap) kapatır; engel sohbetle sınırlı kalmasın."""
+    if await is_blocked(db, tutor_id=tutor_id, client_id=client_id):
+        raise _error(status.HTTP_403_FORBIDDEN, "MESSAGE_BLOCKED", _MSG_BLOCKED_CLIENT)
+
+
+async def assert_booking_not_blocked(
+    db: AsyncSession, *, tutor_id: int, client_id: int
+) -> None:
+    """Engellenen öğrenci o eğitmene yeni ders talebi açamaz; aksi halde engel
+    ders talebi (ve onun sohbet kartı) üzerinden aşılırdı."""
+    if await is_blocked(db, tutor_id=tutor_id, client_id=client_id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu eğitmen şu anda senden yeni ders talebi kabul etmiyor.",
+        )
+
+
+async def _client_tutor_conversation_id(
+    db: AsyncSession, *, client_id: int, tutor_id: int
+) -> int | None:
+    """Var olan CLIENT↔TUTOR sohbetinin id'si (yaratmaz)."""
+    return await db.scalar(
+        select(Conversation.id).where(
+            Conversation.client_id == client_id,
+            Conversation.tutor_id == tutor_id,
+        )
+    )
+
+
+async def _sender_counts(db: AsyncSession, conv_id: int | None) -> dict[str, int]:
+    """Sohbette gönderen türüne göre mesaj sayısı (CLIENT / TUTOR)."""
+    if conv_id is None:
+        return {}
+    rows = await db.execute(
+        select(Message.sender_role, func.count())
+        .where(
+            Message.conversation_id == conv_id,
+            Message.sender_role.in_(["CLIENT", "TUTOR"]),
+        )
+        .group_by(Message.sender_role)
+    )
+    return {role: int(n) for role, n in rows.all()}
+
+
+async def _inquiries_in_window(
+    db: AsyncSession, client_id: int, now: datetime.datetime
+) -> tuple[int, datetime.datetime | None]:
+    """Öğrencinin son 24 saatte başlattığı ders öncesi sohbet sayısı ve en eskisi."""
+    count, oldest = (
+        await db.execute(
+            select(func.count(), func.min(Conversation.inquiry_started_at)).where(
+                Conversation.client_id == client_id,
+                Conversation.inquiry_started_at.isnot(None),
+                Conversation.inquiry_started_at > now - _INQUIRY_WINDOW,
+            )
+        )
+    ).one()
+    return int(count or 0), oldest
+
+
+async def _get_published_tutor(db: AsyncSession, tutor_id: int) -> Tutor:
+    """Yayındaki eğitmen (`booking_service.get_bookable_tutor` ölçütü); değilse 404."""
+    from services import booking_service  # döngüsel import: booking → messaging
+
+    try:
+        return await booking_service.get_bookable_tutor(db, tutor_id)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_404_NOT_FOUND:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND, "Eğitmen bulunamadı"
+            ) from exc
+        raise
+
+
+async def _assert_client_tutor_send(
+    db: AsyncSession, sender_role: str, *, client_id: int, tutor_id: int
+) -> tuple[Stage, bool]:
+    """CLIENT↔TUTOR metin mesajı kapısı. `(aşama, bu mesaj yeni bir ders öncesi
+    sohbet başlatıyor mu)` döner; izin yoksa HTTPException.
+
+    Sayımlar veritabanından yapılır; Redis erişilemese de uygulanır (fail-closed).
+    """
+    # 1) Engel iki yönü de kapatır (sistem mesajları bu kapıdan geçmez).
+    if await is_blocked(db, tutor_id=tutor_id, client_id=client_id):
+        raise _error(
+            status.HTTP_403_FORBIDDEN,
+            "MESSAGE_BLOCKED",
+            _MSG_BLOCKED_TUTOR if sender_role == "TUTOR" else _MSG_BLOCKED_CLIENT,
+        )
+    # 2) Ders ilişkisi varsa ek sınır yok.
+    stage = await client_tutor_stage(db, client_id=client_id, tutor_id=tutor_id)
+    if stage == "LESSON":
+        return stage, False
+
+    # 3) Ders öncesi: eğitmen yalnız öğrencinin başlattığı sohbete yazabilir
+    #    (kütüphanedeki `client_started` deseni).
+    if sender_role == "TUTOR":
+        client_started = await db.scalar(
+            select(
+                exists().where(
+                    Conversation.client_id == client_id,
+                    Conversation.tutor_id == tutor_id,
+                    Message.conversation_id == Conversation.id,
+                    Message.sender_role == "CLIENT",
+                )
+            )
+        )
+        if not client_started:
+            raise _error(
+                status.HTTP_403_FORBIDDEN, "TUTOR_CANNOT_START", _MSG_TUTOR_CANNOT_START
+            )
+        return stage, False
+
+    # 4) Öğrenci: hedef eğitmen yayında olmalı. Sayımlar öğrenci satırı
+    #    kilitlenerek yapılır; aynı öğrencinin eşzamanlı istekleri sıraya girer.
+    await _get_published_tutor(db, tutor_id)
+    await db.execute(select(Client.id).where(Client.id == client_id).with_for_update())
+    conv_id = await _client_tutor_conversation_id(
+        db, client_id=client_id, tutor_id=tutor_id
+    )
+    counts = await _sender_counts(db, conv_id)
+    client_msgs = counts.get("CLIENT", 0)
+    tutor_msgs = counts.get("TUTOR", 0)
+
+    if client_msgs == 0:
+        now = _now()
+        started, oldest = await _inquiries_in_window(db, client_id, now)
+        if started >= settings.MESSAGE_INQUIRY_DAILY_NEW:
+            retry = 1
+            if oldest is not None:
+                retry = max(
+                    1, math.ceil((oldest + _INQUIRY_WINDOW - now).total_seconds())
+                )
+            raise _error(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "INQUIRY_DAILY_LIMIT",
+                _daily_limit_message(),
+                headers={"Retry-After": str(retry)},
+            )
+        return stage, True
+
+    if tutor_msgs == 0 and client_msgs >= settings.MESSAGE_INQUIRY_MAX_UNANSWERED:
+        raise _error(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "INQUIRY_AWAITING_REPLY",
+            _awaiting_reply_message(),
+        )
+    return stage, False
+
+
+async def messaging_eligibility(
+    db: AsyncSession, client: Client, tutor_id: int
+) -> MessagingEligibilityOut:
+    """Öğrencinin bu eğitmene şu an yazıp yazamayacağı (yazma alanı için).
+    Gönderim kapısıyla (`_assert_client_tutor_send`) aynı ölçütleri kullanır."""
+    stage = await client_tutor_stage(db, client_id=client.id, tutor_id=tutor_id)
+    if stage == "INQUIRY":
+        await _get_published_tutor(db, tutor_id)
+    blocked = await is_blocked(db, tutor_id=tutor_id, client_id=client.id)
+    conv_id = await _client_tutor_conversation_id(
+        db, client_id=client.id, tutor_id=tutor_id
+    )
+    counts = await _sender_counts(db, conv_id)
+    client_msgs = counts.get("CLIENT", 0)
+    tutor_msgs = counts.get("TUTOR", 0)
+
+    remaining: int | None = None
+    new_left: int | None = None
+    if stage == "INQUIRY":
+        if tutor_msgs == 0:
+            remaining = max(0, settings.MESSAGE_INQUIRY_MAX_UNANSWERED - client_msgs)
+        if client_msgs == 0:
+            started, _oldest = await _inquiries_in_window(db, client.id, _now())
+            new_left = max(0, settings.MESSAGE_INQUIRY_DAILY_NEW - started)
+
+    reason_code = None
+    reason_message = None
+    if blocked:
+        reason_code, reason_message = "MESSAGE_BLOCKED", _MSG_BLOCKED_CLIENT
+    elif new_left == 0:
+        reason_code, reason_message = "INQUIRY_DAILY_LIMIT", _daily_limit_message()
+    elif client_msgs > 0 and remaining == 0:
+        reason_code = "INQUIRY_AWAITING_REPLY"
+        reason_message = _awaiting_reply_message()
+
+    return MessagingEligibilityOut(
+        can_send=reason_code is None,
+        stage=stage,
+        blocked=blocked,
+        reason_code=reason_code,
+        reason_message=reason_message,
+        conversation_id=conv_id,
+        remaining_before_reply=remaining,
+        new_conversations_left_today=new_left,
+    )
+
+
+async def _notify_client_refresh(
+    db: AsyncSession, *, client_id: int, tutor_id: int
+) -> None:
+    """Engel değişince öğrencinin sohbet listesi tazelensin (sohbet varsa)."""
+    conv_id = await _client_tutor_conversation_id(
+        db, client_id=client_id, tutor_id=tutor_id
+    )
+    if conv_id is not None:
+        ws_outbox.enqueue(
+            db,
+            {"type": "NEW_MESSAGE", "data": {"conversation_id": conv_id}},
+            user_id=client_id,
+            role_id=_ROLE_CLIENT,
+        )
+
+
+async def block_client(
+    db: AsyncSession, tutor: Tutor, data: BlockCreate
+) -> TutorClientBlock:
+    """Eğitmen öğrenciyi gerekçeyle engeller.
+
+    Önkoşul: aralarında bir sohbet ya da rezervasyon kaydı olmalı; yoksa 404
+    (keyfi id ile öğrenci taraması yapılamaz, varlık bilgisi sızmaz).
+    """
+    from services import booking_service  # döngüsel import: booking → messaging
+
+    client_id = data.client_id
+    conv_id = await _client_tutor_conversation_id(
+        db, client_id=client_id, tutor_id=tutor.id
+    )
+    if conv_id is None and not await booking_service.has_relationship(
+        db, tutor_id=tutor.id, client_id=client_id
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Öğrenci bulunamadı")
+
+    note = mask_contact_info(data.note) if data.note else None
+    # Eşzamanlı iki istekte benzersiz kısıt 500 yerine 409'a dönsün.
+    block_id = await db.scalar(
+        insert(TutorClientBlock)
+        .values(
+            tutor_id=tutor.id,
+            client_id=client_id,
+            reason=data.reason.value,
+            note=note,
+        )
+        .on_conflict_do_nothing(constraint="uq_tutor_client_block")
+        .returning(TutorClientBlock.id)
+    )
+    if block_id is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu öğrenci zaten engelli.")
+
+    report_reason = _BLOCK_REPORT_REASON.get(data.reason)
+    if report_reason is not None:
+        open_dup = await db.scalar(
+            select(Report.id).where(
+                Report.reporter_role == tutor.role_id,
+                Report.reporter_id == tutor.id,
+                Report.target_type == "CLIENT",
+                Report.target_id == client_id,
+                Report.status == ReportStatus.OPEN,
+            )
+        )
+        if open_dup is None:
+            db.add(
+                Report(
+                    reporter_role=tutor.role_id,
+                    reporter_id=tutor.id,
+                    target_type="CLIENT",
+                    target_id=client_id,
+                    reason=report_reason,
+                    description=note,
+                    target_snapshot=(
+                        f"Eğitmen #{tutor.id} engelledi: {data.reason.value}"
+                    ),
+                )
+            )
+
+    await _notify_client_refresh(db, client_id=client_id, tutor_id=tutor.id)
+    await db.flush()
+    return await db.get(TutorClientBlock, block_id)
+
+
+async def unblock_client(db: AsyncSession, tutor: Tutor, client_id: int) -> None:
+    removed = await db.scalar(
+        delete(TutorClientBlock)
+        .where(
+            TutorClientBlock.tutor_id == tutor.id,
+            TutorClientBlock.client_id == client_id,
+        )
+        .returning(TutorClientBlock.id)
+    )
+    if removed is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engel bulunamadı")
+    await _notify_client_refresh(db, client_id=client_id, tutor_id=tutor.id)
+    await db.flush()
+
+
+async def message_for_report(
+    db: AsyncSession, user: CurrentUser, message_id: int
+) -> Message:
+    """Şikâyet edilecek mesajı yetkiyle getirir. Mesaj yoksa, kullanıcı sohbetin
+    tarafı değilse ya da mesaj sistem mesajıysa aynı 404 döner (varlık sızmaz)."""
+    not_found = HTTPException(status.HTTP_404_NOT_FOUND, "Mesaj bulunamadı")
+    if user.role_id not in _VALID_PARTY_ROLES:
+        raise not_found
+    msg = await db.get(Message, message_id)
+    if msg is None or msg.sender_role == "SYSTEM":
+        raise not_found
+    conv = await db.get(Conversation, msg.conversation_id)
+    if conv is None or not _is_party(conv, user):
+        raise not_found
+    my_role, _ = _party_of(user)
+    if msg.sender_role == my_role:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Kendi mesajını şikâyet edemezsin."
+        )
+    return msg
 
 
 async def _conversation_id(
@@ -327,6 +728,8 @@ async def send_message(
             status.HTTP_400_BAD_REQUEST, "Aynı türdeki taraflar mesajlaşamaz"
         )
     target_party = (counterparty_role, counterparty_id)
+    stage: Stage | None = None
+    new_inquiry = False
     if sender_party[0] == "LIBRARY":
         # 1) Gönderen operatörün kütüphanesi ACTIVE olmalı (İP-3 §1.1).
         await _assert_sender_library_active(db, sender)
@@ -352,15 +755,25 @@ async def send_message(
                 status.HTTP_403_FORBIDDEN,
                 "Bu kullanıcıya mesaj gönderme yetkiniz yok.",
             )
+    elif {sender_party[0], counterparty_role} == {"CLIENT", "TUTOR"}:
+        await _validate_target(db, counterparty_role, counterparty_id)
+        # Uygunluk gönderim anında değerlendirilir: engel, aşama ve ders öncesi
+        # sınırlar (Modül 5).
+        pair = {sender_party[0]: sender_party[1], counterparty_role: counterparty_id}
+        stage, new_inquiry = await _assert_client_tutor_send(
+            db, sender_party[0], client_id=pair["CLIENT"], tutor_id=pair["TUTOR"]
+        )
     else:
         await _validate_target(db, counterparty_role, counterparty_id)
-        # Uygunluk gönderim anında değerlendirilir; CLIENT↔TUTOR'da rezervasyon gerekir.
         if not await _can_message(db, sender_party, target_party):
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
                 "Mesajlaşmak için aranızda beklemede veya onaylı bir rezervasyon olmalı.",
             )
     conv_id = await _conversation_id(db, sender_party, target_party)
+    if new_inquiry:
+        conv = await db.get(Conversation, conv_id)
+        conv.inquiry_started_at = _now()
 
     # Yanıt hedefi yalnızca aynı sohbetteyse geçerli — değilse sessizce yok say.
     reply_preview: ReplyPreview | None = None
@@ -375,11 +788,16 @@ async def send_message(
                 body=_preview_body(target.body),
             )
 
+    # İletişim bilgisi her aşamada gizlenir; ders öncesi sohbette dış
+    # bağlantılar da (sitenin kendi alan adı hariç).
+    masked = mask_contact_info(body)
+    if stage == "INQUIRY":
+        masked = mask_external_links(masked, _site_hosts())
     message = Message(
         conversation_id=conv_id,
         sender_role=sender_party[0],
         sender_id=sender.id,
-        body=mask_contact_info(body),
+        body=masked,
         reply_to_id=valid_reply_id,
     )
     db.add(message)
@@ -405,6 +823,7 @@ async def send_message(
         reactions=[],
         msg_type="text",
         meta_data=None,
+        contact_masked=masked != body,
     )
 
 
@@ -543,6 +962,48 @@ async def _enrich_conversations(
     )
     unread = {row[0]: row[1] for row in unread_rows.all()}
 
+    # CLIENT↔TUTOR aşaması ve engel durumu (toplu sorgular; Modül 5).
+    pairs = {
+        (c.client_id, c.tutor_id)
+        for c in convs
+        if c.client_id is not None and c.tutor_id is not None
+    }
+    lesson_pairs: set[tuple[int, int]] = set()
+    blocked_pairs: set[tuple[int, int]] = set()
+    if pairs:
+        cids = {p[0] for p in pairs}
+        tids = {p[1] for p in pairs}
+        booking_rows = await db.execute(
+            select(Booking.client_id, Booking.tutor_id)
+            .where(
+                Booking.client_id.in_(cids),
+                Booking.tutor_id.in_(tids),
+                Booking.status.in_(_DERS_ILISKISI),
+                Booking.deleted_at.is_(None),
+            )
+            .distinct()
+        )
+        lesson_pairs.update((r[0], r[1]) for r in booking_rows.all())
+        response_rows = await db.execute(
+            select(Demand.client_id, DemandResponse.tutor_id)
+            .join(Demand, Demand.id == DemandResponse.demand_id)
+            .where(
+                Demand.client_id.in_(cids),
+                DemandResponse.tutor_id.in_(tids),
+                Demand.deleted_at.is_(None),
+                DemandResponse.deleted_at.is_(None),
+            )
+            .distinct()
+        )
+        lesson_pairs.update((r[0], r[1]) for r in response_rows.all())
+        block_rows = await db.execute(
+            select(TutorClientBlock.client_id, TutorClientBlock.tutor_id).where(
+                TutorClientBlock.client_id.in_(cids),
+                TutorClientBlock.tutor_id.in_(tids),
+            )
+        )
+        blocked_pairs.update((r[0], r[1]) for r in block_rows.all())
+
     for c in convs:
         other = cp_for.get(c.id)
         nm = names.get(other) if other else None
@@ -560,6 +1021,13 @@ async def _enrich_conversations(
             getattr(c, _READ_COL[other[0]]) if other else None
         )
         c.archived = getattr(c, archived_col) is not None
+        pair = (c.client_id, c.tutor_id)
+        if pair in pairs:
+            c.stage = "LESSON" if pair in lesson_pairs else "INQUIRY"
+            c.blocked = pair in blocked_pairs
+        else:
+            c.stage = None
+            c.blocked = False
 
     convs.sort(key=lambda c: c.last_message_at or c.created_at, reverse=True)
     return my_role, convs
@@ -661,6 +1129,18 @@ async def toggle_reaction(
     conv = await db.get(Conversation, message.conversation_id)
     if conv is None or not _is_party(conv, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your conversation")
+    # Engel CLIENT↔TUTOR sohbetinde tepkiyi (ve WS itmesini) de kapatır.
+    if (
+        conv.client_id is not None
+        and conv.tutor_id is not None
+        and await is_blocked(db, tutor_id=conv.tutor_id, client_id=conv.client_id)
+    ):
+        my_role, _ = _party_of(user)
+        raise _error(
+            status.HTTP_403_FORBIDDEN,
+            "MESSAGE_BLOCKED",
+            _MSG_BLOCKED_TUTOR if my_role == "TUTOR" else _MSG_BLOCKED_CLIENT,
+        )
 
     existing = await db.scalar(
         select(MessageReaction).where(

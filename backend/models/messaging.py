@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import enum
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
@@ -48,6 +49,11 @@ class Conversation(Base, TimestampMixin):
     library_archived_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Ders ilişkisi yokken öğrencinin bu sohbete ilk mesajı attığı an (günlük
+    # yeni sohbet sınırı bu kolondan sayılır; Modül 5).
+    inquiry_started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation", cascade="all, delete-orphan"
@@ -79,6 +85,12 @@ class Conversation(Base, TimestampMixin):
         Index("ix_conversations_client", "client_id"),
         Index("ix_conversations_tutor", "tutor_id"),
         Index("ix_conversations_library", "library_id"),
+        Index(
+            "ix_conversations_client_inquiry",
+            "client_id",
+            "inquiry_started_at",
+            postgresql_where=text("inquiry_started_at IS NOT NULL"),
+        ),
     )
 
 
@@ -135,4 +147,41 @@ class MessageReaction(Base, TimestampMixin):
             "message_id", "role_id", "user_id", "emoji", name="uq_reaction"
         ),
         Index("ix_message_reactions_message", "message_id"),
+    )
+
+
+class BlockReason(str, enum.Enum):
+    """Eğitmenin öğrenciyi engelleme gerekçesi (Modül 5)."""
+
+    OFF_PLATFORM = "OFF_PLATFORM"      # platform dışı ödeme/iletişim teklifi
+    HARASSMENT = "HARASSMENT"          # taciz / hakaret
+    SCAM = "SCAM"                      # dolandırıcılık girişimi
+    NOT_A_FIT = "NOT_A_FIT"            # bu öğrenciye ders vermek istemiyor
+    PRICE_MISMATCH = "PRICE_MISMATCH"  # ücrette anlaşamadılar
+    NO_SHOW = "NO_SHOW"                # dersleri sık kaçırıyor / erteliyor
+    OTHER = "OTHER"                    # diğer (not zorunlu)
+
+
+class TutorClientBlock(Base, TimestampMixin):
+    """Eğitmenin bir öğrenciyi engellemesi. Engel sürerken iki yönde de metin
+    mesajı ve öğrencinin yeni ders talebi kapalıdır. Engeli kaldırmak satırı
+    fiziksel siler (soft-delete yok)."""
+
+    __tablename__ = "tutor_client_blocks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tutor_id: Mapped[int] = mapped_column(
+        ForeignKey("tutors.id", ondelete="CASCADE"), nullable=False
+    )
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
+    )
+    # BlockReason değeri; PG enum kullanılmaz (gerekçe listesi migration'sız genişlesin).
+    reason: Mapped[str] = mapped_column(String(30), nullable=False)
+    # Serbest not; kayıttan önce mask_contact_info'dan geçer.
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("tutor_id", "client_id", name="uq_tutor_client_block"),
+        Index("ix_tutor_client_blocks_client", "client_id"),
     )

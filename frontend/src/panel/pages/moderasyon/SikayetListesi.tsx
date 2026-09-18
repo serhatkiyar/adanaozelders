@@ -236,6 +236,18 @@ export function SikayetListesi() {
       render: (_, rapor) => NEDEN_ETIKETI[rapor.reason] ?? rapor.reason,
     },
     {
+      title: "Bildirilen içerik",
+      key: "target_snapshot",
+      render: (_, rapor) => (
+        <Typography.Text
+          type={rapor.target_snapshot ? undefined : "secondary"}
+          style={{ maxWidth: 320, overflowWrap: "anywhere", whiteSpace: "pre-line" }}
+        >
+          {rapor.target_snapshot || "—"}
+        </Typography.Text>
+      ),
+    },
+    {
       title: "Açıklama",
       key: "description",
       render: (_, rapor) => (

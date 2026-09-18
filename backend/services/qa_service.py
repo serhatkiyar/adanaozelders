@@ -16,6 +16,7 @@ from models.qa import QAMessage, QAStatus, QAThread
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.qa import LessonQuestionGroup, QAThreadCreate, QAThreadOut
+from services import messaging_service
 
 
 async def _load_thread(db: AsyncSession, thread_id: int) -> QAThread | None:
@@ -37,6 +38,9 @@ async def create_thread(
             status.HTTP_403_FORBIDDEN,
             "Questions can only be asked for completed lessons",
         )
+    await messaging_service.assert_client_not_blocked(
+        db, tutor_id=booking.tutor_id, client_id=client.id
+    )
 
     # Tamamlanmış ders, bitiminden QA_QUOTA_WINDOW_DAYS gün sonrasına kadar soru hakkı verir.
     # Ders erken tamamlanmış olabilir (end_at gelecekte) — bu soru sormayı engellemez.
@@ -93,6 +97,10 @@ async def post_message(
     yazabilir; başlık kapalı değilse ve ders penceresi açıkken."""
     if thread.status == QAStatus.CLOSED:
         raise HTTPException(status.HTTP_409_CONFLICT, "Thread is closed")
+    if sender_role == "CLIENT":
+        await messaging_service.assert_client_not_blocked(
+            db, tutor_id=thread.tutor_id, client_id=thread.client_id
+        )
 
     now = datetime.datetime.now(datetime.timezone.utc)
     if thread.booking_id is not None:

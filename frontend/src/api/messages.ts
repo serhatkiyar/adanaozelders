@@ -1,10 +1,13 @@
 import { apiClient } from "@/api/axios";
 import type {
+  BlockCreate,
+  BlockOut,
   ConversationOut,
   MessageOut,
   MessageReactionOut,
   MessageSearchResults,
   MessagesUnreadCounts,
+  MessagingEligibility,
 } from "@/types";
 
 export async function listConversations(
@@ -87,4 +90,24 @@ export async function markConversationRead(
   conversationId: number
 ): Promise<void> {
   await apiClient.post(`/messages/conversations/${conversationId}/read`);
+}
+
+/** Öğrencinin bu eğitmene yazıp yazamayacağı ve kalan hakları (yalnız öğrenci). */
+export async function getMessagingEligibility(
+  tutorId: number
+): Promise<MessagingEligibility> {
+  const { data } = await apiClient.get<MessagingEligibility>(
+    `/messages/tutors/${tutorId}/eligibility`
+  );
+  return data;
+}
+
+/** Eğitmen bir öğrenciyi gerekçeyle engeller (yalnız eğitmen). */
+export async function blockClient(payload: BlockCreate): Promise<BlockOut> {
+  const { data } = await apiClient.post<BlockOut>("/messages/blocks", payload);
+  return data;
+}
+
+export async function unblockClient(clientId: number): Promise<void> {
+  await apiClient.delete(`/messages/blocks/${clientId}`);
 }

@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from models.messaging import BlockReason
 
 
 class MessageCreate(BaseModel):
@@ -47,6 +51,8 @@ class MessageOut(BaseModel):
     reactions: list[ReactionOut] = []
     msg_type: str = "text"
     meta_data: dict | None = None
+    # Gönderim yanıtında: gövdede iletişim bilgisi/dış bağlantı gizlendi mi?
+    contact_masked: bool = False
 
 
 class ConversationOut(BaseModel):
@@ -69,6 +75,10 @@ class ConversationOut(BaseModel):
     counterparty_last_read_at: datetime.datetime | None = None
     # İstek sahibi bu sohbeti arşivlemiş mi?
     archived: bool = False
+    # CLIENT↔TUTOR sohbetinde aşama (LESSON | INQUIRY); kütüphane sohbetinde None.
+    stage: Literal["LESSON", "INQUIRY"] | None = None
+    # Eğitmen görünümünde "ben engelledim", öğrenci görünümünde "beni engelledi".
+    blocked: bool = False
 
 
 class MessageSearchHit(BaseModel):
@@ -98,3 +108,44 @@ class MessagesUnreadCounts(BaseModel):
 
     inbox: int = 0
     archived: int = 0
+
+
+class MessagingEligibilityOut(BaseModel):
+    """Öğrencinin bir eğitmene şu an yazıp yazamayacağı ve kalan hakları."""
+
+    can_send: bool
+    stage: Literal["LESSON", "INQUIRY"]
+    blocked: bool = False
+    reason_code: (
+        Literal["MESSAGE_BLOCKED", "INQUIRY_DAILY_LIMIT", "INQUIRY_AWAITING_REPLY"]
+        | None
+    ) = None
+    reason_message: str | None = None
+    conversation_id: int | None = None
+    # Yalnız INQUIRY'de ve eğitmen hiç yazmamışken sayı; aksi halde None.
+    remaining_before_reply: int | None = None
+    # Yalnız INQUIRY'de ve sohbette henüz öğrenci mesajı yokken sayı.
+    new_conversations_left_today: int | None = None
+
+
+class BlockCreate(BaseModel):
+    client_id: int = Field(gt=0)
+    reason: BlockReason
+    note: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def _other_requires_note(self) -> "BlockCreate":
+        if self.note is not None:
+            self.note = self.note.strip() or None
+        if self.reason == BlockReason.OTHER and len(self.note or "") < 3:
+            raise ValueError("Diğer gerekçesinde en az 3 karakterlik not zorunlu")
+        return self
+
+
+class BlockOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    client_id: int
+    reason: BlockReason
+    note: str | None = None
+    created_at: datetime.datetime

@@ -4,7 +4,8 @@ import { Modal } from "@/components/ui/Modal";
 import { useCreateReport } from "@/hooks/useReports";
 import { ReportReason } from "@/types";
 import { toast } from "@/store/toastStore";
-import { getErrorMessage } from "@/lib/errors";
+import { AxiosError } from "axios";
+import { getErrorDetail, getErrorMessage } from "@/lib/errors";
 
 export const REPORT_REASON_LABEL: Record<ReportReason, string> = {
   [ReportReason.SPAM]: "Spam / istenmeyen içerik",
@@ -22,14 +23,19 @@ export function ReportModal({
   targetType,
   targetId,
   targetLabel,
+  varsayilanNeden,
   onClose,
 }: {
   targetType: string;
   targetId: number;
   targetLabel?: string;
+  /** Açılışta seçili gelecek neden (ör. dış bağlantı uyarısından → SCAM). */
+  varsayilanNeden?: ReportReason;
   onClose: () => void;
 }) {
-  const [reason, setReason] = useState<ReportReason>(ReportReason.INAPPROPRIATE);
+  const [reason, setReason] = useState<ReportReason>(
+    varsayilanNeden ?? ReportReason.INAPPROPRIATE
+  );
   const [description, setDescription] = useState("");
   const mutation = useCreateReport();
 
@@ -47,8 +53,14 @@ export function ReportModal({
           toast.success("Şikayetin alındı; ekibimiz inceleyecek.");
           onClose();
         },
+        // 409 (zaten açık şikâyet) sunucu metniyle gösterilir; genel "çakışma"
+        // metni kullanıcıya şikâyetin zaten incelendiğini söylemez.
         onError: (err) =>
-          toast.error(getErrorMessage(err, "Şikayet gönderilemedi.")),
+          toast.error(
+            err instanceof AxiosError && err.response?.status === 409
+              ? getErrorDetail(err, "Şikayet gönderilemedi.")
+              : getErrorMessage(err, "Şikayet gönderilemedi.")
+          ),
       }
     );
   };

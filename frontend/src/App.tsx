@@ -356,6 +356,9 @@ function WsManager() {
           const convId = msg.data?.conversation_id;
           invalidate(convId != null ? ["messages", convId] : ["messages"]);
           invalidate(["messages", "unread"]);
+          // Eğitmen yanıtı ders öncesi "yanıt bekleme" sınırını kaldırır: öğrencinin
+          // yazma uygunluğu da tazelenmeli (["messages", convId] bunu kapsamaz).
+          invalidate(["messages", "eligibility"]);
           invalidate(["conversations"]);
         } else if (msg.type === "NEW_NOTIFICATION") {
           invalidate(["notifications"]);

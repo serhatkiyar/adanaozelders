@@ -1,11 +1,16 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { SAYFA_BASLIGI } from "@/lib/tipografi";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AxiosError } from "axios";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Avatar } from "@/components/Avatar";
 import { BookingActionCard } from "@/components/BookingActionCard";
 import { RightContextPanel } from "@/components/RightContextPanel";
+import { ReportModal } from "@/components/ReportModal";
+import { GuvenlikBandi } from "@/components/mesaj/GuvenlikBandi";
+import { DisBaglantiUyarisi } from "@/components/mesaj/DisBaglantiUyarisi";
+import { EngelleModal } from "@/components/mesaj/EngelleModal";
+import { KUCUK_ACIKLAMA } from "@/components/pano/stil";
 import { UYE_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
@@ -15,21 +20,82 @@ import {
   useMessages,
   useMessageSearch,
   useMessagesUnreadCount,
+  useMessagingEligibility,
   useSendMessage,
   useToggleReaction,
+  useUnblockClient,
 } from "@/hooks/useMessages";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatChatTime, formatDateTime } from "@/lib/datetime";
 import { buildSnippet } from "@/lib/messageSearch";
+import { mesajParcala } from "@/lib/mesajBaglantisi";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import { ROLE_IDS } from "@/types";
-import type { ConversationOut, MessageOut, MessageSearchHit } from "@/types";
+import { ROLE_IDS, ReportReason } from "@/types";
+import type {
+  ConversationOut,
+  MessageOut,
+  MessageSearchHit,
+  MessagingStage,
+} from "@/types";
 
 const REACTION_EMOJIS = ["👍", "❤️", "😄", "🎉", "😮", "😢", "🙏"];
 
 type Role = "CLIENT" | "TUTOR" | "LIBRARY";
+
+/** Sohbet başlığı için tıklama anında saklanan bilgi (liste dışından açılabilir). */
+type SohbetMeta = {
+  id: number;
+  counterpartyId: number | null;
+  counterpartyRole?: string | null;
+  name: string | null;
+  avatar?: string | null;
+  archived: boolean;
+  stage?: MessagingStage | null;
+  blocked?: boolean;
+};
+
+/** Sohbet listesi kaydından başlık bilgisi. */
+function metaFrom(c: ConversationOut): SohbetMeta {
+  return {
+    id: c.id,
+    counterpartyId: c.counterparty_id ?? null,
+    counterpartyRole: c.counterparty_role,
+    name: c.counterparty_name ?? null,
+    avatar: c.counterparty_avatar_url,
+    archived: c.archived ?? false,
+    stage: c.stage ?? null,
+    blocked: c.blocked ?? false,
+  };
+}
+
+/** Şikâyet penceresinin hedefi: tek mesaj ya da karşı taraf. */
+type RaporHedefi = {
+  type: "MESSAGE" | "TUTOR" | "CLIENT";
+  id: number;
+  label: string;
+  neden?: ReportReason;
+};
+
+/**
+ * Gönderim hatasının kullanıcıya gösterilecek metni. Mesajlaşma uçları
+ * yapılandırılmış hata döner (`detail = {code, message}`); telefon doğrulama
+ * gibi eski uçlar düz metin döner.
+ */
+function gonderimHatasi(err: unknown): string {
+  if (err instanceof AxiosError) {
+    const detail: unknown = err.response?.data?.detail;
+    if (typeof detail === "string") return detail;
+    if (
+      detail &&
+      typeof detail === "object" &&
+      typeof (detail as { message?: unknown }).message === "string"
+    )
+      return (detail as { message: string }).message;
+  }
+  return getErrorMessage(err, "Mesaj gönderilemedi.");
+}
 
 export default function Messages({ embedded = false }: { embedded?: boolean }) {
   const { data: user } = useCurrentUser();
@@ -55,14 +121,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   // Seçili sohbetin başlık/arşiv bilgisi. Gözatma listesinde olmayabileceği için
   // (ör. arşiv sekmesindeyken aramadan bir mesaja atlanınca) tıklama anında saklanır.
-  const [selectedMeta, setSelectedMeta] = useState<{
-    id: number;
-    counterpartyId: number | null;
-    counterpartyRole?: string | null;
-    name: string | null;
-    avatar?: string | null;
-    archived: boolean;
-  } | null>(null);
+  const [selectedMeta, setSelectedMeta] = useState<SohbetMeta | null>(null);
   const [draft, setDraft] = useState<{
     counterpartyId: number;
     counterpartyRole?: string | null;
@@ -97,14 +156,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   const archivedUnread = unreadCounts?.archived ?? 0;
 
   const openConversation = (
-    meta: {
-      id: number;
-      counterpartyId: number | null;
-      counterpartyRole?: string | null;
-      name: string | null;
-      avatar?: string | null;
-      archived: boolean;
-    },
+    meta: SohbetMeta,
     matchMessageId?: number | null
   ) => {
     setSelectedId(meta.id);
@@ -128,12 +180,8 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     );
     if (existing) {
       openConversation({
-        id: existing.id,
+        ...metaFrom(existing),
         counterpartyId: existing.counterparty_id ?? cpId,
-        counterpartyRole: existing.counterparty_role,
-        name: existing.counterparty_name ?? null,
-        avatar: existing.counterparty_avatar_url,
-        archived: existing.archived ?? false,
       });
     } else {
       setDraft({
@@ -179,9 +227,30 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     draft?.counterpartyRole ??
     (role === "CLIENT" ? "TUTOR" : role === "TUTOR" ? "CLIENT" : null);
 
+  // Öğrenci↔eğitmen sohbetinin aşaması ve engel durumu (Modül 5).
+  const ogrenciEgitmene = role === "CLIENT" && activeCounterpartyRole === "TUTOR";
+  const egitmenOgrenciye = role === "TUTOR" && activeCounterpartyRole === "CLIENT";
+  const { data: uygunluk, refetch: uygunluguTazele } = useMessagingEligibility(
+    ogrenciEgitmene && (selectedId !== null || draft !== null)
+      ? activeCounterpartyId
+      : null
+  );
+  const activeStage: MessagingStage | null =
+    (ogrenciEgitmene ? uygunluk?.stage : undefined) ??
+    browseConv?.stage ??
+    selectedMeta?.stage ??
+    null;
+  const activeBlocked =
+    (ogrenciEgitmene ? uygunluk?.blocked : undefined) ??
+    browseConv?.blocked ??
+    selectedMeta?.blocked ??
+    false;
+
   // Karşı tarafın profili: kütüphane → kütüphane sayfası; eğitmen → ilan; öğrenci → profil.
+  // Ders öncesi sohbette eğitmen öğrenci profiline bağlanmaz: aralarında
+  // ilişki olmadığı için o sayfa sunucuda zaten açılmıyor.
   const counterpartyHref =
-    activeCounterpartyId == null
+    activeCounterpartyId == null || (egitmenOgrenciye && activeStage === "INQUIRY")
       ? null
       : activeCounterpartyRole === "LIBRARY"
         ? ROUTES.library(activeCounterpartyId)
@@ -196,7 +265,17 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   const markRead = useMarkConversationRead();
   const reaction = useToggleReaction(selectedId);
   const archive = useArchiveConversation();
+  const unblock = useUnblockClient();
   const [text, setText] = useState("");
+  const [raporHedefi, setRaporHedefi] = useState<RaporHedefi | null>(null);
+  const [disBaglanti, setDisBaglanti] = useState<{
+    href: string;
+    mesaj: MessageOut | null;
+  } | null>(null);
+  const [engelleAcik, setEngelleAcik] = useState(false);
+  const [secenekAcik, setSecenekAcik] = useState(false);
+  const navigate = useNavigate();
+  const siteHost = typeof window !== "undefined" ? window.location.hostname : "";
 
   const bottomRef = useRef<HTMLDivElement>(null);
   // En-alta kaydırmanın hangi sohbet/uzunlukta yapıldığını izler; böylece bir
@@ -266,6 +345,17 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     setPendingScrollMessageId(null);
   };
 
+  const engeliKaldir = () => {
+    if (activeCounterpartyId === null) return;
+    unblock.mutate(activeCounterpartyId, {
+      onSuccess: () => {
+        setSelectedMeta((m) => (m ? { ...m, blocked: false } : m));
+        toast.success("Engel kaldırıldı.");
+      },
+      onError: (err) => toast.error(getErrorMessage(err, "Engel kaldırılamadı.")),
+    });
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const body = text.trim();
@@ -289,18 +379,21 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
             name: activeName,
             avatar: activeAvatar,
             archived: false,
+            stage: activeStage,
+            blocked: false,
           });
           setDraft(null);
+          if (msg.contact_masked) {
+            toast.info("Güvenliğin için iletişim bilgileri ve dış bağlantılar gizlendi.");
+          }
         },
         onError: (err) => {
-          // 403'ün gerçek sebebini (telefon doğrulama VEYA rezervasyon kapısı)
-          // sunucudan gelen Türkçe detayla göster — hepsini "rezervasyon" sanma.
-          const detail =
-            err instanceof AxiosError &&
-            typeof err.response?.data?.detail === "string"
-              ? (err.response.data.detail as string)
-              : null;
-          toast.error(detail ?? getErrorMessage(err, "Mesaj gönderilemedi."));
+          // 403/429'un gerçek sebebini (telefon doğrulama, engel, ders öncesi
+          // sınırlar) sunucudan gelen Türkçe metinle göster.
+          toast.error(gonderimHatasi(err));
+          // Engel/sınır sunucuda değişmiş olabilir: yazma alanını güncel duruma getir.
+          const kod = err instanceof AxiosError ? err.response?.status : undefined;
+          if (ogrenciEgitmene && (kod === 403 || kod === 429)) void uygunluguTazele();
         },
       }
     );
@@ -483,17 +576,9 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                           <li key={c.id}>
                             <ConversationRow
                               c={c}
+                              role={role}
                               active={c.id === selectedId}
-                              onClick={() =>
-                                openConversation({
-                                  id: c.id,
-                                  counterpartyId: c.counterparty_id ?? null,
-                                  counterpartyRole: c.counterparty_role,
-                                  name: c.counterparty_name ?? null,
-                                  avatar: c.counterparty_avatar_url,
-                                  archived: c.archived ?? false,
-                                })
-                              }
+                              onClick={() => openConversation(metaFrom(c))}
                             />
                           </li>
                         ))}
@@ -557,16 +642,9 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   <li key={c.id}>
                     <ConversationRow
                       c={c}
+                      role={role}
                       active={c.id === selectedId}
-                      onClick={() =>
-                        openConversation({
-                          id: c.id,
-                          counterpartyId: c.counterparty_id ?? null,
-                          name: c.counterparty_name ?? null,
-                          avatar: c.counterparty_avatar_url,
-                          archived: c.archived ?? false,
-                        })
-                      }
+                      onClick={() => openConversation(metaFrom(c))}
                     />
                   </li>
                 ))}
@@ -662,7 +740,94 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     </svg>
                   </button>
                 )}
+                {/* Sohbet seçenekleri (Modül 5): şikâyet ve eğitmen için engel.
+                    Kütüphane sohbetinde karşılığı olan bir eylem yok. */}
+                {activeCounterpartyId !== null &&
+                  (activeCounterpartyRole === "TUTOR" ||
+                    activeCounterpartyRole === "CLIENT") && (
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSecenekAcik((a) => !a)}
+                        aria-haspopup="menu"
+                        aria-expanded={secenekAcik}
+                        aria-label="Sohbet seçenekleri"
+                        title="Sohbet seçenekleri"
+                        className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100"
+                      >
+                        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <circle cx="5" cy="12" r="1.75" />
+                          <circle cx="12" cy="12" r="1.75" />
+                          <circle cx="19" cy="12" r="1.75" />
+                        </svg>
+                      </button>
+                      {secenekAcik && (
+                        <>
+                          <div
+                            aria-hidden
+                            className="fixed inset-0 z-20"
+                            onClick={() => setSecenekAcik(false)}
+                          />
+                          <div
+                            role="menu"
+                            aria-label="Sohbet seçenekleri"
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") setSecenekAcik(false);
+                            }}
+                            className="absolute right-0 top-full z-30 mt-1 w-56 overflow-hidden rounded-lg bg-white py-1 shadow-lg ring-1 ring-slate-200"
+                          >
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setSecenekAcik(false);
+                                setRaporHedefi({
+                                  type: activeCounterpartyRole === "TUTOR" ? "TUTOR" : "CLIENT",
+                                  id: activeCounterpartyId,
+                                  label: activeName ?? "Kullanıcı",
+                                });
+                              }}
+                              className="flex w-full items-center px-4 py-2.5 text-left text-sm text-slate-800 transition hover:bg-slate-50"
+                            >
+                              Şikâyet et
+                            </button>
+                            {egitmenOgrenciye &&
+                              (activeBlocked ? (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => {
+                                    setSecenekAcik(false);
+                                    engeliKaldir();
+                                  }}
+                                  className="flex w-full items-center px-4 py-2.5 text-left text-sm text-slate-800 transition hover:bg-slate-50"
+                                >
+                                  Engeli kaldır
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  onClick={() => {
+                                    setSecenekAcik(false);
+                                    setEngelleAcik(true);
+                                  }}
+                                  className="flex w-full items-center px-4 py-2.5 text-left text-sm text-red-700 transition hover:bg-red-50"
+                                >
+                                  Öğrenciyi engelle
+                                </button>
+                              ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
               </div>
+
+              {/* Güvenlik bandı — yalnız öğrenci↔eğitmen sohbetinde */}
+              {activeStage && (ogrenciEgitmene || egitmenOgrenciye) && (
+                <GuvenlikBandi stage={activeStage} rol={role === "TUTOR" ? "TUTOR" : "CLIENT"} />
+              )}
 
               {/* Mesajlar */}
               <div className="flex-1 overflow-y-auto bg-slate-50 px-4 py-5 sm:px-6">
@@ -684,7 +849,9 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                       Henüz mesaj yok.
                     </p>
                     <p className="mt-1 text-xs text-slate-400 ">
-                      İlk mesajı sen yaz.
+                      {ogrenciEgitmene && activeStage === "INQUIRY"
+                        ? "Kendini tanıt; hedefini ve uygun olduğun saatleri yaz."
+                        : "İlk mesajı sen yaz."}
                     </p>
                   </div>
                 ) : (
@@ -694,8 +861,28 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                       m={m}
                       mine={m.sender_role === role}
                       highlighted={m.id === highlightedMessageId}
+                      siteHost={siteHost}
                       onReply={() => setReplyTarget(m)}
                       onReact={(emoji) => reaction.mutate({ messageId: m.id, emoji })}
+                      onBaglanti={(href, dis) => {
+                        if (dis) {
+                          setDisBaglanti({
+                            href,
+                            mesaj: m.sender_role === role ? null : m,
+                          });
+                          return;
+                        }
+                        // İç bağlantı sayfa yenilemeden açılır.
+                        const u = new URL(href);
+                        navigate(`${u.pathname}${u.search}${u.hash}`);
+                      }}
+                      onBildir={() =>
+                        setRaporHedefi({
+                          type: "MESSAGE",
+                          id: m.id,
+                          label: `${activeName ?? "Kullanıcı"} kişisinin mesajı`,
+                        })
+                      }
                     />
                   ))
                 )}
@@ -747,6 +934,42 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   </button>
                 </div>
               )}
+              {egitmenOgrenciye && activeBlocked ? (
+                <YazmaKapali metin="Bu öğrenciyi engelledin.">
+                  <button
+                    type="button"
+                    onClick={engeliKaldir}
+                    disabled={unblock.isPending}
+                    className="shrink-0 rounded-lg border-2 border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Engeli kaldır
+                  </button>
+                </YazmaKapali>
+              ) : ogrenciEgitmene && activeBlocked ? (
+                <YazmaKapali metin="Bu eğitmen şu anda mesaj kabul etmiyor.">
+                  <Link
+                    to={ROUTES.tutors}
+                    className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
+                  >
+                    Başka eğitmen bul
+                  </Link>
+                </YazmaKapali>
+              ) : ogrenciEgitmene && uygunluk && !uygunluk.can_send ? (
+                <YazmaKapali
+                  metin={uygunluk.reason_message ?? "Şu anda bu eğitmene mesaj gönderemezsin."}
+                >
+                  {uygunluk.reason_code === "INQUIRY_DAILY_LIMIT" &&
+                    activeCounterpartyId !== null && (
+                      <Link
+                        to={ROUTES.tutor(activeCounterpartyId)}
+                        className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
+                      >
+                        Ders talep et
+                      </Link>
+                    )}
+                </YazmaKapali>
+              ) : (
+              <>
               <form
                 onSubmit={submit}
                 className="mx-auto flex w-full max-w-4xl items-end gap-2 p-3 sm:px-6 sm:py-4"
@@ -772,10 +995,57 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   {send.isPending ? "…" : "Gönder"}
                 </button>
               </form>
+              {ogrenciEgitmene && uygunluk?.remaining_before_reply != null && (
+                <p className={`mx-auto -mt-1 w-full max-w-4xl px-3 pb-3 sm:px-6 ${KUCUK_ACIKLAMA}`}>
+                  Eğitmen yanıt verene kadar {uygunluk.remaining_before_reply} mesaj hakkın kaldı.
+                </p>
+              )}
+              </>
+              )}
               </div>
             </>
           )}
         </section>
+
+        {raporHedefi && (
+          <ReportModal
+            targetType={raporHedefi.type}
+            targetId={raporHedefi.id}
+            targetLabel={raporHedefi.label}
+            varsayilanNeden={raporHedefi.neden}
+            onClose={() => setRaporHedefi(null)}
+          />
+        )}
+        {disBaglanti && (
+          <DisBaglantiUyarisi
+            href={disBaglanti.href}
+            onKapat={() => setDisBaglanti(null)}
+            onBildir={
+              disBaglanti.mesaj
+                ? () => {
+                    const hedef = disBaglanti.mesaj as MessageOut;
+                    setDisBaglanti(null);
+                    setRaporHedefi({
+                      type: "MESSAGE",
+                      id: hedef.id,
+                      label: `${activeName ?? "Kullanıcı"} kişisinin mesajı`,
+                      neden: ReportReason.SCAM,
+                    });
+                  }
+                : undefined
+            }
+          />
+        )}
+        {engelleAcik && egitmenOgrenciye && activeCounterpartyId !== null && (
+          <EngelleModal
+            clientId={activeCounterpartyId}
+            ogrenciAdi={activeName ?? "Kullanıcı"}
+            onKapat={() => setEngelleAcik(false)}
+            onEngellendi={() =>
+              setSelectedMeta((m) => (m ? { ...m, blocked: true } : m))
+            }
+          />
+        )}
 
         {/* Right Context Panel */}
         {(() => {
@@ -815,14 +1085,21 @@ function MessageRow({
   m,
   mine,
   highlighted,
+  siteHost,
   onReply,
   onReact,
+  onBaglanti,
+  onBildir,
 }: {
   m: MessageOut;
   mine: boolean;
   highlighted: boolean;
+  siteHost: string;
   onReply: () => void;
   onReact: (emoji: string) => void;
+  /** Gövdedeki bağlantıya tıklandı; dış bağlantıda önce ara uyarı açılır. */
+  onBaglanti: (href: string, dis: boolean) => void;
+  onBildir: () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const reactions = m.reactions ?? [];
@@ -869,7 +1146,27 @@ function MessageRow({
               </span>
             </div>
           )}
-          <p className="whitespace-pre-line text-[15px] leading-relaxed">{m.body}</p>
+          <p className="whitespace-pre-line break-words text-[15px] leading-relaxed">
+            {mesajParcala(m.body, siteHost).map((p, i) =>
+              p.tur === "metin" ? (
+                <span key={i}>{p.deger}</span>
+              ) : (
+                <a
+                  key={i}
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onBaglanti(p.href, p.dis);
+                  }}
+                  className="break-all underline underline-offset-2"
+                >
+                  {p.deger}
+                </a>
+              )
+            )}
+          </p>
           <p
             className={`mt-1 text-[10px] ${
               mine ? "text-marka-fg" : "text-slate-400 "
@@ -900,7 +1197,7 @@ function MessageRow({
         )}
 
         <div
-          className={`relative mt-1 flex items-center gap-1 opacity-0 transition group-hover:opacity-100 ${
+          className={`relative mt-1 flex items-center gap-1 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100 ${
             mine ? "flex-row-reverse" : ""
           }`}
         >
@@ -926,6 +1223,19 @@ function MessageRow({
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M9 9.75h.008v.008H9V9.75Zm6 0h.008v.008H15V9.75ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           </button>
+          {!mine && m.sender_role !== "SYSTEM" && (
+            <button
+              type="button"
+              onClick={onBildir}
+              title="Mesajı bildir"
+              aria-label="Mesajı bildir"
+              className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-red-700"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+              </svg>
+            </button>
+          )}
           {pickerOpen && (
             <div className="absolute bottom-full z-10 mb-1 flex gap-0.5 rounded-full bg-white p-1 shadow-lg ring-1 ring-slate-200 ">
               {REACTION_EMOJIS.map((e) => (
@@ -945,6 +1255,25 @@ function MessageRow({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Yazma alanının yerine geçen durum satırı (engel, ders öncesi sınır).
+function YazmaKapali({
+  metin,
+  children,
+}: {
+  metin: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      role="status"
+      className="mx-auto flex w-full max-w-4xl flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4"
+    >
+      <p className={KUCUK_ACIKLAMA}>{metin}</p>
+      {children}
     </div>
   );
 }
@@ -982,10 +1311,12 @@ function SectionHeader({ label, count }: { label: string; count?: number }) {
 // Sohbet listesi satırı (gözatma + arama "Sohbetler" bölümü ortak).
 function ConversationRow({
   c,
+  role,
   active,
   onClick,
 }: {
   c: ConversationOut;
+  role: Role;
   active: boolean;
   onClick: () => void;
 }) {
@@ -1006,8 +1337,16 @@ function ConversationRow({
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-base font-semibold text-slate-900 ">
-            {c.counterparty_name ?? "Kullanıcı"}
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-base font-semibold text-slate-900 ">
+              {c.counterparty_name ?? "Kullanıcı"}
+            </span>
+            {/* Eğitmene: bu öğrenci henüz ders ayırtmadı (Modül 5). */}
+            {role === "TUTOR" && c.stage === "INQUIRY" && (
+              <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                Ders öncesi
+              </span>
+            )}
           </span>
           <span className="shrink-0 text-xs text-slate-400">
             {formatChatTime(c.last_message_at)}

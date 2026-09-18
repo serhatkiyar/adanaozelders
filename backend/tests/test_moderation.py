@@ -1,4 +1,4 @@
-from core.moderation import mask_contact_info
+from core.moderation import mask_contact_info, mask_external_links
 
 
 def test_masks_phone_numbers():
@@ -84,3 +84,33 @@ def test_karisik_metinde_yalniz_numara_gizlenir():
     )
     assert "2018-2022 Çukurova Üniversitesi" in out
     assert "0532" not in out
+
+
+# ── Ders öncesi sohbet: dış bağlantı maskesi (Modül 5) ──
+_SITE = frozenset({"localhost"})
+
+
+def test_dis_baglanti_gizlenir():
+    out = mask_external_links("Şuraya bak https://x.com/a ya da www.x.com", _SITE)
+    assert "x.com" not in out
+    assert out.count("[gizlendi]") == 2
+
+
+def test_izinli_site_baglantisi_kalir():
+    text = "Profilim: http://localhost:5173/egitmenler/1"
+    assert mask_external_links(text, _SITE) == text
+
+
+def test_baglantisiz_metin_degismez():
+    text = "Yarın 14:00 uygun mu? Konu: türev."
+    assert mask_external_links(text, _SITE) == text
+
+
+def test_ters_bolu_ve_kullanici_bilgisi_ile_atlatma_gizlenir():
+    # Tarayıcı "\" işaretini "/" sayar: host evil.com olur, izinli site değil.
+    for raw in (
+        "https://evil.com\@localhost/odeme",
+        "www.evil.com\@localhost",
+        "https://localhost@evil.com/x",
+    ):
+        assert "evil.com" not in mask_external_links(raw, _SITE)
