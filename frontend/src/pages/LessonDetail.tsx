@@ -15,8 +15,14 @@ import { DersOnayKarti } from "@/components/booking/DersOnayKarti";
 import { Modal } from "@/components/ui/Modal";
 import {
   ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_SATIR_BIRINCIL,
   DUGME_SATIR_IKINCIL,
   DUGME_SATIR_TEHLIKE,
+  ETIKET,
+  KART,
+  KUCUK_ACIKLAMA,
+  METIN_BAGLANTI,
 } from "@/components/pano/stil";
 import { useSeri, useSeriBitir, useTeklifiGeriCek } from "@/hooks/useDersTeklifi";
 import {
@@ -103,18 +109,13 @@ export default function LessonDetail() {
 
   if (isError || !booking) {
     return (
-      <DashboardShell title="Ders" navItems={navItems ?? undefined}>
-        <div className="mx-auto max-w-2xl">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
-          >
+      <DashboardShell title="Ders" navItems={navItems ?? undefined} genislik="dar">
+        <div>
+          <button onClick={() => navigate(-1)} className={METIN_BAGLANTI}>
             ← Geri dön
           </button>
-          <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
-            <p className="text-sm text-slate-500 ">
-              Ders bulunamadı.
-            </p>
+          <div className="mt-6 flex flex-col items-center rounded-lg border border-dashed border-slate-300 py-16 text-center">
+            <p className={ACIKLAMA}>Ders bulunamadı.</p>
           </div>
         </div>
       </DashboardShell>
@@ -205,19 +206,16 @@ export default function LessonDetail() {
   };
 
   return (
-    <DashboardShell title="Ders Detayı" navItems={navItems ?? undefined}>
-      <div className="mx-auto max-w-6xl pb-12">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-5 inline-block text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
-        >
+    <DashboardShell title="Ders Detayı" navItems={navItems ?? undefined} genislik="orta">
+      <div className="pb-12">
+        <button onClick={() => navigate(-1)} className={`${METIN_BAGLANTI} mb-6 inline-block`}>
           ← Geri dön
         </button>
 
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3 lg:grid-flow-row-dense">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3 lg:grid-flow-row-dense">
 
         {/* ── Header ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
+        <section className={`${KART} lg:col-span-2`}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <Link
               to={counterpartLink}
@@ -225,10 +223,10 @@ export default function LessonDetail() {
             >
               <Avatar name={counterpartName} avatar_url={isClient ? booking.tutor_avatar_url : booking.client_avatar_url} size="lg" />
               <div className="min-w-0">
-                <p className="truncate text-lg font-bold text-slate-900 ">
+                <p className={`${BOLUM_BASLIGI} truncate`}>
                   {counterpartName}
                 </p>
-                <p className="text-xs text-slate-400 ">
+                <p className={KUCUK_ACIKLAMA}>
                   {rolEtiketi(isClient ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)} · profili gör →
                 </p>
               </div>
@@ -240,31 +238,25 @@ export default function LessonDetail() {
             </span>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600 ">
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1 ">
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-700">
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1">
               {formatRange(booking.start_at, booking.end_at)}
             </span>
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1 ">
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1">
               {durationLabel(booking.start_at, booking.end_at)}
             </span>
             {modeLabel && (
-              <span
-                className={`rounded-lg px-2.5 py-1 font-medium ${
-                  isRemote
-                    ? "bg-blue-50 text-blue-600 "
-                    : "bg-emerald-50 text-emerald-600 "
-                }`}
-              >
-                {isRemote ? "" : ""} {modeLabel}
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium">
+                {modeLabel}
               </span>
             )}
             {price !== null && (
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold ">
+              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold">
                 {formatTRY(booking.price)}
               </span>
             )}
             {booking.series_id && (
-              <span className="rounded-lg bg-rose-50 px-2.5 py-1 font-medium text-rose-700">
+              <span className="rounded-lg bg-marka-soft px-2.5 py-1 font-medium text-marka-soft-fg">
                 Haftalık seri
                 {seri.data?.status === "ENDED" ? " · sona erdi" : ""}
               </span>
@@ -284,26 +276,24 @@ export default function LessonDetail() {
                     booking.client_name || ADSIZ_UYE
                   )
                 }
-                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
+                className={`${DUGME_SATIR_BIRINCIL} mt-4`}
               >
-                🎥 Canlı Derse Katıl
+                Canlı Derse Katıl
               </button>
             ) : (
               <span
                 title="Canlı ders, başlangıçtan 15 dk önce açılır."
-                className="mt-4 inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-400 "
+                className="mt-4 inline-flex h-10 cursor-not-allowed items-center rounded-lg bg-slate-100 px-4 text-base font-semibold text-slate-500"
               >
-                🎥 Ders saatinde açılır
+                Ders saatinde açılır
               </span>
             )
           )}
           {/* Yüzyüze ders — buluşma yeri */}
           {booking.mode === "IN_PERSON" && (
-            <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 ">
+            <div className="mt-4 rounded-lg border border-slate-200 px-4 py-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-emerald-700 ">
-                  🏠︎ Buluşma Yeri
-                </p>
+                <p className={ETIKET}>Buluşma Yeri</p>
                 {!editingLoc && (
                   <button
                     onClick={() => {
@@ -312,7 +302,7 @@ export default function LessonDetail() {
                       setLocLngDraft(booking.location_lng ?? null);
                       setEditingLoc(true);
                     }}
-                    className="text-xs font-semibold text-emerald-700 hover:underline "
+                    className={METIN_BAGLANTI}
                   >
                     {booking.location ? "Düzenle" : "Ekle"}
                   </button>
@@ -334,18 +324,18 @@ export default function LessonDetail() {
                       onChange={(e) => setLocDraft(e.target.value)}
                       maxLength={300}
                       placeholder="Adres / bina numarası / tarif..."
-                      className="min-w-[12rem] flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-200 "
+                      className="h-10 min-w-[12rem] flex-1 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka-focus"
                     />
                     <button
                       onClick={saveLoc}
                       disabled={setLoc.isPending}
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                      className={DUGME_SATIR_BIRINCIL}
                     >
                       Kaydet
                     </button>
                     <button
                       onClick={() => setEditingLoc(false)}
-                      className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-emerald-100 "
+                      className={DUGME_SATIR_IKINCIL}
                     >
                       Vazgeç
                     </button>
@@ -361,18 +351,18 @@ export default function LessonDetail() {
                     }`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-900 "
+                    className={`${METIN_BAGLANTI} break-words`}
                   >
                     {booking.location}
                   </a>
                   {booking.location_lat && booking.location_lng && (
-                    <div className="mt-2 h-32 w-full max-w-sm overflow-hidden rounded-xl">
+                    <div className="mt-2 h-32 w-full max-w-sm overflow-hidden rounded-lg">
                       <MapPicker initialLat={booking.location_lat} initialLng={booking.location_lng} readonly={true} />
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="mt-1 text-xs text-slate-500 ">
+                <p className={`${KUCUK_ACIKLAMA} mt-1`}>
                   Henüz buluşma yeri belirlenmedi.
                 </p>
               )}
@@ -380,18 +370,18 @@ export default function LessonDetail() {
           )}
 
           {booking.notes && (
-            <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm italic text-slate-500 ">
+            <p className="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-base italic leading-6 text-slate-600">
               "{booking.notes}"
             </p>
           )}
           {booking.status === BookingStatus.CANCELLED && booking.cancel_reason && (
-            <p className="mt-3 rounded-xl bg-rose-50 px-4 py-2.5 text-sm text-rose-700 ">
+            <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-base leading-6 text-red-700">
               İptal nedeni: {booking.cancel_reason}
             </p>
           )}
           {/* Reddedilen derste açıklama: geri çekilen teklif ya da biten seri. */}
           {booking.status === BookingStatus.REJECTED && booking.cancel_reason && (
-            <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm text-slate-600 ">
+            <p className={`${ACIKLAMA} mt-4 rounded-lg bg-slate-50 px-4 py-3`}>
               {booking.cancel_reason}
             </p>
           )}
@@ -403,7 +393,7 @@ export default function LessonDetail() {
             </div>
           )}
           {role === "TUTOR" && booking.status === BookingStatus.COMPLETED && booking.payment?.status === "HELD" && (
-            <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <p className={`${ACIKLAMA} mt-4 rounded-lg bg-slate-50 px-4 py-3`}>
               {booking.is_disputed
                 ? "Öğrenci bu ders için sorun bildirdi; ekibimiz inceliyor. Karar verilene kadar ücret aktarılmaz."
                 : "Öğrenci onayladığında ya da ders bitişinden 72 saat sonra ücret kazancına eklenir."}
@@ -411,7 +401,7 @@ export default function LessonDetail() {
           )}
 
           {/* ── Actions ── */}
-          <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 ">
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-6">
             {/* {canMessage && (
               <button
                 onClick={() =>
@@ -433,14 +423,14 @@ export default function LessonDetail() {
                 <button
                   disabled={busy}
                   onClick={() => run(accept, "Ders teklifini kabul ettin; ödeme adımına geçebilirsin.")}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
+                  className={DUGME_SATIR_BIRINCIL}
                 >
                   Teklifi Kabul Et
                 </button>
                 <button
                   disabled={busy}
                   onClick={() => run(reject, "Ders teklifini reddettin.")}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 active:scale-95 disabled:opacity-60 "
+                  className={DUGME_SATIR_TEHLIKE}
                 >
                   Reddet
                 </button>
@@ -452,14 +442,14 @@ export default function LessonDetail() {
                 <button
                   disabled={busy}
                   onClick={() => run(accept, "Rezervasyon kabul edildi.")}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
+                  className={DUGME_SATIR_BIRINCIL}
                 >
                   Kabul Et
                 </button>
                 <button
                   disabled={busy}
                   onClick={() => run(reject, "Rezervasyon reddedildi.")}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 active:scale-95 disabled:opacity-60 "
+                  className={DUGME_SATIR_TEHLIKE}
                 >
                   Reddet
                 </button>
@@ -471,7 +461,7 @@ export default function LessonDetail() {
               <button
                 disabled={geriCek.isPending}
                 onClick={teklifiGeriCek}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-60 "
+                className={DUGME_SATIR_IKINCIL}
               >
                 {geriCek.isPending ? "Geri çekiliyor…" : "Teklifi geri çek"}
               </button>
@@ -479,7 +469,7 @@ export default function LessonDetail() {
             {seriAktif && role !== null && (
               <button
                 onClick={() => setSeriBitirAcik(true)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 active:scale-95 "
+                className={DUGME_SATIR_TEHLIKE}
               >
                 Seriyi bitir
               </button>
@@ -488,7 +478,7 @@ export default function LessonDetail() {
               <button
                 disabled={busy}
                 onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:opacity-60"
+                className={DUGME_SATIR_BIRINCIL}
               >
                 Tamamla
               </button>
@@ -497,7 +487,7 @@ export default function LessonDetail() {
             {isClient && canMessage && !booking.late_for_changes && (
               <button
                 onClick={() => setShowReschedule(true)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 "
+                className={DUGME_SATIR_IKINCIL}
               >
                 Ertele
               </button>
@@ -507,7 +497,7 @@ export default function LessonDetail() {
             {canMessage && !canWithdraw && (
               <button
                 onClick={() => setShowCancel(true)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 active:scale-95 "
+                className={DUGME_SATIR_TEHLIKE}
               >
                 İptal Et
               </button>
@@ -518,7 +508,7 @@ export default function LessonDetail() {
             {isClient && booking.can_review && !alreadyReviewed && (
               <button
                 onClick={() => setShowReview(true)}
-                className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
+                className={DUGME_SATIR_BIRINCIL}
               >
                 Değerlendir
               </button>
@@ -528,24 +518,22 @@ export default function LessonDetail() {
 
         {/* ── Review ── */}
         {review && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-              Değerlendirme
-            </h2>
+          <section className={`${KART} lg:col-span-1`}>
+            <h2 className={BOLUM_BASLIGI}>Değerlendirme</h2>
             <div className="mt-3">
               <StarRating value={review.rating} />
             </div>
             {review.comment_text && (
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 ">
+              <p className={`${ACIKLAMA} mt-2`}>
                 {review.comment_text}
               </p>
             )}
             {review.tutor_reply && (
-              <div className="mt-3 rounded-xl border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3 ">
-                <p className="text-xs font-semibold text-marka-metin-hover ">
+              <div className="mt-4 rounded-lg border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3">
+                <p className="text-sm font-semibold text-marka-metin-hover">
                   Eğitmen yanıtı
                 </p>
-                <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
+                <p className={`${ACIKLAMA} mt-1 whitespace-pre-line`}>
                   {review.tutor_reply}
                 </p>
               </div>
@@ -555,17 +543,15 @@ export default function LessonDetail() {
 
         {/* ── Q&A (öğrenci) ── */}
         {isClient && qaGroup && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-                Bu Ders İçin Sorularım
-              </h2>
+          <section className={`${KART} lg:col-span-2`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className={BOLUM_BASLIGI}>Bu Ders İçin Sorularım</h2>
               {qaGroup.expired ? (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 ">
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
                   Süre doldu
                 </span>
               ) : (
-                <span className="rounded-full bg-marka-soft px-2.5 py-1 text-xs font-semibold text-marka-metin-hover ">
+                <span className="rounded-full bg-marka-soft px-2.5 py-1 text-xs font-semibold text-marka-metin-hover">
                   {qaGroup.remaining}/{qaGroup.quota} hak · {qaGroup.days_left} gün
                 </span>
               )}
@@ -573,17 +559,17 @@ export default function LessonDetail() {
 
             <div className="mt-4 space-y-3">
               {qaGroup.threads.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400 ">
+                <p className={`${ACIKLAMA} rounded-lg border border-dashed border-slate-300 py-6 text-center`}>
                   Bu derste henüz soru sormadın.
                 </p>
               ) : (
                 qaGroup.threads.map((t) => (
                   <div
                     key={t.id}
-                    className="rounded-xl bg-slate-50 p-3.5 "
+                    className="rounded-lg bg-slate-50 p-4"
                   >
                     {t.subject && (
-                      <p className="mb-2 text-sm font-semibold text-slate-800 ">
+                      <p className={`${ETIKET} mb-2`}>
                         {t.subject}
                       </p>
                     )}
@@ -598,7 +584,7 @@ export default function LessonDetail() {
               {qaGroup.can_ask && (
                 <button
                   onClick={() => setShowAsk(true)}
-                  className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 active:scale-[0.98] "
+                  className={`${DUGME_SATIR_BIRINCIL} w-full`}
                 >
                   Yeni Soru Başlığı Aç ({qaGroup.remaining} hak)
                 </button>
@@ -608,21 +594,23 @@ export default function LessonDetail() {
         )}
 
         {/* ── Ders Kaynakları ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
-          <BookingResourcesPanel
-            bookingId={bookingId}
-            resources={booking.resources}
-            role={role}
-            userId={user?.id}
-            canEdit={canMessage}
-          />
+        <section className={`${KART} lg:col-span-1`}>
+          <h2 className={BOLUM_BASLIGI}>Ders Kaynakları</h2>
+          <div className="mt-4">
+            <BookingResourcesPanel
+              bookingId={bookingId}
+              resources={booking.resources}
+              role={role}
+              userId={user?.id}
+              canEdit={canMessage}
+              showHeading={false}
+            />
+          </div>
         </section>
 
         {/* ── Ders Notları (Yorumlar) ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-            Ders Mesajları
-          </h2>
+        <section className={`${KART} lg:col-span-2`}>
+          <h2 className={BOLUM_BASLIGI}>Ders Mesajları</h2>
           <div className="mt-4 space-y-4">
             {booking.comments && booking.comments.length > 0 ? (
               <div className="space-y-3">
@@ -635,18 +623,18 @@ export default function LessonDetail() {
                     >
                       <div className="flex max-w-[85%] flex-col gap-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-xs font-semibold text-slate-700 ">
+                          <span className="text-sm font-semibold text-slate-900">
                             {isMine ? "Sen" : rolEtiketi(comment.sender_role === "TUTOR" ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)}
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-xs text-slate-500">
                             {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         <div
-                          className={`relative rounded-2xl px-4 py-2 text-sm ${
+                          className={`relative rounded-lg px-4 py-2 text-base leading-6 ${
                             isMine
                               ? "bg-marka text-marka-fg"
-                              : "bg-slate-100 text-slate-800 "
+                              : "bg-slate-100 text-slate-900"
                           }`}
                         >
                           <p className="whitespace-pre-wrap">{comment.body}</p>
@@ -655,7 +643,7 @@ export default function LessonDetail() {
                           <button
                             onClick={() => delComment.mutate({ id: bookingId, commentId: comment.id })}
                             disabled={delComment.isPending}
-                            className="self-end px-1 text-[10px] font-semibold text-slate-400 hover:text-red-500 disabled:opacity-50"
+                            className="self-end px-1 text-xs font-semibold text-slate-500 hover:text-red-700 disabled:opacity-50"
                           >
                             Sil
                           </button>
@@ -666,25 +654,25 @@ export default function LessonDetail() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-slate-500 ">
+              <p className={ACIKLAMA}>
                 Bu ders için henüz bir mesaj yok.
               </p>
             )}
 
             {/* Yeni Yorum Formu */}
             {canMessage && (
-              <form onSubmit={handleAddComment} className="mt-2 flex gap-2 pt-2">
+              <form onSubmit={handleAddComment} className="mt-2 flex items-end gap-3 pt-2">
                 <textarea
                   rows={2}
                   placeholder="Mesajınız"
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
-                  className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
+                  className="min-w-0 flex-1 resize-none rounded-lg border border-slate-300 bg-white px-4 py-2 text-base text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka-focus"
                 />
                 <button
                   type="submit"
                   disabled={addComment.isPending || !commentBody.trim()}
-                  className="rounded-xl bg-marka px-5 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  className={DUGME_SATIR_BIRINCIL}
                 >
                   Gönder
                 </button>
@@ -694,11 +682,20 @@ export default function LessonDetail() {
         </section>
 
         {/* ── Kişisel Notlarım (Gizli) ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
-          <BookingPrivateNotesPanel
-            bookingId={bookingId}
-            notes={booking.private_notes}
-          />
+        <section className={`${KART} lg:col-span-1`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className={BOLUM_BASLIGI}>Notlar</h2>
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">
+              Sadece siz görebilirsiniz
+            </span>
+          </div>
+          <div className="mt-4">
+            <BookingPrivateNotesPanel
+              bookingId={bookingId}
+              notes={booking.private_notes}
+              showHeading={false}
+            />
+          </div>
         </section>
 
         {/* ── Bu derse ait görevler (To-Do) ── */}

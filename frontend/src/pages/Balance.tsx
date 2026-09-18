@@ -18,23 +18,32 @@ import { ISLEM_TAVANI, kesildiMi } from "@/lib/operatorAgenda";
 import { ROLE_IDS, type EarningTransaction, type PayoutStatus } from "@/types";
 import type { NavItem } from "@/lib/nav";
 import type { ReactNode } from "react";
+import {
+  ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_SATIR_IKINCIL,
+  ETIKET,
+  KART,
+  KUCUK_ACIKLAMA,
+  SAYFA_BASLIGI,
+} from "@/components/pano/stil";
 
 const PAYOUT_STATUS_META: Record<PayoutStatus, { label: string; cls: string }> = {
   NONE: {
     label: "Eklenmedi",
-    cls: "bg-slate-100 text-slate-600 ",
+    cls: "bg-slate-100 text-slate-700",
   },
   PENDING: {
     label: "Doğrulama bekleniyor",
-    cls: "bg-amber-50 text-amber-700 ",
+    cls: "bg-amber-50 text-amber-800",
   },
   ACTIVE: {
     label: "Doğrulandı ✓",
-    cls: "bg-emerald-50 text-emerald-700 ",
+    cls: "bg-emerald-50 text-emerald-800",
   },
   REJECTED: {
     label: "Reddedildi",
-    cls: "bg-rose-50 text-rose-700 ",
+    cls: "bg-red-50 text-red-700",
   },
 };
 
@@ -48,23 +57,21 @@ export function PayoutSummaryCard({
 }) {
   const meta = PAYOUT_STATUS_META[status];
   return (
-    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 ">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={KART}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-            Ödeme hesabı
-          </p>
-          <p className="mt-1 font-mono text-sm text-slate-700 ">
+          <p className={ETIKET}>Ödeme hesabı</p>
+          <p className={`mt-1 break-all font-mono ${ACIKLAMA}`}>
             {ibanMasked || "Henüz IBAN eklenmedi"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.cls}`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`rounded-full px-3 py-1 text-sm font-semibold ${meta.cls}`}>
             {meta.label}
           </span>
           <Link
             to={ROUTES.settings}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 "
+            className={DUGME_SATIR_IKINCIL}
           >
             {status === "NONE" ? "Ekle" : "Ayarlar'da düzenle"}
           </Link>
@@ -119,10 +126,8 @@ function OperatorBalance() {
       onRetryTransactions={() => void txnRefetch()}
       payout={
         libraryId ? (
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
-            <h2 className="mb-3 text-base font-bold text-slate-900 ">
-              Ödeme Hesabı
-            </h2>
+          <div className={KART}>
+            <h2 className={`mb-4 ${BOLUM_BASLIGI}`}>Ödeme Hesabı</h2>
             <LibraryPayoutForm libraryId={libraryId} />
           </div>
         ) : null
@@ -183,9 +188,7 @@ export function BalanceView({
     <DashboardShell title={title} navItems={navItems} genislik="orta">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 ">
-            {title}
-          </h1>
+          <h1 className={SAYFA_BASLIGI}>{title}</h1>
           {/* Eski metin "tutarlar iyzico üzerinden doğrudan IBAN'ına geçer"
               diyordu; kurulu mekanizma bu DEĞİL. Hakediş defteri admin
               tarafındadır ve ödeme banka havalesiyle elle yapılır
@@ -195,7 +198,7 @@ export function BalanceView({
               değildir, yanlış vaat, ödeme gecikince güveni bozar. */}
           <p
             data-testid="bakiye-odeme-aciklamasi"
-            className="mt-1 text-sm text-slate-500 "
+            className={`mt-2 ${ACIKLAMA}`}
           >
             {description ?? (
               <>
@@ -209,49 +212,36 @@ export function BalanceView({
 
         {/* Özet kartları */}
         {loading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="h-28 animate-pulse rounded-2xl bg-slate-100 "
+                className="h-32 animate-pulse rounded-lg bg-slate-100"
               />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {sade ? (
-              <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-                <p className="text-xs font-medium text-slate-500">{netLabel}</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{formatTRY(net)}</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">{netHint}</p>
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-sm">
-                <p className="text-xs font-medium text-emerald-50">{netLabel}</p>
-                <p className="mt-1 text-2xl font-bold">{formatTRY(net)}</p>
-                <p className="mt-0.5 text-[11px] text-emerald-100">
-                  {netHint}
-                </p>
-              </div>
-            )}
-            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
-              <p className="text-xs font-medium text-slate-500 ">
-                {escrowLabel}
-              </p>
-              <p className={`mt-1 text-2xl font-bold tabular-nums ${sade ? "text-slate-900" : "text-amber-600"}`}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className={KART}>
+              <p className={ETIKET}>{netLabel}</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900">{formatTRY(net)}</p>
+              <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>{netHint}</p>
+            </div>
+            <div className={KART}>
+              <p className={ETIKET}>{escrowLabel}</p>
+              {/* Operatörde emanet tutarı uyarı tonunda kalır (bekleyen para). */}
+              <p className={`mt-2 text-2xl font-bold tabular-nums ${sade ? "text-slate-900" : "text-amber-700"}`}>
                 {formatTRY(escrow)}
               </p>
-              <p className="mt-0.5 text-[11px] text-slate-400">{escrowHint}</p>
+              <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>{escrowHint}</p>
             </div>
-            <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 ">
-              <p className="text-xs font-medium text-slate-500 ">
-                Bu ay kazanılan
-              </p>
-              <p className="mt-1 text-2xl font-bold text-slate-900 ">
+            <div className={KART}>
+              <p className={ETIKET}>Bu ay kazanılan</p>
+              <p className="mt-2 text-2xl font-bold tabular-nums text-slate-900">
                 {formatTRY(thisMonth ?? "0")}
               </p>
               {refundedNum > 0 && (
-                <p className="mt-0.5 text-[11px] text-slate-400">
+                <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>
                   İade edilen: {formatTRY(refunded)}
                 </p>
               )}
@@ -263,11 +253,9 @@ export function BalanceView({
         {payout}
 
         {/* İşlem dökümü */}
-        <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 ">
-          <div className="border-b border-slate-100 px-6 py-4 ">
-            <h2 className="text-sm font-bold text-slate-900 ">
-              İşlem Dökümü
-            </h2>
+        <div className="rounded-lg border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-6 py-5">
+            <h2 className={BOLUM_BASLIGI}>İşlem Dökümü</h2>
           </div>
 
           {txnLoading ? (
@@ -291,51 +279,51 @@ export function BalanceView({
           ) : !transactions || transactions.length === 0 ? (
             <p
               data-testid="islem-bos"
-              className="px-6 py-10 text-center text-sm text-slate-400 "
+              className={`px-6 py-10 text-center ${ACIKLAMA}`}
             >
               Henüz bir işlem yok. İlk ödeme alındığında burada görünecek.
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[640px] text-base">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-slate-400 ">
-                    <th className="px-6 py-3 font-medium">Tarih</th>
-                    <th className="px-6 py-3 font-medium">İşlem</th>
-                    <th className="px-6 py-3 text-right font-medium">Tutar</th>
-                    <th className="px-6 py-3 text-right font-medium">Komisyon</th>
-                    <th className="px-6 py-3 text-right font-medium">Net</th>
-                    <th className="px-6 py-3 font-medium">Durum</th>
+                  <tr className="text-left text-sm text-slate-600">
+                    <th className="px-6 py-3 font-semibold">Tarih</th>
+                    <th className="px-6 py-3 font-semibold">İşlem</th>
+                    <th className="px-6 py-3 text-right font-semibold">Tutar</th>
+                    <th className="px-6 py-3 text-right font-semibold">Komisyon</th>
+                    <th className="px-6 py-3 text-right font-semibold">Net</th>
+                    <th className="px-6 py-3 font-semibold">Durum</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 ">
+                <tbody className="divide-y divide-slate-200 border-t border-slate-200">
                   {transactions.map((t) => (
                     <tr
                       key={`${t.source}-${t.id}`}
-                      className="text-slate-700 "
+                      className="text-slate-900"
                     >
-                      <td className="whitespace-nowrap px-6 py-3 text-xs text-slate-500 ">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
                         {formatDateTime(t.occurred_at ?? t.created_at)}
                       </td>
-                      <td className="px-6 py-3">
-                        <p className="font-medium text-slate-800 ">
+                      <td className="px-6 py-4">
+                        <p className="font-semibold text-slate-900">
                           {t.title}
                         </p>
-                        <p className="text-xs text-slate-400 ">
+                        <p className="text-sm text-slate-600">
                           {SOURCE_LABEL[t.source]}
                           {t.counterparty ? ` · ${t.counterparty}` : ""}
                         </p>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-3 text-right tabular-nums">
+                      <td className="whitespace-nowrap px-6 py-4 text-right tabular-nums">
                         {formatTRY(t.gross)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-3 text-right tabular-nums text-slate-400">
+                      <td className="whitespace-nowrap px-6 py-4 text-right tabular-nums text-slate-600">
                         −{formatTRY(t.commission)}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-3 text-right font-semibold tabular-nums text-emerald-600 ">
+                      <td className="whitespace-nowrap px-6 py-4 text-right font-semibold tabular-nums text-slate-900">
                         {formatTRY(t.net)}
                       </td>
-                      <td className="px-6 py-3">
+                      <td className="px-6 py-4">
                         <PaymentStatusBadge status={t.status} />
                       </td>
                     </tr>
@@ -353,7 +341,7 @@ export function BalanceView({
           {transactions && kesildiMi(transactions) && (
             <p
               data-testid="islem-tavan-uyarisi"
-              className="border-t border-slate-100 px-6 py-3 text-xs text-slate-500 "
+              className={`border-t border-slate-200 px-6 py-4 ${KUCUK_ACIKLAMA}`}
             >
               Son {ISLEM_TAVANI} işlem gösteriliyor. Daha eski kayıtlar için
               destekle iletişime geç.

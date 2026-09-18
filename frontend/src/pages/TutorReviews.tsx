@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useReviews";
 import { getErrorMessage } from "@/lib/errors";
 import { ADSIZ_UYE } from "@/lib/roles";
+import { ACIKLAMA, ETIKET } from "@/components/pano/stil";
 
 /**
  * DEĞERLENDİRMELER — eğitmenin ALDIĞI yorumlar (panel şeridi sekmesi).
@@ -49,22 +50,20 @@ export default function TutorReviews() {
     <DashboardShell title="Değerlendirmeler" genislik="orta">
       <div className="pb-12">
         {ilanYukleniyor || isLoading ? (
-          <div className="space-y-3">
-            <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="space-y-4">
+            <div className="h-24 animate-pulse rounded-lg bg-slate-100" />
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+              <div key={i} className="h-28 animate-pulse rounded-lg bg-slate-100" />
             ))}
           </div>
         ) : isError ? (
-          <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-base leading-6 text-red-700">
             {getErrorMessage(error, "Değerlendirmeler yüklenemedi.")}
           </div>
         ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center">
-            <p className="text-sm font-medium text-slate-700">
-              Henüz değerlendirme almadın
-            </p>
-            <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-400">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 px-6 py-20 text-center">
+            <p className={ETIKET}>Henüz değerlendirme almadın</p>
+            <p className={`mt-2 max-w-md ${ACIKLAMA}`}>
               Tamamlanan her dersten sonra öğrencin puan ve yorum bırakabilir;
               yazdıkları burada görünür ve buradan yanıtlarsın.
             </p>

@@ -12,6 +12,7 @@
 // arşiv değil.
 import { useMemo, useState } from "react";
 import { SAYFA_BASLIGI } from "@/lib/tipografi";
+import { ACIKLAMA, DUGME_BIRINCIL, ETIKET, METIN_BAGLANTI } from "@/components/pano/stil";
 import { Link } from "react-router-dom";
 
 import { DashboardShell } from "@/components/DashboardShell";
@@ -45,7 +46,7 @@ export default function Reservations() {
     <DashboardShell title="Rezervasyonlar" navItems={UYE_NAV} genislik="dar">
       <div className="pb-16 pt-2">
         <h1 className={SAYFA_BASLIGI}>Rezervasyonlar</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className={`mt-2 ${ACIKLAMA}`}>
           Derslerin, deneme sınavların ve çalışma alanı rezervasyonların.
         </p>
         <div className="mt-6">
@@ -109,7 +110,7 @@ export function ReservationsList() {
     return (
       <div className="space-y-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-20 animate-pulse rounded-2xl bg-slate-100" />
+          <div key={i} className="h-20 animate-pulse rounded-lg bg-slate-100" />
         ))}
       </div>
     );
@@ -117,14 +118,14 @@ export function ReservationsList() {
 
   if (tumu.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-16 text-center">
-        <p className="text-sm font-medium text-slate-700">Henüz rezervasyonun yok</p>
-        <p className="mt-1 text-sm text-slate-500">
+      <div className="rounded-lg border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+        <p className={ETIKET}>Henüz rezervasyonun yok</p>
+        <p className={`mt-1 ${ACIKLAMA}`}>
           Bir eğitmenle ders planlayabilir ya da kütüphaneden çalışma alanı ayırtabilirsin.
         </p>
         <Link
           to={ROUTES.tutors}
-          className="mt-4 inline-block rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          className={`mt-6 ${DUGME_BIRINCIL}`}
         >
           Eğitmenleri keşfet
         </Link>
@@ -141,7 +142,7 @@ export function ReservationsList() {
       )}
 
       {yaklasan.length > 0 && (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white">
           {yaklasan.map((s) => (
             <li key={`${s.tur}-${s.item.id}`}>
               <SatirIcerigi satir={s} joinMeeting={joinMeeting} />
@@ -159,12 +160,12 @@ export function ReservationsList() {
           <button
             type="button"
             onClick={() => setGecmisAcik((v) => !v)}
-            className="text-sm font-medium text-slate-500 transition hover:text-slate-800"
+            className={METIN_BAGLANTI}
           >
             {gecmisAcik ? "Geçmişi gizle" : `Geçmiş (${gecmis.length})`}
           </button>
           {gecmisAcik && (
-            <ul className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <ul className="mt-4 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white">
               {gecmis.map((s) => (
                 <li key={`${s.tur}-${s.item.id}`}>
                   <SatirIcerigi satir={s} joinMeeting={joinMeeting} />

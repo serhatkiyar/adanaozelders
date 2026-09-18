@@ -10,11 +10,7 @@ import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
 import { isBranchOpen } from "@/lib/paymentAvailability";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-
-/* ─── ortak buton sınıfları (sakin / nötr palet) ────────── */
-
-const PRIMARY_BTN =
-  "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ";
+import { DUGME_SATIR_BIRINCIL, KUCUK_ACIKLAMA } from "@/components/pano/stil";
 
 /* ─── ikonlar ────────────────────────────────────────── */
 
@@ -86,10 +82,10 @@ export function BookingRow({
     <div>
       <ReservationRow item={toReservationItem(booking)} to={ROUTES.lesson(booking.id)} />
       {aksiyonVar && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-6">
           {needsPayment &&
             (payOpen ? (
-              <button onClick={handlePay} disabled={payMutation.isPending} className={PRIMARY_BTN}>
+              <button onClick={handlePay} disabled={payMutation.isPending} className={DUGME_SATIR_BIRINCIL}>
                 {payMutation.isPending
                   ? "İşleniyor…"
                   : `Öde · ${formatTRY(booking.payment?.amount)}`}
@@ -100,7 +96,7 @@ export function BookingRow({
               // "istisna" olmaktan çıkarıyordu.
               <span
                 aria-describedby={PAY_CLOSED_NOTICE_ID}
-                className="text-sm font-medium text-slate-500 "
+                className={KUCUK_ACIKLAMA}
               >
                 Ödeme yolu şu an kapalı
               </span>
@@ -110,7 +106,7 @@ export function BookingRow({
             (joinable ? (
               <button
                 onClick={() => onJoinMeeting(booking)}
-                className={`inline-flex items-center gap-1.5 ${PRIMARY_BTN}`}
+                className={DUGME_SATIR_BIRINCIL}
               >
                 <VideoIcon />
                 Derse Katıl
@@ -118,9 +114,8 @@ export function BookingRow({
             ) : (
               <span
                 title="Canlı ders, başlangıçtan 15 dk önce açılır."
-                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 "
+                className="inline-flex h-10 cursor-not-allowed items-center gap-2 whitespace-nowrap rounded-lg bg-slate-100 px-4 text-base font-semibold text-slate-500"
               >
-                <VideoIcon />
                 Ders saatinde açılır
               </span>
             ))}

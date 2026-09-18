@@ -9,6 +9,13 @@ import {
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROUTES } from "@/lib/routes";
+import {
+  ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_SATIR_BIRINCIL,
+  KART,
+  METIN_BAGLANTI,
+} from "@/components/pano/stil";
 
 /** Ders detayında, bu derse bağlı görevleri gösteren kompakt kart.
  *  Görev eklenince kullanıcının ilk listesine bu ders bağlanarak oluşturulur. */
@@ -42,14 +49,12 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
   const items = tasks ?? [];
 
   return (
-    <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 lg:col-span-1">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-bold text-slate-900 ">
-          Bu Derse Ait Görevler
-        </h3>
+    <section className={`${KART} lg:col-span-1`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className={BOLUM_BASLIGI}>Bu Derse Ait Görevler</h3>
         <Link
           to={ROUTES.tasks}
-          className="text-xs font-medium text-marka-metin hover:text-marka-metin-hover "
+          className={METIN_BAGLANTI}
         >
           Görevlerim →
         </Link>
@@ -57,7 +62,7 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
 
       <div className="mt-4 space-y-1.5">
         {items.length === 0 ? (
-          <p className="text-sm text-slate-400 ">
+          <p className={ACIKLAMA}>
             Henüz görev yok. Aşağıdan ekleyebilirsin.
           </p>
         ) : (
@@ -78,15 +83,15 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
                   aria-label={done ? "Geri al" : "Tamamla"}
                   className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border-2 transition ${
                     done
-                      ? "border-emerald-500 bg-emerald-500 text-white"
-                      : "border-slate-300 text-transparent hover:border-emerald-400 "
+                      ? "border-marka bg-marka text-marka-fg"
+                      : "border-slate-300 text-transparent hover:border-marka-mid"
                   }`}
                 >
                   <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </button>
-                <span className={`flex-1 text-sm ${done ? "text-slate-400 line-through" : "text-slate-700 "}`}>
+                <span className={`flex-1 text-base leading-6 ${done ? "text-slate-500 line-through" : "text-slate-900"}`}>
                   {t.title}
                 </span>
               </div>
@@ -95,18 +100,18 @@ export function LessonTasksCard({ bookingId }: { bookingId: number }) {
         )}
       </div>
 
-      <form onSubmit={add} className="mt-3 flex gap-2">
+      <form onSubmit={add} className="mt-4 flex gap-2">
         <input
           value={title}
           maxLength={200}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Derse görev ekle…"
-          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-marka-mid focus:ring-1 focus:ring-marka-focus "
+          className="h-10 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka-focus"
         />
         <button
           type="submit"
           disabled={createTask.isPending}
-          className="flex-none rounded-xl bg-marka px-4 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
+          className={`${DUGME_SATIR_BIRINCIL} flex-none`}
         >
           Ekle
         </button>

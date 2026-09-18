@@ -28,14 +28,24 @@ import {
   type TutorOut,
 } from "@/types";
 import { BASLIK_EN_AZ_KELIME, kelimeSay } from "@/lib/metin";
+import {
+  ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_BIRINCIL,
+  DUGME_SATIR_BIRINCIL,
+  DUGME_SATIR_IKINCIL,
+  ETIKET,
+  KART,
+  KUCUK_ACIKLAMA,
+  METIN_BAGLANTI,
+  SAYFA_BASLIGI,
+} from "@/components/pano/stil";
 
 
 /* ─── status metadata ────────────────────────────────── */
 
 type StatusCfg = {
   label: string;
-  border: string;
-  bg: string;
   dot: string;
   pulse: boolean;
   text: string;
@@ -45,47 +55,37 @@ type StatusCfg = {
 const STATUS_CFG: Record<TutorStatus, StatusCfg> = {
   [TutorStatus.DRAFT]: {
     label: "Taslak",
-    border: "border-l-slate-300 ",
-    bg: "bg-slate-50 ",
     dot: "bg-slate-400",
     pulse: false,
-    text: "text-slate-600 ",
+    text: "text-slate-600",
     help: "İlanın henüz yayında değil. Bilgileri doldurup onaya gönderebilirsin.",
   },
   [TutorStatus.PENDING_APPROVAL]: {
     label: "Onay Bekliyor",
-    border: "border-l-amber-400",
-    bg: "bg-amber-50 ",
     dot: "bg-amber-400",
     pulse: true,
-    text: "text-amber-700 ",
+    text: "text-amber-700",
     help: "İlanın yönetici incelemesinde. Onaylanana kadar düzenleme ve işlem yapamazsın.",
   },
   [TutorStatus.APPROVED]: {
     label: "Yayında",
-    border: "border-l-emerald-500",
-    bg: "bg-emerald-50 ",
     dot: "bg-emerald-500",
     pulse: false,
-    text: "text-emerald-700 ",
+    text: "text-emerald-700",
     help: "İlanın Marketplace'te aktif olarak görünüyor. Öğrenciler seni bulabilir.",
   },
   [TutorStatus.REJECTED]: {
     label: "Reddedildi",
-    border: "border-l-red-400",
-    bg: "bg-red-50 ",
     dot: "bg-red-500",
     pulse: false,
-    text: "text-red-700 ",
+    text: "text-red-700",
     help: "İlanın reddedildi. Bilgilerini güncelleyip tekrar onaya gönderebilirsin.",
   },
   [TutorStatus.SUSPENDED]: {
     label: "Pasif",
-    border: "border-l-slate-400 ",
-    bg: "bg-slate-100 ",
     dot: "bg-slate-500",
     pulse: false,
-    text: "text-slate-600 ",
+    text: "text-slate-600",
     help: "İlanın geçici olarak pasife alındı. İstediğinde yeniden aktifleştirebilirsin.",
   },
 };
@@ -101,10 +101,13 @@ const MODES = [
 /* ─── shared style tokens ────────────────────────────── */
 
 const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ";
+  "w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-base leading-6 text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 
-const labelCls =
-  "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 ";
+const labelCls = `mb-2 block ${ETIKET}`;
+
+/** Müsaitlik satırındaki küçük denetimler — satır düğmeleriyle aynı 40px. */
+const satirGirdiCls =
+  "h-10 rounded-lg border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:cursor-not-allowed disabled:opacity-50";
 
 /* ─── main page ─────────────────────────────────────── */
 
@@ -266,21 +269,20 @@ export default function TutorSettings() {
   return (
     <DashboardShell title="İlan Ayarları" genislik="dar">
       <div className="px-1 pt-2 sm:px-2">
-        <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <h1 className={`mb-6 ${SAYFA_BASLIGI}`}>
           İlan ayarları
         </h1>
 
-        <div className="space-y-4 pb-12">
+        <div className="space-y-6 pb-12">
         {isLoading || !data ? (
           isError ? (
-            <div className="flex items-start gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 ">
-              <span className="mt-0.5 shrink-0">⚠</span>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-base leading-6 text-red-700">
               {getErrorMessage(error, "İlan profili yüklenemedi.")}
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="h-28 animate-pulse rounded-2xl bg-slate-100 " />
-              <div className="h-96 animate-pulse rounded-2xl bg-slate-100 " />
+              <div className="h-28 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-96 animate-pulse rounded-lg bg-slate-100" />
             </div>
           )
         ) : (
@@ -290,13 +292,13 @@ export default function TutorSettings() {
                 kalktı. Fotoğraf zaten ilana ait: öğrencinin arama sonucunda ve
                 ilan sayfasında gördüğü şey bu. Preply "Photo", Wyzant "Photos"
                 — ikisi de profil/ilan ekranında tutuyor. */}
-            <div className="flex items-center gap-5 rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100">
+            <div className={`flex items-center gap-5 ${KART}`}>
               <ProfilFotografi />
               <div className="min-w-0">
-                <p className="truncate text-base font-semibold text-slate-900">
+                <p className={`truncate ${ETIKET}`}>
                   {currentUser?.full_name ?? ""}
                 </p>
-                <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>
                   İlanının ve arama sonuçlarının yüzü bu fotoğraf. Üstüne
                   gelip değiştirebilirsin.
                 </p>
@@ -307,7 +309,7 @@ export default function TutorSettings() {
 
             {/* ── Status Card ── */}
             <div
-              className={`rounded-2xl border-l-4 px-6 py-5 shadow-sm ring-1 ring-slate-100 ${cfg!.border} ${cfg!.bg}`}
+              className={KART}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -326,19 +328,19 @@ export default function TutorSettings() {
                         className={`h-2.5 w-2.5 shrink-0 rounded-full ${cfg!.dot}`}
                       />
                     )}
-                    <span className={`text-sm font-bold ${cfg!.text}`}>
+                    <span className={`text-base font-semibold leading-6 ${cfg!.text}`}>
                       {cfg!.label}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-500 ">
+                  <p className={`mt-2 ${ACIKLAMA}`}>
                     {cfg!.help}
                   </p>
                   {/* Eğitim bölümü ARTIK BU SAYFADA (8 Eyl 2026): eskiden
                       başka bir ekrana ("Profil") link veriyordu. */}
                   {(data.status === TutorStatus.DRAFT ||
                     data.status === TutorStatus.REJECTED) && (
-                    <p className="mt-2 text-xs leading-relaxed text-amber-600 ">
-                      ⚠ Onaya gönderebilmek için aşağıdaki{" "}
+                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-5 text-amber-800">
+                      Onaya gönderebilmek için aşağıdaki{" "}
                       <strong className="font-semibold">Eğitim ve belgeler</strong>{" "}
                       bölümünden en az bir eğitime diploma/belge yüklemelisin.
                     </p>
@@ -354,7 +356,7 @@ export default function TutorSettings() {
                         runAction(submitAction, "İlanın onaya gönderildi.")
                       }
                       disabled={actionBusy}
-                      className="rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={DUGME_SATIR_BIRINCIL}
                     >
                       {data.status === TutorStatus.REJECTED
                         ? "Yeniden Gönder"
@@ -367,7 +369,7 @@ export default function TutorSettings() {
                         runAction(suspendAction, "İlanın pasife alındı.")
                       }
                       disabled={actionBusy}
-                      className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 "
+                      className={DUGME_SATIR_IKINCIL}
                     >
                       İlanı Pasife Al
                     </button>
@@ -378,7 +380,7 @@ export default function TutorSettings() {
                         runAction(activateAction, "İlanın yeniden yayında.")
                       }
                       disabled={actionBusy}
-                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={DUGME_SATIR_BIRINCIL}
                     >
                       Yeniden Aktifleştir
                     </button>
@@ -388,19 +390,18 @@ export default function TutorSettings() {
             </div>
 
             {/* ── Form Card ── */}
-            <div className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-slate-100 ">
-              <h2 className="text-base font-semibold text-slate-900 ">
+            <div className={KART}>
+              <h2 className={BOLUM_BASLIGI}>
                 İlan Detayları
               </h2>
 
               {!editable && (
-                <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-amber-100 ">
-                  <span className="shrink-0">⏳</span>
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-base leading-6 text-amber-800">
                   İlanın onay sürecinde; bu sırada düzenleme kapalıdır.
                 </div>
               )}
 
-              <form onSubmit={handleSave} className="mt-5 space-y-5">
+              <form onSubmit={handleSave} className="mt-6 space-y-6">
                 {/* Başlık */}
                 <div>
                   <label htmlFor={`${uid}-baslik`} className={labelCls}>Başlık</label>
@@ -414,10 +415,10 @@ export default function TutorSettings() {
                     placeholder="Örn. TYT-AYT Matematik, 8 yıl deneyimli sonuç odaklı özel ders"
                   />
                   <p
-                    className={`mt-1.5 text-xs ${
+                    className={`mt-2 ${
                       headlineTooShort
-                        ? "text-amber-600 "
-                        : "text-slate-400 "
+                        ? "text-sm leading-5 text-amber-700"
+                        : KUCUK_ACIKLAMA
                     }`}
                   >
                     {headlineTooShort
@@ -430,7 +431,7 @@ export default function TutorSettings() {
                 <div>
                   <label htmlFor={`${uid}-saatlik-ucret`} className={labelCls}>Saatlik Ücret</label>
                   <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-semibold text-slate-400">
+                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-base font-semibold text-slate-500">
                       TL
                     </span>
                     <input id={`${uid}-saatlik-ucret`}
@@ -441,7 +442,7 @@ export default function TutorSettings() {
                       disabled={!editable}
                       value={hourlyRate}
                       onChange={(e) => setHourlyRate(e.target.value)}
-                      className={`${inputCls} pl-11`}
+                      className={`${inputCls} pl-12`}
                       placeholder="0"
                     />
                   </div>
@@ -458,14 +459,13 @@ export default function TutorSettings() {
                           key={mode.value}
                           type="button"
                           disabled={!editable}
+                          aria-pressed={selected}
                           onClick={() =>
                             setTeachingMode(selected ? "" : mode.value)
                           }
-                          className={`rounded-full px-4 py-1.5 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
-                            selected
-                              ? "bg-marka text-marka-fg shadow-sm shadow-marka/10 "
-                              : "bg-slate-100 text-slate-600 hover:bg-slate-200 "
-                          }`}
+                          className={
+                            selected ? DUGME_SATIR_BIRINCIL : DUGME_SATIR_IKINCIL
+                          }
                         >
                           {mode.label}
                         </button>
@@ -475,7 +475,7 @@ export default function TutorSettings() {
                       <button
                         type="button"
                         onClick={() => setTeachingMode("")}
-                        className="rounded-full px-3 py-1.5 text-xs text-slate-400 transition hover:text-slate-600 "
+                        className={`h-10 px-2 ${METIN_BAGLANTI}`}
                       >
                         Temizle
                       </button>
@@ -495,7 +495,7 @@ export default function TutorSettings() {
                     onToggle={toggleSubject}
                     onSeviye={toggleLevel}
                   />
-                  <p className="mt-1.5 text-xs text-slate-400 ">
+                  <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
                     Seçtiğin dersler ve seviyeler, öğrencilerin aramada seni
                     bulmasını sağlar.
                   </p>
@@ -509,7 +509,7 @@ export default function TutorSettings() {
                       value={district}
                       disabled={!editable}
                       onChange={(e) => setDistrict(e.target.value)}
-                      className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm outline-none focus:border-marka-mid disabled:opacity-50 "
+                      className={`${inputCls} cursor-pointer appearance-none pr-10`}
                     >
                       <option value="">İlçe seç (opsiyonel)</option>
                       {ADANA_DISTRICTS.map((d) => (
@@ -518,13 +518,13 @@ export default function TutorSettings() {
                         </option>
                       ))}
                     </select>
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                       </svg>
                     </span>
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-400 ">
+                  <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
                     Öğrenciler aramada ilçeye göre eğitmen filtreler.
                   </p>
                 </div>
@@ -538,7 +538,7 @@ export default function TutorSettings() {
                     disabled={!editable}
                     onChange={(e) => setLocationText(e.target.value)}
                     placeholder="ör. Kadıköy, İstanbul"
-                    className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-marka-mid disabled:opacity-50 "
+                    className={`${inputCls} mb-3`}
                   />
                   <MapPicker
                     initialLat={locationLat}
@@ -549,7 +549,7 @@ export default function TutorSettings() {
                       setLocationLng(lng);
                     }}
                   />
-                  <p className="mt-1.5 text-xs text-slate-400 ">
+                  <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
                     {locationLat != null
                       ? `Seçili konum: ${locationLat.toFixed(4)}, ${locationLng?.toFixed(4)}, öğrenciler "yakınımdaki" aramasında seni bulabilir.`
                       : "Haritaya tıklayarak baz konumunu işaretle (opsiyonel)."}
@@ -559,9 +559,9 @@ export default function TutorSettings() {
                 {/* Müsaitlik — haftalık pencereler */}
                 <div>
                   <label htmlFor={`${uid}-musaitlik-haftalik`} className={labelCls}>Müsaitlik (haftalık)</label>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {availability.length === 0 && (
-                      <p className="text-xs text-slate-400 ">
+                      <p className={KUCUK_ACIKLAMA}>
                         Pencere eklemezsen öğrenciler herhangi bir saati talep edebilir.
                         Eklersen rezervasyonlar yalnızca bu saatlerde yapılabilir.
                       </p>
@@ -574,7 +574,7 @@ export default function TutorSettings() {
                           onChange={(e) =>
                             updateWindow(i, { weekday: Number(e.target.value) })
                           }
-                          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:opacity-50 "
+                          className={satirGirdiCls}
                         >
                           {WEEKDAYS_LONG.map((d, idx) => (
                             <option key={idx} value={idx}>
@@ -590,7 +590,7 @@ export default function TutorSettings() {
                           onChange={(e) =>
                             updateWindow(i, { start_minute: hhmmToMin(e.target.value) })
                           }
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:opacity-50 "
+                          className={satirGirdiCls}
                         />
                         <span className="text-slate-400">–</span>
                         <input
@@ -601,14 +601,14 @@ export default function TutorSettings() {
                           onChange={(e) =>
                             updateWindow(i, { end_minute: hhmmToMin(e.target.value) })
                           }
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 disabled:opacity-50 "
+                          className={satirGirdiCls}
                         />
                         <button
                           type="button"
                           disabled={!editable}
                           onClick={() => removeWindow(i)}
                           aria-label="Pencereyi sil"
-                          className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 "
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
                         >
                           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -620,7 +620,7 @@ export default function TutorSettings() {
                       <button
                         type="button"
                         onClick={addWindow}
-                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-marka-soft-fg transition hover:bg-marka-soft "
+                        className={DUGME_SATIR_IKINCIL}
                       >
                         + Pencere ekle
                       </button>
@@ -633,11 +633,11 @@ export default function TutorSettings() {
                     cinsiyet SALT-OKUNURDU ve gerçek editör Ayarlar > Kişisel
                     bilgiler'deydi. Kullanıcı iki sıçrama yapıyor, ikincisini
                     kendi buluyordu. Artık doğrudan doğru sekmeye gidiyor. */}
-                <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 ">
+                <div className="rounded-lg bg-slate-50 px-4 py-3 text-base leading-6 text-slate-600">
                   Yaş ve cinsiyet bilgini{" "}
                   <Link
                     to={`${ROUTES.settings}?bolum=kisisel`}
-                    className="font-semibold text-marka-metin hover:underline "
+                    className={METIN_BAGLANTI}
                   >
                     Ayarlar
                   </Link>{" "}
@@ -669,7 +669,7 @@ export default function TutorSettings() {
                     className={inputCls}
                     placeholder="Dersin nasıl işliyor? Hangi seviyeye/sınava yönelik, ilk ders nasıl geçer, hangi materyalleri kullanıyorsun…"
                   />
-                  <p className="mt-1.5 text-xs text-slate-400 ">
+                  <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
                     Öğrenciler dersinin akışını ve yöntemini buradan görür.
                   </p>
                 </div>
@@ -685,25 +685,25 @@ export default function TutorSettings() {
                     className={inputCls}
                     placeholder="https://www.youtube.com/watch?v=…"
                   />
-                  <p className="mt-1.5 text-xs text-slate-400 ">
+                  <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
                     YouTube veya Vimeo bağlantısı. Profilinin üstünde gömülü oynatılır.
                   </p>
                 </div>
 
                 {/* İlk ders ücretsiz */}
-                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-4 ">
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4">
                   <input
                     type="checkbox"
                     disabled={!editable}
                     checked={firstLessonFree}
                     onChange={(e) => setFirstLessonFree(e.target.checked)}
-                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-marka"
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-marka"
                   />
-                  <span className="text-sm">
-                    <span className="font-semibold text-slate-800 ">
+                  <span>
+                    <span className={`block ${ETIKET}`}>
                       İlk ders ücretsiz
                     </span>
-                    <span className="mt-0.5 block text-xs text-slate-400 ">
+                    <span className={`mt-1 block ${KUCUK_ACIKLAMA}`}>
                       Açıkken öğrenciler bu eğitmenle ilk derslerini ücretsiz talep
                       edebilir. Kapatırsan ilanında ücretsiz ders rozeti görünmez.
                     </span>
@@ -714,7 +714,7 @@ export default function TutorSettings() {
                   <button
                     type="submit"
                     disabled={!editable || updateProfile.isPending}
-                    className="rounded-xl bg-marka px-6 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={DUGME_BIRINCIL}
                   >
                     {updateProfile.isPending ? "Kaydediliyor…" : "Kaydet"}
                   </button>
@@ -733,19 +733,19 @@ export default function TutorSettings() {
 
                 Belgenin ilanda GÖRÜNMEDİĞİ açıkça yazılı — Lessonface'in
                 "Credentials … not displayed publicly" deseni. */}
-            <div className="rounded-2xl bg-white px-6 py-6 shadow-sm ring-1 ring-slate-100">
-              <h2 className="text-base font-semibold text-slate-900">
+            <div className={KART}>
+              <h2 className={BOLUM_BASLIGI}>
                 Eğitim ve belgeler
               </h2>
-              <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+              <p className={`mt-2 ${ACIKLAMA}`}>
                 Okulun ilanında görünür. Yüklediğin diploma veya belge{" "}
-                <strong className="font-semibold text-slate-700">
+                <strong className="font-semibold text-slate-900">
                   ilanında gösterilmez
                 </strong>
                 ; yalnız doğrulama için kullanılır ve onaylanınca ilanında
                 "Diploması Doğrulandı" rozeti çıkar.
               </p>
-              <div className="mt-5">
+              <div className="mt-6">
                 <EducationSection editable bare withDocument />
               </div>
             </div>
@@ -759,17 +759,17 @@ export default function TutorSettings() {
               yalnız eğitmen oraya gidemez. Nöbetçi: `panoSeridi.test.tsx`. */}
           <Link
             to={ROUTES.tutorPromotion}
-            className="mb-4 flex items-center justify-between gap-4 rounded-2xl px-5 py-4 ring-1 ring-slate-200 transition hover:bg-slate-50"
+            className={`flex items-center justify-between gap-4 transition hover:bg-slate-50 ${KART}`}
           >
             <span className="min-w-0">
-              <span className="block text-sm font-semibold text-slate-900">
+              <span className={`block ${ETIKET}`}>
                 İlanını öne çıkar
               </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-slate-500">
+              <span className={`mt-1 block ${ACIKLAMA}`}>
                 Arama sonuçlarının üstündeki blokta "Reklam" ibaresiyle görün.
               </span>
             </span>
-            <span className="shrink-0 text-sm font-medium text-marka-metin">
+            <span className={`shrink-0 ${METIN_BAGLANTI}`}>
               Paketler →
             </span>
           </Link>

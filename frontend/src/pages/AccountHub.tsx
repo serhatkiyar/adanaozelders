@@ -2,7 +2,8 @@ import { type ReactNode } from "react";
 import { MAGAZA_ACIK } from "@/lib/ozellikBayraklari";
 import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
-import { DashboardShell } from "@/components/DashboardShell";
+import { DashboardShell, PANEL_GENISLIKLERI } from "@/components/DashboardShell";
+import { ACIKLAMA, DUGME_IKINCIL, ETIKET } from "@/components/pano/stil";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { useLogout } from "@/hooks/useLogout";
 import { UYE_NAV } from "@/lib/nav";
@@ -130,8 +131,10 @@ export default function AccountHub() {
      yap") kalktı, oturum bu sayfadan kapanır; anonim kullanıcının evi `/`. */
   const cikis = useLogout(ROUTES.home);
 
+  // Genişlik kabuktan gelir (`genislik="orta"`); mağaza çatısı aynı sınıfı
+  // kendisi uygular, iki yüzeyde kartlar aynı genişlikte kalsın.
   const content = (
-    <div className="mx-auto max-w-5xl">
+    <div>
       <h1 className={SAYFA_BASLIGI}>Hesabım</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -139,16 +142,16 @@ export default function AccountHub() {
           <Link
             key={c.to + c.title}
             to={c.to}
-            className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-marka-mid hover:bg-marka-soft/40 "
+            className="group flex items-start gap-4 rounded-lg border border-slate-200 bg-white p-6 transition-colors hover:border-marka-mid hover:bg-marka-soft/40"
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-marka-soft text-marka-soft-fg ">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-marka-soft text-marka-soft-fg">
               {c.icon}
             </span>
             <span>
-              <span className="block font-semibold text-slate-900 group-hover:text-marka-metin-hover ">
+              <span className={`block ${ETIKET} group-hover:text-marka-metin-hover`}>
                 {c.title}
               </span>
-              <span className="mt-0.5 block text-sm text-slate-500 ">{c.desc}</span>
+              <span className={`mt-1 block ${ACIKLAMA}`}>{c.desc}</span>
             </span>
           </Link>
         ))}
@@ -162,7 +165,7 @@ export default function AccountHub() {
       <button
         type="button"
         onClick={cikis}
-        className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99] sm:w-auto"
+        className={`mt-8 w-full sm:w-auto ${DUGME_IKINCIL}`}
       >
         <svg
           className="h-5 w-5"
@@ -187,7 +190,9 @@ export default function AccountHub() {
   if (lastSurface === "store") {
     return (
       <StoreLayout title="Hesabım" showCategoryBar={false}>
-        <div className="px-4 py-6 md:px-8">{content}</div>
+        <div className="px-4 py-6 md:px-8">
+          <div className={PANEL_GENISLIKLERI.orta}>{content}</div>
+        </div>
       </StoreLayout>
     );
   }
@@ -199,7 +204,7 @@ export default function AccountHub() {
        bayrak. Masaüstünde üst bar olduğu gibi kalır. */
     /* Arama hapı da KALDIRILDI: hesap ekranı arama yüzeyi değil; hap
        yalnız /egitmenler'e atlıyordu, arama Keşfet sekmesinde. */
-    <DashboardShell title="Hesabım" navItems={UYE_NAV} mobilUstGizle>
+    <DashboardShell title="Hesabım" navItems={UYE_NAV} mobilUstGizle genislik="orta">
       {content}
     </DashboardShell>
   );

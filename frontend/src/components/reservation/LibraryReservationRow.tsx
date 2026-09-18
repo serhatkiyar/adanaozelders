@@ -14,6 +14,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import type { ReservationItem } from "@/lib/reservationModel";
+import { DUGME_SATIR_BIRINCIL, DUGME_SATIR_IKINCIL } from "@/components/pano/stil";
 
 export type KutuphaneKaynagi = "deneme" | "calisma";
 
@@ -71,13 +72,13 @@ function OdemeSeridi({ item, kaynak }: { item: ReservationItem; kaynak: Kutuphan
   };
 
   return (
-    <div className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+    <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-6">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={odemeyiBaslat}
           disabled={!payOpen || ode.isPending}
-          className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-50"
+          className={DUGME_SATIR_BIRINCIL}
         >
           {!payOpen ? "Ödeme kapalı" : ode.isPending ? "…" : "Ödemeyi tamamla"}
         </button>
@@ -85,7 +86,7 @@ function OdemeSeridi({ item, kaynak }: { item: ReservationItem; kaynak: Kutuphan
           type="button"
           onClick={iptalEt}
           disabled={iptal.isPending}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-white disabled:opacity-50"
+          className={DUGME_SATIR_IKINCIL}
         >
           İptal
         </button>

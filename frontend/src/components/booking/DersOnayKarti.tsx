@@ -1,5 +1,13 @@
 import { FormEvent, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import {
+  ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_SATIR_BIRINCIL,
+  DUGME_SATIR_IKINCIL,
+  DUGME_SATIR_TEHLIKE,
+  ETIKET,
+} from "@/components/pano/stil";
 import { useConfirmBooking, useReportBookingIssue } from "@/hooks/useBookings";
 import { formatDateTime } from "@/lib/datetime";
 import { onayDurumu, SORUN_NEDENLERI, sorunNedeniEtiketi } from "@/lib/dersOnayi";
@@ -37,10 +45,10 @@ export function SorunBildirModal({ booking, onClose }: { booking: BookingOut; on
       onClose={onClose}
       ariaLabel="Ders için sorun bildir"
       hideCloseButton
-      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+      panelClassName="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl"
     >
-      <h3 className="text-lg font-bold text-slate-900">Sorun bildir</h3>
-      <p className="mt-1 text-sm text-slate-500">
+      <h3 className={BOLUM_BASLIGI}>Sorun bildir</h3>
+      <p className={`${ACIKLAMA} mt-2`}>
         Ders ücreti inceleme bitene kadar eğitmene aktarılmaz. Ekibimiz iki tarafla da
         iletişime geçip karar verir.
       </p>
@@ -50,7 +58,7 @@ export function SorunBildirModal({ booking, onClose }: { booking: BookingOut; on
           {SORUN_NEDENLERI.map((n) => (
             <label
               key={n.value}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl px-4 py-3 text-sm ring-1 transition ${
+              className={`flex cursor-pointer items-center gap-3 rounded-lg px-4 py-3 text-base ring-1 transition ${
                 reason === n.value
                   ? "bg-marka-soft text-marka-soft-fg ring-marka/40"
                   : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
@@ -75,20 +83,20 @@ export function SorunBildirModal({ booking, onClose }: { booking: BookingOut; on
           onChange={(e) => setNote(e.target.value)}
           placeholder="Ne olduğunu kısaca anlat (isteğe bağlı)"
           aria-label="Açıklama"
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20"
         />
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+            className={DUGME_SATIR_IKINCIL}
           >
             Vazgeç
           </button>
           <button
             type="submit"
             disabled={report.isPending}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+            className={DUGME_SATIR_TEHLIKE}
           >
             {report.isPending ? "Gönderiliyor…" : "Sorunu bildir"}
           </button>
@@ -112,16 +120,16 @@ export function DersOnayKarti({ booking }: { booking: BookingOut }) {
 
   if (durum === "onaylandi") {
     return (
-      <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <div className={`${ACIKLAMA} rounded-lg bg-slate-50 px-4 py-3`}>
         Dersi onayladın. Teşekkürler!
       </div>
     );
   }
   if (durum === "sorun_bildirildi") {
     return (
-      <div role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
+      <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-base leading-6 text-amber-800">
         <p className="font-semibold">Sorun bildirdin: {sorunNedeniEtiketi(booking.issue_reason)}</p>
-        <p className="mt-0.5 text-xs">
+        <p className="mt-1 text-sm leading-5">
           Ekibimiz inceliyor. Karar verilene kadar ders ücreti eğitmene aktarılmaz.
         </p>
       </div>
@@ -138,29 +146,29 @@ export function DersOnayKarti({ booking }: { booking: BookingOut }) {
   return (
     <section
       aria-label="Ders onayı"
-      className="rounded-2xl bg-marka-soft px-5 py-4 ring-1 ring-marka/20"
+      className="rounded-lg border border-marka/20 bg-marka-soft p-4"
     >
-      <p className="text-sm font-semibold text-marka-soft-fg">Dersin gerçekleşti mi?</p>
-      <p className="mt-0.5 text-xs leading-relaxed text-marka-metin-hover">
+      <p className={ETIKET}>Dersin gerçekleşti mi?</p>
+      <p className={`${ACIKLAMA} mt-1`}>
         Onayladığında ücret eğitmenine aktarılır. Bir sorun olduysa
         {booking.issue_report_deadline
           ? ` ${formatDateTime(booking.issue_report_deadline)} tarihine kadar`
           : " 72 saat içinde"}{" "}
         bildirebilirsin; bildirim yapılmazsa ders onaylanmış sayılır.
       </p>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
           disabled={confirm.isPending}
           onClick={onayla}
-          className="rounded-xl bg-marka px-4 py-2.5 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover disabled:opacity-60"
+          className={DUGME_SATIR_BIRINCIL}
         >
           {confirm.isPending ? "Onaylanıyor…" : "Ders gerçekleşti"}
         </button>
         <button
           type="button"
           onClick={() => setSorunAcik(true)}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className={DUGME_SATIR_IKINCIL}
         >
           Sorun bildir
         </button>
