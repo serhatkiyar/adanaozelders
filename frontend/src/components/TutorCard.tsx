@@ -3,7 +3,7 @@ import type { TutorSearchOut } from "@/types";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { StarRating } from "@/components/StarRating";
 import { parseMoney, formatTRY } from "@/lib/money";
-import { ROUTES, tutorSlug } from "@/lib/routes";
+import { ilanYolu } from "@/lib/routes";
 
 interface TutorCardProps {
   tutor: TutorSearchOut;
@@ -60,7 +60,7 @@ export function TutorCard({
 
   return (
     <Link
-      to={ROUTES.tutor(tutorSlug(tutor))}
+      to={ilanYolu(tutor)}
       className="group flex h-full flex-col transition duration-300 mx-auto w-full max-w-[310px]"
     >
       {/* ── Picture Area ── */}

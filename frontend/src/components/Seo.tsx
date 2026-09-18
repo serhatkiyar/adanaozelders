@@ -11,13 +11,19 @@ interface SeoProps {
   /** Sayfa başlığı; `SITE_NAME` ile birleşir. Verilmezse marka başlığı. */
   title?: string;
   description?: string;
-  /** Kanonik path (örn. "/egitmenler/ahmet-42"); verilmezse mevcut pathname. */
+  /** Kanonik path (örn. "/lgs-yks-matematik-seyhan"); verilmezse mevcut pathname. */
   canonicalPath?: string;
   /** OG/Twitter görseli (mutlak veya göreli). Varsayılan: /logo.png. */
   image?: string;
   type?: "website" | "profile" | "article" | "product";
   /** Arama motorlarından gizle (oturum-içi/özel sayfalar). */
   noindex?: boolean;
+  /**
+   * `title` OLDUĞU GİBİ kullanılır (marka öneki eklenmez). Kök SEO
+   * sayfalarında başlık sunucuda "aranan kelime önde" kuralıyla üretilir ve
+   * zaten "| Adana Özel Ders" ile biter (Modül 6).
+   */
+  tamBaslik?: boolean;
   /** Ek head düğümleri (örn. <JsonLd />). */
   children?: ReactNode;
 }
@@ -30,10 +36,13 @@ export function Seo({
   image,
   type = "website",
   noindex,
+  tamBaslik,
   children,
 }: SeoProps) {
   const fullTitle = title
-    ? `${SITE_NAME} · ${title}`
+    ? tamBaslik
+      ? title
+      : `${SITE_NAME} · ${title}`
     : `${SITE_NAME}, Uzman Eğitmenle Öğren`;
   const desc = clampDescription(description ?? DEFAULT_DESCRIPTION);
   const path =

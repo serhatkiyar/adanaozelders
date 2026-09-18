@@ -462,6 +462,8 @@ export interface ConversationOut {
   counterparty_avatar_url?: string | null;
   /** Karşı tarafın türü: CLIENT | TUTOR | LIBRARY. */
   counterparty_role?: string | null;
+  /** Karşı taraf eğitmense kök ilan adresi (Modül 6). */
+  counterparty_url_slug?: string | null;
   last_message?: string | null;
   last_message_at?: string | null;
   unread?: number;
@@ -619,6 +621,8 @@ export interface TutorProfileUpdate {
 export interface TutorOut extends UserOut {
   status: TutorStatus;
   slug: string; // backend computed: isim-{id} (soyad yok, ÜK-9)
+  /** Kök ilan adresi (`/lgs-yks-matematik-seyhan`); ilan hiç yayınlanmadıysa null. */
+  url_slug?: string | null;
   headline?: string | null;
   bio?: string | null;
   lesson_info?: string | null;
@@ -640,7 +644,9 @@ export interface TutorOut extends UserOut {
 
 export interface TutorSearchOut {
   id: number;
-  slug: string; // backend computed: isim-soyisim-{id}
+  slug: string; // backend computed: isim-{id} — ESKİ adres (yalnız yönlendirme)
+  /** Kök ilan adresi (Modül 6). Site içi eğitmen linkleri buna gider (`ilanYolu`). */
+  url_slug?: string | null;
   /** PUBLIC ad — soyad TAŞIMAZ (ÜK-9). Sunucuda kesiliyor;
    *  yasal ad yalnız oturum içi ve admin şemalarında. */
   display_name: string;

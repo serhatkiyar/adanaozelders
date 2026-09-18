@@ -178,7 +178,8 @@ export function EgitmenMobilUst({
       <div className="relative -mt-6 rounded-t-3xl bg-white px-4 pt-5">
         <div className="flex flex-col items-center text-center">
           <div className="flex items-center justify-center gap-1.5">
-            <h1 className="text-2xl font-bold text-slate-900">{tutor.display_name}</h1>
+            {/* Ad `p`: sayfanın H1'i ilan başlığıdır (Modül 6). */}
+            <p className="text-2xl font-bold text-slate-900">{tutor.display_name}</p>
             {rozet}
           </div>
 

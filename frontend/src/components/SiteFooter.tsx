@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { LEGAL_ROUTES, ROUTES } from "@/lib/routes";
 import { LEGAL_NAV } from "@/lib/legalNav";
+import { usePopulerDersler } from "@/hooks/useSeo";
 
 /* ─── ortak site footer'ı ──────────────────────────────────
    Önceden iki ayrı footer vardı (Landing.tsx ve store/StoreLayout.tsx) ve
@@ -73,6 +74,9 @@ const SOSYAL_HESAPLAR: { ad: string; url: string; ikon: React.ReactNode }[] = [
 ];
 
 export function SiteFooter() {
+  // Ders sayfalarına iç bağlantı sütunu (Modül 6) — yalnız veri varsa.
+  const { data: populerDersler } = usePopulerDersler(6);
+  const dersSutunu = !!populerDersler?.length;
 
   // Telefonda `py-1.5` + `min-h-[36px]`: bu linkler 20px yükseklikte ve 10px
   // aralıkla duruyordu, parmakla yanlış satıra basmak kolaydı. Masaüstünde
@@ -159,7 +163,7 @@ export function SiteFooter() {
              sütun, hangi bağlantının hangi gruba ait olduğunu gizliyordu.
 
              Masaüstü DEĞİŞMEDİ: `sm:` üstünde hâlâ üç sütun. */
-          className="grid grid-cols-1 gap-y-0 divide-y divide-slate-100 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8 sm:divide-y-0"
+          className={`grid grid-cols-1 gap-y-0 divide-y divide-slate-100 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8 sm:divide-y-0 ${dersSutunu ? "lg:grid-cols-4" : ""}`}
         >
             {/* 31 Ağu (kullanıcı kararları): Destek EN SOLDA, sonra Hakkımızda.
                 Destek linkleri — mesafeli satışta erişilebilir iletişim
@@ -189,6 +193,19 @@ export function SiteFooter() {
                 Blog
               </Link>
             </div>
+
+            {/* Ders sayfalarına iç bağlantı (Modül 6): en çok öğretmeni olan
+                dersler, sunucudan. Veri yoksa sütun hiç çizilmez. */}
+            {dersSutunu && (
+              <div className="py-2 sm:space-y-2.5 sm:py-0">
+                <p className={baslikCls}>Popüler dersler</p>
+                {populerDersler?.map((d) => (
+                  <Link key={d.yol} to={d.yol} className={`block ${linkCls}`}>
+                    {d.ad} özel ders
+                  </Link>
+                ))}
+              </div>
+            )}
 
             {/* "Hesap" sütunu KALDIRILDI (31 Ağu): giriş/kayıt navbar'da. */}
 

@@ -1,19 +1,26 @@
 import { useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ROUTES, tutorSlug } from "@/lib/routes";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ilanYolu } from "@/lib/routes";
 
-// URL'deki slug kanonik değilse (örn. /egitmenler/42 ya da bayat slug),
-// /egitmenler/ahmet-yilmaz-42'ye sessizce (replace) yönlendirir — temiz/SEO URL.
+/**
+ * Eğitmen sayfası kanonik adreste değilse oraya `replace` ile geçer.
+ *
+ * Kanonik adres `ilanYolu`dur: ilan yayına girmişse kök ilan adresi
+ * (`/lgs-yks-matematik-seyhan`, Modül 6), girmemişse eski
+ * `/egitmenler/<isim-id>`. Eski adresten (`/egitmenler/dilan-4`,
+ * `/egitmenler/4`) gelen kullanıcı ve paylaşılmış bağlantı yeni adrese
+ * taşınır; sorgu dizesi korunur. Üretimde aynı yönlendirmeyi sunucu 301 ile
+ * zaten yapar (`backend/services/on_cizim.py`); bu kanca SPA içi gezinme ve
+ * yerel geliştirme içindir.
+ */
 export function useCanonicalTutorSlug(
-  tutor: { id: number; slug?: string | null } | undefined
+  tutor: { id: number; slug?: string | null; url_slug?: string | null } | undefined
 ) {
-  const { slug: current } = useParams();
+  const { pathname, search } = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
     if (!tutor) return;
-    const canonical = tutorSlug(tutor);
-    if (current && current !== canonical) {
-      navigate(ROUTES.tutor(canonical), { replace: true });
-    }
-  }, [tutor, current, navigate]);
+    const hedef = ilanYolu(tutor);
+    if (pathname !== hedef) navigate(hedef + search, { replace: true });
+  }, [tutor, pathname, search, navigate]);
 }

@@ -27,7 +27,8 @@ import {
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { absoluteUrl } from "@/lib/seo";
-import { ROUTES, parseTutorId, tutorSlug } from "@/lib/routes";
+import { ROUTES, ilanYolu, parseTutorId } from "@/lib/routes";
+import type { IlanSayfasiVerisi } from "@/api/seo";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
 import { videoEmbedUrl } from "@/lib/video";
 import { TeachingMode } from "@/types";
@@ -38,9 +39,17 @@ const MODE_LABEL: Partial<Record<TeachingMode, string>> = {
   [TeachingMode.BOTH]: "Uzaktan & Yüzyüze",
 };
 
-export default function PublicTutorProfile() {
+export default function PublicTutorProfile({
+  tutorId: verilenId,
+  ilanSeo,
+}: {
+  /** Kök ilan adresinden gelindiyse sunucunun çözdüğü eğitmen. */
+  tutorId?: number;
+  /** Sunucunun ürettiği başlık/açıklama/JSON-LD (ön-çizimle AYNI). */
+  ilanSeo?: IlanSayfasiVerisi;
+} = {}) {
   const { slug } = useParams();
-  const tutorId = parseTutorId(slug);
+  const tutorId = verilenId ?? parseTutorId(slug);
   const { girisGerekli } = useGirisKapisi();
   const navigate = useNavigate();
   const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
@@ -89,7 +98,7 @@ export default function PublicTutorProfile() {
   const modeLabel = tutor.teaching_mode ? MODE_LABEL[tutor.teaching_mode] : null;
 
   // ── SEO: kanonik slug + Person/AggregateRating/Offer yapısal verisi ──
-  const canonicalPath = ROUTES.tutor(tutorSlug(tutor));
+  const canonicalPath = ilanSeo?.yol ?? ilanYolu(tutor);
   const seoDesc =
     tutor.bio ||
     tutor.headline ||
@@ -137,15 +146,28 @@ export default function PublicTutorProfile() {
 
   return (
     <PublicShell center={center} bottom={bottom} mobilDetayEkrani>
-      <Seo
-        title={tutor.display_name}
-        description={seoDesc}
-        canonicalPath={canonicalPath}
-        type="profile"
-        image={tutor.avatar_url ?? undefined}
-      >
-        <JsonLd data={personLd} />
-      </Seo>
+      {ilanSeo ? (
+        <Seo
+          title={ilanSeo.baslik}
+          tamBaslik
+          description={ilanSeo.aciklama}
+          canonicalPath={canonicalPath}
+          type="profile"
+          image={tutor.avatar_url ?? undefined}
+        >
+          <JsonLd data={ilanSeo.json_ld} />
+        </Seo>
+      ) : (
+        <Seo
+          title={tutor.display_name}
+          description={seoDesc}
+          canonicalPath={canonicalPath}
+          type="profile"
+          image={tutor.avatar_url ?? undefined}
+        >
+          <JsonLd data={personLd} />
+        </Seo>
+      )}
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
         <div
@@ -214,9 +236,11 @@ export default function PublicTutorProfile() {
                     çözüm rozeti akıştan çıkardığı için başlık dengesiz
                     görünüyordu. Basit hizalama daha düzgün duruyor. */}
                 <div className="mt-3 flex items-center justify-center gap-1.5">
-                  <h1 className="text-xl font-bold text-slate-900 ">
+                  {/* Ad `p`: sayfanın H1'i İLAN BAŞLIĞIDIR (Modül 6 — aranan
+                      şey ders, isim değil). Görünüm aynı. */}
+                  <p className="text-xl font-bold text-slate-900 ">
                     {tutor.display_name}
-                  </h1>
+                  </p>
                   {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
                 </div>
 
@@ -304,9 +328,9 @@ export default function PublicTutorProfile() {
 
             {/* Headline / İlan Başlığı */}
             {tutor.headline && (
-              <h2 className="text-3xl font-extrabold leading-tight text-slate-900 ">
+              <h1 className="text-3xl font-extrabold leading-tight text-slate-900 ">
                 {tutor.headline}
-              </h2>
+              </h1>
             )}
 
             {/* Bio */}

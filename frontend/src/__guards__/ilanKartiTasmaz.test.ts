@@ -129,7 +129,9 @@ describe("ilan sayfası · sabit kart", () => {
     expect(DAGITICI).toContain("PublicTutorProfile");
     expect(DAGITICI).toContain("TutorProfile");
     // Üçüncü bir kabuk eklenirse burası da güncellenmeli.
-    const basilanlar = (DAGITICI.match(/<([A-Z][A-Za-z]*) \/>/g) ?? []).length;
+    // Modül 6: kabuklar artık `tutorId`/`ilanSeo` alıyor (kök ilan adresi);
+    // sayım prop'lu kendini kapatan etiketleri de kapsar.
+    const basilanlar = (DAGITICI.match(/<([A-Z][A-Za-z]*)(?:\s[^<>]*)?\s*\/>/g) ?? []).length;
     expect(basilanlar, "dağıtıcı ikiden fazla kabuk basıyor").toBe(2);
   });
 

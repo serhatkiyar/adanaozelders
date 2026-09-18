@@ -178,7 +178,11 @@ describe("B — rota kapısı (gerçek App + gerçek router)", () => {
   });
 
   it("NÖBETÇİ: tanımsız bir yol hâlâ 404 veriyor ('Yakında' her şeyi yutmuyor)", async () => {
-    await yoluBas("/boyle-bir-sayfa-yok-42");
+    // Modül 6: tireli TEK parçalı yollar artık kök SEO rotasına gider ve
+    // sunucuya sorulur (ağ beklemesi). Bu nöbetçinin iddiası "tanımsız yol
+    // 404" olduğu için SEO biçiminde OLMAYAN bir yol seçildi: iki parçalı ve
+    // `-ozel-ders` ile bitmeyen yol sunucuya sorulmadan 404'tür.
+    await yoluBas("/boyle-bir/sayfa-yok-42");
     expect(
       screen.getByRole("heading", { name: /Aradığınız sayfa bulunamadı/i })
     ).toBeTruthy();

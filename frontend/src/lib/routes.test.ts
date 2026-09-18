@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { LEGACY_STATIC } from "@/App";
 import { describe, it, expect } from "vitest";
-import { PATHS, ROUTES, tutorSlug, parseTutorId } from "@/lib/routes";
+import { PATHS, ROUTES, ilanYolu, tutorSlug, parseTutorId } from "@/lib/routes";
 
 describe("PATHS — düz (flat) semantik yapı", () => {
   it("hiçbir path `/panel` öneki taşımaz", () => {
@@ -124,6 +124,28 @@ describe("ROUTES — tek kaynak tutarlılığı", () => {
     expect(ROUTES.messageWith(5, "Ayşe Yılmaz")).toBe(
       "/pano/mesajlar?to=5&name=Ay%C5%9Fe%20Y%C4%B1lmaz",
     );
+  });
+});
+
+describe("kök SEO adresleri (Modül 6)", () => {
+  it("adres üreticileri desenle birebir ve önek taşımaz", () => {
+    expect(ROUTES.ilan("lgs-yks-matematik-seyhan")).toBe("/lgs-yks-matematik-seyhan");
+    expect(ROUTES.ilan("x-y")).toBe(PATHS.kokAdres.replace(":kokSlug", "x-y"));
+    expect(ROUTES.dersSayfasi("matematik")).toBe("/matematik-ozel-ders");
+    expect(ROUTES.ilceDersSayfasi("seyhan", "matematik")).toBe(
+      PATHS.ilceDersSayfasi
+        .replace(":ilce", "seyhan")
+        .replace(":dersSayfasi", "matematik-ozel-ders")
+    );
+  });
+
+  it("eğitmen linki TEK kapıdan: ilan adresi varsa o, yoksa eski adres", () => {
+    expect(ilanYolu({ id: 4, slug: "dilan-4", url_slug: "lgs-matematik-seyhan" })).toBe(
+      "/lgs-matematik-seyhan"
+    );
+    // Hiç yayınlanmamış ilan: eski adres (rota sayfayı açar, adres doğunca yönlenir).
+    expect(ilanYolu({ id: 4, slug: "dilan-4", url_slug: null })).toBe("/egitmenler/dilan-4");
+    expect(ilanYolu({ id: 4 })).toBe("/egitmenler/4");
   });
 });
 

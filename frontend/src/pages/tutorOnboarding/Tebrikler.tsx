@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import { ShareModal } from "@/components/ShareModal";
 import { PlainButton } from "@/components/ui/PlainButton";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, ilanYolu } from "@/lib/routes";
 
 /**
  * Sihirbazın kapanış ekranı.
@@ -20,16 +20,21 @@ import { ROUTES } from "@/lib/routes";
  * ekran bunu açıkça söyler ve paylaşımı SUNMAZ.
  */
 export function Tebrikler({
+  id,
   slug,
+  urlSlug,
   ad,
   onayBekliyor,
 }: {
+  id: number;
   slug: string;
+  /** Kök ilan adresi — ilk yayında (onayda) doğar; öncesinde null. */
+  urlSlug?: string | null;
   ad: string;
   onayBekliyor: boolean;
 }) {
   const [paylasAcik, setPaylasAcik] = useState(false);
-  const yol = ROUTES.tutor(slug);
+  const yol = ilanYolu({ id, slug, url_slug: urlSlug });
   const tamAdres = `${window.location.origin}${yol}`;
 
   return (

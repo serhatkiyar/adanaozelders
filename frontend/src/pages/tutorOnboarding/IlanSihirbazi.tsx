@@ -255,7 +255,9 @@ export default function IlanSihirbazi() {
       <>
         <Seo title="İlanın hazır" noindex />
         <Tebrikler
+          id={profil.data.id}
           slug={profil.data.slug}
+          urlSlug={profil.data.url_slug}
           ad={profil.data.headline || profil.data.full_name}
           onayBekliyor={profil.data.status !== TutorStatus.APPROVED}
         />

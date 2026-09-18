@@ -1,6 +1,6 @@
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { trackPageview } from "@/lib/analytics";
@@ -11,6 +11,7 @@ import { KesifKabugu } from "@/components/kesif/KesifKabugu";
 import { ALISVERIS_ROLLERI } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
+import { kokAdresBiciminde } from "@/lib/kokAdres";
 import {
   DENEMELER_ACIK,
   KUTUPHANELER_ACIK,
@@ -315,6 +316,18 @@ const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
 const LibraryCardTest = lazy(() => import("@/pages/LibraryCardTest"));
 // Bilinmeyen URL'ler — shell-uyarlamalı 404 (sessiz redirect yerine)
 const NotFound = lazy(() => import("@/pages/NotFound"));
+// Kök SEO adresleri (Modül 6): ilan, ders ve ilçe+ders sayfası.
+const KokAdres = lazy(() => import("@/pages/seo/KokAdres"));
+
+/**
+ * Kök SEO rotalarının kapısı (Modül 6). SEO biçiminde olmayan yol (ör.
+ * `/ogren/kelime-kartlari`) ağır `KokAdres` parçası yüklenmeden, sunucuya
+ * sorulmadan, eskisi gibi doğrudan 404'e düşer.
+ */
+function KokAdresRotasi() {
+  const params = useParams();
+  return kokAdresBiciminde(params) ? <KokAdres /> : <NotFound />;
+}
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -952,6 +965,16 @@ function App() {
             path="/ogrenciler/:id"
             element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
           />
+
+          {/* ── Kök SEO adresleri (Modül 6) — EN SONDA, 404'ten hemen önce ──
+              `/lgs-yks-matematik-seyhan` (ilan), `/matematik-ozel-ders` (ders),
+              `/seyhan/matematik-ozel-ders` (ilçe+ders). React Router statik
+              parçayı dinamikten önce eşlediği için yukarıdaki hiçbir rotayı
+              gölgelemez; adresin ne olduğunu sunucu söyler, bilinmeyen adres
+              yine 404'tür. Üretimde bu yollar ön-çizilmiş gelir
+              (`backend/services/on_cizim.py`, `nginx.conf`). */}
+          <Route path={PATHS.ilceDersSayfasi} element={<KokAdresRotasi />} />
+          <Route path={PATHS.kokAdres} element={<KokAdresRotasi />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

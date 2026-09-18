@@ -17,6 +17,7 @@ function trim(t: TutorSearchOut): TutorSearchOut {
   return {
     id: t.id,
     slug: t.slug,
+    url_slug: t.url_slug ?? null,
     display_name: t.display_name,
     avatar_url: t.avatar_url ?? null,
     headline: t.headline ?? null,

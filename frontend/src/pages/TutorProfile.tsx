@@ -29,6 +29,9 @@ import { BookingStatus, ROLE_IDS, TeachingMode } from "@/types";
 import type { TutorSearchOut } from "@/types";
 import { BookingModal } from "@/components/BookingModal";
 import { ROUTES, parseTutorId } from "@/lib/routes";
+import type { IlanSayfasiVerisi } from "@/api/seo";
+import { Seo } from "@/components/Seo";
+import { JsonLd } from "@/components/JsonLd";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
 import { videoEmbedUrl } from "@/lib/video";
@@ -43,9 +46,17 @@ import { DersTalepSeridi } from "@/components/egitmen/DersTalepSeridi";
 
 /* ─── main page ─────────────────────────────────────────── */
 
-export default function TutorProfile() {
+export default function TutorProfile({
+  tutorId: verilenId,
+  ilanSeo,
+}: {
+  /** Kök ilan adresinden gelindiyse sunucunun çözdüğü eğitmen. */
+  tutorId?: number;
+  /** Sunucunun ürettiği başlık/açıklama/JSON-LD (ön-çizimle AYNI). */
+  ilanSeo?: IlanSayfasiVerisi;
+} = {}) {
   const { slug } = useParams();
-  const tutorId = parseTutorId(slug);
+  const tutorId = verilenId ?? parseTutorId(slug);
   const navigate = useNavigate();
   const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
     useNavSearch("egitmenler");
@@ -148,6 +159,18 @@ export default function TutorProfile() {
       bottom={bottom}
       mobilDetayEkrani
     >
+      {ilanSeo && (
+        <Seo
+          title={ilanSeo.baslik}
+          tamBaslik
+          description={ilanSeo.aciklama}
+          canonicalPath={ilanSeo.yol}
+          type="profile"
+          image={tutor.avatar_url ?? undefined}
+        >
+          <JsonLd data={ilanSeo.json_ld} />
+        </Seo>
+      )}
       {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
       {searchOpen && (
         <div
@@ -228,9 +251,10 @@ export default function TutorProfile() {
                   shape="square"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                  <h1 className="text-xl font-bold text-slate-900 ">
+                  {/* Ad `p`: H1 ilan başlığıdır (Modül 6). Görünüm aynı. */}
+                  <p className="text-xl font-bold text-slate-900 ">
                     {tutor.display_name}
-                  </h1>
+                  </p>
                 </div>
 
                 <button
@@ -323,9 +347,9 @@ export default function TutorProfile() {
 
             {/* Headline / İlan Başlığı */}
             {(tutor.headline || isOwnerTutor) && (
-              <h2 className="text-3xl font-extrabold leading-tight text-slate-900 ">
+              <h1 className="text-3xl font-extrabold leading-tight text-slate-900 ">
                 {tutor.headline || "Eğitmen"}
-              </h2>
+              </h1>
             )}
 
             {/* Bio */}

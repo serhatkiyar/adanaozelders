@@ -18,6 +18,9 @@
 // `ROUTES` = gezinme/`Link` için URL üreticileri; statikler PATHS'ten türer
 //            (tek kaynak, literal drift yok), param'lılar fonksiyondur.
 
+/** Ders sayfası adresinin sabit eki (sunucu: `core/seo_adres.py::DERS_EKI`). */
+export const DERS_EKI = "ozel-ders";
+
 export const PATHS = {
   // ── Public (SEO) ──
   home: "/",
@@ -297,6 +300,17 @@ export const PATHS = {
   adminNewBlogEdit: "/yonetim-yeni/pazarlama/blog/:postId",
   adminNewAuditLogs: "/yonetim-yeni/ayarlar/denetim-kayitlari",
   adminNewCoupons: "/yonetim-yeni/indirimler/kuponlar",
+
+  // ── Kök SEO adresleri (Modül 6) ──
+  // Alan adı zaten "adanaozelders.com.tr": önek YOK. Bu iki desen rota
+  // tablosunun EN SONUNDA, 404'ten hemen önce durur; React Router statik
+  // parçayı dinamik parçadan önce eşlediği için mevcut hiçbir rotayı gölgelemez.
+  // Hangi adresin ne olduğunu sunucu söyler (`GET /seo/sayfa`); kök adlar
+  // sunucuda rezervedir (`backend/core/seo_adres.py::REZERVE_ADLAR`).
+  /** İlan (`/lgs-yks-matematik-seyhan`) ya da ders sayfası (`/matematik-ozel-ders`). */
+  kokAdres: "/:kokSlug",
+  /** İlçe + ders sayfası (`/seyhan/matematik-ozel-ders`). */
+  ilceDersSayfasi: "/:ilce/:dersSayfasi",
 } as const;
 
 export const ROUTES = {
@@ -502,6 +516,15 @@ export const ROUTES = {
   adminNewBlogEdit: (postId: string | number) => `/yonetim-yeni/pazarlama/blog/${postId}`,
   adminNewAuditLogs: PATHS.adminNewAuditLogs,
   adminNewCoupons: PATHS.adminNewCoupons,
+
+  // ── Kök SEO adresleri (Modül 6) ──
+  /** İlan sayfası — sunucunun verdiği `url_slug` ile. Eğitmen linki için `ilanYolu`. */
+  ilan: (urlSlug: string) => `/${urlSlug}`,
+  /** Ders sayfası: `matematik` → `/matematik-ozel-ders`. */
+  dersSayfasi: (dersSlug: string) => `/${dersSlug}-${DERS_EKI}`,
+  /** İlçe + ders sayfası: `/seyhan/matematik-ozel-ders`. */
+  ilceDersSayfasi: (ilceSlug: string, dersSlug: string) =>
+    `/${ilceSlug}/${dersSlug}-${DERS_EKI}`,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve
@@ -518,7 +541,24 @@ export const LEGAL_ROUTES = {
   about: PATHS.about,
 } as const;
 
-// Eğitmen için kanonik slug. Backend `slug` döner (isim-soyisim-{id}); yoksa id'ye düş.
+/**
+ * Eğitmenin site içi adresi — TEK kapı (Modül 6).
+ *
+ * İlan yayına ilk girdiğinde sunucu kök bir adres verir (`url_slug`); site
+ * içindeki her eğitmen linki ona gider. Adresi olmayan (hiç yayınlanmamış)
+ * eğitmende eski `/egitmenler/<isim-id>` kullanılır — o rota sayfayı açar,
+ * adres doğunca da kendiliğinden yeniye yönlenir.
+ */
+export function ilanYolu(t: {
+  id: number;
+  slug?: string | null;
+  url_slug?: string | null;
+}): string {
+  return t.url_slug ? ROUTES.ilan(t.url_slug) : ROUTES.tutor(tutorSlug(t));
+}
+
+// Eğitmen için ESKİ slug (isim-{id}); yoksa id'ye düş. Yalnız eski adres ve
+// id çözümü için — gezinme linkleri `ilanYolu` kullanır.
 export function tutorSlug(t: { id: number; slug?: string | null }): string {
   return t.slug ?? String(t.id);
 }

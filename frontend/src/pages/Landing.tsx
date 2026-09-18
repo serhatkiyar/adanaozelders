@@ -2,6 +2,7 @@ import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_NAME, siteUrl, absoluteUrl } from "@/lib/seo";
 import { FeaturedTutorRow, TutorRow } from "@/components/VitrinSeridi";
+import { PopulerDersler } from "@/components/seo/PopulerDersler";
 
 /* ────────────────────────────────────────────────────────────────────────────
    ANA SAYFA — artık yalnız GÖVDE.
@@ -85,6 +86,8 @@ export default function Landing() {
           kapılı, ikinci kontrol ölü koddu. */}
       <FeaturedTutorRow />
       <TutorRow heading="Eğitmenler" params={{ limit: 12, offset: 0 }} />
+      {/* Ders sayfalarına iç bağlantı (Modül 6) — veriden, boşsa çizilmez. */}
+      <PopulerDersler />
     </main>
     </>
   );

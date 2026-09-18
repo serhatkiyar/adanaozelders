@@ -36,7 +36,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { formatChatTime, formatDateTime } from "@/lib/datetime";
 import { buildSnippet } from "@/lib/messageSearch";
 import { mesajParcala } from "@/lib/mesajBaglantisi";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, ilanYolu } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS, ReportReason } from "@/types";
@@ -256,13 +256,21 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   // Karşı tarafın profili: kütüphane → kütüphane sayfası; eğitmen → ilan; öğrenci → profil.
   // Ders öncesi sohbette eğitmen öğrenci profiline bağlanmaz: aralarında
   // ilişki olmadığı için o sayfa sunucuda zaten açılmıyor.
+  // Eğitmenin kök ilan adresi (Modül 6); adres yoksa eski yol yönlendirir.
+  const egitmenIlanYolu =
+    activeCounterpartyId == null
+      ? null
+      : ilanYolu({
+          id: activeCounterpartyId,
+          url_slug: browseConv?.counterparty_url_slug,
+        });
   const counterpartyHref =
     activeCounterpartyId == null || (egitmenOgrenciye && activeStage === "INQUIRY")
       ? null
       : activeCounterpartyRole === "LIBRARY"
         ? ROUTES.library(activeCounterpartyId)
         : activeCounterpartyRole === "TUTOR"
-          ? ROUTES.tutor(activeCounterpartyId)
+          ? egitmenIlanYolu
           : activeCounterpartyRole === "CLIENT"
             ? ROUTES.uyeProfili(activeCounterpartyId)
             : null;
@@ -966,9 +974,9 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   metin={uygunluk.reason_message ?? "Şu anda bu eğitmene mesaj gönderemezsin."}
                 >
                   {uygunluk.reason_code === "INQUIRY_DAILY_LIMIT" &&
-                    activeCounterpartyId !== null && (
+                    egitmenIlanYolu !== null && (
                       <Link
-                        to={ROUTES.tutor(activeCounterpartyId)}
+                        to={egitmenIlanYolu}
                         className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                       >
                         Ders talep et
