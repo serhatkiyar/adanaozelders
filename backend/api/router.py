@@ -30,6 +30,7 @@ from api.routers import (
     qa,
     reports,
     reviews,
+    seo,
     speedtests,
     srs,
     support,
@@ -70,6 +71,7 @@ api_router.include_router(library_exam_catalogs.router)
 api_router.include_router(library_exams.router)
 api_router.include_router(library_operators.router)
 api_router.include_router(reviews.router)
+api_router.include_router(seo.router)
 api_router.include_router(speedtests.router)
 api_router.include_router(srs.router)
 api_router.include_router(support.router)

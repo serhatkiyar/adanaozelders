@@ -3,7 +3,7 @@ import contextlib
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
@@ -359,12 +359,27 @@ async def social_meta(path: str = "/") -> Response:
     )
 
 
+# ── SEO: kök sayfaların ön-çizimi (Modül 6) ─────────────────────────────────
+# Frontend nginx'i ders/ilçe/ilan ŞEKLİNDEKİ yolları buraya yollar (kullanıcı
+# ve bot ayrımı YOK — herkes aynı HTML'i alır). Ayrıntı: services/on_cizim.py.
+
+
+@app.get("/__sayfa", include_in_schema=False)
+async def seo_on_cizim(request: Request, path: str = "/") -> Response:
+    from services import on_cizim
+
+    return await on_cizim.yanit(path, request.headers.get("x-orijinal-sorgu", ""))
+
+
 @app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap() -> Response:
     from services import sitemap_service
 
     async with AsyncSessionLocal() as session:
         xml = await sitemap_service.build_sitemap(session)
+        # Ders/ilçe adres satırlarını eşitleme yazması (sonradan eklenen ders
+        # adres kazansın) — bkz. seo_sayfa_service.acik_sayfa_yollari.
+        await session.commit()
     return Response(
         content=xml,
         media_type="application/xml",

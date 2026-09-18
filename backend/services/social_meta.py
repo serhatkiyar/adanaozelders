@@ -28,6 +28,8 @@ from models.blog import BlogPost
 from models.library import Library, LibraryStatus
 from models.store import Product, ProductStatus
 from models.tutor import Tutor, TutorStatus
+from schemas.seo import DersSayfasiOut, IlanSayfasiOut, YonlendirmeOut
+from services import seo_sayfa_service
 
 SITE_NAME = "Adana Özel Ders"
 DEFAULT_TITLE = "Adana Özel Ders, Uzman Eğitmenle Öğren"
@@ -121,8 +123,25 @@ async def meta_for_path(db: AsyncSession, path: str) -> str:
         "website",
     )
 
-    # ── Eğitmen profili ──
-    if clean.startswith("/egitmenler/"):
+    # ── Kök SEO sayfaları (Modül 6): ilan / ders / ilçe ──
+    # Önizleme, ön-çizimle AYNI başlık ve açıklamayı kullanır; eski
+    # `/egitmenler/<slug>` adresi yeni ilan adresine çözülür (canonical dahil).
+    seo = await seo_sayfa_service.sayfa(db, clean)
+    if isinstance(seo, YonlendirmeOut):
+        seo = await seo_sayfa_service.sayfa(db, seo.hedef)
+    if isinstance(seo, (DersSayfasiOut, IlanSayfasiOut)):
+        url = seo_sayfa_service.mutlak(seo.yol)
+        title = seo.baslik
+        description = truncate(seo.aciklama)
+        if isinstance(seo, IlanSayfasiOut):
+            kind = "profile"
+            avatar = (
+                await db.execute(select(Tutor.avatar_url).where(Tutor.id == seo.tutor_id))
+            ).scalar_one_or_none()
+            image = _abs(avatar)
+
+    # ── Eğitmen profili (ilan adresi henüz verilmemiş eğitmen) ──
+    elif clean.startswith("/egitmenler/"):
         slug = clean.removeprefix("/egitmenler/").split("/")[0]
         tid = tutor_id_from_slug(slug)
         if tid is not None:

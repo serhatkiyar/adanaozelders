@@ -10,6 +10,7 @@ from models.bookmark import Bookmark
 from models.client import Client
 from models.tutor import Tutor, TutorStatus
 from schemas.tutor import TutorSearchOut
+from services import seo_slug_service
 from services.ranking import compute_global_mean
 from services.search_service import _to_search_out
 
@@ -69,4 +70,6 @@ async def list_for_client(
         .scalars()
         .all()
     )
-    return [_to_search_out(tutor, prior_mean, confidence) for tutor in tutors]
+    sonuc = [_to_search_out(tutor, prior_mean, confidence) for tutor in tutors]
+    await seo_slug_service.url_slug_doldur(db, sonuc)
+    return sonuc

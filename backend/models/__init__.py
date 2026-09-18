@@ -177,6 +177,7 @@ from models.tutor import (
 from models.tutor_time_off import TutorTimeOff
 from models.tutor_extra_availability import TutorExtraAvailability
 from models.lesson_series import LessonSeries, LessonSeriesStatus
+from models.seo_slug import SEO_TURLERI, SeoSlug
 from models.tutor_pre_application import (
     PreApplicationStatus,
     TutorPreApplication,
@@ -385,4 +386,6 @@ __all__ = [
     "VerificationToken",
     "PhoneOtp",
     "NameChangeRequest",
+    "SeoSlug",
+    "SEO_TURLERI",
 ]

@@ -18,7 +18,7 @@ from models.tutor import (
 )
 from schemas.tutor import TutorProfileUpdate
 from core.search_text import normalize_tr
-from services import notification_service, subject_service
+from services import notification_service, seo_slug_service, subject_service
 
 _MAX_SUBJECTS = 40
 _MAX_AVAILABILITY = 60
@@ -47,6 +47,8 @@ async def attach_subjects(db: AsyncSession, tutor: Tutor) -> Tutor:
     ).all():
         seviyeler.setdefault(sid, []).append(lid)
     tutor.subject_levels = seviyeler
+    # Kendi ilan adresi (yayına hiç girmemişse None) — "ilanımı gör" bağlantısı.
+    tutor.url_slug = await seo_slug_service.ilan_slugu(db, tutor.id)
     return tutor
 
 
@@ -276,9 +278,21 @@ async def submit_for_approval(db: AsyncSession, tutor: Tutor) -> Tutor:
     return tutor
 
 
+async def _yayina_alindi(db: AsyncSession, tutor: Tutor) -> None:
+    """İlan yayına girdiğinde kök SEO adresi sabitlenir (Modül 6).
+
+    İlk yayında başlıktan üretilir; sonraki yayınlarda (pasiften dönüş) mevcut
+    adres aynen kalır. Ders/ilçe adres satırları da aynı anda eşitlenir ki
+    eğitmenin dersine ait sayfa adres kaydı beklemeden açılabilsin.
+    """
+    await seo_slug_service.ilan_slug_ata(db, tutor)
+    await seo_slug_service.ders_ilce_adreslerini_esitle(db)
+
+
 async def approve(db: AsyncSession, tutor: Tutor) -> Tutor:
     _transition(tutor, TutorStatus.APPROVED)
     await db.flush()
+    await _yayina_alindi(db, tutor)
     await notification_service.notify(
         db,
         user_id=tutor.id,
@@ -321,4 +335,5 @@ async def activate(db: AsyncSession, tutor: Tutor) -> Tutor:
         )
     _transition(tutor, TutorStatus.APPROVED)
     await db.flush()
+    await _yayina_alindi(db, tutor)
     return tutor

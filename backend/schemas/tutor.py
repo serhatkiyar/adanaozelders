@@ -148,6 +148,9 @@ class TutorOut(UserOut):
     #: Anahtar JSON'da dize olur; istemci `Number(k)` ile çözer.
     subject_levels: dict[int, list[int]] = {}
     availability: list[AvailabilityOut] = []
+    #: Kök ilan adresi (`/lgs-yks-matematik-seyhan`) — ilan ilk yayına girince
+    #: sabitlenir; hiç yayınlanmamış ilanda None (bkz. `seo_slug_service`).
+    url_slug: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -212,6 +215,9 @@ class TutorSearchOut(BaseModel):
     educations: list[EducationOut] = []
     # Ödeme hesabı (alt üye) onaylı → "Kimliği Doğrulanmış" rozeti.
     identity_verified: bool = False
+    #: Kök ilan adresi — site içi bütün eğitmen linkleri buna gider. Eski
+    #: `/egitmenler/<slug>` adresi yalnız yönlendirme olarak yaşar.
+    url_slug: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

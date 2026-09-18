@@ -25,8 +25,10 @@ from core.config import settings
 from core.slug import tutor_slug
 from models.blog import BlogPost
 from models.library import Library, LibraryStatus
+from models.seo_slug import SeoSlug
 from models.store import Product, ProductStatus
 from models.tutor import Tutor, TutorStatus
+from services import seo_sayfa_service
 
 #: Statik public sayfalar — (yol, değişim sıklığı, öncelik).
 STATIC_PATHS: tuple[tuple[str, str, str], ...] = (
@@ -84,7 +86,7 @@ def render_sitemap(entries: list[str]) -> str:
 
 
 def tutor_path(slug: str) -> str:
-    """Eğitmen profili — frontend `/egitmenler/:slug` ile birebir."""
+    """ESKİ eğitmen adresi — frontend `/egitmenler/:slug` (artık yönlendirme)."""
     return f"/egitmenler/{slug}"
 
 
@@ -107,9 +109,16 @@ async def build_sitemap(db: AsyncSession) -> str:
         for path, freq, prio in STATIC_PATHS
     ]
 
-    # ── Eğitmenler (yalnız onaylı ve aktif) ──
-    # Eğitmen slug'ı DB'de tutulmaz, `id + ad`dan hesaplanır (schemas/tutor.py
-    # ile AYNI fonksiyon) — sapma olursa sitemap 404'e işaret eder.
+    # ── İlanlar (yalnız yayındaki eğitmenler) — KÖK ilan adresi (Modül 6) ──
+    # Eski `/egitmenler/<slug>` adresi artık kalıcı yönlendirmedir; sitemap'e
+    # yönlenen adres DEĞİL hedefi girer (Search Console "yönlendirmeli sayfa"
+    # uyarısı biriktirmesin). Adresi henüz verilmemiş yayındaki eğitmen (ör.
+    # komut koşmadan önce) eski adresle kalır — o adres sayfayı açar.
+    ilanlar = await seo_sayfa_service.ilan_adresleri(db)
+    entries += [
+        _url_entry(yol, lastmod=guncel, changefreq="weekly", priority="0.8")
+        for yol, guncel in ilanlar
+    ]
     tutors = (
         await db.execute(
             select(Tutor.id, Tutor.first_name, Tutor.updated_at)
@@ -117,6 +126,11 @@ async def build_sitemap(db: AsyncSession) -> str:
                 Tutor.status == TutorStatus.APPROVED,
                 Tutor.is_active.is_(True),
                 Tutor.deleted_at.is_(None),
+                ~Tutor.id.in_(
+                    select(SeoSlug.tutor_id).where(
+                        SeoSlug.kind == "ilan", SeoSlug.is_current.is_(True)
+                    )
+                ),
             )
             .limit(MAX_URLS)
         )
@@ -132,6 +146,13 @@ async def build_sitemap(db: AsyncSession) -> str:
             priority="0.8",
         )
         for tid, first, updated in tutors
+    ]
+
+    # ── Ders ve ilçe+ders sayfaları — yalnız en az bir yayındaki öğretmen
+    # varsa (boş sayfa sitemap'e girmez; açılma kuralı seo_sayfa_service'te).
+    entries += [
+        _url_entry(yol, changefreq="daily", priority="0.9" if yol.count("/") == 1 else "0.8")
+        for yol in await seo_sayfa_service.acik_sayfa_yollari(db)
     ]
 
     # ── Kütüphaneler (yalnız ACTIVE) ──

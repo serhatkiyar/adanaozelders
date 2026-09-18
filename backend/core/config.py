@@ -152,6 +152,11 @@ class Settings(BaseSettings):
 
     # E-posta linklerinin (doğrulama/şifre sıfırlama) işaret edeceği frontend kökü.
     FRONTEND_BASE_URL: str = "http://localhost:5173"
+    # SEO ön-çizimi (Modül 6): derlenmiş `index.html` şablonunun İÇ adresi.
+    # Üretimde frontend konteyneri (`http://frontend:80`, compose ağı).
+    # Boşsa ön-çizim ucu 503 döner ve frontend nginx'i normal SPA'ya düşer —
+    # sayfa yine açılır, yalnız ön-çizilmiş içerik gelmez.
+    FRONTEND_INTERNAL_URL: str = ""
     # Backend'in dışarıdan erişilen kökü — iyzico ödeme callback URL'i bundan üretilir.
     # (Sandbox'ta da çalışır: callback sunucu-sunucu değil, kullanıcının TARAYICISININ
     # POST'udur; localhost'a erişebilir.)

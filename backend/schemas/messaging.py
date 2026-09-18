@@ -68,6 +68,8 @@ class ConversationOut(BaseModel):
     counterparty_avatar_url: str | None = None
     # Karşı tarafın türü: CLIENT | TUTOR | LIBRARY (frontend doğru hedeflesin).
     counterparty_role: str | None = None
+    # Karşı taraf eğitmense kök ilan adresi (Modül 6); yoksa None.
+    counterparty_url_slug: str | None = None
     last_message: str | None = None
     last_message_at: datetime.datetime | None = None
     unread: int = 0

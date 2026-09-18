@@ -42,6 +42,7 @@ from schemas.messaging import (
     ReactionOut,
     ReplyPreview,
 )
+from services import seo_slug_service
 
 CurrentUser = Admin | Tutor | Client | LibraryOperator
 
@@ -1004,9 +1005,17 @@ async def _enrich_conversations(
         )
         blocked_pairs.update((r[0], r[1]) for r in block_rows.all())
 
+    # Karşı taraf eğitmense ilan adresi (profil linki kök adrese gitsin — Modül 6).
+    ilan_adresi = await seo_slug_service.ilan_sluglari(
+        db,
+        [o[1] for o in cp_for.values() if o and o[0] == "TUTOR"],
+    )
     for c in convs:
         other = cp_for.get(c.id)
         nm = names.get(other) if other else None
+        c.counterparty_url_slug = (
+            ilan_adresi.get(other[1]) if other and other[0] == "TUTOR" else None
+        )
         c.counterparty_id = other[1] if other else None
         c.counterparty_name = nm[0] if nm else None
         c.counterparty_avatar_url = nm[1] if nm else None

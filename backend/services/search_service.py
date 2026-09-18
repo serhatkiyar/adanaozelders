@@ -24,7 +24,7 @@ from services import subject_service
 from models.tutor_promotion import TutorPromotion
 from schemas.education import EducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
-from services import education_service, tutor_promotion_service
+from services import education_service, seo_slug_service, tutor_promotion_service
 from services.ranking import bayesian_average, bayesian_score_expr, compute_global_mean
 
 
@@ -352,6 +352,7 @@ async def search_tutors(
                 distance_km=float(distance) if distance is not None else None,
             )
         )
+    await seo_slug_service.url_slug_doldur(db, results)
     return results
 
 
@@ -540,7 +541,7 @@ async def featured_tutors(
     ).order_by(func.random()).limit(SLOT_LIMIT)
 
     rows = (await db.execute(stmt)).all()
-    return [
+    sonuc = [
         _to_search_out(
             row[0],
             prior_mean,
@@ -550,6 +551,8 @@ async def featured_tutors(
         )
         for row in rows
     ]
+    await seo_slug_service.url_slug_doldur(db, sonuc)
+    return sonuc
 
 
 async def tutor_avg_response_seconds(
@@ -631,7 +634,7 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
         )
     ).scalar_one()
     avg_response_seconds = await tutor_avg_response_seconds(db, tutor.id)
-    return _to_search_out(
+    out = _to_search_out(
         tutor,
         prior_mean,
         settings.BAYESIAN_CONFIDENCE,
@@ -642,3 +645,5 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
         avg_response_seconds=avg_response_seconds,
         include_lesson_info=True,
     )
+    out.url_slug = await seo_slug_service.ilan_slugu(db, tutor.id)
+    return out
