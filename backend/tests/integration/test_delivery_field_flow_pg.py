@@ -80,8 +80,11 @@ class FieldFactory:
                 "c": self.client_ids or [0],
             }
             for q in (
-                "DELETE FROM outbox_events WHERE payload->>'order_id' = ANY("
-                "SELECT unnest(:o)::text)",
+                # `unnest(:o)` asyncpg'de "function unnest(unknown) is not
+                # unique" verip aşağıdaki `except` ile SESSİZCE yutuluyordu:
+                # olaylar kalıyor, sonraki bir testin `dispatch_pending`'i bu
+                # siparişlerin 'dağıtıma çıktı' SMS'ini gönderiyordu.
+                "DELETE FROM outbox_events WHERE (payload->>'order_id')::int = ANY(:o)",
                 "DELETE FROM delivery_stops WHERE order_id = ANY(:o)",
                 "DELETE FROM delivery_runs WHERE id = ANY(:r)",
                 "DELETE FROM notifications WHERE user_id = ANY(:c) AND role_id = 3",

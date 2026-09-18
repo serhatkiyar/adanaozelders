@@ -43,3 +43,5 @@ pytest -q --ignore=tests/integration --ignore=tests/verify
 ```
 
 `tests/integration`, `tests/verify`, coverage, mutation drill, tüm migration zinciri veya Docker doğrulaması yalnız değişiklik doğrudan o alanı etkiliyorsa ya da kullanıcı isterse çalıştırılır. Başarılı kontrolü sebepsiz tekrarlama.
+
+`tests/integration` paralel koşar: `pytest tests/integration -q -n 5 --dist loadfile --no-loadscope-reorder` (CI `-n 4`; işçi başına `<POSTGRES_DB>_gwN` veritabanı ve Redis db 9-13; en fazla 5 işçi, bkz. kök `conftest.py`).

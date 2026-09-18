@@ -43,3 +43,40 @@ os.environ["SMS_PROVIDER"] = "console"
 # açıkça `0` verilebilmelidir.
 os.environ.setdefault("PAYMENT_PROVIDER", "fake")
 os.environ.setdefault("SUPPLIER_NETWORK_DISABLED", "True")
+
+# pytest-xdist: her işçi AYRI Postgres veritabanı ve AYRI Redis db'si kullanır.
+#
+# Entegrasyon testleri fiziksel INSERT/DELETE yapar ve `_hijyen_nobetcisi`
+# suite öncesi/sonrası tablo sayılarını karşılaştırır; iki işçi aynı DB'yi
+# paylaşsa birinin satırı diğerinin sayımını bozardı. Bu yüzden işçi kimliği
+# (`gw0`, `gw1`, ...) veritabanı adına eklenir: `test` → `test_gw0`. Ad hâlâ
+# `test` içerdiği için `db_guard` kuralı değişmez; DB yoksa
+# `tests/integration/conftest.py::_test_veritabani` oluşturup migrate eder.
+#
+# Redis: işçiler 9-13 arasını kullanır. 15 (tek süreç varsayılanı ve
+# `test_presence_flush_pg.py`'nin sabit db'si) ve 14 (CI'da `tests/verify`
+# adımı) BİLİNÇLİ olarak dışarıda: işçilerin rate-limit/presence anahtarları
+# oralara sızmaz. En fazla 5 işçi.
+#
+# xdist yokken (`PYTEST_XDIST_WORKER` ayarsız) hiçbir şey değişmez. İşaret
+# değişkeni, işçinin başlattığı alt süreçlerde (ör. `test_ip5_provider_guard_pg`
+# içindeki iç pytest) ekin iki kez uygulanmasını önler.
+_ISCI = os.environ.get("PYTEST_XDIST_WORKER", "")
+if _ISCI and os.environ.get("ADANA_XDIST_AYRIK_ISCI") != _ISCI:
+    _ISCI_REDIS_DBLERI = (9, 10, 11, 12, 13)
+    _sira = int(_ISCI.removeprefix("gw"))
+    if _sira >= len(_ISCI_REDIS_DBLERI):
+        raise RuntimeError(
+            f"pytest-xdist işçisi {_ISCI}: en fazla {len(_ISCI_REDIS_DBLERI)} "
+            "işçi desteklenir (ayrı Redis db'si kalmadı); -n değerini düşürün."
+        )
+    os.environ["POSTGRES_DB"] = f"{os.environ['POSTGRES_DB']}_{_ISCI}"
+    # REDIS_URL ayarsızsa dokunulmaz: varsayılan db0'dır ve `redis_guard`
+    # onu tek süreçte olduğu gibi reddeder.
+    _redis = os.environ.get("REDIS_URL")
+    if _redis:
+        _kok, _, _son = _redis.rpartition("/")
+        if not _son.isdigit():  # yol yok: `redis://host:port`
+            _kok = _redis.rstrip("/")
+        os.environ["REDIS_URL"] = f"{_kok}/{_ISCI_REDIS_DBLERI[_sira]}"
+    os.environ["ADANA_XDIST_AYRIK_ISCI"] = _ISCI

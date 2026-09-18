@@ -132,7 +132,7 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install pytest==9.0.3 pytest-asyncio==1.4.0 pytest-cov==7.1.0 \
-            hypothesis==6.155.7 ruff==0.16.0
+            pytest-xdist==3.8.0 hypothesis==6.155.7 ruff==0.16.0
           # pip-audit BİLİNÇLİ olarak pinsiz: işi en güncel açık veritabanına
           # bakmaktır, sabitlemek amacını bozar.
           pip install pip-audit
@@ -167,8 +167,15 @@ jobs:
 
       # Gerçek Postgres. `CI_REQUIRE_SERVICES=1` sayesinde DB'ye ulaşılamazsa
       # paket sessizce SKIP olmaz, adım kırılır.
+      #
+      # `-n 4`: her xdist işçisi kendi veritabanını (`test_gw0`...) ve kendi
+      # Redis db'sini (9-13) kullanır (bkz. backend/conftest.py). `loadfile`
+      # bir dosyanın testlerini tek işçide tutar: sabit adlı tek kullanımlık
+      # migration DB'leri ve sabit Redis db'li presence testi yarışmaz.
+      # `--no-loadscope-reorder`: uzun migration dosyaları kuyruğun başında
+      # kalır (bkz. tests/integration/conftest.py::pytest_collection_modifyitems).
       - name: Integration tests (gerçek Postgres)
-        run: pytest tests/integration -q
+        run: pytest tests/integration -q -n 4 --dist loadfile --no-loadscope-reorder
 
       # Doğrulama paketi: gerçek servis katmanı + gerçek DB + HTTP.
       #

@@ -65,6 +65,19 @@ from tests.integration.ip12_factory import fab12  # noqa: F401,E402
 from tests.integration.vitrin_factory import fabv  # noqa: F401,E402
 
 
+def pytest_collection_modifyitems(config, items):
+    """pytest-xdist altında migration dosyaları KUYRUĞUN BAŞINA alınır.
+
+    Her biri alembic alt süreçleriyle tek kullanımlık DB kurar ve dakikalar
+    sürer; `--dist loadfile --no-loadscope-reorder` ile dosyalar bu sırayla
+    dağıtıldığından en uzun işler başta başlar ve koşunun sonunda tek işçi
+    beklemez. Dosya içi sıra korunur. Tek süreçte (xdist yok) sıra değişmez.
+    """
+    if not os.environ.get("PYTEST_XDIST_WORKER"):
+        return
+    items.sort(key=lambda it: 0 if it.nodeid.split("::", 1)[0].endswith("_migration_pg.py") else 1)
+
+
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
