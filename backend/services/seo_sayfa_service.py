@@ -572,7 +572,14 @@ def ilan_aciklamasi(t, ders: str | None) -> str:
 
 
 async def _ana_ders(db: AsyncSession, t) -> tuple[str | None, str | None]:
-    """İlanın ilk branşının kanonik adı ve ders sayfası yolu (varsa)."""
+    """İlanın ana branşının kanonik adı ve ders sayfası yolu (varsa).
+
+    Ana branş = ilan başlığında adı GEÇEN ilk branş; hiçbiri geçmiyorsa
+    listedeki ilk branş. Liste sırası eğitmenin seçim sırasıdır ve başlıkla
+    çelişebilir ("TYT Matematik" ilanında başlık "Coğrafya Özel Ders"
+    olmasın diye, 18 Eyl 2026).
+    """
+    adaylar: list[tuple[str, str | None, str]] = []
     for metin in t.subjects or []:
         harita = await subject_service.map_texts_to_ids(db, [metin])
         sid = harita.get(normalize_tr(metin))
@@ -582,8 +589,14 @@ async def _ana_ders(db: AsyncSession, t) -> tuple[str | None, str | None]:
         if ders is None or ders.deleted_at is not None:
             continue
         yol = ders_yolu(ders.slug) if ders.is_active else None
-        return ders.name, yol
-    return (t.subjects[0] if t.subjects else None), None
+        adaylar.append((ders.name, yol, normalize_tr(metin)))
+    if not adaylar:
+        return (t.subjects[0] if t.subjects else None), None
+    baslik = normalize_tr(getattr(t, "headline", None) or "")
+    for ad, yol, norm in adaylar:
+        if baslik and (normalize_tr(ad) in baslik or norm in baslik):
+            return ad, yol
+    return adaylar[0][0], adaylar[0][1]
 
 
 async def ilan_sayfasi(db: AsyncSession, satir: SeoSlug) -> IlanSayfasiOut | None:
