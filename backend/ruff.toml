@@ -73,6 +73,9 @@ ignore = [
 # YEŞİL TABAN ÇİZGİSİ ve `ERROR` sayan kırılma taraması da konsola raporlanır —
 # "prova geçerli miydi" sorusunun cevabı o çıktıdadır.
 "scripts/mutation_drill_ip18.py" = ["T201"]
+# Modül 6 SEO adres betiği (argparse CLI): hangi ilana hangi adresin
+# verileceğini (prova) ya da verildiğini listeler — çıktı aracın kendisi.
+"scripts/seo_adresleri.py" = ["T201"]
 # Vitrin mutasyon kataloğu: aynı güvenlik makinesi, aynı gerekçe. Ayrıca
 # kapsam ayrımını konsola yazar — beş mutasyon sürücüyle, iki veritabanı
 # garantisi (GiST exclusion + tek-HOME index) ELLE SQL ile yapılır ve bu
