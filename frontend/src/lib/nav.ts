@@ -35,6 +35,12 @@ export interface NavItem {
    */
   yakinda?: boolean;
   /**
+   * `false` → öğe yalnız hesap menüsünde durur, üst bara kısayol olarak
+   * ÇIKMAZ. Eğitmenin favorileri (18 Eyl 2026, kullanıcı kararı): Preply'da
+   * favori yalnız "favori öğretmen"dir ve eğitmenin üst barında kalp yoktur.
+   */
+  ustBarda?: boolean;
+  /**
    * Bu öğeyi AKTİF sayan ek yollar (panel şeridi).
    *
    * `NavLink` yalnız kendi `to`suna bakar; alt sayfalar (ör. ilanı öne
@@ -189,13 +195,14 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
  * `DashboardHeader` içinde her rol için sabittir.
  *
  * Favoriler eğitmene de açık (ÜK-6 · docs/urun-kararlari.md): eğitmen ders
- * verdiği kütüphaneyi ve meslektaşını işaretleyebilir. Üst bardaki TEK
- * kısayol da budur (ÜK-2) — üyeyle aynı davranış.
+ * verdiği kütüphaneyi ve meslektaşını işaretleyebilir. Üst barda DEĞİL,
+ * yalnız hesap menüsünde (18 Eyl 2026, ÜK-2 güncellemesi).
  */
 export const TUTOR_NAV: NavItem[] = [
-  { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
-  // Şeritten kalktı (17 Eyl 2026); yorumları görme ve yanıtlama burada kalır.
-  { to: ROUTES.tutorReviews, label: "Değerlendirmeler", icon: "trophy" },
+  // Üst barda kalp yok, yalnız hesap menüsünde (18 Eyl 2026).
+  { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites", ustBarda: false },
+  // "Değerlendirmeler" menüden kalktı (18 Eyl 2026, kullanıcı kararı; Preply'da
+  // da ayrı yeri yok): sayfa İlanım'ın içinden açılır, yanıtlama orada kalır.
   ...(TALEPLER_ACIK
     ? [{ to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" } as NavItem]
     : []),

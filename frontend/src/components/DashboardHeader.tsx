@@ -118,7 +118,10 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
    * boş açılan bir Favoriler ikonu duruyordu. Tek türev, iki yüzey.
    */
   const favoriKisayolu = useMemo(
-    () => (navItems ?? []).find((i) => i.to === ROUTES.favorites && !i.yakinda),
+    () =>
+      (navItems ?? []).find(
+        (i) => i.to === ROUTES.favorites && !i.yakinda && i.ustBarda !== false
+      ),
     [navItems]
   );
   const sidebarItems = useMemo(

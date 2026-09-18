@@ -104,7 +104,11 @@ describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
     expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT, ROUTES.favorites].sort());
   });
 
-  it("eğitmende de mesaj, bildirim ve Favorilerim", () => {
+  it("eğitmende yalnız mesaj ve bildirim — kalp YOK, favoriler hesap menüsünde", () => {
+    // 18 Eyl 2026'da DEĞİŞTİ (kullanıcı kararı): Preply'da favori yalnız
+    // "favori öğretmen"dir ve eğitmenin üst barında kalp yoktur. Eğitmenin
+    // favorileri menüde kalır (`ustBarda: false`), üst bara çıkmaz.
+    // Aşağıdaki tarihçe önceki kararındır.
     // 6 Eyl 2026'da DEĞİŞTİ. Önce "eğitmende HİÇ kısayol yok" iddia
     // ediliyordu, sebebi favorilerin eğitmene kapalı olmasıydı — kararın
     // kendisi değil, o günkü kısıtın yansımasıydı. ÜK-6 favoriyi eğitmene
@@ -114,7 +118,9 @@ describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
       user: { id: 2, role_id: ROLE_IDS.TUTOR, display_name: "Eğitmen", email: "e@example.com" },
     } as never);
     sar(TUTOR_NAV);
-    expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT, ROUTES.favorites].sort());
+    expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT].sort());
+    // Menüden düşmedi: favoriler hesap menüsünden hâlâ açılır.
+    expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
   });
 
   it("üst bara menüden BAŞKA kısayol sızmaz — dördüncü ikon eklenirse kırılır", () => {

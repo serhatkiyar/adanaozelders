@@ -91,7 +91,13 @@ Ayrıntı: `docs/tasarim-dili.md` §1.2/§1.4 · kanıt: `docs/ip-c4/README.md`.
 
 ## ÜK-2 — Üst bar kısayolları
 
-**Güncel karar (17 Eyl 2026).** Üst barda **Mesajlar**, **Bildirimler** ve rol
+**Güncel karar (18 Eyl 2026).** Üst barda **Mesajlar** ve **Bildirimler**
+durur; **Favorilerim** yalnız üyede üst barda, eğitmende yalnız hesap
+menüsünde (Preply'da favori yalnız "favori öğretmen"dir, eğitmenin üst
+barında kalp yok). Okunmamış sayılar ikon üzerinde görünür. Eğitmenin
+"Değerlendirmeler" sayfası menüden kalktı; İlanım'ın içinden açılır.
+
+**Önceki karar (17 Eyl 2026).** Üst barda **Mesajlar**, **Bildirimler** ve rol
 menüsünde varsa **Favorilerim** durur; okunmamış sayılar ikon üzerinde görünür.
 Kalan rol kısayolları ve panel bağlantıları hesap (avatar) menüsündedir.
 Kullanıcı Preply'ın üst menüsünü örnek gösterdi. Eğitmen panelinde (sekme

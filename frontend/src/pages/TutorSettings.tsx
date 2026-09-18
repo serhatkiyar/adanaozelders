@@ -773,6 +773,23 @@ export default function TutorSettings() {
               Paketler →
             </span>
           </Link>
+
+          {/* DEĞERLENDİRMELER — sayfanın TEK girişi (18 Eyl 2026): hesap
+              menüsünden kalktı (Preply'da da ayrı yeri yok). Yorumlar ilanın
+              parçası; yanıtlama bu sayfada. Silinirse eğitmen yorumlara
+              yanıt veremez. */}
+          <Link
+            to={ROUTES.tutorReviews}
+            className={`flex items-center justify-between gap-4 transition hover:bg-slate-50 ${KART}`}
+          >
+            <span className="min-w-0">
+              <span className={`block ${ETIKET}`}>Değerlendirmeler</span>
+              <span className={`mt-1 block ${ACIKLAMA}`}>
+                Öğrencilerin yorumlarını gör ve yanıtla.
+              </span>
+            </span>
+            <span className={`shrink-0 ${METIN_BAGLANTI}`}>Gör →</span>
+          </Link>
           </>
         )}
         </div>
