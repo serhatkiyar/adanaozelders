@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { iptalKurali, onayDurumu, sorunNedeniEtiketi } from "@/lib/dersOnayi";
 import { BookingStatus, type BookingOut } from "@/types";

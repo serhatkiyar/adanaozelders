@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Marka/dikkat token sınıflarının GERÇEKTEN CSS ürettiğinin nöbetçisi.
  *

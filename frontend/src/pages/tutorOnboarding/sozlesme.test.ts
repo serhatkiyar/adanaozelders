@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Sihirbaz sözleşmesinin saf testi.
  *

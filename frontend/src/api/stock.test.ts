@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Defter API katmanı — GÖNDERİLEN İSTEĞİN kendisi doğrulanır.
 //
 // Mutasyon provasında `movement_type` filtresi query'den düşürüldüğünde HİÇBİR

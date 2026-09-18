@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ── Alışveriş rolü nöbetçisi (eğitmen alıcı turu) ──
  *

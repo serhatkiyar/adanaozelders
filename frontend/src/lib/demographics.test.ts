@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * `gorunurCinsiyet` — iki ayrı "boş" durumun TEK cevaba indirgendiği yer.
  *

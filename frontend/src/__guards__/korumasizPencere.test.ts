@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * İP-A7d4 · Görev 1 — korumasız pencere nöbetçisi (statik yarı).
  *

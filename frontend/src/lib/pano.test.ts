@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { gorunurlukEylemi, kalanSure, katilDurumu, panoAltSatir, selamlama } from "@/lib/pano";
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ── İ9 · Boşluk 2: izin kapısı sessizce açık kalabilir ──
  *

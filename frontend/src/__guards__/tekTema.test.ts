@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ── Tek tema nöbetçisi (CMS turu · dark mode sökümü) ──
  *

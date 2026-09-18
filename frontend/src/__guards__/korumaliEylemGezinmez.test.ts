@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * GİRİŞ KAPISI TEK KAPIDAN GEÇER — kaynak taraması.
  *

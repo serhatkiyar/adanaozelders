@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { DemandStatus, ReportStatus } from "@/types";
 import { parseAdminAuditQuery, parseAdminBookingQuery, parseAdminDemandQuery, parseAdminReportQuery } from "./adminOperationsQuery";

@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Toplu ürün içe aktarma ŞABLONU — hizalama nöbetçisi.
 //
 // Neden var: şablonun örnek satırı 18 alan taşıyordu, başlık ise 19 kolon.

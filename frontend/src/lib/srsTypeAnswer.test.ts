@@ -1,3 +1,4 @@
+// @vitest-environment node
 // İP-16 T-5/T-6/T-7 — yazarak cevaplama karşılaştırma kuralları.
 // Sözleşme (docs/ip16-aralikli-tekrar-sozlesme.md §6 T-6): trim + ardışık boşluk
 // teke iner + Unicode NFC + TÜRKÇE locale-aware küçük harf (İ→i, I→ı);

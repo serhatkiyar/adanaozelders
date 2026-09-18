@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** Ortak 422 dağıtımı: yalnız beyaz listedeki alanlar; miras adları (`constructor`, `__proto__`, `prototype`) yutulmaz. */
 import { sunucuHatasiniDagit } from "@/panel/components/pencereAlanlari";
 

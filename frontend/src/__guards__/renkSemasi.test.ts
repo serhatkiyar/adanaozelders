@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * İP-A8 · Görev 6 — yerel widget şemasının TEK NOKTASI (B-9 / SK-6).
  *

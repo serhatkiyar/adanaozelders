@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * İP-B2 · Ç-5 — dış yazı tipi konağı nöbetçisi (KVKK).
  *

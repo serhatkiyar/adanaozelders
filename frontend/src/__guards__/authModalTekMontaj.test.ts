@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * TB-71 · `<AuthModal />` TEK YERDE monte edilir.
  *

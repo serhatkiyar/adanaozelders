@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Bilinen yasal metin borcunun SESSİZCE eskimemesini garanti eder.
 //
 // SÖZLEŞME: Bu dosya davranış bilinçli değiştirilmedikçe düzenlenmez.

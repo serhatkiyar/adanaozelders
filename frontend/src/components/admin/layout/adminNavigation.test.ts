@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { ROUTES } from "@/lib/routes";
 import { ADMIN_NAV_ITEMS, getAdminNavItem } from "./adminNavigation";

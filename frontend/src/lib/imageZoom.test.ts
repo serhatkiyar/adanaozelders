@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { computeZoom, containedRect, type ZoomInput } from "./imageZoom";
 

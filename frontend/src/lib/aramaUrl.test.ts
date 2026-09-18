@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Arama URL sözleşmesi — yaz/oku simetrisi.
  *

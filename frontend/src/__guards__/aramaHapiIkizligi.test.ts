@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Ana sayfadaki iki arama hapı İKİZDİR — nöbetçi.
  *

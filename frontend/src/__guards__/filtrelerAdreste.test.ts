@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * HER FİLTRE ADRESTE — ve HİÇBİR KOORDİNAT adreste değil.
  *

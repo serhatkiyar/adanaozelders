@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Ürün açıklamasının editör biçimine köprülenmesi.
  *

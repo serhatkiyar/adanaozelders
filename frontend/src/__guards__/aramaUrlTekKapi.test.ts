@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ARAMA ADRESİ TEK KAPIDAN ÜRETİLİR — kaynak taraması.
  *

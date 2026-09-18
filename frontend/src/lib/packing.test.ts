@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * F30 saf paketleme mantığı — Vitest (DOM'suz).
  *

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ── M-C · Prop olarak inen pencere durumu (İP-A6b · Görev 1 · BULGU-3) ──
  *

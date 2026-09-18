@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Sipariş listesi sunucu sayfalaması — GÖNDERİLEN İSTEĞİN kendisi doğrulanır.
 //
 // `listOrdersAdmin` "korunan" dosyadaki dar istisna: yalnız EKLEME. Bu dosya

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { LEGACY_STATIC } from "@/App";
 import { describe, it, expect } from "vitest";
 import { PATHS, ROUTES, tutorSlug, parseTutorId } from "@/lib/routes";

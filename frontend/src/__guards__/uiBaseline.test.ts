@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * İP-A1/A2 nöbetçi eşikleri.
  *

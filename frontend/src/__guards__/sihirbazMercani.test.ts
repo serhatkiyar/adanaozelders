@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * İlan sihirbazı SİTENİN rengini kullanır — nöbetçi.
  *

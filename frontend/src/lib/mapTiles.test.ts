@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Harita döşeme kaynağı — tek kaynak ve güvenlik değişmezleri.
  *

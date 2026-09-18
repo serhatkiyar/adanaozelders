@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * İP-A7d5 · Görev 2 — **tembel modül yükleyen test** nöbetçisi.
  *

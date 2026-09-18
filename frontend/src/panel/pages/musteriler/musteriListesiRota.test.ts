@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * `PATHS.adminNewCustomers`in var olduğunu ve `menu.ts`teki "Müşteriler"
  * yaprağının izin beyanı (`requiredPermission: "users"`) taşıdığını doğrular.

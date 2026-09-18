@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ── M-B · Dizin kaçışı (İP-A6b · Görev 1 · BULGU-2) ──
  *

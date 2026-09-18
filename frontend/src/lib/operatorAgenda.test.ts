@@ -1,3 +1,4 @@
+// @vitest-environment node
 // İP-14 kırmızı matris — "Bugün" tanımı ve gün gruplaması (SAF katman).
 //
 // Bu dosyanın nöbeti tek bir cümledir: **operatörün gördüğü "bugün", operatörün

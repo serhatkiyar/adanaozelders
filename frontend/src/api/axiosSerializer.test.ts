@@ -1,3 +1,4 @@
+// @vitest-environment node
 /** `apiClient` dizi-param serializasyonu nöbetçisi (bağımsız denetim P2-7).
  *
  * Faz 3a'da ölçülen üretim kusuru: axios varsayılanı dizileri `publisher[]=a`

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * `getErrorMessage` / `getErrorDetail` — hata gövdesinden kullanıcıya gösterilecek
  * metnin çıkarılması.

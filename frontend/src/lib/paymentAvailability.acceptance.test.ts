@@ -1,3 +1,4 @@
+// @vitest-environment node
 // PK-1 kabul testleri — istemci tarafında ürün kolu bazlı ödeme uygunluğu.
 //
 // SÖZLEŞME: Bu dosya davranış bilinçli değiştirilmedikçe DÜZENLENMEZ.

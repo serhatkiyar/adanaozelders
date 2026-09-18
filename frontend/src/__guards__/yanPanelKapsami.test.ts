@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Özel dersin yan paneli KENDİ İŞİNİ taşır — nöbetçi.
  *

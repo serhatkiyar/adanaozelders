@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Sayacın kendisinin testi (İP-A2).
  *

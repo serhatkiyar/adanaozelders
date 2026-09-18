@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { daysUntil, weatherKind, WEATHER_LABEL } from "@/lib/navbarWidget";
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ESKİ ARAMA ADRESLERİ ÖLMEZ — Türkçeleşme göçünün iki yönü.
  *

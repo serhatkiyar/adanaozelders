@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Rol etiketi TEK KAYNAKTAN gelir — nöbetçi.
  *

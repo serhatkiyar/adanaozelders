@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * ÜK-1 — SİTE marka aksanı nöbetçisi.
  *

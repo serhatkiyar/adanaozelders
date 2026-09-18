@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Eğitmen ilan sayfası: sabit kart ekrandan taşmaz — nöbetçi.
  *

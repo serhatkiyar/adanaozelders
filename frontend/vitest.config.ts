@@ -40,5 +40,19 @@ export default defineConfig({
     // Tek yerde tanimli: dosya basina testTimeout ezmesi YAPILMAZ. Bir test bu
     // butceye sigmiyorsa cozum butceyi buyutmek degil, testi incelemektir.
     testTimeout: 9000,
+    // Isci sayisi OLCUMLE sabitlendi (16 cekirdek, bellek sinirli makine).
+    // Varsayilan (cekirdek-1 = 15 fork) tam suite'i 550 sn'de bitirdi ama
+    // 33 test yuk altinda 9000 ms butcesini asarak dustu (assertion degil,
+    // hepsi timeout); bellek de dar. 6 fork: yuk kaynakli dusus kalkti.
+    // 4 fork ve `pool: "threads"` src/panel alt kumesinde 6 forktan yavas
+    // olculdu (387 sn -> 507 / 554 sn). happy-dom denendi: __guards__'ta 189
+    // test kirdi ve ortam kurulumu jsdom'dan yavasti -- kullanilmiyor.
+    //
+    // DOM'a ihtiyaci olmayan saf test dosyalarinin basinda
+    // `// @vitest-environment node` yorumu var: jsdom kurulumunu (~1 sn/dosya)
+    // tamamen atlarlar. Yeni bir saf test icin ayni yorumu ekleyin; DOM,
+    // storage, File/FormData ya da `window` dalina dokunan testler jsdom'da kalir.
+    maxWorkers: 6,
+    minWorkers: 1,
   },
 });

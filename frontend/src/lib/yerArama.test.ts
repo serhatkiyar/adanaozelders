@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Konum arama mantığı — saf fonksiyon testleri.
  *

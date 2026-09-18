@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * `apiClient` 401 → sessiz yenileme nöbetçisi (tani-sonsuz-spinner.md).
  *

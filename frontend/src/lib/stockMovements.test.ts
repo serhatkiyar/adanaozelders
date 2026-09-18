@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Stok hareket defteri — sunum tarafı saf mantık.
 //
 // Bu dosya `lib/stockMovements.ts`'in sözleşmesini yazar. Paketin ilk commit'i

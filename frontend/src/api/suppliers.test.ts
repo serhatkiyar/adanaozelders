@@ -1,3 +1,4 @@
+// @vitest-environment node
 // Tedarikçi API katmanı — GÖNDERİLEN İSTEĞİN kendisi doğrulanır.
 //
 // `stock.test.ts` deseni: axios'un GERÇEK örneği kullanılır, yalnız **adapter**

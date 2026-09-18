@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * PANEL GENİŞLİĞİ — adlandırılmış sınıf zorunluluğu (kullanıcı kararı, 8 Eyl 2026).
  *

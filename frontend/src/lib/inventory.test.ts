@@ -1,3 +1,4 @@
+// @vitest-environment node
 // F29 envanter — sunum tarafı saf kuralların SÖZLEŞMESİ (kabul matrisi, bölüm A).
 //
 // Paketin ilk commit'i olduğu için `lib/inventory.ts` henüz YOKTUR: bu dosyanın

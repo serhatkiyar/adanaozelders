@@ -1,3 +1,4 @@
+// @vitest-environment node
 // `AdminLayout` altındaki sayfalar kendi <h1>'ini basmaz — `AdminPageHeader` basar.
 //
 // `AdminPayoutsPage` bu kuralı deliyordu: `AdminPageHeader` zaten nav öğesinin

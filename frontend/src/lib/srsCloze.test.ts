@@ -1,3 +1,4 @@
+// @vitest-environment node
 // İP-16 §6 — cloze render yardımcısının davranış testleri.
 import { describe, expect, it } from "vitest";
 

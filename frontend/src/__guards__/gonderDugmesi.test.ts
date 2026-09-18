@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * İP-A8 · Görev 6 — **kilitli kararın panel geneli nöbetçisi** (B-10).
  *

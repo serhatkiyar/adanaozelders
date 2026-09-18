@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * `PATHS.adminNewOrders`in var olduğunu ve `menu.ts`teki "Siparişler"
  * yaprağının izin beyanı (`requiredPermission: "orders"`) taşıdığını
