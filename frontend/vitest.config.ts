@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import os from "node:os";
 import path from "node:path";
 
 export default defineConfig({
@@ -52,7 +53,12 @@ export default defineConfig({
     // `// @vitest-environment node` yorumu var: jsdom kurulumunu (~1 sn/dosya)
     // tamamen atlarlar. Yeni bir saf test icin ayni yorumu ekleyin; DOM,
     // storage, File/FormData ya da `window` dalina dokunan testler jsdom'da kalir.
-    maxWorkers: 6,
+    //
+    // Ust sinir 6 AMA cekirdek-1'i asmaz (19 Eyl 2026): sabit 6, 4 cekirdekli
+    // GitHub runner'inda CI'i bogdu -- src/panel'de 8 test timeout ve yuk
+    // altinda bozulan `type()` girdisi ("SABIT" -> "2S.A5BIT"). Varsayilan
+    // (cekirdek-1) orada zaten yesildi; 16 cekirdekte olculen 6 korunur.
+    maxWorkers: Math.max(1, Math.min(6, os.availableParallelism() - 1)),
     minWorkers: 1,
   },
 });
