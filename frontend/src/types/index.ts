@@ -778,6 +778,43 @@ export interface BookingOut {
 
 export type BookingIssueReason = "TUTOR_ABSENT" | "LESSON_NOT_HELD" | "OTHER";
 
+/* ======================= ÖĞRENCİ PANOSU (Modül 4) ======================= */
+
+/**
+ * Panonun ana kartı — sunucu öncelik sırasıyla seçer, ilk eşleşen kazanır:
+ * katıl → teklif yanıtı → ödeme → ders onayı → değerlendirme → sıradaki ders
+ * → yeniden planla (`client_dashboard_service.NEXT_ACTION_PRIORITY`).
+ */
+export type ClientNextActionKind =
+  | "JOIN_LESSON"
+  | "RESPOND_OFFER"
+  | "PAY"
+  | "CONFIRM_LESSON"
+  | "REVIEW"
+  | "NEXT_LESSON"
+  | "BOOK_AGAIN";
+
+export interface ClientNextAction {
+  kind: ClientNextActionKind;
+  booking: BookingOut;
+}
+
+/** `GET /clients/me/dashboard` — sayılar ve seçim sunucuda hesaplanır. */
+export interface ClientDashboardOut {
+  next_action: ClientNextAction | null;
+  /** Ana kartta gösterilen ders hariç, en yakın 3 ders (bekleyen + kabul). */
+  upcoming: BookingOut[];
+  upcoming_count: number;
+  offer_count: number;
+  payment_due_count: number;
+  confirm_count: number;
+  review_count: number;
+  completed_total: number;
+  has_bookings: boolean;
+  /** Yalnız `has_bookings=false` iken hesaplanır; aksi halde 0. */
+  free_first_lesson_tutor_count: number;
+}
+
 /* ============================ İZİN (Modül 7) ============================ */
 
 /** `GET /tutors/me/time-off` satırı — eğitmenin izin aralığı. */

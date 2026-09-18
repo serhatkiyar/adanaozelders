@@ -48,6 +48,7 @@ _ESLESME = {
     "SIPARISLERIM": "orders",
     "ONE_CIKAR": "tutorPromotion",
     "REZERVASYON_DETAY": "libraryReservation",
+    "REZERVASYONLAR": "reservations",
 }
 
 # Parametreli istemci yolları (`/ders-talepleri/:id`); sunucu bunların ÖNEKİNİ

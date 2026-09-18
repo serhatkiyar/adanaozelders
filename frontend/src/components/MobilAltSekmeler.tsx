@@ -91,24 +91,23 @@ const HESABIM: Sekme = {
   icon: "profile",
 };
 
-const UYE_SEKMELERI: Sekme[] = [
-  KESFET,
-  FAVORILER,
-  MESAJLAR,
-  { key: "rezervasyonlar", to: ROUTES.bookings, label: "Rezervasyon", icon: "bookings", end: true },
-  HESABIM,
-];
+/* `clipboard` (kullanıcı kararı, 16 Eyl 2026): `dashboard` bir ev çizimi ve
+   "Pano" için yanlış metafordu; ikon 8 Eyl'de bu amaçla çizilmişti ama alt
+   sekmeye bağlanmamıştı. */
+const PANO: Sekme = {
+  key: "pano",
+  to: ROUTES.bookings,
+  label: "Pano",
+  icon: "clipboard",
+  end: true,
+};
 
-const EGITMEN_SEKMELERI: Sekme[] = [
-  KESFET,
-  FAVORILER,
-  MESAJLAR,
-  /* `clipboard` (kullanıcı kararı, 16 Eyl 2026): `dashboard` bir ev çizimi ve
-     "Pano" için yanlış metafordu; ikon 8 Eyl'de bu amaçla çizilmişti ama alt
-     sekmeye bağlanmamıştı. */
-  { key: "pano", to: ROUTES.bookings, label: "Pano", icon: "clipboard", end: true },
-  HESABIM,
-];
+/* Öğrencide "Rezervasyon" sekmesi Pano'ya döndü (Modül 4, 18 Eyl 2026):
+   `/pano` artık öğrencinin panosu, liste şeridin "Rezervasyonlar" sekmesinde.
+   İki rol aynı beş sekmeyi taşır. */
+const UYE_SEKMELERI: Sekme[] = [KESFET, FAVORILER, MESAJLAR, PANO, HESABIM];
+
+const EGITMEN_SEKMELERI: Sekme[] = [KESFET, FAVORILER, MESAJLAR, PANO, HESABIM];
 
 /** Anonim kullanıcıda son yuva bir bağlantı değil, giriş ekranını açar. */
 const ANONIM_SEKMELERI: Sekme[] = [KESFET, FAVORILER];

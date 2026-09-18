@@ -92,8 +92,17 @@ export const PATHS = {
   confirmDelete: "/hesap-silme-onayi",
 
   // ── Oturum-içi (DÜZ, role-adaptive) ──
-  /** Rezervasyonlar (ders + kütüphane) (CLIENT). Eğitmen için sadece dersler. */
+  /**
+   * Panonun kökü — rol dağıtıcısı (`App.tsx::BookingsHome`): eğitmene
+   * `TutorDashboard`, öğrenciye `OgrenciPano` (Modül 4, 18 Eyl 2026).
+   */
   bookings: "/pano",
+  /**
+   * Öğrencinin birleşik rezervasyon listesi (ders + deneme + çalışma alanı).
+   * Modül 4'e kadar `/pano`nun kendisiydi; pano öğrenciye açılınca liste
+   * şeridin ikinci sekmesine taşındı.
+   */
+  reservations: "/pano/rezervasyonlar",
   /** Kütüphane rezervasyon detayı. `tur`: `deneme` | `calisma`.
    *  Kapıda söylenecek giriş kodu URL'lenebilir olmalı — bildirimden ya da
    *  telefondan tek tıkla açılsın diye ayrı bir yol var. */
@@ -343,6 +352,7 @@ export const ROUTES = {
 
   // ── Oturum-içi ──
   bookings: PATHS.bookings,
+  reservations: PATHS.reservations,
   lesson: (id: string | number) => `/ders-talepleri/${id}`,
   libraryReservation: (tur: "deneme" | "calisma", id: string | number) =>
     `/pano/rezervasyon/${tur}/${id}`,

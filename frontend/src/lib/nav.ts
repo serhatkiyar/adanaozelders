@@ -65,16 +65,54 @@ export interface NavItem {
  *
  * Nöbetçi: `__guards__/yanPanelKapsami.test.ts`.
  */
+/*
+ * Modül 4 (18 Eyl 2026): öğrencinin de şeridi var (`UYE_PANO_SEKMELERI`).
+ * Mesajlar ve Rezervasyonlar şeride taşındı; menüde yalnız şeride
+ * girmeyenler kalır. Favorilerim burada KALIR — üst bardaki tek kısayol
+ * (kalp, ÜK-2) bu diziden türüyor.
+ */
 export const UYE_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
-  { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   ...(TALEPLER_ACIK
     ? [{ to: ROUTES.demands, label: "Taleplerim", icon: "demand" } as NavItem]
     : []),
   ...(OGREN_ACIK
     ? [{ to: ROUTES.learn, label: "Öğren", icon: "learn" } as NavItem]
     : []),
-  { to: ROUTES.bookings, label: "Rezervasyonlar", icon: "bookings" },
+];
+
+/**
+ * ÖĞRENCİNİN PANEL ŞERİDİ — Pano · Rezervasyonlar · Mesajlar · Hesabım
+ * (Modül 4, 18 Eyl 2026).
+ *
+ *  • "Pano": eğitmen şeridi, mobil alt sekme ve menüdeki "Panom" ile aynı ad.
+ *    "Ana sayfa" alt çubuktaki "Keşfet" (site ana sayfası) ile karışırdı.
+ *  • "Rezervasyonlar": liste deneme sınavı ve çalışma alanını da taşıyor;
+ *    "Derslerim" yanlış olurdu.
+ *  • "Hesabım": öğrencinin hesap merkezi (`AccountHub`); eğitmende yok,
+ *    çünkü eğitmenin hesabı Ayarlar'dadır.
+ *  • Favoriler şeride GİRMEZ: üst bardaki kalp kısayolu ve menü taşıyor.
+ *
+ * Nöbetçi: `__guards__/panoSeridi.test.tsx`.
+ */
+export const UYE_PANO_SEKMELERI: NavItem[] = [
+  { to: ROUTES.bookings, label: "Pano", end: true },
+  {
+    to: ROUTES.reservations,
+    label: "Rezervasyonlar",
+    // Ders ve kütüphane rezervasyon detayı listenin alt sayfalarıdır.
+    altYollar: [
+      PATHS.lesson.replace(":id", ""),
+      PATHS.libraryReservation.replace(":tur/:id", ""),
+    ],
+  },
+  { to: ROUTES.messages, label: "Mesajlar" },
+  {
+    to: ROUTES.profile,
+    label: "Hesabım",
+    // Adresler ve siparişler hesap merkezinden açılır.
+    altYollar: [ROUTES.addresses, ROUTES.orders],
+  },
 ];
 
 /**
@@ -211,13 +249,15 @@ export function navForRole(roleId: number | undefined | null): NavItem[] | undef
 /**
  * Role göre PANEL ŞERİDİ — `navForRole`'ün ikizi, ayrı yüzey.
  *
- * Şu an yalnız eğitmende var (kullanıcı kararı, 8 Eyl 2026): üye tarafı bu
- * turda `AccountHub` + `Reservations` akışında bırakıldı, operatörün kendi
- * kabuğu zaten `OPERATOR_NAV`. Yeni rol şeride girdiğinde tek yer değişsin
- * diye dal burada durur; `DashboardShell` yalnız bunu çağırır.
+ * Eğitmende 8 Eyl 2026'dan, öğrencide Modül 4'ten (18 Eyl 2026) beri var.
+ * Operatörün kendi kabuğu zaten `OPERATOR_NAV`; yönetici `/yonetim`
+ * kullanır. Yeni rol şeride girdiğinde tek yer değişsin diye dal burada
+ * durur; `DashboardShell` yalnız bunu çağırır.
  */
 export function panoSekmeleriForRole(
   roleId: number | undefined | null
 ): NavItem[] | undefined {
-  return roleId === 2 ? TUTOR_PANO_SEKMELERI : undefined;
+  if (roleId === 2) return TUTOR_PANO_SEKMELERI;
+  if (roleId === 3) return UYE_PANO_SEKMELERI;
+  return undefined;
 }

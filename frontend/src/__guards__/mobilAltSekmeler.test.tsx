@@ -107,18 +107,20 @@ describe("mobil alt sekme çubuğu", () => {
   });
 
   it("üye (CLIENT): kendi işini taşıyan beş sekme", () => {
+    // "Rezervasyon" → "Pano" (Modül 4, 18 Eyl 2026): `/pano` öğrencinin
+    // panosu oldu, liste şeridin "Rezervasyonlar" sekmesinden açılıyor.
     girisYap(ROLE_IDS.CLIENT);
     sar();
     expect(sekmeAdlari()).toEqual([
       "Keşfet",
       "Favoriler",
       "Mesajlar",
-      "Rezervasyon",
+      "Pano",
       "Hesabım",
     ]);
   });
 
-  it("eğitmen (TUTOR): Rezervasyon yerine Pano", () => {
+  it("eğitmen (TUTOR): öğrenciyle aynı beş sekme", () => {
     girisYap(ROLE_IDS.TUTOR);
     sar();
     expect(sekmeAdlari()).toEqual([

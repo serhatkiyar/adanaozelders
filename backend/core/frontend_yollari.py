@@ -22,6 +22,9 @@ DEGERLENDIRMELER = "/pano/degerlendirmeler"
 BAKIYEM = "/pano/bakiyem"
 HESABIM = "/pano/hesabim"
 REZERVASYON_DETAY = "/pano/rezervasyon"
+# Öğrencinin birleşik listesi (ders + deneme + çalışma); `/pano` artık öğrenci
+# panosu olduğu için kütüphane bildirimleri ve ödeme dönüşleri buraya gelir.
+REZERVASYONLAR = "/pano/rezervasyonlar"
 
 # ── Şeride girmeyen, düz kalan yollar ──
 DERS_TALEPLERI = "/ders-talepleri"

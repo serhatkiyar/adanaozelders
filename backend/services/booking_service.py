@@ -7,6 +7,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from fastapi import HTTPException, status
 from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -47,14 +48,27 @@ def _notify_booking_update(db: AsyncSession, booking: Booking) -> None:
     )
 
 
+def _set_private_notes_view(booking: Booking, notes: list) -> None:
+    """Yanıt için görünen not listesini ORM değişikliği SAYILMADAN yazar.
+
+    `Booking.private_notes` ilişkisi `delete-orphan` cascade taşır; koleksiyona
+    düz atama yapılırsa listeden düşen (karşı tarafın) notları istek sonundaki
+    commit veritabanından SİLER. `set_committed_value` değeri "yüklenmiş" kabul
+    ettirir, flush'a hiçbir silme yansımaz."""
+    set_committed_value(booking, "private_notes", notes)
+
+
 def _filter_private_notes(booking: Booking, *, role_id: int, user_id: int) -> None:
     """Booking üzerindeki özel notları yalnızca sahibi görebilsin diye in-place
     filtreler. Özel notlar gizlilik açısından karşı tarafa asla sızmamalı."""
-    booking.private_notes = [
-        n
-        for n in booking.private_notes
-        if n.owner_role == role_id and n.owner_id == user_id
-    ]
+    _set_private_notes_view(
+        booking,
+        [
+            n
+            for n in booking.private_notes
+            if n.owner_role == role_id and n.owner_id == user_id
+        ],
+    )
 
 #: Booking FSM'inin **tek** doğruluk kaynağı. `_transition` (saf, birim testli)
 #: ve `_claim_transition` (atomik, üretim) izinli kaynak durumları buradan okur;
@@ -876,7 +890,7 @@ async def get_booking(
     if viewer is not None:
         _filter_private_notes(booking, role_id=viewer.role_id, user_id=viewer.id)
     else:
-        booking.private_notes = []
+        _set_private_notes_view(booking, [])
     return booking
 
 

@@ -38,16 +38,14 @@ export default function Reservations() {
   useCheckoutResultToast(); // iyzico dönüşü: ?odeme=basarili|basarisiz
 
   return (
-    /* Telefonda ÜST BAR YOK (kullanıcı kararı, 16 Eyl 2026): alt sekme çubuğu
-       zaten Keşfet · Favoriler · Mesajlar · Rezervasyon · Hesabım'ı taşıyor; üstte
-       logo, kalp ve hamburger ikinci bir gezinmeydi. Mesajlar ekranıyla aynı
-       bayrak. Masaüstünde üst bar olduğu gibi kalır. */
-    <DashboardShell title="Rezervasyonlar" navItems={UYE_NAV} mobilUstGizle>
-      <div className="mx-auto max-w-3xl px-1 pb-16 pt-2 sm:px-2">
-        <h1 className={SAYFA_BASLIGI}>
-          Rezervasyonlar
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 ">
+    /* Telefonda üst bar GERİ GELDİ (Modül 4, 18 Eyl 2026). 16 Eyl'de
+       gizlenmişti, çünkü alt çubukta "Rezervasyon" sekmesi vardı; o sekme
+       Pano'ya döndü ve liste artık şeridin ikinci sekmesinden açılıyor.
+       Şerit üst barla birlikte çizildiği için bayrak kalkmak zorundaydı. */
+    <DashboardShell title="Rezervasyonlar" navItems={UYE_NAV} genislik="dar">
+      <div className="pb-16 pt-2">
+        <h1 className={SAYFA_BASLIGI}>Rezervasyonlar</h1>
+        <p className="mt-1 text-sm text-slate-500">
           Derslerin, deneme sınavların ve çalışma alanı rezervasyonların.
         </p>
         <div className="mt-6">

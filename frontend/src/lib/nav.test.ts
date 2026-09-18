@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   OPERATOR_NAV,
   UYE_NAV,
+  UYE_PANO_SEKMELERI,
   TUTOR_NAV,
   TUTOR_PANO_SEKMELERI,
 } from "@/lib/nav";
@@ -53,12 +54,13 @@ describe("Öğren hub'ı — donduruldu", () => {
     // şeride girmeyenler kaldı. Ölçülen şey değişmedi — gezinme boş bir
     // listeden gelmiyor olsun; hangi yüzeye yazıldığı bu düğümün işi değil.
     expect(TUTOR_NAV.length + TUTOR_PANO_SEKMELERI.length).toBeGreaterThan(2);
-    expect(UYE_NAV.some((i) => i.to === ROUTES.messages)).toBe(true);
-    // Mesajlar artık eğitmenin ŞERİDİNDE; üyede menüde. `resolveSurface`
+    // Mesajlar Modül 4'te (18 Eyl 2026) öğrencide de menüden ŞERİDE taşındı;
+    // menüde kalan canlı satır Favorilerim. `resolveSurface`
     // (kişiselleştirme katmanı) hâlâ üye menüsünde doğru çalışıyor mu?
+    expect(UYE_PANO_SEKMELERI.some((i) => i.to === ROUTES.messages)).toBe(true);
     const cozulen = resolveSurface(UYE_NAV, undefined, "navbar");
-    const mesajlar = cozulen.find((i) => i.to === ROUTES.messages);
-    expect(mesajlar?.visible, "navbar: Mesajlar görünür değil").toBe(true);
+    const favoriler = cozulen.find((i) => i.to === ROUTES.favorites);
+    expect(favoriler?.visible, "navbar: Favorilerim görünür değil").toBe(true);
     expect(
       TUTOR_PANO_SEKMELERI.some((i) => i.to === ROUTES.messages),
       "eğitmenin Mesajlar sekmesi şeritten düşmüş"

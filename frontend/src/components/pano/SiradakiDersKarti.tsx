@@ -18,15 +18,22 @@ import type { BookingOut } from "@/types";
  * Panonun odağı: bitmemiş en yakın kabul edilmiş ders. Online derste
  * "Derse katıl" 15 dk kala birincil düğmeye döner; yüz yüze derste adres ve
  * harita bağlantısı gösterilir. Ders yoksa boş durum metni çizilir.
+ *
+ * `karsiTaraf`: kartta kimin adı ve fotoğrafı görünür. Eğitmen panosu
+ * öğrenciyi (varsayılan), öğrenci panosu eğitmeni gösterir (Modül 4).
  */
 export function SiradakiDersKarti({
   lesson,
   bosMetin,
   onJoinMeeting,
+  karsiTaraf = "ogrenci",
+  ustEtiket = "Sıradaki ders",
 }: {
   lesson: BookingOut | null;
   bosMetin: string;
   onJoinMeeting: (booking: BookingOut) => void;
+  karsiTaraf?: "ogrenci" | "egitmen";
+  ustEtiket?: string;
 }) {
   if (!lesson) {
     return (
@@ -37,24 +44,28 @@ export function SiradakiDersKarti({
     );
   }
 
-  const ogrenci = lesson.client_name ?? `Öğrenci #${lesson.client_id}`;
+  const egitmenGoster = karsiTaraf === "egitmen";
+  const kisi = egitmenGoster
+    ? (lesson.tutor_name ?? "Eğitmen")
+    : (lesson.client_name ?? `Öğrenci #${lesson.client_id}`);
+  const kisiAvatar = egitmenGoster ? lesson.tutor_avatar_url : lesson.client_avatar_url;
   const yuzYuze = lesson.mode === "IN_PERSON";
   const durum = katilDurumu(lesson.start_at, lesson.end_at);
   const katilabilir = !yuzYuze && Boolean(lesson.meeting_room) && durum !== "kapali";
 
   return (
-    <section aria-label="Sıradaki ders" className={KART}>
+    <section aria-label={ustEtiket} className={KART}>
       <div className="flex items-center justify-between gap-3">
-        <p className={KUCUK_ACIKLAMA}>Sıradaki ders</p>
+        <p className={KUCUK_ACIKLAMA}>{ustEtiket}</p>
         <span className="rounded-full bg-marka-soft px-3 py-1 text-sm font-semibold text-marka-soft-fg">
           {kalanSure(lesson.start_at)}
         </span>
       </div>
 
       <div className="mt-4 flex items-center gap-4">
-        <Avatar name={ogrenci} avatar_url={lesson.client_avatar_url} size="lg" />
+        <Avatar name={kisi} avatar_url={kisiAvatar ?? null} size="lg" />
         <div className="min-w-0">
-          <p className="truncate text-xl font-semibold leading-6 text-slate-900">{ogrenci}</p>
+          <p className="truncate text-xl font-semibold leading-6 text-slate-900">{kisi}</p>
           <p className={`mt-1 ${ACIKLAMA}`}>{formatRange(lesson.start_at, lesson.end_at)}</p>
         </div>
       </div>

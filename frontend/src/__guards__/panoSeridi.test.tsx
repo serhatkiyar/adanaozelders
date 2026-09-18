@@ -45,6 +45,8 @@ import { DashboardShell } from "@/components/DashboardShell";
 import {
   TUTOR_NAV,
   TUTOR_PANO_SEKMELERI,
+  UYE_NAV,
+  UYE_PANO_SEKMELERI,
   navForRole,
   panoSekmeleriForRole,
 } from "@/lib/nav";
@@ -131,6 +133,28 @@ describe("panel şeridi · kimlik", () => {
     }
   });
 
+  it("ÖĞRENCİ şeridi: dört sekme, sıra karardır, hepsi ROUTES hedefi", () => {
+    // Modül 4 (18 Eyl 2026): öğrenci panosu açıldı ve şerit öğrenciye geldi.
+    // Etiket gerekçeleri `lib/nav.ts::UYE_PANO_SEKMELERI`de. Favoriler bilerek
+    // yok (üst bardaki kalp + menü taşıyor).
+    expect(UYE_PANO_SEKMELERI.map((s) => s.label)).toEqual([
+      "Pano",
+      "Rezervasyonlar",
+      "Mesajlar",
+      "Hesabım",
+    ]);
+    const bilinen = new Set(
+      Object.values(ROUTES).filter((v): v is string => typeof v === "string")
+    );
+    for (const sekme of UYE_PANO_SEKMELERI) {
+      expect(bilinen.has(sekme.to), `${sekme.label} → ${sekme.to} ROUTES'ta yok`).toBe(true);
+      expect(sekme.to, `${sekme.label} kök rotaya bağlı`).not.toBe("/");
+    }
+    expect(UYE_PANO_SEKMELERI[0].to).toBe(ROUTES.bookings);
+    expect(UYE_PANO_SEKMELERI[1].to).toBe(ROUTES.reservations);
+    expect(UYE_PANO_SEKMELERI.some((s) => s.to === ROUTES.favorites)).toBe(false);
+  });
+
   it("Pano sekmesi PANOYA gider, ana sayfaya değil", () => {
     // İlk denemede `to: "/"` yazılmıştı ve "Panom" eğitmen LİSTESİNİ açıyordu;
     // kullanıcı bunu hemen yakaladı. Düğüm o hatanın tekrarını engeller.
@@ -159,13 +183,22 @@ describe("panel şeridi · gerçekten çiziliyor", () => {
     expect(aktif[0].getAttribute("href")).toBe(ROUTES.tutorListing);
   });
 
+  it("öğrencide KENDİ dört sekmesi DOM'da (eğitmenin sekmeleri değil)", () => {
+    // 8 Eyl'de "üye için şerit HİÇ çizilmez" yazıyordu; Modül 4'te (18 Eyl
+    // 2026) öğrenci kendi şeridini aldı. Asıl tehlike aynı: eğitmen şeridi
+    // öğrenciye sızarsa "İlanım"ı görür — o yüzden hedefler birebir ölçülür.
+    girisYap(ROLE_IDS.CLIENT);
+    kabuguCiz(ROLE_IDS.CLIENT);
+    expect(seritHedefleri().sort()).toEqual(UYE_PANO_SEKMELERI.map((s) => s.to).sort());
+    expect(panoSekmeleriForRole(ROLE_IDS.CLIENT)).toBe(UYE_PANO_SEKMELERI);
+    expect(seritHedefleri()).not.toContain(ROUTES.tutorListing);
+  });
+
   it.each([
-    ["üye", ROLE_IDS.CLIENT],
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR],
     ["yönetici", ROLE_IDS.ADMIN],
   ])("%s için şerit HİÇ çizilmez", (_ad, rol) => {
-    // Kapsam kararı: şerit bu turda yalnız eğitmende. Üyeye sızarsa üye
-    // "İlanım" sekmesini görür — hiçbiri onun ekranı değil.
+    // Operatörün kendi kabuğu (`OPERATOR_NAV`), yöneticinin `/yonetim`u var.
     girisYap(rol);
     kabuguCiz(rol);
     expect(seritHedefleri()).toEqual([]);
@@ -174,6 +207,22 @@ describe("panel şeridi · gerçekten çiziliyor", () => {
 });
 
 describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
+  it("şerit ∪ hesap menüsü — öğrencinin her yüzeyi bir yerden açılıyor", () => {
+    // Modül 4: Mesajlar ve Rezervasyonlar menüden şeride taşındı. Taşımada
+    // bir hedefin iki yüzeyden de düşmesi sessiz olur; burası konuşur.
+    girisYap(ROLE_IDS.CLIENT);
+    kabuguCiz(ROLE_IDS.CLIENT);
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+    const ulasilir = new Set(
+      Array.from(document.body.querySelectorAll("a[href]")).map(
+        (a) => a.getAttribute("href") ?? ""
+      )
+    );
+    const beklenen = [...UYE_PANO_SEKMELERI, ...UYE_NAV.filter((i) => !i.yakinda)];
+    const eksik = beklenen.filter((i) => !ulasilir.has(i.to));
+    expect(eksik.map((i) => `${i.label} → ${i.to}`)).toEqual([]);
+  });
+
   it("şerit ∪ hesap menüsü — eğitmenin her yüzeyi bir yerden açılıyor", () => {
     girisYap(ROLE_IDS.TUTOR);
     kabuguCiz(ROLE_IDS.TUTOR);
@@ -213,9 +262,14 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     // Gezinmenin üç yüzeye dağılmasının sebebi tam olarak buydu: aynı
     // bağlantı hem menüde hem başka bir yerde duruyordu ve hangisinin asıl
     // olduğu belirsizleşiyordu.
-    const seritte = new Set(TUTOR_PANO_SEKMELERI.map((s) => s.to));
-    const cakisan = TUTOR_NAV.filter((i) => seritte.has(i.to));
-    expect(cakisan.map((i) => i.label)).toEqual([]);
+    for (const [serit, menu] of [
+      [TUTOR_PANO_SEKMELERI, TUTOR_NAV],
+      [UYE_PANO_SEKMELERI, UYE_NAV],
+    ] as const) {
+      const seritte = new Set(serit.map((s) => s.to));
+      const cakisan = menu.filter((i) => seritte.has(i.to));
+      expect(cakisan.map((i) => i.label)).toEqual([]);
+    }
   });
 
   it("eğitmen menüsünün ilk satırı PANOM ve panoya gider", () => {
@@ -256,16 +310,22 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     ).toBe(0);
   });
 
-  it("üyenin menüsü DEĞİŞMEDİ: ilk satır Hesabım", () => {
-    // Şerit üyede yok (kapsam kararı), dolayısıyla "Panom" onu olmayan bir
-    // yere gönderirdi. Bu düğüm kapsamın menüye sızmasını da engeller.
+  it("öğrencide de menünün ilk satırı PANOM ve panoya gider", () => {
+    /*
+     * 8 Eyl'de burada "üyenin menüsü DEĞİŞMEDİ: ilk satır Hesabım" yazıyordu;
+     * gerekçesi üyenin şeridi olmamasıydı. Modül 4'te (18 Eyl 2026) öğrenci
+     * panosu ve şeridi geldi, eğitmenin gerekçesi öğrenci için de geçerli
+     * oldu: ana sayfada (Landing) şerit çizilmez, panoya dönüş bu satırdır.
+     * Hesabım kaybolmadı — şeridin dördüncü sekmesi.
+     */
     girisYap(ROLE_IDS.CLIENT);
     kabuguCiz(ROLE_IDS.CLIENT);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
 
-    expect(screen.queryAllByRole("link", { name: /Panom/ })).toHaveLength(0);
+    const panom = screen.getAllByRole("link", { name: /Panom/ });
+    expect(panom[0].getAttribute("href")).toBe(ROUTES.bookings);
     const hesabim = screen.getAllByRole("link", { name: "Hesabım" });
-    expect(hesabim[0].getAttribute("href")).toBe(ROUTES.profile);
+    expect(hesabim.some((a) => a.getAttribute("href") === ROUTES.profile)).toBe(true);
   });
 
   it("HESABIM'dan taşınan yüzeyler İlanım'da duruyor", () => {

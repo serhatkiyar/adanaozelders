@@ -7,7 +7,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type { BookingIssueReason, BookingOut } from "@/types";
 
-function SorunBildirModal({ booking, onClose }: { booking: BookingOut; onClose: () => void }) {
+/** Panodaki onay kartı da açar (`components/pano/SiradakiEylemKarti.tsx`). */
+export function SorunBildirModal({ booking, onClose }: { booking: BookingOut; onClose: () => void }) {
   const [reason, setReason] = useState<BookingIssueReason | null>(null);
   const [note, setNote] = useState("");
   const report = useReportBookingIssue();

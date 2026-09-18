@@ -34,7 +34,8 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.bookings,    title: "Rezervasyonlarım",
+    to: ROUTES.reservations,
+    title: "Rezervasyonlarım",
     // "talep durumların" ibaresi TALEPLER_ACIK ile birlikte kalkar: donmuş
     // bir bölümü kopyada vaat etmek kullanıcıya boş bir söz vermektir.
     desc: TALEPLER_ACIK

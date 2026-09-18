@@ -34,6 +34,7 @@ import {
   TUTOR_NAV,
   TUTOR_PANO_SEKMELERI,
   UYE_NAV,
+  UYE_PANO_SEKMELERI,
 } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 
@@ -59,7 +60,9 @@ const KATEGORI_KAYNAGI = readFileSync(
  * kaçmasına sessizce izin verirdi.
  */
 const OZEL_DERS_MENULERI: [string, typeof UYE_NAV][] = [
-  ["UYE_NAV", UYE_NAV],
+  // Öğrenci de Modül 4'te (18 Eyl 2026) şeride kavuştu; aynı gerekçeyle
+  // birleşim ölçülür (Mesajlar şeritte, Favorilerim menüde).
+  ["UYE (menü + şerit)", [...UYE_NAV, ...UYE_PANO_SEKMELERI]],
   ["TUTOR (menü + şerit)", [...TUTOR_NAV, ...TUTOR_PANO_SEKMELERI]],
 ];
 

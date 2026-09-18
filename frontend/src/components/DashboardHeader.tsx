@@ -136,9 +136,10 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
             Eğitmende "Panom" → `/pano`: şeridi olan tek rol odur ve ana
             sayfada (Landing) şerit çizilmediği için panele dönüş yolu bu
             satırdır. Kullanıcı: *"hesabım tıklamıcaz menüden Panom yazıcak
-            ona tıklayacağız."* Hesabım şeritte kendi sekmesi olarak duruyor.
+            ona tıklayacağız."* Öğrenci de Modül 4'te (18 Eyl 2026) şeride
+            kavuştu ve aynı satırı aldı; onun "Hesabım"ı şeritte duruyor.
             Diğer rollerde şerit yok, giriş yine hesap sayfasıdır. */}
-        {user?.role_id === ROLE_IDS.TUTOR ? (
+        {user?.role_id === ROLE_IDS.TUTOR || user?.role_id === ROLE_IDS.CLIENT ? (
           <NavLink to={ROUTES.bookings} onClick={onClick} className={menuItemClass}>
             <Icon name="clipboard" className="h-5 w-5" />
             Panom

@@ -72,7 +72,7 @@ export default function LibraryReservationDetail() {
       <DashboardShell title="Rezervasyon" navItems={UYE_NAV}>
         <div className="mx-auto max-w-2xl py-16 text-center">
           <p className="text-sm text-slate-600">Rezervasyon bulunamadı.</p>
-          <Link to={ROUTES.bookings} className="mt-3 inline-block text-sm font-medium underline">
+          <Link to={ROUTES.reservations} className="mt-3 inline-block text-sm font-medium underline">
             Rezervasyonlarıma dön
           </Link>
         </div>
@@ -99,7 +99,7 @@ export default function LibraryReservationDetail() {
             ? "Rezervasyon iptal edildi, ödemen iade edildi."
             : "Rezervasyon iptal edildi.",
         );
-        navigate(ROUTES.bookings);
+        navigate(ROUTES.reservations);
       },
       onError: (e) => {
         setIptalAcik(false);
@@ -113,7 +113,7 @@ export default function LibraryReservationDetail() {
       <Seo title="Rezervasyon, Adana Özel Ders" noindex />
       <div className="mx-auto max-w-2xl space-y-6">
         <nav className="flex items-center gap-1.5 text-sm text-slate-500">
-          <Link to={ROUTES.bookings} className="hover:text-slate-800">
+          <Link to={ROUTES.reservations} className="hover:text-slate-800">
             Rezervasyonlar
           </Link>
           <span className="text-slate-300">/</span>

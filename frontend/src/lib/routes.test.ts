@@ -35,6 +35,8 @@ describe("PATHS — düz (flat) semantik yapı", () => {
      * aşağıdaki çıpalar bunu iki yönlü tutar.
      */
     expect(PATHS.bookings).toBe("/pano");
+    // Öğrencinin listesi panodan ayrıldı (Modül 4, 18 Eyl 2026).
+    expect(PATHS.reservations).toBe("/pano/rezervasyonlar");
     expect(PATHS.messages).toBe("/pano/mesajlar");
     expect(PATHS.tutorListing).toBe("/pano/ilanim");
     expect(PATHS.tutorReviews).toBe("/pano/degerlendirmeler");

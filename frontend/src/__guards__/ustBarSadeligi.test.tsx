@@ -40,6 +40,7 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import {
   OPERATOR_NAV,
   UYE_NAV,
+  UYE_PANO_SEKMELERI,
   TUTOR_NAV,
   TUTOR_PANO_SEKMELERI,
 } from "@/lib/nav";
@@ -135,7 +136,10 @@ describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
     // yan panelinden çıktı (kullanıcı kararı, bkz. `lib/nav.ts`). Bu düğümün
     // işi menünün DOLU olduğunu kanıtlamaktır, kaç kalem olduğunu dondurmak
     // değil — eşik kararla birlikte gerekçesiyle indi.
-    expect(UYE_NAV.length).toBeGreaterThanOrEqual(3);
+    // Öğrencide de kapı iki yüzeyin BİRLEŞİMİNE bakar (Modül 4, 18 Eyl 2026):
+    // Mesajlar ve Rezervasyonlar menüden şeride taşındı, menüde Favorilerim
+    // kaldı. Gerekçe aşağıdaki eğitmen paragrafıyla aynı.
+    expect(UYE_NAV.length + UYE_PANO_SEKMELERI.length).toBeGreaterThanOrEqual(3);
     /*
      * EĞİTMENDE KAPI DEĞİŞTİ (8 Eyl 2026, kullanıcı kararı).
      *

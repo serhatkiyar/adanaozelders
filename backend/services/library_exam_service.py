@@ -347,7 +347,7 @@ async def cancel_session(
                 user_id=reg.client_id,
                 role_id=ROLE_IDS[RoleType.CLIENT],
                 message=f"'{s.title}' oturumu iptal edildi; ödemen iade edildi.",
-                link=frontend_yollari.PANO,
+                link=frontend_yollari.REZERVASYONLAR,
             )
 
         await escrow.refund_escrow(db, reg, escrow.EXAM_SPEC, notify=_notify)
@@ -1242,7 +1242,7 @@ async def publish_results(
                 user_id=reg.client_id,
                 role_id=ROLE_IDS[RoleType.CLIENT],
                 message=f"'{s.title}' deneme sınavı karnen açıklandı.",
-                link=frontend_yollari.PANO,
+                link=frontend_yollari.REZERVASYONLAR,
             )
         count += 1
     await db.commit()
@@ -1468,7 +1468,7 @@ async def _attend_exam(
         user_id=reg.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
         message=f"'{reg.session.title}' oturumuna katılımın doğrulandı.",
-        link=frontend_yollari.PANO,
+        link=frontend_yollari.REZERVASYONLAR,
     )
     await db.commit()
     # Karma puanlama: bu öğrenci daha önce bu kütüphaneye yorum yazdıysa artık yıldız

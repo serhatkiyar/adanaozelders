@@ -50,9 +50,11 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 # aynı tutulur). Bu sabitler PARA YOLUNDADIR: yol çözülmezse ödemesini yapmış
 # kullanıcı 404 görür. Rezervasyon dönüşünün eski adı "/biletlerim"di; bilet
 # metaforu kaldırıldı (bkz. components/reservation/CheckInCodeCard.tsx),
-# ardından 8 Eyl 2026'da panel şeridiyle `/pano` oldu.
+# ardından 8 Eyl 2026'da panel şeridiyle `/pano` oldu; Modül 4'te `/pano`
+# öğrenci panosuna dönüşünce kütüphane/deneme dönüşü `/pano/rezervasyonlar`
+# listesine alındı.
 _BOOKINGS_PAGE = frontend_yollari.DERS_TALEPLERI
-_RESERVATIONS_PAGE = frontend_yollari.PANO
+_RESERVATIONS_PAGE = frontend_yollari.REZERVASYONLAR
 _ORDERS_PAGE = frontend_yollari.SIPARISLERIM
 _PROMOTION_PAGE = frontend_yollari.ONE_CIKAR
 

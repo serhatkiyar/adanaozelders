@@ -1,5 +1,10 @@
 import { apiClient } from "@/api/axios";
-import type { ClientPublicOut, ClientSearchOut, Gender } from "@/types";
+import type {
+  ClientDashboardOut,
+  ClientPublicOut,
+  ClientSearchOut,
+  Gender,
+} from "@/types";
 
 export async function fetchClient(id: number): Promise<ClientPublicOut> {
   const { data } = await apiClient.get<ClientPublicOut>(`/clients/${id}`);
@@ -21,5 +26,11 @@ export async function searchClients(
   const { data } = await apiClient.get<ClientSearchOut[]>("/clients/search", {
     params,
   });
+  return data;
+}
+
+/** Öğrencinin panosu — ana kart ve sayılar sunucuda hesaplanır (Modül 4). */
+export async function fetchMyClientDashboard(): Promise<ClientDashboardOut> {
+  const { data } = await apiClient.get<ClientDashboardOut>("/clients/me/dashboard");
   return data;
 }

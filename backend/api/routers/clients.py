@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_admin_permission, require_roles_or_admin_permission
+from api.deps import (
+    require_admin_permission,
+    require_roles,
+    require_roles_or_admin_permission,
+)
 from core.database import get_db
 from models.admin import Admin
 from models.client import Client
 from models.role import RoleType
 from models.tutor import Gender, Tutor, TutorStatus
+from schemas.client_dashboard import ClientDashboardOut
 from schemas.education import EducationOut
 from schemas.user import ClientPublicOut, ClientSearchOut
-from services import booking_service, client_service, education_service
+from services import (
+    booking_service,
+    client_dashboard_service,
+    client_service,
+    education_service,
+)
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -63,7 +75,23 @@ async def search_clients(
     )
 
 
-# Dinamik path; statik /search rotasından SONRA tanımlanmalı.
+@router.get("/me/dashboard", response_model=ClientDashboardOut)
+async def read_my_dashboard(
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğrenci panosu: sıradaki eylem, sıradaki dersler ve acil şerit sayıları.
+
+    Sahiplik sorguda sağlanır (yalnız `client.id`); dışarıdan kimlik almaz.
+    ``/{client_id}`` rotasından ÖNCE tanımlı kalmalı, yoksa "me" int
+    doğrulamasına takılıp 422 döner.
+    """
+    return await client_dashboard_service.build_dashboard(
+        db, client, now=datetime.datetime.now(datetime.timezone.utc)
+    )
+
+
+# Dinamik path; statik /search ve /me/dashboard rotalarından SONRA tanımlanmalı.
 @router.get("/{client_id}", response_model=ClientPublicOut)
 async def get_client_public(
     client_id: int,

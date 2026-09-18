@@ -282,6 +282,7 @@ const UyeProfili = lazy(() => import("@/pages/UyeProfili"));
 const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
+const OgrenciPano = lazy(() => import("@/pages/OgrenciPano"));
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
 const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));
@@ -421,15 +422,25 @@ function AccountDispatcher() {
   return <Profile />;
 }
 
-// "Ders Talepleri" — ortak `/ders-talepleri` URL'i, rol göre içerik:
+// Pano — ortak `/pano` URL'i, rol göre içerik:
 //  • TUTOR  → panosu (gelen talepler/kazanç) = TutorDashboard
-//  • CLIENT → kendi rezervasyon listesi = Reservations
+//  • CLIENT → öğrenci panosu = OgrenciPano (Modül 4, 18 Eyl 2026). Liste
+//    `/pano/rezervasyonlar`a taşındı (`ReservationsRoute`).
 function BookingsHome() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.TUTOR) return <TutorDashboard />;
-  if (user.role_id === ROLE_IDS.CLIENT) return <Reservations />;
+  if (user.role_id === ROLE_IDS.CLIENT) return <OgrenciPano />;
   return <Navigate to={ROUTES.home} replace />;
+}
+
+// Birleşik rezervasyon listesi (ders + deneme + çalışma) yalnız öğrencinin.
+// Eğitmen derslerini panosunda ve takviminde görür; adres ona düşerse panoya.
+function ReservationsRoute() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading || !user) return <FullScreenSpinner />;
+  if (user.role_id === ROLE_IDS.CLIENT) return <Reservations />;
+  return <Navigate to={ROUTES.bookings} replace />;
 }
 
 // "Sorular" rol göre farklı içerik: öğrenci kendi sorularını, eğitmen gelenleri görür.
@@ -457,6 +468,7 @@ export const LEGACY_STATIC: [string, string][] = [
   ["/student/favorites", ROUTES.favorites],
   ["/student/questions", ROUTES.questions],
   ["/student/exams", ROUTES.exams],
+  // Panoda kalır: kabul bildirimi öğrenciyi panodaki ödeme kartına götürür.
   ["/student/bookings", ROUTES.bookings],
   ["/tutor/questions", ROUTES.questions],
   ["/tutor/settings", ROUTES.tutorListing],
@@ -468,7 +480,8 @@ export const LEGACY_STATIC: [string, string][] = [
   // KALICI: bilet metaforu kalktı ama bu yol SİLİNEMEZ. Veritabanındaki eski
   // bildirim satırları ve gönderilmiş e-postalar hâlâ "/biletlerim" taşıyor;
   // yönlendirme kalkarsa o linkler 404 olur. Nöbetçisi routes.test.ts.
-  ["/biletlerim", ROUTES.bookings],
+  // Hedef Modül 4'te listeye döndü (`/pano/rezervasyonlar`); bilet = kayıt.
+  ["/biletlerim", ROUTES.reservations],
   /*
    * Şeridin altı sayfası `/pano/*` altına toplandı (kullanıcı kararı,
    * 8 Eyl 2026). Aşağıdakiler ÜRETİMDE canlı olan eski düz yollardır:
@@ -476,7 +489,7 @@ export const LEGACY_STATIC: [string, string][] = [
    * kullanıcıların yer imleri bunları taşıyor. Silinirlerse 404 olurlar.
    * (`/pano/degerlendirmeler` listede YOK — o yol hiç yayınlanmadı.)
    */
-  ["/rezervasyonlar", ROUTES.bookings],
+  ["/rezervasyonlar", ROUTES.reservations],
   ["/mesajlar", ROUTES.messages],
   ["/hesabim", ROUTES.profile],
   ["/hesabim/profil", ROUTES.profileEdit],
@@ -494,7 +507,7 @@ export const LEGACY_STATIC: [string, string][] = [
   ["/panel/liderlik", ROUTES.leaderboard],
   ["/panel/ayarlar", ROUTES.settings],
   ["/panel/ilan", ROUTES.tutorListing],
-  ["/panel/rezervasyonlar", ROUTES.bookings],
+  ["/panel/rezervasyonlar", ROUTES.reservations],
   ["/panel/ogren", ROUTES.learn],
   // `/panel/ogren/kelime-kartlari` girdisi KALDIRILDI: hedef yüzey artık yok,
   // yönlendirme bilinçli olarak yazılmadı (eski URL 404 döner).
@@ -693,6 +706,7 @@ function App() {
             <Route path={PATHS.questions} element={<PanelQuestions />} />
             {/* Ders talepleri — CLIENT + TUTOR ortak (rol göre içerik) */}
             <Route path={PATHS.bookings} element={<BookingsHome />} />
+            <Route path={PATHS.reservations} element={<ReservationsRoute />} />
             <Route path={PATHS.lesson} element={<LessonDetail />} />
             <Route
               path={PATHS.libraryReservation}

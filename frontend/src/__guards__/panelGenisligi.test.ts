@@ -41,7 +41,7 @@ import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { PANEL_GENISLIKLERI } from "@/components/DashboardShell";
-import { TUTOR_PANO_SEKMELERI } from "@/lib/nav";
+import { TUTOR_PANO_SEKMELERI, UYE_PANO_SEKMELERI } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 
 const KOK = resolve(
@@ -63,6 +63,17 @@ const SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
   { rota: ROUTES.tutorListing, dosya: ["pages", "TutorSettings.tsx"], etiket: "İlanım" },
 ];
 
+/**
+ * Öğrenci şeridi (Modül 4, 18 Eyl 2026). Mesajlar eğitmenle ortak sayfa,
+ * yukarıda ölçülüyor. Hesabım (`AccountHub`) `genislik` geçmiyor; bu
+ * modülün kapsamı dışında bırakıldı.
+ */
+const UYE_SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
+  { rota: ROUTES.bookings, dosya: ["pages", "OgrenciPano.tsx"], etiket: "Öğrenci Pano" },
+  { rota: ROUTES.reservations, dosya: ["pages", "Reservations.tsx"], etiket: "Rezervasyonlar" },
+];
+const UYE_KAPSAM_DISI = [ROUTES.messages, ROUTES.profile];
+
 describe("panel genişliği · adlandırılmış sınıf", () => {
   it("DOLULUK: sınıf listesi gerçekten dolu ve Tailwind sınıfı taşıyor", () => {
     // Bu olmadan aşağıdaki iddialar BOŞ bir sözlükle de geçerdi.
@@ -83,9 +94,12 @@ describe("panel genişliği · adlandırılmış sınıf", () => {
     const seritte = TUTOR_PANO_SEKMELERI.map((s) => s.to).sort();
     const listede = SEKME_SAYFALARI.map((s) => s.rota).sort();
     expect(listede).toEqual(seritte);
+    // Öğrenci şeridi: listede olmayan her sekme bilinçli kapsam dışı olmalı.
+    const uyeListede = [...UYE_SEKME_SAYFALARI.map((s) => s.rota), ...UYE_KAPSAM_DISI].sort();
+    expect(uyeListede).toEqual(UYE_PANO_SEKMELERI.map((s) => s.to).sort());
   });
 
-  it.each(SEKME_SAYFALARI)(
+  it.each([...SEKME_SAYFALARI, ...UYE_SEKME_SAYFALARI])(
     "$etiket sayfası adlandırılmış bir genişliğe bağlı",
     ({ dosya, etiket }) => {
       const kaynak = oku(...dosya);
@@ -111,7 +125,7 @@ describe("panel genişliği · adlandırılmış sınıf", () => {
      * sohbet akışının kendi okunabilirlik sınırı vardır.
      */
     const ihlaller: string[] = [];
-    for (const { dosya, etiket } of SEKME_SAYFALARI) {
+    for (const { dosya, etiket } of [...SEKME_SAYFALARI, ...UYE_SEKME_SAYFALARI]) {
       const kaynak = oku(...dosya);
       if (/\bflush\b/.test(kaynak)) continue;
       for (const m of kaynak.matchAll(/mx-auto[^"'`]*\bmax-w-[\w[\]]+/g)) {
