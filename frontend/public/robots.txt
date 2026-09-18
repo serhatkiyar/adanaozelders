@@ -1,5 +1,10 @@
 # Adana Özel Ders — arama motoru tarama kuralları
 # Public/SEO yüzeyi taranabilir; oturum-içi (kişisel) düz path'ler hariç tutulur.
+#
+# Tek parçalı yasaklar `$` + `/` çiftiyle yazılır (Modül 6): ilan ve ders
+# sayfaları kökte yaşar ve robots kuralları ÖNEK eşleşmesidir — düz
+# `Disallow: /ogren` yazılsaydı `/ogrenci-koclugu-ozel-ders` ya da
+# `/giris-seviyesi-ingilizce-...` gibi sayfalar da taranmaz olurdu.
 
 User-agent: *
 Allow: /
@@ -20,37 +25,61 @@ Allow: /iptal-ve-iade-politikasi
 Allow: /cerez-politikasi
 
 # ── Oturum-içi / kişisel alanlar (indekslenmesin) ──
-Disallow: /hesabim
-Disallow: /biletlerim
-Disallow: /ayarlar
-Disallow: /mesajlar
-Disallow: /takvim
-Disallow: /favoriler
-Disallow: /denemeler
-Disallow: /gorevler
-Disallow: /bakiyem
-Disallow: /liderlik
-Disallow: /sorular
-Disallow: /talepler
-Disallow: /ogren
-Disallow: /ders-talepleri
-Disallow: /ilan-ayarlari
-Disallow: /ogrenciler
-Disallow: /siparislerim
-Disallow: /dijital-urunlerim
+Disallow: /hesabim$
+Disallow: /hesabim/
+Disallow: /biletlerim$
+Disallow: /biletlerim/
+Disallow: /ayarlar$
+Disallow: /ayarlar/
+Disallow: /mesajlar$
+Disallow: /mesajlar/
+Disallow: /takvim$
+Disallow: /takvim/
+Disallow: /favoriler$
+Disallow: /favoriler/
+Disallow: /denemeler$
+Disallow: /denemeler/
+Disallow: /gorevler$
+Disallow: /gorevler/
+Disallow: /bakiyem$
+Disallow: /bakiyem/
+Disallow: /liderlik$
+Disallow: /liderlik/
+Disallow: /sorular$
+Disallow: /sorular/
+Disallow: /talepler$
+Disallow: /talepler/
+Disallow: /ogren$
+Disallow: /ogren/
+Disallow: /ders-talepleri$
+Disallow: /ders-talepleri/
+Disallow: /ilan-ayarlari$
+Disallow: /ilan-ayarlari/
+Disallow: /ogrenciler$
+Disallow: /ogrenciler/
+Disallow: /siparislerim$
+Disallow: /siparislerim/
+Disallow: /dijital-urunlerim$
+Disallow: /dijital-urunlerim/
 Disallow: /magaza/sepet
 Disallow: /magaza/odeme
 
 # ── Token'lı özel bağlantılar (indekslenmesin) ──
-Disallow: /kargo-takip
+Disallow: /kargo-takip$
+Disallow: /kargo-takip/
 Disallow: /magaza/liste
 
 # ── Kimlik & token akışları ──
-Disallow: /giris
-Disallow: /kayit
-Disallow: /sifremi-unuttum
-Disallow: /sifre-yenile
-Disallow: /e-posta-dogrula
+Disallow: /giris$
+Disallow: /giris/
+Disallow: /kayit$
+Disallow: /kayit/
+Disallow: /sifremi-unuttum$
+Disallow: /sifremi-unuttum/
+Disallow: /sifre-yenile$
+Disallow: /sifre-yenile/
+Disallow: /e-posta-dogrula$
+Disallow: /e-posta-dogrula/
 
 # ── Sitemap ──
 # Dinamik üretilir (backend): onaylı eğitmenler, ACTIVE kütüphaneler ve

@@ -145,6 +145,11 @@
 	}
 
 	# ── SPA ──
+	# Kök SEO sayfaları (ders / ilçe+ders / ilan, Modül 6) da buradan
+	# frontend'e gider; ön-çizim için backend'e yönlendirme frontend
+	# nginx'indedir (frontend/nginx.conf) — CSP başlığı tek kaynakta kalsın ve
+	# backend düşerse nginx normal index.html'e geri düşebilsin diye. Ayrım
+	# YOLA göredir, user-agent'a değil: Googlebot ve kullanıcı aynı HTML'i alır.
 	handle {
 		reverse_proxy frontend:80
 	}

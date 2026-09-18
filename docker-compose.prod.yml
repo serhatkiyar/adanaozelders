@@ -162,6 +162,10 @@ services:
       # sürdürür; bozulma /health + ERROR log ile görünür kalır.
       ROUTING_PROVIDER: ${ROUTING_PROVIDER:-auto}
       VROOM_URL: http://vroom:3000
+      # SEO ön-çizimi (Modül 6): derlenmiş index.html şablonu frontend
+      # konteynerinden iç istekle alınır (60 sn önbellek). Frontend nginx'i
+      # SEO şeklindeki yolları `/__sayfa`ya yollar (frontend/nginx.conf).
+      FRONTEND_INTERNAL_URL: http://frontend:80
     depends_on:
       postgres:
         condition: service_healthy
