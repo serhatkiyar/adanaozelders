@@ -20,6 +20,7 @@ from models.review import Review
 from models.role import ROLE_IDS, RoleType, role_name
 from models.tutor import Tutor, TutorAvailability, TutorStatus
 from models.tutor_time_off import TutorTimeOff
+from models.tutor_extra_availability import TutorExtraAvailability
 from models.booking_resource import BookingResource
 from models.booking_comment import BookingComment
 from models.booking_private_note import BookingPrivateNote
@@ -110,9 +111,12 @@ def _transition(booking: Booking, target: BookingStatus) -> None:
     üzerine yazar (kayıp güncelleme).
 
     **Kapsam iddiası (nihai audit P1-B sonrası yeniden doğrulandı):** bu serviste
-    `Booking.status` yazan **yedi** üretim yolunun tamamı `_claim_transition`
+    `Booking.status` yazan **sekiz** üretim yolunun tamamı `_claim_transition`
     kullanır — `accept`, `reject`, `complete`, `auto_complete_past_bookings`,
-    `cancel`, `cancel_by_admin`, `reschedule`. Servis dışında booking durumu
+    `cancel`, `cancel_by_admin`, `reschedule`, `withdraw_offer`. Haftalık
+    serinin bitişi (`lesson_series_service.end_series`) bekleyen teklifleri
+    `withdraw_offer` ile aynı `_teklifi_geri_cek_yaz` yardımcısıyla, yani yine
+    `_claim_transition` ile geri çeker. Servis dışında booking durumu
     yazan başka yol yoktur (`admin_service` bu servise devreder;
     `account_deletion_service` yalnız okur). `booking.status = ...` biçimindeki
     tek atamalar bu fonksiyonun ve `_claim_transition`'ın kendi içindedir:
@@ -294,38 +298,63 @@ async def _assert_within_availability(
     start_at: datetime.datetime,
     end_at: datetime.datetime,
 ) -> None:
-    """İstenen saat eğitmenin bir müsaitlik penceresine sığmalı. Sabit UTC+3.
+    """İstenen saat eğitmenin müsaitliğine sığmalı. Sabit UTC+3.
 
-    Modül 3 (kullanıcı kararı): hiç pencere tanımlamamış eğitmene talep
+    Modül 3 (kullanıcı kararı): hiç müsaitlik tanımlamamış eğitmene talep
     gönderilemez. Eskiden bu durumda kısıt yoktu; öğrenci her saati seçebiliyor
-    ve eğitmen reddetmek zorunda kalıyordu. Slot listesi (`build_slots`) aynı
-    sığma kuralını kullanır.
+    ve eğitmen reddetmek zorunda kalıyordu.
+
+    Müsaitlik o günün şablon pencereleri ile ek aralıklarının birleşimidir
+    (`gun_araliklari`); ders aynı yerel günde bitmeli ve birleşik aralıklardan
+    birine tamamen sığmalı. Slot listesi (`build_slots`) aynı kuralı kullanır.
     """
     availability = (
         await db.execute(
             select(TutorAvailability).where(TutorAvailability.tutor_id == tutor_id)
         )
     ).scalars().all()
-    if not availability:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, ERR_NO_AVAILABILITY
+    extras = await _ek_araliklar(db, tutor_id, start_at, end_at)
+    if not availability and not extras:
+        gelecekte_ek_var = await db.scalar(
+            select(
+                exists().where(
+                    TutorExtraAvailability.tutor_id == tutor_id,
+                    TutorExtraAvailability.end_at > _utcnow(),
+                )
+            )
         )
-    tz = _yerel_tz()
-    local_start = start_at.astimezone(tz)
-    local_end = end_at.astimezone(tz)
-    s_min = local_start.hour * 60 + local_start.minute
-    e_min = local_end.hour * 60 + local_end.minute
-    fits = local_start.date() == local_end.date() and any(
-        w.weekday == local_start.weekday()
-        and w.start_minute <= s_min
-        and e_min <= w.end_minute
-        for w in availability
-    )
-    if not fits:
+        if not gelecekte_ek_var:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY, ERR_NO_AVAILABILITY
+            )
+    if not musaitlige_sigar_mi(availability, extras, start_at, end_at):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Selected time is outside the tutor's availability",
         )
+
+
+async def _ek_araliklar(
+    db: AsyncSession,
+    tutor_id: int,
+    start: datetime.datetime,
+    end: datetime.datetime,
+) -> list[tuple[datetime.datetime, datetime.datetime]]:
+    """``[start, end)`` ile kesişen ek aralıklar (UTC çiftleri).
+
+    Model doğrudan sorgulanır; `extra_availability_service` bu modülü içe
+    aktardığı için buradan o servise gidilmez (döngüsel import).
+    """
+    rows = (
+        await db.execute(
+            select(TutorExtraAvailability.start_at, TutorExtraAvailability.end_at).where(
+                TutorExtraAvailability.tutor_id == tutor_id,
+                TutorExtraAvailability.start_at < end,
+                TutorExtraAvailability.end_at > start,
+            )
+        )
+    ).all()
+    return [(_utc(a), _utc(b)) for a, b in rows]
 
 
 async def _lock_tutor(db: AsyncSession, tutor_id: int) -> None:
@@ -438,11 +467,76 @@ def _cakisir(
     return any(a < end and b > start for a, b in araliklar)
 
 
+#: Ders aynı yerel günde bitmeli: gün 00:00–23:59 arasına kırpılır (24:00'te
+#: biten ders ertesi güne sayılır).
+_GUN_SON_DAKIKA = 1439
+
+
+def gun_araliklari(
+    windows,
+    extras,
+    gun: datetime.date,
+) -> list[tuple[datetime.datetime, datetime.datetime]]:
+    """O İstanbul gününün müsait aralıkları (UTC). Şablon pencereleri ve ek aralıklar
+    gün içine ([00:00, 23:59]) kırpılır, çakışan/bitişikler birleştirilir. Saf.
+
+    ``windows``: ``weekday``/``start_minute``/``end_minute`` taşıyan haftalık
+    pencereler; ``extras``: ``(start_at, end_at)`` çiftleri ya da bu iki alanı
+    taşıyan nesneler. Bitişik iki şablon penceresi de birleşir (10–12 ve
+    12–14 ise 11:30 başlangıcı açılır) — bilinçli.
+    """
+    tz = _yerel_tz()
+    gun_bas = datetime.datetime.combine(gun, datetime.time(0), tzinfo=tz)
+    gun_son = gun_bas + datetime.timedelta(minutes=_GUN_SON_DAKIKA)
+    parcalar: list[tuple[datetime.datetime, datetime.datetime]] = []
+    for w in windows:
+        if w.weekday != gun.weekday():
+            continue
+        a = gun_bas + datetime.timedelta(minutes=w.start_minute)
+        b = min(gun_bas + datetime.timedelta(minutes=w.end_minute), gun_son)
+        if b > a:
+            parcalar.append((a, b))
+    for e in extras:
+        ea, eb = (e.start_at, e.end_at) if hasattr(e, "start_at") else e
+        a = max(_utc(ea), gun_bas)
+        b = min(_utc(eb), gun_son)
+        if b > a:
+            parcalar.append((a, b))
+    parcalar.sort()
+    birlesik: list[list[datetime.datetime]] = []
+    for a, b in parcalar:
+        if birlesik and a <= birlesik[-1][1]:
+            birlesik[-1][1] = max(birlesik[-1][1], b)
+        else:
+            birlesik.append([a, b])
+    utc = datetime.timezone.utc
+    return [(a.astimezone(utc), b.astimezone(utc)) for a, b in birlesik]
+
+
+def musaitlige_sigar_mi(
+    windows,
+    extras,
+    start_at: datetime.datetime,
+    end_at: datetime.datetime,
+) -> bool:
+    """Ders aynı yerel günde bitiyor ve o günün birleşik bir aralığına tamamen
+    sığıyor mu? `_assert_within_availability` ve seri simülasyonu kullanır. Saf."""
+    tz = _yerel_tz()
+    yerel_bas = start_at.astimezone(tz)
+    if yerel_bas.date() != end_at.astimezone(tz).date():
+        return False
+    return any(
+        a <= start_at and end_at <= b
+        for a, b in gun_araliklari(windows, extras, yerel_bas.date())
+    )
+
+
 def build_slots(
     windows,
     busy: list[tuple[datetime.datetime, datetime.datetime]],
     time_off: list[tuple[datetime.datetime, datetime.datetime]],
     *,
+    extras=(),
     day_from: datetime.date,
     days: int,
     duration_min: int,
@@ -451,8 +545,9 @@ def build_slots(
     """Saf slot üreticisi (DB'siz; birim testi `tests/test_slots.py`).
 
     ``windows``: ``weekday``/``start_minute``/``end_minute`` taşıyan haftalık
-    müsaitlik pencereleri (İstanbul saati). Her pencerede
-    ``BOOKING_SLOT_STEP_MINUTES`` adımla, ders süresi pencereye tamamen sığan
+    müsaitlik pencereleri (İstanbul saati); ``extras``: ek aralıklar
+    (``(start_at, end_at)``). İkisinin günlük birleşiminde (`gun_araliklari`)
+    ``BOOKING_SLOT_STEP_MINUTES`` adımla, ders süresi aralığa tamamen sığan
     ve aynı günde biten başlangıçlar üretilir — `_assert_within_availability`
     ile aynı kural. Aktif ders, izin, 24 saat bildirim süresi ya da pencere
     sonu sonrası slot ``busy`` olur (dolu saat gizlenmez, soluk gösterilir).
@@ -474,19 +569,16 @@ def build_slots(
         gece_yarisi = datetime.datetime.combine(gun, datetime.time(0), tzinfo=tz)
         if gece_yarisi >= pencere_sonu:
             break
-        baslangiclar: set[int] = set()
-        for w in windows:
-            if w.weekday != gun.weekday():
-                continue
-            dakika = w.start_minute
-            # Ders aynı gün bitmeli: 24:00'te biten ders ertesi güne sayılır.
-            while dakika + duration_min <= min(w.end_minute, 1439):
-                baslangiclar.add(dakika)
-                dakika += adim
+        baslangiclar: set[datetime.datetime] = set()
+        # Ders aynı gün bitmeli: aralıklar 23:59'a kırpılı gelir.
+        for a, b in gun_araliklari(windows, extras, gun):
+            start = a
+            while start + sure <= b:
+                baslangiclar.add(start)
+                start += datetime.timedelta(minutes=adim)
         slots = []
-        for dakika in sorted(baslangiclar):
-            yerel = gece_yarisi + datetime.timedelta(minutes=dakika)
-            start = yerel.astimezone(datetime.timezone.utc)
+        for start in sorted(baslangiclar):
+            yerel = start.astimezone(tz)
             end = start + sure
             dolu = (
                 start < en_erken
@@ -544,7 +636,10 @@ async def list_slots(
 
     busy: list[tuple[datetime.datetime, datetime.datetime]] = []
     time_off: list[tuple[datetime.datetime, datetime.datetime]] = []
-    if windows and aralik_son > aralik_bas:
+    extras: list[tuple[datetime.datetime, datetime.datetime]] = []
+    if aralik_son > aralik_bas:
+        extras = await _ek_araliklar(db, tutor.id, aralik_bas, aralik_son)
+    if (windows or extras) and aralik_son > aralik_bas:
         rows = (
             await db.execute(
                 select(Booking.start_at, Booking.end_at).where(
@@ -573,12 +668,13 @@ async def list_slots(
             windows,
             busy,
             time_off,
+            extras=extras,
             day_from=ilk_gun,
             days=days,
             duration_min=duration_min,
             now=now,
         ),
-        "has_availability": bool(windows),
+        "has_availability": bool(windows) or bool(extras),
         "window_end": booking_window_end(now),
         "policy": {
             "min_notice_hours": settings.BOOKING_MIN_NOTICE_HOURS,
@@ -712,70 +808,208 @@ async def offer_lesson(db: AsyncSession, tutor: Tutor, data) -> Booking:
     await _assert_not_on_time_off(db, tutor.id, data.start_at, data.end_at)
     await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)
 
-    requested = data.mode.value if data.mode else None
+    mode, price = _teklif_modu_ve_ucreti(
+        tutor,
+        data.mode.value if data.mode else None,
+        data.price,
+        data.start_at,
+        data.end_at,
+    )
+    booking = await _teklif_yaz(
+        db,
+        tutor,
+        client,
+        start_at=data.start_at,
+        end_at=data.end_at,
+        price=price,
+        mode=mode,
+        notes=data.notes,
+        location=data.location,
+        location_lat=data.location_lat,
+        location_lng=data.location_lng,
+    )
+    return await get_booking(db, booking.id, viewer=tutor)
+
+
+def _teklif_modu_ve_ucreti(
+    tutor: Tutor,
+    requested_mode: str | None,
+    requested_price,
+    start_at: datetime.datetime,
+    end_at: datetime.datetime,
+) -> tuple[str, Decimal | None]:
+    """Teklifin ders biçimi ve ücreti (tek teklif ve haftalık seri ortak).
+
+    Eğitmen tek mod sunuyorsa o sabittir; ücret indirilebilir ama ilan ücreti ×
+    süreyi aşamaz (öğrenci ilanda gördüğünden fazla ödemez). Boş ücret ilan
+    ücretidir.
+    """
     if tutor.teaching_mode in ("ONLINE", "IN_PERSON"):
-        if requested and requested != tutor.teaching_mode:
+        if requested_mode and requested_mode != tutor.teaching_mode:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 "Bu ders biçimini sunmuyorsun.",
             )
         mode = tutor.teaching_mode
     else:
-        mode = requested or "ONLINE"
+        mode = requested_mode or "ONLINE"
 
-    ilan_ucreti = _compute_price(tutor, data.start_at, data.end_at)
-    if data.price is None:
-        price = ilan_ucreti
-    else:
-        price = Decimal(str(data.price))
-        if ilan_ucreti is not None and price > ilan_ucreti:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "Teklif ücreti ilanındaki ücretten yüksek olamaz.",
-            )
+    ilan_ucreti = _compute_price(tutor, start_at, end_at)
+    if requested_price is None:
+        return mode, ilan_ucreti
+    price = Decimal(str(requested_price))
+    if ilan_ucreti is not None and price > ilan_ucreti:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Teklif ücreti ilanındaki ücretten yüksek olamaz.",
+        )
+    return mode, price
 
+
+async def _teklif_yaz(
+    db: AsyncSession,
+    tutor: Tutor,
+    client: Client,
+    *,
+    start_at: datetime.datetime,
+    end_at: datetime.datetime,
+    price: Decimal | None,
+    mode: str,
+    notes: str | None,
+    location: str | None,
+    location_lat,
+    location_lng,
+    series_id: int | None = None,
+    bildir: bool = True,
+) -> Booking:
+    """Kuralları çağıranda doğrulanmış bir teklifi yazar (Modül 8 + haftalık seri).
+
+    Booking ekler ve flush eder (çakışma → GiST exclusion → IntegrityError),
+    sohbete `booking_card` bırakır; ``bildir`` açıksa öğrenciye bildirim gider.
+    Seri kaydı toplu tek bildirim gönderdiği için ``bildir=False`` geçer.
+    """
     booking = Booking(
         client_id=client.id,
         tutor_id=tutor.id,
-        start_at=data.start_at,
-        end_at=data.end_at,
+        start_at=start_at,
+        end_at=end_at,
         price=price,
-        notes=data.notes,
+        notes=notes,
         mode=mode,
-        location=data.location,
-        location_lat=data.location_lat,
-        location_lng=data.location_lng,
+        location=location,
+        location_lat=location_lat,
+        location_lng=location_lng,
         offered_by_tutor=True,
+        series_id=series_id,
     )
     db.add(booking)
     await db.flush()  # çakışma → GiST exclusion → IntegrityError → 409
     await db.refresh(booking)
-    await notification_service.notify(
-        db,
-        user_id=booking.client_id,
-        role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"{tutor.full_name} sana ders teklif etti.",
-        link=f"/ders-talepleri/{booking.id}",
-    )
+    if bildir:
+        await notification_service.notify(
+            db,
+            user_id=booking.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message=f"{tutor.full_name} sana ders teklif etti.",
+            link=f"/ders-talepleri/{booking.id}",
+        )
     _notify_booking_update(db, booking)
+    meta = {
+        "booking_id": booking.id,
+        "status": booking.status.value,
+        "start_at": booking.start_at.isoformat(),
+        "end_at": booking.end_at.isoformat(),
+        "price": str(booking.price) if booking.price else None,
+        "is_free_lesson": booking.is_free_lesson,
+        "mode": booking.mode,
+        "notes": booking.notes,
+        "offered_by_tutor": True,
+        "client_name": client.full_name,
+    }
+    if series_id is not None:
+        meta["series_id"] = series_id
     await messaging_service.inject_system_message(
         db,
         client_id=client.id,
         tutor_id=tutor.id,
         msg_type="booking_card",
         body=f"{tutor.full_name} sana ders teklif etti.",
-        meta_data={
-            "booking_id": booking.id,
-            "status": booking.status.value,
-            "start_at": booking.start_at.isoformat(),
-            "end_at": booking.end_at.isoformat(),
-            "price": str(booking.price) if booking.price else None,
-            "is_free_lesson": booking.is_free_lesson,
-            "mode": booking.mode,
-            "notes": booking.notes,
-            "offered_by_tutor": True,
-            "client_name": client.full_name,
-        },
+        meta_data=meta,
+    )
+    return booking
+
+
+async def _ogrenci_mesgul_mu(
+    db: AsyncSession,
+    client_id: int,
+    start_at: datetime.datetime,
+    end_at: datetime.datetime,
+) -> bool:
+    """Öğrencinin herhangi bir eğitmenle çakışan aktif (PENDING/ACCEPTED) dersi var mı?
+
+    Yalnız haftalık seri kullanır; eğitmene hangi eğitmenle olduğu söylenmez.
+    """
+    return bool(
+        await db.scalar(
+            select(
+                exists().where(
+                    Booking.client_id == client_id,
+                    Booking.deleted_at.is_(None),
+                    Booking.status.in_([BookingStatus.PENDING, BookingStatus.ACCEPTED]),
+                    Booking.start_at < end_at,
+                    Booking.end_at > start_at,
+                )
+            )
+        )
+    )
+
+
+ERR_WITHDRAW_OWNER = "Yalnız kendi teklifini geri çekebilirsin."
+ERR_WITHDRAW_STATE = "Yalnız yanıt bekleyen teklif geri çekilebilir."
+
+
+async def _teklifi_geri_cek_yaz(db: AsyncSession, booking: Booking, *, reason: str) -> bool:
+    """Bekleyen, ödemesiz teklifi `REJECTED`'a atomik çeker.
+
+    Durum `CANCELLED` değil `REJECTED`: iptal oranı metriği
+    (`tutor_analytics_service._cancel_rate`) yalnız eğitmen iptallerini sayar;
+    geri çekilen teklif bir iptal değildir. Ödemesi olan (kabul edilip
+    ertelenmiş) ders WHERE koşuluyla dışarıda kalır — iade yolu gerektirir.
+    False → claim kaybedildi, hiçbir alan yazılmadı.
+    """
+    from models.payment import Payment
+
+    odemesiz = ~select(Payment.id).where(Payment.booking_id == Booking.id).exists()
+    if not await _claim_transition(
+        db,
+        booking,
+        BookingStatus.REJECTED,
+        extra_where=(Booking.offered_by_tutor.is_(True), odemesiz),
+    ):
+        return False
+    booking.cancel_reason = reason
+    booking.cancelled_by_role = ROLE_IDS[RoleType.TUTOR]
+    await db.flush()
+    _notify_booking_update(db, booking)
+    return True
+
+
+async def withdraw_offer(db: AsyncSession, booking: Booking, tutor: Tutor) -> Booking:
+    """Eğitmen yanıt bekleyen teklifini geri çeker (`REJECTED`, iptal sayılmaz)."""
+    if booking.tutor_id != tutor.id or not booking.offered_by_tutor:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, ERR_WITHDRAW_OWNER)
+    if await payment_service.get_for_booking(db, booking.id) is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, ERR_WITHDRAW_STATE)
+    if not await _teklifi_geri_cek_yaz(
+        db, booking, reason="Eğitmen teklifi geri çekti."
+    ):
+        raise HTTPException(status.HTTP_409_CONFLICT, ERR_WITHDRAW_STATE)
+    await notification_service.notify(
+        db,
+        user_id=booking.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=f"{tutor.full_name} ders teklifini geri çekti.",
+        link=f"/ders-talepleri/{booking.id}",
     )
     return await get_booking(db, booking.id, viewer=tutor)
 
@@ -1007,6 +1241,10 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
     # Bellek içi `_transition` burada YETMEZ — kabul, `create_for_booking` ile
     # ödeme YÜKÜMLÜLÜĞÜ doğurur; iptal edilmiş bir dersin üzerine yazan bir
     # accept, öğrenciye artık var olmayan bir ders için ödeme borcu çıkarır.
+    # Saati geçmiş teklif kabul edilemez: geçmiş bir ders için ödeme borcu
+    # doğmasın. Yalnız teklif yolunda (öğrenci talebinde yanıtı eğitmen verir).
+    if booking.offered_by_tutor and _utc(booking.start_at) <= _utcnow():
+        raise HTTPException(status.HTTP_409_CONFLICT, "Teklifin saati geçti.")
     # Eğitmen kilidi claim'den ÖNCE: izin ekleme ile aynı sırada beklenir.
     await _lock_tutor(db, booking.tutor_id)
     await _assert_not_on_time_off(db, booking.tutor_id, booking.start_at, booking.end_at)

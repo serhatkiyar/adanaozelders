@@ -664,9 +664,27 @@ path.district-poly {
 .fc .fc-list .takvim-izin {
   background-image: none;
 }
+/* Ek zaman aralığı: ızgarada arka plan boyası (şablon dışı müsait saat);
+   ajanda görünümünde satır olarak çizilir, nokta rengi aynı tondan. */
+.fc .takvim-ek-aralik {
+  --fc-bg-event-color: theme("colors.emerald.300");
+  --fc-bg-event-opacity: 0.35;
+  --fc-event-bg-color: theme("colors.emerald.50");
+  --fc-event-border-color: theme("colors.emerald.500");
+  --fc-event-text-color: theme("colors.emerald.900");
+}
+/* Kabul edilmiş haftalık seri dersi (Preply: haftalık ders pembe). */
+.fc .takvim-haftalik {
+  --fc-event-bg-color: theme("colors.rose.100");
+  --fc-event-border-color: theme("colors.rose.500");
+  --fc-event-text-color: theme("colors.rose.700");
+}
 .fc .fc-event:focus-visible {
   outline: 2px solid rgb(var(--marka-focus));
   outline-offset: 1px;
+}
+.takvim-lejant-ek {
+  background-color: theme("colors.emerald.300");
 }
 .takvim-lejant-izin {
   background-image: repeating-linear-gradient(

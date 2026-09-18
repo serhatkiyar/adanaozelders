@@ -17,10 +17,12 @@ import {
   DUGME_SATIR_TEHLIKE,
 } from "@/components/pano/stil";
 import { DersTeklifModal, type TeklifAraligi } from "@/components/takvim/DersTeklifModal";
+import { EkAralikModal, type EkAralik } from "@/components/takvim/EkAralikModal";
 import { IzinModal, izinAraligiMetni, type IzinAraligi } from "@/components/takvim/IzinModal";
 import { Modal } from "@/components/ui/Modal";
 import { DaireDugme } from "@/components/ui/DaireDugme";
 import { useBookings } from "@/hooks/useBookings";
+import { useEkAraliklar } from "@/hooks/useEkAralik";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useDeleteTimeOff, useTimeOff } from "@/hooks/useTimeOff";
 import { useMyTutorProfile } from "@/hooks/useTutorProfile";
@@ -44,7 +46,9 @@ const LEJANT: { etiket: string; sinif: string }[] = [
   { etiket: "Onaylı", sinif: "bg-marka-mid" },
   { etiket: "Ücretsiz ilk ders", sinif: "bg-teal-600" },
   { etiket: "Tamamlandı", sinif: "bg-slate-400" },
+  { etiket: "Haftalık ders", sinif: "bg-rose-500" },
   { etiket: "İzin", sinif: "takvim-lejant-izin" },
+  { etiket: "Ek aralık", sinif: "takvim-lejant-ek" },
 ];
 
 const SAAT_BICIMI = { hour: "2-digit", minute: "2-digit", hour12: false } as const;
@@ -80,6 +84,15 @@ function varsayilanDersAraligi(): TeklifAraligi {
   return { baslangic, bitis };
 }
 
+/** "Ek zaman aralığı aç" düğmesinin varsayılanı: yarın 18:00–20:00. */
+function varsayilanEkAralik(): EkAralik {
+  const baslangic = new Date();
+  baslangic.setDate(baslangic.getDate() + 1);
+  baslangic.setHours(18, 0, 0, 0);
+  const bitis = new Date(baslangic.getTime() + 2 * 60 * 60 * 1000);
+  return { baslangic, bitis };
+}
+
 /** "İzin ekle" düğmesinin varsayılanı: bugün, tüm gün. */
 function bugunTumGun(): IzinAraligi {
   const baslangic = new Date();
@@ -104,7 +117,12 @@ export default function TutorCalendar() {
   const [izinAraligi, setIzinAraligi] = useState<IzinAraligi | null>(null);
   const [silinecekIzin, setSilinecekIzin] = useState<TimeOff | null>(null);
   const [teklifAraligi, setTeklifAraligi] = useState<TeklifAraligi | null>(null);
-  // Boş alan seçilince önce NE yapılacağı sorulur (Preply: Ders planla / İzin ekle).
+  // Ek aralık penceresi: seçilen aralıkla "Ekle" ya da ajandadan "Eklenen aralıklar".
+  const [ekAralik, setEkAralik] = useState<
+    { aralik?: EkAralik; sekme: "ekle" | "liste" } | null
+  >(null);
+  // Boş alan seçilince önce NE yapılacağı sorulur (Preply: Ders planla / İzin ekle /
+  // Ekstra müsaitlik aç).
   const [secim, setSecim] = useState<{ baslangic: Date; bitis: Date } | null>(null);
 
   // Telefonda ajanda, geniş ekranda haftalık ızgara.
@@ -124,6 +142,7 @@ export default function TutorCalendar() {
     { enabled: aralik !== null }
   );
   const izinler = useTimeOff(aralik);
+  const ekler = useEkAraliklar(aralik);
   const { data: ilan } = useMyTutorProfile();
   const silme = useDeleteTimeOff();
 
@@ -137,6 +156,8 @@ export default function TutorCalendar() {
       if (!sinif) continue;
       // Ücretsiz ilk ders kendi rengini taşır; tamamlandıysa geçmiş rengi kalır.
       if (b.is_free_lesson && b.status !== BookingStatus.COMPLETED) sinif = "takvim-deneme";
+      // Kabul edilmiş haftalık seri dersi ayrı renkte (Preply: haftalık ders pembe).
+      else if (b.series_id && b.status === BookingStatus.ACCEPTED) sinif = "takvim-haftalik";
       liste.push({
         id: `ders-${b.id}`,
         title: b.client_name || ADSIZ_UYE,
@@ -156,8 +177,21 @@ export default function TutorCalendar() {
         extendedProps: { tur: "izin", izin },
       });
     }
+    for (const ek of ekler.data ?? []) {
+      // Izgarada arka plan boyası: seçim üstünden yapılabilir, dersleri örtmez.
+      // Ajanda görünümü arka plan olaylarını çizmez; telefonda satır olarak görünür.
+      liste.push({
+        id: `ek-${ek.id}`,
+        title: "Ek aralık",
+        start: ek.start_at,
+        end: ek.end_at,
+        display: mobil ? "auto" : "background",
+        classNames: ["takvim-ek-aralik"],
+        extendedProps: { tur: "ek" },
+      });
+    }
     return liste;
-  }, [dersler.data, izinler.data]);
+  }, [dersler.data, izinler.data, ekler.data, mobil]);
 
   const datesSet = useCallback(
     (arg: DatesSetArg) => {
@@ -187,12 +221,13 @@ export default function TutorCalendar() {
     (arg: EventClickArg) => {
       arg.jsEvent.preventDefault();
       const { tur, dersId, izin } = arg.event.extendedProps as {
-        tur: "ders" | "izin";
+        tur: "ders" | "izin" | "ek";
         dersId?: number;
         izin?: TimeOff;
       };
       if (tur === "ders" && dersId) navigate(ROUTES.lesson(dersId));
       else if (tur === "izin" && izin) setSilinecekIzin(izin);
+      else if (tur === "ek") setEkAralik({ aralik: varsayilanEkAralik(), sekme: "liste" });
     },
     [navigate]
   );
@@ -217,7 +252,13 @@ export default function TutorCalendar() {
   // Görünen aralık bugünü kapsıyorsa "Bugün" bir işe yaramaz — Preply'da da pasif.
   const buHafta =
     pencere !== null && Date.now() >= pencere.start.getTime() && Date.now() < pencere.end.getTime();
-  const hata = dersler.isError ? dersler.error : izinler.isError ? izinler.error : null;
+  const hata = dersler.isError
+    ? dersler.error
+    : izinler.isError
+      ? izinler.error
+      : ekler.isError
+        ? ekler.error
+        : null;
 
   // `altBilgiGizli`: ızgara 24 saati çizdiği için sayfa zaten uzun; altına
   // pazarlama bağlantıları koymak takvimi bitmiyormuş gibi gösteriyordu
@@ -245,6 +286,13 @@ export default function TutorCalendar() {
                 onClick={() => setIzinAraligi(bugunTumGun())}
               >
                 İzin ekle
+              </button>
+              <button
+                type="button"
+                className={`${DUGME_IKINCIL} w-full`}
+                onClick={() => setEkAralik({ aralik: varsayilanEkAralik(), sekme: "ekle" })}
+              >
+                Ek zaman aralığı aç
               </button>
               <Link to={ROUTES.tutorListing} className={`${DUGME_IKINCIL} w-full`}>
                 Müsaitliği düzenle
@@ -288,12 +336,13 @@ export default function TutorCalendar() {
                 onRetry={() => {
                   void dersler.refetch();
                   void izinler.refetch();
+                  void ekler.refetch();
                 }}
               />
             )}
 
             <div
-              aria-busy={dersler.isFetching || izinler.isFetching}
+              aria-busy={dersler.isFetching || izinler.isFetching || ekler.isFetching}
               // Preply ölçüsü: ızgara görünüm yüksekliğini doldurur ve KENDİ içinde
               // kayar; sayfa büyümez, gün başlıkları yerinde kalır.
               className="md:h-[calc(100dvh-330px)] md:min-h-[520px]"
@@ -341,6 +390,14 @@ export default function TutorCalendar() {
         <DersTeklifModal aralik={teklifAraligi} onClose={() => setTeklifAraligi(null)} />
       )}
 
+      {ekAralik && (
+        <EkAralikModal
+          aralik={ekAralik.aralik}
+          ilkSekme={ekAralik.sekme}
+          onClose={() => setEkAralik(null)}
+        />
+      )}
+
       <Modal
         open={secim !== null}
         onClose={() => setSecim(null)}
@@ -373,6 +430,17 @@ export default function TutorCalendar() {
             }}
           >
             İzin ekle
+          </button>
+          <button
+            type="button"
+            className={`${DUGME_IKINCIL} w-full`}
+            onClick={() => {
+              if (!secim) return;
+              setEkAralik({ aralik: { baslangic: secim.baslangic, bitis: secim.bitis }, sekme: "ekle" });
+              setSecim(null);
+            }}
+          >
+            Ek zaman aralığı aç
           </button>
         </div>
       </Modal>

@@ -29,8 +29,12 @@ from schemas.booking import (
     BookingCommentCreate,
     BookingLocationUpdate,
     BookingPrivateNoteCreate,
+    LessonSeriesCreatedOut,
+    LessonSeriesIn,
+    LessonSeriesOut,
+    LessonSeriesPreviewOut,
 )
-from services import booking_service, payment_gates, phone_service
+from services import booking_service, lesson_series_service, payment_gates, phone_service
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -108,6 +112,56 @@ async def offer_lesson(
 ):
     """Eğitmen kendi öğrencisine ders teklif eder; yanıtı öğrenci verir."""
     return await booking_service.offer_lesson(db, tutor, payload)
+
+
+# ── Haftalık ders serisi — `/{booking_id}` rotalarından ÖNCE ────────────────
+
+
+@router.post("/series/preview", response_model=LessonSeriesPreviewOut)
+async def preview_lesson_series(
+    payload: LessonSeriesIn,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Salt okunur: hangi haftalar şimdi/sonra teklif olur, hangileri planlanamaz."""
+    return await lesson_series_service.preview_series(
+        db, tutor, payload, now=booking_service._utcnow()
+    )
+
+
+@router.post(
+    "/series",
+    response_model=LessonSeriesCreatedOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_create_limit)],
+)
+async def create_lesson_series(
+    payload: LessonSeriesIn,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await lesson_series_service.create_series(
+        db, tutor, payload, now=booking_service._utcnow()
+    )
+
+
+@router.get("/series/{series_id}", response_model=LessonSeriesOut)
+async def get_lesson_series(
+    series_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await lesson_series_service.get_series(db, series_id, user)
+
+
+@router.post("/series/{series_id}/end", response_model=LessonSeriesOut)
+async def end_lesson_series(
+    series_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Seriyi iki taraf da bitirebilir; bekleyen teklifler geri çekilir."""
+    return await lesson_series_service.end_series(db, series_id, user)
 
 
 @router.get("", response_model=list[BookingOut])
@@ -200,6 +254,17 @@ async def accept_booking(
     booking = await _get_booking_or_404(db, booking_id, user)
     _assert_yanit_verecek_taraf(booking, user)
     return await booking_service.accept(db, booking)
+
+
+@router.post("/{booking_id}/withdraw", response_model=BookingOut)
+async def withdraw_booking_offer(
+    booking_id: int,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Eğitmen yanıt bekleyen teklifini geri çeker (iptal sayılmaz)."""
+    booking = await _get_booking_or_404(db, booking_id, tutor)
+    return await booking_service.withdraw_offer(db, booking, tutor)
 
 
 @router.post("/{booking_id}/reject", response_model=BookingOut)

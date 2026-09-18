@@ -34,10 +34,16 @@ from schemas.time_off import (
     TimeOffPreviewIn,
     TimeOffPreviewOut,
 )
+from schemas.extra_availability import (
+    ExtraAvailabilityCreatedOut,
+    ExtraAvailabilityIn,
+    ExtraAvailabilityOut,
+)
 from schemas.tutor_analytics import Period, SuccessGoalOut, TutorOverviewOut
 from schemas.tutor_dashboard import TutorDashboardOut, TutorStudentOut
 from services import (
     booking_service,
+    extra_availability_service,
     search_service,
     time_off_service,
     tutor_analytics_service,
@@ -57,6 +63,13 @@ _promotion_limit = user_rate_limit(
 # İzin ekleme dersleri toplu iptal edip iade başlatabilir: ders yazma bütçesi.
 _time_off_limit = user_rate_limit(
     key="time_off",
+    limit=settings.RATE_LIMIT_BOOKING,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+
+# Ek zaman aralığı yazma: ders yazma bütçesi (izinle aynı).
+_extra_limit = user_rate_limit(
+    key="extra_availability",
     limit=settings.RATE_LIMIT_BOOKING,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
@@ -354,6 +367,58 @@ async def delete_my_time_off(
     db: AsyncSession = Depends(get_db),
 ):
     await time_off_service.delete_time_off(db, tutor, time_off_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── Takvim: ek zaman aralıkları — hepsi `/{tutor_id}`'den ÖNCE ────────────────
+
+
+@router.get("/me/extra-availability", response_model=list[ExtraAvailabilityOut])
+async def list_my_extra_availability(
+    start: datetime.datetime = Query(...),
+    end: datetime.datetime = Query(...),
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    if start.tzinfo is None or end.tzinfo is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "start ve end saat dilimi içermeli"
+        )
+    if end <= start or end - start > datetime.timedelta(
+        days=extra_availability_service.MAX_LIST_DAYS
+    ):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Aralık en fazla {extra_availability_service.MAX_LIST_DAYS} gün olabilir.",
+        )
+    return await extra_availability_service.list_extra(db, tutor, start=start, end=end)
+
+
+@router.post(
+    "/me/extra-availability",
+    response_model=ExtraAvailabilityCreatedOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_extra_limit)],
+)
+async def create_my_extra_availability(
+    payload: ExtraAvailabilityIn,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await extra_availability_service.create_extra(
+        db, tutor, start=payload.start_at, end=payload.end_at, now=_utcnow()
+    )
+
+
+@router.delete(
+    "/me/extra-availability/{extra_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_my_extra_availability(
+    extra_id: int,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    await extra_availability_service.delete_extra(db, tutor, extra_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

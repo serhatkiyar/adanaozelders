@@ -12,6 +12,13 @@ import { QuestionModal } from "@/components/QuestionModal";
 import { QaThreadChat } from "@/components/QaThreadChat";
 import { LessonTasksCard } from "@/components/LessonTasksCard";
 import { DersOnayKarti } from "@/components/booking/DersOnayKarti";
+import { Modal } from "@/components/ui/Modal";
+import {
+  ACIKLAMA,
+  DUGME_SATIR_IKINCIL,
+  DUGME_SATIR_TEHLIKE,
+} from "@/components/pano/stil";
+import { useSeri, useSeriBitir, useTeklifiGeriCek } from "@/hooks/useDersTeklifi";
 import {
   useBooking,
   useBookingAction,
@@ -29,7 +36,7 @@ import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { isLessonJoinable } from "@/lib/lesson";
 import { useMeetingStore } from "@/store/meetingStore";
-import { getErrorMessage } from "@/lib/errors";
+import { getErrorDetail, getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { BookingStatus, ROLE_IDS } from "@/types";
@@ -85,6 +92,12 @@ export default function LessonDetail() {
   const [commentBody, setCommentBody] = useState("");
   const addComment = useAddBookingComment();
   const delComment = useDeleteBookingComment();
+
+  // Haftalık seri (varsa): durum rozet ve "Seriyi bitir" düğmesi için.
+  const seri = useSeri(booking?.series_id);
+  const seriBitir = useSeriBitir();
+  const geriCek = useTeklifiGeriCek();
+  const [seriBitirAcik, setSeriBitirAcik] = useState(false);
 
   if (isLoading) return <FullScreenSpinner />;
 
@@ -150,6 +163,26 @@ export default function LessonDetail() {
       }
     );
   };
+
+  const teklifiGeriCek = () =>
+    geriCek.mutate(bookingId, {
+      onSuccess: () => toast.success("Teklifini geri çektin."),
+      onError: (err) => toast.error(getErrorDetail(err, "Teklif geri çekilemedi.")),
+    });
+
+  const seriyiBitir = () => {
+    if (!booking.series_id) return;
+    seriBitir.mutate(booking.series_id, {
+      onSuccess: () => {
+        toast.success("Haftalık seri sona erdi.");
+        setSeriBitirAcik(false);
+      },
+      onError: (err) => toast.error(getErrorDetail(err, "Seri bitirilemedi.")),
+    });
+  };
+  const canWithdraw =
+    role === "TUTOR" && isPending && !!booking.offered_by_tutor && !booking.payment;
+  const seriAktif = !!booking.series_id && seri.data?.status === "ACTIVE";
 
   const run = (action: typeof accept, okMsg: string) =>
     action.mutate(bookingId, {
@@ -228,6 +261,12 @@ export default function LessonDetail() {
             {price !== null && (
               <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold ">
                 {formatTRY(booking.price)}
+              </span>
+            )}
+            {booking.series_id && (
+              <span className="rounded-lg bg-rose-50 px-2.5 py-1 font-medium text-rose-700">
+                Haftalık seri
+                {seri.data?.status === "ENDED" ? " · sona erdi" : ""}
               </span>
             )}
           </div>
@@ -350,6 +389,12 @@ export default function LessonDetail() {
               İptal nedeni: {booking.cancel_reason}
             </p>
           )}
+          {/* Reddedilen derste açıklama: geri çekilen teklif ya da biten seri. */}
+          {booking.status === BookingStatus.REJECTED && booking.cancel_reason && (
+            <p className="mt-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm text-slate-600 ">
+              {booking.cancel_reason}
+            </p>
+          )}
 
           {/* Öğrenci onayı / sorun bildirimi (Modül 2) */}
           {isClient && (
@@ -420,6 +465,25 @@ export default function LessonDetail() {
                 </button>
               </>
             )}
+            {/* Eğitmen, yanıt bekleyen kendi teklifini geri çeker: ders iptal
+                sayılmaz (sunucu REJECTED yazar); ödemesi olan derste sunucu 409 verir. */}
+            {canWithdraw && (
+              <button
+                disabled={geriCek.isPending}
+                onClick={teklifiGeriCek}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-60 "
+              >
+                {geriCek.isPending ? "Geri çekiliyor…" : "Teklifi geri çek"}
+              </button>
+            )}
+            {seriAktif && role !== null && (
+              <button
+                onClick={() => setSeriBitirAcik(true)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 active:scale-95 "
+              >
+                Seriyi bitir
+              </button>
+            )}
             {role === "TUTOR" && isAccepted && (
               <button
                 disabled={busy}
@@ -438,7 +502,9 @@ export default function LessonDetail() {
                 Ertele
               </button>
             )}
-            {canMessage && (
+            {/* Ödemesiz bekleyen kendi teklifinde eğitmene "İptal" yerine yalnız
+                "Teklifi geri çek" gösterilir: iptal, iptal oranı metriğine yazılır. */}
+            {canMessage && !canWithdraw && (
               <button
                 onClick={() => setShowCancel(true)}
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600 active:scale-95 "
@@ -651,6 +717,29 @@ export default function LessonDetail() {
           onReschedule={isClient ? () => setShowReschedule(true) : undefined}
         />
       )}
+      <Modal
+        open={seriBitirAcik}
+        onClose={() => setSeriBitirAcik(false)}
+        title="Haftalık seriyi bitir"
+      >
+        <p className={ACIKLAMA}>
+          Seriden yeni teklif gelmeyecek; bekleyen teklifler geri çekilir, kabul edilmiş dersler
+          takviminde kalır.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => setSeriBitirAcik(false)}>
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            className={DUGME_SATIR_TEHLIKE}
+            onClick={seriyiBitir}
+            disabled={seriBitir.isPending}
+          >
+            {seriBitir.isPending ? "Bitiriliyor…" : "Seriyi bitir"}
+          </button>
+        </div>
+      </Modal>
       {showReschedule && (
         <RescheduleModal
           bookingId={bookingId}

@@ -136,6 +136,8 @@ async def test_her_ders_sorgusu_egitmene_ve_silinmemise_bagli():
         "/api/v1/tutors/me/time-off",
         "/api/v1/tutors/me/time-off/preview",
         "/api/v1/tutors/me/time-off/{time_off_id}",
+        "/api/v1/tutors/me/extra-availability",
+        "/api/v1/tutors/me/extra-availability/{extra_id}",
         "/api/v1/tutors/me/analytics/overview",
         "/api/v1/tutors/me/analytics/goals",
     ],

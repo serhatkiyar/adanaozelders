@@ -512,6 +512,13 @@ async def toggle_dispute(db: AsyncSession, booking: Booking, is_disputed: bool, 
             )
             .exists()
         )
+        # Önce satır kilidi: auto-complete kilidi tutarken UPDATE bekleyip
+        # yeniden denerse PostgreSQL WHERE'i eski anlık görüntüyle değerlendirir
+        # ve yeni serbest bırakılmış ödemeyi göremez. Kilit alındıktan sonra
+        # UPDATE yeni bir deyimdir; taze görüntüyle `dagitilmis`'i görür.
+        await db.execute(
+            select(Booking.id).where(Booking.id == booking.id).with_for_update()
+        )
         result = await db.execute(
             update(Booking)
             .where(

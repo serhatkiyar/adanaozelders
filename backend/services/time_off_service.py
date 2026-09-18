@@ -5,7 +5,7 @@
 * ACCEPTED ve derse ``LESSON_LATE_CANCEL_HOURS``'tan az kalmış (ya da başlamış)
   → izin **engellenir** (409). Eğitmenin 12 saat kuralı izinle aşılamaz.
 * ACCEPTED ve uzak → eğitmen iptali (`booking_service.cancel`), ödenmişse iade.
-* PENDING → otomatik red (`booking_service.reject`), ödenmişse iade.
+* PENDING → eğitmen teklifiyse geri çekilir (`_teklifi_geri_cek_yaz`), değilse otomatik red (`booking_service.reject`), ödenmişse iade.
 
 Yeni ders/onay/erteleme `booking_service._assert_not_on_time_off` ile izne
 çarpar; yarış `booking_service._lock_tutor` ile kapanır.
@@ -23,7 +23,7 @@ from models.booking import Booking, BookingStatus
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from models.tutor_time_off import TutorTimeOff
-from services import booking_service
+from services import booking_service, notification_service
 
 MAX_TIME_OFF_DAYS = 60
 #: Takvimin tek istekte okuyabileceği en uzun aralık (iki aylık görünüm payı).
@@ -210,7 +210,21 @@ async def create_time_off(
             # Artık izinle kesişmeyen ders iptal/red edilmez, atlanır.
             if not (locked.start_at < end and locked.end_at > start):
                 raise HTTPException(status.HTTP_409_CONFLICT, "Booking moved")
-            if locked.status == BookingStatus.PENDING:
+            if locked.status == BookingStatus.PENDING and locked.offered_by_tutor:
+                # Eğitmenin kendi teklifi geri çekilir: öğrenci reddi sayılmaz
+                # (haftalık seri K10) ve eğitmene "reddedildi" bildirimi gitmez.
+                # Ödemesi olan teklif claim'e takılır; iade için red yoluna düşer.
+                if await booking_service._teklifi_geri_cek_yaz(db, locked, reason=reason):
+                    await notification_service.notify(
+                        db,
+                        user_id=locked.client_id,
+                        role_id=ROLE_IDS[RoleType.CLIENT],
+                        message=f"{tutor.full_name} ders teklifini geri çekti. {reason}",
+                        link=f"/ders-talepleri/{locked.id}",
+                    )
+                else:
+                    await booking_service.reject(db, locked, reason=reason)
+            elif locked.status == BookingStatus.PENDING:
                 await booking_service.reject(db, locked, reason=reason)
             else:
                 await booking_service.cancel(db, locked, cancelled_by=tutor, reason=reason)

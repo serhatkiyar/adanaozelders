@@ -21,6 +21,7 @@ from services import (
     booking_service,
     delivery_service,
     escrow_reconciler,
+    lesson_series_service,
     library_exam_service,
     payment_gates,
     study_reservation_service,
@@ -83,6 +84,7 @@ _LOCK_ESCROW = 918_301_002
 _LOCK_DELIVERY = 918_301_003
 _LOCK_OUTBOX = 918_301_004
 _LOCK_SUPPLIER_SYNC = 918_301_005
+_LOCK_SERIES = 918_301_006
 
 
 async def _reminder_tick() -> None:
@@ -115,10 +117,18 @@ async def _reminder_tick() -> None:
         # Teslimat watchdog'u: saatlerce ACTIVE kalan turları kapat.
         await delivery_service.expire_stale_runs(session)
 
+    async def _series(session) -> None:
+        # Haftalık ders serisi: pencereye giren haftaları teklif olarak üretir.
+        # Seri başına commit eder; KENDİ session'ında koşar.
+        await lesson_series_service.generate_due(
+            session, now=booking_service._utcnow()
+        )
+
     # Sırayla ama BAĞIMSIZ: biri düşerse diğerleri yine de çalışır.
     await _leader_job("hatırlatmalar", _LOCK_REMINDERS, _reminders)
     await _leader_job("escrow mutabakatı", _LOCK_ESCROW, _escrow)
     await _leader_job("teslimat watchdog", _LOCK_DELIVERY, _delivery)
+    await _leader_job("haftalık seri", _LOCK_SERIES, _series)
 
 
 async def _reminder_loop() -> None:

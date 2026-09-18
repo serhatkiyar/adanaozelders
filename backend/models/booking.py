@@ -108,6 +108,10 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     offered_by_tutor: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    #: Haftalık seriden üretilen teklif; seri silinirse bağ düşer.
+    series_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lesson_series.id", ondelete="SET NULL"), nullable=True
+    )
 
     tutor: Mapped["Tutor"] = relationship(back_populates="bookings")
     client: Mapped["Client"] = relationship(back_populates="bookings")
@@ -164,5 +168,10 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
             "tutor_id",
             "status",
             postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_bookings_series",
+            "series_id",
+            postgresql_where=text("series_id IS NOT NULL"),
         ),
     )

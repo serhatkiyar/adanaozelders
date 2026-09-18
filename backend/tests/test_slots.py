@@ -70,3 +70,54 @@ def test_utc3_donusumu_gun_bolumu_ve_24_saat_kurali():
         (_utc(2026, 9, 18, 21, 0), "busy"),  # now + 23.5 sa
         (_utc(2026, 9, 18, 21, 30), "available"),  # tam now + 24 sa
     ]
+
+
+# ── Ek zaman aralığı: müsaitlik = şablon ∪ ek aralık ─────────────────────────
+
+_NOW = _utc(2026, 9, 17, 6, 0)  # İstanbul 09:00, Perşembe
+_CUMARTESI = [W(weekday=5, start_minute=1080, end_minute=1200)]  # 18:00–20:00
+
+
+def _durumlar(gunler) -> dict[datetime.datetime, str]:
+    return {s["start_at"]: s["status"] for s in gunler[0]["slots"]}
+
+
+def test_sablonu_olmayan_gunde_ek_aralik_slot_uretir():
+    # Pazar 10:00–12:00 İstanbul; şablonda Pazar yok.
+    ek = [(_utc(2026, 9, 20, 7, 0), _utc(2026, 9, 20, 9, 0))]
+    gunler = build_slots(
+        _CUMARTESI, [], [], extras=ek,
+        day_from=datetime.date(2026, 9, 20), days=1, duration_min=60, now=_NOW,
+    )
+    assert _durumlar(gunler) == {
+        _utc(2026, 9, 20, 7, 0): "available",
+        _utc(2026, 9, 20, 7, 30): "available",
+        _utc(2026, 9, 20, 8, 0): "available",
+    }
+
+
+def test_bitisik_sablon_ve_ek_aralik_birlesir():
+    # Şablon 18–20 + ek 20–22: 19:30–20:30 dersi ikisinin sınırından geçer.
+    ek = [(_utc(2026, 9, 19, 17, 0), _utc(2026, 9, 19, 19, 0))]
+    gunler = build_slots(
+        _CUMARTESI, [], [], extras=ek,
+        day_from=datetime.date(2026, 9, 19), days=1, duration_min=60, now=_NOW,
+    )
+    durum = _durumlar(gunler)
+    assert durum[_utc(2026, 9, 19, 16, 30)] == "available"  # 19:30
+    assert _utc(2026, 9, 19, 18, 30) not in durum  # 21:30 + 60 dk 22:00'ı aşar
+    assert len(durum) == 7  # 18:00 … 21:00
+
+
+def test_izinle_kesisen_ek_aralik_slotu_dolu():
+    ek = [(_utc(2026, 9, 20, 7, 0), _utc(2026, 9, 20, 9, 0))]  # Pazar 10–12
+    izin = [(_utc(2026, 9, 20, 7, 30), _utc(2026, 9, 20, 8, 0))]  # 10:30–11:00
+    gunler = build_slots(
+        [], [], izin, extras=ek,
+        day_from=datetime.date(2026, 9, 20), days=1, duration_min=60, now=_NOW,
+    )
+    assert _durumlar(gunler) == {
+        _utc(2026, 9, 20, 7, 0): "busy",
+        _utc(2026, 9, 20, 7, 30): "busy",
+        _utc(2026, 9, 20, 8, 0): "available",
+    }

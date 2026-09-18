@@ -204,6 +204,8 @@ class BookingOut(BaseModel):
     # İptali yapan rol id'si ve anı (Modül 7); eski iptallerde NULL.
     cancelled_by_role: int | None = None
     cancelled_at: datetime.datetime | None = None
+    #: Haftalık seriden üretilen teklifse serinin id'si.
+    series_id: int | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -290,3 +292,84 @@ class SlotsOut(BaseModel):
     window_end: datetime.datetime
     policy: SlotPolicyOut
     price: SlotPriceOut
+
+
+# ── Haftalık ders teklifi serisi ─────────────────────────────────────────────
+
+
+class LessonSeriesIn(BaseModel):
+    """Eğitmenin haftalık ders serisi teklifi.
+
+    Ücret tek teklifteki gibi istemciden gelebilir (indirim), sunucu ilan
+    ücretinin üstüne çıkılmasını reddeder ve her üretimde
+    ``min(seri ücreti, güncel ilan ücreti × süre)`` uygular.
+    """
+
+    client_id: int
+    first_start_at: datetime.datetime
+    duration_min: Literal[30, 60, 90, 120]
+    weeks: int = Field(ge=2, le=12)
+    mode: TeachingMode | None = None
+    notes: str | None = Field(default=None, max_length=500)
+    location: str | None = Field(default=None, max_length=300)
+    location_lat: float | None = None
+    location_lng: float | None = None
+    price: Decimal | None = Field(default=None, ge=0, le=100000, decimal_places=2)
+
+    @model_validator(mode="after")
+    def _saat_dilimi_zorunlu(self) -> "LessonSeriesIn":
+        if self.first_start_at.tzinfo is None:
+            raise ValueError("first_start_at saat dilimi içermeli")
+        return self
+
+
+class SeriesOccurrenceOut(BaseModel):
+    index: int
+    start_at: datetime.datetime
+    end_at: datetime.datetime
+    status: Literal["OFFER_NOW", "LATER", "CONFLICT"]
+    reason: (
+        Literal[
+            "TOO_SOON",
+            "TIME_OFF",
+            "OUTSIDE_AVAILABILITY",
+            "TUTOR_BUSY",
+            "STUDENT_BUSY",
+        ]
+        | None
+    ) = None
+
+
+class LessonSeriesPreviewOut(BaseModel):
+    occurrences: list[SeriesOccurrenceOut]
+    offer_now_count: int
+    later_count: int
+    conflict_count: int
+    window_end: datetime.datetime
+    # İlk ders için sunucuda hesaplanan ders başı ücret.
+    price: SlotPriceOut
+
+
+class LessonSeriesOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    tutor_id: int
+    client_id: int
+    weekday: int
+    start_minute: int
+    duration_min: int
+    first_date: datetime.date
+    weeks: int
+    price: Decimal | None = None
+    mode: str | None = None
+    status: Literal["ACTIVE", "ENDED"]
+    generated_until: datetime.date | None = None
+    ended_at: datetime.datetime | None = None
+    created_at: datetime.datetime
+
+
+class LessonSeriesCreatedOut(BaseModel):
+    series: LessonSeriesOut
+    offered: list[BookingOut]
+    skipped: list[SeriesOccurrenceOut]

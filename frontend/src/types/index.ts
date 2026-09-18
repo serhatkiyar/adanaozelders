@@ -788,6 +788,8 @@ export interface BookingOut {
   is_free_lesson?: boolean;
   /** Dersi eğitmen teklif etti; PENDING'de yanıtı öğrenci verir (Modül 8). */
   offered_by_tutor?: boolean;
+  /** Haftalık seriden üretilen teklifse serinin kimliği. */
+  series_id?: number | null;
   notes?: string | null;
   cancel_reason?: string | null;
   mode?: string | null; // ONLINE | IN_PERSON
@@ -950,6 +952,87 @@ export interface BookingOfferCreate {
   mode?: TeachingMode | null;
   notes?: string | null;
   price?: string | null;
+}
+
+/* ============================ EK ZAMAN ARALIĞI ============================ */
+
+/** `GET /tutors/me/extra-availability` satırı — şablon dışı, tek seferlik müsait aralık. */
+export interface ExtraAvailability {
+  id: number;
+  start_at: string;
+  end_at: string;
+}
+
+export interface ExtraAvailabilityCreated {
+  extra: ExtraAvailability;
+  /** MIN_NOTICE: aralığın 24 saatten yakın kısmı öğrencilere kapalı. */
+  warnings?: "MIN_NOTICE"[];
+}
+
+/* ============================ HAFTALIK DERS SERİSİ ============================ */
+
+export type SeriesDuration = 30 | 60 | 90 | 120;
+
+/** Haftalık seri isteği; ücret boşsa ilan ücreti uygulanır (hesap sunucuda). */
+export interface LessonSeriesCreate {
+  client_id: number;
+  first_start_at: string;
+  duration_min: SeriesDuration;
+  weeks: number;
+  mode?: TeachingMode | null;
+  notes?: string | null;
+  location?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  price?: string | null;
+}
+
+export type SeriesOccurrenceStatus = "OFFER_NOW" | "LATER" | "CONFLICT";
+export type SeriesConflictReason =
+  | "TOO_SOON"
+  | "TIME_OFF"
+  | "OUTSIDE_AVAILABILITY"
+  | "TUTOR_BUSY"
+  | "STUDENT_BUSY";
+
+export interface SeriesOccurrence {
+  index: number;
+  start_at: string;
+  end_at: string;
+  status: SeriesOccurrenceStatus;
+  reason: SeriesConflictReason | null;
+}
+
+export interface LessonSeriesPreview {
+  occurrences: SeriesOccurrence[];
+  offer_now_count: number;
+  later_count: number;
+  conflict_count: number;
+  window_end: string;
+  price: { amount: string | null; currency: "TRY" };
+}
+
+export interface LessonSeries {
+  id: number;
+  tutor_id: number;
+  client_id: number;
+  weekday: number;
+  start_minute: number;
+  duration_min: number;
+  first_date: string;
+  weeks: number;
+  price: string | null;
+  mode: string | null;
+  status: "ACTIVE" | "ENDED";
+  generated_until: string | null;
+  ended_at: string | null;
+  created_at: string;
+}
+
+export interface LessonSeriesCreated {
+  series: LessonSeries;
+  offered: BookingOut[];
+  skipped: SeriesOccurrence[];
 }
 
 /* ============================ EĞİTMEN ANALİZİ (Modül 7) ============================ */
