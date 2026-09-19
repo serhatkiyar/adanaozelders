@@ -6,6 +6,7 @@ __pycache__/
 .env.prod
 .env.production
 .env.*.local
+.env.bak
 !.env.prod.example
 # Test kapsama çıktısı
 .coverage
