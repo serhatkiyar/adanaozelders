@@ -647,8 +647,8 @@ function PaymentsSection() {
         Ödeme bilgileri
       </h2>
       <p className="mb-5 text-sm text-slate-500 ">
-        Kazançların iyzico üzerinden doğrudan IBAN'ına yatar; platformda para
-        tutulmaz. Tutarlar ve işlem dökümü <strong>Bakiyem</strong> sayfasında.
+        Hakedişin, kayıtlı IBAN'ına banka havalesiyle ödenir; ödeme kaydı
+        platformda tutulur. Tutarlar ve işlem dökümü <strong>Bakiyem</strong> sayfasında.
       </p>
       {user.role_id === ROLE_IDS.TUTOR ? <PayoutSection /> : <OperatorPayout />}
     </section>
