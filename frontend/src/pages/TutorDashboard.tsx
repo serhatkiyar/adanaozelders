@@ -173,35 +173,41 @@ export default function TutorDashboard() {
               onJoinMeeting={derseKatil}
             />
 
-            {pano.upcoming.length > 0 && (
-              <Bolum
-                baslik="Önümüzdeki 3 gün"
-                sag={
-                  pano.upcoming_count > pano.upcoming.length ? (
-                    <Link
-                      to={ROUTES.tutorCalendar}
-                      className={METIN_BAGLANTI}
-                    >
-                      Tümünü gör ({pano.upcoming_count})
-                    </Link>
-                  ) : undefined
-                }
-              >
-                {pano.upcoming.map((b) => (
+            <Bolum
+              baslik="Önümüzdeki 3 gün"
+              sag={
+                pano.upcoming_count > pano.upcoming.length ? (
+                  <Link
+                    to={ROUTES.tutorCalendar}
+                    className={METIN_BAGLANTI}
+                  >
+                    Tümünü gör ({pano.upcoming_count})
+                  </Link>
+                ) : undefined
+              }
+            >
+              {pano.upcoming.length > 0 ? (
+                pano.upcoming.map((b) => (
                   <DersKarti key={b.id} booking={b} onJoinMeeting={derseKatil} />
-                ))}
-              </Bolum>
-            )}
+                ))
+              ) : (
+                <p className={`py-4 text-center ${ACIKLAMA}`}>
+                  Önümüzdeki 3 günde planlanmış dersin yok.
+                </p>
+              )}
+            </Bolum>
 
-            {pano.pending.length > 0 && (
-              <Bolum id="bekleyen-istekler" baslik="Yanıt bekleyen istekler">
-                {pano.pending.map((b) => (
+            <Bolum id="bekleyen-istekler" baslik="Yanıt bekleyen istekler">
+              {pano.pending.length > 0 ? (
+                pano.pending.map((b) => (
                   <DersKarti key={b.id} booking={b} onJoinMeeting={derseKatil} />
-                ))}
-              </Bolum>
-            )}
+                ))
+              ) : (
+                <p className={`py-4 text-center ${ACIKLAMA}`}>Yanıt bekleyen isteğin yok.</p>
+              )}
+            </Bolum>
 
-                <TumDersler onJoinMeeting={derseKatil} />
+            <TumDersler onJoinMeeting={derseKatil} />
               </div>
 
               <div className="min-w-0 space-y-8">

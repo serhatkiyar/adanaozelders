@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMyEducations } from "@/hooks/useEducations";
+import { DUGME_SATIR_BIRINCIL, ETIKET, KART, KUCUK_ACIKLAMA } from "@/components/pano/stil";
 import { parseMoney } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import type { TutorOut } from "@/types";
@@ -46,9 +47,9 @@ export function ProfileCompleteness({
   const noSubjects = (tutor.subjects?.length ?? 0) === 0;
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-marka/20 ">
+    <div className={`${KART} ring-1 ring-marka/20`}>
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-900 ">
+        <h3 className={ETIKET}>
           Profilini tamamla
         </h3>
         <span className="text-sm font-bold text-marka-metin ">
@@ -61,7 +62,7 @@ export function ProfileCompleteness({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="mt-3 text-xs text-slate-500 ">
+      <p className={`mt-3 ${KUCUK_ACIKLAMA}`}>
         Eksik: {missing.join(", ")}.
         {noSubjects && (
           <span className="font-medium text-amber-600 ">
@@ -82,7 +83,7 @@ export function ProfileCompleteness({
       {showLink && (
         <Link
           to={ROUTES.tutorListing}
-          className="mt-3 inline-block rounded-xl bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95"
+          className={`mt-3 ${DUGME_SATIR_BIRINCIL}`}
         >
           İlan Ayarları'na git →
         </Link>

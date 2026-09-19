@@ -9,6 +9,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { MapPicker } from "@/components/MapPicker";
 import { ADANA_DISTRICTS } from "@/lib/districts";
 import { ROUTES } from "@/lib/routes";
+import { ErrorState } from "@/components/admin/ui/PageState";
 import {
   useMyTutorProfile,
   useTutorListingAction,
@@ -113,7 +114,7 @@ const satirGirdiCls =
 
 export default function TutorSettings() {
   const uid = useId();
-  const { data, isLoading, isError, error } = useMyTutorProfile();
+  const { data, isLoading, isError, error, refetch } = useMyTutorProfile();
   const { data: currentUser } = useCurrentUser();
   const updateProfile = useUpdateTutorProfile();
   const submitAction = useTutorListingAction("submit");
@@ -276,9 +277,10 @@ export default function TutorSettings() {
         <div className="space-y-6 pb-12">
         {isLoading || !data ? (
           isError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-base leading-6 text-red-700">
-              {getErrorMessage(error, "İlan profili yüklenemedi.")}
-            </div>
+            <ErrorState
+              description={getErrorMessage(error, "İlan profili yüklenemedi.")}
+              onRetry={() => void refetch()}
+            />
           ) : (
             <div className="space-y-4">
               <div className="h-28 animate-pulse rounded-lg bg-slate-100" />
@@ -757,22 +759,42 @@ export default function TutorSettings() {
               ilana ait bir eylemdir, hesaba değil — yeri de burasıdır.
               Silinirse rota ayakta kalır, sayfa çalışır, hiçbir test kırılmaz;
               yalnız eğitmen oraya gidemez. Nöbetçi: `panoSeridi.test.tsx`. */}
-          <Link
-            to={ROUTES.tutorPromotion}
-            className={`flex items-center justify-between gap-4 transition hover:bg-slate-50 ${KART}`}
-          >
-            <span className="min-w-0">
-              <span className={`block ${ETIKET}`}>
-                İlanını öne çıkar
+          {data.status === TutorStatus.APPROVED ? (
+            <Link
+              to={ROUTES.tutorPromotion}
+              className={`flex items-center justify-between gap-4 transition hover:bg-slate-50 ${KART}`}
+            >
+              <span className="min-w-0">
+                <span className={`block ${ETIKET}`}>
+                  İlanını öne çıkar
+                </span>
+                <span className={`mt-1 block ${ACIKLAMA}`}>
+                  Arama sonuçlarının üstündeki blokta "Reklam" ibaresiyle görün.
+                </span>
               </span>
-              <span className={`mt-1 block ${ACIKLAMA}`}>
-                Arama sonuçlarının üstündeki blokta "Reklam" ibaresiyle görün.
+              <span className={`shrink-0 ${METIN_BAGLANTI}`}>
+                Paketler →
               </span>
-            </span>
-            <span className={`shrink-0 ${METIN_BAGLANTI}`}>
-              Paketler →
-            </span>
-          </Link>
+            </Link>
+          ) : (
+            /* İlan yayında değilken paket satılamaz (backend de 409 döner:
+               tutor_promotion_service.purchase). Kart yine de duruyor ki özellik
+               görünsün; yalnız bağlantı kapalı — tıklayınca hiçbir paket
+               alamayacağı bir sayfaya gitmesin. */
+            <div className={`flex items-center justify-between gap-4 ${KART}`}>
+              <span className="min-w-0">
+                <span className={`block ${ETIKET}`}>
+                  İlanını öne çıkar
+                </span>
+                <span className={`mt-1 block ${ACIKLAMA}`}>
+                  İlanın yayına girdikten sonra paket alabilirsin.
+                </span>
+              </span>
+              <span className="shrink-0 text-base leading-6 text-slate-400">
+                Yayında değil
+              </span>
+            </div>
+          )}
 
           {/* DEĞERLENDİRMELER — sayfanın TEK girişi (18 Eyl 2026): hesap
               menüsünden kalktı (Preply'da da ayrı yeri yok). Yorumlar ilanın

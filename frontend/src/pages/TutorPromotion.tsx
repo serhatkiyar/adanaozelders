@@ -1,15 +1,21 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { DashboardShell } from "@/components/DashboardShell";
 import {
-  buyPromotion,
-  fetchMyPromotions,
-  fetchPromotionPackages,
-  type PromotionPackage,
-  type TutorPromotion as Promotion,
-} from "@/api/tutors";
+  ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_BIRINCIL,
+  ETIKET,
+  KUCUK_ACIKLAMA,
+  SAYFA_BASLIGI,
+} from "@/components/pano/stil";
+import type { PromotionPackage, TutorPromotion as Promotion } from "@/api/tutors";
+import {
+  useBuyPromotion,
+  useMyPromotions,
+  usePromotionPackages,
+} from "@/hooks/useTutorPromotion";
 import { useMyTutorProfile } from "@/hooks/useTutorProfile";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
@@ -48,37 +54,14 @@ function kuyrukta(p: Promotion): boolean {
 }
 
 export default function TutorPromotion() {
-  const qc = useQueryClient();
   const { data: profile } = useMyTutorProfile();
   const [seciliGun, setSeciliGun] = useState<number | null>(null);
   const [onay, setOnay] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
 
-  const { data: paketler, isLoading: paketYukleniyor } = useQuery({
-    queryKey: ["tutors", "promotion-packages"],
-    queryFn: fetchPromotionPackages,
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const { data: kayitlar } = useQuery({
-    queryKey: ["tutors", "me", "promotions"],
-    queryFn: fetchMyPromotions,
-  });
-
-  const satinAl = useMutation({
-    mutationFn: buyPromotion,
-    onSuccess: (sonuc) => {
-      if (sonuc.redirect_url) {
-        // Hosted checkout: tahsilat sağlayıcı sayfasında tamamlanır.
-        window.location.href = sonuc.redirect_url;
-        return;
-      }
-      setOnay(false);
-      setSeciliGun(null);
-      qc.invalidateQueries({ queryKey: ["tutors", "me", "promotions"] });
-    },
-    onError: (e) => setHata(getErrorMessage(e, "Satın alma tamamlanamadı.")),
-  });
+  const { data: paketler, isLoading: paketYukleniyor } = usePromotionPackages();
+  const { data: kayitlar } = useMyPromotions();
+  const satinAl = useBuyPromotion();
 
   const aktif = (kayitlar ?? []).find(yururlukte);
   const bekleyen = (kayitlar ?? []).find(kuyrukta);
@@ -87,10 +70,8 @@ export default function TutorPromotion() {
   return (
     <DashboardShell title="İlanımı öne çıkar" genislik="dar">
       <div className="px-1 pb-16 pt-2 sm:px-2">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          İlanını öne çıkar
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+        <h1 className={SAYFA_BASLIGI}>İlanını öne çıkar</h1>
+        <p className={`mt-3 ${ACIKLAMA}`}>
           İlanın, öğrencilerin arama sonuçlarının üstündeki blokta{" "}
           <span className="font-medium text-slate-900">Reklam</span> ibaresiyle
           gösterilir. Blokta aynı anda en fazla üç ilan bulunur ve aramanın
@@ -106,15 +87,13 @@ export default function TutorPromotion() {
         {/* ── Durum ── */}
         {aktif && (
           <div className="mt-8 border-t border-slate-200 pt-6">
-            <p className="text-sm font-semibold text-slate-900">
-              İlanın şu anda öne çıkıyor
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className={ETIKET}>İlanın şu anda öne çıkıyor</p>
+            <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>
               {tarih(aktif.ends_at)} tarihine kadar · {kalanGun(aktif.ends_at!)}{" "}
               gün kaldı
             </p>
             {bekleyen && (
-              <p className="mt-1 text-sm text-slate-500">
+              <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>
                 Sırada {bekleyen.package_days} günlük bir paketin daha var;{" "}
                 {tarih(bekleyen.starts_at)} tarihinde başlayacak.
               </p>
@@ -124,7 +103,7 @@ export default function TutorPromotion() {
 
         {!onayli && (
           <div className="mt-8 border-t border-slate-200 pt-6">
-            <p className="text-sm text-slate-600">
+            <p className={ACIKLAMA}>
               Öne çıkarma yalnız onaylanmış ilanlar için satın alınabilir.
               İlanın onaylandığında bu sayfadan paket alabilirsin.
             </p>
@@ -140,11 +119,11 @@ export default function TutorPromotion() {
         {/* ── Paketler ── */}
         {onayli && (
           <div className="mt-8 border-t border-slate-200 pt-6">
-            <h2 className="text-base font-semibold text-slate-900">
+            <h2 className={BOLUM_BASLIGI}>
               {aktif ? "Süreni uzat" : "Paket seç"}
             </h2>
             {aktif && (
-              <p className="mt-1 text-sm text-slate-500">
+              <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>
                 Yeni paket mevcut sürenin bitiminde başlar; süreler üst üste
                 binmez.
               </p>
@@ -153,7 +132,7 @@ export default function TutorPromotion() {
             {paketYukleniyor ? (
               <div className="mt-5 space-y-3">
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100" />
+                  <div key={i} className="h-14 animate-pulse rounded-lg bg-slate-100" />
                 ))}
               </div>
             ) : (
@@ -172,7 +151,7 @@ export default function TutorPromotion() {
               </ul>
             )}
 
-            <label className="mt-6 flex cursor-pointer items-start gap-3 text-sm text-slate-600">
+            <label className={`mt-6 flex cursor-pointer items-start gap-3 ${ACIKLAMA}`}>
               <input
                 type="checkbox"
                 checked={onay}
@@ -199,10 +178,25 @@ export default function TutorPromotion() {
               onClick={() => {
                 setHata(null);
                 if (seciliGun) {
-                  satinAl.mutate({ days: seciliGun, terms_accepted: onay });
+                  satinAl.mutate(
+                    { days: seciliGun, terms_accepted: onay },
+                    {
+                      onSuccess: (sonuc) => {
+                        if (sonuc.redirect_url) {
+                          // Hosted checkout: tahsilat sağlayıcı sayfasında tamamlanır.
+                          window.location.href = sonuc.redirect_url;
+                          return;
+                        }
+                        setOnay(false);
+                        setSeciliGun(null);
+                      },
+                      onError: (e) =>
+                        setHata(getErrorMessage(e, "Satın alma tamamlanamadı.")),
+                    }
+                  );
                 }
               }}
-              className="mt-6 rounded-xl bg-marka px-5 py-3 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+              className={`mt-6 ${DUGME_BIRINCIL}`}
             >
               {satinAl.isPending ? "Yönlendiriliyor…" : "Öne çıkar"}
             </button>
@@ -210,32 +204,34 @@ export default function TutorPromotion() {
         )}
 
         {/* ── Geçmiş ── */}
-        {(kayitlar ?? []).length > 0 && (
+        {kayitlar && (
           <div className="mt-12 border-t border-slate-200 pt-6">
-            <h2 className="text-base font-semibold text-slate-900">
-              Satın alma geçmişi
-            </h2>
-            <ul className="mt-4 divide-y divide-slate-200">
-              {(kayitlar ?? []).map((kayit) => (
-                <li
-                  key={kayit.id}
-                  className="flex items-baseline justify-between gap-4 py-3 text-sm"
-                >
-                  <div className="min-w-0">
-                    <p className="text-slate-900">{kayit.package_days} gün</p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {kayit.starts_at
-                        ? `${tarih(kayit.starts_at)} – ${tarih(kayit.ends_at)}`
-                        : tarih(kayit.created_at)}
-                      {kayit.cancelled_at ? " · iptal edildi" : ""}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-slate-600">
-                    {formatTRY(parseMoney(kayit.price) ?? 0)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <h2 className={BOLUM_BASLIGI}>Satın alma geçmişi</h2>
+            {kayitlar.length === 0 ? (
+              <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>Henüz öne çıkarma geçmişin yok.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-slate-200">
+                {kayitlar.map((kayit) => (
+                  <li
+                    key={kayit.id}
+                    className="flex items-baseline justify-between gap-4 py-3 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-slate-900">{kayit.package_days} gün</p>
+                      <p className={`mt-0.5 ${KUCUK_ACIKLAMA}`}>
+                        {kayit.starts_at
+                          ? `${tarih(kayit.starts_at)} – ${tarih(kayit.ends_at)}`
+                          : tarih(kayit.created_at)}
+                        {kayit.cancelled_at ? " · iptal edildi" : ""}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-slate-600">
+                      {formatTRY(parseMoney(kayit.price) ?? 0)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </div>

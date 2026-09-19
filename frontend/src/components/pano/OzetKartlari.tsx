@@ -35,7 +35,7 @@ function Kart({
 /**
  * Kısa özet. Kazanç rakamları `GET /payments/earnings`, ders sayısı pano
  * ucundan gelir; tarayıcıda sayım yapılmaz. Kazanç kartları Kazançlar
- * sayfasına açılır.
+ * sayfasına, tamamlanan ders sayısı takvime açılır.
  */
 export function OzetKartlari({
   earnings,
@@ -59,7 +59,12 @@ export function OzetKartlari({
         alt={escrowWording ? "Ders bitince hesabına geçer" : "Onay bekleyen ödemeler"}
         to={ROUTES.tutorEarnings}
       />
-      <Kart etiket="Bu ay tamamlanan" deger={String(completedThisMonth)} alt="ders" />
+      <Kart
+        etiket="Bu ay tamamlanan"
+        deger={String(completedThisMonth)}
+        alt="ders"
+        to={ROUTES.tutorCalendar}
+      />
     </section>
   );
 }
