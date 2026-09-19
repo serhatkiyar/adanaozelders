@@ -140,6 +140,7 @@ async def test_her_ders_sorgusu_egitmene_ve_silinmemise_bagli():
         "/api/v1/tutors/me/extra-availability/{extra_id}",
         "/api/v1/tutors/me/analytics/overview",
         "/api/v1/tutors/me/analytics/goals",
+        "/api/v1/tutors/me/analytics/series",
     ],
 )
 def test_modul7_rotalari_tutor_id_rotasindan_once(yol):

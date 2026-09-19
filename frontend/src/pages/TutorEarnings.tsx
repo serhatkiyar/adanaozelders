@@ -44,6 +44,7 @@ function TutorEarningsView() {
       escrow={summary?.pending}
       thisMonth={summary?.this_month}
       refunded={summary?.refunded}
+      commissionRate={summary?.commission_rate}
       escrowLabel="Hesabına geçecek"
       escrowHint="Ders bitince hesabına geçer"
       transactions={txns}

@@ -39,7 +39,7 @@ from schemas.extra_availability import (
     ExtraAvailabilityIn,
     ExtraAvailabilityOut,
 )
-from schemas.tutor_analytics import Period, SuccessGoalOut, TutorOverviewOut
+from schemas.tutor_analytics import Period, SuccessGoalOut, TutorOverviewOut, TutorSeriesOut
 from schemas.tutor_dashboard import TutorDashboardOut, TutorStudentOut
 from services import (
     booking_service,
@@ -445,6 +445,18 @@ async def read_my_analytics_goals(
     return await tutor_analytics_service.build_goals(
         db, tutor, period=period, now=_utcnow()
     )
+
+
+@router.get("/me/analytics/series", response_model=TutorSeriesOut)
+async def read_my_analytics_series(
+    period: Period = Query(default="month"),
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    points = await tutor_analytics_service.build_series(
+        db, tutor, period=period, now=_utcnow()
+    )
+    return {"period": period, "points": points}
 
 
 @router.get("/me", response_model=TutorOut)

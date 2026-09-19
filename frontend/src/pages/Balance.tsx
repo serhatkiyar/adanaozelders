@@ -160,6 +160,8 @@ interface BalanceViewProps {
   txnError: boolean;
   onRetryTransactions: () => void;
   payout: ReactNode;
+  /** Decimal string (ör. "0.10"); yalnız veren taraf gösterir (bkz. EarningsSummary). */
+  commissionRate?: string;
 }
 
 export function BalanceView({
@@ -181,8 +183,13 @@ export function BalanceView({
   txnError,
   onRetryTransactions,
   payout,
+  commissionRate,
 }: BalanceViewProps) {
   const refundedNum = Number(refunded ?? 0);
+  const commissionPercent =
+    commissionRate != null && commissionRate !== ""
+      ? Number(commissionRate) * 100
+      : null;
 
   return (
     <DashboardShell title={title} navItems={navItems} genislik="orta">
@@ -247,6 +254,12 @@ export function BalanceView({
               )}
             </div>
           </div>
+        )}
+
+        {!loading && commissionPercent !== null && (
+          <p data-testid="komisyon-orani" className={KUCUK_ACIKLAMA}>
+            Şu anki komisyon oranın: %{Number(commissionPercent.toFixed(1))}
+          </p>
         )}
 
         {/* Ödeme hesabı */}

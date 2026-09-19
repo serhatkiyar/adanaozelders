@@ -33,6 +33,7 @@ class EarningsSummary(BaseModel):
     pending: Decimal               # emanette bekleyen (HELD) net tutar
     this_month: Decimal = Decimal("0")  # bu ay serbest bırakılan net kazanç
     refunded: Decimal = Decimal("0")    # iade edilen brüt tutar
+    commission_rate: Decimal       # şu anki geçerli komisyon oranı (commission.rate_for)
     currency: str = "TRY"
 
 

@@ -1078,6 +1078,21 @@ export interface SuccessGoal {
   live: boolean;
 }
 
+export interface AnalyticsSeriesPoint {
+  /** "YYYY-MM-DD" */
+  date: string;
+  /** "DD.MM" */
+  label: string;
+  lessons: number;
+  /** TL */
+  earnings: number;
+}
+
+export interface TutorSeries {
+  period: AnalyticsPeriod;
+  points: AnalyticsSeriesPoint[];
+}
+
 /* ============================ PAYMENT ============================ */
 
 export enum PaymentStatus {
@@ -1111,6 +1126,7 @@ export interface EarningsSummary {
   pending: string;
   this_month?: string;
   refunded?: string;
+  commission_rate: string;
   currency?: string;
 }
 

@@ -12,13 +12,19 @@ import {
   KUCUK_ACIKLAMA,
   SAYFA_BASLIGI,
 } from "@/components/pano/stil";
-import { useTutorGoals, useTutorOverview } from "@/hooks/useTutorAnalytics";
+import { useTutorGoals, useTutorOverview, useTutorSeries } from "@/hooks/useTutorAnalytics";
 import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { formatTRY } from "@/lib/money";
 import { TUTOR_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
-import type { AnalyticsPeriod, MetricTrend, SuccessGoal, SuccessGoalCode } from "@/types";
+import type {
+  AnalyticsPeriod,
+  AnalyticsSeriesPoint,
+  MetricTrend,
+  SuccessGoal,
+  SuccessGoalCode,
+} from "@/types";
 
 const DONEMLER: { value: AnalyticsPeriod; label: string }[] = [
   { value: "week", label: "7 gün" },
@@ -80,39 +86,104 @@ function Trend({ trend }: { trend: MetricTrend }) {
   );
 }
 
+/** Dönem kovalarına göre kazanç çubuk grafiği — harici kütüphane yok. */
+function KazancGrafigi({ points, periyot }: { points: AnalyticsSeriesPoint[]; periyot: AnalyticsPeriod }) {
+  if (points.length === 0) return null;
+  const enBuyuk = Math.max(0, ...points.map((p) => p.earnings));
+  const genislik = points.length;
+  const ortaEtiket =
+    points.length > 2 ? points[Math.floor((points.length - 1) / 2)] : null;
+  // quarter kovaları haftalık, week/month günlük (bkz. backend series_buckets) —
+  // eksen etiketi buna göre değişmezse 13 çubuk 13 gün sanılır.
+  const birim = periyot === "quarter" ? "haftalık" : "günlük";
+
+  return (
+    <div className="mt-6">
+      <svg
+        viewBox={`0 0 ${genislik} 100`}
+        preserveAspectRatio="none"
+        className="h-24 w-full sm:h-28"
+        role="img"
+        aria-label={`${birim} kazanç dağılımı`}
+      >
+        <line
+          x1={0}
+          y1={100}
+          x2={genislik}
+          y2={100}
+          className="stroke-slate-200"
+          strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
+        />
+        {points.map((p, i) => {
+          const yukseklik = enBuyuk > 0 ? (p.earnings / enBuyuk) * 96 : 0;
+          return (
+            <rect
+              key={p.date}
+              x={i + 0.15}
+              y={100 - yukseklik}
+              width={0.7}
+              height={yukseklik}
+              className="fill-marka"
+            />
+          );
+        })}
+      </svg>
+      {points.length === 1 ? (
+        <p className="mt-2 text-center text-xs leading-4 text-slate-500">{points[0].label}</p>
+      ) : (
+        <div className="mt-2 flex justify-between text-xs leading-4 text-slate-500">
+          <span>{points[0].label}</span>
+          {ortaEtiket && <span>{ortaEtiket.label}</span>}
+          <span>{points[points.length - 1].label}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MetrikKarti({
   etiket,
   deger,
   trend,
   onceki,
   to,
+  kucuk,
 }: {
   etiket: string;
   deger: string;
   trend: MetricTrend;
   onceki: string;
   to?: string;
+  kucuk?: boolean;
 }) {
   const icerik = (
     <>
-      <p className={ACIKLAMA}>{etiket}</p>
-      <p className="mt-2 text-2xl font-bold leading-8 tabular-nums text-slate-900">{deger}</p>
+      <p className={kucuk ? KUCUK_ACIKLAMA : ACIKLAMA}>{etiket}</p>
+      <p
+        className={`mt-2 font-bold tabular-nums text-slate-900 ${
+          kucuk ? "text-xl leading-7" : "text-2xl leading-8"
+        }`}
+      >
+        {deger}
+      </p>
       <p className="mt-1 flex flex-wrap items-center gap-x-2">
         <Trend trend={trend} />
         <span className={KUCUK_ACIKLAMA}>Önceki: {onceki}</span>
       </p>
     </>
   );
+  const kartSinif = kucuk ? "rounded-lg border border-slate-200 bg-white p-4" : KART;
   return to ? (
-    <Link to={to} className={`${KART} block transition hover:border-slate-900`}>
+    <Link to={to} className={`${kartSinif} block transition hover:border-slate-900`}>
       {icerik}
     </Link>
   ) : (
-    <div className={KART}>{icerik}</div>
+    <div className={kartSinif}>{icerik}</div>
   );
 }
 
-function HedefKarti({ hedef }: { hedef: SuccessGoal }) {
+function HedefKarti({ hedef, kucuk }: { hedef: SuccessGoal; kucuk?: boolean }) {
   const metin = HEDEF_METNI[hedef.code];
   const durum =
     hedef.achieved === null
@@ -121,9 +192,11 @@ function HedefKarti({ hedef }: { hedef: SuccessGoal }) {
         ? { yazi: "Hedefte", sinif: "text-emerald-700", isaret: "✓" }
         : { yazi: "Hedefin dışında", sinif: "text-red-700", isaret: "✗" };
   return (
-    <article className={KART}>
+    <article className={kucuk ? "rounded-lg border border-slate-200 bg-white p-4" : KART}>
       <div className="flex items-start justify-between gap-3">
-        <h3 className={ETIKET}>{metin.baslik}</h3>
+        <h3 className={kucuk ? "text-sm font-semibold leading-5 text-slate-900" : ETIKET}>
+          {metin.baslik}
+        </h3>
         {hedef.live && (
           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold leading-5 text-emerald-700">
             Canlı
@@ -133,7 +206,11 @@ function HedefKarti({ hedef }: { hedef: SuccessGoal }) {
       <p className={KUCUK_ACIKLAMA}>
         Hedef: {KARSILASTIRMA[hedef.comparator]} {metin.bicim(hedef.target)}
       </p>
-      <p className="mt-3 text-[32px] font-bold leading-9 tabular-nums text-slate-900">
+      <p
+        className={`mt-3 font-bold tabular-nums text-slate-900 ${
+          kucuk ? "text-2xl leading-8" : "text-[32px] leading-9"
+        }`}
+      >
         {hedef.value === null ? "—" : metin.bicim(hedef.value)}
       </p>
       <p className={`mt-1 text-base font-semibold leading-6 ${durum.sinif}`}>
@@ -163,78 +240,104 @@ export default function TutorAnalytics() {
   const [donem, setDonem] = useState<AnalyticsPeriod>("month");
   const genel = useTutorOverview(donem);
   const hedefler = useTutorGoals(donem);
+  const seri = useTutorSeries(donem);
   const o = genel.data;
 
   return (
     <DashboardShell title="Analizler" navItems={TUTOR_NAV} genislik="orta">
       <div className="space-y-10 pb-16 pt-2">
-        <header>
-          <h1 className={SAYFA_BASLIGI}>Analizler</h1>
-          <p className={`mt-2 ${ACIKLAMA}`}>
-            Derslerinin ve öğrencilerinin gidişatı; rakamlar önceki eşit dönemle karşılaştırılır.
-          </p>
+        <header className="space-y-4">
+          <div>
+            <h1 className={SAYFA_BASLIGI}>Analizler</h1>
+            <p className={`mt-2 ${ACIKLAMA}`}>
+              Derslerinin ve öğrencilerinin gidişatı; rakamlar önceki eşit dönemle karşılaştırılır.
+            </p>
+          </div>
+          <div className="w-full sm:w-72">
+            <SegmentedControl options={DONEMLER} value={donem} onChange={setDonem} />
+          </div>
         </header>
 
         <section aria-labelledby="genel-bakis" className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="genel-bakis" className={BOLUM_BASLIGI}>
-              Genel bakış
-            </h2>
-            <div className="w-full sm:w-72">
-              <SegmentedControl options={DONEMLER} value={donem} onChange={setDonem} />
-            </div>
-          </div>
+          <h2 id="genel-bakis" className="sr-only">
+            Genel bakış
+          </h2>
 
           {genel.isError && !o ? (
             <ErrorState
               description={getErrorMessage(genel.error, "Genel bakış yüklenemedi.")}
               onRetry={() => void genel.refetch()}
             />
-          ) : (
-            <div
-              aria-busy={genel.isFetching}
-              className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 ${
-                genel.isPlaceholderData ? "opacity-60" : ""
-              }`}
-            >
-              {!o ? (
-                <Iskelet adet={4} yukseklik="h-32" />
-              ) : (
-                <>
-                  <MetrikKarti
-                    etiket="Kazanç"
-                    deger={formatTRY(o.earnings.value, "0 TL")}
-                    trend={o.earnings}
-                    onceki={formatTRY(o.earnings.previous, "0 TL")}
-                    to={ROUTES.tutorEarnings}
-                  />
-                  <MetrikKarti
-                    etiket="Ders"
-                    deger={String(o.lessons.value)}
-                    trend={o.lessons}
-                    onceki={String(o.lessons.previous)}
-                  />
-                  <MetrikKarti
-                    etiket="Aktif öğrenci"
-                    deger={String(o.active_students.value)}
-                    trend={o.active_students}
-                    onceki={String(o.active_students.previous)}
-                  />
-                  <MetrikKarti
-                    etiket="Yeni öğrenci"
-                    deger={String(o.new_students.value)}
-                    trend={o.new_students}
-                    onceki={String(o.new_students.previous)}
-                  />
-                </>
-              )}
+          ) : !o ? (
+            <div className="space-y-4">
+              <div className="h-64 animate-pulse rounded-lg bg-slate-100" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <Iskelet adet={3} yukseklik="h-24" />
+              </div>
             </div>
-          )}
-          {o && (
-            <p className={KUCUK_ACIKLAMA}>
-              {formatDate(o.current_start)} – {formatDate(o.current_end)}, önceki dönemle
-              karşılaştırıldı.
-            </p>
+          ) : (
+            <>
+              {/* Hero: eğitmenin gerçekten takip ettiği tek şey — kazanç trendi. */}
+              <div aria-busy={genel.isFetching} className={genel.isPlaceholderData ? "opacity-60" : ""}>
+                <Link
+                  to={ROUTES.tutorEarnings}
+                  className="block rounded-lg border border-slate-200 bg-white p-6 transition hover:border-slate-900 sm:p-8"
+                >
+                  <p className={ACIKLAMA}>Kazanç</p>
+                  <p className="mt-2 text-4xl font-bold leading-10 tabular-nums text-slate-900 sm:text-5xl sm:leading-[1.1]">
+                    {formatTRY(o.earnings.value, "0 TL")}
+                  </p>
+                  <p className="mt-2 flex flex-wrap items-center gap-x-2">
+                    <Trend trend={o.earnings} />
+                    <span className={KUCUK_ACIKLAMA}>Önceki: {formatTRY(o.earnings.previous, "0 TL")}</span>
+                  </p>
+
+                  {seri.isError && !seri.data ? (
+                    <p className={`mt-6 ${KUCUK_ACIKLAMA}`}>Kazanç grafiği yüklenemedi.</p>
+                  ) : !seri.data ? (
+                    <div className="mt-6 h-24 animate-pulse rounded-lg bg-slate-100 sm:h-28" />
+                  ) : (
+                    <div className={seri.isPlaceholderData ? "opacity-60" : ""}>
+                      <KazancGrafigi points={seri.data.points} periyot={donem} />
+                    </div>
+                  )}
+
+                  <p className={`mt-4 ${KUCUK_ACIKLAMA}`}>
+                    {formatDate(o.current_start)} – {formatDate(o.current_end)}, önceki dönemle
+                    karşılaştırıldı.
+                  </p>
+                </Link>
+              </div>
+
+              <div
+                aria-busy={genel.isFetching}
+                className={`grid grid-cols-1 gap-4 sm:grid-cols-3 ${
+                  genel.isPlaceholderData ? "opacity-60" : ""
+                }`}
+              >
+                <MetrikKarti
+                  etiket="Ders"
+                  deger={String(o.lessons.value)}
+                  trend={o.lessons}
+                  onceki={String(o.lessons.previous)}
+                  kucuk
+                />
+                <MetrikKarti
+                  etiket="Aktif öğrenci"
+                  deger={String(o.active_students.value)}
+                  trend={o.active_students}
+                  onceki={String(o.active_students.previous)}
+                  kucuk
+                />
+                <MetrikKarti
+                  etiket="Yeni öğrenci"
+                  deger={String(o.new_students.value)}
+                  trend={o.new_students}
+                  onceki={String(o.new_students.previous)}
+                  kucuk
+                />
+              </div>
+            </>
           )}
         </section>
 
@@ -262,7 +365,7 @@ export default function TutorAnalytics() {
               {!hedefler.data ? (
                 <Iskelet adet={4} yukseklik="h-48" />
               ) : (
-                hedefler.data.map((h) => <HedefKarti key={h.code} hedef={h} />)
+                hedefler.data.map((h) => <HedefKarti key={h.code} hedef={h} kucuk />)
               )}
             </div>
           )}

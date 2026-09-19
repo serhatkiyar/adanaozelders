@@ -445,6 +445,9 @@ async def earnings_summary(db: AsyncSession, *, tutor_id: int) -> dict:
         )
     )
 
+    tutor = await db.get(Tutor, tutor_id)
+    rate = commission.rate_for(tutor) if tutor else commission.effective_commission_rate(None, None)
+
     return {
         "released": earning_by_status.get(PaymentStatus.RELEASED, Decimal("0"))
         + store_released,
@@ -454,6 +457,7 @@ async def earnings_summary(db: AsyncSession, *, tutor_id: int) -> dict:
         # şimdiden dahil; "emanette" göstermek yanıltıcı olurdu.
         "refunded": amount_by_status.get(PaymentStatus.REFUNDED, Decimal("0"))
         + amount_by_status.get(PaymentStatus.REFUNDING, Decimal("0")),
+        "commission_rate": rate,
         "currency": settings.PAYMENT_CURRENCY,
     }
 

@@ -36,3 +36,15 @@ class SuccessGoalOut(BaseModel):
     achieved: bool | None = None
     sample: int
     live: bool = False
+
+
+class AnalyticsSeriesPointOut(BaseModel):
+    date: datetime.date
+    label: str
+    lessons: int
+    earnings: float
+
+
+class TutorSeriesOut(BaseModel):
+    period: Period
+    points: list[AnalyticsSeriesPointOut]

@@ -71,6 +71,37 @@ def _in(col, window) -> object:
     return and_(col >= start, col < end)
 
 
+def _tl(v) -> float:
+    return float(Decimal(str(v)).quantize(Decimal("0.01")))
+
+
+def series_buckets(
+    now: datetime.datetime, period: str
+) -> list[tuple[datetime.datetime, datetime.datetime]]:
+    """Seçili dönemi (`windows()` ile aynı `cur` aralığını) kova sınırlarına böler.
+
+    week/month → günlük kovalar, quarter → haftalık kovalar. Kalan gün varsa
+    (90 // 7 = 12 kalan 6) en eski kovaya eklenir; böylece kovaların toplamı
+    `windows(now, days)[0]` ile birebir örtüşür.
+    """
+    days = PERIODS[period]
+    step_days = 7 if period == "quarter" else 1
+    full, remainder = divmod(days, step_days)
+
+    buckets: list[tuple[datetime.datetime, datetime.datetime]] = []
+    end = now
+    for _ in range(full):
+        start = end - datetime.timedelta(days=step_days)
+        buckets.append((start, end))
+        end = start
+    if remainder:
+        start = end - datetime.timedelta(days=remainder)
+        buckets.append((start, end))
+        end = start
+    buckets.reverse()
+    return buckets
+
+
 # ── Genel bakış ──────────────────────────────────────────────────────────────
 
 
@@ -125,9 +156,6 @@ async def build_overview(
         func.count().filter(_in(first_lesson.c.first_end, prev)),
     ).select_from(first_lesson)
     new_cur, new_prev = (await db.execute(new_stmt)).one()
-
-    def _tl(v) -> float:
-        return float(Decimal(str(v)).quantize(Decimal("0.01")))
 
     return {
         "period": period,
@@ -280,3 +308,61 @@ async def build_goals(
         await _response_24h(db, tutor, cur, now),
         _rating(tutor),
     ]
+
+
+# ── Zaman serisi ─────────────────────────────────────────────────────────────
+
+
+async def build_series(
+    db: AsyncSession, tutor: Tutor, *, period: str, now: datetime.datetime
+) -> list[dict]:
+    """Seçili dönemi kovalara böler; her kova için tamamlanan ders sayısı ve
+    serbest bırakılan (released) kazancı döndürür.
+
+    Ders sayısı `Booking.end_at`, kazanç `Payment.released_at` sütununa göre
+    kovalanır — `build_overview` ile aynı sütunlar (bkz. L86-108), böylece bir
+    dönemin kova toplamları o dönemin `overview` sonucuyla örtüşür.
+    """
+    buckets = series_buckets(now, period)
+
+    lesson_stmt = (
+        select(*(func.count().filter(_in(Booking.end_at, b)) for b in buckets))
+        .where(
+            Booking.tutor_id == tutor.id,
+            Booking.deleted_at.is_(None),
+            Booking.status == BookingStatus.COMPLETED,
+        )
+    )
+    lesson_counts = (await db.execute(lesson_stmt)).one()
+
+    earning_stmt = (
+        select(
+            *(
+                func.coalesce(
+                    func.sum(Payment.tutor_earning).filter(_in(Payment.released_at, b)), 0
+                )
+                for b in buckets
+            )
+        )
+        .select_from(Payment)
+        .join(Booking, Booking.id == Payment.booking_id)
+        .where(
+            Booking.tutor_id == tutor.id,
+            Payment.deleted_at.is_(None),
+            Payment.status == PaymentStatus.RELEASED,
+        )
+    )
+    earnings = (await db.execute(earning_stmt)).one()
+
+    points = []
+    for (start, _end), lessons, earning in zip(buckets, lesson_counts, earnings, strict=True):
+        local_date = start.astimezone(TZ).date()
+        points.append(
+            {
+                "date": local_date,
+                "label": local_date.strftime("%d.%m"),
+                "lessons": int(lessons),
+                "earnings": _tl(earning),
+            }
+        )
+    return points

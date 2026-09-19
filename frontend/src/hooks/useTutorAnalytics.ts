@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { fetchTutorGoals, fetchTutorOverview } from "@/api/tutorAnalytics";
+import { fetchTutorGoals, fetchTutorOverview, fetchTutorSeries } from "@/api/tutorAnalytics";
 import type { AnalyticsPeriod } from "@/types";
 
 // Dönem değişince eski kartlar yerinde kalır; iskelet yalnız ilk yüklemede.
@@ -15,6 +15,14 @@ export function useTutorGoals(period: AnalyticsPeriod) {
   return useQuery({
     queryKey: ["tutor", "analytics", "goals", period],
     queryFn: () => fetchTutorGoals(period),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useTutorSeries(period: AnalyticsPeriod) {
+  return useQuery({
+    queryKey: ["tutor", "analytics", "series", period],
+    queryFn: () => fetchTutorSeries(period),
     placeholderData: keepPreviousData,
   });
 }
