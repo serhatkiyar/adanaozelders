@@ -41,3 +41,8 @@ export async function fetchQaRights(): Promise<LessonQuestionGroup[]> {
   const { data } = await apiClient.get<LessonQuestionGroup[]>("/qa/rights");
   return data;
 }
+
+export async function closeThread(threadId: number): Promise<QAThreadOut> {
+  const { data } = await apiClient.post<QAThreadOut>(`/qa/${threadId}/close`);
+  return data;
+}

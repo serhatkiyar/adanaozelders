@@ -3,9 +3,11 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { QaThreadChat } from "@/components/QaThreadChat";
-import { useThreads } from "@/hooks/useQa";
+import { ACIKLAMA, ETIKET, KART, KUCUK_ACIKLAMA } from "@/components/pano/stil";
+import { useCloseThread, useThreads } from "@/hooks/useQa";
 import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
+import { toast } from "@/store/toastStore";
 import { QAStatus, type QAThreadOut } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
@@ -24,8 +26,18 @@ const statusStyle: Record<QAStatus, string> = {
 
 function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
   const clientName = thread.client_name ?? `Öğrenci #${thread.client_id}`;
+  const close = useCloseThread();
+  const isClosed = thread.status === QAStatus.CLOSED;
+
+  const handleClose = () => {
+    close.mutate(thread.id, {
+      onError: (err) =>
+        toast.error(getErrorMessage(err, "Konu kapatılamadı.")),
+    });
+  };
+
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
+    <div className={KART}>
       <div className="flex items-center justify-between gap-3">
         <Link
           to={ROUTES.uyeProfili(thread.client_id)}
@@ -33,10 +45,10 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
         >
           <Avatar name={clientName} avatar_url={thread.client_avatar_url} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-800 hover:text-marka-metin ">
+            <p className={`truncate hover:text-marka-metin ${ETIKET}`}>
               {clientName}
             </p>
-            <p className="truncate text-xs text-slate-400 ">
+            <p className={`truncate ${KUCUK_ACIKLAMA}`}>
               {thread.subject || "Soru"} · {formatDate(thread.created_at)}
             </p>
           </div>
@@ -52,9 +64,22 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
         <QaThreadChat
           thread={thread}
           role="TUTOR"
-          canReply={thread.status !== QAStatus.CLOSED}
+          canReply={!isClosed}
         />
       </div>
+
+      {!isClosed && (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={close.isPending}
+            className="rounded-lg px-3.5 py-2 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            {close.isPending ? "…" : "Konuyu kapat"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -67,7 +92,7 @@ export default function TutorQuestions() {
     <DashboardShell title="Sorular" navItems={TUTOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-3">
         {openCount > 0 && (
-          <p className="text-sm text-slate-500 ">
+          <p className={ACIKLAMA}>
             <span className="font-semibold text-amber-600 ">
               {openCount}
             </span>{" "}
@@ -79,22 +104,22 @@ export default function TutorQuestions() {
           Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="h-32 animate-pulse rounded-2xl bg-slate-100 "
+              className="h-32 animate-pulse rounded-lg bg-slate-100 "
             />
           ))
         ) : isError ? (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100 ">
+          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100 ">
             {getErrorMessage(error, "Sorular yüklenemedi.")}
           </div>
         ) : !data || data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 py-16 text-center ">
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-2xl ">
               💬
             </div>
-            <p className="mt-4 text-sm font-medium text-slate-700 ">
+            <p className={`mt-4 ${ETIKET}`}>
               Henüz soru yok
             </p>
-            <p className="mt-1 text-xs text-slate-400 ">
+            <p className={`mt-1 ${ACIKLAMA}`}>
               Tamamlanan derslerden sonra öğrenciler sana soru sorabilir.
             </p>
           </div>

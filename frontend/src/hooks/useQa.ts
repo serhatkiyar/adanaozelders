@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   askQuestion,
+  closeThread,
   fetchQaRights,
   listThreads,
   postQaMessage,
@@ -44,6 +45,16 @@ export function usePostQaMessage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["qa"] });
       queryClient.invalidateQueries({ queryKey: ["qaRights"] });
+    },
+  });
+}
+
+export function useCloseThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: number) => closeThread(threadId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["qa"] });
     },
   });
 }
