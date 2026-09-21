@@ -25,6 +25,40 @@ const TahtaPaneli = lazy(() => import("@/components/tahta/TahtaPaneli"));
 const VARSAYILAN_SUNUCU = "wss://canli.adanaozelders.com.tr";
 
 /* ──────────────────────────────────────────────────────────────────────────
+ * ADRESTEN DOLDURMA — iki cihazla denemeyi kolaylaştıran test kolaylığı
+ *
+ *   /test-livekit?token=eyJ...&sunucu=wss://...&baglan=0&tahta=1
+ *
+ * Amaç: tek bir bağlantı üretip telefona göndermek, elle kopyala-yapıştır
+ * yapmamak. Token verilmişse sayfa KENDİLİĞİNDEN bağlanır (`baglan=0` bunu
+ * kapatır, alanlar yine dolu gelir).
+ *
+ * Token adres çubuğunda durur; tarayıcı geçmişine ve sunucu günlüklerine
+ * düşer. Bu YALNIZ dev'de açık olan bir deneme sayfası ve token'lar kısa
+ * ömürlü olduğu için kabul edildi — ürün akışında kopyalanacak bir desen
+ * DEĞİLDİR.
+ * ────────────────────────────────────────────────────────────────────────── */
+type AdresAyari = {
+  sunucu: string;
+  token: string;
+  otomatikBaglan: boolean;
+  tahtaAcik: boolean;
+};
+
+function adresAyariniOku(): AdresAyari {
+  const p = new URLSearchParams(window.location.search);
+  const token = (p.get("token") ?? "").trim();
+  const evet = (deger: string | null) => deger === "1" || deger === "true";
+  return {
+    sunucu: (p.get("sunucu") ?? "").trim() || VARSAYILAN_SUNUCU,
+    token,
+    // Token varsa varsayılan DAVRANIŞ bağlanmaktır; `baglan=0` ile kapatılır.
+    otomatikBaglan: token !== "" && p.get("baglan") !== "0" && p.get("baglan") !== "false",
+    tahtaAcik: evet(p.get("tahta")),
+  };
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
  * MOBİL SOHBET DÜZELTMESİ
  *
  * `@livekit/components-styles` 1.2.0, 600px altında sohbet panelini
@@ -60,11 +94,17 @@ function tokenOdasi(token: string): string | null {
 }
 
 export default function TestLiveKit() {
-  const [sunucu, setSunucu] = useState(VARSAYILAN_SUNUCU);
-  const [token, setToken] = useState("");
-  const [bagli, setBagli] = useState(false);
+  /* Adres çubuğu BİR KEZ okunur (lazy başlangıç değeri). Her render'da
+     okunsaydı kullanıcının forma yazdığı değer, adresteki eski değerle
+     sürekli ezilirdi. */
+  const [adres] = useState(adresAyariniOku);
+  const [sunucu, setSunucu] = useState(adres.sunucu);
+  const [token, setToken] = useState(adres.token);
+  const [bagli, setBagli] = useState(adres.otomatikBaglan);
   const [hata, setHata] = useState<string | null>(null);
-  const [tahtaAcik, setTahtaAcik] = useState(false);
+  const [tahtaAcik, setTahtaAcik] = useState(adres.tahtaAcik);
+  const [linkNotu, setLinkNotu] = useState<string | null>(null);
+  const [linkMetni, setLinkMetni] = useState<string | null>(null);
   /* Odasız tahta denemesi: çizim/silgi/temizle/PDF tek başına denenebilsin
      diye. Panel oda bulamazsa senkronizasyonu sessizce kapatır. */
   const [yalnizTahta, setYalnizTahta] = useState(false);
@@ -75,6 +115,26 @@ export default function TestLiveKit() {
   const baglan = () => {
     setHata(null);
     setBagli(true);
+  };
+
+  /** Mevcut alanlardan ikinci cihaza gönderilecek bağlantıyı üretir. */
+  const linkiKopyala = async () => {
+    const u = new URL(window.location.href);
+    u.search = "";
+    u.searchParams.set("token", temizToken);
+    if (sunucu.trim() !== VARSAYILAN_SUNUCU) u.searchParams.set("sunucu", sunucu.trim());
+    if (tahtaAcik) u.searchParams.set("tahta", "1");
+    const link = u.toString();
+    try {
+      // `clipboard` güvenli olmayan origin'de ya da izin verilmediğinde atar;
+      // o yüzden bağlantı her hâlükârda ekranda da gösterilir.
+      await navigator.clipboard.writeText(link);
+      setLinkNotu("✅ Kopyalandı");
+      window.setTimeout(() => setLinkNotu(null), 2500);
+    } catch {
+      setLinkNotu("Kopyalanamadı — aşağıdan al");
+    }
+    setLinkMetni(link);
   };
 
   const kapsayici = useRef<HTMLDivElement>(null);
@@ -271,7 +331,30 @@ export default function TestLiveKit() {
             >
               📝 Tahtayı tek başına dene
             </button>
+            {/* İkinci cihaza gönderilecek bağlantıyı elle kurmaya gerek kalmasın. */}
+            <button
+              onClick={() => void linkiKopyala()}
+              disabled={!temizToken}
+              className="rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {linkNotu ?? "🔗 Bağlantıyı kopyala"}
+            </button>
           </div>
+
+          {linkMetni && (
+            <label className="block">
+              <span className="text-xs font-semibold text-slate-600">İkinci cihaz bağlantısı</span>
+              <input readOnly className="input font-mono text-xs" value={linkMetni} />
+            </label>
+          )}
+
+          <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs leading-relaxed text-slate-500">
+            Adres parametreleri: <code className="font-mono">token</code>,{" "}
+            <code className="font-mono">sunucu</code>,{" "}
+            <code className="font-mono">baglan</code> (0 = otomatik bağlanma),{" "}
+            <code className="font-mono">tahta</code> (1 = tahta açık gelsin). Token verilince
+            sayfa kendiliğinden bağlanır. Oda adı token'ın içindedir, ayrı parametre yoktur.
+          </p>
         </div>
       </div>
     </div>
