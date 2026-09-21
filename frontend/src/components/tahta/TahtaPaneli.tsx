@@ -25,10 +25,14 @@ import type {
 
 import { pdfAc, type AcikPdf } from "@/lib/pdfSayfa";
 import {
+  SERBEST_SAYFA,
   TAHTA_KONU,
   degisenler,
+  elemanSayfasi,
+  gorunurMu,
   mesajCoz,
-  silindiIsaretle,
+  sayfaAnahtari,
+  sayfaEtiketle,
   surumleriYaz,
   type TahtaDosya,
   type TahtaEleman,
@@ -177,6 +181,9 @@ export default function TahtaPaneli({ onKapat }: Props) {
   const [pdf, setPdf] = useState<AcikPdf | null>(null);
   const [sayfaNo, setSayfaNo] = useState(1);
   const [pdfMesgul, setPdfMesgul] = useState(false);
+  /* Yalnız başlıktaki bilgi içindir. PDF'i AÇMAYAN katılımcıda `pdf` boştur;
+     hangi sayfanın gösterildiğini ancak gelen mesajdan öğrenir. */
+  const [gosterilenSayfa, setGosterilenSayfa] = useState<string | null>(null);
 
   /* Efektler `api` değişimine bağlanmasın diye ref: veri akışı dinleyicisi
      odaya BİR KEZ kaydedilir, her Excalidraw yeniden çiziminde değil. */
@@ -185,13 +192,68 @@ export default function TahtaPaneli({ onKapat }: Props) {
 
   /** "Karşı tarafın bildiğine inandığım sürüm" — eko döngüsünü bu kırar. */
   const bilinen = useRef(new Map<string, number>());
-  /** Arka plana konmuş PDF sayfası elemanının id'si (yenisi gelince silinir). */
-  const arkaPlanId = useRef<string | null>(null);
+
+  /**
+   * DEFTER — bütün sayfaların bütün elemanları.
+   *
+   * Excalidraw sahnesi artık gerçeğin kaynağı DEĞİL: sahnede yalnız AÇIK OLAN
+   * sayfanın elemanları durur. Kullanıcı sayfa 2'ye geçtiğinde sayfa 1'in
+   * çizimleri sahneden çıkar ama defterde kalır; geri dönünce aynı `id` ve
+   * aynı `version` ile geri konur — yani silinmiş sayılmazlar ve senkron
+   * muhasebesi (`bilinen`, `reconcileElements`) bozulmaz.
+   *
+   * Senkronla ilgili her şey defteri okur: yayınlanan da, birleştirilen de
+   * TÜM sayfalardır. Sayfa kavramı yalnızca GÖRÜNÜRLÜK filtresidir.
+   */
+  const defter = useRef(new Map<string, OrderedExcalidrawElement>());
+  /** O an gösterilen sayfa etiketi (efektler/geri çağrılar için ref). */
+  const aktifSayfa = useRef<string>(SERBEST_SAYFA);
+  /** Sayfa etiketi → o sayfanın zemin elemanının id'si. */
+  const zeminler = useRef(new Map<string, string>());
   /** Sayfaların oturduğu sabit çerçeve — ilk sayfada bir kez hesaplanır. */
   const zeminCercevesi = useRef<Kutu | null>(null);
+  /** Geri çağrılar içinden PDF'in açık olup olmadığını okumak için. */
+  const pdfRef = useRef<AcikPdf | null>(null);
+  pdfRef.current = pdf;
   const yayinZamani = useRef<number | null>(null);
   const sonImlec = useRef(0);
   const imlecler = useRef(new Map<SocketId, Collaborator>());
+
+  /* ── Defter ───────────────────────────────────────────────────────────── */
+
+  /** Sahnedeki elemanları deftere işler; defterdeki DİĞER sayfalara dokunmaz. */
+  const defteriDoldur = useCallback((elemanlar: readonly OrderedExcalidrawElement[]) => {
+    for (const e of elemanlar) defter.current.set(e.id, e);
+  }, []);
+
+  /**
+   * Sahneyi defterin "şu an görünmesi gereken" alt kümesiyle yeniden yazar.
+   *
+   * Alt küme vermenin güvenli olduğu ÖLÇÜLDÜ: elemanların `index` ve `version`
+   * değerleri ne çıkarıldığında ne de geri konduğunda değişiyor. Değişseydi
+   * her sayfa geçişi bütün görünür kümede sürüm artırır ve kanalı yayın
+   * fırtınasına sokardı.
+   */
+  const gorunuruYaz = useCallback((a: ExcalidrawImperativeAPI) => {
+    const gorunur = [...defter.current.values()]
+      .filter((e) => gorunurMu(e as unknown as TahtaEleman, aktifSayfa.current))
+      // Z-sırası kesirli `index` anahtarındadır; Map'in ekleme sırası değil.
+      .sort((x, y) => ((x.index ?? "") < (y.index ?? "") ? -1 : (x.index ?? "") > (y.index ?? "") ? 1 : 0));
+    a.updateScene({ elements: gorunur, captureUpdate: CaptureUpdateAction.NEVER });
+  }, []);
+
+  /**
+   * Mesaja `sayfa` alanı konacak mı?
+   *
+   * YALNIZ PDF'i açan taraf sayfa bildirir. Sebep: karşı katılımcıda PDF
+   * nesnesi yoktur, kendi `aktifSayfa`sını yalnız gelen mesajdan öğrenir.
+   * O da sayfa bildirseydi, henüz ilk mesajı almadan yaptığı bir çizim
+   * "serbest" etiketiyle gider ve PDF'i açan tarafı sayfasından geri çekerdi.
+   */
+  const sayfayiBildir = useCallback(
+    () => (pdfRef.current ? aktifSayfa.current : undefined),
+    []
+  );
 
   /* ── Gönderim ─────────────────────────────────────────────────────────── */
 
@@ -223,19 +285,21 @@ export default function TahtaPaneli({ onKapat }: Props) {
     async (hedefler?: string[], dosyalarlaBirlikte = false) => {
       const a = apiRef.current;
       if (!a) return;
-      const elemanlar = a.getSceneElementsIncludingDeleted() as unknown as TahtaEleman[];
+      // Sahne değil DEFTER: gizli sayfaların elemanları da yayınlanır, yoksa
+      // geç katılan yalnız o an açık sayfayı görür, ötekiler ona hiç gitmez.
+      defteriDoldur(a.getSceneElementsIncludingDeleted());
+      const elemanlar = [...defter.current.values()] as unknown as TahtaEleman[];
       surumleriYaz(elemanlar, bilinen.current);
       const dosyalar = dosyalarlaBirlikte
         ? (Object.values(a.getFiles()) as unknown as TahtaDosya[])
         : [];
-      await gonder(
-        dosyalar.length > 0
-          ? { t: "durum", elemanlar: [...elemanlar], dosyalar }
-          : { t: "durum", elemanlar: [...elemanlar] },
-        hedefler
-      );
+      const mesaj: TahtaMesaji = { t: "durum", elemanlar: [...elemanlar] };
+      if (dosyalar.length > 0) mesaj.dosyalar = dosyalar;
+      const sayfa = sayfayiBildir();
+      if (sayfa) mesaj.sayfa = sayfa;
+      await gonder(mesaj, hedefler);
     },
-    [gonder]
+    [defteriDoldur, gonder, sayfayiBildir]
   );
 
   /**
@@ -249,7 +313,32 @@ export default function TahtaPaneli({ onKapat }: Props) {
   const degisenleriGonder = useCallback(() => {
     const a = apiRef.current;
     if (!a) return;
-    const hepsi = a.getSceneElementsIncludingDeleted() as unknown as TahtaEleman[];
+    defteriDoldur(a.getSceneElementsIncludingDeleted());
+
+    /* Yeni doğan elemanları AÇIK OLAN sayfaya etiketle.
+       Sadece etiketSİZ olanlar etiketlenir — yeniden etiketlemek sürümü her
+       turda artırır ve kanal hiç susmaz. Çizilmekte/yazılmakta/boyutlandırılmakta
+       olan eleman atlanır: `updateScene` onun ortasına girmemeli; bir sonraki
+       turda, çizim bittikten sonra etiketlenir. */
+    const durumu = a.getAppState();
+    const mesgul = new Set(
+      [durumu.newElement?.id, durumu.editingTextElement?.id, durumu.resizingElement?.id].filter(
+        (id): id is string => typeof id === "string"
+      )
+    );
+    let etiketlendi = false;
+    for (const e of [...defter.current.values()]) {
+      if (mesgul.has(e.id)) continue;
+      if (elemanSayfasi(e as unknown as TahtaEleman) !== null) continue;
+      defter.current.set(
+        e.id,
+        sayfaEtiketle(e as unknown as TahtaEleman, aktifSayfa.current) as unknown as OrderedExcalidrawElement
+      );
+      etiketlendi = true;
+    }
+    if (etiketlendi) gorunuruYaz(a);
+
+    const hepsi = [...defter.current.values()] as unknown as TahtaEleman[];
     const yeni = degisenler(hepsi, bilinen.current);
     if (yeni.length === 0) return;
     // Defter gönderimden ÖNCE işaretlenir (iyimser). Gönderim düşerse o
@@ -257,8 +346,11 @@ export default function TahtaPaneli({ onKapat }: Props) {
     // Tersi — önce gönder, sonra işaretle — çizim sürerken aynı elemanı
     // arka arkaya birkaç kez yollardı.
     surumleriYaz(yeni, bilinen.current);
-    void gonder({ t: "durum", elemanlar: yeni });
-  }, [gonder]);
+    const mesaj: TahtaMesaji = { t: "durum", elemanlar: yeni };
+    const sayfa = sayfayiBildir();
+    if (sayfa) mesaj.sayfa = sayfa;
+    void gonder(mesaj);
+  }, [defteriDoldur, gonder, gorunuruYaz, sayfayiBildir]);
 
   const degisimeTepki = useCallback(() => {
     if (yayinZamani.current !== null) return;
@@ -283,9 +375,20 @@ export default function TahtaPaneli({ onKapat }: Props) {
       if (mesaj.t === "temizle") {
         sahneyiBosalt(a);
         bilinen.current.clear();
-        arkaPlanId.current = null;
+        defter.current.clear();
+        zeminler.current.clear();
+        aktifSayfa.current = SERBEST_SAYFA;
+        setGosterilenSayfa(null);
         zeminCercevesi.current = null;
         return;
+      }
+
+      /* Sayfa değişimi elemanlardan ÖNCE ve eleman GELMESE DE işlenir:
+         "sayfa 2'ye geçtim" mesajı çoğu zaman boş eleman listesiyle gelir
+         (sayfa daha önce açılmışsa yeni eleman yoktur). */
+      if (mesaj.sayfa && mesaj.sayfa !== aktifSayfa.current) {
+        aktifSayfa.current = mesaj.sayfa;
+        setGosterilenSayfa(mesaj.sayfa);
       }
 
       // Görüntüler elemanlardan ÖNCE: `addFiles` yapılmadan gelen bir
@@ -293,29 +396,37 @@ export default function TahtaPaneli({ onKapat }: Props) {
       if (mesaj.dosyalar?.length) {
         a.addFiles(mesaj.dosyalar as unknown as BinaryFileData[]);
       }
-      if (mesaj.elemanlar.length === 0) return;
 
-      // `restoreElements`: gelen ham JSON'u pakete ait geçerli elemanlara
-      // çevirir ve kesirli z-sıra anahtarlarını onarır. Marka (`MakeBrand`)
-      // tipleri yalnız derleyici içindir, çalışma zamanında karşılığı yok.
-      const uzak = restoreElements(mesaj.elemanlar as unknown as ExcalidrawElement[], null, {
-        repairBindings: true,
-      }) as unknown as readonly RemoteExcalidrawElement[];
-      // Sürümler `restoreElements` SONRASINDAN okunur: onarım bir sürümü
-      // değiştirirse ham sayıyı yazmak sonsuz yeniden-yayın üretirdi.
-      surumleriYaz(uzak as unknown as TahtaEleman[], bilinen.current);
+      if (mesaj.elemanlar.length > 0) {
+        // `restoreElements`: gelen ham JSON'u pakete ait geçerli elemanlara
+        // çevirir ve kesirli z-sıra anahtarlarını onarır. Marka (`MakeBrand`)
+        // tipleri yalnız derleyici içindir, çalışma zamanında karşılığı yok.
+        const uzak = restoreElements(mesaj.elemanlar as unknown as ExcalidrawElement[], null, {
+          repairBindings: true,
+        }) as unknown as readonly RemoteExcalidrawElement[];
+        // Sürümler `restoreElements` SONRASINDAN okunur: onarım bir sürümü
+        // değiştirirse ham sayıyı yazmak sonsuz yeniden-yayın üretirdi.
+        surumleriYaz(uzak as unknown as TahtaEleman[], bilinen.current);
 
-      const birlesik = reconcileElements(
-        a.getSceneElementsIncludingDeleted() as readonly OrderedExcalidrawElement[],
-        uzak,
-        a.getAppState()
-      );
-      a.updateScene({ elements: birlesik, captureUpdate: CaptureUpdateAction.NEVER });
-      // Uzaktan gelen sayfa değişimi de depoyu toplar; yoksa yalnız sayfayı
-      // çeviren taraf temizlenir, ötekinde 30 sayfa birikirdi.
-      mezarDosyalariniAt(a, birlesik);
+        // Birleştirme SAHNEYE değil DEFTERE karşı yapılır: sahnede yalnız açık
+        // sayfa var, ona karşı birleştirseydik gizli sayfaların elemanları
+        // "yerelde yok" sayılıp sıralamaya yeniden sokulurdu.
+        defteriDoldur(a.getSceneElementsIncludingDeleted());
+        const birlesik = reconcileElements(
+          [...defter.current.values()],
+          uzak,
+          a.getAppState()
+        );
+        defter.current.clear();
+        defteriDoldur(birlesik);
+        // Uzaktan gelen sayfa değişimi de depoyu toplar; yoksa yalnız sayfayı
+        // çeviren taraf temizlenir, ötekinde 30 sayfa birikirdi.
+        mezarDosyalariniAt(a, birlesik);
+      }
+
+      gorunuruYaz(a);
     },
-    [tamSahneyiGonder]
+    [defteriDoldur, gorunuruYaz, tamSahneyiGonder]
   );
 
   /* Eleman/dosya kanalı (güvenilir, akış). */
@@ -399,7 +510,10 @@ export default function TahtaPaneli({ onKapat }: Props) {
     if (!a) return;
     sahneyiBosalt(a);
     bilinen.current.clear();
-    arkaPlanId.current = null;
+    defter.current.clear();
+    zeminler.current.clear();
+    aktifSayfa.current = SERBEST_SAYFA;
+    setGosterilenSayfa(null);
     zeminCercevesi.current = null;
     // PDF durumu da sıfırlanır: zemin sahneden gittiği hâlde başlıkta "2/4"
     // yazmaya devam etmesi, olmayan bir şeyi gösteren bir sayaç olurdu.
@@ -408,11 +522,32 @@ export default function TahtaPaneli({ onKapat }: Props) {
     void gonder({ t: "temizle" });
   }, [gonder]);
 
-  /** Seçilen PDF sayfasını arka plana koyar ve karşı tarafa yollar. */
+  /**
+   * Seçilen PDF sayfasını açar: zemini koyar, GÖRÜNÜR SAYFAYI değiştirir.
+   *
+   * Sayfa daha önce açıldıysa yeniden çizilmez — zemini ve o sayfaya yapılmış
+   * çizimler defterde durur, yalnız görünürlük filtresi değişir.
+   */
   const sayfayiArkaPlanaKoy = useCallback(
     async (belge: AcikPdf, no: number) => {
       const a = apiRef.current;
       if (!a) return;
+      const anahtar = sayfaAnahtari(no);
+
+      // Sayfa değişmeden ÖNCE o anki sahne deftere işlenmeli, yoksa bu sayfaya
+      // yapılan son çizimler filtrelenirken kaybolur.
+      defteriDoldur(a.getSceneElementsIncludingDeleted());
+      aktifSayfa.current = anahtar;
+      setGosterilenSayfa(anahtar);
+
+      const oncekiZemin = zeminler.current.get(anahtar);
+      if (oncekiZemin && defter.current.has(oncekiZemin)) {
+        // Daha önce açılmış sayfa: yeniden render YOK, yeni eleman YOK.
+        gorunuruYaz(a);
+        void gonder({ t: "durum", elemanlar: [], sayfa: anahtar });
+        return;
+      }
+
       setPdfMesgul(true);
       setDurum(null);
       try {
@@ -425,9 +560,6 @@ export default function TahtaPaneli({ onKapat }: Props) {
           created: Date.now(),
         };
         a.addFiles([dosya as unknown as BinaryFileData]);
-
-        const mevcut = a.getSceneElementsIncludingDeleted();
-        const eskiId = arkaPlanId.current;
 
         /* NEREYE konacak?
            1) Bu belgede daha önce bir çerçeve hesaplandıysa YENİ SAYFA AYNI
@@ -472,7 +604,9 @@ export default function TahtaPaneli({ onKapat }: Props) {
         const kutu = kutuyaSigdir(hedef, goruntu.genislik, goruntu.yukseklik);
 
         // `locked` çünkü bu bir ZEMİN — üstüne yazarken kazayla sürüklenmemeli.
-        const [yeni] = convertToExcalidrawElements([
+        // Sayfa etiketi DOĞARKEN verilir: zemin, ait olduğu sayfa dışında hiç
+        // görünmemeli, bir tur bile.
+        const [ham] = convertToExcalidrawElements([
           {
             type: "image",
             fileId: dosyaId as FileId,
@@ -483,35 +617,36 @@ export default function TahtaPaneli({ onKapat }: Props) {
             locked: true,
           },
         ]);
+        const yeni = { ...ham, customData: { tahtaSayfa: anahtar } };
 
-        // Önceki sayfa MEZAR TAŞI olarak kalır: diziden atmak silmeyi karşı
-        // tarafa duyurmaz, eski sayfa orada asılı kalırdı.
-        const temizlenmis = mevcut.map((e) =>
-          eskiId && e.id === eskiId
-            ? (silindiIsaretle(e as unknown as TahtaEleman) as unknown as typeof e)
-            : e
+        /* Önceki sayfanın zemini SİLİNMEZ, yalnız görünmez olur — kullanıcı
+           geri döndüğünde aynı eleman aynı sürümle yerinde durur. (Eski
+           davranış onu mezar taşı yapıyordu; o zaman sayfaya dönmek mümkün
+           değildi.)
+           Zemin dizinin BAŞINA konur: Excalidraw kesirli z-sıra anahtarını
+           dizi sırasından türetir, yani ilk eleman en altta kalır. */
+        const gorunurDigerleri = [...defter.current.values()].filter((e) =>
+          gorunurMu(e as unknown as TahtaEleman, anahtar)
         );
-        // Zemin en başa: Excalidraw kesirli z-sıra anahtarını dizi sırasından
-        // türetir, yani ilk eleman en altta kalır.
         a.updateScene({
-          elements: [yeni, ...temizlenmis],
+          elements: [yeni, ...gorunurDigerleri],
           captureUpdate: CaptureUpdateAction.NEVER,
         });
-        arkaPlanId.current = yeni.id;
-
-        /* Artık görünmeyen sayfanın base64 görüntüsünü depodan düşür: 30
-           sayfalık bir PDF'te depo sayfa sayısıyla büyümesin ve sahneyi geç
-           isteyen birine yalnız AÇIK OLAN sayfa gitsin. Karşı taraf da aynı
-           kuralı `uygula` içinde çalıştırır. */
-        mezarDosyalariniAt(a, a.getSceneElementsIncludingDeleted());
+        zeminler.current.set(anahtar, yeni.id);
 
         // Sahneden GERİ OKUNUR: `updateScene` kesirli index'i o an atar,
         // gönderilen kopya index'siz olsaydı karşı tarafta zemin üste çıkardı.
-        const yerlesmis = a
-          .getSceneElementsIncludingDeleted()
-          .filter((e) => e.id === yeni.id || (eskiId && e.id === eskiId)) as unknown as TahtaEleman[];
+        defteriDoldur(a.getSceneElementsIncludingDeleted());
+        const yerlesmis = [defter.current.get(yeni.id)].filter(
+          (e): e is OrderedExcalidrawElement => !!e
+        ) as unknown as TahtaEleman[];
         surumleriYaz(yerlesmis, bilinen.current);
-        await gonder({ t: "durum", elemanlar: [...yerlesmis], dosyalar: [dosya] });
+        await gonder({
+          t: "durum",
+          elemanlar: [...yerlesmis],
+          dosyalar: [dosya],
+          sayfa: anahtar,
+        });
       } catch (e) {
         setDurum(`PDF sayfası çizilemedi: ${(e as Error).message}`);
       } finally {
@@ -596,6 +731,14 @@ export default function TahtaPaneli({ onKapat }: Props) {
               }}
             />
           </label>
+
+          {/* PDF'i açmayan katılımcıda sayfa düğmesi yoktur; hangi sayfanın
+              gösterildiğini yine de bilmeli. */}
+          {!pdf && gosterilenSayfa && gosterilenSayfa !== SERBEST_SAYFA && (
+            <span className="text-xs text-slate-500">
+              sayfa {gosterilenSayfa.replace(/^s/, "")}
+            </span>
+          )}
 
           {pdf && (
             <span className="flex items-center gap-1 text-xs text-slate-600">

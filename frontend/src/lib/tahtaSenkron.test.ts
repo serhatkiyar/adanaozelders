@@ -7,7 +7,9 @@
  * kolayca sessizce bozulur — ve bozulduğunda belirtisi "tahta bazen tuhaf
  * davranıyor" gibi teşhis edilmesi pahalı bir şeydir:
  *   1. eko kırılmazsa iki taraf birbirini sonsuz besler,
- *   2. mezar taşı sürümü artmazsa silgi karşı ekranda hiç işlemez,
+ *   2. sayfa etiketi/görünürlük kuralı bozulursa bir sayfanın çizimleri
+ *      öteki sayfada görünür (kullanıcının bildirdiği kusur), ya da her turda
+ *      yeniden etiketlenip sürüm tırmanır ve kanal hiç susmaz,
  *   3. bozuk bir paket çözücüyü düşürürse tahta sessizce donar.
  *
  * Çakışma çözümü (hangi sürüm kazanır) BURADA DEĞİL: onu paketin kendi
@@ -16,9 +18,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  SERBEST_SAYFA,
   degisenler,
+  elemanSayfasi,
+  gorunurMu,
   mesajCoz,
-  silindiIsaretle,
+  sayfaAnahtari,
+  sayfaEtiketle,
   surumleriYaz,
   type TahtaEleman,
 } from "./tahtaSenkron";
@@ -57,13 +63,43 @@ describe("degisenler / surumleriYaz — eko kırma", () => {
   });
 });
 
-describe("silindiIsaretle", () => {
-  it("işaretler ve sürümü artırır — artmazsa silme karşı tarafta reddedilirdi", () => {
+describe("sayfa görünürlüğü", () => {
+  const etiketli = (id: string, sayfa: string) =>
+    el(id, 1, { customData: { tahtaSayfa: sayfa } });
+
+  it("başka sayfanın elemanı gizlenir, kendi sayfasınınki görünür", () => {
+    expect(gorunurMu(etiketli("a", sayfaAnahtari(1)), sayfaAnahtari(2))).toBe(false);
+    expect(gorunurMu(etiketli("a", sayfaAnahtari(2)), sayfaAnahtari(2))).toBe(true);
+  });
+
+  it("serbest katman HER sayfada görünür", () => {
+    expect(gorunurMu(etiketli("a", SERBEST_SAYFA), sayfaAnahtari(7))).toBe(true);
+    expect(gorunurMu(etiketli("a", SERBEST_SAYFA), SERBEST_SAYFA)).toBe(true);
+  });
+
+  it("etiketsiz eleman gizlenmez — uzaktan gelen çizim yanıp sönmesin", () => {
+    expect(gorunurMu(el("a", 1), sayfaAnahtari(3))).toBe(true);
+    expect(elemanSayfasi(el("a", 1))).toBeNull();
+  });
+});
+
+describe("sayfaEtiketle", () => {
+  it("etiketler, sürümü artırır ve özgün elemanı bozmaz", () => {
     const once = el("a", 4);
-    const sonra = silindiIsaretle(once);
-    expect(sonra.isDeleted).toBe(true);
-    expect(sonra.version).toBeGreaterThan(once.version);
-    expect(once.isDeleted).toBeUndefined(); // özgün eleman değiştirilmez
+    const sonra = sayfaEtiketle(once, sayfaAnahtari(2));
+    expect(elemanSayfasi(sonra)).toBe("s2");
+    expect(sonra.version).toBe(5);
+    expect(once.customData).toBeUndefined();
+  });
+
+  it("etiketlenmiş eleman `degisenler` ile bir kez yayınlanır, sonra susar", () => {
+    const bilinen = new Map<string, number>();
+    const etiketlenmis = sayfaEtiketle(el("a", 4), SERBEST_SAYFA);
+    const yayinlanacak = degisenler([etiketlenmis], bilinen);
+    expect(yayinlanacak).toHaveLength(1);
+    surumleriYaz(yayinlanacak, bilinen);
+    // İkinci tur: eleman ARTIK ETİKETLİ olduğu için yeniden etiketlenmez.
+    expect(degisenler([etiketlenmis], bilinen)).toEqual([]);
   });
 });
 
@@ -92,6 +128,14 @@ describe("mesajCoz", () => {
       })
     );
     expect(cozulen).toMatchObject({ t: "durum", dosyalar: [{ id: "d1" }] });
+  });
+
+  it("sayfa alanını taşır — eleman listesi boş olsa bile", () => {
+    expect(mesajCoz(JSON.stringify({ t: "durum", elemanlar: [], sayfa: "s4" }))).toEqual({
+      t: "durum",
+      elemanlar: [],
+      sayfa: "s4",
+    });
   });
 
   it("istek ve temizle geçer", () => {
