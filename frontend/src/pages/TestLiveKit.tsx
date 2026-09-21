@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
 import "@livekit/components-styles";
+
+/* Tahta TEMBEL yüklenir: Excalidraw + pdf.js birlikte megabaytlarca paket
+   eder ve bu deneme sayfasına bağlanan biri tahtayı hiç açmayabilir. */
+const TahtaPaneli = lazy(() => import("@/components/tahta/TahtaPaneli"));
 
 /* ──────────────────────────────────────────────────────────────────────────
  * TEST SAYFASI — LiveKit canlı ders denemesi (/test-livekit)
@@ -60,6 +64,10 @@ export default function TestLiveKit() {
   const [token, setToken] = useState("");
   const [bagli, setBagli] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
+  const [tahtaAcik, setTahtaAcik] = useState(false);
+  /* Odasız tahta denemesi: çizim/silgi/temizle/PDF tek başına denenebilsin
+     diye. Panel oda bulamazsa senkronizasyonu sessizce kapatır. */
+  const [yalnizTahta, setYalnizTahta] = useState(false);
 
   const temizToken = token.trim();
   const oda = useMemo(() => tokenOdasi(temizToken), [temizToken]);
@@ -113,6 +121,16 @@ export default function TestLiveKit() {
     };
   }, [bagli]);
 
+  if (yalnizTahta) {
+    return (
+      <div className="flex h-screen flex-col bg-slate-100">
+        <Suspense fallback={<TahtaYukleniyor />}>
+          <TahtaPaneli onKapat={() => setYalnizTahta(false)} />
+        </Suspense>
+      </div>
+    );
+  }
+
   if (bagli) {
     return (
       <div ref={kapsayici} className="adod-livekit flex h-screen flex-col bg-slate-900">
@@ -127,31 +145,59 @@ export default function TestLiveKit() {
               </>
             )}
           </span>
-          <button
-            onClick={() => setBagli(false)}
-            className="rounded-lg bg-red-600/20 px-3 py-1.5 font-semibold text-red-300 transition hover:bg-red-600/30"
-          >
-            Ayrıl
-          </button>
+          <span className="flex items-center gap-2">
+            <button
+              onClick={() => setTahtaAcik((a) => !a)}
+              aria-pressed={tahtaAcik}
+              className="rounded-lg bg-slate-100/10 px-3 py-1.5 font-semibold text-slate-200 transition hover:bg-slate-100/20"
+            >
+              {tahtaAcik ? "Tahtayı gizle" : "📝 Tahta"}
+            </button>
+            <button
+              onClick={() => setBagli(false)}
+              className="rounded-lg bg-red-600/20 px-3 py-1.5 font-semibold text-red-300 transition hover:bg-red-600/30"
+            >
+              Ayrıl
+            </button>
+          </span>
         </div>
-        <div className="min-h-0 flex-1">
-          <LiveKitRoom
-            serverUrl={sunucu}
-            token={temizToken}
-            connect
-            video
-            audio
-            data-lk-theme="default"
-            style={{ height: "100%" }}
-            onDisconnected={() => setBagli(false)}
-            onError={(e) => {
-              setHata(e.message);
-              setBagli(false);
-            }}
-          >
-            <VideoConference />
-          </LiveKitRoom>
-        </div>
+        <LiveKitRoom
+          serverUrl={sunucu}
+          token={temizToken}
+          connect
+          video
+          audio
+          data-lk-theme="default"
+          className="flex min-h-0 flex-1 flex-col"
+          onDisconnected={() => setBagli(false)}
+          onError={(e) => {
+            setHata(e.message);
+            setBagli(false);
+          }}
+        >
+          {/* Tahta açılınca `VideoConference` SÖKÜLMEZ, yalnız küçülür:
+              sökmek kamera/ekran paylaşımı aboneliklerini ve kütüphanenin
+              kendi iç durumunu sıfırlardı. Dar ekranda üst-alt, geniş
+              ekranda yan yana. */}
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <div
+              className={
+                tahtaAcik
+                  ? "min-h-0 h-[34%] shrink-0 lg:h-auto lg:w-[38%]"
+                  : "min-h-0 flex-1"
+              }
+            >
+              <VideoConference />
+            </div>
+            {tahtaAcik && (
+              <div className="min-h-0 flex-1 border-slate-700 lg:border-l">
+                <Suspense fallback={<TahtaYukleniyor />}>
+                  <TahtaPaneli onKapat={() => setTahtaAcik(false)} />
+                </Suspense>
+              </div>
+            )}
+          </div>
+        </LiveKitRoom>
       </div>
     );
   }
@@ -209,15 +255,33 @@ export default function TestLiveKit() {
             </p>
           )}
 
-          <button
-            onClick={baglan}
-            disabled={!temizToken || !sunucu.trim()}
-            className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            🎥 Odaya bağlan
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={baglan}
+              disabled={!temizToken || !sunucu.trim()}
+              className="rounded-xl bg-marka px-5 py-2.5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              🎥 Odaya bağlan
+            </button>
+            {/* Tahtanın kendisi (çizim, silgi, temizle, PDF arka plan) token
+                olmadan da denenebilsin diye. Bu modda senkronizasyon yoktur. */}
+            <button
+              onClick={() => setYalnizTahta(true)}
+              className="rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            >
+              📝 Tahtayı tek başına dene
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TahtaYukleniyor() {
+  return (
+    <div className="flex h-full items-center justify-center bg-white text-sm text-slate-400">
+      Tahta yükleniyor…
     </div>
   );
 }
