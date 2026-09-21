@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
+import { useKrispNoiseFilter } from "@livekit/components-react/krisp";
+import type { RoomOptions } from "livekit-client";
 import "@livekit/components-styles";
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -41,6 +43,31 @@ const MOBIL_SOHBET_CSS = `
   }
 }
 `;
+
+/* Oda ayarları — MODÜL SEVİYESİNDE sabit tutulur bilerek: `LiveKitRoom` bu
+ * nesneyle `new Room(...)` kurar; her render'da yeni bir nesne literali
+ * verilseydi oda yeniden yaratılma riski doğardı.
+ *
+ * `adaptiveStream` ve `dynacast` livekit-client'ta VARSAYILAN KAPALIDIR
+ * (bkz. node_modules/livekit-client `roomOptionDefaults`), açılması gereken
+ * tek iki ayar bunlardır:
+ *   adaptiveStream  Abone olunan video, ekrandaki <video> elemanının boyutuna
+ *                   göre otomatik kalite seçer; eleman görünmezken akışı
+ *                   duraklatır. Katılımcı listesi/küçük karo görünümünde
+ *                   gereksiz bant genişliğini kesen asıl ayar.
+ *   dynacast        Hiç kimsenin izlemediği simulcast katmanlarını sunucu
+ *                   isteğiyle duraklatır; yayıncının CPU ve upload yükünü
+ *                   düşürür. Zayıf ADSL/mobil hatlarda belirleyici.
+ *
+ * `publishDefaults.simulcast` ZATEN varsayılan `true`'dur; burada yalnız
+ * niyeti belgelemek için açıkça yazıldı — davranışı değiştirmez. */
+const ODA_AYARLARI: RoomOptions = {
+  adaptiveStream: true,
+  dynacast: true,
+  publishDefaults: {
+    simulcast: true,
+  },
+};
 
 /** Token'ın içindeki oda adını bilgi amaçlı gösterir (doğrulama YAPMAZ). */
 function tokenOdasi(token: string): string | null {
@@ -114,44 +141,50 @@ export default function TestLiveKit() {
   }, [bagli]);
 
   if (bagli) {
+    /* Üst şerit BİLEREK `LiveKitRoom`'un İÇİNDEDİR: gürültü filtresi düğmesi
+     * `useKrispNoiseFilter`'ı kullanır, o da oda context'ini ister. */
     return (
       <div ref={kapsayici} className="adod-livekit flex h-screen flex-col bg-slate-900">
         <style>{MOBIL_SOHBET_CSS}</style>
-        <div className="flex items-center justify-between gap-3 px-4 py-2 text-xs text-slate-300">
-          <span>
-            LiveKit denemesi · <code className="font-mono">{sunucu}</code>
-            {oda && (
-              <>
-                {" · oda "}
-                <code className="font-mono">{oda}</code>
-              </>
-            )}
-          </span>
-          <button
-            onClick={() => setBagli(false)}
-            className="rounded-lg bg-red-600/20 px-3 py-1.5 font-semibold text-red-300 transition hover:bg-red-600/30"
-          >
-            Ayrıl
-          </button>
-        </div>
-        <div className="min-h-0 flex-1">
-          <LiveKitRoom
-            serverUrl={sunucu}
-            token={temizToken}
-            connect
-            video
-            audio
-            data-lk-theme="default"
-            style={{ height: "100%" }}
-            onDisconnected={() => setBagli(false)}
-            onError={(e) => {
-              setHata(e.message);
-              setBagli(false);
-            }}
-          >
+        <LiveKitRoom
+          serverUrl={sunucu}
+          token={temizToken}
+          connect
+          video
+          audio
+          options={ODA_AYARLARI}
+          data-lk-theme="default"
+          className="flex min-h-0 flex-1 flex-col"
+          onDisconnected={() => setBagli(false)}
+          onError={(e) => {
+            setHata(e.message);
+            setBagli(false);
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-xs text-slate-300">
+            <span>
+              LiveKit denemesi · <code className="font-mono">{sunucu}</code>
+              {oda && (
+                <>
+                  {" · oda "}
+                  <code className="font-mono">{oda}</code>
+                </>
+              )}
+            </span>
+            <span className="flex items-center gap-2">
+              <GurultuFiltresiDugmesi />
+              <button
+                onClick={() => setBagli(false)}
+                className="rounded-lg bg-red-600/20 px-3 py-1.5 font-semibold text-red-300 transition hover:bg-red-600/30"
+              >
+                Ayrıl
+              </button>
+            </span>
+          </div>
+          <div className="min-h-0 flex-1">
             <VideoConference />
-          </LiveKitRoom>
-        </div>
+          </div>
+        </LiveKitRoom>
       </div>
     );
   }
@@ -219,6 +252,56 @@ export default function TestLiveKit() {
         </div>
       </div>
     </div>
+  );
+}
+
+/* Krisp gürültü engelleme — mikrofon track'ine takılan bir `TrackProcessor`.
+ *
+ * VARSAYILAN AÇIK: bağlanır bağlanmaz bir kez `true` denenir; kullanıcı
+ * isterse bu düğmeden kapatabilir.
+ *
+ * İKİ ÖNEMLİ UYARI:
+ * 1) Paket LiveKit'in KENDİ dokümanında "yalnız LiveKit Cloud'da desteklenir"
+ *    diye işaretli. SDK, modelleri `https://integrations.livekit.io` adresinden
+ *    odanın token'ıyla yetkilendirilerek indirir; bizim SFU'muz kendi
+ *    sunucumuzda olduğu için bu yetkilendirme muhtemelen reddedilir. O yüzden
+ *    burada "denenir ve başarısızsa sessizce vazgeçilir" akışı kuruldu:
+ *    filtre açılmasa bile mikrofon ve ders AKIŞI BOZULMAZ.
+ * 2) `isKrispNoiseFilterSupported()` yalnız tarayıcıya bakar (eski Safari'yi
+ *    eler), sunucu hakkını KONTROL ETMEZ. Gerçek sonucu hook'un bildirdiği
+ *    `isNoiseFilterEnabled` gösterir — düğme onu yansıtır. */
+function GurultuFiltresiDugmesi() {
+  const { setNoiseFilterEnabled, isNoiseFilterEnabled, isNoiseFilterPending } =
+    useKrispNoiseFilter();
+
+  // Filtreyi kurarken çıkan hata dersi KESMEZ; sessizce yutmak yerine konsola
+  // yazılır ki neden devreye girmediği anlaşılabilsin.
+  const dene = (acik: boolean) => {
+    Promise.resolve(setNoiseFilterEnabled(acik)).catch((e: unknown) => {
+      console.warn("Krisp gürültü filtresi uygulanamadı:", e);
+    });
+  };
+
+  useEffect(() => {
+    dene(true);
+    // `setNoiseFilterEnabled` hook içinde sabit referanstır; bir kez denenir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        dene(!isNoiseFilterEnabled);
+      }}
+      disabled={isNoiseFilterPending}
+      aria-pressed={isNoiseFilterEnabled}
+      title="Krisp gürültü engelleme"
+      className="rounded-lg bg-white/10 px-3 py-1.5 font-semibold text-slate-200 transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      Gürültü filtresi:{" "}
+      {isNoiseFilterPending ? "…" : isNoiseFilterEnabled ? "açık" : "kapalı"}
+    </button>
   );
 }
 
