@@ -11,7 +11,7 @@ import { useReviewsByTutor, useTutorRatingDistribution } from "@/hooks/useReview
 import { useTutorDetail } from "@/hooks/useTutorSearch";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
 import { WEEKDAYS_SHORT, weeklySchedule } from "@/lib/availability";
-import { formatRate, parseMoney } from "@/lib/money";
+import { formatRateSymbol, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { useNavSearch } from "@/hooks/useNavSearch";
@@ -192,7 +192,7 @@ export default function PublicTutorProfile({
           {mobil && (
             <EgitmenMobilUst
               tutor={tutor}
-              ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              ucret={rate !== null ? formatRateSymbol(tutor.hourly_rate) : null}
               rozet={hasVerifiedEducation(tutor.educations) ? <DocumentedBadge /> : undefined}
               ilkDersMetni={tutor.first_lesson_free !== false ? "İlk ders ücretsiz" : null}
               onGeri={geriDon}
@@ -275,7 +275,7 @@ export default function PublicTutorProfile({
                   kabuğu ayrışmasın. */}
               <TutorOzetTablosu
                 tutor={tutor}
-                ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+                ucret={rate !== null ? formatRateSymbol(tutor.hourly_rate) : null}
               />
               {/*
                 * `<button>`, `<Link>` DEĞİL: niyet `sessionStorage`da saklanıyor

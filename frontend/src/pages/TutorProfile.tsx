@@ -24,7 +24,7 @@ import {
 } from "@/hooks/useReviews";
 import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { formatRate, parseMoney } from "@/lib/money";
+import { formatRateSymbol, parseMoney } from "@/lib/money";
 import { BookingStatus, ROLE_IDS, TeachingMode } from "@/types";
 import type { TutorSearchOut } from "@/types";
 import { BookingModal } from "@/components/BookingModal";
@@ -193,7 +193,7 @@ export default function TutorProfile({
           {mobil && (
             <EgitmenMobilUst
               tutor={tutor}
-              ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+              ucret={rate !== null ? formatRateSymbol(tutor.hourly_rate) : null}
               rozet={hasVerifiedEducation(tutor.educations) ? <DocumentedBadge /> : undefined}
               favoriGizli={isOwnerTutor}
               ilkDersMetni={
@@ -281,7 +281,7 @@ export default function TutorProfile({
                   1366x768'de bile taşıyordu. Ayrıntı: `TutorOzetTablosu`. */}
               <TutorOzetTablosu
                 tutor={tutor}
-                ucret={rate !== null ? formatRate(tutor.hourly_rate) : null}
+                ucret={rate !== null ? formatRateSymbol(tutor.hourly_rate) : null}
               />
               {!isOwnerTutor && (
                 <button

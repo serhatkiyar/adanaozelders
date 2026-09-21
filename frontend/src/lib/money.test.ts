@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { parseMoney, formatTRY, formatTL, formatRate } from "@/lib/money";
+import {
+  parseMoney,
+  formatTRY,
+  formatTL,
+  formatRate,
+  formatRateSymbol,
+} from "@/lib/money";
 
 describe("parseMoney", () => {
   it("string sayıyı number'a çevirir", () => {
@@ -53,5 +59,18 @@ describe("formatRate", () => {
   });
   it("null için açıklayıcı fallback", () => {
     expect(formatRate(null)).toBe("Ücret belirtilmemiş");
+  });
+});
+
+describe("formatRateSymbol", () => {
+  it("₺ önekiyle basar, 'TL' soneki yok", () => {
+    expect(formatRateSymbol(250)).toBe("₺250");
+    expect(formatRateSymbol(250)).not.toContain("TL");
+  });
+  it("binlik ayracı uygular", () => {
+    expect(formatRateSymbol(1250)).toBe("₺1.250");
+  });
+  it("null için açıklayıcı fallback", () => {
+    expect(formatRateSymbol(null)).toBe("Ücret belirtilmemiş");
   });
 });

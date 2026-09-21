@@ -24,8 +24,9 @@ export function formatTRY(
 export const formatTL = formatTRY;
 
 // "250 TL" — saatlik ücret etiketi. "/ saat" EKİ YOK (kullanıcı kararı,
-// 16 Eyl 2026): ücret her yüzeyde yalnız tutar olarak basılır; eğitmen
-// profili, yönetim listesi ve kartlar bu tek fonksiyondan geçer.
+// 16 Eyl 2026): ücret her yüzeyde yalnız tutar olarak basılır. Yönetim
+// listesi (EgitmenIlanlari, AdminHome) bu fonksiyondan geçer ve "TL"
+// sonekini korur — `formatRateSymbol` (aşağıda) ile karıştırılmasın.
 export function formatRate(
   value: string | number | null | undefined,
   fallback = "Ücret belirtilmemiş"
@@ -33,4 +34,17 @@ export function formatRate(
   const n = parseMoney(value);
   if (n === null) return fallback;
   return formatTRY(n);
+}
+
+// "₺250" — saatlik ücret, "TL" yerine ₺ ÖNEKİYLE (kullanıcı kararı,
+// 21 Eyl 2026). Eğitmen profil kartlarında (arama sonucu kartı, profil
+// sayfasındaki bilgi/rezervasyon kartı) kullanılır; yönetim yüzeyleri
+// `formatRate`in "TL" sonekini korumaya devam eder.
+export function formatRateSymbol(
+  value: string | number | null | undefined,
+  fallback = "Ücret belirtilmemiş"
+): string {
+  const n = parseMoney(value);
+  if (n === null) return fallback;
+  return `₺${n.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
 }
