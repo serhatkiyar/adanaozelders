@@ -113,9 +113,14 @@ class Settings(BaseSettings):
     # yeniler ve kullanıcı yetkisi kaybolduğunda bağlantı en geç bu süre sonra
     # ölür (Centrifugo'da sunucu tarafı iptal yoktur).
     CENTRIFUGO_TOKEN_TTL_SECONDS: int = 600
-    # Publish çağrısı istek akışının İÇİNDE yapılır; uzun timeout kullanıcıyı
-    # bekletirdi. Gerçek-zamanlı katman best-effort'tur (bkz. `broadcast`).
-    CENTRIFUGO_TIMEOUT_SECONDS: float = 3.0
+    # Publish çağrısı istek akışının İÇİNDE yapılır ve `get_db` oturumu isteğin
+    # SONUNA KADAR tutar (bkz. core/database.py) — yani bu süre boyunca bir
+    # havuz bağlantısı tamamen kozmetik bir sinyal için park eder. Değer bu
+    # yüzden `DB_POOL_TIMEOUT_SECONDS`ın (10 sn) çok altında: Centrifugo aynı
+    # Docker ağında, istek ~60 baytlık bir POST. Saniyelerce beklemek bir
+    # Centrifugo yavaşlamasını DB havuzu tükenmesine çevirirdi; hızlı düşmek
+    # best-effort bir katman için doğru davranıştır (bkz. `broadcast`).
+    CENTRIFUGO_TIMEOUT_SECONDS: float = 1.0
     CENTRIFUGO_NAMESPACE: str = "kisisel"
 
     # Ters proxy arkasında istemci IP'si: X-Forwarded-For YALNIZCA bağlantı bu

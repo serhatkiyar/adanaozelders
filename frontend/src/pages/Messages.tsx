@@ -1018,8 +1018,12 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   value={text}
                   onChange={(e) => {
                     setText(e.target.value);
-                    // Throttle store'da (en fazla 2 sn'de bir istek).
-                    if (selectedId !== null) notifyTyping(selectedId);
+                    // Boş alanda haber verilmez: yazdığını silen biri karşı
+                    // tarafa "yazıyor…" göstermemeli. Throttle store'da
+                    // (en fazla 2 sn'de bir istek).
+                    if (selectedId !== null && e.target.value.trim()) {
+                      notifyTyping(selectedId);
+                    }
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {

@@ -74,6 +74,12 @@ async def typing(
     Sohbet üyeliği ``messaging_service``'te doğrulanır (404/403). Yayının
     kendisi best-effort'tur: Centrifugo düşse de uç 204 döner, çünkü
     kullanıcının gerçek işi (mesaj yazmak) bu ipucuna bağlı değildir.
+
+    Maliyet notu: alıcıları bulmak 1-2 okuma sorgusu ister ve ``get_db``
+    oturumu isteğin sonuna kadar tutar — yayın çağrısı dahil. Bu yüzden
+    ``CENTRIFUGO_TIMEOUT_SECONDS`` bilinçli olarak kısadır (1 sn) ve istemci
+    tarafında 2 sn'lik throttle vardır; ikisi olmadan kozmetik bir sinyal DB
+    havuzunu meşgul edebilirdi.
     """
     _acik_mi()
     hedefler = await messaging_service.typing_targets(
