@@ -3,6 +3,7 @@ import {
   CaptureUpdateAction,
   Excalidraw,
   convertToExcalidrawElements,
+  exportToCanvas,
   reconcileElements,
   restoreElements,
   viewportCoordsToSceneCoords,
@@ -181,6 +182,7 @@ export default function TahtaPaneli({ onKapat }: Props) {
   const [pdf, setPdf] = useState<AcikPdf | null>(null);
   const [sayfaNo, setSayfaNo] = useState(1);
   const [pdfMesgul, setPdfMesgul] = useState(false);
+  const [pdfIndiriliyor, setPdfIndiriliyor] = useState(false);
   /* Yalnız başlıktaki bilgi içindir. PDF'i AÇMAYAN katılımcıda `pdf` boştur;
      hangi sayfanın gösterildiğini ancak gelen mesajdan öğrenir. */
   const [gosterilenSayfa, setGosterilenSayfa] = useState<string | null>(null);
@@ -523,6 +525,75 @@ export default function TahtaPaneli({ onKapat }: Props) {
   }, [gonder]);
 
   /**
+   * Tahtayı PDF olarak indirir.
+   *
+   * Excalidraw'ın kendi dışa aktarımı PNG/SVG/`.excalidraw` ile sınırlı; PDF
+   * yok. Burada yapılan da yeni bir çizim motoru değil: her sayfa Excalidraw'ın
+   * KENDİ `exportToCanvas`'ıyla çiziliyor, `jsPDF` yalnız o tuvalleri tek
+   * dosyada birleştiriyor. Tamamen istemci tarafı, backend YOK.
+   *
+   * `jsPDF` tıklama anında dinamik import edilir: tahtayı açan ama hiç dışa
+   * aktarmayan kullanıcı o paketi indirmez.
+   *
+   * Çıktı TÜM sayfaları içerir (gezilen her PDF sayfası + üstündeki çizimler),
+   * sayfa numarası sırasında. Tek sayfa yerine bunun seçilmesinin sebebi:
+   * dersin sonunda işe yarayan çıktı "on sayfalık işlenmiş belge"dir, on ayrı
+   * dosya değil. PDF açılmamışsa tahtanın kendisi tek sayfa olarak iner.
+   */
+  const pdfIndir = useCallback(async () => {
+    const a = apiRef.current;
+    if (!a) return;
+    setPdfIndiriliyor(true);
+    setDurum(null);
+    try {
+      defteriDoldur(a.getSceneElementsIncludingDeleted());
+
+      // Sayfa sırası: s1, s2, … sayısal. Hiç PDF açılmadıysa tek "serbest" tur.
+      const sayfalar = [...zeminler.current.keys()].sort(
+        (x, y) => Number(x.slice(1)) - Number(y.slice(1))
+      );
+      const turlar = sayfalar.length > 0 ? sayfalar : [SERBEST_SAYFA];
+      const dosyalar = a.getFiles();
+
+      const { jsPDF } = await import("jspdf");
+      let belge: InstanceType<typeof jsPDF> | null = null;
+
+      for (const sayfa of turlar) {
+        const elemanlar = [...defter.current.values()].filter(
+          (e) => !e.isDeleted && gorunurMu(e as unknown as TahtaEleman, sayfa)
+        );
+        if (elemanlar.length === 0) continue;
+
+        const tuval = await exportToCanvas({
+          elements: elemanlar as never,
+          files: dosyalar,
+          // Zemin beyaz olmalı: saydam PNG'yi PDF'e koymak siyah sayfa üretir.
+          appState: { exportBackground: true, viewBackgroundColor: "#ffffff" },
+          exportPadding: 16,
+        });
+        const yon = tuval.width >= tuval.height ? "landscape" : "portrait";
+        if (!belge) {
+          belge = new jsPDF({ unit: "px", format: [tuval.width, tuval.height], orientation: yon });
+        } else {
+          belge.addPage([tuval.width, tuval.height], yon);
+        }
+        belge.addImage(tuval.toDataURL("image/png"), "PNG", 0, 0, tuval.width, tuval.height);
+      }
+
+      if (!belge) {
+        setDurum("Tahta boş — indirilecek bir şey yok.");
+        return;
+      }
+      const damga = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+      belge.save(`tahta-${damga}.pdf`);
+    } catch (e) {
+      setDurum(`PDF oluşturulamadı: ${(e as Error).message}`);
+    } finally {
+      setPdfIndiriliyor(false);
+    }
+  }, [defteriDoldur]);
+
+  /**
    * Seçilen PDF sayfasını açar: zemini koyar, GÖRÜNÜR SAYFAYI değiştirir.
    *
    * Sayfa daha önce açıldıysa yeniden çizilmez — zemini ve o sayfaya yapılmış
@@ -764,6 +835,15 @@ export default function TahtaPaneli({ onKapat }: Props) {
             </span>
           )}
 
+          {/* Excalidraw'ın kendi menüsü PNG/SVG/.excalidraw verir; PDF yok. */}
+          <button
+            type="button"
+            onClick={() => void pdfIndir()}
+            disabled={pdfIndiriliyor}
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
+          >
+            {pdfIndiriliyor ? "Hazırlanıyor…" : "PDF indir"}
+          </button>
           <button
             type="button"
             onClick={temizle}
