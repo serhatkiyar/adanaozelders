@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
 import "@livekit/components-styles";
 
@@ -19,6 +19,28 @@ import "@livekit/components-styles";
  * ────────────────────────────────────────────────────────────────────────── */
 
 const VARSAYILAN_SUNUCU = "wss://canli.adanaozelders.com.tr";
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * MOBİL SOHBET DÜZELTMESİ
+ *
+ * `@livekit/components-styles` 1.2.0, 600px altında sohbet panelini
+ * `position:fixed; top:0; bottom:var(--lk-control-bar-height)` yapar. `fixed`
+ * kutu LAYOUT viewport'a çakılıdır; mobil tarayıcıda klavye açılınca layout
+ * viewport küçülmez (viewport meta'sında `interactive-widget` yok → varsayılan
+ * `resizes-visual`), yalnız GÖRSEL viewport küçülür. Yani panelin alt satırı —
+ * mesaj kutusu ve "Send" düğmesi — klavyenin arkasında kalabilir.
+ *
+ * Aşağıdaki override sadece bu sayfada geçerlidir: klavye yüksekliği
+ * `--adod-klavye` değişkenine yazılır, panel o kadar yukarı alınır. Klavye
+ * kapalıyken değer 0'dır ve kütüphanenin kendi davranışı aynen korunur.
+ * ────────────────────────────────────────────────────────────────────────── */
+const MOBIL_SOHBET_CSS = `
+@media (max-width: 600px) {
+  .adod-livekit .lk-chat {
+    bottom: calc(var(--lk-control-bar-height) + var(--adod-klavye, 0px));
+  }
+}
+`;
 
 /** Token'ın içindeki oda adını bilgi amaçlı gösterir (doğrulama YAPMAZ). */
 function tokenOdasi(token: string): string | null {
@@ -47,9 +69,54 @@ export default function TestLiveKit() {
     setBagli(true);
   };
 
+  const kapsayici = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const kok = kapsayici.current;
+    if (!kok) return;
+
+    /* 1) Klavye yüksekliği → `--adod-klavye`.
+       `window.innerHeight` layout viewport'tur ve klavye açılınca DEĞİŞMEZ;
+       `visualViewport.height` ise klavye kadar küçülür. Aradaki fark, görsel
+       alanın altında kalan (klavyenin örttüğü) yüksekliktir. `offsetTop`
+       eklenir çünkü tarayıcı odaklı input'u göstermek için görsel viewport'u
+       kaydırdığında o kadarı zaten telafi edilmiş olur. */
+    const gorunur = window.visualViewport;
+    const olc = () => {
+      if (!gorunur) return;
+      const klavye = Math.max(0, window.innerHeight - (gorunur.height + gorunur.offsetTop));
+      kok.style.setProperty("--adod-klavye", `${Math.round(klavye)}px`);
+    };
+    olc();
+    gorunur?.addEventListener("resize", olc);
+    gorunur?.addEventListener("scroll", olc);
+
+    /* 2) "Send" düğmesine dokunurken input'un odağı kaybolmasın.
+       Odak kaybı → klavye kapanır → görsel viewport ve `fixed` panel yerinden
+       oynar → parmak kalktığında düğme artık orada olmadığı için `click`
+       hiç üretilmez. `pointerdown` iptal edilince odak değişimi (mousedown'ın
+       varsayılan davranışı) olmaz; `click` ise iptal edilmez, normal üretilir. */
+    const odagiKoru = (e: Event) => {
+      const hedef = e.target as HTMLElement | null;
+      // Seçici bilerek `[type=submit]` demiyor: formdaki tek düğme budur ve
+      // kütüphane sürümü `type` özniteliğini bırakırsa kural sessizce ölmesin.
+      if (hedef?.closest?.(".lk-chat-form button")) e.preventDefault();
+    };
+    kok.addEventListener("pointerdown", odagiKoru, true);
+    kok.addEventListener("mousedown", odagiKoru, true);
+
+    return () => {
+      gorunur?.removeEventListener("resize", olc);
+      gorunur?.removeEventListener("scroll", olc);
+      kok.removeEventListener("pointerdown", odagiKoru, true);
+      kok.removeEventListener("mousedown", odagiKoru, true);
+    };
+  }, [bagli]);
+
   if (bagli) {
     return (
-      <div className="flex h-screen flex-col bg-slate-900">
+      <div ref={kapsayici} className="adod-livekit flex h-screen flex-col bg-slate-900">
+        <style>{MOBIL_SOHBET_CSS}</style>
         <div className="flex items-center justify-between gap-3 px-4 py-2 text-xs text-slate-300">
           <span>
             LiveKit denemesi · <code className="font-mono">{sunucu}</code>
