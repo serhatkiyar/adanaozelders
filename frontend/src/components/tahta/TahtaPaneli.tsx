@@ -132,6 +132,39 @@ function sahneyiBosalt(api: ExcalidrawImperativeAPI): void {
   api.resetScene();
 }
 
+/**
+ * Artık çizilmeyen (mezar taşı olmuş) görüntülerin base64 verisini dosya
+ * deposundan düşürür.
+ *
+ * Kural MEZAR TAŞINA bakar, "sayfayı kim çevirdi"ye değil — bu yüzden hem
+ * sayfayı çeviren tarafta hem de değişikliği UZAKTAN ALAN tarafta aynı şekilde
+ * işler. Yalnız gönderen tarafta yapılsaydı karşı katılımcı gezilen bütün
+ * sayfaların JPEG'ini biriktirir ve geç katılan birine hepsini yollardı.
+ *
+ * Hâlâ canlı bir eleman aynı `fileId`yi gösteriyorsa dosya BIRAKILIR: aynı
+ * görüntüden iki kopya varsa birinin silinmesi diğerini kırmamalı.
+ *
+ * SINIR: bu yalnız base64 dizesini serbest bırakır. Excalidraw'ın ÇÖZÜLMÜŞ
+ * görüntü önbelleği (`imageCache`) genel API'den boşaltılamaz — ölçüldü,
+ * `resetScene()` bile boşaltmıyor. Onu yalnız paneli kapatıp yeniden açmak
+ * (Excalidraw'ın yeniden kurulması) serbest bırakır.
+ */
+function mezarDosyalariniAt(
+  api: ExcalidrawImperativeAPI,
+  elemanlar: readonly OrderedExcalidrawElement[]
+): void {
+  const canli = new Set<string>();
+  const olu = new Set<string>();
+  for (const e of elemanlar) {
+    if (e.type !== "image" || !e.fileId) continue;
+    (e.isDeleted ? olu : canli).add(e.fileId);
+  }
+  const dosyalar = api.getFiles() as Record<string, unknown>;
+  for (const id of olu) {
+    if (!canli.has(id) && id in dosyalar) delete dosyalar[id];
+  }
+}
+
 type Props = {
   /** Panel başlığındaki kapat düğmesi. */
   onKapat: () => void;
@@ -154,6 +187,8 @@ export default function TahtaPaneli({ onKapat }: Props) {
   const bilinen = useRef(new Map<string, number>());
   /** Arka plana konmuş PDF sayfası elemanının id'si (yenisi gelince silinir). */
   const arkaPlanId = useRef<string | null>(null);
+  /** Sayfaların oturduğu sabit çerçeve — ilk sayfada bir kez hesaplanır. */
+  const zeminCercevesi = useRef<Kutu | null>(null);
   const yayinZamani = useRef<number | null>(null);
   const sonImlec = useRef(0);
   const imlecler = useRef(new Map<SocketId, Collaborator>());
@@ -249,6 +284,7 @@ export default function TahtaPaneli({ onKapat }: Props) {
         sahneyiBosalt(a);
         bilinen.current.clear();
         arkaPlanId.current = null;
+        zeminCercevesi.current = null;
         return;
       }
 
@@ -275,6 +311,9 @@ export default function TahtaPaneli({ onKapat }: Props) {
         a.getAppState()
       );
       a.updateScene({ elements: birlesik, captureUpdate: CaptureUpdateAction.NEVER });
+      // Uzaktan gelen sayfa değişimi de depoyu toplar; yoksa yalnız sayfayı
+      // çeviren taraf temizlenir, ötekinde 30 sayfa birikirdi.
+      mezarDosyalariniAt(a, birlesik);
     },
     [tamSahneyiGonder]
   );
@@ -361,6 +400,7 @@ export default function TahtaPaneli({ onKapat }: Props) {
     sahneyiBosalt(a);
     bilinen.current.clear();
     arkaPlanId.current = null;
+    zeminCercevesi.current = null;
     // PDF durumu da sıfırlanır: zemin sahneden gittiği hâlde başlıkta "2/4"
     // yazmaya devam etmesi, olmayan bir şeyi gösteren bir sayaç olurdu.
     setPdf(null);
@@ -388,26 +428,27 @@ export default function TahtaPaneli({ onKapat }: Props) {
 
         const mevcut = a.getSceneElementsIncludingDeleted();
         const eskiId = arkaPlanId.current;
-        const eskiZemin = eskiId ? mevcut.find((e) => e.id === eskiId && !e.isDeleted) : undefined;
 
         /* NEREYE konacak?
-           1) Zaten bir sayfa varsa YENİSİ ONUN YERİNİ ALIR. Çok sayfalı bir
-              PDF'te doğru davranış budur: kullanıcı bir kez yakınlaşır, sonra
-              sayfalar hep aynı çerçevede değişir.
-           2) İlk sayfada hedef, kullanıcının O AN BAKTIĞI alandır. Eski kod
-              sabit (0,0) kullanıyordu; tahtanın başka bir yerinde çalışan biri
-              için yeni sayfa ekranın tamamen dışına düşüyordu.
-           İkisinde de `scrollToContent` ÇAĞRILMAZ: sayfa zaten görünür alana
-           yerleştirildiği için kaydırmaya gerek yok ve kullanıcının yakınlaşma
-           düzeyini bozmak istemiyoruz. */
+           1) Bu belgede daha önce bir çerçeve hesaplandıysa YENİ SAYFA AYNI
+              ÇERÇEVEYE oturur. Çok sayfalı bir PDF'te doğru davranış budur:
+              kullanıcı bir kez yerleştirir, sonra sayfalar aynı yerde değişir.
+           2) İlk sayfada çerçeve, kullanıcının O AN BAKTIĞI alandan türetilir.
+              Eski kod sabit (0,0) kullanıyordu; tahtanın başka bir yerinde
+              çalışan biri için yeni sayfa ekranın tamamen dışına düşüyordu.
+
+           Çerçeve REF'te saklanır, önceki sayfa elemanının ölçüsünden yeniden
+           okunmaz. Okunsaydı karışık yönlü bir PDF'te sayfa sayfa KÜÇÜLÜRDÜ:
+           dikey kutuya sığdırılan yatay sayfa alçak bir kutu bırakır, sonraki
+           dikey sayfa o alçak kutuya sığdırılır ve bu böyle sürer
+           (380×538 → 380×268 → 189×268 → …).
+
+           `scrollToContent` ÇAĞRILMAZ: sayfa zaten görünür alana yerleştiği
+           için kaydırmaya gerek yok ve kullanıcının yakınlaşma düzeyini
+           bozmak istemiyoruz. */
         let hedef: Kutu;
-        if (eskiZemin) {
-          hedef = {
-            x: eskiZemin.x,
-            y: eskiZemin.y,
-            genislik: eskiZemin.width,
-            yukseklik: eskiZemin.height,
-          };
+        if (zeminCercevesi.current) {
+          hedef = zeminCercevesi.current;
         } else {
           const durum = a.getAppState();
           const solUst = viewportCoordsToSceneCoords(
@@ -426,6 +467,7 @@ export default function TahtaPaneli({ onKapat }: Props) {
             genislik: gorunurG * ZEMIN_PAYI,
             yukseklik: gorunurY * ZEMIN_PAYI,
           };
+          zeminCercevesi.current = hedef;
         }
         const kutu = kutuyaSigdir(hedef, goruntu.genislik, goruntu.yukseklik);
 
@@ -457,19 +499,11 @@ export default function TahtaPaneli({ onKapat }: Props) {
         });
         arkaPlanId.current = yeni.id;
 
-        /* Artık görünmeyen sayfanın base64 görüntüsünü dosya deposundan düşür.
-           İki kazancı var: (a) 30 sayfalık bir PDF'te depo sayfa sayısıyla
-           büyümez, (b) sahneyi geç isteyen birine ARTIK SADECE açık olan sayfa
-           gider — yoksa gezilen her sayfanın JPEG'i yeniden yayınlanırdı.
-           Mezar taşı elemanı fileId'yi göstermeye devam eder ama `isDeleted`
-           olduğu için hiç çizilmez, dolayısıyla eksik dosya aranmaz.
-           SINIR: bu yalnız base64 dizesini serbest bırakır; Excalidraw'ın
-           ÇÖZÜLMÜŞ görüntü önbelleği (`imageCache`) genel API'den boşaltılamaz
-           — ölçüldü, `resetScene()` bile boşaltmıyor. Onu yalnız paneli kapatıp
-           yeniden açmak (Excalidraw'ın yeniden kurulması) serbest bırakır. */
-        if (eskiZemin && "fileId" in eskiZemin && eskiZemin.fileId) {
-          delete (a.getFiles() as Record<string, unknown>)[eskiZemin.fileId];
-        }
+        /* Artık görünmeyen sayfanın base64 görüntüsünü depodan düşür: 30
+           sayfalık bir PDF'te depo sayfa sayısıyla büyümesin ve sahneyi geç
+           isteyen birine yalnız AÇIK OLAN sayfa gitsin. Karşı taraf da aynı
+           kuralı `uygula` içinde çalıştırır. */
+        mezarDosyalariniAt(a, a.getSceneElementsIncludingDeleted());
 
         // Sahneden GERİ OKUNUR: `updateScene` kesirli index'i o an atar,
         // gönderilen kopya index'siz olsaydı karşı tarafta zemin üste çıkardı.
