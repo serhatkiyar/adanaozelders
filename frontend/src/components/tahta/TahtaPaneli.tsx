@@ -5,6 +5,7 @@ import {
   convertToExcalidrawElements,
   reconcileElements,
   restoreElements,
+  viewportCoordsToSceneCoords,
 } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import { useMaybeRoomContext } from "@livekit/components-react";
@@ -91,6 +92,45 @@ const TAM_SENKRON_MS = 10_000;
 
 /** İmleç yayını aralığı. */
 const IMLEC_ARALIGI_MS = 60;
+
+/** Görünür alanın PDF zemini için ayrılan payı (kenarda nefes payı kalsın). */
+const ZEMIN_PAYI = 0.88;
+
+type Kutu = { x: number; y: number; genislik: number; yukseklik: number };
+
+/**
+ * Bir görüntüyü hedef kutuya EN-BOY ORANINI BOZMADAN sığdırır ve ortalar.
+ *
+ * Eski kod sabit bir 900 px genişliğe ölçekliyordu; yatay, dikey ve kare
+ * sayfalar aynı kutuya oturmuyordu. Tek ölçek çarpanı kullanmak oranı korur,
+ * `Math.min` ise taşmayı engeller — kutu dar gelirse genişlik, alçak gelirse
+ * yükseklik sınırlar.
+ */
+function kutuyaSigdir(hedef: Kutu, gGenislik: number, gYukseklik: number): Kutu {
+  const olcek = Math.min(hedef.genislik / gGenislik, hedef.yukseklik / gYukseklik);
+  const genislik = Math.round(gGenislik * olcek);
+  const yukseklik = Math.round(gYukseklik * olcek);
+  return {
+    x: Math.round(hedef.x + (hedef.genislik - genislik) / 2),
+    y: Math.round(hedef.y + (hedef.yukseklik - yukseklik) / 2),
+    genislik,
+    yukseklik,
+  };
+}
+
+/**
+ * Sahneyi ve dosya deposunu birlikte boşaltır.
+ *
+ * `resetScene()` tek başına yetmiyor: ölçüldü, sahneyi siliyor ama dosya
+ * deposuna dokunmuyor. O yüzden "Temizle"den sonra da gezilmiş bütün PDF
+ * sayfalarının base64'ü bellekte duruyor ve geç katılan birine yeniden
+ * gönderiliyordu.
+ */
+function sahneyiBosalt(api: ExcalidrawImperativeAPI): void {
+  const dosyalar = api.getFiles() as Record<string, unknown>;
+  for (const id of Object.keys(dosyalar)) delete dosyalar[id];
+  api.resetScene();
+}
 
 type Props = {
   /** Panel başlığındaki kapat düğmesi. */
@@ -206,7 +246,7 @@ export default function TahtaPaneli({ onKapat }: Props) {
         return;
       }
       if (mesaj.t === "temizle") {
-        a.resetScene();
+        sahneyiBosalt(a);
         bilinen.current.clear();
         arkaPlanId.current = null;
         return;
@@ -318,7 +358,7 @@ export default function TahtaPaneli({ onKapat }: Props) {
   const temizle = useCallback(() => {
     const a = apiRef.current;
     if (!a) return;
-    a.resetScene();
+    sahneyiBosalt(a);
     bilinen.current.clear();
     arkaPlanId.current = null;
     // PDF durumu da sıfırlanır: zemin sahneden gittiği hâlde başlıkta "2/4"
@@ -346,27 +386,66 @@ export default function TahtaPaneli({ onKapat }: Props) {
         };
         a.addFiles([dosya as unknown as BinaryFileData]);
 
-        // Ekrana sığacak ölçüye indir; `locked` çünkü bu bir ZEMİN — üstüne
-        // yazarken kazayla sürüklenmemeli.
-        const olcek = Math.min(1, 900 / goruntu.genislik);
+        const mevcut = a.getSceneElementsIncludingDeleted();
+        const eskiId = arkaPlanId.current;
+        const eskiZemin = eskiId ? mevcut.find((e) => e.id === eskiId && !e.isDeleted) : undefined;
+
+        /* NEREYE konacak?
+           1) Zaten bir sayfa varsa YENİSİ ONUN YERİNİ ALIR. Çok sayfalı bir
+              PDF'te doğru davranış budur: kullanıcı bir kez yakınlaşır, sonra
+              sayfalar hep aynı çerçevede değişir.
+           2) İlk sayfada hedef, kullanıcının O AN BAKTIĞI alandır. Eski kod
+              sabit (0,0) kullanıyordu; tahtanın başka bir yerinde çalışan biri
+              için yeni sayfa ekranın tamamen dışına düşüyordu.
+           İkisinde de `scrollToContent` ÇAĞRILMAZ: sayfa zaten görünür alana
+           yerleştirildiği için kaydırmaya gerek yok ve kullanıcının yakınlaşma
+           düzeyini bozmak istemiyoruz. */
+        let hedef: Kutu;
+        if (eskiZemin) {
+          hedef = {
+            x: eskiZemin.x,
+            y: eskiZemin.y,
+            genislik: eskiZemin.width,
+            yukseklik: eskiZemin.height,
+          };
+        } else {
+          const durum = a.getAppState();
+          const solUst = viewportCoordsToSceneCoords(
+            { clientX: durum.offsetLeft, clientY: durum.offsetTop },
+            durum
+          );
+          const sagAlt = viewportCoordsToSceneCoords(
+            { clientX: durum.offsetLeft + durum.width, clientY: durum.offsetTop + durum.height },
+            durum
+          );
+          const gorunurG = sagAlt.x - solUst.x;
+          const gorunurY = sagAlt.y - solUst.y;
+          hedef = {
+            x: solUst.x + (gorunurG * (1 - ZEMIN_PAYI)) / 2,
+            y: solUst.y + (gorunurY * (1 - ZEMIN_PAYI)) / 2,
+            genislik: gorunurG * ZEMIN_PAYI,
+            yukseklik: gorunurY * ZEMIN_PAYI,
+          };
+        }
+        const kutu = kutuyaSigdir(hedef, goruntu.genislik, goruntu.yukseklik);
+
+        // `locked` çünkü bu bir ZEMİN — üstüne yazarken kazayla sürüklenmemeli.
         const [yeni] = convertToExcalidrawElements([
           {
             type: "image",
             fileId: dosyaId as FileId,
-            x: 0,
-            y: 0,
-            width: Math.round(goruntu.genislik * olcek),
-            height: Math.round(goruntu.yukseklik * olcek),
+            x: kutu.x,
+            y: kutu.y,
+            width: kutu.genislik,
+            height: kutu.yukseklik,
             locked: true,
           },
         ]);
 
-        const mevcut = a.getSceneElementsIncludingDeleted();
-        const eski = arkaPlanId.current;
         // Önceki sayfa MEZAR TAŞI olarak kalır: diziden atmak silmeyi karşı
         // tarafa duyurmaz, eski sayfa orada asılı kalırdı.
         const temizlenmis = mevcut.map((e) =>
-          eski && e.id === eski
+          eskiId && e.id === eskiId
             ? (silindiIsaretle(e as unknown as TahtaEleman) as unknown as typeof e)
             : e
         );
@@ -377,13 +456,26 @@ export default function TahtaPaneli({ onKapat }: Props) {
           captureUpdate: CaptureUpdateAction.NEVER,
         });
         arkaPlanId.current = yeni.id;
-        a.scrollToContent(yeni, { fitToContent: true });
+
+        /* Artık görünmeyen sayfanın base64 görüntüsünü dosya deposundan düşür.
+           İki kazancı var: (a) 30 sayfalık bir PDF'te depo sayfa sayısıyla
+           büyümez, (b) sahneyi geç isteyen birine ARTIK SADECE açık olan sayfa
+           gider — yoksa gezilen her sayfanın JPEG'i yeniden yayınlanırdı.
+           Mezar taşı elemanı fileId'yi göstermeye devam eder ama `isDeleted`
+           olduğu için hiç çizilmez, dolayısıyla eksik dosya aranmaz.
+           SINIR: bu yalnız base64 dizesini serbest bırakır; Excalidraw'ın
+           ÇÖZÜLMÜŞ görüntü önbelleği (`imageCache`) genel API'den boşaltılamaz
+           — ölçüldü, `resetScene()` bile boşaltmıyor. Onu yalnız paneli kapatıp
+           yeniden açmak (Excalidraw'ın yeniden kurulması) serbest bırakır. */
+        if (eskiZemin && "fileId" in eskiZemin && eskiZemin.fileId) {
+          delete (a.getFiles() as Record<string, unknown>)[eskiZemin.fileId];
+        }
 
         // Sahneden GERİ OKUNUR: `updateScene` kesirli index'i o an atar,
         // gönderilen kopya index'siz olsaydı karşı tarafta zemin üste çıkardı.
         const yerlesmis = a
           .getSceneElementsIncludingDeleted()
-          .filter((e) => e.id === yeni.id || (eski && e.id === eski)) as unknown as TahtaEleman[];
+          .filter((e) => e.id === yeni.id || (eskiId && e.id === eskiId)) as unknown as TahtaEleman[];
         surumleriYaz(yerlesmis, bilinen.current);
         await gonder({ t: "durum", elemanlar: [...yerlesmis], dosyalar: [dosya] });
       } catch (e) {
