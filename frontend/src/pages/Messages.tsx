@@ -33,6 +33,7 @@ import {
   useUnblockClient,
 } from "@/hooks/useMessages";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useCentrifugoStore } from "@/store/centrifugoStore";
 import { formatChatTime, formatDateTime } from "@/lib/datetime";
 import { buildSnippet } from "@/lib/messageSearch";
 import { mesajParcala } from "@/lib/mesajBaglantisi";
@@ -349,6 +350,22 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     if (selectedId !== null) markRead.mutate(selectedId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, lastMessageId]);
+
+  // ── "yazıyor…" (Centrifugo) ──
+  // Bağlantı uygulama kökünde değil BU ekranda kurulur: ikinci bir soketi tüm
+  // oturum boyunca açık tutmanın karşılığı yok. Sunucuda özellik kapalıysa
+  // (CENTRIFUGO_ENABLED=False) token ucu 503 döner ve store sessizce vazgeçer —
+  // ekranın geri kalanı hiç etkilenmez.
+  const centrifugoConnect = useCentrifugoStore((s) => s.connect);
+  const centrifugoDisconnect = useCentrifugoStore((s) => s.disconnect);
+  const notifyTyping = useCentrifugoStore((s) => s.notifyTyping);
+  const karsiTarafYaziyor = useCentrifugoStore((s) =>
+    selectedId === null ? false : !!s.typing[selectedId]
+  );
+  useEffect(() => {
+    void centrifugoConnect();
+    return () => centrifugoDisconnect();
+  }, [centrifugoConnect, centrifugoDisconnect]);
 
   const showChat = selectedId !== null || draft !== null;
 
@@ -901,6 +918,13 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     />
                   ))
                 )}
+                {/* "yazıyor…" — karşı taraftan gelen ipucu; 3 sn sonra kendiliğinden
+                    söner. Kalıcı veri değil, gelmezse hiçbir şey görünmez. */}
+                {karsiTarafYaziyor && (
+                  <p className={`px-1 ${KUCUK_ACIKLAMA}`} aria-live="polite">
+                    {activeName ?? "Karşı taraf"} yazıyor…
+                  </p>
+                )}
                 {/* Görüldü/Gönderildi — yalnız son mesaj benimse (WhatsApp tarzı) */}
                 {messages && messages.length > 0 && role && (() => {
                   const last = messages[messages.length - 1];
@@ -992,7 +1016,11 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 <textarea
                   rows={1}
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    // Throttle store'da (en fazla 2 sn'de bir istek).
+                    if (selectedId !== null) notifyTyping(selectedId);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
