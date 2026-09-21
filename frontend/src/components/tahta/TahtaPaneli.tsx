@@ -135,14 +135,24 @@ export default function TahtaPaneli({ onKapat }: Props) {
     [oda]
   );
 
-  /** Sahnedeki HER elemanı (silinmişler dahil) yayınlar. */
+  /**
+   * Sahnedeki HER elemanı (silinmişler dahil) yayınlar.
+   *
+   * `dosyalarlaBirlikte` yalnız sahneyi İLK KEZ isteyen birine yanıt verirken
+   * açıktır. Periyodik senkron onu KAPALI çağırır: dosya önbelleğinde duran
+   * PDF sayfası görüntüleri (base64, sayfa başına yüz kilobaytlar, üstelik
+   * artık silinmiş olanlar dahil) on saniyede bir yeniden yayınlanırdı.
+   * Elemanlar görüntüyü değil yalnız `fileId`yi taşır; periyodik tur ucuzdur.
+   */
   const tamSahneyiGonder = useCallback(
-    async (hedefler?: string[]) => {
+    async (hedefler?: string[], dosyalarlaBirlikte = false) => {
       const a = apiRef.current;
       if (!a) return;
       const elemanlar = a.getSceneElementsIncludingDeleted() as unknown as TahtaEleman[];
-      const dosyalar = Object.values(a.getFiles()) as unknown as TahtaDosya[];
       surumleriYaz(elemanlar, bilinen.current);
+      const dosyalar = dosyalarlaBirlikte
+        ? (Object.values(a.getFiles()) as unknown as TahtaDosya[])
+        : [];
       await gonder(
         dosyalar.length > 0
           ? { t: "durum", elemanlar: [...elemanlar], dosyalar }
@@ -167,6 +177,10 @@ export default function TahtaPaneli({ onKapat }: Props) {
     const hepsi = a.getSceneElementsIncludingDeleted() as unknown as TahtaEleman[];
     const yeni = degisenler(hepsi, bilinen.current);
     if (yeni.length === 0) return;
+    // Defter gönderimden ÖNCE işaretlenir (iyimser). Gönderim düşerse o
+    // eleman tek tek bir daha denenmez; periyodik tam senkron toparlar.
+    // Tersi — önce gönder, sonra işaretle — çizim sürerken aynı elemanı
+    // arka arkaya birkaç kez yollardı.
     surumleriYaz(yeni, bilinen.current);
     void gonder({ t: "durum", elemanlar: yeni });
   }, [gonder]);
@@ -187,7 +201,8 @@ export default function TahtaPaneli({ onKapat }: Props) {
       if (!a) return;
 
       if (mesaj.t === "istek") {
-        void tamSahneyiGonder([kimden]);
+        // Tek yer: sahneyi ilk kez isteyene görüntüler de gider.
+        void tamSahneyiGonder([kimden], true);
         return;
       }
       if (mesaj.t === "temizle") {
@@ -426,10 +441,13 @@ export default function TahtaPaneli({ onKapat }: Props) {
     [oda]
   );
 
+  // `remoteParticipants` istemci tarafında tutulur ve tanımı gereği yalnız
+  // KARŞI tarafı sayar. `numParticipants` sunucudan gelir, bağlantının ilk
+  // anında 0 olabilir ve "-1 katılımcı" yazdırırdı.
   const baglantiNotu = !oda
     ? "oda yok — yerel deneme"
     : oda.state === "connected"
-      ? `${oda.numParticipants - 1} katılımcıyla paylaşılıyor`
+      ? `${oda.remoteParticipants.size} katılımcıyla paylaşılıyor`
       : `bağlantı: ${oda.state}`;
 
   return (
