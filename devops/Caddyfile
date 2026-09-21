@@ -27,7 +27,12 @@
 		X-Frame-Options "DENY"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		Permissions-Policy "camera=(self), geolocation=(self), microphone=()"
+		# Kamera ve mikrofon kendi kaynağımıza: canlı ders iki yönlüdür,
+		# `microphone=()` onu tarayıcı seviyesinde tamamen kapatıyordu.
+		# Caddy'nin `header` direktifi değeri EKLEMEZ, DEĞİŞTİRİR: bu satır
+		# frontend nginx'inin kendi Permissions-Policy'sini ezer, yani ikisi
+		# BİRLİKTE değişmelidir (frontend/nginx-security-headers.conf).
+		Permissions-Policy "camera=(self), geolocation=(self), microphone=(self)"
 		# Sunucu parmak izini azalt.
 		-Server
 		# BURAYA Content-Security-Policy EKLEMEYİN. CSP tek kaynakta,
@@ -193,6 +198,36 @@ depo.{$DOMAIN} {
 
 	log {
 		output file /var/log/caddy/storage.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+	}
+}
+
+# ── Canlı ders signaling (LiveKit) ──────────────────────────────────────────
+#
+# Tarayıcı buraya WebSocket ile bağlanır (LIVEKIT_URL=wss://canli.<alan>);
+# TLS burada sonlanır, LiveKit'in kendisi iç ağda düz HTTP konuşur ve 7880'i
+# host'a hiç yayınlamaz. `reverse_proxy` WebSocket upgrade'ini kendiliğinden
+# taşır (yukarıdaki /ws bloğuyla aynı).
+#
+# Medya (7881/tcp, 7882/udp) BURADAN GEÇMEZ: UDP'yi Caddy taşıyamaz, o portlar
+# docker-compose.prod.yml'de doğrudan yayınlanır ve sunucu güvenlik duvarında
+# açık olmalıdır.
+#
+# Gerekenler: `canli` için A kaydı (aynı IP).
+# CSP EKLENMEZ: CSP tek kaynakta (frontend/nginx-security-headers.conf).
+canli.{$DOMAIN} {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	reverse_proxy livekit:7880
+
+	log {
+		output file /var/log/caddy/livekit.log {
 			roll_size 20mb
 			roll_keep 5
 		}
