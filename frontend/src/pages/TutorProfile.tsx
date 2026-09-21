@@ -265,7 +265,7 @@ export default function TutorProfile({
                   <StarRating value={tutor.rating_average} single={true} />
                   <span className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover ">
                     {tutor.rating_count > 0
-                      ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
+                      ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count} yorum)`
                       : "Değerlendirme yok"}
                   </span>
                 </button>
