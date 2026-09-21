@@ -243,7 +243,12 @@ class BookingOut(BaseModel):
         """Canlı ders odası, ödeme yapılmadan ifşa edilmesin (anti-bedava ders).
         Oda yalnızca ödeme emanete alındığında (HELD/RELEASED) ya da ders
         ücretsizse (ilk ders ücretsiz, price==0) görünür. Aksi halde istemci
-        odaya erişemez → ödeme yapmadan canlı ders başlatılamaz."""
+        odaya erişemez → ödeme yapmadan canlı ders başlatılamaz.
+
+        İKİZİ VAR: `api/routers/bookings.py::get_live_lesson_token` aynı kuralı
+        LiveKit token'ı için uygular (orası ORM'den okuduğu için bu şemadan
+        geçmez). Buradaki koşul değişirse ORASI DA değişmeli — yoksa oda adı
+        gizlenir ama token yine verilir (ya da tersi)."""
         if not self.meeting_room:
             return self
         paid = self.payment is not None and self.payment.status in (
@@ -254,6 +259,23 @@ class BookingOut(BaseModel):
         if not (paid or free):
             self.meeting_room = None
         return self
+
+
+# ── Canlı ders (LiveKit) ─────────────────────────────────────────────────────
+
+
+class LiveLessonTokenOut(BaseModel):
+    """GET /bookings/{id}/live-token yanıtı.
+
+    `token` kısa ömürlüdür ve YALNIZ `room` odası için geçerlidir; istemci
+    bunu saklamaz, ders penceresinde yeniden ister.
+    """
+
+    url: str
+    token: str
+    room: str
+    identity: str
+    expires_at: datetime.datetime
 
 
 # ── Ders talep ızgarası (Modül 3): GET /tutors/{id}/slots ────────────────────

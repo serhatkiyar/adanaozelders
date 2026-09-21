@@ -123,6 +123,22 @@ class Settings(BaseSettings):
     CENTRIFUGO_TIMEOUT_SECONDS: float = 1.0
     CENTRIFUGO_NAMESPACE: str = "kisisel"
 
+    # ── Canlı ders (LiveKit) ──
+    # Kendi sunucumuzda duran WebRTC SFU'su. Üçü de BOŞKEN özellik kapalıdır:
+    # `/bookings/{id}/live-token` 503 döner (Centrifugo/Google OAuth ile aynı
+    # yaklaşım — geliştirmede dış servis GEREKMEZ). Açılış guard'ına
+    # EKLENMEZ: eksik yapılandırma yalnız bu tek ucu etkiler, uygulamanın
+    # geri kalanı bundan bağımsız çalışır.
+    #   LIVEKIT_URL        → tarayıcının bağlanacağı adres (wss://…)
+    #   LIVEKIT_API_KEY    → token'ın `iss` claim'i
+    #   LIVEKIT_API_SECRET → token'ı imzalayan HS256 sırrı
+    LIVEKIT_URL: str = ""
+    LIVEKIT_API_KEY: str = ""
+    LIVEKIT_API_SECRET: str = ""
+    # Token ucu kullanıcı bazlı sınırlanır: ders penceresinde yeniden bağlanma
+    # birkaç token ister, ama döngüye girmiş bir istemci SFU'yu boğmasın.
+    RATE_LIMIT_LIVE_TOKEN: int = 20
+
     # Ters proxy arkasında istemci IP'si: X-Forwarded-For YALNIZCA bağlantı bu
     # listedeki bir adresten geliyorsa okunur. Boş liste = XFF'e hiç güvenme
     # (doğrudan bağlantı IP'si kullanılır). Aksi halde saldırgan her istekte

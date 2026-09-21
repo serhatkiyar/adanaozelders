@@ -16,9 +16,11 @@ from core.config import settings
 from core.database import get_db
 from models.booking import Booking, BookingStatus
 from models.client import Client
+from models.payment import PaymentStatus
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.booking import (
+    LiveLessonTokenOut,
     BookingCancel,
     BookingCreate,
     BookingOffer,
@@ -34,7 +36,13 @@ from schemas.booking import (
     LessonSeriesOut,
     LessonSeriesPreviewOut,
 )
-from services import booking_service, lesson_series_service, payment_gates, phone_service
+from services import (
+    booking_service,
+    lesson_series_service,
+    livekit_service,
+    payment_gates,
+    phone_service,
+)
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -54,6 +62,23 @@ _comment_limit = user_rate_limit(
     limit=settings.RATE_LIMIT_MESSAGE,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
+
+# Canlı ders token'ı: ders penceresinde yeniden bağlanma birkaç token ister,
+# ama döngüye girmiş bir istemci SFU'yu boğmasın.
+_live_token_limit = user_rate_limit(
+    key="live_token",
+    limit=settings.RATE_LIMIT_LIVE_TOKEN,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+
+# Katılım penceresi. Bu iki değer `frontend/src/lib/lesson.ts` içindeki
+# JOIN_OPENS_BEFORE_MIN / JOIN_CLOSES_AFTER_MIN ile AYNI olmalıdır: ayrışırsa
+# arayüz "Derse Katıl" düğmesini gösterirken sunucu 409 döner (ya da tersi).
+_JOIN_OPENS_BEFORE = datetime.timedelta(minutes=15)
+_JOIN_CLOSES_AFTER = datetime.timedelta(minutes=30)
+# Token ömrü. Pencerenin tamamını kapsar, daha uzun değil: sızan bir token
+# ders bittikten sonra işe yaramasın.
+_LIVE_TOKEN_TTL_SECONDS = 60 * 60
 
 _LIMIT_MAX = 100
 # Tarih aralığı verildiğinde bir haftanın tüm dersleri tek istekte gelsin.
@@ -218,6 +243,98 @@ async def get_booking(
     booking = await _get_booking_or_404(db, booking_id, user)
     _assert_party(booking, user)
     return booking
+
+
+@router.get(
+    "/{booking_id}/live-token",
+    response_model=LiveLessonTokenOut,
+    dependencies=[Depends(_live_token_limit)],
+)
+async def get_live_lesson_token(
+    booking_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Canlı ders (LiveKit) için kısa ömürlü erişim token'ı üretir.
+
+    Kapılar SIRAYLA uygulanır; her biri bir öncekini geçmiş isteği varsayar.
+    """
+    booking = await _get_booking_or_404(db, booking_id, user)
+    # 1. Yalnız dersin iki tarafı (eğitmen/öğrenci). Admin dahil değil: canlı
+    #    derse katılmak izleme değil, katılımcı olmaktır.
+    _assert_party(booking, user)
+
+    # 2. Ders onaylanmış olmalı; bekleyen/iptal/tamamlanmış derste oda yok.
+    if booking.status != BookingStatus.ACCEPTED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Ders onaylı değil; canlı oda açılmaz."
+        )
+
+    # 3. Yüzyüze derste canlı oda yoktur (bkz. booking_service: oda yalnız
+    #    ONLINE derste kabul anında üretilir).
+    if booking.mode == "IN_PERSON" or not booking.meeting_room:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu ders için canlı oda tanımlı değil."
+        )
+
+    # 4. ÖDEME KAPISI — `schemas/booking.py::_gate_meeting_room`'un sunucu
+    #    tarafı İKİZİ. O kapı oda ADINI yanıttan siler; burası o adla token
+    #    verilmesini engeller. Bu uç ORM'den okuduğu için şema kapısından
+    #    GEÇMEZ; atlanırsa öğrenci ödeme yapmadan canlı derse girer.
+    #    İKİ KURAL BİRLİKTE DEĞİŞİR: koşul burada gevşetilirse orada da
+    #    gevşetilmeli, aksi halde oda adı gizli kalır ama token verilir.
+    odendi = booking.payment is not None and booking.payment.status in (
+        PaymentStatus.HELD,
+        PaymentStatus.RELEASED,
+    )
+    ucretsiz = booking.price is not None and booking.price == 0
+    if not (odendi or ucretsiz):
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            "Ders ücreti emanete alınmadan canlı derse katılınamaz.",
+        )
+
+    # 5. Zaman penceresi: başlangıçtan 15 dk önce açılır, bitişten 30 dk sonra
+    #    kapanır (arayüzdeki `isLessonJoinable` ile aynı sınırlar).
+    now = datetime.datetime.now(datetime.timezone.utc)
+    start = booking.start_at
+    end = booking.end_at
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=datetime.timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=datetime.timezone.utc)
+    if not (start - _JOIN_OPENS_BEFORE <= now <= end + _JOIN_CLOSES_AFTER):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Canlı ders yalnız ders saatinde açıktır.",
+        )
+
+    # 6. Özellik yapılandırılmamışsa sessizce bozuk bir token üretme.
+    if not (
+        settings.LIVEKIT_URL
+        and settings.LIVEKIT_API_KEY
+        and settings.LIVEKIT_API_SECRET
+    ):
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Canlı ders altyapısı yapılandırılmamış.",
+        )
+
+    tutor_mu = user.role_id == ROLE_IDS[RoleType.TUTOR]
+    identity = f"{'t' if tutor_mu else 'c'}{user.id}"
+    token = livekit_service.ders_token_uret(
+        room=booking.meeting_room,
+        identity=identity,
+        name=getattr(user, "full_name", None) or identity,
+        ttl_seconds=_LIVE_TOKEN_TTL_SECONDS,
+    )
+    return LiveLessonTokenOut(
+        url=settings.LIVEKIT_URL,
+        token=token,
+        room=booking.meeting_room,
+        identity=identity,
+        expires_at=now + datetime.timedelta(seconds=_LIVE_TOKEN_TTL_SECONDS),
+    )
 
 
 def _assert_yanit_verecek_taraf(booking: Booking, user: CurrentUser) -> None:
