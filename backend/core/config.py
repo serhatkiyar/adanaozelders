@@ -98,6 +98,26 @@ class Settings(BaseSettings):
     #: altındadır.
     PRESENCE_DIRTY_MAX_ENTRIES: int = 50_000
 
+    # ── Gerçek-zamanlı (Centrifugo) ──
+    # `core/ws_manager.py` tek-process bellek-içidir: backend birden fazla
+    # replikaya çıktığında bir replikadaki push diğerine bağlı istemciye
+    # ULAŞMAZ. Centrifugo fan-out'u Redis üzerinden yapar. Kapalıyken
+    # (varsayılan) `/realtime/*` uçları 503 döner ve arayüz hiç bağlanmaz —
+    # GOOGLE_OAUTH ile aynı yaklaşım: geliştirmede dış servis GEREKMEZ.
+    # Mevcut `/ws` ucu (WebRTC sinyalleşmesi dahil) bundan ETKİLENMEZ.
+    CENTRIFUGO_ENABLED: bool = False
+    CENTRIFUGO_API_URL: str = "http://centrifugo:8000/api"
+    CENTRIFUGO_API_KEY: str = ""
+    CENTRIFUGO_TOKEN_HMAC_SECRET: str = ""
+    # Bağlantı token'ının ömrü. Kısa tutulur: SDK süresi dolmadan kendiliğinden
+    # yeniler ve kullanıcı yetkisi kaybolduğunda bağlantı en geç bu süre sonra
+    # ölür (Centrifugo'da sunucu tarafı iptal yoktur).
+    CENTRIFUGO_TOKEN_TTL_SECONDS: int = 600
+    # Publish çağrısı istek akışının İÇİNDE yapılır; uzun timeout kullanıcıyı
+    # bekletirdi. Gerçek-zamanlı katman best-effort'tur (bkz. `broadcast`).
+    CENTRIFUGO_TIMEOUT_SECONDS: float = 3.0
+    CENTRIFUGO_NAMESPACE: str = "kisisel"
+
     # Ters proxy arkasında istemci IP'si: X-Forwarded-For YALNIZCA bağlantı bu
     # listedeki bir adresten geliyorsa okunur. Boş liste = XFF'e hiç güvenme
     # (doğrudan bağlantı IP'si kullanılır). Aksi halde saldırgan her istekte
@@ -502,6 +522,32 @@ class Settings(BaseSettings):
         değiştiğinde sessizce sapar ve hata ancak canlıda görünürdü.
         """
         return f"{self.BACKEND_BASE_URL.rstrip('/')}{self.API_V1_PREFIX}/auth/google/callback"
+
+    @model_validator(mode="after")
+    def _guard_centrifugo(self) -> "Settings":
+        """CENTRIFUGO_ENABLED açıkken sırları ORTAMDAN BAĞIMSIZ doğrular.
+
+        `_guard_production`'a katılmadı bilinçli olarak: o guard yalnız
+        ``ENVIRONMENT=production``'da koşar. Buradaki iki hata ise hangi
+        ortamda olursa olsun sessiz bir yanlış çalışmadır — eksik sır
+        "gerçek-zamanlı açık" sanılırken her publish'in 401 ile düşmesi,
+        ortak sır ise Centrifugo bağlantı token'ıyla API access token'ının
+        birbirinin yerine kullanılabilmesi demektir.
+        """
+        if not self.CENTRIFUGO_ENABLED:
+            return self
+        eksik = [
+            ad
+            for ad in ("CENTRIFUGO_API_KEY", "CENTRIFUGO_TOKEN_HMAC_SECRET")
+            if not getattr(self, ad)
+        ]
+        if eksik:
+            raise ValueError(f"CENTRIFUGO_ENABLED açık ama boş: {', '.join(eksik)}")
+        if self.CENTRIFUGO_TOKEN_HMAC_SECRET == self.JWT_SECRET_KEY:
+            raise ValueError(
+                "CENTRIFUGO_TOKEN_HMAC_SECRET, JWT_SECRET_KEY ile AYNI olamaz."
+            )
+        return self
 
     @model_validator(mode="after")
     def _guard_production(self) -> "Settings":

@@ -1,0 +1,28 @@
+{
+  "http_server": { "port": 8000 },
+  "log": { "level": "info" },
+  "engine": {
+    "type": "redis",
+    "redis": {
+      "address": "redis://redis:6379/1",
+      "prefix": "centrifugo"
+    }
+  },
+  "client": {
+    "allowed_origins": ["https://adanaozelders.com.tr"]
+  },
+  "channel": {
+    "namespaces": [
+      {
+        "name": "kisisel",
+        "allow_user_limited_channels": true,
+        "presence": false,
+        "history_size": 0,
+        "history_ttl": "0s"
+      }
+    ]
+  },
+  "health": { "enabled": true },
+  "admin": { "enabled": false },
+  "prometheus": { "enabled": false }
+}
