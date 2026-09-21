@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CaptureUpdateAction,
   Excalidraw,
+  MainMenu,
   convertToExcalidrawElements,
   exportToCanvas,
   reconcileElements,
@@ -100,6 +101,18 @@ const IMLEC_ARALIGI_MS = 60;
 
 /** Görünür alanın PDF zemini için ayrılan payı (kenarda nefes payı kalsın). */
 const ZEMIN_PAYI = 0.88;
+
+/** ☰ menüsündeki "PDF olarak indir" öğesinin simgesi (komşularıyla aynı ölçü). */
+const PDF_SIMGESI = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
+    />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v5h5M12 11v6m0 0-2.5-2.5M12 17l2.5-2.5" />
+  </svg>
+);
 
 type Kutu = { x: number; y: number; genislik: number; yukseklik: number };
 
@@ -835,15 +848,9 @@ export default function TahtaPaneli({ onKapat }: Props) {
             </span>
           )}
 
-          {/* Excalidraw'ın kendi menüsü PNG/SVG/.excalidraw verir; PDF yok. */}
-          <button
-            type="button"
-            onClick={() => void pdfIndir()}
-            disabled={pdfIndiriliyor}
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-50"
-          >
-            {pdfIndiriliyor ? "Hazırlanıyor…" : "PDF indir"}
-          </button>
+          {/* PDF dışa aktarımı Excalidraw'ın kendi ☰ menüsündedir. Menü
+              seçimden sonra kapandığı için ilerleme burada gösterilir. */}
+          {pdfIndiriliyor && <span className="text-xs text-slate-500">PDF hazırlanıyor…</span>}
           <button
             type="button"
             onClick={temizle}
@@ -875,7 +882,35 @@ export default function TahtaPaneli({ onKapat }: Props) {
           isCollaborating={!!oda}
           langCode="tr-TR"
           initialData={{ appState: { viewBackgroundColor: "#ffffff" } }}
-        />
+        >
+          {/* ☰ menü ELLE kuruluyor. Excalidraw'ın varsayılan menüsü, listeye
+              EKLENMEYEN her öğeyi düşürür — `Socials` (GitHub/Discord/X
+              bağlantıları) bu yüzden yazılmadı: bizim platformumuzla ilgisi
+              yok. Geri kalan öğeler varsayılan sırasıyla korundu; yalnız PDF
+              dışa aktarımı ekleniyor, çünkü Excalidraw PNG/SVG/`.excalidraw`
+              dışında bir biçim sunmuyor. */}
+          <MainMenu>
+            {/* `SaveToActiveFile` yalnız açık bir dosya varken görünür (kendi
+                koşulu var); `Export` "Şuraya kaydet…", `SaveAsImage`
+                "Resimleri dışa aktar…" öğeleridir — ölçüldü, adlarından
+                tahmin edilemiyor. */}
+            <MainMenu.DefaultItems.LoadScene />
+            <MainMenu.DefaultItems.SaveToActiveFile />
+            <MainMenu.DefaultItems.Export />
+            <MainMenu.DefaultItems.SaveAsImage />
+            <MainMenu.Item icon={PDF_SIMGESI} onSelect={() => void pdfIndir()}>
+              PDF olarak indir
+            </MainMenu.Item>
+            <MainMenu.Separator />
+            <MainMenu.DefaultItems.CommandPalette />
+            <MainMenu.DefaultItems.SearchMenu />
+            <MainMenu.DefaultItems.Help />
+            <MainMenu.DefaultItems.ClearCanvas />
+            <MainMenu.Separator />
+            <MainMenu.DefaultItems.ToggleTheme />
+            <MainMenu.DefaultItems.ChangeCanvasBackground />
+          </MainMenu>
+        </Excalidraw>
       </div>
     </div>
   );
