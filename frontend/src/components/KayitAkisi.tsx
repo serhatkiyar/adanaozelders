@@ -10,12 +10,10 @@ import {
   GoogleGirisDugmesi,
 } from "@/components/GoogleGirisDugmesi";
 import { getErrorMessage } from "@/lib/errors";
-import { buildWelcome } from "@/lib/greeting";
 import { currentConsentVersion } from "@/lib/legalContent";
 import { roleHome } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
-import { toast } from "@/store/toastStore";
 
 /**
  * Kayıt akışı — TEK KAYNAK.
@@ -114,7 +112,6 @@ export function KayitAkisi({
     },
     onSuccess: (user) => {
       onSuccess?.();
-      toast.success(buildWelcome(user.id, user.full_name));
       navigate(
         role === "tutor" ? ROUTES.tutorOnboarding : roleHome(user.role_id),
         { replace: true }

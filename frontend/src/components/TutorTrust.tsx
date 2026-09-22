@@ -260,12 +260,17 @@ export function TutorOzetTablosu({
 
   if (satirlar.length === 0) return null;
 
+  // Saç-teli çizgiler KALKTI (kullanıcı kararı, 21 Eyl 2026 — referans: Jose
+  // kartı ekran görüntüsü): kullanıcı değerlerin "gri" durduğunu söyledi —
+  // asıl sorun renk değil ağırlıktı, `text-sm font-semibold` etiketle neredeyse
+  // aynı görsel ağırlıktaydı. Değer artık `text-base font-bold`, satırlar
+  // çizgi yerine boşlukla (`space-y-3`) ayrılıyor — referans kart da öyle.
   return (
-    <dl className="mt-4 divide-y divide-slate-100 border-y border-slate-100 ">
+    <dl className="mt-5 space-y-3">
       {satirlar.map((s) => (
-        <div key={s.anahtar} className="flex items-center justify-between gap-3 py-2.5">
-          <dt className="text-sm text-slate-500 ">{s.etiket}</dt>
-          <dd className="text-sm font-semibold text-slate-900 ">{s.deger}</dd>
+        <div key={s.anahtar} className="flex items-center justify-between gap-3">
+          <dt className="text-sm font-semibold text-slate-900 ">{s.etiket}</dt>
+          <dd className="text-lg font-extrabold text-slate-900 ">{s.deger}</dd>
         </div>
       ))}
     </dl>

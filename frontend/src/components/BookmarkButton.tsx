@@ -52,7 +52,7 @@ export function BookmarkButton({
     : size === "lg"
       ? "h-8 w-8"
       : size === "md"
-        ? "h-7 w-7"
+        ? "h-[22px] w-[22px]"
         : "h-6 w-6";
 
   // Düz zeminde (kart içinde) kap: `ShareButton`ın DAİRESİYLE AYNI ölçü ve
@@ -80,7 +80,7 @@ export function BookmarkButton({
     // Telefonda `p-2`: ikon 28px, dokunma hedefi 44px olur (proje eşiği,
     // `scripts/sihirbaz_mobil_turu.mjs`). Görünüm değişmez — büyüyen yalnız
     // saydam vuruş alanı; çağıran kart konumunu `md:` ile telafi eder.
-    : "shrink-0 p-2 transition active:scale-90 hover:scale-110 disabled:opacity-50 md:p-0";
+    : "shrink-0 p-2 transition active:scale-90 hover:scale-105 disabled:opacity-50 md:p-0";
 
   // Airbnb tarzı kalp: dolgu (pasif/aktif) + okunurluk için kenar/gölge.
   //
@@ -128,7 +128,7 @@ export function BookmarkButton({
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+          d="m12 21.35-1.45-1.32C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.53L12 21.35Z"
         />
       </svg>
     </button>

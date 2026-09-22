@@ -19,7 +19,14 @@ from core.search_text import (
     phrase_tsquery,
     tsquery as search_tsquery,
 )
-from models.tutor import Gender, Tutor, TutorAvailability, TutorStatus, TutorSubject
+from models.tutor import (
+    Gender,
+    Tutor,
+    TutorAvailability,
+    TutorStatus,
+    TutorSubject,
+    TutorSubjectLevel,
+)
 from services import subject_service
 from models.tutor_promotion import TutorPromotion
 from schemas.education import EducationOut
@@ -115,6 +122,8 @@ def _apply_tutor_filters(
     districts: list[str] | None = None,
     distance_expr=None,
     radius_km: float | None = None,
+    level_id: int | None = None,
+    level_subject_ids: set[int] | None = None,
 ):
     """Eğitmen listeleyen HER yolun ortak sert filtreleri. `(stmt, relevance)`.
 
@@ -175,6 +184,21 @@ def _apply_tutor_filters(
             Tutor.id.in_(
                 select(TutorSubject.tutor_id).where(
                     normalized(TutorSubject.subject).in_(subjects)
+                )
+            )
+        )
+
+    if level_id is not None:
+        # Seviye yalnız KANONİK derse bağlanabilir: `TutorSubjectLevel`in
+        # `subject_id`si. `level_subject_ids` boşsa (seçili ders taksonomide
+        # karşılıksız serbest metin), `in_(())` sıfır satır döner — başka bir
+        # dersin seviyesini yanlışlıkla eşleştirmez, sessizce yanlış eğitmen
+        # sızdırmaz.
+        stmt = stmt.where(
+            Tutor.id.in_(
+                select(TutorSubjectLevel.tutor_id).where(
+                    TutorSubjectLevel.level_id == level_id,
+                    TutorSubjectLevel.subject_id.in_(level_subject_ids or set()),
                 )
             )
         )
@@ -281,6 +305,7 @@ async def search_tutors(
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
+    level_id: int | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> list[TutorSearchOut]:
@@ -288,6 +313,14 @@ async def search_tutors(
     confidence = settings.BAYESIAN_CONFIDENCE
     score = bayesian_score_expr(prior_mean, confidence)
 
+    # Seviye filtresi KANONİK id ister; ham `subjects` terimlere çözülmeden
+    # önce hesaplanır (aşağıdaki satır `subjects`i serbest metin terimleriyle
+    # değiştirir).
+    level_subject_ids = (
+        await subject_service.resolve_filter_subject_ids(db, subjects or [])
+        if level_id is not None
+        else None
+    )
     # `?subject=` ham metin DEĞİL kanonik terime çözülür (slug / eşanlamlı /
     # ders adı → o dersin ve alt derslerinin tüm yazımları). Üç listeleme
     # yolunun da aynı kümeyi kullanması şart: ayrışırlarsa histogram listedeki
@@ -311,6 +344,8 @@ async def search_tutors(
         districts=districts,
         distance_expr=distance_expr,
         radius_km=radius_km,
+        level_id=level_id,
+        level_subject_ids=level_subject_ids,
     )
 
     # Sınav bağlamı: SERT FİLTRE DEĞİL. İlanında ilgili sınavdan (ör. "KPSS")
@@ -369,6 +404,7 @@ async def price_histogram(
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
+    level_id: int | None = None,
 ) -> list[float]:
     """Eşleşen eğitmenlerin saatlik ücret dağılımını döndürür.
 
@@ -377,6 +413,13 @@ async def price_histogram(
     fiyat aralığını daraltsa da tüm dağılımı göstermelidir. Ücreti olmayan
     eğitmenler elenir. Sıralama/limit yok; tüm eşleşen ücretler döner.
     """
+    # Seviye filtresi KANONİK id ister; ham `subjects` terimlere çözülmeden
+    # önce hesaplanır.
+    level_subject_ids = (
+        await subject_service.resolve_filter_subject_ids(db, subjects or [])
+        if level_id is not None
+        else None
+    )
     # `?subject=` ham metin DEĞİL kanonik terime çözülür (slug / eşanlamlı /
     # ders adı → o dersin ve alt derslerinin tüm yazımları). Üç listeleme
     # yolunun da aynı kümeyi kullanması şart: ayrışırlarsa histogram listedeki
@@ -401,6 +444,8 @@ async def price_histogram(
         districts=districts,
         distance_expr=distance_expr,
         radius_km=radius_km,
+        level_id=level_id,
+        level_subject_ids=level_subject_ids,
     )
 
     rates = (await db.execute(stmt)).scalars().all()
@@ -419,6 +464,7 @@ async def gender_facets(
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
+    level_id: int | None = None,
 ) -> dict[str, int]:
     """Cinsiyet filtresinin her seçeneğinin kaç eğitmene denk geldiği.
 
@@ -435,6 +481,14 @@ async def gender_facets(
 
     Dönen anahtarlar `Gender` üyeleri + `belirtilmemis`.
     """
+    # Seviye filtresi bu ekseni SAYAR (kendi ekseni değil, `gender` gibi): bir
+    # eğitmen "Matematik + Lise" filtresiyle daralmışsa cinsiyet faseti de o
+    # daralmış kümeden hesaplanmalı.
+    level_subject_ids = (
+        await subject_service.resolve_filter_subject_ids(db, subjects or [])
+        if level_id is not None
+        else None
+    )
     subjects = await subject_service.resolve_filter_terms(db, subjects or []) or None
     geo = lat is not None and lng is not None
     distance_expr = _haversine_km(lat, lng) if geo else None
@@ -454,6 +508,8 @@ async def gender_facets(
         districts=districts,
         distance_expr=distance_expr,
         radius_km=radius_km,
+        level_id=level_id,
+        level_subject_ids=level_subject_ids,
     )
 
     sayilar: dict[str, int] = {g.value: 0 for g in Gender}
@@ -485,6 +541,7 @@ async def featured_tutors(
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
+    level_id: int | None = None,
 ) -> list[TutorSearchOut]:
     """Yürürlükteki öne çıkarma paketi olan eğitmenler (en fazla `SLOT_LIMIT`).
 
@@ -504,6 +561,11 @@ async def featured_tutors(
     prior_mean = await compute_global_mean(db)
     confidence = settings.BAYESIAN_CONFIDENCE
 
+    level_subject_ids = (
+        await subject_service.resolve_filter_subject_ids(db, subjects or [])
+        if level_id is not None
+        else None
+    )
     # `?subject=` ham metin DEĞİL kanonik terime çözülür (slug / eşanlamlı /
     # ders adı → o dersin ve alt derslerinin tüm yazımları). Üç listeleme
     # yolunun da aynı kümeyi kullanması şart: ayrışırlarsa histogram listedeki
@@ -527,6 +589,8 @@ async def featured_tutors(
         districts=districts,
         distance_expr=distance_expr,
         radius_km=radius_km,
+        level_id=level_id,
+        level_subject_ids=level_subject_ids,
     )
     # Eğitmenin görünürlük kapısı (APPROVED/is_active) ortak filtrededir; ödenmiş
     # bir paket onu ATLATAMAZ — askıya alınmış eğitmen parasını ödemiş olsa bile

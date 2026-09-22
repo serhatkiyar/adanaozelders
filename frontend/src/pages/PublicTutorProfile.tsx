@@ -175,7 +175,11 @@ export default function PublicTutorProfile({
           onClick={() => setSearchOpen(false)}
         />
       )}
-      <div className="mx-auto max-w-[76rem] pb-12">
+      {/* Konteyner DAR (64rem, site standardı 76rem'in altında — kullanıcı
+          kararı, 21 Eyl 2026): tanıtım videosu üste alınınca sayfa geniş/boş
+          hissettirdi, daraltılınca (sağdaki sabit kart dahil TÜM bölme)
+          beğenildi — bilinçli, sayfaya özel bir sapma. */}
+      <div className="mx-auto max-w-[64rem] pb-12">
         {/* "← Geri dön" KALDIRILDI (kullanıcı kararı, 7 Eyl 2026): tarayıcının
             kendi geri düğmesi zaten var ve bağlantı, kartı bir satır aşağı
             itiyordu. Hata ekranındaki kopyası KALIR — orada sayfanın tek
@@ -218,8 +222,8 @@ export default function PublicTutorProfile({
                   iter ve kartı uzatırlardı; kart zaten ekrana sığması için
                   kompaktlanmıştı (7 Eyl, 632 -> 516 px). */}
               <div className="absolute right-4 top-4 z-10 flex flex-col items-center gap-3">
-                <BookmarkButton tutorId={tutor.id} size="md" onSolid />
-                <ShareButton size="md" />
+                <BookmarkButton tutorId={tutor.id} size="sm" onSolid />
+                <ShareButton size="sm" />
               </div>
               <div className="flex flex-col items-center text-center">
                 {/* Fotoğraf 64px'ten 128px'e çıktı. Kartın tek görseli o ve
@@ -237,26 +241,46 @@ export default function PublicTutorProfile({
                     görünüyordu. Basit hizalama daha düzgün duruyor. */}
                 <div className="mt-3 flex items-center justify-center gap-1.5">
                   {/* Ad `p`: sayfanın H1'i İLAN BAŞLIĞIDIR (Modül 6 — aranan
-                      şey ders, isim değil). Görünüm aynı. */}
-                  <p className="text-xl font-bold text-slate-900 ">
+                      şey ders, isim değil). Görünüm aynı. Boyut `xl`e çıktı
+                      (kullanıcı kararı, 21 Eyl 2026): büyüyen fotoğrafla
+                      orantı kurması için. */}
+                  <p className="text-2xl font-bold text-slate-900 ">
                     {tutor.display_name}
                   </p>
                   {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
                 </div>
 
+                {/* Bilerek ARTIK BUTON DEĞİL (kullanıcı kararı, 21 Eyl 2026):
+                    yıldız+puan tüm satırı tıklanabilir/hover'lı göstermek
+                    yanıltıcıydı — tek gerçek eylem yorumlara gitmek, o da
+                    yalnız "(N yorum)" metninde. */}
                 <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowReviews(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
-                >
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover ">
-                    {hasRatings
-                      ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count} yorum)`
-                      : "Değerlendirme yok"}
-                  </span>
-                </button>
+                  {/* Puan SAYISI kalın/siyah, yorum adedi küçük/gri (kullanıcı
+                      kararı, 21 Eyl 2026 — referans: "36 reviews"in daha küçük
+                      olması). Tek span'da eşit ağırlıktaydı, ayrıştı. */}
+                  {hasRatings ? (
+                    <>
+                      <span className="text-sm font-bold text-slate-900 ">
+                        {tutor.rating_average?.toFixed(1)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowReviews(true)}
+                        className="text-sm font-medium text-slate-600 underline hover:text-slate-700 hover:no-underline "
+                      >
+                        ({tutor.rating_count} yorum)
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowReviews(true)}
+                      className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
+                    >
+                      Değerlendirme yok
+                    </button>
+                  )}
                 </div>
 
                 {/* Ders mekânı (Uzaktan / Yüz yüze) buradan KALKTI ve sol
@@ -289,7 +313,7 @@ export default function PublicTutorProfile({
               <button
                 type="button"
                 onClick={() => girisGerekli({ tip: "dersTalebi", egitmenId: tutor.id })}
-                className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
+                className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
                 Ders Talep Et
               </button>
@@ -310,6 +334,25 @@ export default function PublicTutorProfile({
                 : "space-y-8 lg:col-start-1 lg:row-start-1"
             }
           >
+            {/* Tanıtım videosu — Preply karşılaştırması (21 Eyl 2026, sonra
+                kullanıcı kararıyla EN ÜSTE alındı — etiket/başlıktan bile
+                önce). Kendi max-w'si YOK: konteynerin kendisi (max-w-[64rem])
+                zaten dar, video sütunu tam doldurur. Otomatik+sessiz oynar
+                (bkz. `videoEmbedUrl`). */}
+            {embedUrl && (
+              <section>
+                <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-sm">
+                  <iframe
+                    src={embedUrl}
+                    title={`${tutor.display_name} tanıtım videosu`}
+                    className="h-full w-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
+            )}
+
             {/* Verdiği Dersler — ilan başlığının üstünde */}
             {tutor.subjects && tutor.subjects.length > 0 && (
               <section>
@@ -397,24 +440,6 @@ export default function PublicTutorProfile({
                       </span>
                     </div>
                   ))}
-                </div>
-              </section>
-            )}
-
-            {/* Tanıtım videosu — değerlendirmelerin hemen üstünde, küçük */}
-            {embedUrl && (
-              <section className="border-t border-slate-100 pt-6 ">
-                <h2 className="mb-3 text-xl font-bold text-slate-900 ">
-                  Tanıtım videosu
-                </h2>
-                <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
-                  <iframe
-                    src={embedUrl}
-                    title={`${tutor.display_name} tanıtım videosu`}
-                    className="h-full w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
                 </div>
               </section>
             )}

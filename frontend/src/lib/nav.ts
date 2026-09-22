@@ -173,7 +173,12 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
     ],
   },
   // Takvim ve Analizler şeride girdi (Modül 7, 17 Eyl 2026, kullanıcı kararı):
-  // Pano · Takvim · Mesajlar · Analizler · İlanım. Mobil alt çubuk değişmez.
+  // Pano · Takvim · Mesajlar · Analizler · İlanım.
+  //
+  // "Mobil alt çubuk değişmez" 19 Eyl 2026'da GEÇERSİZ oldu (kullanıcı kararı):
+  // eğitmenin telefondaki alt çubuğu artık bu şeritle BİREBİR aynı sırayı
+  // taşıyor (Ana sayfa · Mesajlar · Takvim · Analizler); Keşfet ve Favoriler
+  // hamburger menüsüne taşındı. Bkz. `MobilAltSekmeler.tsx::EGITMEN_SEKMELERI`.
   { to: ROUTES.tutorCalendar, label: "Takvim" },
   { to: ROUTES.messages, label: "Mesajlar" },
   { to: ROUTES.tutorAnalytics, label: "Analizler" },
@@ -197,8 +202,17 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
  * Favoriler eğitmene de açık (ÜK-6 · docs/urun-kararlari.md): eğitmen ders
  * verdiği kütüphaneyi ve meslektaşını işaretleyebilir. Üst barda DEĞİL,
  * yalnız hesap menüsünde (18 Eyl 2026, ÜK-2 güncellemesi).
+ *
+ * Keşfet 19 Eyl 2026'da eklendi (kullanıcı kararı): telefonda alt sekme
+ * çubuğundan kaldırıldı (bkz. `MobilAltSekmeler.tsx::EGITMEN_SEKMELERI`) ve
+ * tek erişim yolu bu menü oldu — masaüstünde zaten logo aynı adrese
+ * (`roleHome`) gidiyordu, telefonda logo yok, o yüzden burada da bulunmalı.
+ * `ustBarda: false`: masaüstü üst barına kısayol olarak SIZMAZ —
+ * `__guards__/ustBarSadeligi.test.tsx` en fazla TEK kısayolu (Favorilerim)
+ * çıpalar, ikincisi o düğümü kırar. Masaüstünde zaten logo aynı işi görüyor.
  */
 export const TUTOR_NAV: NavItem[] = [
+  { to: ROUTES.home, label: "Keşfet", icon: "search", ustBarda: false },
   // Üst barda kalp yok, yalnız hesap menüsünde (18 Eyl 2026).
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites", ustBarda: false },
   // "Değerlendirmeler" menüden kalktı (18 Eyl 2026, kullanıcı kararı; Preply'da

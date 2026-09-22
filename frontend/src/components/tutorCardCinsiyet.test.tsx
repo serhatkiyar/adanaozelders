@@ -79,9 +79,12 @@ describe("TutorCard · cinsiyet listede yazılmaz", () => {
 
   it("meta satırı sarkan ayırıcı bırakmıyor", () => {
     // Kalem kaldırılırken `" · "` birleştirmesi de kalktı; kalsaydı
-    // "Uzaktan · " gibi sonu boş bir satır doğardı.
+    // "Uzaktan · " gibi sonu boş bir satır doğardı. Yalnız konum satırını
+    // (fotoğraf üstü) kontrol eder — fiyat satırında (20 Eyl 2026'dan
+    // itibaren) meşru "·" ayırıcılar var, sayfa genelinde arama artık yanlış
+    // pozitif üretir.
     ciz(Gender.MALE);
-    expect(screen.queryByText(/·\s*$/)).toBeNull();
+    expect(screen.getByText("Uzaktan").textContent).not.toMatch(/·\s*$/);
   });
 
   it("BELİRTİLMEMİŞ durumda da değişen bir şey yok", () => {

@@ -102,6 +102,33 @@ describe("getErrorMessage — mevcut davranışlar bozulmadı", () => {
     expect(getErrorMessage(hata, "yedek")).toContain(beklenen);
   });
 
+  /* Kullanıcı bunu canlıda buldu (19 Eyl 2026): hiç oturum açmamışken giriş
+     ekranında yanlış parola girince "Oturum süren dolmuş" yazıyordu. Giriş
+     401'i oturumun düşmesi DEĞİLDİR; sunucunun sebebi yutulmamalı. */
+  it("giriş 401'i oturum değil KİMLİK hatası der", () => {
+    const hata = axiosHata(401, { detail: "Incorrect email or password" });
+    const mesaj = getErrorMessage(hata, "yedek");
+    expect(mesaj).toBe("E-posta veya parola hatalı.");
+    expect(mesaj).not.toContain("Oturum");
+  });
+
+  it("sebepsiz 401 hâlâ oturum mesajı verir", () => {
+    // Süresi geçmiş jeton: sunucu açıklama yazmaz, genel cümle doğru olandır.
+    const hata = axiosHata(401, {});
+    expect(getErrorMessage(hata, "yedek")).toContain("Oturum süren dolmuş");
+  });
+
+  /* Gerçek jeton süresi dolumu (backend/api/deps.py::_credentials_exception)
+     BOŞ değil, İngilizce bir detail ile gelir. DETAIL_GUIDANCE'ta karşılığı
+     yok — bu dal ham İngilizce metni değil genel Türkçe cümleyi vermeli;
+     giriş-401 düzeltmesi bunu kırmasın diye eklendi (19 Eyl 2026). */
+  it("eşleşmeyen İngilizce 401 detail'i ham göstermez, oturum mesajı verir", () => {
+    const hata = axiosHata(401, { detail: "Could not validate credentials" });
+    const mesaj = getErrorMessage(hata, "yedek");
+    expect(mesaj).toBe("Oturum süren dolmuş. Lütfen tekrar giriş yap.");
+    expect(mesaj).not.toContain("credentials");
+  });
+
   it("ağ hatası kendi mesajını verir", () => {
     const err = new AxiosError("ağ", "ERR_NETWORK");
     expect(getErrorMessage(err, "yedek")).toContain("Sunucuya ulaşılamıyor");

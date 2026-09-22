@@ -176,6 +176,10 @@ export const OLCUM_TABANI = [
   // yok (düğmenin görünür metni "Giriş"), etiketsiz overlay yok (hesap
   // sayfası ortak `ui/Modal`ı kullanır).
   "src/components/MobilAltSekmeler.tsx",
+  // 19 Eyl 2026 · telefonda sağdan açılan panel çekmecesi: `DashboardHeader`
+  // (zaten tabanda) çağırıyor, `AdminLayout` üzerinden import grafiğiyle
+  // ulaşılıyor — ölçüme girdi.
+  "src/components/MobilPanelCekmecesi.tsx",
   "src/components/NavbarWidget.tsx",
   "src/components/NotificationsBell.tsx",
   // 8 Eyl 2026 · panel şeridi: eğitmenin kalıcı sekme satırı (bkz.

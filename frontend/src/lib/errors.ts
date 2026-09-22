@@ -17,6 +17,13 @@ const DETAIL_GUIDANCE: { match: RegExp; message: string }[] = [
     message: "Bu e-posta zaten kayıtlı. Giriş yapmayı deneyebilirsin.",
   },
   {
+    // Giriş ekranındaki 401. Hangi alanın yanlış olduğu BİLEREK söylenmez:
+    // "bu e-posta kayıtlı ama parola yanlış" demek, sisteme kayıtlı adresleri
+    // dışarıdan tek tek doğrulatmak (hesap sayımı) demektir.
+    match: /incorrect email or password/i,
+    message: "E-posta veya parola hatalı.",
+  },
+  {
     match: /already been reviewed/i,
     message: "Bu ders için zaten bir değerlendirme bıraktın.",
   },
@@ -82,6 +89,15 @@ export function getErrorMessage(
       return "Bu işlem için yetkin yok.";
     }
     if (status === 401) {
+      /* 401 HER ZAMAN "oturumun düştü" DEMEK DEĞİLDİR (19 Eyl 2026, kullanıcı
+         canlıda buldu). Giriş ekranında yanlış parola da 401'dir; DETAIL_GUIDANCE'a
+         eklenen "incorrect email or password" deseni bunu yukarıdaki genel
+         `translateDetail` denemesinde (satır ~76) zaten yakalayıp döndürür.
+         Buraya yalnız EŞLEŞMEYEN 401'ler düşer: gerçek jeton süresi dolumu
+         (`backend/api/deps.py::_credentials_exception`, "Could not validate
+         credentials") bunlardan biri. O metni İngilizce ham haliyle
+         göstermek eski hataydı — burada AYNEN öyle davranmak yeni bir hata
+         olurdu, o yüzden eşleşmeyen her 401 genel Türkçe cümleye düşer. */
       return "Oturum süren dolmuş. Lütfen tekrar giriş yap.";
     }
 

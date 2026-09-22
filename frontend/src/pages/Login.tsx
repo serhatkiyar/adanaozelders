@@ -8,8 +8,6 @@ import { roleHome } from "@/lib/roles";
 import { guvenliDonusYolu } from "@/lib/guvenliDonus";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
-import { buildWelcome } from "@/lib/greeting";
-import { toast } from "@/store/toastStore";
 import {
   GirisAyirici,
   GoogleGirisDugmesi,
@@ -41,7 +39,6 @@ export default function Login() {
       return user;
     },
     onSuccess: (user) => {
-      toast.success(buildWelcome(user.id, user.full_name));
       /*
        * Korumalı bir sayfadan yönlendirildiyse ORAYA döner (ÜK-10).
        * `guvenliDonusYolu` ZORUNLU: ham `git` değerini doğrudan `navigate`e

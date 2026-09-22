@@ -160,6 +160,8 @@ export interface EgitmenAramasi {
   q: string;
   /** Katalogdan seçilmiş ders(ler) — sert filtre. */
   ders: string[];
+  /** Seviye — YALNIZ tek `ders` seçiliyken anlamlı (bkz. `duzelt`). */
+  seviye: number | undefined;
   konum: KonumDegeri;
   /** Ders şekli — ÇOKLU. Oturumlu pazaryeri onay kutusuyla birden fazla
    *  seçtiriyor; anonim yüzey ilk değeri tek seçim gibi okuyor. */
@@ -212,6 +214,9 @@ export const EGITMEN_ARAMA: Sema<EgitmenAramasi> = {
   alanlar: {
     q: metin("q"),
     ders: metinCoklu("ders", ["subject"]),
+    // Üst sınır ürün sınırı değil, savunmacı bir tavan (gerçek seviye sayısı
+    // katalogda çok daha az) — `TutorSubjectLevel.level_id` bir DB kimliği.
+    seviye: sayi("seviye", { min: 1, max: 1000 }),
     konum: yerAlaniOlustur(),
     sekil: enumCoklu("sekil", SEKIL_ETIKETLERI, ["mode"]),
     sinav: metin("sinav", ["exam"]),
@@ -261,6 +266,11 @@ export const EGITMEN_ARAMA: Sema<EgitmenAramasi> = {
       // Yarıçap yalnız "yakınımda" ile anlamlı. Yoksa adreste tek başına
       // duran bir `?yaricap=25` hiçbir şey yapmayan bir filtre gibi görünür.
       yaricap: yakinimda ? d.yaricap : undefined,
+      // Seviye yalnız TEK ders seçiliyken anlamlı: birden çok/hiç ders
+      // seçiliyken hangi dersin seviyesi olduğu belirsizleşir. `ders` zaten
+      // UI'da tek seçimli ama adres elle değiştirilebilir — burada garanti
+      // altına alınır.
+      seviye: d.ders.length === 1 ? d.seviye : undefined,
     };
   },
   filtreDisi: ["sayfa"],
@@ -347,10 +357,13 @@ export const filtreliMi = filtreliMiMotor;
 export function dersSorgusu(
   secim: string,
   metinDegeri: string
-): Pick<EgitmenAramasi, "q" | "ders"> {
+): Pick<EgitmenAramasi, "q" | "ders" | "seviye"> {
+  // `seviye` her ders değişiminde DÜŞER: önceki dersin seviyesi yeni derste
+  // (farklı `SubjectLevelScale`) anlamsız, hatta yanlışlıkla sıfır sonuç
+  // üretebilir. Kullanıcı yeniden seçer.
   return secim
-    ? { ders: [secim], q: "" }
-    : { ders: [], q: metinDegeri.trim() };
+    ? { ders: [secim], q: "", seviye: undefined }
+    : { ders: [], q: metinDegeri.trim(), seviye: undefined };
 }
 
 
@@ -387,6 +400,7 @@ export function egitmenIstegi(
   if (d.sirala) p.sort = d.sirala;
   if (d.q.trim()) p.q = d.q.trim();
   if (d.ders.length) p.subject = d.ders;
+  if (d.seviye !== undefined) p.level_id = d.seviye;
   if (d.konum.ilce.length) p.district = d.konum.ilce;
   if (d.sinav.trim()) p.exam = d.sinav.trim();
   if (d.sekil.length) p.mode = d.sekil;

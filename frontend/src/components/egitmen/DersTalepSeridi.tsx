@@ -65,7 +65,7 @@ export function DersTalepSeridi({
       >
         <PlainButton
           onClick={onTalep}
-          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-marka px-5 text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
+          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-marka px-5 text-sm font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
         >
           {/* İkon hapın İÇİNDE: tek dokunma hedefi kalsın. Ayrı bir daire
               ikinci bir eylem gibi okunur ve ne yaptığı belirsizdir. */}

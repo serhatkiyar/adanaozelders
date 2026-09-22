@@ -19,6 +19,9 @@ export interface TutorSearchParams {
   max_age?: number;
   subject?: string[];
   district?: string[];
+  // Seviye — YALNIZ tek bir `subject` seçiliyken anlamlı: kanonik derse
+  // (`TutorSubjectLevel.subject_id`) bağlı sunucu tarafı filtre.
+  level_id?: number;
   // Sınav bağlamı (TYT/AYT/KPSS…): sert filtre değil, sıralama boost'u.
   exam?: string;
   sort?: TutorSort;

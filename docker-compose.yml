@@ -4,7 +4,20 @@
 name: adana-ozel-ders
 
 services:
+  # ── Tam-Docker geliştirme (OPSİYONEL profil, kullanıcı kararı 20 Eyl 2026) ──
+  # Bu makinede gerçek geliştirme verisi Windows'taki yerel PostgreSQL'dedir
+  # (bkz. backend/.env, POSTGRES_HOST=localhost); backend de yerelde çalışır.
+  # postgres/backend/frontend BURADA profilli: `docker compose up` bunları
+  # ARTIK açmaz. Eskiden varsayılan `up` bu postgres'i de başlatıyordu — o,
+  # yereldekinden TAMAMEN AYRI ve boş bir veritabanıydı (yalnız 3 demo eğitmen
+  # seed'i), backend container'ı ona bağlanınca ilanlar/fotoğraflar "kaybolmuş"
+  # görünüyordu. O kap ve verisi silindi; bir daha kendiliğinden açılmasın diye
+  # profil eklendi. Tamamen Docker'da çalışmak GEREKİRSE:
+  #   docker compose --profile tamdocker up
+  # `--profile analytics` (umami) postgres'e ihtiyaç duyduğu için o da artık
+  # `--profile analytics --profile tamdocker` ile birlikte açılmalı.
   postgres:
+    profiles: ["tamdocker"]
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -117,6 +130,7 @@ services:
       - "127.0.0.1:3000:3000"
 
   backend:
+    profiles: ["tamdocker"]
     build: ./backend
     depends_on:
       postgres:
@@ -192,6 +206,7 @@ services:
       - "3001:3000"
 
   frontend:
+    profiles: ["tamdocker"]
     build:
       context: ./frontend
       args:

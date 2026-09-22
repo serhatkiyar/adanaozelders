@@ -87,7 +87,7 @@ _SEED_TUTORS: tuple[dict, ...] = (
         "birth_date": datetime.date(1992, 4, 18),
         "hourly_rate": 450,
         "teaching_mode": "BOTH",
-        "headline": "TYT-AYT Matematik | 9 yıllık deneyimle sınav koçluğu",
+        "headline": "TYT-AYT Matematik | 9 yıllık deneyimle sınav koçluğu ve birebir soru çözümü",
         "bio": (
             "Merhaba, ben Elif. Çukurova Üniversitesi Matematik Öğretmenliği "
             "mezunuyum ve 9 yıldır TYT-AYT öğrencilerini üniversiteye hazırlıyorum. "
@@ -125,7 +125,7 @@ _SEED_TUTORS: tuple[dict, ...] = (
         "birth_date": datetime.date(1988, 11, 3),
         "hourly_rate": 500,
         "teaching_mode": "BOTH",
-        "headline": "Fizik ve Kimya | Sayısal netlerini katlayan mühendis eğitmen",
+        "headline": "Fizik ve Kimya | Sayısal netlerini katlayan deneyimli mühendis eğitmen",
         "bio": (
             "Makine mühendisiyim ve 11 yıldır TYT-AYT fizik-kimya dersleri veriyorum. "
             "Soyut görünen fizik konularını günlük hayattan örneklerle somutlaştırır, "
@@ -162,7 +162,7 @@ _SEED_TUTORS: tuple[dict, ...] = (
         "birth_date": datetime.date(1995, 7, 22),
         "hourly_rate": 400,
         "teaching_mode": "ONLINE",
-        "headline": "İngilizce Konuşma & YDS | Akıcı konuşmaya 3 ayda",
+        "headline": "İngilizce Konuşma & YDS | Akıcı konuşmaya 3 ayda ulaşan program",
         "bio": (
             "İngilizce öğretmeniyim ve Boğaziçi Üniversitesi mezunuyum. Hedefim "
             "öğrencilerimi kalıp ezberinden kurtarıp gerçekten konuşturmak. "

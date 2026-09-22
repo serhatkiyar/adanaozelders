@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { NavbarWidget } from "@/components/NavbarWidget";
+import { MobilPanelCekmecesi } from "@/components/MobilPanelCekmecesi";
 import { PersonalizeModal } from "@/components/PersonalizeModal";
 import { Icon } from "@/components/AppIcon";
 import { useAuthStore } from "@/store/authStore";
@@ -60,17 +61,28 @@ interface DashboardHeaderProps {
   mobilSade?: boolean;
   /** false iken alt arama satırı yumuşakça katlanır (Landing scroll daralması). */
   expanded?: boolean;
+  /**
+   * PANEL BÖLÜMLERİ — telefondaki çekmecede listelenir.
+   *
+   * Yatay şerit `<sm`de çizilmediği için (bkz. `MobilPanelCekmecesi`) bu bant
+   * içinde bölümlere giden TEK yol çekmecedir. Kabuk şeride ne veriyorsa
+   * aynısını buraya da verir; iki liste ayrışamaz.
+   */
+  panelSekmeleri?: NavItem[];
 }
 
 // Oturum içi üst bar: logo + rol bazlı nav ikonları + bildirim zili + hesap
 // menüsü (profil, ayarlar, tema, çıkış). Hem DashboardShell hem Landing kullanır.
-export function DashboardHeader({ navItems, transparent = false, center, bottom, mobilUst, mobilSade = false, expanded = true }: DashboardHeaderProps) {
+export function DashboardHeader({ navItems, transparent = false, center, bottom, mobilUst, mobilSade = false, expanded = true, panelSekmeleri }: DashboardHeaderProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const home = roleHome(user?.role_id);
   const { data: msgUnreadCounts } = useMessagesUnreadCount();
   const msgUnread = msgUnreadCounts?.inbox ?? 0;
   const { data: bildirimOkunmamis = 0 } = useUnreadCount();
+  // Telefonda hamburger'ın tek rozeti — mesaj ve bildirim ayrı ayrı
+  // görünmüyor (o ayrım çekmecenin içinde), yalnız "okunmamış bir şey var mı".
+  const mobilOkunmamisToplam = msgUnread + bildirimOkunmamis;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -132,7 +144,16 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     [navItems, navPrefs]
   );
 
-  const accountLinks = (onClick: () => void) => {
+  /**
+   * `panomGizle`: çekmecede panel BÖLÜMLERİ zaten listeleniyorsa "Panom"
+   * satırı çizilmez — ikisi de `/pano`ya gider ve yan yana durunca tam olarak
+   * kullanıcının itiraz ettiği çiftlenmeyi üretirler (19 Eyl 2026).
+   *
+   * Masaüstü açılırında satır KALIR ve kalmalıdır: ana sayfada (Landing) şerit
+   * çizilmez, panele dönüşün tek yolu odur (nöbetçi: `panoSeridi.test.tsx`
+   * "eğitmen menüsünün ilk satırı PANOM").
+   */
+  const accountLinks = (onClick: () => void, panomGizle = false) => {
     return (
       <>
         {/* MENÜNÜN İLK SATIRI ROLE GÖRE DEĞİŞİR (kullanıcı kararı, 8 Eyl 2026).
@@ -143,10 +164,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
             kavuştu ve aynı satırı aldı; onun "Hesabım"ı şeritte duruyor.
             Diğer rollerde şerit yok, giriş yine hesap sayfasıdır. */}
         {user?.role_id === ROLE_IDS.TUTOR || user?.role_id === ROLE_IDS.CLIENT ? (
-          <NavLink to={ROUTES.bookings} onClick={onClick} className={menuItemClass}>
-            <Icon name="clipboard" className="h-5 w-5" />
-            Panom
-          </NavLink>
+          panomGizle ? null : (
+            <NavLink to={ROUTES.bookings} onClick={onClick} className={menuItemClass}>
+              <Icon name="clipboard" className="h-5 w-5" />
+              Panom
+            </NavLink>
+          )
         ) : (
           <NavLink to={ROUTES.profile} onClick={onClick} className={menuItemClass}>
             <Icon name="profile" className="h-5 w-5" />
@@ -239,7 +262,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     ? "sticky top-0 z-40 border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md "
     // Panel üst barı BEYAZ (17 Eyl 2026 kullanıcı kararı, Preply gibi; önceki
     // #f4f4f4 kararı yalnız ana sayfa/anonim kabukta sürüyor).
-    : "border-b border-slate-200 bg-white ";
+    // TELEFONDA BAR YOK (19 Eyl 2026, kullanıcı kararı). Önce barın yalnız
+    // içi boşaltılmıştı; geriye sağında tek düğme duran 48px'lik bomboş beyaz
+    // bir bant kaldı ve kullanıcı haklı olarak itiraz etti. Artık zemin de
+    // kenarlık da yok: satır `h-0`a iner, üç çizgi `absolute` olarak içeriğin
+    // ilk satırının sağına oturur. `≥sm`de bar aynen durur.
+    : "border-b-0 bg-transparent sm:border-b sm:border-slate-200 sm:bg-white ";
   /* `mobilSade` iken DOLGU DA GİZLENİR (16 Eyl 2026, ölçüldü): satır
      `hidden md:flex` olsa da dolgu bu sarmalayıcıda kaldığı için telefonda
      arama hapının üstünde 28px boş bant kalıyordu — anonim kabukta
@@ -258,11 +286,19 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     <header className={headerClass}>
       <div className={innerPad}>
       <div
-        className={`mx-auto w-full max-w-screen-2xl justify-between gap-3 ${
-          transparent ? "items-start" : "h-16 items-center md:h-[72px]"
+        className={`relative mx-auto w-full max-w-screen-2xl justify-between gap-3 ${
+          // Telefonda satır YER KAPLAMAZ (`h-0`): üç çizgi `absolute` olarak
+          // çizilir, sayfa en tepeden başlar. `≥sm`de eski yükseklikler.
+          transparent
+            ? "items-start"
+            : "h-0 items-start sm:h-16 sm:items-center md:h-[72px]"
         } ${mobilSade ? "hidden md:flex" : "flex"}`}
       >
-        <div className="flex-1 flex justify-start">
+        {/* LOGO TELEFONDA YOK (19 Eyl 2026, kullanıcı kararı): girişli kabukta
+            telefonda üst bar tamamen boşalır, sağ üstte yalnız üç çizgi kalır.
+            Ana sayfaya dönüş kapanmıyor — alt sekme çubuğunun "Keşfet"i ve
+            çekmecedeki satırlar duruyor. */}
+        <div className="hidden flex-1 justify-start sm:flex">
           <Link
             to={home}
             className="group flex shrink-0 items-center gap-2 transition hover:opacity-90"
@@ -326,8 +362,15 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           </div>
         </div>
 
-        {/* Mobil: bildirim + hamburger */}
-        <div className="flex flex-1 items-center justify-end gap-0 sm:hidden">
+        {/* MOBİL: YALNIZ ÜÇ ÇİZGİ (19 Eyl 2026, kullanıcı kararı).
+            Buradaki Mesajlar · Bildirimler · Favoriler ikonları kaldırıldı;
+            üçü de başka yerden açılıyor ve hiçbir yol kapanmıyor:
+            Mesajlar → alt sekme çubuğu + çekmecedeki bölümler,
+            Bildirimler → çekmecedeki hesap satırı,
+            Favoriler → alt sekme çubuğu + çekmecedeki "Favorilerim".
+            Nöbetçi: `__guards__/ustBarSadeligi.test.tsx` (kaldırılan kısayolun
+            hedefine HÂLÂ bir yerden gidilebildiğini ölçer). */}
+        <div className="absolute right-0 top-2 z-10 flex items-center gap-0 sm:hidden">
           {/* Masaüstüyle AYNI türev (`favoriKisayolu`). Burada eskiden ayrı
               bir rol kontrolü yazılıydı ve bir kez zaten yanlış yazılmıştı:
               kısayol role bakmadan basılınca eğitmenin ve kütüphane
@@ -335,32 +378,18 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               açılan bir ekrana giden ikon duruyordu. Operatörün işi fiziksel
               olarak mobildir (QR kapıda okutulur), yani yanlış ikonu en çok o
               görüyordu. Tek türev, iki yüzey — bir daha ayrışamaz. */}
-          <NavLink to={ROUTES.messages} title="Mesajlar" aria-label="Mesajlar" className={navIconClass}>
-            <Icon name="messages" className="h-6 w-6" />
-            <SayiRozeti n={msgUnread} />
-          </NavLink>
-          <NavLink to={ROUTES.notifications} title="Bildirimler" aria-label="Bildirimler" className={navIconClass}>
-            <Icon name="notifications" className="h-6 w-6" />
-            <SayiRozeti n={bildirimOkunmamis} />
-          </NavLink>
-          {favoriKisayolu && (
-            <NavLink
-              to={favoriKisayolu.to}
-              title={favoriKisayolu.label}
-              aria-label={favoriKisayolu.label}
-              className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 "
-            >
-              <span className="relative">
-                <Icon name={favoriKisayolu.icon ?? "favorites"} className="h-6 w-6" />
-              </span>
-            </NavLink>
-          )}
           <button
             type="button"
-            aria-label="Menüyü aç/kapat"
+            aria-label={
+              // Rozet kapalıyken de görünür: rakamı görmeyen (ekran okuyucu)
+              // kullanıcı da okunmamışı bilsin (20 Eyl 2026).
+              mobilOkunmamisToplam > 0
+                ? `Menüyü aç, ${mobilOkunmamisToplam} okunmamış`
+                : "Menüyü aç/kapat"
+            }
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((o) => !o)}
-            className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 "
+            className="relative inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 "
           >
             <svg
               viewBox="0 0 24 24"
@@ -383,6 +412,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
                 />
               )}
             </svg>
+            {/* Mesajlar + bildirimler toplamı (19 Eyl 2026'da kaldırılan mobil
+                rozetlerin karşılığı): ikonlar çekmeceye taşınınca telefonda
+                okunmamışı gösteren tek yer kalmamıştı. Menü açıkken (çarpı
+                ikonuyken) rozet çizilmez — kullanıcı zaten içeride, sayıyı
+                oradaki satırlarda görüyor. */}
+            {!menuOpen && <SayiRozeti n={mobilOkunmamisToplam} />}
           </button>
         </div>
       </div>
@@ -409,16 +444,23 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         </div>
       )}
 
-      {/* Mobil açılır menü */}
-      {menuOpen && (
-        <div className="mt-3 flex flex-col gap-0.5 px-4 sm:hidden">
-
-          {accountLinks(() => {
-            setMenuOpen(false);
-          })}
-        </div>
-      )}
     </header>
+
+    {/* MOBİL MENÜ = SAĞDAN AÇILAN ÇEKMECE (19 Eyl 2026, kullanıcı kararı).
+        Eskiden hamburger, hesap satırlarını üst barın ALTINA açıyordu ve
+        sayfayı aşağı itiyordu; panel bölümleri ise ayrı bir yatay şeritteydi.
+        Şerit telefonda kalktı, bölümler buraya taşındı — hamburger artık tek
+        gezinme kapısı. Portal ve odak tuzağı gerekçesi bileşenin başında. */}
+    <MobilPanelCekmecesi
+      open={menuOpen}
+      onClose={() => setMenuOpen(false)}
+      sekmeler={panelSekmeleri}
+    >
+      {accountLinks(
+        () => setMenuOpen(false),
+        Boolean(panelSekmeleri && panelSekmeleri.length > 0)
+      )}
+    </MobilPanelCekmecesi>
 
     {personalizeOpen && (
       <PersonalizeModal

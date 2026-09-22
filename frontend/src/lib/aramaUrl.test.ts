@@ -132,6 +132,7 @@ describe("arama URL · şema sözleşmesi", () => {
 const ORNEK_DEGERLER: Record<string, unknown> = {
   q: "matematik",
   ders: ["matematik", "fizik"],
+  seviye: 7,
   konum: { yer: null, ilce: ["Seyhan", "Çukurova"] },
   sekil: [TeachingMode.IN_PERSON],
   sinav: "TYT",
@@ -160,6 +161,9 @@ describe("arama URL · eğitmen", () => {
     const deger: EgitmenAramasi = {
       q: "",
       ders: ["matematik", "fizik"],
+      // Çoklu ders seçiliyken `duzelt` seviyeyi düşürür (bkz. aşağıdaki ayrı
+      // "SEVİYE" testleri) — bu round-trip'te tek geçerli değer `undefined`.
+      seviye: undefined,
       konum: { yer: null, ilce: ["Seyhan"] },
       sekil: [TeachingMode.IN_PERSON],
       sinav: "TYT",
@@ -259,6 +263,22 @@ describe("arama URL · eğitmen", () => {
 
   it("filtresiz adres taban yolun kendisidir", () => {
     expect(egitmenAramaAdresi({})).toBe(ROUTES.tutors);
+  });
+
+  it("SEVİYE tek ders seçiliyken adrese yazılır", () => {
+    const adres = egitmenAramaAdresi({ ders: ["matematik"], seviye: 5 });
+    expect(sorgu(adres).get("seviye")).toBe("5");
+  });
+
+  it("SEVİYE birden çok/hiç derste düşer (hangi dersin seviyesi belirsiz)", () => {
+    const cokluDers = egitmenAramaAdresi({
+      ders: ["matematik", "fizik"],
+      seviye: 5,
+    });
+    expect(cokluDers).not.toContain("seviye=");
+
+    const dersiz = egitmenAramaAdresi({ seviye: 5 });
+    expect(dersiz).not.toContain("seviye=");
   });
 });
 

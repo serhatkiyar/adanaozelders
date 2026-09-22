@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { fetchMe, refreshSession } from "@/api/auth";
 import { GOOGLE_GENEL_HATA, googleHataMetni } from "@/lib/googleHata";
 import { guvenliDonusYolu } from "@/lib/guvenliDonus";
-import { buildWelcome } from "@/lib/greeting";
 import { roleHome } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
@@ -71,7 +70,6 @@ export default function GoogleDonus() {
         const kullanici = await fetchMe();
         setUser(kullanici);
         queryClient.setQueryData(["me"], kullanici);
-        toast.success(buildWelcome(kullanici.id, kullanici.full_name));
         navigate(git ?? roleHome(kullanici.role_id), { replace: true });
       } catch {
         setMesaj(GOOGLE_GENEL_HATA);

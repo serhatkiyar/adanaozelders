@@ -104,6 +104,7 @@ async def search_tutors(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
+    level_id: int | None = Query(default=None, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -124,6 +125,7 @@ async def search_tutors(
         lat=lat,
         lng=lng,
         radius_km=radius_km,
+        level_id=level_id,
         limit=limit,
         offset=offset,
     )
@@ -141,6 +143,7 @@ async def tutor_price_histogram(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
+    level_id: int | None = Query(default=None, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
     # Fiyat aralığı filtresi histogramı için eşleşen eğitmenlerin saatlik ücret
@@ -157,6 +160,7 @@ async def tutor_price_histogram(
         lat=lat,
         lng=lng,
         radius_km=radius_km,
+        level_id=level_id,
     )
 
 
@@ -171,6 +175,7 @@ async def tutor_gender_facets(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
+    level_id: int | None = Query(default=None, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
     """Cinsiyet filtresinin seçenek başına kaç eğitmene denk geldiği.
@@ -193,6 +198,7 @@ async def tutor_gender_facets(
         lat=lat,
         lng=lng,
         radius_km=radius_km,
+        level_id=level_id,
     )
 
 
@@ -210,6 +216,7 @@ async def featured_tutors(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
+    level_id: int | None = Query(default=None, ge=1),
     db: AsyncSession = Depends(get_db),
 ):
     """Ücretli öne çıkarma bloğu — arama ile AYNI sert filtreler, en fazla 3.
@@ -233,6 +240,7 @@ async def featured_tutors(
         lat=lat,
         lng=lng,
         radius_km=radius_km,
+        level_id=level_id,
     )
 
 

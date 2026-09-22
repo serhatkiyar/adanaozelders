@@ -28,6 +28,8 @@ import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik
 import { FiltreAcilir } from "@/components/FiltreAcilir";
 import { FiyatAraligi } from "@/components/FiyatAraligi";
 import { MesafeSecici } from "@/components/MesafeSecici";
+import { SeviyeSecici } from "@/components/SeviyeSecici";
+import { useSeviyeSecenekleri } from "@/hooks/useSubjects";
 import { egitmenHapBasligi, uzaklikCipi } from "@/lib/aramaBasligi";
 import { ilceListesindenYer, konumOzeti, yerinIlceleri, type YerSecimi } from "@/lib/yerArama";
 
@@ -84,8 +86,10 @@ export default function PublicMarketplace() {
   // yenilemede sıfırlanıyor ve geri tuşu onu geri almıyordu — incelenen yedi
   const [showFilters, setShowFilters] = useState(false);
   /* Şeritteki açılır çipler: tek seferde tek pencere. */
-  const [acikFiltre, setAcikFiltre] = useState<"fiyat" | "uzaklik" | null>(null);
+  const [acikFiltre, setAcikFiltre] = useState<"fiyat" | "uzaklik" | "seviye" | null>(null);
   const kapatAcilir = useCallback(() => setAcikFiltre(null), []);
+  // Filtre ÇUBUĞUNDAKİ "Seviye" çipiyle filtre penceresi ORTAK hook kullanır.
+  const seviyeMerdivenleri = useSeviyeSecenekleri(subjects);
   // Koordinat adrese YAZILMAZ; yalnız istekte kullanılır.
   const konumum = useKonumStore((s) => s.konum);
   /* Adresteki "yakınımda" niyeti koordinat ister; izin yoksa bayrak düşer. */
@@ -161,7 +165,8 @@ export default function PublicMarketplace() {
     (degerler.minFiyat || degerler.maxFiyat ? 1 : 0) +
     (degerler.cinsiyet ? 1 : 0) +
     (degerler.minYas || degerler.maxYas ? 1 : 0) +
-    (degerler.yakinimda ? 1 : 0);
+    (degerler.yakinimda ? 1 : 0) +
+    (degerler.seviye !== undefined ? 1 : 0);
 
   const seoTitle = subjects.length
     ? `${subjects.join(", ")} Eğitmenleri`
@@ -354,6 +359,27 @@ export default function PublicMarketplace() {
       >
         <FiyatAraligi acik={acikFiltre === "fiyat"} />
       </FiltreAcilir>
+      {/* Seviye çipi — yalnız tek ders seçiliyken (aksi halde hangi dersin
+          seviyesi olduğu belirsiz). Fiyat ile Cinsiyet arasında (kullanıcı
+          kararı, 20 Eyl 2026: "fiyat, seviye, cinsiyet şeklinde
+          sıralanabilir"); Cinsiyet'in zaten masaüstü çipi yok, yalnız
+          pencerede. */}
+      {seviyeMerdivenleri.length > 0 && (
+        <FiltreAcilir
+          etiket="Seviye"
+          aktif={degerler.seviye !== undefined}
+          acik={acikFiltre === "seviye"}
+          onAc={() => setAcikFiltre("seviye")}
+          onKapat={kapatAcilir}
+          onTemizle={() => ayarla({ seviye: undefined })}
+        >
+          <SeviyeSecici
+            merdivenler={seviyeMerdivenleri}
+            secili={degerler.seviye}
+            sec={(id) => ayarla({ seviye: id })}
+          />
+        </FiltreAcilir>
+      )}
       {degerler.yakinimda && (
         <FiltreAcilir
           etiket={uzaklikCipi(degerler.yaricap)}
@@ -417,6 +443,9 @@ export default function PublicMarketplace() {
   const mobilCipler: FiltreCipi[] = [
     ...(degerler.minFiyat !== undefined || degerler.maxFiyat !== undefined
       ? [{ id: "fiyat", etiket: "Fiyat", aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
+    ...(degerler.seviye !== undefined
+      ? [{ id: "seviye", etiket: "Seviye", aktif: true, onClick: () => setShowFilters(true) }]
       : []),
     ...(degerler.yakinimda
       ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]

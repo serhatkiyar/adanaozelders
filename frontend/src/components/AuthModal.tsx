@@ -9,8 +9,6 @@ import { useAuthStore } from "@/store/authStore";
 import { useKayitAcik } from "@/hooks/useKayitAcik";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
-import { buildWelcome } from "@/lib/greeting";
-import { toast } from "@/store/toastStore";
 import { KayitAkisi } from "@/components/KayitAkisi";
 import {
   GirisAyirici,
@@ -136,12 +134,11 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
       queryClient.setQueryData(["me"], user);
       return user;
     },
-    onSuccess: (user) => {
+    onSuccess: () => {
       // Modal kapanır, kullanıcı bulunduğu sayfada KALIR (mağaza/ürün/ödeme).
       // `/` zaten RootDispatcher olduğundan oradakiler otomatik workspace görür.
       // (Özel /giris sayfası kendi yönlendirmesini ayrıca yapar.)
       onSuccess();
-      toast.success(buildWelcome(user.id, user.full_name));
     },
   });
 

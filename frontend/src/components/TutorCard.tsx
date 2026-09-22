@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import type { TutorSearchOut } from "@/types";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { StarRating } from "@/components/StarRating";
-import { parseMoney, formatTRY } from "@/lib/money";
+import { parseMoney, formatRateSymbol } from "@/lib/money";
 import { ilanYolu } from "@/lib/routes";
 
 interface TutorCardProps {
@@ -25,15 +25,12 @@ export function TutorCard({
   const hasRatings = tutor.rating_count > 0;
   const rate = parseMoney(tutor.hourly_rate);
   
-  // Kartta iki ayrı soru var ve ikisi ayrı yerde cevaplanıyor (11 Eyl 2026):
-  //
-  //   NASIL işleniyor → fotoğrafın üstünde, adın altında (hep orada duruyordu)
-  //   NEREDE          → yıldız satırının sağ ucu (orası boştu)
-  //
-  // Bir süre ikisi tek satıra sıkıştırılmıştı ("Yüzyüze & Uzaktan" ancak ilçe
-  // YOKSA yazılıyordu); ders şekli ilçesi bilinen eğitmende hiç görünmüyordu
-  // ve yıldız satırına konduğunda 157px'lik telefon kartında kesiliyordu
-  // (ölçüldü). Ayrıldılar: ikisi de tam görünüyor, ikisi de tekrar etmiyor.
+  // NASIL + NEREDE tekrar TEK satırda, fotoğrafın üstünde (kullanıcı kararı,
+  // 20 Eyl 2026 — 11 Eyl 2026'daki ayrımı BİLEREK geri alıyor). 11 Eylül'de
+  // ikisi birleşince 157px'lik telefon kartında kesildiği ÖLÇÜLMÜŞTÜ; o risk
+  // hâlâ geçerli ama `truncate` (aşağıda) satırı tek satırda tutup taşanı
+  // "…" ile kesiyor — kart genişliği zaten büyümüştü, ölçüm o zamanki dar
+  // karta aitti. İlçe yoksa yalnız ders şekli yazılır, parantez açılmaz.
   //
   // Cinsiyet listede YAZILMAZ (kullanıcı kararı, 7 Eyl 2026). Bir süre bu
   // satırın parçasıydı; kartta demografik bir öznitelik taşımanın karşılığı
@@ -45,12 +42,24 @@ export function TutorCard({
       : tutor.teaching_mode === "IN_PERSON"
         ? "Yüz yüze"
         : "Yüzyüze & Uzaktan";
+  // İlçeyle birleşince parantez içinde küçük harfle yazılır ("Çukurova
+  // (yüzyüze & uzaktan)"); ilçe yoksa tek başına eski (büyük harfli) hali
+  // görünür — `tutorCardCinsiyet.test.tsx` tam bu metni (`"Uzaktan"`) çıpalıyor.
+  const sekilMetniKucuk =
+    tutor.teaching_mode === "ONLINE"
+      ? "uzaktan"
+      : tutor.teaching_mode === "IN_PERSON"
+        ? "yüz yüze"
+        : "yüzyüze & uzaktan";
+  const konumSatiri = tutor.district
+    ? `${tutor.district} (${sekilMetniKucuk})`
+    : sekilMetni;
 
-  // Mesafe, ilçeden ÖNCE gelir: "yakınımda" araması yapan için ilçe adından
-  // daha bilgilendirici. İkisi de yoksa slot boş kalır — uydurma bilgi yerine
-  // boşluk.
-  const konumMetni =
-    tutor.distance_km != null ? `~${tutor.distance_km} km` : tutor.district || "";
+  // Mesafe artık fiyat satırının sonunda, ayrı bir madde olarak gösteriliyor
+  // (kullanıcı kararı, 20 Eyl 2026) — ilçe adı yukarıda, fotoğraf üstünde
+  // ders şekliyle birlikte olduğu için burada yalnız "yakınımda" bilgisi var.
+  const mesafeMetni =
+    tutor.distance_km != null ? `~${tutor.distance_km} km` : "";
 
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
   // Ad SUNUCUDAN kesilmiş geliyor (ÜK-9). Burada `split(" ")[0]` yapılıyordu ve
@@ -108,8 +117,8 @@ export function TutorCard({
           <p className="line-clamp-1 text-base font-bold leading-snug text-white drop-shadow-md">
             {gorunenAd}
           </p>
-          <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">
-            <span className="truncate">{sekilMetni}</span>
+          <div className="mt-0.5 flex items-center text-xs font-semibold text-white/90 drop-shadow-md">
+            <span className="truncate">{konumSatiri}</span>
           </div>
         </div>
       </div>
@@ -120,7 +129,7 @@ export function TutorCard({
         <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 ">
           <li className="flex shrink-0 items-center gap-1">
             <StarRating value={tutor.rating_average ?? 0} single={true} />
-            <span className="font-bold text-slate-900 text-xs">
+            <span className="font-semibold text-slate-900 text-xs">
               {hasRatings ? (tutor.rating_average ?? 0).toFixed(1) : "Yeni"}
             </span>
             {hasRatings && (
@@ -129,15 +138,6 @@ export function TutorCard({
               </span>
             )}
           </li>
-          {/* Konum satırın SAĞ ucunda (kullanıcı kararı, 11 Eyl 2026).
-              Önce fotoğrafın üstünde, degradenin üzerinde küçük beyaz puntoyla
-              duruyordu; yıldız satırının sağı ise bomboştu. Aynı bilgi iki
-              yerde yazılmasın diye TAŞINDI, kopyalanmadı. */}
-          {konumMetni && (
-            <li className="ml-auto min-w-0 truncate text-slate-500">
-              {konumMetni}
-            </li>
-          )}
         </ul>
         
         {/* İlan başlığı 14px'ten 13px'e indi (kullanıcı kararı, 11 Eyl 2026):
@@ -155,20 +155,43 @@ export function TutorCard({
         {/* `mt-auto` YOK (kullanıcı, 16 Eyl 2026: "ücret çok aşağıda kalmış"):
             kart komşularıyla aynı boya uzayınca ücret dibe iniyor, başlıkla
             arasında boşluk açılıyordu. Ücret başlığın hemen altında durur;
-            hizayı başlığın `min-h`i zaten sağlıyor. */}
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
-          <div className="flex items-baseline text-slate-900 ">
-            {/* "/saat" eki YOK (kullanıcı kararı, 16 Eyl 2026): kartta yalnız
-                tutar; ders ücretinin saatlik olduğu ilan detayında anlatılır. */}
+            hizayı başlığın `min-h`i zaten sağlıyor. Aralık `mt-2`den `mt-0`a
+            indi (kullanıcı kararı, 20 Eyl 2026 — "bitişik" istendi). */}
+        <div className="mt-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-slate-800">
+          {/* "/saat" eki GERİ EKLENDİ (kullanıcı kararı, 20 Eyl 2026 — 16 Eyl
+              2026'daki sadelik kararını BİLEREK geri alıyor). Tutar ve "/saat"
+              AYRI `<span>` ama TEK sarmalayıcı içinde: dış konteynerin
+              `gap-x-1.5`'i araya girip "600 TL   /saat" gibi kopuk bir boşluk
+              bırakıyordu (kullanıcı: "düzgün kontrol et"), ikisi birbirine
+              bitişik tek birim olarak akmalı. */}
+          <span className="flex items-baseline">
+            {/* Kart ₺rakam biçimini kullanır (kullanıcı kararı, 21 Eyl 2026);
+                aynı biçim eğitmen profili kartında da geçerli —
+                `formatRate` yalnız yönetim listesinde "TL" sonekiyle kalır. */}
             <span className="text-sm font-bold">
-              {rate !== null ? formatTRY(rate) : "Ücret belirtilmemiş"}
+              {rate !== null ? formatRateSymbol(rate) : "Ücret belirtilmemiş"}
             </span>
-          </div>
+            {rate !== null && (
+              <span className="text-[11px] font-normal">/saat</span>
+            )}
+          </span>
           {/* İlk ders ücretsiz etiketi — yalnız eğitmen sunuyorsa */}
           {tutor.first_lesson_free !== false && (
-            <div className="flex items-center text-[11px] font-bold text-emerald-600 ">
-              İlk ders ücretsiz
-            </div>
+            <>
+              <span className="text-base leading-none text-emerald-600">·</span>
+              <span className="text-xs font-semibold text-emerald-600">
+                İlk ders ücretsiz
+              </span>
+            </>
+          )}
+          {/* Mesafe — yalnız "yakınımda" aramasında dolu gelir. */}
+          {mesafeMetni && (
+            <>
+              <span className="text-slate-300">·</span>
+              <span className="text-xs font-medium text-slate-500">
+                {mesafeMetni}
+              </span>
+            </>
           )}
         </div>
       </div>

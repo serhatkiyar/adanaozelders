@@ -103,11 +103,44 @@ const PANO: Sekme = {
 };
 
 /* Öğrencide "Rezervasyon" sekmesi Pano'ya döndü (Modül 4, 18 Eyl 2026):
-   `/pano` artık öğrencinin panosu, liste şeridin "Rezervasyonlar" sekmesinde.
-   İki rol aynı beş sekmeyi taşır. */
+   `/pano` artık öğrencinin panosu, liste şeridin "Rezervasyonlar" sekmesinde. */
 const UYE_SEKMELERI: Sekme[] = [KESFET, FAVORILER, MESAJLAR, PANO, HESABIM];
 
-const EGITMEN_SEKMELERI: Sekme[] = [KESFET, FAVORILER, MESAJLAR, PANO, HESABIM];
+/*
+ * EĞİTMEN ÇUBUĞU ÜYEDEN AYRILDI (kullanıcı kararı, 19 Eyl 2026).
+ *
+ * Eskiden öğrenciyle birebir aynı beş sekmeyi taşıyordu (Keşfet · Favoriler ·
+ * Mesajlar · Pano · Hesabım). Kullanıcı kararı: Keşfet ve Favoriler hamburger
+ * menüsüne taşındı (`lib/nav.ts::TUTOR_NAV`), "Pano" "Ana sayfa" olarak
+ * yeniden adlandırılıp ilk sıraya alındı, Takvim ve Analizler çubuğa girdi.
+ * Yeni sıra masaüstü şeridiyle (`lib/nav.ts::TUTOR_PANO_SEKMELERI`) BİREBİR
+ * aynı: Ana sayfa · Mesajlar · Takvim · Analizler. "Hesabım" çubuktan düştü;
+ * hesap menüsünde zaten sabit bir satır olarak duruyor (`DashboardHeader`).
+ *
+ * `PANO`dan farklı ayrı bir sabit: `PANO` üye çubuğuyla PAYLAŞILIYOR, etiketi
+ * değiştirmek üyeyi de etkilerdi.
+ */
+const ANA_SAYFA: Sekme = {
+  key: "ana-sayfa",
+  to: ROUTES.bookings,
+  label: "Ana sayfa",
+  icon: "dashboard",
+  end: true,
+};
+const TAKVIM: Sekme = {
+  key: "takvim",
+  to: ROUTES.tutorCalendar,
+  label: "Takvim",
+  icon: "calendar",
+};
+const ANALIZLER: Sekme = {
+  key: "analizler",
+  to: ROUTES.tutorAnalytics,
+  label: "Analizler",
+  icon: "exams",
+};
+
+const EGITMEN_SEKMELERI: Sekme[] = [ANA_SAYFA, MESAJLAR, TAKVIM, ANALIZLER];
 
 /** Anonim kullanıcıda son yuva bir bağlantı değil, giriş ekranını açar. */
 const ANONIM_SEKMELERI: Sekme[] = [KESFET, FAVORILER];

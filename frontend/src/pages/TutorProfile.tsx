@@ -178,7 +178,11 @@ export default function TutorProfile({
           onClick={() => setSearchOpen(false)}
         />
       )}
-      <div className="mx-auto max-w-[76rem] pb-12">
+      {/* Konteyner DAR (64rem, site standardı 76rem'in altında — kullanıcı
+          kararı, 21 Eyl 2026): tanıtım videosu üste alınınca sayfa geniş/boş
+          hissettirdi, daraltılınca (sağdaki sabit kart dahil TÜM bölme)
+          beğenildi — bilinçli, sayfaya özel bir sapma. */}
+      <div className="mx-auto max-w-[64rem] pb-12">
         {/* "← Geri dön" KALDIRILDI (kullanıcı kararı, 7 Eyl 2026): tarayıcının
             kendi geri düğmesi zaten var ve bağlantı, kartı bir satır aşağı
             itiyordu. Hata dalındaki kopyası KALIR — orada sayfanın tek
@@ -219,56 +223,70 @@ export default function TutorProfile({
               yüksekliği ekranla sınırlı ve gerekirse KENDİ İÇİNDE kayar. */}
           {!mobil && (
           <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--yapiskan-ust,6rem)+1.5rem)]">
-            <section className="rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
-              {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
-              <div className="mb-2 flex items-center justify-end gap-2">
-                {mesajGonderebilir && (
-                  <button
-                    type="button"
-                    title="Mesaj Gönder"
-                    aria-label="Mesaj Gönder"
-                    onClick={() =>
-                      navigate(ROUTES.messageWith(tutor.id, tutor.display_name))
-                    }
-                    className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 "
-                  >
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-                    </svg>
-                  </button>
-                )}
-                <ShareButton size="md" />
+            <section className="relative rounded-2xl bg-white p-5 shadow-lg shadow-slate-300/40 ring-1 ring-slate-200/60 lg:max-h-[calc(100vh-var(--yapiskan-ust,6rem)-3rem)] lg:overflow-y-auto lg:overscroll-contain">
+              {/* Favori + paylaş + mesaj: sağ üst köşede DİKEY sütun
+                  (PublicTutorProfile'la AYNI desen — kullanıcı kararı,
+                  21 Eyl 2026: bu kabuk yatay bir satıra SAPMIŞTI, anonim
+                  kabuk zaten dikeydi. `absolute` bilinçli: normal akışta
+                  kalsalardı fotoğrafı aşağı iter, kartı uzatırdı. */}
+              {/* Mesaj gönderme düğmesi buradan KALKTI (kullanıcı kararı, 21 Eyl
+                  2026): favori/paylaşla aynı ağırlıkta üçüncü bir ikincil eylem
+                  köşeyi kalabalıklaştırıyordu. Mesajlaşma hâlâ mobil üst bardan
+                  (`EgitmenMobilUst`) erişilebilir — o ayrı bir yüzey, dokunulmadı. */}
+              <div className="absolute right-4 top-4 z-10 flex flex-col items-center gap-3">
                 {!isOwnerTutor && (
-                  <BookmarkButton tutorId={tutor.id} size="md" onSolid />
+                  <BookmarkButton tutorId={tutor.id} size="sm" onSolid />
                 )}
+                <ShareButton size="sm" />
               </div>
 
               <div className="flex flex-col items-center text-center">
+                {/* Fotoğraf 64px'ten 128px'e çıktı (kullanıcı kararı, 21 Eyl
+                    2026 — PublicTutorProfile'la aynı `xl` boyuta hizalandı). */}
                 <Avatar
                   name={tutor.display_name}
                   avatar_url={tutor.avatar_url}
-                  size="lg"
+                  size="xl"
                   shape="square"
                 />
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                   {/* Ad `p`: H1 ilan başlığıdır (Modül 6). Görünüm aynı. */}
-                  <p className="text-xl font-bold text-slate-900 ">
+                  <p className="text-2xl font-bold text-slate-900 ">
                     {tutor.display_name}
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowReviews(true)}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 "
-                >
+                {/* Bilerek ARTIK BUTON DEĞİL (kullanıcı kararı, 21 Eyl 2026):
+                    yıldız+puan tüm satırı tıklanabilir/hover'lı göstermek
+                    yanıltıcıydı — tek gerçek eylem yorumlara gitmek, o da
+                    yalnız "(N yorum)" metninde. */}
+                <div className="mt-2 inline-flex items-center gap-1.5">
                   <StarRating value={tutor.rating_average} single={true} />
-                  <span className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover ">
-                    {tutor.rating_count > 0
-                      ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count} yorum)`
-                      : "Değerlendirme yok"}
-                  </span>
-                </button>
+                  {/* Puan SAYISI kalın/siyah, yorum adedi küçük/gri (kullanıcı
+                      kararı, 21 Eyl 2026): tek span'da eşit ağırlıktaydı. */}
+                  {tutor.rating_count > 0 ? (
+                    <>
+                      <span className="text-sm font-bold text-slate-900 ">
+                        {tutor.rating_average?.toFixed(1)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowReviews(true)}
+                        className="text-sm font-medium text-slate-600 underline hover:text-slate-700 hover:no-underline "
+                      >
+                        ({tutor.rating_count} yorum)
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowReviews(true)}
+                      className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
+                    >
+                      Değerlendirme yok
+                    </button>
+                  )}
+                </div>
 
                 {/* Ders mekânı buradan KALKTI, sol sütundaki "Ders Mekânı"
                     başlığına taşındı. Anonim kabukla (PublicTutorProfile) aynı
@@ -286,7 +304,7 @@ export default function TutorProfile({
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-semibold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
+                  className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
                   Ders Talep Et
                 </button>
@@ -329,6 +347,25 @@ export default function TutorProfile({
                 : "space-y-8 lg:col-start-1 lg:row-start-1"
             }
           >
+            {/* Tanıtım videosu — Preply karşılaştırması (21 Eyl 2026, sonra
+                kullanıcı kararıyla EN ÜSTE alındı — etiket/başlıktan bile
+                önce). Kendi max-w'si YOK: konteynerin kendisi (max-w-[64rem])
+                zaten dar, video sütunu tam doldurur. Otomatik+sessiz oynar
+                (bkz. `videoEmbedUrl`). */}
+            {embedUrl && (
+              <section>
+                <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-sm">
+                  <iframe
+                    src={embedUrl}
+                    title={`${tutor.display_name} tanıtım videosu`}
+                    className="h-full w-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
+            )}
+
             {/* Verdiği Dersler — ilan başlığının üstünde */}
             {tutor.subjects && tutor.subjects.length > 0 && (
               <section>
@@ -385,24 +422,6 @@ export default function TutorProfile({
                 <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 ">
                   {tutor.lesson_info}
                 </p>
-              </section>
-            )}
-
-            {/* Tanıtım videosu — değerlendirmelerin hemen üstünde, küçük */}
-            {embedUrl && (
-              <section className="border-t border-slate-100 pt-6 ">
-                <h2 className="mb-3 text-xl font-bold text-slate-900 ">
-                  Tanıtım videosu
-                </h2>
-                <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
-                  <iframe
-                    src={embedUrl}
-                    title={`${tutor.display_name} tanıtım videosu`}
-                    className="h-full w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
               </section>
             )}
 

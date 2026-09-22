@@ -120,16 +120,17 @@ describe("mobil alt sekme çubuğu", () => {
     ]);
   });
 
-  it("eğitmen (TUTOR): öğrenciyle aynı beş sekme", () => {
+  it("eğitmen (TUTOR): Ana sayfa · Mesajlar · Takvim · Analizler — Keşfet/Favoriler/Hesabım hamburger'de", () => {
+    // Eğitmen çubuğu üyeden ayrıldı (kullanıcı kararı, 19 Eyl 2026):
+    // masaüstü şeridiyle (Pano→"Ana sayfa" · Mesajlar · Takvim · Analizler)
+    // birebir aynı sırayı taşır; Keşfet ve Favoriler `lib/nav.ts::TUTOR_NAV`
+    // üzerinden hamburger menüsünde yaşar.
     girisYap(ROLE_IDS.TUTOR);
     sar();
-    expect(sekmeAdlari()).toEqual([
-      "Keşfet",
-      "Favoriler",
-      "Mesajlar",
-      "Pano",
-      "Hesabım",
-    ]);
+    expect(sekmeAdlari()).toEqual(["Ana sayfa", "Mesajlar", "Takvim", "Analizler"]);
+    expect(screen.queryByText("Keşfet")).toBeNull();
+    expect(screen.queryByText("Favoriler")).toBeNull();
+    expect(screen.queryByText("Hesabım")).toBeNull();
   });
 
   it("yönetici: Keşfet · Yönetim · Ayarlar (favori/mesaj YOK)", () => {

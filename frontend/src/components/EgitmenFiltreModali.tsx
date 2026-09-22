@@ -2,8 +2,10 @@ import { useMemo } from "react";
 
 import { FiyatAraligi, useHistogramParametreleri } from "@/components/FiyatAraligi";
 import { MesafeSecici } from "@/components/MesafeSecici";
+import { SeviyeSecici } from "@/components/SeviyeSecici";
 import { useTutorGenderFacets } from "@/hooks/useTutorSearch";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
+import { useSeviyeSecenekleri } from "@/hooks/useSubjects";
 import { EGITMEN_ARAMA } from "@/lib/aramaUrl";
 import { bosDeger } from "@/lib/urlSemasi";
 import { useKonumStore } from "@/store/konumStore";
@@ -61,7 +63,10 @@ export function EgitmenFiltreModali({
   const { degerler, ayarla } = useAramaDurumu(EGITMEN_ARAMA);
   const unut = useKonumStore((s) => s.unut);
 
-  const { cinsiyet: gender, yakinimda } = degerler;
+  const { cinsiyet: gender, yakinimda, ders } = degerler;
+
+  // Filtre ÇUBUĞUNDAKİ "Seviye" çipiyle ORTAK hook (bkz. `useSubjects.ts`).
+  const seviyeMerdivenleri = useSeviyeSecenekleri(ders);
 
   /* Fiyat gövdesi ve histogram kümesi `FiyatAraligi`de — şeritteki "Fiyat ⌄"
      açılırıyla ORTAK. Faset yalnız aynı kümeden kendi eksenini düşürür. */
@@ -122,6 +127,20 @@ export function EgitmenFiltreModali({
             <p className="mb-4 mt-0.5 text-xs text-slate-500 ">Saatlik ders ücreti</p>
             <FiyatAraligi acik={acik} />
           </div>
+
+          {/* Seviye — yalnız tek ders seçiliyken (aksi halde hangi dersin
+              seviyesi olduğu belirsiz). */}
+          {seviyeMerdivenleri.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 ">Seviye</h3>
+              <p className="mb-4 mt-0.5 text-xs text-slate-500 ">{ders[0]} için</p>
+              <SeviyeSecici
+                merdivenler={seviyeMerdivenleri}
+                secili={degerler.seviye}
+                sec={(id) => ayarla({ seviye: id })}
+              />
+            </div>
+          )}
 
           {/* Eğitmen cinsiyeti — bölmeli seçici */}
           <div>

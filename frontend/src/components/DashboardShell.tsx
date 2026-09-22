@@ -258,6 +258,9 @@ export function DashboardShell({
           mobilUst={mobilUst}
           mobilSade={mobilSade}
           expanded={expanded}
+          // Şerit telefonda çizilmediği için bölümler üst barın çekmecesine
+          // geçer. Şeritle AYNI liste — ikisi ayrışamaz.
+          panelSekmeleri={panelSekmeleri ?? undefined}
         />
 
         {/* Şerit yapışkan yığının İÇİNDE: akışta kalsaydı kaydırınca gider,
@@ -265,8 +268,15 @@ export function DashboardShell({
             ResizeObserver ile ölçülüp `--yapiskan-ust` olarak yayınlanıyor,
             yani şerit eklenince yapışkan kartların hizası kendiliğinden
             düzeltiliyor — hiçbir yere sabit piksel yazılmıyor. */}
+        {/* TELEFONDA ŞERİT YOK (19 Eyl 2026, kullanıcı kararı): bölümler üst
+            bardaki hamburger'ın açtığı çekmeceden seçilir
+            (`MobilPanelCekmecesi`). Kırılım noktası `sm` ve bu BİLEREK
+            hamburger'ın kırılımıyla aynı — şerit hamburger'ın olmadığı bir
+            bantta gizlenseydi bölümlere giden yol tamamen kapanırdı. */}
         {panelSekmeleri && panelSekmeleri.length > 0 && (
-          <PanelSekmeleri items={panelSekmeleri} />
+          <div className="hidden sm:block">
+            <PanelSekmeleri items={panelSekmeleri} />
+          </div>
         )}
 
         {showVerifyBanner && (

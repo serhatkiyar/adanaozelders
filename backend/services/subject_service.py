@@ -112,6 +112,27 @@ async def list_level_scales(db: AsyncSession) -> list[LevelScaleOut]:
     ]
 
 
+async def _canonical_subject_ids(db: AsyncSession, aranan: set[str]) -> set[int]:
+    """Normalize edilmiş girişleri (slug/eşanlamlı/ad) kanonik ders id'lerine çözer.
+
+    `resolve_filter_terms` ve `resolve_filter_subject_ids` arasında paylaşılan
+    çekirdek: ikisi de aynı üç sütunlu çözümleme sırasını (slug → eşanlamlı →
+    ad) kullanır, farkları çözümün SONUCU (metin kümesi mi, id kümesi mi).
+    """
+    ders_ids: set[int] = set()
+    for kolon in (
+        select(Subject.id).where(
+            Subject.deleted_at.is_(None), Subject.slug.in_(aranan)
+        ),
+        select(SubjectAlias.subject_id).where(SubjectAlias.normalized.in_(aranan)),
+        select(Subject.id).where(
+            Subject.deleted_at.is_(None), normalized(Subject.name).in_(aranan)
+        ),
+    ):
+        ders_ids.update((await db.execute(kolon)).scalars().all())
+    return ders_ids
+
+
 async def resolve_filter_terms(db: AsyncSession, values: list[str]) -> list[str]:
     """`?subject=` değerlerini ARAMADA EŞLEŞTİRİLECEK normalize metinlere çevirir.
 
@@ -140,17 +161,7 @@ async def resolve_filter_terms(db: AsyncSession, values: list[str]) -> list[str]
     if not aranan:
         return []
 
-    ders_ids: set[int] = set()
-    for kolon in (
-        select(Subject.id).where(
-            Subject.deleted_at.is_(None), Subject.slug.in_(aranan)
-        ),
-        select(SubjectAlias.subject_id).where(SubjectAlias.normalized.in_(aranan)),
-        select(Subject.id).where(
-            Subject.deleted_at.is_(None), normalized(Subject.name).in_(aranan)
-        ),
-    ):
-        ders_ids.update((await db.execute(kolon)).scalars().all())
+    ders_ids = await _canonical_subject_ids(db, aranan)
 
     if not ders_ids:
         # Taksonomide karşılığı yok — bugünkü davranış (ham metin eşleşmesi).
@@ -181,6 +192,40 @@ async def resolve_filter_terms(db: AsyncSession, values: list[str]) -> list[str]
     ).scalars().all()
     terimler.update(esanlamlilar)
     return sorted(t for t in terimler if t)
+
+
+async def resolve_filter_subject_ids(db: AsyncSession, values: list[str]) -> set[int]:
+    """`?subject=` değerini SEVİYE FİLTRESİ için kanonik ders id'sine çözer.
+
+    `resolve_filter_terms` serbest metinle eşleşecek TERİMLER döner; seviye
+    filtresi ise `TutorSubjectLevel(tutor_id, subject_id, level_id)` üzerinden
+    çalıştığı için gerçek `Subject.id` gerekir — metin eşleşmesi burada işe
+    yaramaz. Taksonomide karşılığı olmayan (serbest metin) bir ders için boş
+    küme döner; çağıran bunu "seviyesi bilinmiyor" olarak ele alıp filtreyi
+    sıfır sonuca düşürür (yanlışlıkla başka bir dersin seviyesini eşleştirmez).
+
+    Alt ders genişletmesi `resolve_filter_terms` ile aynıdır: "Diller"
+    seçiliyken Almanca/Fransızca'nın seviyeleri de sayılır.
+    """
+    if not values:
+        return set()
+    aranan = {normalize_tr(v) for v in values if v and v.strip()}
+    if not aranan:
+        return set()
+
+    ders_ids = await _canonical_subject_ids(db, aranan)
+    if not ders_ids:
+        return set()
+
+    alt = (
+        await db.execute(
+            select(Subject.id).where(
+                Subject.deleted_at.is_(None), Subject.parent_id.in_(ders_ids)
+            )
+        )
+    ).scalars().all()
+    ders_ids.update(alt)
+    return ders_ids
 
 
 async def map_texts_to_ids(db: AsyncSession, texts: list[str]) -> dict[str, int]:

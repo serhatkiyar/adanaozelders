@@ -282,7 +282,17 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // KatlanirBaslik ailesinin aynısı; ortak `Button`ın dolgu/gölge
     // varyantları kompakt araç çubuğuna uymuyor. Editörün diğer düğmeleri
     // (bağlantı formu, kapak kaldırma) ortak `Button`dadır.
-    expect(olcum.rawButton).toBeLessThanOrEqual(100);
+    // 19 Eyl 2026'da 100 → 102 (**+2**): telefonda sağdan açılan panel
+    // çekmecesi (`MobilPanelCekmecesi.tsx`), `DashboardHeader`ın import
+    // grafiği üzerinden tabana girdi (bkz. `OLCUM_TABANI` yorumu). Buradaki
+    // iki ham `<button>` (arka plan kapatıcı, kapatma ikonu) admin `ui2`
+    // ailesine DEĞİL — kardeşi `DashboardHeader.tsx`'in kendi hamburger
+    // düğmesiyle aynı, rol-paylaşımlı kabuğun kendi tasarım diline ait.
+    // Admin'in ortak `Button`ını oraya taşımak yanlış yönde bir bağımlılık
+    // (admin bileşeni → rol-paylaşımlı kabuk) ve yabancı bir görsel dil
+    // üretirdi; `DashboardHeader.tsx` da aynı gerekçeyle zaten ham kalmış
+    // durumda (bu dosya reachability ile tabana girmeden önce de öyleydi).
+    expect(olcum.rawButton).toBeLessThanOrEqual(102);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (bugünkü taban 7)", () => {

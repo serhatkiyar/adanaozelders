@@ -269,6 +269,32 @@ class TestAramaFiltresi:
         sql = str(stmt.compile(dialect=postgresql.dialect()))
         assert "tr_normalize" in sql
 
+    def test_seviye_filtresi_TutorSubjectLevel_uzerinden_calisir(self):
+        """Seviye filtresi kanonik `subject_id`ye bağlı (`TutorSubjectLevel`).
+
+        `level_subject_ids` boş/None gelirse (seçili ders taksonomide
+        karşılıksız serbest metin) sorgu yine de derlenmeli ve boş `IN(())`
+        üretmeli — başka bir dersin seviyesini yanlışlıkla eşleştirmemeli.
+        """
+        from sqlalchemy import select as sa_select
+        from sqlalchemy.dialects import postgresql
+
+        from models.tutor import Tutor
+        from services.search_service import _apply_tutor_filters
+
+        stmt, _ = _apply_tutor_filters(
+            sa_select(Tutor.id), level_id=5, level_subject_ids={3, 4}
+        )
+        sql = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "tutor_subject_levels" in sql
+
+        # `level_subject_ids=None` (parametre hiç geçmemiş) yine de derlenir.
+        stmt2, _ = _apply_tutor_filters(
+            sa_select(Tutor.id), level_id=5, level_subject_ids=None
+        )
+        sql2 = str(stmt2.compile(dialect=postgresql.dialect()))
+        assert "tutor_subject_levels" in sql2
+
     def test_her_listeleme_yolu_cozumlemeden_gecer(self):
         """Arama, fiyat histogramı, öne çıkarma ve cinsiyet fasetleri AYNI
         kümeyi kullanmalı.

@@ -1,16 +1,17 @@
-import { type CSSProperties, useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { type CSSProperties, useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { AramaMobilBaslik, type FiltreCipi } from "@/components/AramaMobilBaslik";
 import { FiltreAcilir } from "@/components/FiltreAcilir";
 import { FiyatAraligi } from "@/components/FiyatAraligi";
 import { MesafeSecici } from "@/components/MesafeSecici";
+import { SeviyeSecici } from "@/components/SeviyeSecici";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
+import { useSeviyeSecenekleri } from "@/hooks/useSubjects";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
-import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
-import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
+import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
@@ -117,15 +118,14 @@ export default function Marketplace() {
 
   const [showFilters, setShowFilters] = useState(false);
   /* Şeritteki açılır çipler: tek seferde tek pencere. */
-  const [acikFiltre, setAcikFiltre] = useState<"fiyat" | "uzaklik" | null>(null);
+  const [acikFiltre, setAcikFiltre] = useState<"fiyat" | "uzaklik" | "seviye" | null>(null);
   const kapatAcilir = useCallback(() => setAcikFiltre(null), []);
+  // Filtre ÇUBUĞUNDAKİ "Seviye" çipiyle filtre penceresi ORTAK hook kullanır.
+  const seviyeMerdivenleri = useSeviyeSecenekleri(subjects);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobilAramaAcik, setMobilAramaAcik] = useState(false);
   const mobil = useMobil();
   const navigate = useNavigate();
-  const [pricePopoverOpen, setPricePopoverOpen] = useState(false);
-  const [pricePopoverPos, setPricePopoverPos] = useState<{top: number, left: number} | null>(null);
-  const pricePopoverRef = useRef<HTMLButtonElement>(null);
 
   const setSurface = useSurfaceStore((s) => s.setSurface);
 
@@ -133,18 +133,6 @@ export default function Marketplace() {
   useEffect(() => {
     setSurface("discover");
   }, [setSurface]);
-
-  const togglePricePopover = () => {
-    if (pricePopoverOpen) {
-      setPricePopoverOpen(false);
-      return;
-    }
-    const r = pricePopoverRef.current?.getBoundingClientRect();
-    if (r) {
-      setPricePopoverPos({ top: r.bottom + 8, left: r.left });
-    }
-    setPricePopoverOpen(true);
-  };
 
   /*
    * Dış navigasyon (geri/ileri, paylaşılan link) için AYRI bir efekt YOK:
@@ -164,8 +152,6 @@ export default function Marketplace() {
    * debounce'lanıp adrese `replace` ile iner; dışarıdan gelen adres
    * değişimi (geri tuşu, paylaşılan link) kutuya geri yansır.
    */
-  const [minRate, setMinRate] = useState(sayiMetni(degerler.minFiyat));
-  const [maxRate, setMaxRate] = useState(sayiMetni(degerler.maxFiyat));
   const [minAge, setMinAge] = useState(sayiMetni(degerler.minYas));
   const [maxAge, setMaxAge] = useState(sayiMetni(degerler.maxYas));
   const [limit, setLimit] = useState(20);
@@ -194,35 +180,26 @@ export default function Marketplace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQ]);
 
-  const debouncedMin = useDebounce(minRate);
-  const debouncedMax = useDebounce(maxRate);
   const debouncedMinAge = useDebounce(minAge);
   const debouncedMaxAge = useDebounce(maxAge);
 
   // Kutu → adres (debounce'lu, `replace`: her rakam geçmişe girmesin).
   useEffect(() => {
     const yama = {
-      minFiyat: metinSayisi(debouncedMin),
-      maxFiyat: metinSayisi(debouncedMax),
       minYas: metinSayisi(debouncedMinAge),
       maxYas: metinSayisi(debouncedMaxAge),
     };
     const ayni =
-      yama.minFiyat === degerler.minFiyat &&
-      yama.maxFiyat === degerler.maxFiyat &&
-      yama.minYas === degerler.minYas &&
-      yama.maxYas === degerler.maxYas;
+      yama.minYas === degerler.minYas && yama.maxYas === degerler.maxYas;
     if (!ayni) ayarla(yama, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedMin, debouncedMax, debouncedMinAge, debouncedMaxAge]);
+  }, [debouncedMinAge, debouncedMaxAge]);
 
   // Adres → kutu (geri tuşu, paylaşılan bağlantı).
   useEffect(() => {
-    setMinRate((o) => esitle(o, degerler.minFiyat));
-    setMaxRate((o) => esitle(o, degerler.maxFiyat));
     setMinAge((o) => esitle(o, degerler.minYas));
     setMaxAge((o) => esitle(o, degerler.maxYas));
-  }, [degerler.minFiyat, degerler.maxFiyat, degerler.minYas, degerler.maxYas]);
+  }, [degerler.minYas, degerler.maxYas]);
 
   /*
    * Şema değeri → API isteği. Bu çeviri eskiden bu dosyada iki kez
@@ -257,38 +234,23 @@ export default function Marketplace() {
   const [featuredIds, setFeaturedIds] = useState<number[]>([]);
   const organicTutors = (data ?? []).filter((t) => !featuredIds.includes(t.id));
 
-  /*
-   * Fiyat histogramı sonuç listesiyle AYNI kümeyi ölçmeli, yoksa çubuklar
-   * listede olmayan eğitmenleri sayar. Eskiden bu küme ELLE ikinci kez
-   * kuruluyordu ve mahalle çapası kuralı iki yere kopyalanmıştı. Artık
-   * listenin isteğinden ÇIKARARAK türetiliyor: kendi ekseni (fiyat) ve
-   * sayıyı etkilemeyen alanlar düşer.
-   */
-  const histParams = useMemo(() => {
-    const {
-      sort: _sort,
-      exam: _exam,
-      limit: _limit,
-      offset: _offset,
-      min_rate: _min,
-      max_rate: _max,
-      ...rest
-    } = params;
-    return rest;
-  }, [params]);
-
-  const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(histParams, showFilters);
-
-
+  const fiyatFiltreliMi =
+    degerler.minFiyat !== undefined || degerler.maxFiyat !== undefined;
   const hasModalFilters =
-    !!minRate || !!maxRate || !!gender || !!minAge || !!maxAge || yakinimda;
+    fiyatFiltreliMi ||
+    !!gender ||
+    !!minAge ||
+    !!maxAge ||
+    yakinimda ||
+    degerler.seviye !== undefined;
   /* Filtre PENCERESİNDEKİ etkin grup sayısı (başlıktaki rozet); fiyat ve yaş
      aralığı birer grup. */
   const mobilFiltreSayisi =
-    (minRate || maxRate ? 1 : 0) +
+    (fiyatFiltreliMi ? 1 : 0) +
     (gender ? 1 : 0) +
     (minAge || maxAge ? 1 : 0) +
-    (yakinimda ? 1 : 0);
+    (yakinimda ? 1 : 0) +
+    (degerler.seviye !== undefined ? 1 : 0);
 
   // "Filtre var mı" artık şemadan gelir: yeni bir alan eklendiğinde bu satırı
   // güncellemeyi unutmak, temizle düğmesini sessizce yanlış gösterirdi.
@@ -296,7 +258,7 @@ export default function Marketplace() {
 
   const clearAll = () => {
     setQ("");
-    setMinRate(""); setMaxRate(""); setMinAge(""); setMaxAge("");
+    setMinAge(""); setMaxAge("");
     useKonumStore.getState().unut();
     ayarla(bosDeger(EGITMEN_ARAMA));
     setLimit(20);
@@ -472,7 +434,12 @@ export default function Marketplace() {
       </button>
 
       {/* SIRALAMA YOK (kullanıcı kararı, 16 Eyl 2026): şerit "Filtreler |
-          uygulanan filtreler" — tek ayraç. */}
+          uygulanan filtreler" — TEK ayraç, yalnız burada. 20 Eyl 2026:
+          ikinci bir ayraç ve onun yanındaki eski "Fiyat" popover düğmesi
+          (histogramlı) kaldırıldı — 16 Eyl'deki "açılır çip" kararıyla zaten
+          yerini aşağıdaki "Fiyat ⌄" çipine bırakması gerekirken silinmemiş
+          bir kalıntıydı, aynı filtreyi iki kez soruyordu (kullanıcı: "her
+          filtre için '|' gerek yok, sonrasındakiler yanyana dizilebilir"). */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
       {/* AÇILIR ÇİPLER — Airbnb "Fiyat ⌄ / Yerin türü ⌄" (kullanıcı kararı,
@@ -487,6 +454,27 @@ export default function Marketplace() {
       >
         <FiyatAraligi acik={acikFiltre === "fiyat"} />
       </FiltreAcilir>
+      {/* Seviye çipi — yalnız tek ders seçiliyken (aksi halde hangi dersin
+          seviyesi olduğu belirsiz). Fiyat ile Cinsiyet arasında (kullanıcı
+          kararı, 20 Eyl 2026: "fiyat, seviye, cinsiyet şeklinde
+          sıralanabilir"); Cinsiyet'in zaten masaüstü çipi yok, yalnız
+          pencerede. */}
+      {seviyeMerdivenleri.length > 0 && (
+        <FiltreAcilir
+          etiket="Seviye"
+          aktif={degerler.seviye !== undefined}
+          acik={acikFiltre === "seviye"}
+          onAc={() => setAcikFiltre("seviye")}
+          onKapat={kapatAcilir}
+          onTemizle={() => ayarla({ seviye: undefined })}
+        >
+          <SeviyeSecici
+            merdivenler={seviyeMerdivenleri}
+            secili={degerler.seviye}
+            sec={(id) => ayarla({ seviye: id })}
+          />
+        </FiltreAcilir>
+      )}
       {degerler.yakinimda && (
         <FiltreAcilir
           etiket={uzaklikCipi(degerler.yaricap)}
@@ -504,44 +492,6 @@ export default function Marketplace() {
           />
         </FiltreAcilir>
       )}
-
-      <div className="h-5 w-px shrink-0 bg-slate-200 " />
-
-      {/* Fiyat Popover Butonu */}
-      <div className="relative shrink-0">
-        <button
-          ref={pricePopoverRef}
-          type="button"
-          onClick={togglePricePopover}
-          className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-            minRate || maxRate
-              ? "border-slate-900 bg-white text-slate-900 "
-              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 "
-          }`}
-        >
-          {minRate || maxRate ? `${minRate || "0"} TL - ${maxRate ? `${maxRate} TL` : "Üstü"}` : "Fiyat"}
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={pricePopoverOpen ? "rotate-180 transition-transform" : "transition-transform"}><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        
-        {pricePopoverOpen && pricePopoverPos && (
-          <>
-            <div className="fixed inset-0 z-[80]" onClick={() => setPricePopoverOpen(false)} />
-            <div 
-              style={{ position: "fixed", top: pricePopoverPos.top, left: pricePopoverPos.left }}
-              className="z-[90] w-80 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:w-96"
-            >
-              <h3 className="mb-4 font-semibold text-slate-900 ">Fiyat Aralığı (Saatlik)</h3>
-              <PriceRangeHistogram
-                rates={rateDist ?? []}
-                loading={histLoading}
-                minRate={minRate}
-                maxRate={maxRate}
-                onChange={(mn, mx) => { setMinRate(mn); setMaxRate(mx); }}
-              />
-            </div>
-          </>
-        )}
-      </div>
 
       {/* Aktif sınav chip'i */}
       {exam && (
@@ -584,6 +534,9 @@ export default function Marketplace() {
   const mobilCipler: FiltreCipi[] = [
     ...(degerler.minFiyat !== undefined || degerler.maxFiyat !== undefined
       ? [{ id: "fiyat", etiket: "Fiyat", aktif: true, onClick: () => setShowFilters(true) }]
+      : []),
+    ...(degerler.seviye !== undefined
+      ? [{ id: "seviye", etiket: "Seviye", aktif: true, onClick: () => setShowFilters(true) }]
       : []),
     ...(degerler.yakinimda
       ? [{ id: "uzaklik", etiket: uzaklikCipi(degerler.yaricap), aktif: true, onClick: () => setShowFilters(true) }]
