@@ -238,19 +238,31 @@ export default function TestLiveKit() {
           {/* Tahta açılınca `VideoConference` SÖKÜLMEZ, yalnız küçülür:
               sökmek kamera/ekran paylaşımı aboneliklerini ve kütüphanenin
               kendi iç durumunu sıfırlardı. Dar ekranda üst-alt, geniş
-              ekranda yan yana. */}
+              ekranda yan yana.
+
+              GENİŞ EKRANDA VİDEO SABİT GENİŞLİKTEDİR (`lg:w-80` = 320px),
+              oransal DEĞİL. Bu bilinçli bir sapma: eskiden `lg:w-[38%]`
+              vardı ve 1920 px'lik bir ekranda videoya ~730 px ayırıyordu —
+              iki panel "yarı yarıya" görünüyor, hangisinin asıl çalışma
+              alanı olduğu okunmuyordu. Ders sırasında birincil yüzey
+              tahtadır; video ikincil bir yoklama penceresidir ve ekran
+              büyüdükçe büyümesi için bir sebep yoktur. Sabit kutu, ekran
+              genişledikçe kazanılan her pikseli tahtaya verir.
+
+              Dar ekran DEĞİŞMEDİ: orada üst-alt dizilim ve oransal yükseklik
+              zaten doğru davranış. */}
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <div
               className={
                 tahtaAcik
-                  ? "min-h-0 h-[34%] shrink-0 lg:h-auto lg:w-[38%]"
+                  ? "h-[34%] min-h-0 shrink-0 overflow-hidden lg:h-auto lg:w-80"
                   : "min-h-0 flex-1"
               }
             >
               <VideoConference />
             </div>
             {tahtaAcik && (
-              <div className="min-h-0 flex-1 border-slate-700 lg:border-l">
+              <div className="min-h-0 min-w-0 flex-1 border-slate-700 lg:border-l">
                 <Suspense fallback={<TahtaYukleniyor />}>
                   <TahtaPaneli onKapat={() => setTahtaAcik(false)} />
                 </Suspense>
