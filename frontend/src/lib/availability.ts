@@ -42,8 +42,12 @@ export function summarize(availability: Availability[]): {
 }[] {
   const byDay = new Map<number, Availability[]>();
   for (const a of availability) {
-    if (!byDay.has(a.weekday)) byDay.set(a.weekday, []);
-    byDay.get(a.weekday)!.push(a);
+    const day = byDay.get(a.weekday);
+    if (day) {
+      day.push(a);
+      continue;
+    }
+    byDay.set(a.weekday, [a]);
   }
   return [...byDay.entries()]
     .sort((a, b) => a[0] - b[0])

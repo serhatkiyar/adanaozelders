@@ -1,3 +1,5 @@
+const COUNTRY_LABELS = new Set(["türkiye", "turkey"]);
+
 /** Uzun adresten kısa "bölge" etiketi türetir (kart/hero için).
  *
  * Adres genelde geocode'dan (Nominatim/Google) küçükten büyüğe gelir:
@@ -11,10 +13,7 @@ export function shortRegion(address?: string | null): string | null {
     .map((s) => s.trim())
     .filter(Boolean)
     .filter((p) => !/^\d+$/.test(p)) // posta kodu vb. salt sayıyı at
-    .filter((p) => {
-      const low = p.toLocaleLowerCase("tr");
-      return low !== "türkiye" && low !== "turkey";
-    });
+    .filter((p) => !COUNTRY_LABELS.has(p.toLocaleLowerCase("tr")));
 
   if (parts.length === 0) return null;
   const lastTwo = parts.slice(-2);

@@ -9,6 +9,10 @@ export function parseMoney(
   return Number.isFinite(n) ? n : null;
 }
 
+function formatAmountTRY(value: number): string {
+  return `${value.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} TL`;
+}
+
 // "1.250,50 TL" — sadece tutar. Site genelinde para birimi "TL" sonekiyle gösterilir
 // (₺ sembolü değil): tüketici tarafında daha okunur/tanıdık (Trendyol/Hepsiburada deseni).
 export function formatTRY(
@@ -17,7 +21,7 @@ export function formatTRY(
 ): string {
   const n = parseMoney(value);
   if (n === null) return fallback;
-  return `${n.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} TL`;
+  return formatAmountTRY(n);
 }
 
 // formatTRY ile aynı çıktı; mağaza yüzeylerinde adı semantik olsun diye korunur.
@@ -32,5 +36,5 @@ export function formatRate(
 ): string {
   const n = parseMoney(value);
   if (n === null) return fallback;
-  return formatTRY(n);
+  return formatAmountTRY(n);
 }

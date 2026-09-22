@@ -9,5 +9,5 @@ export function normalizePhoneTR(raw: string): string | null {
   if (digits.startsWith("90")) digits = digits.slice(2);
   else if (digits.startsWith("0")) digits = digits.slice(1);
   if (digits.length !== 10 || !digits.startsWith("5")) return null;
-  return "+90" + digits;
+  return `+90${digits}`;
 }
