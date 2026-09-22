@@ -168,7 +168,7 @@ async def test_geri_cekme_iptal_orani_ve_gecmis_teklif(m10, provider, ip1a_http)
 
 async def test_izin_seri_teklifini_geri_ceker_seri_surer(m10, provider, ip1a_http):
     """İzin, eğitmenin bekleyen seri tekliflerini geri çeker (öğrenci reddi
-    değil): K10 seriyi bitirmez, eğitmene "reddedildi" bildirimi gitmez."""
+    değil): K10 seriyi bitirmez, öğretmene "reddedildi" bildirimi gitmez."""
     ders = await m10.ders()
     ilk = pencere_ici_an(3)
     r = await ip1a_http.post(

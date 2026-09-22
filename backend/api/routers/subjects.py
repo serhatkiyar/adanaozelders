@@ -31,7 +31,7 @@ async def list_subjects(
     kapsam: Literal["vitrin", "secim"] = Query(
         default="vitrin",
         description="vitrin = öğrenciye gösterilen küratörlü liste; "
-        "secim = eğitmenin branş bildirirken göreceği tam katalog",
+        "secim = öğretmenin branş bildirirken göreceği tam katalog",
     ),
     db: AsyncSession = Depends(get_db),
 ):

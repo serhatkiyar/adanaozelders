@@ -136,7 +136,7 @@ def test_alici_ucu_golge_bagimliligini_kullanir(rel: str, fn_adi: str):
     fn = next(f for f in _rota_fonksiyonlari(rel) if f.name == fn_adi)
     bagimlilik = _client_bagimliligi(fn)
     assert bagimlilik == ALICI_BAGIMLILIGI, (
-        f"{rel}::{fn_adi} `Client`'ı {bagimlilik} ile alıyor — eğitmen bu uçta "
+        f"{rel}::{fn_adi} `Client`'ı {bagimlilik} ile alıyor — öğretmen bu uçta "
         f"403 alır. Alıcı yüzeyinde tek geçerli bağımlılık {ALICI_BAGIMLILIGI}."
     )
 
@@ -150,7 +150,7 @@ def test_favori_uclari_golge_bagimliligini_kullanir(rel: str):
     for fn in fonksiyonlar:
         bagimlilik = _client_bagimliligi(fn)
         assert bagimlilik == ALICI_BAGIMLILIGI, (
-            f"{rel}::{fn.name} `Client`'ı {bagimlilik} ile alıyor — eğitmen bu "
+            f"{rel}::{fn.name} `Client`'ı {bagimlilik} ile alıyor — öğretmen bu "
             "uçta 403 alır (ÜK-6)."
         )
 

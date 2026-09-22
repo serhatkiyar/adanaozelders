@@ -492,7 +492,7 @@ async def toggle_dispute(db: AsyncSession, booking: Booking, is_disputed: bool, 
 
     Açma **atomik koşullu UPDATE**'tir (P0-4): auto-complete ile aynı satır
     üzerinde yarışır ve yalnız biri kazanır. Kritik invariant, "ihtilaflı ders +
-    eğitmene serbest bırakılmış para" kombinasyonunun HİÇ oluşmamasıdır — o
+    öğretmene serbest bırakılmış para" kombinasyonunun HİÇ oluşmamasıdır — o
     kombinasyonda `escrow.begin_refund`'ın `released_at IS NULL` guard'ı iadeyi
     kalıcı olarak kapatmıştır ve admin ihtilafı çözecek hiçbir araç bulamaz.
     Bu yüzden tamamlanmış/iptal edilmiş derste ihtilaf açılmaz (409); kapatma

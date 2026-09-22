@@ -258,10 +258,10 @@ async def test_G1_sitemap_yalniz_public_kayitlari_icerir(db, factory, fake_provi
         return tutor_slug(t.id, t.first_name or "")
 
     assert gizli_urun.slug not in locs, "taslak ürün sitemap'e girmemeli"
-    assert tutor_slug_of(onaysiz) not in locs, "onaysız eğitmen girmemeli"
-    assert tutor_slug_of(pasif) not in locs, "pasif eğitmen girmemeli"
+    assert tutor_slug_of(onaysiz) not in locs, "onaysız öğretmen girmemeli"
+    assert tutor_slug_of(pasif) not in locs, "pasif öğretmen girmemeli"
     assert acik_urun.slug in locs, "aktif ürün girmeli"
-    assert tutor_slug_of(onayli) in locs, "onaylı eğitmen girmeli"
+    assert tutor_slug_of(onayli) in locs, "onaylı öğretmen girmeli"
 
 
 async def test_G2_sitemap_gecerli_xml_ve_dogru_yollar(db, factory, fake_provider):

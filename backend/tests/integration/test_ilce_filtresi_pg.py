@@ -118,8 +118,8 @@ async def test_fikstur_gercekten_iki_satir_uretti(ikili):
     async with AsyncSessionLocal() as db:
         hepsi = await search_service.search_tutors(db, limit=200)
     kimlikler = {r.id for r in hepsi}
-    assert ikili["hedef"].id in kimlikler, "hedef eğitmen aramada hiç görünmüyor"
-    assert ikili["diger"].id in kimlikler, "diğer eğitmen aramada hiç görünmüyor"
+    assert ikili["hedef"].id in kimlikler, "hedef öğretmen aramada hiç görünmüyor"
+    assert ikili["diger"].id in kimlikler, "diğer öğretmen aramada hiç görünmüyor"
 
 
 @pytest.mark.asyncio

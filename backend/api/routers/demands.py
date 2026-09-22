@@ -62,7 +62,7 @@ async def my_demands(
 @router.get("", response_model=list[DemandOut])
 async def browse_demands(
     subject: str | None = Query(default=None),
-    mine: bool = Query(default=False, description="Yalnız eğitmenin branşlarına uyan talepler"),
+    mine: bool = Query(default=False, description="Yalnız öğretmenin branşlarına uyan talepler"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     tutor: Tutor = Depends(get_current_approved_tutor),

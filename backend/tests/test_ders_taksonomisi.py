@@ -241,7 +241,7 @@ class TestSemaVeUclar:
         app.include_router(api_router)
         uc = app.openapi()["paths"]["/subjects"]["get"]
         kapsam = [p for p in uc.get("parameters", []) if p["name"] == "kapsam"]
-        assert kapsam, "`kapsam` parametresi yok — eğitmen tam kataloğu göremez"
+        assert kapsam, "`kapsam` parametresi yok — öğretmen tam kataloğu göremez"
         assert set(kapsam[0]["schema"]["enum"]) == {"vitrin", "secim"}
         assert kapsam[0]["schema"].get("default") == "vitrin"
 

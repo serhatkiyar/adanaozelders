@@ -170,7 +170,7 @@ async def test_operator_egitmene_yazamaz(ip3, http):
     r = await _gonder(http, op, "TUTOR", egitmen.id)
 
     assert r.status_code in (403, 404), (
-        f"operatör ilişkisiz eğitmene DM açtı ({r.status_code})"
+        f"operatör ilişkisiz öğretmene DM açtı ({r.status_code})"
     )
 
 
@@ -193,7 +193,7 @@ async def test_egitmen_kutuphaneye_yazamaz(ip3, http):
     r = await _gonder(http, egitmen, "LIBRARY", lib.id)
 
     assert r.status_code == 403, (
-        f"eğitmen kütüphaneye DM açtı ({r.status_code}) — LIBRARY↔TUTOR için "
+        f"öğretmen kütüphaneye DM açtı ({r.status_code}) — LIBRARY↔TUTOR için "
         "tanımlı bir iş ilişkisi modeli yok, iki yön de kapalı olmalı"
     )
 

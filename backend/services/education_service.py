@@ -236,7 +236,7 @@ async def admin_set_verification(
     note: str | None = None,
 ) -> TutorEducation:
     """Admin bir diploma belgesini doğrular (VERIFIED) veya reddeder (REJECTED).
-    Eğitmene bildirim gönderir. Audit kaydı çağıran router'da yazılır."""
+    Öğretmene bildirim gönderir. Audit kaydı çağıran router'da yazılır."""
     edu = await admin_get_education_or_404(db, education_id)
     if not edu.verification_code and edu.document_url is None:
         raise HTTPException(

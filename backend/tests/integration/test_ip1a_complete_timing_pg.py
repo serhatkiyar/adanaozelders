@@ -54,7 +54,7 @@ async def test_gelecekteki_ders_TAMAMLANAMAZ(ip1a, provider, ip1a_http):
     r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/complete", headers=ders.tutor_auth)
     assert r.status_code == 409, (
         f"HENÜZ BAŞLAMAMIŞ ders tamamlanabildi ({r.status_code}). Emanetteki para "
-        "eğitmene serbest bırakılır ve released_at damgası yüzünden bir daha "
+        "öğretmene serbest bırakılır ve released_at damgası yüzünden bir daha "
         "iade edilemez (escrow.py:226-230)."
     )
 
@@ -85,7 +85,7 @@ async def test_gelecekteki_ders_tamamlanmasi_HAKEDIS_URETMEZ(ip1a, provider, ip1
     await ip1a_http.post(f"{KOK}/{ders.booking_id}/complete", headers=ders.tutor_auth)
 
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00"), (
-        "yapılmamış ders eğitmenin hak edişine yazıldı — elle havale ekranında "
+        "yapılmamış ders öğretmenin hak edişine yazıldı — elle havale ekranında "
         "ödenebilir bakiye olarak görünür"
     )
 
@@ -132,7 +132,7 @@ async def test_YESIL_baslamis_ders_TAMAMLANIR_ogrenci_onayiyla_para_serbest_kali
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.COMPLETED
     assert payment_status is PaymentStatus.HELD, (
-        "eğitmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
+        "öğretmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
     )
     assert (await ip1a.payment(ders.booking_id))["released_at"] is None
 
@@ -176,7 +176,7 @@ async def test_YESIL_baskasinin_dersini_tamamlayamazsin(ip1a, provider, ip1a_htt
     r = await ip1a_http.post(
         f"{KOK}/{ders.booking_id}/complete", headers=yabanci.tutor_auth
     )
-    assert r.status_code == 403, f"başka eğitmen dersi tamamladı ({r.status_code})"
+    assert r.status_code == 403, f"başka öğretmen dersi tamamladı ({r.status_code})"
     assert (await ip1a.durumlar(ders.booking_id)) == (
         BookingStatus.ACCEPTED,
         PaymentStatus.HELD,

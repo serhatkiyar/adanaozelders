@@ -27,7 +27,7 @@ async def test_ogrenci_okumalari_egitmenin_ozel_notunu_silmez(ip1a, provider, ip
     ders = await ip1a.odenmis()
     r = await ip1a_http.post(
         f"{KOK}/{ders.booking_id}/private-notes",
-        json={"body": "eğitmenin notu"},
+        json={"body": "öğretmenin notu"},
         headers=ders.tutor_auth,
     )
     assert r.status_code == 200, r.text
@@ -42,10 +42,10 @@ async def test_ogrenci_okumalari_egitmenin_ozel_notunu_silmez(ip1a, provider, ip
     for yol in ("/api/v1/clients/me/dashboard", KOK, f"{KOK}/{ders.booking_id}"):
         r = await ip1a_http.get(yol, headers=ders.client_auth)
         assert r.status_code == 200, (yol, r.text)
-        assert "eğitmenin notu" not in r.text, f"{yol} eğitmen notunu sızdırdı"
-    assert await _not_sayisi(ders.booking_id) == 2, "öğrenci okuması eğitmen notunu sildi"
+        assert "öğretmenin notu" not in r.text, f"{yol} öğretmen notunu sızdırdı"
+    assert await _not_sayisi(ders.booking_id) == 2, "öğrenci okuması öğretmen notunu sildi"
 
     r = await ip1a_http.get(f"{KOK}/{ders.booking_id}", headers=ders.tutor_auth)
     assert r.status_code == 200, r.text
-    assert [n["body"] for n in r.json()["private_notes"]] == ["eğitmenin notu"]
+    assert [n["body"] for n in r.json()["private_notes"]] == ["öğretmenin notu"]
     assert await _not_sayisi(ders.booking_id) == 2

@@ -32,9 +32,9 @@ from schemas.seo import DersSayfasiOut, IlanSayfasiOut, YonlendirmeOut
 from services import seo_sayfa_service
 
 SITE_NAME = "Adana Özel Ders"
-DEFAULT_TITLE = "Adana Özel Ders, Uzman Eğitmenle Öğren"
+DEFAULT_TITLE = "Adana Özel Ders, Uzman Öğretmenle Öğren"
 DEFAULT_DESCRIPTION = (
-    "Adana'da alanında uzman eğitmenlerle birebir özel ders al, "
+    "Adana'da alanında uzman öğretmenlerle birebir özel ders al, "
     "kütüphane ve etüt merkezlerini keşfet, kaynak kitaplarını kapına getirelim."
 )
 DEFAULT_IMAGE = "/logo.png"

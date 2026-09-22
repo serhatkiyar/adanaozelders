@@ -157,7 +157,7 @@ async def test_D4_acik_emanetli_egitmen_silinemez(ip1a, pg):
             await admin_service.delete_tutor(s, tutor)
         await s.rollback()
     assert hata.value.status_code == 409, (
-        "emanette parası olan eğitmen silinebiliyor — yetim emanet (P1-22)"
+        "emanette parası olan öğretmen silinebiliyor — yetim emanet (P1-22)"
     )
 
     async with AsyncSessionLocal() as s:
@@ -182,4 +182,4 @@ async def test_D5_temiz_egitmen_silinebilir(ip1a, pg):
         await s.commit()
     async with AsyncSessionLocal() as s:
         tutor = await s.get(Tutor, ders.tutor_id)
-        assert tutor.deleted_at is not None, "temiz eğitmen silinemedi"
+        assert tutor.deleted_at is not None, "temiz öğretmen silinemedi"

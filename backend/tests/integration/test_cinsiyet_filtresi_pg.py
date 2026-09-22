@@ -135,11 +135,11 @@ async def test_UNSPECIFIED_ve_NULL_IKISI_DE_elenir(dortlu):
     for cinsiyet in (Gender.FEMALE, Gender.MALE):
         bulunan = await _kimlikler(cinsiyet, dortlu)
         assert dortlu["belirtmedi"].id not in bulunan, (
-            "UNSPECIFIED eğitmen elendi mi diye bakılıyor; elenmiyorsa "
+            "UNSPECIFIED öğretmen elendi mi diye bakılıyor; elenmiyorsa "
             "arayüzdeki 'belirtmeyenler görünmüyor' uyarısı YALAN olur"
         )
         assert dortlu["hic_sorulmadi"].id not in bulunan, (
-            "NULL eğitmen elendi mi diye bakılıyor"
+            "NULL öğretmen elendi mi diye bakılıyor"
         )
 
 
@@ -166,7 +166,7 @@ async def test_uc_listeleme_yolu_AYNI_kumeyi_eler(dortlu):
     # Sınanabilir olan tek şey: aramanın döndürdüğü eğitmenin ücreti histogramda
     # VARDIR. Ayrışma bu yönde yakalanır.
     assert float(dortlu["kadin"].hourly_rate) in ucretler, (
-        "histogram, aramanın döndürdüğü eğitmenin ücretini İÇERMELİ — "
+        "histogram, aramanın döndürdüğü öğretmenin ücretini İÇERMELİ — "
         "içermiyorsa iki yol ayrışmış demektir"
     )
 
@@ -274,7 +274,7 @@ async def test_faset_sayilari_SESSIZ_ELEMEYI_gorunur_kilar(dortlu):
     # Kullanıcıya sunulan tek sayı: cinsiyet filtresi seçilince kaybolanlar.
     assert f["gorunmeyen"] == 2, (
         "UNSPECIFIED + NULL birlikte 'görünmeyen'dir — arayüzdeki "
-        "'X eğitmen bu filtreyle görünmüyor' satırının kaynağı"
+        "'X öğretmen bu filtreyle görünmüyor' satırının kaynağı"
     )
 
 

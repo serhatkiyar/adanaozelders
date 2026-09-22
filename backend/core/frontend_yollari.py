@@ -5,7 +5,8 @@ dönüş adresleri istemci yollarını taşır. Bu yollar bugüne kadar çağrı
 gömülü düz dizelerdi: sekiz dosyada on iki yer.
 
 8 Eyl 2026'da panel şeridi kurulunca altı yol `/pano/*` altına taşındı ve
-on iki yerin hepsi elle bulunmak zorunda kaldı. Biri atlanmış olsaydı sessizce
+on iki yerin hepsi elle bulunmak zorunda kaldı; 22 Eyl 2026'da şerit yeniden
+düz oldu (yalnız panonun kendisi `/pano`). Biri atlanmış olsaydı sessizce
 yanlış kalırdı — istemcide kalıcı yönlendirme var, yani eski link ÇALIŞMAYA
 devam ederdi ve kimse fark etmezdi. Sabitler bu yüzden tek yerde durur.
 
@@ -14,17 +15,17 @@ istemcinin tek kaynağıdır, burası sunucunun ona bakan yüzü. Nöbetçi:
 `backend/tests/test_frontend_yollari.py`.
 """
 
-# ── Panel şeridi (`/pano/*`) ──
-PANO = "/pano"
-MESAJLAR = "/pano/mesajlar"
-ILANIM = "/pano/ilanim"
-DEGERLENDIRMELER = "/pano/degerlendirmeler"
-BAKIYEM = "/pano/bakiyem"
-HESABIM = "/pano/hesabim"
-REZERVASYON_DETAY = "/pano/rezervasyon"
+# ── Panel şeridi (düz; 8–22 Eyl 2026 arası `/pano/*` altındaydı) ──
+PANO = "/genel-bakis"
+MESAJLAR = "/mesajlar"
+ILANIM = "/profil"
+DEGERLENDIRMELER = "/degerlendirmeler"
+BAKIYEM = "/bakiyem"
+HESABIM = "/hesabim"
+REZERVASYON_DETAY = "/rezervasyon"
 # Öğrencinin birleşik listesi (ders + deneme + çalışma); `/pano` artık öğrenci
 # panosu olduğu için kütüphane bildirimleri ve ödeme dönüşleri buraya gelir.
-REZERVASYONLAR = "/pano/rezervasyonlar"
+REZERVASYONLAR = "/dersler"
 
 # ── Şeride girmeyen, düz kalan yollar ──
 DERS_TALEPLERI = "/ders-talepleri"

@@ -162,7 +162,7 @@ async def create_extra(
 
 async def delete_extra(db: AsyncSession, tutor: Tutor, extra_id: int) -> None:
     """Ek aralığı kaldırır; mevcut dersler etkilenmez. Sahiplik sorguda:
-    başka eğitmenin aralığı 404 (varlık ifşa edilmez)."""
+    başka öğretmenin aralığı 404 (varlık ifşa edilmez)."""
     result = await db.execute(
         delete(TutorExtraAvailability).where(
             TutorExtraAvailability.id == extra_id,

@@ -24,6 +24,7 @@ from models.tutor_extra_availability import TutorExtraAvailability
 from models.booking_resource import BookingResource
 from models.booking_comment import BookingComment
 from models.booking_private_note import BookingPrivateNote
+from models.lesson_series import LessonSeries, LessonSeriesStatus
 from schemas.booking import BookingCreate, BookingResourceCreate, BookingCommentCreate, BookingLocationUpdate, BookingPrivateNoteCreate
 from services import (
     messaging_service,
@@ -221,7 +222,7 @@ async def _lock_booking(
     """Ders satırını ``FOR UPDATE`` ile kilitleyip güncel hâlini döndürür.
 
     Onay, sorun bildirimi, otomatik onay ve admin kararı aynı satırda sıraya
-    girer: "sorun bildirilmiş ders + eğitmene geçmiş para" hiç oluşamaz.
+    girer: "sorun bildirilmiş ders + öğretmene geçmiş para" hiç oluşamaz.
     """
     stmt = (
         select(Booking)
@@ -709,12 +710,12 @@ async def create_booking(
         if not tutor.first_lesson_free:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "Bu eğitmen ücretsiz ilk ders sunmuyor",
+                "Bu öğretmen ücretsiz ilk ders sunmuyor",
             )
         if not await _is_eligible_for_free_lesson(db, tutor.id, client.id):
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                "Ücretsiz ilk ders hakkın bu eğitmen için kullanılmış",
+                "Ücretsiz ilk ders hakkın bu öğretmen için kullanılmış",
             )
         is_free_lesson = True
 
@@ -1001,7 +1002,7 @@ async def withdraw_offer(db: AsyncSession, booking: Booking, tutor: Tutor) -> Bo
     if await payment_service.get_for_booking(db, booking.id) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, ERR_WITHDRAW_STATE)
     if not await _teklifi_geri_cek_yaz(
-        db, booking, reason="Eğitmen teklifi geri çekti."
+        db, booking, reason="Öğretmen teklifi geri çekti."
     ):
         raise HTTPException(status.HTTP_409_CONFLICT, ERR_WITHDRAW_STATE)
     await notification_service.notify(
@@ -1014,20 +1015,146 @@ async def withdraw_offer(db: AsyncSession, booking: Booking, tutor: Tutor) -> Bo
     return await get_booking(db, booking.id, viewer=tutor)
 
 
-async def list_tutor_students(db: AsyncSession, tutor: Tutor, *, limit: int = 100):
-    """Eğitmenin ders ilişkisi olan öğrencileri (Modül 8, ders teklifi için).
+#: "Önerilen eylem" öncelik sırası: ilk eşleşen gösterilir. Hepsinin arkasında
+#: eğitmenin gerçekten kullanabileceği bir uç vardır; "onaylamasını hatırlat"
+#: ya da "değerlendirme iste" gibi ucu OLMAYAN öneriler bilerek yoktur.
+_ONERILEN_EYLEM_SIRASI = (
+    # (anahtar, sayaç alanı) — sırası karardır.
+    ("RESPOND_REQUEST", "bekleyen_talep"),
+    ("COMPLETE_LESSON", "tamamlanacak"),
+    ("OFFER_PENDING", "bekleyen_teklif"),
+)
 
-    Ölçüt `has_relationship` ile AYNI: silinmemiş herhangi bir rezervasyon.
-    Sıra en son dersi yaklaşan/yeni olana göre; ad ve avatar dışında öğrenci
-    verisi dönmez.
+
+def ogrenci_turu(*, haftalik: bool, deneme_var: bool, ucretli_var: bool) -> str | None:
+    """Öğrenci ilişkisinin türü (Öğrenciler sayfasındaki rozet).
+
+    Preply'daki abonelik/paket/kurumsal türlerinin bizde karşılığı yok; üç
+    değer gerçek veriden gelir. Yalnız iptal/red kaydı olan öğrenci türsüzdür.
     """
+    if haftalik:
+        return "WEEKLY"
+    if ucretli_var:
+        return "SINGLE"
+    if deneme_var:
+        return "TRIAL"
+    return None
+
+
+def onerilen_eylem(
+    *,
+    bekleyen_talep: int | None,
+    tamamlanacak: int | None,
+    bekleyen_teklif: int | None,
+    sonraki_ders,
+) -> dict | None:
+    """Sıradaki eylem; yoksa ders planlama önerisi, o da yoksa ``None``."""
+    adaylar = {
+        "bekleyen_talep": bekleyen_talep,
+        "tamamlanacak": tamamlanacak,
+        "bekleyen_teklif": bekleyen_teklif,
+    }
+    for anahtar, alan in _ONERILEN_EYLEM_SIRASI:
+        if adaylar[alan]:
+            return {"kind": anahtar, "booking_id": int(adaylar[alan])}
+    if sonraki_ders is None:
+        return {"kind": "PLAN_LESSON", "booking_id": None}
+    return None
+
+
+async def list_tutor_students(
+    db: AsyncSession,
+    tutor: Tutor,
+    *,
+    now: datetime.datetime,
+    limit: int = 100,
+):
+    """Eğitmenin ders ilişkisi olan öğrencileri (ders teklifi + Öğrenciler sayfası).
+
+    Liste üyeliği `has_relationship` ile AYNI: silinmemiş herhangi bir
+    rezervasyon (status filtresi YOK). Sıra en son rezervasyonu yeni olana
+    göre; ad ve avatar dışında öğrenci verisi dönmez.
+
+    - ``son_ders``: başlamış ACCEPTED/COMPLETED ders; iptal/red sayılmaz.
+      ACCEPTED dahil, çünkü ders ancak onay penceresinden sonra COMPLETED olur.
+    - ``sonraki_ders``: kabul edilmiş ilk gelecek ders; PENDING teklif/talep
+      planlanmış bir ders değildir.
+    - ``tamamlanan``: yalnız COMPLETED (onaylı) dersler (kullanıcı kararı,
+      22 Eyl 2026) — Öğrenciler sayfasındaki "Toplam ders".
+    - ``kind``: ilişkinin türü — aktif haftalık serisi varsa WEEKLY, yalnız
+      ücretsiz ilk dersi varsa TRIAL, ücretli dersi varsa SINGLE.
+    - ``suggested_action``: "Önerilen eylem" kolonu; yalnız eğitmenin GERÇEKTEN
+      yapabileceği bir uç varsa doldurulur (`_ONERILEN_EYLEM_SIRASI`).
+    - ``ders_sayisi``: tüm rezervasyon kaydı (talep/teklif dahil); ders teklifi
+      penceresi bunu gösterir, anlamı değişmez.
+    """
+    baslamis = Booking.start_at <= now
+    yasayan = Booking.status.in_(
+        [BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.COMPLETED]
+    )
     stmt = (
         select(
             Client.id,
             Client.full_name,
             Client.avatar_url,
-            func.max(Booking.start_at).label("son_ders"),
+            func.max(Booking.start_at)
+            .filter(
+                Booking.status.in_(
+                    [BookingStatus.ACCEPTED, BookingStatus.COMPLETED]
+                ),
+                baslamis,
+            )
+            .label("son_ders"),
+            func.min(Booking.start_at)
+            .filter(
+                Booking.status == BookingStatus.ACCEPTED,
+                Booking.start_at > now,
+            )
+            .label("sonraki_ders"),
+            func.count(Booking.id)
+            .filter(Booking.status == BookingStatus.COMPLETED)
+            .label("tamamlanan"),
             func.count(Booking.id).label("ders_sayisi"),
+            func.bool_or(Booking.is_free_lesson).filter(yasayan).label("deneme_var"),
+            func.bool_or(~Booking.is_free_lesson).filter(yasayan).label("ucretli_var"),
+            func.min(Booking.start_at)
+            .filter(Booking.is_free_lesson, yasayan)
+            .label("deneme_tarihi"),
+            func.min(Booking.start_at)
+            .filter(
+                Booking.status.in_([BookingStatus.ACCEPTED, BookingStatus.COMPLETED])
+            )
+            .label("ilk_ders"),
+            # Öğrencinin YANIT BEKLEYEN talebi (eğitmen kabul/ret verecek).
+            func.min(Booking.id)
+            .filter(
+                Booking.status == BookingStatus.PENDING,
+                Booking.offered_by_tutor.is_(False),
+                Booking.start_at > now,
+            )
+            .label("bekleyen_talep"),
+            # Eğitmenin gönderdiği, öğrencinin yanıtlamadığı teklif (bilgi).
+            func.min(Booking.id)
+            .filter(
+                Booking.status == BookingStatus.PENDING,
+                Booking.offered_by_tutor.is_(True),
+                Booking.start_at > now,
+            )
+            .label("bekleyen_teklif"),
+            # Saati geçmiş ama hâlâ tamamlanmamış ders.
+            func.min(Booking.id)
+            .filter(Booking.status == BookingStatus.ACCEPTED, Booking.end_at <= now)
+            .label("tamamlanacak"),
+            # Aktif haftalık seri. `Client.id` GROUP BY'da olduğu için gruplu
+            # sorguda geçerli; JOIN'e çevrilirse satırlar çoğalır ve
+            # count/min alanları bozulur.
+            exists()
+            .where(
+                LessonSeries.tutor_id == tutor.id,
+                LessonSeries.client_id == Client.id,
+                LessonSeries.status == LessonSeriesStatus.ACTIVE.value,
+            )
+            .label("haftalik"),
         )
         .join(Booking, Booking.client_id == Client.id)
         .where(Booking.tutor_id == tutor.id, Booking.deleted_at.is_(None))
@@ -1042,7 +1169,99 @@ async def list_tutor_students(db: AsyncSession, tutor: Tutor, *, limit: int = 10
             "full_name": r.full_name,
             "avatar_url": r.avatar_url,
             "last_lesson_at": r.son_ders,
+            "next_lesson_at": r.sonraki_ders,
+            "completed_lesson_count": int(r.tamamlanan or 0),
             "lesson_count": int(r.ders_sayisi),
+            "kind": ogrenci_turu(
+                haftalik=bool(r.haftalik),
+                deneme_var=bool(r.deneme_var),
+                ucretli_var=bool(r.ucretli_var),
+            ),
+            "trial_at": r.deneme_tarihi,
+            "first_lesson_at": r.ilk_ders,
+            "suggested_action": onerilen_eylem(
+                bekleyen_talep=r.bekleyen_talep,
+                tamamlanacak=r.tamamlanacak,
+                bekleyen_teklif=r.bekleyen_teklif,
+                sonraki_ders=r.sonraki_ders,
+            ),
+        }
+        for r in rows
+    ]
+
+
+async def list_client_tutors(
+    db: AsyncSession,
+    client: Client,
+    *,
+    now: datetime.datetime,
+    limit: int = 100,
+):
+    """Öğrencinin ders ilişkisi olan öğretmenleri ("Derslerim → Öğretmenlerim").
+
+    `list_tutor_students`in aynadaki eşi; ölçütler birebir aynı tutulur:
+    - Liste üyeliği: silinmemiş herhangi bir rezervasyon (deneme dersi dahil).
+    - ``son_ders``: başlamış ACCEPTED/COMPLETED ders; iptal/red sayılmaz.
+    - ``sonraki_ders``: kabul edilmiş ilk gelecek ders.
+    - ``tamamlanan``: yalnız COMPLETED (onaylı) dersler.
+    - ``deneme_var``: ücretsiz ilk ders alınmış mı.
+
+    Öğretmenden yalnız ilan yüzeyinde ZATEN herkese açık alanlar döner (ad,
+    avatar, adres, saatlik ücret) — yeni bir PII yüzeyi açılmaz.
+    """
+    baslamis = Booking.start_at <= now
+    yasayan = Booking.status.in_(
+        [BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.COMPLETED]
+    )
+    stmt = (
+        select(
+            Tutor.id,
+            Tutor.first_name,
+            Tutor.last_name,
+            Tutor.avatar_url,
+            Tutor.hourly_rate,
+            func.max(Booking.start_at)
+            .filter(
+                Booking.status.in_(
+                    [BookingStatus.ACCEPTED, BookingStatus.COMPLETED]
+                ),
+                baslamis,
+            )
+            .label("son_ders"),
+            func.min(Booking.start_at)
+            .filter(
+                Booking.status == BookingStatus.ACCEPTED,
+                Booking.start_at > now,
+            )
+            .label("sonraki_ders"),
+            func.count(Booking.id)
+            .filter(Booking.status == BookingStatus.COMPLETED)
+            .label("tamamlanan"),
+            func.bool_or(Booking.is_free_lesson).filter(yasayan).label("deneme_var"),
+        )
+        .join(Booking, Booking.tutor_id == Tutor.id)
+        .where(Booking.client_id == client.id, Booking.deleted_at.is_(None))
+        .group_by(
+            Tutor.id,
+            Tutor.first_name,
+            Tutor.last_name,
+            Tutor.avatar_url,
+            Tutor.hourly_rate,
+        )
+        .order_by(func.max(Booking.start_at).desc())
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "tutor_id": r.id,
+            "full_name": " ".join(x for x in (r.first_name, r.last_name) if x) or None,
+            "avatar_url": r.avatar_url,
+            "hourly_rate": r.hourly_rate,
+            "last_lesson_at": r.son_ders,
+            "next_lesson_at": r.sonraki_ders,
+            "completed_lesson_count": int(r.tamamlanan or 0),
+            "trial_only": bool(r.deneme_var) and int(r.tamamlanan or 0) == 0,
         }
         for r in rows
     ]
@@ -1215,14 +1434,21 @@ async def list_bookings(
     offset: int = 0,
     start_from: datetime.datetime | None = None,
     start_to: datetime.datetime | None = None,
+    client_id: int | None = None,
 ) -> list[Booking]:
     """``start_from``/``start_to`` verilirse `[start_from, start_to)` ile kesişen
-    dersler döner (takvim haftası). Aralık sınırı router'da denetlenir."""
+    dersler döner (takvim haftası). Aralık sınırı router'da denetlenir.
+
+    ``client_id`` yalnız TUTOR'da uygulanır: eğitmenin zaten gördüğü kümeyi tek
+    öğrenciye daraltır (Öğrenciler panelindeki "Dersler" sekmesi). Öğrenci ve
+    diğer roller kendi kayıtlarını görür, parametre yok sayılır."""
     stmt = _hydrated_booking_select()
     if role_id == ROLE_IDS[RoleType.CLIENT]:
         stmt = stmt.where(Booking.client_id == user_id)
     elif role_id == ROLE_IDS[RoleType.TUTOR]:
         stmt = stmt.where(Booking.tutor_id == user_id)
+        if client_id is not None:
+            stmt = stmt.where(Booking.client_id == client_id)
     else:
         return []
     if status_filter is not None:
@@ -1333,7 +1559,7 @@ def _assert_completable(booking: Booking) -> None:
     olarak** kapatır (`services/escrow.py`). Yani tek yönlü bir para hareketinin
     ön koşuludur (P0-3 / P0-4).
 
-    Eşik `start_at`'tir, `end_at` değil: eğitmenin ders bitiş saatini beklemeden
+    Eşik `start_at`'tir, `end_at` değil: öğretmenin ders bitiş saatini beklemeden
     tamamlaması meşrudur (sözleşme §10/3). Karar değişirse burası ve sözleşme
     birlikte güncellenir.
     """
@@ -1697,7 +1923,7 @@ async def send_due_reminders(db: AsyncSession) -> int:
 
 async def auto_complete_past_bookings(db: AsyncSession) -> int:
     """Bitişinden AUTO_COMPLETE_GRACE_HOURS saat geçmiş ama hâlâ ACCEPTED olan
-    dersleri otomatik COMPLETED'a geçirir. Böylece eğitmen elle işaretlemese de
+    dersleri otomatik COMPLETED'a geçirir. Böylece öğretmen elle işaretlemese de
     öğrencinin değerlendirme ve soru (QA) hakkı açılır.
 
     **İhtilaflı dersler kapsam dışıdır** (P0-4): `is_disputed`, "bu derste bir
@@ -1851,7 +2077,7 @@ async def cancel_by_admin(
     fazlalık değildir: "HELD + `released_at` dolu" gibi kısmi/bozuk bir satır
     (elle müdahale, eksik yazım) FSM'e takılmaz ama parası zaten dağıtılmıştır.
     İptal edilirse `escrow.begin_refund`'ın `released_at IS NULL` guard'ı iadeyi
-    reddeder ve geriye "iptal edilmiş ders + eğitmene ödenmiş para" çelişkisi
+    reddeder ve geriye "iptal edilmiş ders + öğretmene ödenmiş para" çelişkisi
     kalır. Ters hakediş/reverse payout bu paketin kapsamı DIŞINDADIR
     (sözleşme §10/2), bu yüzden tek güvenli cevap iptali hiç yapmamaktır.
 

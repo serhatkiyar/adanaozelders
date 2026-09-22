@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime
+import decimal
 from typing import Literal
 
 from pydantic import BaseModel
@@ -21,6 +23,21 @@ NextActionKind = Literal[
 class ClientNextAction(BaseModel):
     kind: NextActionKind
     booking: BookingOut
+
+
+class ClientTutorOut(BaseModel):
+    """Öğrencinin ders aldığı öğretmen ("Derslerim → Öğretmenlerim")."""
+
+    tutor_id: int
+    full_name: str | None = None
+    avatar_url: str | None = None
+    hourly_rate: decimal.Decimal | None = None
+    last_lesson_at: datetime.datetime | None = None
+    next_lesson_at: datetime.datetime | None = None
+    #: Yalnız onaylı (COMPLETED) dersler.
+    completed_lesson_count: int = 0
+    #: Yalnız ücretsiz ilk ders alınmış, henüz tamamlanmış ders yok.
+    trial_only: bool = False
 
 
 class ClientDashboardOut(BaseModel):

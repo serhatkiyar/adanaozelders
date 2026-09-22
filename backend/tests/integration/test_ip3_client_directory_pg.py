@@ -47,7 +47,7 @@ async def test_iliskisiz_egitmen_toplu_ogrenci_dizinini_alamaz(ip3, http):
     )
 
     assert r.status_code in (403, 404), (
-        f"onaylı eğitmen toplu öğrenci dizinini aldı (status={r.status_code}, "
+        f"onaylı öğretmen toplu öğrenci dizinini aldı (status={r.status_code}, "
         f"{len(r.json()) if r.status_code == 200 else '-'} kayıt)"
     )
 
@@ -131,7 +131,7 @@ async def test_iliskili_ogrencide_tam_dogum_tarihi_donmez(ip3, http):
     assert r.status_code == 200, r.text[:200]
     govde = r.json()
     assert govde.get("birth_date") is None, (
-        f"eğitmene tam doğum tarihi döndü: {govde.get('birth_date')!r}"
+        f"öğretmene tam doğum tarihi döndü: {govde.get('birth_date')!r}"
     )
     assert govde.get("age") is not None, (
         "yaş bilgisi de kayboldu — meşru ihtiyaç karşılanmıyor"

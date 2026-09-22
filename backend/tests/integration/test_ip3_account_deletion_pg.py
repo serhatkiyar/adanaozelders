@@ -58,7 +58,7 @@ async def test_tutor_hesap_silme_hata_vermez(ip3, http):
     r = await _sil(http, egitmen)
 
     assert r.status_code == 204, (
-        f"eğitmen hesap silme başarısız (status={r.status_code}, "
+        f"öğretmen hesap silme başarısız (status={r.status_code}, "
         f"body={r.text[:300]}) — NOT NULL alan None'a çekiliyor olabilir"
     )
 

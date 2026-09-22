@@ -77,9 +77,9 @@ BRANCH_NEEDS_MARKETPLACE: dict[PaymentBranch, bool] = {
 
 BRANCH_LABEL: dict[PaymentBranch, str] = {
     PaymentBranch.STORE: "Mağaza (platform kitapları)",
-    PaymentBranch.TUTOR_MARKETPLACE: "Eğitmen pazaryeri (ders ve dijital ürün)",
+    PaymentBranch.TUTOR_MARKETPLACE: "Öğretmen pazaryeri (ders ve dijital ürün)",
     PaymentBranch.LIBRARY_MARKETPLACE: "Kütüphane pazaryeri (bilet ve koltuk)",
-    PaymentBranch.TUTOR_PROMOTION: "İlan öne çıkarma (eğitmen reklam paketi)",
+    PaymentBranch.TUTOR_PROMOTION: "İlan öne çıkarma (öğretmen reklam paketi)",
 }
 
 #: Müşteriye gösterilecek nötr metin. Kapalı kol "emanet" vaadi VERMEZ.
@@ -92,8 +92,8 @@ BRANCH_CLOSED_MESSAGE: dict[PaymentBranch, str] = {
     # ikisini de karşılamalı — mağazadaki bir eğitmen ürünü için "rezervasyonunu
     # tamamla" demek yanlış bağlam üretiyordu (uçtan uca denemede görüldü).
     PaymentBranch.TUTOR_MARKETPLACE: (
-        "Eğitmenlere yapılan ödemeler henüz açılmadı. Ödeme altyapımız hazır "
-        "olduğunda ders rezervasyonu ve eğitmen ürünleri satın alınabilecek."
+        "Öğretmenlere yapılan ödemeler henüz açılmadı. Ödeme altyapımız hazır "
+        "olduğunda ders rezervasyonu ve öğretmen ürünleri satın alınabilecek."
     ),
     PaymentBranch.LIBRARY_MARKETPLACE: (
         "Kütüphane bileti ve çalışma alanı ödemeleri henüz açılmadı. Ödeme "
@@ -402,7 +402,7 @@ async def warn_if_closed_completion(
 async def assert_manual_payout_open(db: AsyncSession | None) -> None:
     """Elle havale defteri: üretimde **bayrağa bakılmaksızın** kapalı.
 
-    Kullanıcı kararı: "manuel olarak şirket hesabına para alıp eğitmene havale
+    Kullanıcı kararı: "manuel olarak şirket hesabına para alıp öğretmene havale
     etme yolu, fallback dâhil tamamen kapalı olsun." Bayrağın üretimde
     açılabilir olması bu kararı delerdi; bu yüzden ortam kontrolü bayraktan
     ÖNCE gelir.

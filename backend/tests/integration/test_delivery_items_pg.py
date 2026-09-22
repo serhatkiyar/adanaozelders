@@ -132,7 +132,7 @@ async def test_dijital_kalem_pakete_girmez(items_factory):
     oid = await items_factory.order(
         [
             ("Fizik Formül Kitabı", 2, "PHYSICAL"),
-            ("Eğitmen PDF Ders Notu", 1, "DIGITAL"),
+            ("Öğretmen PDF Ders Notu", 1, "DIGITAL"),
         ]
     )
     async with AsyncSessionLocal() as s:

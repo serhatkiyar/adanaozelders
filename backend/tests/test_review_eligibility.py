@@ -77,7 +77,7 @@ def test_baska_saglayiciyla_odenmis_ders_yetmez():
 
 def test_ayni_egitmene_ikinci_yorum_yasak():
     assert _engel(_booking(), _payment(), egitmen=True) == (
-        "Bu eğitmeni zaten değerlendirdiniz."
+        "Bu öğretmeni zaten değerlendirdiniz."
     )
 
 

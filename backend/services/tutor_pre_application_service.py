@@ -148,7 +148,7 @@ async def submit(
         await _telafi_sil(yuklenen)
         raise
     logger.info(
-        "yeni eğitmen ön başvurusu kuyruğa alındı (%s belge)", len(documents)
+        "yeni öğretmen ön başvurusu kuyruğa alındı (%s belge)", len(documents)
     )
     return True
 

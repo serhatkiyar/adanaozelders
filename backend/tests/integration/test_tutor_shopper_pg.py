@@ -548,7 +548,7 @@ async def test_K8_siparis_bildirimi_egitmene_gider(fabA, http):
         "gölgeye bildirim düşmemeli (§4.4)"
     )
     assert await fabA.bildirimler(user_id=e.tutor_id, role_id=2), (
-        "bildirim eğitmen kimliğine yeniden adreslenmeliydi (§4.1)"
+        "bildirim öğretmen kimliğine yeniden adreslenmeliydi (§4.1)"
     )
 
 
@@ -618,7 +618,7 @@ async def test_K10_baska_egitmenin_urununde_kazanc_normal_yazilir(fabA, http):
     kalemler = await fabA.kalem_kazanci(siparis["id"])
     assert kalemler and kalemler[0][0] == satici.tutor_id
     assert kalemler[0][2] is not None and Decimal(str(kalemler[0][2])) > 0, (
-        "satıcı eğitmenin kazancı yazılmalıydı"
+        "satıcı öğretmenin kazancı yazılmalıydı"
     )
 
 
@@ -685,7 +685,7 @@ async def test_K11_golge_epostasiyla_giris_yapilamaz(fabA, http):
     assert r.status_code == 200, r.text
     iddia = decode_access_token(r.json()["access_token"])
     assert iddia["role_id"] == 2 and int(iddia["sub"]) == e.tutor_id, (
-        "giriş EĞİTMEN satırını döndürmeli, gölgeyi değil"
+        "giriş ÖĞRETMEN satırını döndürmeli, gölgeyi değil"
     )
 
     # Gölgenin kendi parolası ("!") hiçbir şeyle eşleşmez ve sorgudan da
@@ -889,7 +889,7 @@ async def test_K20_kapsam_disi_uclar_egitmene_kapali(fabA, http, yol, govde):
         if govde is not None
         else await http.put(yol, headers=e.headers)
     )
-    assert r.status_code == 403, f"{yol} eğitmene açılmış: {r.status_code}"
+    assert r.status_code == 403, f"{yol} öğretmene açılmış: {r.status_code}"
 
 
 async def test_K21_admin_alici_yuzeyine_giremez(fabA, http):

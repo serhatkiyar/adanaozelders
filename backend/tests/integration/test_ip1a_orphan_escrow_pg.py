@@ -235,7 +235,7 @@ async def test_YESIL_SERBEST_BIRAKILMIS_emanet_asla_iade_edilmez(ip1a, provider,
         f"serbest bırakılmış emanet {payment_status} oldu — çifte para hareketi"
     )
     assert provider.refund_calls == [], (
-        "released_at dolu kayda iade emri gönderildi (eğitmen kazancı + öğrenci iadesi)"
+        "released_at dolu kayda iade emri gönderildi (öğretmen kazancı + öğrenci iadesi)"
     )
 
 
@@ -341,7 +341,7 @@ async def test_YESIL_released_at_dolu_HELD_satiri_IADEYE_CLAIM_EDILEMEZ(
     )
     assert sonra["refund_requested_at"] is None
     assert provider.refund_calls == [], (
-        "released_at dolu kayda iade emri gönderildi: eğitmen kazancı + öğrenci "
+        "released_at dolu kayda iade emri gönderildi: öğretmen kazancı + öğrenci "
         "iadesi = ÇİFTE ÖDEME"
     )
 

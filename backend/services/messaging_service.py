@@ -241,7 +241,7 @@ _BLOCK_REPORT_REASON = {
     BlockReason.SCAM: ReportReason.SCAM,
 }
 
-_MSG_BLOCKED_CLIENT = "Bu eğitmen şu anda senden mesaj kabul etmiyor."
+_MSG_BLOCKED_CLIENT = "Bu öğretmen şu anda senden mesaj kabul etmiyor."
 _MSG_BLOCKED_TUTOR = "Bu öğrenciyi engelledin. Yazmak için önce engeli kaldır."
 _MSG_TUTOR_CANNOT_START = (
     "Bu öğrenciye yazabilmen için aranızda bir ders ya da öğrencinin "
@@ -262,14 +262,14 @@ def _site_hosts() -> frozenset[str]:
 
 def _daily_limit_message() -> str:
     return (
-        f"Bugün en fazla {settings.MESSAGE_INQUIRY_DAILY_NEW} yeni eğitmene ilk "
+        f"Bugün en fazla {settings.MESSAGE_INQUIRY_DAILY_NEW} yeni öğretmene ilk "
         "mesaj gönderebilirsin. Yarın yeniden dene ya da hemen ders talep et."
     )
 
 
 def _awaiting_reply_message() -> str:
     return (
-        "Eğitmen yanıt verene kadar en fazla "
+        "Öğretmen yanıt verene kadar en fazla "
         f"{settings.MESSAGE_INQUIRY_MAX_UNANSWERED} mesaj gönderebilirsin."
     )
 
@@ -591,7 +591,7 @@ async def block_client(
                     reason=report_reason,
                     description=note,
                     target_snapshot=(
-                        f"Eğitmen #{tutor.id} engelledi: {data.reason.value}"
+                        f"Öğretmen #{tutor.id} engelledi: {data.reason.value}"
                     ),
                 )
             )

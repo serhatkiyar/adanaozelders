@@ -61,7 +61,7 @@ async def _tamamla(ip1a_http, ders):
 async def _sorun_bildir(ip1a_http, ders, *, auth=None, reason="TUTOR_ABSENT"):
     return await ip1a_http.post(
         f"{KOK}/{ders.booking_id}/report-issue",
-        json={"reason": reason, "note": "Eğitmen derse gelmedi"},
+        json={"reason": reason, "note": "Öğretmen derse gelmedi"},
         headers=auth or ders.client_auth,
     )
 
@@ -86,7 +86,7 @@ async def test_egitmen_tamamlamasi_HELD_birakir_ogrenci_onayi_RELEASED_yapar_iki
     assert (await ip1a.durumlar(ders.booking_id)) == (
         BookingStatus.COMPLETED,
         PaymentStatus.HELD,
-    ), "eğitmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
+    ), "öğretmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
     assert (await ip1a.payment(ders.booking_id))["released_at"] is None
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00")
 
@@ -159,7 +159,7 @@ async def test_baska_ogrencinin_dersini_onaylayamaz_ve_sorun_bildiremez(
     assert r.status_code == 403, f"başka öğrenci sorun bildirdi ({r.status_code})"
 
     r = await ip1a_http.post(f"{KOK}/{ders.booking_id}/confirm", headers=ders.tutor_auth)
-    assert r.status_code == 403, f"eğitmen öğrenci onayını verebildi ({r.status_code})"
+    assert r.status_code == 403, f"öğretmen öğrenci onayını verebildi ({r.status_code})"
 
     assert (await ip1a.durumlar(ders.booking_id)) == (
         BookingStatus.ACCEPTED,
@@ -199,7 +199,7 @@ async def test_sorun_bildirimi_ihtilaf_acar_para_HELD_kalir_onay_ve_otomatik_ona
         PaymentStatus.HELD,
     )
     p = await ip1a.payment(ders.booking_id)
-    assert p["released_at"] is None, "sorun bildirilmiş dersin parası eğitmene geçti"
+    assert p["released_at"] is None, "sorun bildirilmiş dersin parası öğretmene geçti"
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00")
     assert provider.refund_calls == []
 
@@ -259,7 +259,7 @@ async def test_71_saat_gecmis_tamamlanmis_ders_otomatik_onaylanmaz(ip1a, provide
     assert (await ip1a.durumlar(ders.booking_id)) == (
         BookingStatus.COMPLETED,
         PaymentStatus.HELD,
-    ), "72 saat dolmadan öğrenci onayı beklenmeden para eğitmene geçti"
+    ), "72 saat dolmadan öğrenci onayı beklenmeden para öğretmene geçti"
     assert (await ip1a.payment(ders.booking_id))["released_at"] is None
 
 
@@ -377,7 +377,7 @@ async def test_egitmen_6_saat_kala_iptal_edemez(ip1a, provider, ip1a_http):
     r = await ip1a_http.post(
         f"{KOK}/{ders.booking_id}/cancel", json={"reason": "M2"}, headers=ders.tutor_auth
     )
-    assert r.status_code == 409, f"eğitmen 6 saat kala iptal edebildi ({r.status_code})"
+    assert r.status_code == 409, f"öğretmen 6 saat kala iptal edebildi ({r.status_code})"
     assert (await ip1a.durumlar(ders.booking_id)) == (
         BookingStatus.ACCEPTED,
         PaymentStatus.HELD,

@@ -85,7 +85,7 @@ def degerlendirme_engeli(
     if booking_zaten_degerlendirildi:
         return "Bu ders zaten değerlendirilmiş."
     if egitmen_zaten_degerlendirildi:
-        return "Bu eğitmeni zaten değerlendirdiniz."
+        return "Bu öğretmeni zaten değerlendirdiniz."
     return None
 
 
@@ -179,7 +179,7 @@ async def add_reply(db: AsyncSession, review: Review, reply: str) -> Review:
         db,
         user_id=review.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message="Eğitmen değerlendirmene yanıt verdi.",
+        message="Öğretmen değerlendirmene yanıt verdi.",
         link="/student/bookings",
     )
     return review

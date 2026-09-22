@@ -303,11 +303,13 @@ async def list_my_students(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Ders ilişkisi olan öğrenciler — ders teklifi ekranı için (Modül 8).
+    """Ders ilişkisi olan öğrenciler — ders teklifi ekranı ve Öğrenciler sayfası.
 
     ``/{tutor_id}`` rotasından ÖNCE tanımlı kalmalı.
     """
-    return await booking_service.list_tutor_students(db, tutor)
+    return await booking_service.list_tutor_students(
+        db, tutor, now=datetime.datetime.now(datetime.timezone.utc)
+    )
 
 
 # ── Takvim: izinler (Modül 7) — hepsi `/{tutor_id}`'den ÖNCE ─────────────────
@@ -513,7 +515,7 @@ def _tutor_id_coz(tutor_id: str) -> int:
     """Sayısal id ("42") ya da SEO slug'ı ("ahmet-yilmaz-42") → id."""
     match = re.search(r"(\d+)$", tutor_id)
     if not match:
-        raise HTTPException(status_code=404, detail="Eğitmen bulunamadı.")
+        raise HTTPException(status_code=404, detail="Öğretmen bulunamadı.")
     return int(match.group(1))
 
 

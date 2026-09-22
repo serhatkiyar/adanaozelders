@@ -157,11 +157,14 @@ def test_serit_yollari_duz_dize_yazilmaz():
     taşınmadan önceki DÜZ hâli) servis kodunda dize olarak belirirse kırılır.
     """
     TASINANLAR = {
-        "/pano", "/pano/mesajlar", "/pano/ilanim", "/pano/degerlendirmeler",
-        "/pano/bakiyem", "/pano/hesabim",
-        # Taşınmadan önceki hâlleri: yönlendirme sayesinde ÇALIŞIRLAR, o
-        # yüzden geri sızmaları fark edilmez.
-        "/rezervasyonlar", "/mesajlar", "/ilan-ayarlari", "/bakiyem", "/hesabim",
+        "/genel-bakis", "/mesajlar", "/profil", "/degerlendirmeler", "/bakiyem",
+        "/hesabim", "/dersler",
+        # Eski hâlleri (`/pano/*` 8–22 Eyl 2026, öncesinde `/ilan-ayarlari`):
+        # yönlendirme sayesinde ÇALIŞIRLAR, o yüzden geri sızmaları fark
+        # edilmez.
+        "/pano/mesajlar", "/pano/ilanim", "/pano/degerlendirmeler",
+        "/pano/bakiyem", "/pano/hesabim", "/pano/rezervasyonlar",
+        "/ilan-ayarlari", "/ilanim", "/rezervasyonlar", "/pano",
     }
     kacaklar = [
         f"{nerede} → {link}"

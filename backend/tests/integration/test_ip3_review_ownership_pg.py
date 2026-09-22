@@ -67,7 +67,7 @@ async def test_yabanci_egitmen_baskasinin_booking_reviewunu_okuyamaz(ip3, http):
     )
 
     assert r.status_code == 404, (
-        f"yabancı eğitmen başka dersin değerlendirmesini okudu ({r.status_code})"
+        f"yabancı öğretmen başka dersin değerlendirmesini okudu ({r.status_code})"
     )
 
 
@@ -95,7 +95,7 @@ async def test_dersin_egitmeni_okuyabilir(ip3, http):
 
     r = await http.get(f"{KOK}/booking/{booking.id}", headers=yetki_basligi(egitmen))
 
-    assert r.status_code == 200, f"dersin eğitmeni okuyamadı: {r.text[:200]}"
+    assert r.status_code == 200, f"dersin öğretmeni okuyamadı: {r.text[:200]}"
 
 
 @pytest.mark.asyncio

@@ -101,7 +101,7 @@ async def test_uye_kaydi_MEVCUT_egitmen_epostasini_reddeder(pg):
 async def test_GOLGE_satir_arama_yolunu_PATLATMAZ(pg):
     """Kapının yanlış tarafa kapanmadığının kanıtı — ve doğru düğüm.
 
-    İlk yazımda bu testin adı "gölge eğitmenin e-postasını kilitlemez"di ama
+    İlk yazımda bu testin adı "gölge öğretmenin e-postasını kilitlemez"di ama
     onu SINAMIYORDU: mutasyon provasında gölge hariç tutması kaldırıldığında
     test yeşil kaldı. Çünkü eğitmen satırı zaten e-postayı tutuyor;
     `_email_taken` gölgeye hiç bakmadan True dönüyor.

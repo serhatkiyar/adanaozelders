@@ -76,13 +76,13 @@ def test_fazla_bosluk_temizlenir() -> None:
 def test_og_etiketleri_doldurulur() -> None:
     html = render_meta_html(
         title="Ayşe Yılmaz — Özel Ders",
-        description="Matematik eğitmeni",
+        description="Matematik öğretmeni",
         image="https://x.tr/a.png",
         url="https://x.tr/egitmenler/ayse-12",
         kind="profile",
     )
     assert _meta(html, "og:title") == "Ayşe Yılmaz — Özel Ders"
-    assert _meta(html, "og:description") == "Matematik eğitmeni"
+    assert _meta(html, "og:description") == "Matematik öğretmeni"
     assert _meta(html, "og:image") == "https://x.tr/a.png"
     assert _meta(html, "og:type") == "profile"
     assert 'name="twitter:card"' in html

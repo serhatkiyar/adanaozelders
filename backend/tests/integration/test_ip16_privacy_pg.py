@@ -144,14 +144,14 @@ async def test_d5_egitmen_ogrenci_ilerlemesini_goremez(ip16, ip16_http, ip16_saa
     assert r.status_code == 200
     stats = r.json()
     assert stats.get("review_count", 0) == 0, (
-        f"eğitmen istatistiğine öğrenci tekrarı sızdı: {stats}"
+        f"öğretmen istatistiğine öğrenci tekrarı sızdı: {stats}"
     )
     # 2) Eğitmenin kart tarayıcısı öğrencinin LEARNING durumlarını GÖSTERMEZ:
     #    eğitmen hiç çalışmadığından bütün kartlar NEW görünmelidir.
     sonuc = await kartlar(ip16_http, t_hdr, deck_id)
     for k in sonuc["items"]:
         assert k.get("state") in (None, "NEW"), (
-            f"öğrenci ilerlemesi eğitmen tarayıcısına sızdı: kart {k['id']}"
+            f"öğrenci ilerlemesi öğretmen tarayıcısına sızdı: kart {k['id']}"
             f" state={k.get('state')}"
         )
     # 3) Öğrenci-ID'li bir ilerleme sorgusu diye bir yol YOK: student_id /
@@ -211,7 +211,7 @@ async def test_d6_uc_taramasi_govde_kontrolu(ip16, ip16_http, ip16_saat):
                 )
         # Eğitmen bu destede hiç çalışmadı: LEARNING görünüyorsa öğrencinindir.
         assert '"LEARNING"' not in govde and '"RELEARNING"' not in govde, (
-            f"{uc}: öğrenci kuyruğu durumu eğitmen yanıtına sızdı"
+            f"{uc}: öğrenci kuyruğu durumu öğretmen yanıtına sızdı"
         )
     # Atama listesi yalnız VARLIK bilgisi taşır: ilerleme alanları yasak.
     r = await ip16_http.get(
@@ -226,7 +226,7 @@ async def test_d6_uc_taramasi_govde_kontrolu(ip16, ip16_http, ip16_saat):
     # kalan parçası budur, veri sızdırması değil erişim yokluğuyla kapanır.
     kapali = await ip16_http.get("/api/v1/srs/admin/platform-decks", headers=t_hdr)
     assert kapali.status_code == 403, (
-        f"admin platform kataloğu eğitmene açık: {kapali.status_code}"
+        f"admin platform kataloğu öğretmene açık: {kapali.status_code}"
     )
 
 
@@ -286,7 +286,7 @@ async def test_d6b_leech_izi_hicbir_uctan_sizmiyor(ip16, ip16_http, ip16_saat):
     assert izli[0][0] > 0, "kurulum hatası: leech satırı yok"
 
     _aid, a_hdr = await ip16.admin(izinler=SRS_IZINLER)
-    for etiket, hdr in (("eğitmen", t_hdr), ("admin", a_hdr)):
+    for etiket, hdr in (("öğretmen", t_hdr), ("admin", a_hdr)):
         for kalip in SRS_GET_UCLARI:
             uc = kalip.format(deck=deck_id)
             r = await ip16_http.get(uc, headers=hdr)

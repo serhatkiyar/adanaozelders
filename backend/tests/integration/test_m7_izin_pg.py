@@ -114,11 +114,11 @@ async def test_izin_uzak_odenmis_dersi_iptal_ve_iade_eder_bekleyen_talebi_redded
     iptal = await _booking(ders.booking_id)
     assert iptal.cancelled_by_role == 2
     assert iptal.cancelled_at is not None
-    assert iptal.cancel_reason.startswith("Eğitmen izinde")
+    assert iptal.cancel_reason.startswith("Öğretmen izinde")
 
     talep = await _booking(talep_id)
     assert talep.status is BookingStatus.REJECTED
-    assert talep.cancel_reason.startswith("Eğitmen izinde")
+    assert talep.cancel_reason.startswith("Öğretmen izinde")
     assert await _izin_sayisi(ders.tutor_id) == 1
 
 
@@ -175,7 +175,7 @@ async def test_izin_araligina_rezervasyon_yapilamaz(ip1a, provider, ip1a_http):
         headers=ders.client_auth,
     )
     assert r.status_code == 422, r.text
-    assert r.json()["detail"] == "Eğitmen bu tarihte izinde"
+    assert r.json()["detail"] == "Öğretmen bu tarihte izinde"
 
 
 async def test_talep_24_saat_ve_14_gun_kurali(ip1a, provider, ip1a_http):

@@ -15,7 +15,7 @@ from models.admin import Admin
 from models.client import Client
 from models.role import RoleType
 from models.tutor import Gender, Tutor, TutorStatus
-from schemas.client_dashboard import ClientDashboardOut
+from schemas.client_dashboard import ClientDashboardOut, ClientTutorOut
 from schemas.education import EducationOut
 from schemas.user import ClientPublicOut, ClientSearchOut
 from services import (
@@ -41,7 +41,7 @@ async def _approved_viewer(
     if isinstance(user, Tutor) and user.status != TutorStatus.APPROVED:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Bu bilgiye yalnız onaylı eğitmenler erişebilir.",
+            "Bu bilgiye yalnız onaylı öğretmenler erişebilir.",
         )
     return user
 
@@ -87,6 +87,21 @@ async def read_my_dashboard(
     doğrulamasına takılıp 422 döner.
     """
     return await client_dashboard_service.build_dashboard(
+        db, client, now=datetime.datetime.now(datetime.timezone.utc)
+    )
+
+
+@router.get("/me/tutors", response_model=list[ClientTutorOut])
+async def read_my_tutors(
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğrencinin ders aldığı öğretmenler (deneme dersi dahil).
+
+    Sahiplik sorguda sağlanır (yalnız `client.id`). ``/{client_id}``
+    rotasından ÖNCE tanımlı kalmalı.
+    """
+    return await booking_service.list_client_tutors(
         db, client, now=datetime.datetime.now(datetime.timezone.utc)
     )
 

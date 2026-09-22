@@ -381,7 +381,7 @@ def _self_dealing_lines(lines: list[dict], buyer_tutor_id: int | None) -> list[d
 
     Eğitmen mağazada alıcı olabildiği için kendi dijital ürününü satın alma
     yolu açıldı. Engel olmadan `_finalize_paid` o kaleme komisyon/kazanç yazar
-    ve `payout_ledger` tutarı eğitmenin IBAN'ına kuyruklar — kartla ödenen para
+    ve `payout_ledger` tutarı öğretmenin IBAN'ına kuyruklar — kartla ödenen para
     kesinti düşülmüş hâlde geri döner (çalıntı kartı nakde çevirme kanalı).
     Ayrıca kendi ürününe "doğrulanmış alıcı" yorumu yazma yolu açılırdı.
     """

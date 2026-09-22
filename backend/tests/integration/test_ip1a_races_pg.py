@@ -443,7 +443,7 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(
     p = await ip1a.payment(ders.booking_id)
 
     assert not (p["released_at"] is not None and p["refunded_at"] is not None), (
-        "hem release hem refund gerçekleşti: eğitmen kazancı + öğrenci iadesi"
+        "hem release hem refund gerçekleşti: öğretmen kazancı + öğrenci iadesi"
     )
     izinli = {
         (BookingStatus.COMPLETED, PaymentStatus.HELD),
@@ -454,7 +454,7 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(
         f"TUTARSIZ SONUÇ: booking={booking_status.value}, ödeme={payment_status}. "
         "Admin iptali claim kullanmadığı için ders durumu ile para durumu ayrıştı."
     )
-    assert p["released_at"] is None, "eğitmen tamamlaması parayı serbest bıraktı (Modül 2)"
+    assert p["released_at"] is None, "öğretmen tamamlaması parayı serbest bıraktı (Modül 2)"
     assert len(provider.refund_calls) <= 1
 
 
@@ -583,7 +583,7 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_gecis_uretir(
         await s.commit()
 
     assert (await ip1a.payment(ders.booking_id))["released_at"] is None, (
-        "eğitmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
+        "öğretmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
     )
 
     kazanan_bitti.set()
@@ -770,10 +770,10 @@ async def test_YESIL_onay_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
 
     p = await ip1a.payment(ders.booking_id)
     assert not (p["released_at"] is not None and p["refunded_at"] is not None), (
-        "hem eğitmene kazanç yazıldı hem öğrenciye iade edildi"
+        "hem öğretmene kazanç yazıldı hem öğrenciye iade edildi"
     )
     assert p["released_at"] is None, (
-        "iptal edilmiş dersin parası bayat onayla eğitmene geçti"
+        "iptal edilmiş dersin parası bayat onayla öğretmene geçti"
     )
     assert len(provider.refund_calls) <= 1
 
@@ -871,7 +871,7 @@ async def test_reschedule_KAZANIRSA_tamamlama_PARAYI_ACAMAZ(
     )
     p = await ip1a.payment(ders.booking_id)
     assert p["released_at"] is None, (
-        "yeniden onaya düşmüş dersin parası eğitmene serbest bırakıldı — iade "
+        "yeniden onaya düşmüş dersin parası öğretmene serbest bırakıldı — iade "
         "released_at yüzünden kalıcı olarak kapandı"
     )
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00")
@@ -918,7 +918,7 @@ async def test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ(
         await booking_service.complete(s, booking)
         await s.commit()
     assert (await ip1a.payment(ders.booking_id))["released_at"] is None, (
-        "eğitmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
+        "öğretmen tamamlaması parayı öğrenci onayı beklemeden serbest bıraktı"
     )
 
     kapi.set()
@@ -950,7 +950,7 @@ async def test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ(
         await s.commit()
     p = await ip1a.payment(ders.booking_id)
     assert p["status"] == PaymentStatus.RELEASED.value, (
-        "tamamlanmış dersin onayı parayı eğitmene geçirmedi"
+        "tamamlanmış dersin onayı parayı öğretmene geçirmedi"
     )
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal(str(p["tutor_earning"])), (
         "kazanç iki kez sayıldı"

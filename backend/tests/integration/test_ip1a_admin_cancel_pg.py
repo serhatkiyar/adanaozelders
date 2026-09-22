@@ -93,7 +93,7 @@ async def test_admin_iptali_EMANETI_GERCEKTEN_IADE_eder(ip1a, provider, ip1a_htt
 
     assert payment_status is not PaymentStatus.HELD, (
         "ADMIN İPTALİ PARAYI EMANETTE BIRAKTI: ders CANCELLED ama ödeme HELD. "
-        "Ne öğrenciye iade edildi ne eğitmene geçti; reconciler de HELD taramıyor "
+        "Ne öğrenciye iade edildi ne öğretmene geçti; reconciler de HELD taramıyor "
         "(escrow_reconciler.py:77 REFUNDING, :171 PENDING/FAILED)."
     )
     assert payment_status in IADE_YOLUNDA
@@ -163,7 +163,7 @@ async def test_admin_iptali_HER_IKI_TARAFI_bilgilendirir(ip1a, provider, ip1a_ht
     )
 
     assert await ip1a.bildirim_sayisi(user_id=ders.tutor_id, role_id=2) > tutor_once, (
-        "eğitmene admin iptali bildirilmedi"
+        "öğretmene admin iptali bildirilmedi"
     )
     assert await ip1a.bildirim_sayisi(user_id=ders.client_id, role_id=3) > client_once, (
         "öğrenciye admin iptali/iadesi bildirilmedi"
@@ -403,9 +403,9 @@ async def test_servis_katmani_admin_TAMAMLANMIS_dersi_iptal_EDEMEZ(ip1a, provide
             reddedildi = True
 
     assert reddedildi, (
-        "admin servisi, parası eğitmene SERBEST BIRAKILMIŞ dersi iptal etti. "
+        "admin servisi, parası öğretmene SERBEST BIRAKILMIŞ dersi iptal etti. "
         "`escrow.begin_refund` released_at dolu satırı iade edemez; sonuç "
-        "'iptal edilmiş ders + eğitmene ödenmiş para' çelişkisidir."
+        "'iptal edilmiş ders + öğretmene ödenmiş para' çelişkisidir."
     )
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.COMPLETED, "terminal booking durumu korunmadı"

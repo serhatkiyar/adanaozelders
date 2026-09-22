@@ -172,6 +172,9 @@ async def list_my_bookings(
     # Takvim haftası (Modül 7): ikisi birlikte, en fazla 8 gün.
     start_from: datetime.datetime | None = Query(default=None),
     start_to: datetime.datetime | None = Query(default=None),
+    # Eğitmenin Öğrenciler panelinde tek öğrencinin dersleri (yalnız TUTOR'da
+    # anlamlı; zaten görülebilen kümeyi daraltır, yeni veri açmaz).
+    client_id: int | None = Query(default=None, ge=1),
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -206,6 +209,7 @@ async def list_my_bookings(
         offset=offset,
         start_from=start_from,
         start_to=start_to,
+        client_id=client_id,
     )
 
 

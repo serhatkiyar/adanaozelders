@@ -259,7 +259,7 @@ async def respond_to_demand(
         db,
         user_id=demand.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"Bir eğitmen \"{demand.title}\" talebine yanıt verdi.",
+        message=f"Bir öğretmen \"{demand.title}\" talebine yanıt verdi.",
         link=frontend_yollari.MESAJLAR,
     )
 

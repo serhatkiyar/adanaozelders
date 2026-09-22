@@ -197,7 +197,7 @@ async def create_time_off(
     }
 
     # ── Aşama 2 ─────────────────────────────────────────────────────────────
-    reason = f"Eğitmen izinde: {mask_contact_info(temiz_not)}" if pairs else None
+    reason = f"Öğretmen izinde: {mask_contact_info(temiz_not)}" if pairs else None
     cancelled = 0
     skipped: list[int] = []
     for booking_id in [b.id for b, _ok in pairs]:

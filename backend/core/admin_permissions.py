@@ -25,8 +25,8 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     # sonra eski hero carousel'i yönetiyordu; iki yüzey de öldü (vitrin
     # içeriği artık `content.*` ile store_merchandising'ten yönetilir).
     # DB satırları `d4f8a2c6e0b3_announcements_izinleri_kaldirildi` ile silindi.
-    ("tutors.view", "Eğitmen görüntüleme", "Eğitim"),
-    ("tutors.manage", "Eğitmen yönetimi", "Eğitim"),
+    ("tutors.view", "Öğretmen görüntüleme", "Eğitim"),
+    ("tutors.manage", "Öğretmen yönetimi", "Eğitim"),
     ("bookings.view", "Rezervasyon görüntüleme", "Eğitim"),
     ("bookings.manage", "Rezervasyon yönetimi", "Eğitim"),
     # ÜK-4: "Öğrenci talebi" -> "Ders talebi". Talebi açan hesap sahibi öğrenci

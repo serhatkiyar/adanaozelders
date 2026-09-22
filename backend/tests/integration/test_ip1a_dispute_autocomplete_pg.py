@@ -117,7 +117,7 @@ async def test_ihtilafli_derste_EMANET_SERBEST_BIRAKILMAZ(ip1a, provider, ip1a_h
         "(escrow.py:226-230), admin çözüm üretemez"
     )
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00"), (
-        "ihtilaflı ders eğitmenin ödenebilir bakiyesine yazıldı"
+        "ihtilaflı ders öğretmenin ödenebilir bakiyesine yazıldı"
     )
     assert provider.refund_calls == [], "ihtilaf açmak iade emri üretmemeli"
 
@@ -232,7 +232,7 @@ async def test_YESIL_auto_complete_IPTAL_EDILMIS_dersi_diriltmez(ip1a, provider,
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.CANCELLED, "iptal edilmiş ders dirildi"
     assert payment_status is not PaymentStatus.RELEASED, (
-        "iade edilmiş/edilen ödeme sonradan eğitmene açıldı"
+        "iade edilmiş/edilen ödeme sonradan öğretmene açıldı"
     )
     assert len(provider.refund_calls) == iade_once
 
@@ -370,7 +370,7 @@ async def test_SORGUDAN_SONRA_acilan_ihtilaf_CLAIM_ANINDA_yakalanir(
         "(escrow.py released_at guard'ı), admin çözüm üretemez"
     )
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00"), (
-        "ihtilaflı ders eğitmenin ödenebilir bakiyesine yazıldı"
+        "ihtilaflı ders öğretmenin ödenebilir bakiyesine yazıldı"
     )
     assert provider.refund_calls == [], "bu senaryoda hiçbir iade emri beklenmez"
     assert tamamlanan == 0, (

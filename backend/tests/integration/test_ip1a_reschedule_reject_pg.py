@@ -85,7 +85,7 @@ async def test_reschedule_sonrasi_reject_EMANETI_SAHIPSIZ_BIRAKMAZ(ip1a, provide
 
     assert not (booking_status in TERMINAL and payment_status is PaymentStatus.HELD), (
         f"EMANET SAHİPSİZ KALDI: booking={booking_status.value} ama ödeme HELD. "
-        "Para ne öğrenciye döndü ne eğitmene geçti; hiçbir arka plan tarayıcısı "
+        "Para ne öğrenciye döndü ne öğretmene geçti; hiçbir arka plan tarayıcısı "
         "bu satırı görmüyor (auto_complete ACCEPTED tarar, reconciler REFUNDING tarar)."
     )
     assert payment_status in IADE_YOLUNDA, (
@@ -136,7 +136,7 @@ async def test_YESIL_reschedule_sonrasi_reject_EGITMENE_HAKEDIS_YAZMAZ(
     await ip1a_http.post(f"{KOK}/{ders.booking_id}/reject", headers=ders.tutor_auth)
 
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00"), (
-        "reddedilen ders için eğitmene hak ediş yazıldı"
+        "reddedilen ders için öğretmene hak ediş yazıldı"
     )
     p = await ip1a.payment(ders.booking_id)
     assert p["released_at"] is None, (
@@ -242,7 +242,7 @@ async def test_YESIL_ayni_ucretli_reschedule_emaneti_BOZMAZ(ip1a, provider, ip1a
 
     booking_status, _ = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.PENDING, (
-        "taşınan ders eğitmenin yeniden onayına sunulmalı"
+        "taşınan ders öğretmenin yeniden onayına sunulmalı"
     )
 
 

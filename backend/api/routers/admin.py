@@ -116,7 +116,7 @@ class AdminDemandCancelIn(BaseModel):
 class TutorRejectIn(BaseModel):
     """Eğitmen reddi — **gerekçe zorunlu**.
 
-    Denetim raporu "eksik akış 6": eğitmen red gerekçesini göremiyor, admin de
+    Denetim raporu "eksik akış 6": öğretmen red gerekçesini göremiyor, admin de
     girmiyordu. Kaynağı buydu — uç gövdesizdi ve `audit_logs`'a yalnız "reject"
     yazılıyordu. Gerekçe artık denetim izine gider; yalnız boşluktan ibaret bir
     metin kabul edilmez (`str_strip_whitespace` + `min_length`).

@@ -94,7 +94,7 @@ async def test_c1_release_refund_race(factory, provider):
 
     payment = await _load_payment(seeded.booking_id)
     assert not (payment.released_at is not None and payment.refunded_at is not None), (
-        "hem release hem refund gerçekleşti: eğitmen kazancı + öğrenci iadesi birlikte"
+        "hem release hem refund gerçekleşti: öğretmen kazancı + öğrenci iadesi birlikte"
     )
     assert len(provider.refund_calls) <= 1
 

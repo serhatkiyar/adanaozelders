@@ -208,7 +208,7 @@ async def list_balances(
                 PayeeBalance(
                     payee_type=PayeeType.TUTOR.value,
                     payee_id=tid,
-                    name=f"{first or ''} {last or ''}".strip() or f"Eğitmen #{tid}",
+                    name=f"{first or ''} {last or ''}".strip() or f"Öğretmen #{tid}",
                     iban=iban,
                     earned=t_earned.get(tid, ZERO),
                     paid=t_paid.get(tid, ZERO),
