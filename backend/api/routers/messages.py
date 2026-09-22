@@ -15,6 +15,8 @@ from schemas.messaging import (
     MessageOut,
     MessageSearchResults,
     MessagesUnreadCounts,
+    MessageTemplateCreate,
+    MessageTemplateOut,
     MessagingEligibilityOut,
     ReactionOut,
     ReactionRequest,
@@ -171,6 +173,37 @@ async def unblock_client(
 ):
     _require_role(user, RoleType.TUTOR)
     await messaging_service.unblock_client(db, user, client_id)
+
+
+@router.get("/templates", response_model=list[MessageTemplateOut])
+async def list_message_templates(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_role(user, RoleType.TUTOR)
+    return await messaging_service.list_templates(db, user)
+
+
+@router.post(
+    "/templates", response_model=MessageTemplateOut, status_code=status.HTTP_201_CREATED
+)
+async def create_message_template(
+    payload: MessageTemplateCreate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_role(user, RoleType.TUTOR)
+    return await messaging_service.create_template(db, user, payload)
+
+
+@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_message_template(
+    template_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_role(user, RoleType.TUTOR)
+    await messaging_service.delete_template(db, user, template_id)
 
 
 @router.post(

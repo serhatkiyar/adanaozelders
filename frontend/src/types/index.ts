@@ -506,6 +506,19 @@ export interface BlockOut {
   created_at: string;
 }
 
+/** Eğitmenin kendi hazır mesaj şablonu (`GET/POST /messages/templates`). */
+export interface MessageTemplateOut {
+  id: number;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
+export interface MessageTemplateCreate {
+  title: string;
+  body: string;
+}
+
 /** Öğrencinin bir eğitmene yazıp yazamayacağı (`GET /messages/tutors/{id}/eligibility`). */
 export interface MessagingEligibility {
   can_send: boolean;

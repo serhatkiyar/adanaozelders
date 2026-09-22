@@ -23,6 +23,7 @@ from models.messaging import (
     Conversation,
     Message,
     MessageReaction,
+    MessageTemplate,
     TutorClientBlock,
 )
 from models.report import Report, ReportReason, ReportStatus
@@ -38,6 +39,7 @@ from schemas.messaging import (
     MessageSearchHit,
     MessageSearchResults,
     MessagesUnreadCounts,
+    MessageTemplateCreate,
     MessagingEligibilityOut,
     ReactionOut,
     ReplyPreview,
@@ -612,6 +614,70 @@ async def unblock_client(db: AsyncSession, tutor: Tutor, client_id: int) -> None
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Engel bulunamadı")
     await _notify_client_refresh(db, client_id=client_id, tutor_id=tutor.id)
     await db.flush()
+
+
+# ── Hazır mesaj şablonları (v1: yalnız TUTOR — yetki router'da) ──
+
+_MAX_TEMPLATES_PER_OWNER = 20
+
+
+async def list_templates(
+    db: AsyncSession, owner: CurrentUser
+) -> list[MessageTemplate]:
+    result = await db.scalars(
+        select(MessageTemplate)
+        .where(
+            MessageTemplate.owner_role == "TUTOR",
+            MessageTemplate.owner_id == owner.id,
+        )
+        .order_by(MessageTemplate.created_at)
+    )
+    return list(result)
+
+
+async def create_template(
+    db: AsyncSession, owner: CurrentUser, data: MessageTemplateCreate
+) -> MessageTemplate:
+    count = await db.scalar(
+        select(func.count())
+        .select_from(MessageTemplate)
+        .where(
+            MessageTemplate.owner_role == "TUTOR",
+            MessageTemplate.owner_id == owner.id,
+        )
+    )
+    if (count or 0) >= _MAX_TEMPLATES_PER_OWNER:
+        raise _error(
+            status.HTTP_400_BAD_REQUEST,
+            "TEMPLATE_LIMIT",
+            f"En fazla {_MAX_TEMPLATES_PER_OWNER} şablon kaydedebilirsin.",
+        )
+    template = MessageTemplate(
+        owner_role="TUTOR",
+        owner_id=owner.id,
+        title=data.title.strip(),
+        body=data.body.strip(),
+    )
+    db.add(template)
+    await db.flush()
+    await db.refresh(template)
+    return template
+
+
+async def delete_template(
+    db: AsyncSession, owner: CurrentUser, template_id: int
+) -> None:
+    removed = await db.scalar(
+        delete(MessageTemplate)
+        .where(
+            MessageTemplate.id == template_id,
+            MessageTemplate.owner_role == "TUTOR",
+            MessageTemplate.owner_id == owner.id,
+        )
+        .returning(MessageTemplate.id)
+    )
+    if removed is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Şablon bulunamadı")
 
 
 async def message_for_report(

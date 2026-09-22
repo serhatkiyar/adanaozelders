@@ -130,6 +130,20 @@ class MessagingEligibilityOut(BaseModel):
     new_conversations_left_today: int | None = None
 
 
+class MessageTemplateCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=80)
+    body: str = Field(min_length=1, max_length=4000)
+
+
+class MessageTemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    body: str
+    created_at: datetime.datetime
+
+
 class BlockCreate(BaseModel):
     client_id: int = Field(gt=0)
     reason: BlockReason

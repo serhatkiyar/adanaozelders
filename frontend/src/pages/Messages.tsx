@@ -9,7 +9,9 @@ import { RightContextPanel } from "@/components/RightContextPanel";
 import { ReportModal } from "@/components/ReportModal";
 import { GuvenlikBandi } from "@/components/mesaj/GuvenlikBandi";
 import { DisBaglantiUyarisi } from "@/components/mesaj/DisBaglantiUyarisi";
+import { EmojiSecici } from "@/components/mesaj/EmojiSecici";
 import { EngelleModal } from "@/components/mesaj/EngelleModal";
+import { SablonPaneli } from "@/components/mesaj/SablonPaneli";
 import {
   ACIKLAMA,
   BOLUM_BASLIGI,
@@ -34,6 +36,8 @@ import {
 } from "@/hooks/useMessages";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatChatTime, formatDateTime } from "@/lib/datetime";
+import { SIK_EMOJILER } from "@/lib/emoji";
+import { cevapCokKisaMi } from "@/lib/kisaCevapUyarisi";
 import { buildSnippet } from "@/lib/messageSearch";
 import { mesajParcala } from "@/lib/mesajBaglantisi";
 import { ROUTES, ilanYolu } from "@/lib/routes";
@@ -47,7 +51,9 @@ import type {
   MessagingStage,
 } from "@/types";
 
-const REACTION_EMOJIS = ["👍", "❤️", "😄", "🎉", "😮", "😢", "🙏"];
+// Ortak emoji kaynağı `lib/emoji.ts`te — yazma alanındaki `EmojiSecici` de
+// AYNI listeyi kullanır, iki ayrı emoji kümesi icat edilmesin diye.
+const REACTION_EMOJIS = SIK_EMOJILER;
 
 type Role = "CLIENT" | "TUTOR" | "LIBRARY";
 
@@ -282,6 +288,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   const archive = useArchiveConversation();
   const unblock = useUnblockClient();
   const [text, setText] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [raporHedefi, setRaporHedefi] = useState<RaporHedefi | null>(null);
   const [disBaglanti, setDisBaglanti] = useState<{
     href: string;
@@ -289,6 +296,12 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   } | null>(null);
   const [engelleAcik, setEngelleAcik] = useState(false);
   const [secenekAcik, setSecenekAcik] = useState(false);
+  // Eğitmenin yeni bir lead'e ilk cevabı kısaysa BİR KEZ öneri gösterilir
+  // (kullanıcı kararı, 22 Eyl 2026: Preply'de olduğu gibi tekrar tekrar
+  // engellemez — "çat çat" ikinci tıklayışta zaten gönderilir, zorunlu
+  // hissettirmez). Sohbet değişince sıfırlanır.
+  const [kisaCevapUyarisiGosterildi, setKisaCevapUyarisiGosterildi] =
+    useState(false);
   const navigate = useNavigate();
   const siteHost = typeof window !== "undefined" ? window.location.hostname : "";
 
@@ -350,6 +363,11 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, lastMessageId]);
 
+  // Sohbet değişince kısa-cevap uyarısı sıfırlanır — her yeni lead kendi hakkını alır.
+  useEffect(() => {
+    setKisaCevapUyarisiGosterildi(false);
+  }, [selectedId]);
+
   const showChat = selectedId !== null || draft !== null;
 
   const backToList = () => {
@@ -371,10 +389,48 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     });
   };
 
+  // Eğitmenin bu sohbete HENÜZ hiç cevap yazmadığı, deneme öncesi (INQUIRY)
+  // bir lead mi? Yalnız bu durumda kısa-cevap önerisi gösterilir — ders
+  // ilişkisi kurulmuş bir öğrenciye kısa "tamam" gibi cevaplar zaten normaldir.
+  const egitmenIlkCevabiBekleniyor =
+    egitmenOgrenciye &&
+    activeStage === "INQUIRY" &&
+    !(messages ?? []).some((m) => m.sender_role === "TUTOR");
+
+  // Emoji seçilince imlecin BULUNDUĞU YERE basılır (sona eklenmez) —
+  // `textareaRef` olmadan yalnız sona ekleyebilirdik, kullanıcı cümlenin
+  // ortasındayken yanlış yere düşerdi.
+  const emojiEkle = (emoji: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setText((t) => t + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    setText(text.slice(0, start) + emoji + text.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      const konum = start + emoji.length;
+      el.setSelectionRange(konum, konum);
+    });
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const body = text.trim();
     if (!body || activeCounterpartyId == null) return;
+    if (
+      egitmenIlkCevabiBekleniyor &&
+      !kisaCevapUyarisiGosterildi &&
+      cevapCokKisaMi(body)
+    ) {
+      setKisaCevapUyarisiGosterildi(true);
+      toast.info(
+        "Daha uzun bir cevap, bu potansiyel öğrenciye ders verme şansını artırır. Yine de göndermek istersen düğmeye bir daha bas."
+      );
+      return;
+    }
     send.mutate(
       {
         counterpartyId: activeCounterpartyId,
@@ -987,28 +1043,55 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               <>
               <form
                 onSubmit={submit}
-                className="mx-auto flex w-full max-w-4xl items-end gap-2 p-3 sm:px-6 sm:py-4"
+                className="mx-auto w-full max-w-4xl p-3 sm:px-6 sm:py-4"
               >
-                <textarea
-                  rows={1}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      submit(e);
-                    }
-                  }}
-                  placeholder="Mesaj yaz…"
-                  className="min-h-[48px] max-h-40 flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-[15px] text-slate-900 placeholder-slate-400 outline-none transition focus:border-marka-mid focus:ring-2 focus:ring-marka/20 "
-                />
-                <button
-                  type="submit"
-                  disabled={send.isPending || !text.trim()}
-                  className="shrink-0 rounded-xl bg-marka px-5 py-3 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {send.isPending ? "…" : "Gönder"}
-                </button>
+                {/* Tek birleşik kutu (kullanıcı kararı, 22 Eyl 2026 — Preply
+                    referansı): yazı alanı ve araç satırı AYNI çerçevenin
+                    içinde, üç ayrı parça değil. Odak halkası bu dış kutuya
+                    taşındı; textarea kendi çerçevesini/odak halkasını
+                    kaybetti (`border-0`, `focus:ring-0`) — aksi hâlde iç içe
+                    iki çerçeve/iki odak halkası görünürdü. */}
+                <div className="rounded-2xl border border-slate-200 bg-white transition focus-within:border-marka-mid focus-within:ring-2 focus-within:ring-marka/20 ">
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        submit(e);
+                      }
+                    }}
+                    placeholder="Mesajın"
+                    className="max-h-40 min-h-[44px] w-full resize-none border-0 bg-transparent px-4 pt-3 text-[15px] text-slate-900 placeholder-slate-400 outline-none focus:ring-0 "
+                  />
+                  <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
+                    <div className="flex items-center gap-0.5">
+                      {role === "TUTOR" && (
+                        <SablonPaneli onSec={(body) => setText(body)} />
+                      )}
+                      {/* Emoji seçici HER İKİ rol için de — şablonların
+                          aksine tutor'a özgü bir yetenek değil. */}
+                      <EmojiSecici onSec={emojiEkle} />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={send.isPending || !text.trim()}
+                      aria-label="Gönder"
+                      title="Gönder"
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-marka text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-300 "
+                    >
+                      {send.isPending ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent " />
+                      ) : (
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5 19.5 12 4.5 4.5l2.4 6.4a1 1 0 0 0 .94.65H14M6.9 17.1l.94-2.5" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </form>
               {ogrenciEgitmene && uygunluk?.remaining_before_reply != null && (
                 <p className={`mx-auto -mt-1 w-full max-w-4xl px-3 pb-3 sm:px-6 ${KUCUK_ACIKLAMA}`}>

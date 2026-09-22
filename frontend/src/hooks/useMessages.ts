@@ -6,8 +6,11 @@ import {
 } from "@tanstack/react-query";
 import {
   blockClient,
+  createMessageTemplate,
+  deleteMessageTemplate,
   getMessagingEligibility,
   listConversations,
+  listMessageTemplates,
   listMessages,
   markConversationRead,
   searchMessages,
@@ -18,14 +21,14 @@ import {
   unreadCount,
 } from "@/api/messages";
 import { useAuthStore } from "@/store/authStore";
-import { ROLE_IDS, type BlockCreate } from "@/types";
+import { ROLE_IDS, type BlockCreate, type MessageTemplateCreate } from "@/types";
 
-export function useConversations(archived = false) {
+export function useConversations(archived = false, enabled = true) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
     queryKey: ["conversations", archived],
     queryFn: () => listConversations(archived),
-    enabled: !!token,
+    enabled: !!token && enabled,
   });
 }
 
@@ -149,6 +152,38 @@ export function useUnblockClient() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
       qc.invalidateQueries({ queryKey: ["messages"] });
+    },
+  });
+}
+
+/** Eğitmenin kendi hazır mesaj şablonları (yalnız eğitmen görür). */
+export function useMessageTemplates() {
+  const token = useAuthStore((s) => s.token);
+  const roleId = useAuthStore((s) => s.user?.role_id);
+  return useQuery({
+    queryKey: ["messages", "templates"],
+    queryFn: listMessageTemplates,
+    enabled: !!token && roleId === ROLE_IDS.TUTOR,
+  });
+}
+
+export function useCreateMessageTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: MessageTemplateCreate) =>
+      createMessageTemplate(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages", "templates"] });
+    },
+  });
+}
+
+export function useDeleteMessageTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (templateId: number) => deleteMessageTemplate(templateId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages", "templates"] });
     },
   });
 }

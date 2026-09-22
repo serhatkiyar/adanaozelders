@@ -150,6 +150,25 @@ class MessageReaction(Base, TimestampMixin):
     )
 
 
+class MessageTemplate(Base, TimestampMixin):
+    """Kullanıcının kendi hazır mesaj metni (v1: yalnız TUTOR yazabilir/görür —
+    yetki kontrolü router'da). Sahiplik ``MessageReaction``'daki gibi
+    (owner_role, owner_id) ile tutulur: proje tek bir ``users`` tablosu
+    kullanmıyor, rol+id çifti mevcut kalıp."""
+
+    __tablename__ = "message_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_role: Mapped[str] = mapped_column(String(10), nullable=False)
+    owner_id: Mapped[int] = mapped_column(nullable=False)
+    title: Mapped[str] = mapped_column(String(80), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (
+        Index("ix_message_templates_owner", "owner_role", "owner_id"),
+    )
+
+
 class BlockReason(str, enum.Enum):
     """Eğitmenin öğrenciyi engelleme gerekçesi (Modül 5)."""
 

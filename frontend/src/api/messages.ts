@@ -7,6 +7,8 @@ import type {
   MessageReactionOut,
   MessageSearchResults,
   MessagesUnreadCounts,
+  MessageTemplateCreate,
+  MessageTemplateOut,
   MessagingEligibility,
 } from "@/types";
 
@@ -110,4 +112,28 @@ export async function blockClient(payload: BlockCreate): Promise<BlockOut> {
 
 export async function unblockClient(clientId: number): Promise<void> {
   await apiClient.delete(`/messages/blocks/${clientId}`);
+}
+
+/** Eğitmenin kendi hazır mesaj şablonları (yalnız eğitmen). */
+export async function listMessageTemplates(): Promise<MessageTemplateOut[]> {
+  const { data } = await apiClient.get<MessageTemplateOut[]>(
+    "/messages/templates"
+  );
+  return data;
+}
+
+export async function createMessageTemplate(
+  payload: MessageTemplateCreate
+): Promise<MessageTemplateOut> {
+  const { data } = await apiClient.post<MessageTemplateOut>(
+    "/messages/templates",
+    payload
+  );
+  return data;
+}
+
+export async function deleteMessageTemplate(
+  templateId: number
+): Promise<void> {
+  await apiClient.delete(`/messages/templates/${templateId}`);
 }

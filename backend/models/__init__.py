@@ -89,6 +89,7 @@ from models.messaging import (
     Conversation,
     Message,
     MessageReaction,
+    MessageTemplate,
     TutorClientBlock,
 )
 from models.name_change_request import NameChangeRequest
@@ -271,6 +272,7 @@ __all__ = [
     "LibraryStatus",
     "Message",
     "MessageReaction",
+    "MessageTemplate",
     "RegistrationStatus",
     "StudyReservation",
     "Notification",
