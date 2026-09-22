@@ -95,16 +95,25 @@ function ustBardakiHedefler(): string[] {
  * favori durur; okunmamış sayılar doğrudan görünür. Kalan her şey hâlâ hesap
  * menüsünde. Nöbetçinin asıl işi değişmedi: menüde ne varsa üst bara
  * basılmasın, üst bardaki kümeyi bilinçli karar belirlesin.
+ *
+ * 22 Eylül 2026'da DEĞİŞTİ (kullanıcı kararı: "bildirimlere tıklayınca modal
+ * açılması yerine tam sayfa açılıyor, düzelt"): bildirim artık `<a href>`
+ * DEĞİL — `NotificationsBell` (buton + açılır panel). `UST_BAR_SABIT` bu
+ * yüzden yalnız Mesajlar'ı taşır; bildirim düğmesinin varlığı ayrıca,
+ * `screen.getByRole("button", { name: "Bildirimler" })` ile ölçülür. Panelin
+ * kendi içindeki "Tüm bildirimleri gör" bağlantısı tam sayfayı KAPATMAZ,
+ * üstüne bir hızlı-bakış ekler (bkz. aşağıdaki üçüncü `describe`).
  */
-const UST_BAR_SABIT = [ROUTES.messages, ROUTES.notifications];
+const UST_BAR_SABIT = [ROUTES.messages];
 
 describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
-  it("öğrencide mesaj, bildirim ve Favorilerim", () => {
+  it("öğrencide mesaj (bağlantı) + bildirim (panel düğmesi) + Favorilerim", () => {
     sar(UYE_NAV);
     expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT, ROUTES.favorites].sort());
+    expect(screen.getByRole("button", { name: "Bildirimler" })).toBeTruthy();
   });
 
-  it("eğitmende yalnız mesaj ve bildirim — kalp YOK, favoriler hesap menüsünde", () => {
+  it("eğitmende yalnız mesaj (bağlantı) + bildirim (panel düğmesi) — kalp YOK, favoriler hesap menüsünde", () => {
     // 18 Eyl 2026'da DEĞİŞTİ (kullanıcı kararı): Preply'da favori yalnız
     // "favori öğretmen"dir ve eğitmenin üst barında kalp yoktur. Eğitmenin
     // favorileri menüde kalır (`ustBarda: false`), üst bara çıkmaz.
@@ -119,17 +128,19 @@ describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
     } as never);
     sar(TUTOR_NAV);
     expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT].sort());
+    expect(screen.getByRole("button", { name: "Bildirimler" })).toBeTruthy();
     // Menüden düşmedi: favoriler hesap menüsünden hâlâ açılır.
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
   });
 
-  it("üst bara menüden BAŞKA kısayol sızmaz — dördüncü ikon eklenirse kırılır", () => {
-    // ÜK-2'nin sayısal çıpası: sabit iki ikon + en fazla favori.
+  it("üst bara menüden BAŞKA kısayol sızmaz — üçüncü bağlantı eklenirse kırılır", () => {
+    // ÜK-2'nin sayısal çıpası: sabit tek bağlantı (Mesajlar; bildirim artık
+    // bağlantı değil düğme) + en fazla favori.
     for (const nav of [UYE_NAV, TUTOR_NAV, OPERATOR_NAV]) {
       cleanup();
       sar(nav);
       const hedefler = ustBardakiHedefler();
-      expect(hedefler.length).toBeLessThanOrEqual(3);
+      expect(hedefler.length).toBeLessThanOrEqual(2);
       for (const h of hedefler) {
         expect([...UST_BAR_SABIT, ROUTES.favorites]).toContain(h);
       }
@@ -213,7 +224,18 @@ describe("üst bar · KALDIRILAN kısayolların hedefi hâlâ erişilebilir", ()
   });
 });
 
-describe("üst bar · bildirim zili kalktı ama BİLDİRİMLER erişilebilir", () => {
+describe("üst bar · bildirim paneli açılıyor VE tam sayfa hâlâ erişilebilir", () => {
+  /*
+   * Bu describe'ın adı 22 Eylül 2026'da DEĞİŞTİ. Eskiden "bildirim zili
+   * kalktı" başlığı altında üst barda bildirim DÜĞMESİ OLMADIĞI iddia
+   * ediliyordu (o zamanki karar: zil tamamen kalksın, tek erişim hesap
+   * menüsündeki tam-sayfa bağlantı olsun). Kullanıcı kararı bunu tersine
+   * çevirdi: "bildirimlere tıklayınca modal açılması yerine tam sayfa
+   * açılıyor, düzelt" — yani şimdi TERSİ doğru olmalı: üst barda bir düğme
+   * OLMALI ve tam sayfaya GİTMEDEN önce bir panel açmalı. Tam sayfaya giden
+   * yol (hesap menüsü + panelin kendi "Tüm bildirimleri gör" bağlantısı)
+   * KORUNDU — kaldırılan bir şey yok, eklenen bir kısayol var.
+   */
   const menuyuAc = () =>
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
 
@@ -226,9 +248,19 @@ describe("üst bar · bildirim zili kalktı ama BİLDİRİMLER erişilebilir", (
     }
   });
 
-  it("üst barda bildirim DÜĞMESİ yok", () => {
+  it("üst barda bildirim DÜĞMESİ var ve tıklayınca panel açılır (tam sayfaya SIÇRAMADAN)", () => {
     sar(UYE_NAV);
-    expect(screen.queryByRole("button", { name: "Bildirimler" })).toBeNull();
+    const dugme = screen.getByRole("button", { name: "Bildirimler" });
+    expect(dugme).toBeTruthy();
+    // Panel açılmadan önce sayfa DEĞİŞMEDİ — hâlâ aynı bileşendeyiz (jsdom'da
+    // "navigasyon olmadı" doğrudan ölçülemez, ama panelin kendisi DOM'a
+    // girer; bu, bir <a href> tıklamasının tetikleyeceği tam sayfa geçişinden
+    // FARKLI bir mekanizma olduğunu kanıtlar).
+    fireEvent.click(dugme);
+    expect(
+      screen.getByRole("link", { name: /Tüm bildirimleri gör/ }),
+      "panel açıldı ama tam sayfaya giden yol kayıp"
+    ).toHaveAttribute("href", ROUTES.notifications);
   });
 
   it.each([

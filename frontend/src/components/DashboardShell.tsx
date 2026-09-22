@@ -187,8 +187,10 @@ export function DashboardShell({
   const showVerifyBanner =
     !!user && user.email_verified === false && !verifyDismissed;
 
+  // Sekme başlığı yalnız sayfa adı (kullanıcı kararı, 22 Eyl 2026: "başında
+  // Adana Özel Ders yazmasın") — önceki "Adana Özel Ders · X" öneki kaldırıldı.
   useEffect(() => {
-    document.title = `Adana Özel Ders · ${title}`;
+    document.title = title;
   }, [title]);
 
   /* ── YAPIŞKAN ÜST BOŞLUK — tek kaynak (kullanıcı kararı, 7 Eyl 2026) ──

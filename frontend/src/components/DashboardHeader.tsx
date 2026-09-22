@@ -3,6 +3,8 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { NavbarWidget } from "@/components/NavbarWidget";
 import { MobilPanelCekmecesi } from "@/components/MobilPanelCekmecesi";
+import { NotificationsBell } from "@/components/NotificationsBell";
+import { MesajlarPaneli } from "@/components/mesaj/MesajlarPaneli";
 import { PersonalizeModal } from "@/components/PersonalizeModal";
 import { Icon } from "@/components/AppIcon";
 import { useAuthStore } from "@/store/authStore";
@@ -16,19 +18,18 @@ import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { NavItem } from "@/lib/nav";
 
-// Üst bar ikonları (17 Eyl 2026, Preply ölçüsü): 24px ikon, merkezler arası 36px,
-// dolgu yok; aktif ikon koyu, pasif ikincil renk.
-const navIconClass = ({ isActive }: { isActive: boolean }) =>
-  `relative inline-flex h-10 w-9 items-center justify-center rounded-lg transition ${
-    isActive ? "text-slate-900" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-  }`;
+// Üst bar ikonları (22 Eyl 2026, kullanıcı kararı): hangi sayfada olduğumuza
+// BAKMADAN her zaman siyah, yalnız gerçek imleç hover'ında turuncu — aktif
+// rotaya göre ayrı bir "seçili" rengi YOK (önceki `isActive` dalı kaldırıldı).
+// Hover'da arka plan KUTUSU/sınırı YOK (kullanıcı kararı, 22 Eyl 2026) —
+// yalnız renk değişir, çevresinde görünür bir kutu belirmez.
+const navIconClass =
+  "relative inline-flex h-10 w-9 items-center justify-center rounded-lg text-slate-900 transition hover:text-marka-metin";
 
-const menuItemClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium leading-6 transition ${
-    isActive
-      ? "bg-slate-100 font-semibold text-slate-900"
-      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-  }`;
+// Hesap menüsündeki satırlar da aynı kural: her zaman siyah, hover'da turuncu,
+// mevcut rotayla eşleşen satır ayrıca vurgulanmaz (kullanıcı kararı, 22 Eyl 2026).
+const menuItemClass =
+  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium leading-6 text-slate-900 transition hover:bg-slate-50 hover:text-marka-metin";
 
 function SayiRozeti({ n }: { n: number }) {
   if (n <= 0) return null;
@@ -244,7 +245,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
             onClick();
             logout();
           }}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-base font-medium leading-6 text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-base font-medium leading-6 text-slate-900 transition hover:bg-slate-50 hover:text-marka-metin"
         >
           <Icon name="logout" className="h-5 w-5" />
           Çıkış yap
@@ -318,15 +319,26 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         {/* Masaüstü: nav ikonları + avatar dropdown */}
         <div className="hidden flex-1 shrink-0 items-center justify-end gap-0 sm:flex">
           {/* ÜK-2 (17 Eyl 2026'da güncellendi): mesaj + bildirim + favori.
-              Preply gibi okunmamış sayılar doğrudan üst barda görünür. */}
-          <NavLink to={ROUTES.messages} title="Mesajlar" aria-label="Mesajlar" className={navIconClass}>
-            <Icon name="messages" className="h-6 w-6" />
-            <SayiRozeti n={msgUnread} />
-          </NavLink>
-          <NavLink to={ROUTES.notifications} title="Bildirimler" aria-label="Bildirimler" className={navIconClass}>
-            <Icon name="notifications" className="h-6 w-6" />
-            <SayiRozeti n={bildirimOkunmamis} />
-          </NavLink>
+              Preply gibi okunmamış sayılar doğrudan üst barda görünür.
+              Mesajlar sayfasındaYSAK düz link (zaten oradayız); değilsek
+              bildirim ziliyle AYNI desende bir önizleme paneli açılır
+              (kullanıcı kararı, 22 Eyl 2026 — Preply referansı: "mesajlar
+              sayfasında değilken tam sayfa yerine panel açılsın"). */}
+          {location.pathname.startsWith(ROUTES.messages) ? (
+            <NavLink to={ROUTES.messages} title="Mesajlar" aria-label="Mesajlar" className={navIconClass}>
+              <Icon name="messages" className="h-6 w-6" />
+              <SayiRozeti n={msgUnread} />
+            </NavLink>
+          ) : (
+            <MesajlarPaneli />
+          )}
+          {/* Zil tam sayfaya GİTMEZ, açılır panel açar (kullanıcı kararı,
+              22 Eyl 2026: "modal açılması yerine tam sayfa açılıyor,
+              düzelt" — ÜK-2'nin 17 Eyl 2026 kararını GÜNCELLİYOR). Admin
+              başlığında (`AdminPageHeader.tsx`) zaten aynı bileşen
+              kullanılıyordu — panelin kendi altındaki "Tüm bildirimleri
+              gör" tam sayfaya gidiyor, o yol kapanmadı. */}
+          <NotificationsBell />
           {favoriKisayolu && (
             <NavLink
               to={favoriKisayolu.to}
@@ -340,14 +352,17 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
 
 
           <div ref={accountRef} className="relative ml-2">
+            {/* Hover'da HİÇBİR ŞEY olmaz (kullanıcı kararı, 22 Eyl 2026) —
+                önceki `hover:ring-slate-300` kaldırıldı. Avatar da bir tık
+                büyüdü: `xs`(32px) → `sm`(36px). */}
             <button
               type="button"
               aria-label="Hesap menüsü"
               aria-expanded={accountOpen}
               onClick={() => setAccountOpen((o) => !o)}
-              className="rounded ring-2 ring-transparent transition hover:ring-slate-300"
+              className="rounded-full"
             >
-              <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="xs" />
+              <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="sm" />
             </button>
             {accountOpen && (
               <div className="absolute right-0 top-full z-40 mt-3 w-72 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_8px_32px_rgba(18,17,23,0.15)]">

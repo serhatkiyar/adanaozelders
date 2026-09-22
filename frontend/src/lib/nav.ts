@@ -173,7 +173,7 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
     ],
   },
   // Takvim ve Analizler şeride girdi (Modül 7, 17 Eyl 2026, kullanıcı kararı):
-  // Pano · Takvim · Mesajlar · Analizler · İlanım.
+  // Pano · Takvim · Mesajlar · Analizler · Profilim · Ayarlar.
   //
   // "Mobil alt çubuk değişmez" 19 Eyl 2026'da GEÇERSİZ oldu (kullanıcı kararı):
   // eğitmenin telefondaki alt çubuğu artık bu şeritle BİREBİR aynı sırayı
@@ -183,13 +183,21 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
   { to: ROUTES.messages, label: "Mesajlar" },
   { to: ROUTES.tutorAnalytics, label: "Analizler" },
   {
+    // "İlanım" → "Profilim" (kullanıcı kararı, 22 Eyl 2026): rota/sayfa
+    // (`TutorSettings.tsx`, `/pano/ilanim`) AYNI kalıyor, yalnız etiket
+    // değişti — "Profilim" kullanıcıya daha sezgisel geldi.
     to: ROUTES.tutorListing,
-    label: "İlanım",
+    label: "Profilim",
     // Öne çıkarma, ilan sihirbazı ve değerlendirmeler ilanın alt sayfalarıdır.
     // "Değerlendirmeler" sekmesi 17 Eyl 2026'da şeritten kalktı (kullanıcı
-    // kararı); sayfa hesap menüsünden açılır, açıkken İlanım sekmesi aktiftir.
+    // kararı); sayfa hesap menüsünden açılır, açıkken Profilim sekmesi aktiftir.
     altYollar: [ROUTES.tutorPromotion, ROUTES.tutorOnboarding, ROUTES.tutorReviews],
   },
+  // "Ayarlar" 22 Eyl 2026'da şeride EKLENDİ (kullanıcı kararı) — hesap
+  // menüsündeki "Ayarlar" satırıyla BİLİNÇLİ bir tekrar (kullanıcı açıkça
+  // "şeride de ekle" dedi, menüden kaldırmadı); iki yüzey de aynı
+  // `ROUTES.settings`e gider, aralarında çelişki yok.
+  { to: ROUTES.settings, label: "Ayarlar" },
 ];
 
 /**

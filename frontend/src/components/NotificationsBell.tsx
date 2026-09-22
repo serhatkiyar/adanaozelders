@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Icon } from "@/components/AppIcon";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -52,22 +53,9 @@ export function NotificationsBell() {
         aria-label="Bildirimler"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 "
+        className="relative rounded-lg p-2 text-slate-900 transition hover:text-marka-metin "
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.7}
-          className="h-5 w-5"
-          aria-hidden
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
-          />
-        </svg>
+        <Icon name="notifications" className="h-6 w-6" />
         {unread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-white ">
             {unread > 9 ? "9+" : unread}
@@ -75,17 +63,22 @@ export function NotificationsBell() {
         )}
       </button>
 
+      {/* Kart dili projenin geri kalanıyla AYNI ("elevated surface" —
+          `rounded-3xl`/`shadow-2xl`/`ring-slate-100`/`zoom-in-95`, bkz.
+          `AuthModal`/`BookingModal`/`DistrictMapModal` vb.); önceki
+          `rounded-2xl`/`shadow-xl`/`ring-slate-200` daha zayıftı, o yüzden
+          düz/karaktersiz duruyordu (kullanıcı kararı, 22 Eyl 2026). */}
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-80 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 ">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 ">
-            <p className="text-sm font-semibold text-slate-900 ">
+        <div className="absolute right-0 top-full z-40 mt-2 w-80 origin-top-right overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-150 ">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 ">
+            <p className="text-xl font-bold text-slate-900 ">
               Bildirimler
             </p>
             {unread > 0 && (
               <button
                 type="button"
                 onClick={() => markAll.mutate()}
-                className="text-xs font-medium text-marka-metin transition hover:text-marka-metin-hover "
+                className="text-xs font-semibold text-marka-metin transition hover:text-marka-metin-hover "
               >
                 Tümünü okundu işaretle
               </button>
@@ -103,12 +96,15 @@ export function NotificationsBell() {
                 ))}
               </div>
             ) : !items || items.length === 0 ? (
-              <div className="px-4 py-10 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl ">
-                  🔔
+              <div className="flex flex-col items-center px-6 py-12 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 ">
+                  <Icon name="notifications" className="h-7 w-7" />
                 </div>
-                <p className="mt-3 text-sm text-slate-500 ">
+                <p className="mt-4 text-sm font-semibold text-slate-700 ">
                   Henüz bildirim yok
+                </p>
+                <p className="mt-1 text-xs text-slate-500 ">
+                  Yeni bir şey olduğunda burada görünür.
                 </p>
               </div>
             ) : (
@@ -118,7 +114,7 @@ export function NotificationsBell() {
                     <button
                       type="button"
                       onClick={() => handleItem(n)}
-                      className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-slate-50 ${
+                      className={`flex w-full items-start gap-3 px-5 py-3.5 text-left transition hover:bg-slate-50 ${
                         n.is_read ? "" : "bg-marka-soft/50 "
                       }`}
                     >
@@ -131,7 +127,7 @@ export function NotificationsBell() {
                         <span className="block text-sm leading-snug text-slate-700 ">
                           {n.message}
                         </span>
-                        <span className="mt-0.5 block text-xs text-slate-400 ">
+                        <span className="mt-0.5 block text-xs text-slate-500 ">
                           {formatDateTime(n.created_at)}
                         </span>
                       </span>
@@ -147,7 +143,7 @@ export function NotificationsBell() {
             <Link
               to={ROUTES.notifications}
               onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-marka-metin transition hover:bg-slate-50 "
+              className="flex items-center justify-center gap-1.5 px-4 py-3.5 text-sm font-semibold text-marka-metin transition hover:bg-slate-50 "
             >
               Tüm bildirimleri gör
               <svg

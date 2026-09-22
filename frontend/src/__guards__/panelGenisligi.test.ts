@@ -61,7 +61,9 @@ const SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
   { rota: ROUTES.tutorCalendar, dosya: ["pages", "TutorCalendar.tsx"], etiket: "Takvim" },
   { rota: ROUTES.messages, dosya: ["pages", "Messages.tsx"], etiket: "Mesajlar" },
   { rota: ROUTES.tutorAnalytics, dosya: ["pages", "TutorAnalytics.tsx"], etiket: "Analizler" },
-  { rota: ROUTES.tutorListing, dosya: ["pages", "TutorSettings.tsx"], etiket: "İlanım" },
+  { rota: ROUTES.tutorListing, dosya: ["pages", "TutorSettings.tsx"], etiket: "Profilim" },
+  // "Ayarlar" 22 Eyl 2026'da şeride eklendi (kullanıcı kararı, bkz. `nav.ts`).
+  { rota: ROUTES.settings, dosya: ["pages", "Settings.tsx"], etiket: "Ayarlar" },
 ];
 
 /**

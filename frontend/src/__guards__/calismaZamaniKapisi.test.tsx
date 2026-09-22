@@ -362,6 +362,7 @@ const KAPI_KAPSAMI = [
   "src/components/LibraryPayoutForm.tsx",
   "src/components/MapPicker.tsx",
   "src/components/MobilAltSekmeler.tsx",
+  "src/components/MobilPanelCekmecesi.tsx",
   "src/components/NavbarWidget.tsx",
   "src/components/NotificationsBell.tsx",
   "src/components/PersonalizeModal.tsx",
@@ -658,6 +659,11 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // kontrolü yok — "adsız kontrol 0" burada totoloji DEĞİL, sözleşmedir:
   // çubuğa bir gün girdi eklenirse bu kayıt yanlışlaşır ve kapı bağırır.
   "src/components/MobilAltSekmeler.tsx": "kabuk",
+  // Propsuz (`open` verilmeden) `if (!open) return null` dalına düşer —
+  // varsayılan render'da gerçekten hiç DOM yok, "adsız kontrol 0" burada
+  // totoloji değil: `open`/`sekmeler`/`children` verilen gerçek açılışta
+  // kontroller `DashboardHeader.tsx` üzerinden dolaylı olarak render edilir.
+  "src/components/MobilPanelCekmecesi.tsx": "kosullu",
   "src/components/NavbarWidget.tsx": "kabuk",
   "src/components/NotificationsBell.tsx": "sunum",
   "src/components/PersonalizeModal.tsx": "kosullu",

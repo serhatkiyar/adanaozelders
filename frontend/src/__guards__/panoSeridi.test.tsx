@@ -101,7 +101,7 @@ function seritHedefleri(): string[] {
 afterEach(() => cleanup());
 
 describe("panel şeridi · kimlik", () => {
-  it("DOLULUK: dört sekme, hepsi gerçek bir ROUTES hedefi", () => {
+  it("DOLULUK: altı sekme, hepsi gerçek bir ROUTES hedefi", () => {
     // Bu olmadan aşağıdaki "şerit çiziliyor" iddiaları BOŞ bir listeyle de
     // geçerdi — hiçbir sekme çizilmez, hiçbir şey itiraz etmezdi.
     //
@@ -114,14 +114,17 @@ describe("panel şeridi · kimlik", () => {
     // erişilebilirliği aşağıdaki "Kazançlar" düğümü korur.
     // ÜÇ (17 Eyl 2026): "Değerlendirmeler" şeritten hesap menüsüne taşındı.
     // BEŞ (17 Eyl 2026, Modül 7, kullanıcı kararı): Takvim ve Analizler girdi.
-    // Sıra da karardır: Pano · Takvim · Mesajlar · Analizler · İlanım.
-    expect(TUTOR_PANO_SEKMELERI).toHaveLength(5);
+    // ALTI (22 Eyl 2026, kullanıcı kararı): "İlanım" → "Profilim" yeniden
+    // adlandırıldı, "Ayarlar" hesap menüsüyle BİLİNÇLİ tekrar olarak eklendi.
+    // Sıra da karardır: Pano · Takvim · Mesajlar · Analizler · Profilim · Ayarlar.
+    expect(TUTOR_PANO_SEKMELERI).toHaveLength(6);
     expect(TUTOR_PANO_SEKMELERI.map((s) => s.label)).toEqual([
       "Pano",
       "Takvim",
       "Mesajlar",
       "Analizler",
-      "İlanım",
+      "Profilim",
+      "Ayarlar",
     ]);
     const bilinen = new Set(
       Object.values(ROUTES).filter((v): v is string => typeof v === "string")
