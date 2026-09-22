@@ -3,6 +3,7 @@ import type {
   ClientDashboardOut,
   ClientPublicOut,
   ClientSearchOut,
+  ClientTutor,
   Gender,
 } from "@/types";
 
@@ -30,6 +31,12 @@ export async function searchClients(
 }
 
 /** Öğrencinin panosu — ana kart ve sayılar sunucuda hesaplanır (Modül 4). */
+/** Öğrencinin ders aldığı öğretmenler (deneme dersi dahil). */
+export async function fetchMyTutors(): Promise<ClientTutor[]> {
+  const { data } = await apiClient.get<ClientTutor[]>("/clients/me/tutors");
+  return data;
+}
+
 export async function fetchMyClientDashboard(): Promise<ClientDashboardOut> {
   const { data } = await apiClient.get<ClientDashboardOut>("/clients/me/dashboard");
   return data;

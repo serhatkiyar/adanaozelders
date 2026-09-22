@@ -28,10 +28,11 @@ export function useStudyQuote(
   });
 }
 
-export function useMyStudyReservations() {
+export function useMyStudyReservations(enabled = true) {
   return useQuery({
     queryKey: ["study-reservations", "mine"],
     queryFn: fetchMyStudyReservations,
+    enabled,
   });
 }
 

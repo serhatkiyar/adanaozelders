@@ -110,7 +110,7 @@ describe("anonim yüzey · kayıt bandı SÖKÜLDÜ", () => {
     // sessizce geçerdi.
     ciz();
     expect(screen.queryByText(/ücretsiz hesap aç/i)).toBeNull();
-    expect(screen.queryByText(/Eğitmenleri keşfet/i)).toBeNull();
+    expect(screen.queryByText(/Öğretmenleri keşfet/i)).toBeNull();
   });
 });
 
@@ -128,7 +128,7 @@ describe("anonim yüzey · filtreler GERÇEK", () => {
     // Ders işleme şekli 16 Eyl 2026'da pencereden ÇIKTI: arama hapının kendi
     // adımı; burada ikinci bir yerden değiştirilmesi hapla çelişiyordu.
     // Mesafe yalnız "Yakınımda" seçiliyken görünür; adreste niyet yokken yok.
-    for (const baslik of ["Fiyat Aralığı", "Eğitmen cinsiyeti"]) {
+    for (const baslik of ["Fiyat Aralığı", "Öğretmen cinsiyeti"]) {
       expect(screen.getByText(baslik), `${baslik} grubu yok`).toBeTruthy();
     }
     expect(screen.queryByText("Ders İşleme Şekli")).toBeNull();
@@ -159,7 +159,7 @@ describe("anonim yüzey · filtreler GERÇEK", () => {
   it("sessiz eleme uyarısı anonime de görünüyor", async () => {
     await filtreyiAc();
     fireEvent.click(screen.getByRole("button", { name: /Kadın/ }));
-    await screen.findByText(/Cinsiyetini belirtmemiş 87 eğitmen/);
+    await screen.findByText(/Cinsiyetini belirtmemiş 87 öğretmen/);
   });
 });
 

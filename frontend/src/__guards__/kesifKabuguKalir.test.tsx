@@ -102,7 +102,7 @@ describe("keşif kabuğu · kategori değişiminde remount YOK", () => {
     await uygulamayiBas("/");
     expect(document.querySelector("header")).toBeTruthy();
     expect(kategoriBagi("Kütüphaneler")).toBeTruthy();
-    expect(kategoriBagi("Eğitmenler")).toBeTruthy();
+    expect(kategoriBagi("Öğretmenler")).toBeTruthy();
   });
 
   it("Kütüphaneler'e tıklamak AYNI header düğümünü korur", async () => {
@@ -131,7 +131,7 @@ describe("keşif kabuğu · kategori değişiminde remount YOK", () => {
   it("kategori şeridinin KENDİ düğümü de korunur", async () => {
     await uygulamayiBas("/");
     // Mağaza sekmesi bayrakla gizli (16 Eyl 2026); tıklanmayan sekme Eğitmenler.
-    const bagOnce = kategoriBagi("Eğitmenler");
+    const bagOnce = kategoriBagi("Öğretmenler");
     expect(bagOnce).toBeTruthy();
 
     await act(async () => {
@@ -143,7 +143,7 @@ describe("keşif kabuğu · kategori değişiminde remount YOK", () => {
       });
     }
 
-    expect(kategoriBagi("Eğitmenler")).toBe(bagOnce);
+    expect(kategoriBagi("Öğretmenler")).toBe(bagOnce);
   });
 
   it("KAYNAK SÖZLEŞMESİ: hata sınırı `key` ile sıfırlanmaz", () => {

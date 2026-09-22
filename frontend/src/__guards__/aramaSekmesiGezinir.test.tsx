@@ -57,7 +57,7 @@ describe("kategori sekmesi · gerçek gezinme", () => {
     // ölçmeden yeşil kalırdı.
     // Eğitmenler + Kütüphaneler; Mağaza bayrakla gizli (16 Eyl 2026).
     expect(screen.getAllByRole("link").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Eğitmenler")).toBeTruthy();
+    expect(screen.getByText("Öğretmenler")).toBeTruthy();
   });
 
   it("çubukta HİÇBİR `button` yok — hepsi bağlantı", () => {
@@ -72,7 +72,7 @@ describe("kategori sekmesi · gerçek gezinme", () => {
     expect(adres()).toBe(ROUTES.libraries);
   });
 
-  it("Eğitmenler'e tıklamak KEŞİF yüzeyine (`/`) götürür, arama sonucuna DEĞİL", () => {
+  it("Öğretmenler'e tıklamak KEŞİF yüzeyine (`/`) götürür, arama sonucuna DEĞİL", () => {
     /*
      * HEDEF 10 Eyl 2026'da DEĞİŞTİ (kullanıcı kararı), iddia zayıflamadı.
      *
@@ -83,7 +83,7 @@ describe("kategori sekmesi · gerçek gezinme", () => {
      * adresi olarak durur ve oraya arama hapından gidilir.
      */
     sar("kutuphaneler");
-    fireEvent.click(screen.getByText("Eğitmenler"));
+    fireEvent.click(screen.getByText("Öğretmenler"));
     expect(adres()).toBe(ROUTES.home);
     expect(adres(), "kategori hâlâ arama sonucuna götürüyor").not.toBe(
       ROUTES.tutors

@@ -24,6 +24,8 @@ export interface ListBookingsParams {
   /** Takvim penceresi (ISO, tz'li). İkisi birlikte verilir; aralık ≤ 8 gün. */
   start_from?: string;
   start_to?: string;
+  /** Eğitmenin Öğrenciler panelinde tek öğrencinin dersleri (yalnız TUTOR). */
+  client_id?: number;
 }
 
 export async function listBookings(

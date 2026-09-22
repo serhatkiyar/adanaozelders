@@ -130,7 +130,7 @@ afterEach(() => {
 });
 
 describe("ÜK-6 · favori düğmesi doğru rollere görünür", () => {
-  it("EĞİTMEN oturumunda düğmeler RENDER OLUR", () => {
+  it("ÖĞRETMEN oturumunda düğmeler RENDER OLUR", () => {
     // Kararın kendisi. Değişiklikten önce ikisi de `null` dönüyordu.
     sar(ROLE_IDS.TUTOR);
     expect(dugmeSayisi()).toBe(2);
@@ -222,13 +222,13 @@ describe("favori düğmesinin GÖRÜNÜMÜ", () => {
 });
 
 describe("ÜK-6 · ölü uç yok — favorileyen listesini de görebilir", () => {
-  it("eğitmen menüsünde Favorilerim bağlantısı VAR", () => {
+  it("öğretmen menüsünde Favorilerim bağlantısı VAR", () => {
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
     expect(UYE_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
     expect(OPERATOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(false);
   });
 
-  it("giriş sonrası favori niyeti EĞİTMENDE de uygulanır", async () => {
+  it("giriş sonrası favori niyeti ÖĞRETMENDE de uygulanır", async () => {
     /*
      * Beşinci katman — 9 Eyl 2026'da KAYNAK TARAMASINDAN DAVRANIŞA yükseltildi.
      *

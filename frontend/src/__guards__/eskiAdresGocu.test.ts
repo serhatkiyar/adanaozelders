@@ -57,7 +57,7 @@ const sorgu = (adres: string) =>
   new URLSearchParams(adres.includes("?") ? adres.split("?")[1] : "");
 
 describe("eski adres göçü · ESKİ AD OKUNUR", () => {
-  it("eğitmen: `?subject=&mode=&exam=&gender=&district=` bugünküyle aynı sonucu verir", () => {
+  it("öğretmen: `?subject=&mode=&exam=&gender=&district=` bugünküyle aynı sonucu verir", () => {
     const eski = new URLSearchParams(
       "subject=matematik&subject=fizik&mode=IN_PERSON&exam=TYT&gender=FEMALE&district=Seyhan&sayfa=2"
     );
@@ -102,7 +102,7 @@ describe("eski adres göçü · ESKİ AD OKUNUR", () => {
 });
 
 describe("eski adres göçü · YALNIZ YENİ AD YAZILIR", () => {
-  it("eğitmen: okunan eski adres yeniden yazılınca Türkçeleşir", () => {
+  it("öğretmen: okunan eski adres yeniden yazılınca Türkçeleşir", () => {
     const eski = new URLSearchParams(
       "subject=matematik&mode=IN_PERSON&exam=TYT&gender=FEMALE&district=Seyhan"
     );
@@ -148,7 +148,7 @@ describe("eski adres göçü · YALNIZ YENİ AD YAZILIR", () => {
 });
 
 describe("eski adres göçü · ESKİ DEĞER OKUNUR", () => {
-  it("eğitmen: ham enum değerleri hâlâ tanınıyor", () => {
+  it("öğretmen: ham enum değerleri hâlâ tanınıyor", () => {
     // Paylaşılmış `?mode=IN_PERSON&gender=FEMALE&sort=rating_desc` linki
     // ölmemeli: değer göçü ad göçüyle aynı sessiz kırılma sınıfı.
     const okunan = aramayiOku(
@@ -160,7 +160,7 @@ describe("eski adres göçü · ESKİ DEĞER OKUNUR", () => {
     expect(okunan.sirala).toBe(TutorSort.RATING_DESC);
   });
 
-  it("eğitmen: yeni Türkçe değerler de okunuyor", () => {
+  it("öğretmen: yeni Türkçe değerler de okunuyor", () => {
     const okunan = aramayiOku(
       EGITMEN_ARAMA,
       new URLSearchParams("sekil=uzaktan&cinsiyet=erkek&sirala=fiyat-artan")

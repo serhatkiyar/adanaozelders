@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
 
 import {
   ACIKLAMA,
@@ -69,12 +69,15 @@ const SECIM = "h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text
 export function DersTeklifModal({
   aralik,
   onClose,
+  varsayilanOgrenciId,
 }: {
   aralik: TeklifAraligi;
   onClose: () => void;
+  /** Öğrenciler sayfasındaki "Ders teklif et"ten gelinince ön seçili öğrenci. */
+  varsayilanOgrenciId?: number;
 }) {
   const kimlik = useId();
-  const [ogrenciId, setOgrenciId] = useState<number | "">("");
+  const [ogrenciId, setOgrenciId] = useState<number | "">(varsayilanOgrenciId ?? "");
   const [ucret, setUcret] = useState("");
   const [not, setNot] = useState("");
   const [hata, setHata] = useState<string | null>(null);
@@ -91,6 +94,17 @@ export function DersTeklifModal({
   const [onizleme, setOnizleme] = useState<LessonSeriesPreview | null>(null);
 
   const ogrenciler = useMyStudents(true);
+  // Ön seçili id listede yoksa (ör. ilk 100 kaydın dışında) seçim boşa düşer;
+  // kontrollü <select> görünmeyen bir değer tutmasın.
+  useEffect(() => {
+    if (
+      ogrenciId !== "" &&
+      ogrenciler.data &&
+      !ogrenciler.data.some((o) => o.client_id === ogrenciId)
+    ) {
+      setOgrenciId("");
+    }
+  }, [ogrenciId, ogrenciler.data]);
   const teklif = useOfferLesson();
   const onizle = useSeriOnizleme();
   const seri = useSeriOlustur();

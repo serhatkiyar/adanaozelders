@@ -79,7 +79,7 @@ function kabuguCiz(roleId: number, baslangic = ROUTES.bookings) {
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[baslangic]}>
-        {/* Gerçek eğitmen sayfaları `navItems`i açıkça geçer (şerit ise
+        {/* Gerçek öğretmen sayfaları `navItems`i açıkça geçer (şerit ise
             kabukta rolden türetilir); kurulum onu birebir taklit eder. */}
         <DashboardShell title="Test" navItems={navForRole(roleId)}>
           içerik
@@ -101,7 +101,7 @@ function seritHedefleri(): string[] {
 afterEach(() => cleanup());
 
 describe("panel şeridi · kimlik", () => {
-  it("DOLULUK: altı sekme, hepsi gerçek bir ROUTES hedefi", () => {
+  it("DOLULUK: yedi sekme, hepsi gerçek bir ROUTES hedefi", () => {
     // Bu olmadan aşağıdaki "şerit çiziliyor" iddiaları BOŞ bir listeyle de
     // geçerdi — hiçbir sekme çizilmez, hiçbir şey itiraz etmezdi.
     //
@@ -116,12 +116,15 @@ describe("panel şeridi · kimlik", () => {
     // BEŞ (17 Eyl 2026, Modül 7, kullanıcı kararı): Takvim ve Analizler girdi.
     // ALTI (22 Eyl 2026, kullanıcı kararı): "İlanım" → "Profilim" yeniden
     // adlandırıldı, "Ayarlar" hesap menüsüyle BİLİNÇLİ tekrar olarak eklendi.
-    // Sıra da karardır: Pano · Takvim · Mesajlar · Analizler · Profilim · Ayarlar.
-    expect(TUTOR_PANO_SEKMELERI).toHaveLength(6);
+    // YEDİ (22 Eyl 2026, kullanıcı kararı): "Öğrenciler" girdi (Preply §4).
+    // Sıra da karardır: Genel Bakış · Takvim · Mesajlar · Öğrenciler ·
+    // Analizler · Profilim · Ayarlar.
+    expect(TUTOR_PANO_SEKMELERI).toHaveLength(7);
     expect(TUTOR_PANO_SEKMELERI.map((s) => s.label)).toEqual([
-      "Pano",
+      "Genel Bakış",
       "Takvim",
       "Mesajlar",
+      "Öğrenciler",
       "Analizler",
       "Profilim",
       "Ayarlar",
@@ -141,10 +144,10 @@ describe("panel şeridi · kimlik", () => {
     // Etiket gerekçeleri `lib/nav.ts::UYE_PANO_SEKMELERI`de. Favoriler bilerek
     // yok (üst bardaki kalp + menü taşıyor).
     expect(UYE_PANO_SEKMELERI.map((s) => s.label)).toEqual([
-      "Pano",
-      "Rezervasyonlar",
+      "Genel Bakış",
+      "Derslerim",
       "Mesajlar",
-      "Hesabım",
+      "Ayarlar",
     ]);
     const bilinen = new Set(
       Object.values(ROUTES).filter((v): v is string => typeof v === "string")
@@ -161,14 +164,14 @@ describe("panel şeridi · kimlik", () => {
   it("Pano sekmesi PANOYA gider, ana sayfaya değil", () => {
     // İlk denemede `to: "/"` yazılmıştı ve "Panom" eğitmen LİSTESİNİ açıyordu;
     // kullanıcı bunu hemen yakaladı. Düğüm o hatanın tekrarını engeller.
-    const pano = TUTOR_PANO_SEKMELERI.find((s) => s.label === "Pano");
+    const pano = TUTOR_PANO_SEKMELERI.find((s) => s.label === "Genel Bakış");
     expect(pano, "şeritte Pano sekmesi yok").toBeTruthy();
     expect(pano!.to).toBe(ROUTES.bookings);
   });
 });
 
 describe("panel şeridi · gerçekten çiziliyor", () => {
-  it("eğitmende altı sekmenin hepsi DOM'da", () => {
+  it("öğretmende altı sekmenin hepsi DOM'da", () => {
     girisYap(ROLE_IDS.TUTOR);
     kabuguCiz(ROLE_IDS.TUTOR);
     expect(seritHedefleri().sort()).toEqual(
@@ -186,7 +189,7 @@ describe("panel şeridi · gerçekten çiziliyor", () => {
     expect(aktif[0].getAttribute("href")).toBe(ROUTES.tutorListing);
   });
 
-  it("öğrencide KENDİ dört sekmesi DOM'da (eğitmenin sekmeleri değil)", () => {
+  it("öğrencide KENDİ dört sekmesi DOM'da (öğretmenin sekmeleri değil)", () => {
     // 8 Eyl'de "üye için şerit HİÇ çizilmez" yazıyordu; Modül 4'te (18 Eyl
     // 2026) öğrenci kendi şeridini aldı. Asıl tehlike aynı: eğitmen şeridi
     // öğrenciye sızarsa "İlanım"ı görür — o yüzden hedefler birebir ölçülür.
@@ -226,7 +229,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     expect(eksik.map((i) => `${i.label} → ${i.to}`)).toEqual([]);
   });
 
-  it("şerit ∪ hesap menüsü — eğitmenin her yüzeyi bir yerden açılıyor", () => {
+  it("şerit ∪ hesap menüsü — öğretmenin her yüzeyi bir yerden açılıyor", () => {
     girisYap(ROLE_IDS.TUTOR);
     kabuguCiz(ROLE_IDS.TUTOR);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
@@ -257,7 +260,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
       "utf8"
     );
     expect(ozet).toContain("ROUTES.tutorEarnings");
-    const pano = TUTOR_PANO_SEKMELERI.find((s) => s.label === "Pano");
+    const pano = TUTOR_PANO_SEKMELERI.find((s) => s.label === "Genel Bakış");
     expect(pano?.altYollar).toContain(ROUTES.tutorEarnings);
   });
 
@@ -275,7 +278,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     }
   });
 
-  it("eğitmen menüsünün ilk satırı PANOM ve panoya gider", () => {
+  it("öğretmen menüsünün ilk satırı PANOM ve panoya gider", () => {
     /*
      * Kullanıcı kararı (8 Eyl 2026): *"hesabım tıklamıcaz menüden Panom
      * yazıcak ona tıklayacağız."*
@@ -290,7 +293,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     kabuguCiz(ROLE_IDS.TUTOR);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
 
-    const panom = screen.getAllByRole("link", { name: /Panom/ });
+    const panom = screen.getAllByRole("link", { name: /Genel Bakış/ });
     expect(panom.length, "menüde Panom satırı yok").toBeGreaterThan(0);
     expect(panom[0].getAttribute("href")).toBe(ROUTES.bookings);
 
@@ -319,16 +322,17 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
      * gerekçesi üyenin şeridi olmamasıydı. Modül 4'te (18 Eyl 2026) öğrenci
      * panosu ve şeridi geldi, eğitmenin gerekçesi öğrenci için de geçerli
      * oldu: ana sayfada (Landing) şerit çizilmez, panoya dönüş bu satırdır.
-     * Hesabım kaybolmadı — şeridin dördüncü sekmesi.
+     * Hesap merkezi kaybolmadı — şeridin dördüncü sekmesi ("Ayarlar",
+     * 22 Eyl 2026'ya kadar "Hesabım").
      */
     girisYap(ROLE_IDS.CLIENT);
     kabuguCiz(ROLE_IDS.CLIENT);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
 
-    const panom = screen.getAllByRole("link", { name: /Panom/ });
+    const panom = screen.getAllByRole("link", { name: /Genel Bakış/ });
     expect(panom[0].getAttribute("href")).toBe(ROUTES.bookings);
-    const hesabim = screen.getAllByRole("link", { name: "Hesabım" });
-    expect(hesabim.some((a) => a.getAttribute("href") === ROUTES.profile)).toBe(true);
+    const ayarlar = screen.getAllByRole("link", { name: "Ayarlar" });
+    expect(ayarlar.some((a) => a.getAttribute("href") === ROUTES.settings)).toBe(true);
   });
 
   it("HESABIM'dan taşınan yüzeyler İlanım'da duruyor", () => {
@@ -351,7 +355,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     // `import` satırı kaynakta kalıyor ve eşleşme sağlıyordu.
     expect(
       ilanim.includes("<ProfilFotografi"),
-      "profil fotoğrafı İlanım'dan düşmüş — eğitmen fotoğrafını değiştiremez"
+      "profil fotoğrafı İlanım'dan düşmüş — öğretmen fotoğrafını değiştiremez"
     ).toBe(true);
     expect(
       ilanim.includes("<EducationSection"),
@@ -363,7 +367,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     ).toBe(true);
   });
 
-  it("`/pano/hesabim` eğitmende 404 DEĞİL, ayarlara yönlendirir", () => {
+  it("`/pano/hesabim` öğretmende 404 DEĞİL, ayarlara yönlendirir", () => {
     // Rota üretimde canlıydı ve eski bildirim satırları (ad değişikliği) hâlâ
     // onu taşıyor. Sekme kalktı diye rotanın düşmesi, o bildirimlere tıklayan
     // eğitmene 404 gösterirdi.
@@ -375,7 +379,7 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     expect(dagitici, "AccountDispatcher bulunamadı").not.toBe("");
     expect(
       /ROLE_IDS\.TUTOR[\s\S]*?Navigate[\s\S]*?ROUTES\.settings/.test(dagitici),
-      "eğitmen `/pano/hesabim`e giderse artık boş/ölü bir ekran görüyor"
+      "öğretmen `/pano/hesabim`e giderse artık boş/ölü bir ekran görüyor"
     ).toBe(true);
   });
 

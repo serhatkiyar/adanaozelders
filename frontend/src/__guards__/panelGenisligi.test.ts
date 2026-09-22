@@ -60,6 +60,8 @@ const SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
   // Takvim ve Analizler şeride girdi (Modül 7, 17 Eyl 2026).
   { rota: ROUTES.tutorCalendar, dosya: ["pages", "TutorCalendar.tsx"], etiket: "Takvim" },
   { rota: ROUTES.messages, dosya: ["pages", "Messages.tsx"], etiket: "Mesajlar" },
+  // "Öğrenciler" 22 Eyl 2026'da şeride girdi (kullanıcı kararı).
+  { rota: ROUTES.tutorStudents, dosya: ["pages", "TutorStudents.tsx"], etiket: "Öğrenciler" },
   { rota: ROUTES.tutorAnalytics, dosya: ["pages", "TutorAnalytics.tsx"], etiket: "Analizler" },
   { rota: ROUTES.tutorListing, dosya: ["pages", "TutorSettings.tsx"], etiket: "Profilim" },
   // "Ayarlar" 22 Eyl 2026'da şeride eklendi (kullanıcı kararı, bkz. `nav.ts`).
@@ -73,9 +75,9 @@ const SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
  */
 const UYE_SEKME_SAYFALARI: { rota: string; dosya: string[]; etiket: string }[] = [
   { rota: ROUTES.bookings, dosya: ["pages", "OgrenciPano.tsx"], etiket: "Öğrenci Pano" },
-  { rota: ROUTES.reservations, dosya: ["pages", "Reservations.tsx"], etiket: "Rezervasyonlar" },
+  { rota: ROUTES.reservations, dosya: ["pages", "Reservations.tsx"], etiket: "Derslerim" },
 ];
-const UYE_KAPSAM_DISI = [ROUTES.messages, ROUTES.profile];
+const UYE_KAPSAM_DISI = [ROUTES.messages, ROUTES.settings];
 
 describe("panel genişliği · adlandırılmış sınıf", () => {
   it("DOLULUK: sınıf listesi gerçekten dolu ve Tailwind sınıfı taşıyor", () => {

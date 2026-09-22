@@ -80,7 +80,7 @@ const DOLU_KUTUPHANE: KutuphaneAramasi = {
 };
 
 describe("filtreler adreste · KAPSAM", () => {
-  it("eğitmen: API'nin her filtresi URL'den doğuyor", () => {
+  it("öğretmen: API'nin her filtresi URL'den doğuyor", () => {
     // Bu düğüm "hangi filtreler adreste" sorusunun tam cevabı. Yeni bir API
     // filtresi eklenip URL'e bağlanmazsa burada eksik çıkar.
     const istek = egitmenIstegi(DOLU_EGITMEN, {

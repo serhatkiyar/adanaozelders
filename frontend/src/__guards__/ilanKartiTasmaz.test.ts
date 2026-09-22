@@ -228,7 +228,7 @@ describe("ilan sayfası · sabit kart", () => {
         kod.split("Geri dön").length - 1,
         "beklenen: yalnız hata dalındaki tek kopya"
       ).toBe(1);
-      const hataBasi = kod.indexOf("Eğitmen bulunamadı");
+      const hataBasi = kod.indexOf("Öğretmen bulunamadı");
       const geriDonYeri = kod.indexOf("Geri dön");
       expect(hataBasi, "hata dalı bulunamadı").toBeGreaterThan(0);
       expect(Math.abs(hataBasi - geriDonYeri)).toBeLessThan(1500);

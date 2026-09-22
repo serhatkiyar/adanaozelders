@@ -117,7 +117,7 @@ describe("bayrak AÇIK — öğrenci talepleri geri gelir (6 Eyl)", () => {
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.demands)).toBe(true);
   });
 
-  it("eğitmen menüsünde /talepler yeniden GERÇEK bağlantı", () => {
+  it("öğretmen menüsünde /talepler yeniden GERÇEK bağlantı", () => {
     sar(<DashboardHeader navItems={TUTOR_NAV} />);
     fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
     const hedefler = Array.from(document.body.querySelectorAll("a[href]")).map(
@@ -169,7 +169,7 @@ describe("bayrak AÇIK — Öğren menüye ve rotaya geri döner", () => {
   // Menü dizileri modül yüklenirken bayraktan türüyor; `vi.mock` hoist edildiği
   // için STATİK import da mock'lanmış değeri görür — dinamik `import()` gereksiz
   // ve `__guards__/tembelModul.test.ts` onu gerekçesiz saymakta haklı.
-  it("öğrenci ve eğitmen menüsünde 'Öğren' yeniden var", () => {
+  it("öğrenci ve öğretmen menüsünde 'Öğren' yeniden var", () => {
     for (const [ad, menu] of [
       ["UYE_NAV", UYE_NAV],
       ["TUTOR_NAV", TUTOR_NAV],

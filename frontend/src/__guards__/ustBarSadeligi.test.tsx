@@ -113,7 +113,7 @@ describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
     expect(screen.getByRole("button", { name: "Bildirimler" })).toBeTruthy();
   });
 
-  it("eğitmende yalnız mesaj (bağlantı) + bildirim (panel düğmesi) — kalp YOK, favoriler hesap menüsünde", () => {
+  it("öğretmende yalnız mesaj (bağlantı) + bildirim (panel düğmesi) — kalp YOK, favoriler hesap menüsünde", () => {
     // 18 Eyl 2026'da DEĞİŞTİ (kullanıcı kararı): Preply'da favori yalnız
     // "favori öğretmen"dir ve eğitmenin üst barında kalp yoktur. Eğitmenin
     // favorileri menüde kalır (`ustBarda: false`), üst bara çıkmaz.
@@ -124,7 +124,7 @@ describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
     // açtı; ÜK-2'nin ASIL kuralı ("en fazla TEK kısayol, o da Favorilerim")
     // bozulmadı, iki rolde de aynı tek kısayol var.
     useAuthStore.setState({
-      user: { id: 2, role_id: ROLE_IDS.TUTOR, display_name: "Eğitmen", email: "e@example.com" },
+      user: { id: 2, role_id: ROLE_IDS.TUTOR, display_name: "Öğretmen", email: "e@example.com" },
     } as never);
     sar(TUTOR_NAV);
     expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT].sort());
@@ -197,9 +197,11 @@ describe("üst bar · KALDIRILAN kısayolların hedefi hâlâ erişilebilir", ()
     );
   });
 
+  // Eğitmen bu listede YOK (22 Eyl 2026, kullanıcı kararı): masaüstü avatar
+  // menüsü sabit bir listedir (aşağıdaki "eğitmen avatar menüsü" düğümü);
+  // `TUTOR_NAV` yalnız mobil çekmecede çizilir.
   it.each([
     ["öğrenci", ROLE_IDS.CLIENT, UYE_NAV],
-    ["eğitmen", ROLE_IDS.TUTOR, TUTOR_NAV],
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: rol menüsündeki HER hedef hesap menüsünde bağlantı", (_ad, rol, nav) => {
     useAuthStore.setState({
@@ -263,9 +265,10 @@ describe("üst bar · bildirim paneli açılıyor VE tam sayfa hâlâ erişilebi
     ).toHaveAttribute("href", ROUTES.notifications);
   });
 
+  // Öğretmen ve öğrenci YOK: ikisinin de avatar menüsü sabit liste (22 Eyl
+  // 2026); tam sayfaya zil panelindeki "Tüm bildirimleri gör" götürür
+  // (yukarıdaki düğüm).
   it.each([
-    ["öğrenci", ROLE_IDS.CLIENT, UYE_NAV],
-    ["eğitmen", ROLE_IDS.TUTOR, TUTOR_NAV],
     ["operatör", ROLE_IDS.LIBRARY_OPERATOR, OPERATOR_NAV],
   ])("%s: hesap menüsünde `/bildirimler` bağlantısı VAR", (_ad, rol, nav) => {
     useAuthStore.setState({
@@ -280,5 +283,67 @@ describe("üst bar · bildirim paneli açılıyor VE tam sayfa hâlâ erişilebi
       hedefler,
       "zil kaldırıldı ve menüde de yok: bildirimlere artık hiçbir yerden gidilemiyor"
     ).toContain(ROUTES.notifications);
+  });
+});
+
+describe("öğretmen avatar menüsü (kullanıcı kararı, 22 Eyl 2026)", () => {
+  it("sıra: Mesajlar · Öğrenciler · Takvim · Analizler · Profilim · Ayarlar · Yardım · Oturumu kapat", () => {
+    useAuthStore.setState({
+      user: { id: 5, role_id: ROLE_IDS.TUTOR, display_name: "E", email: "e@example.com" },
+    } as never);
+    sar(TUTOR_NAV as NavItem[]);
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+
+    const menu = screen.getByRole("button", { name: "Oturumu kapat" }).parentElement!;
+    const satirlar = Array.from(menu.querySelectorAll("a, button")).map((el) =>
+      (el.textContent ?? "").trim()
+    );
+    expect(satirlar).toEqual([
+      "Mesajlar",
+      "Öğrenciler",
+      "Takvim",
+      "Analizler",
+      "Profilim",
+      "Ayarlar",
+      "Yardım",
+      "Oturumu kapat",
+    ]);
+    expect(screen.getByRole("link", { name: "Yardım" })).toHaveAttribute("href", ROUTES.faq);
+    expect(screen.getByRole("link", { name: "Öğrenciler" })).toHaveAttribute(
+      "href",
+      ROUTES.tutorStudents
+    );
+    expect(screen.getByRole("link", { name: "Profilim" })).toHaveAttribute(
+      "href",
+      ROUTES.tutorListing
+    );
+  });
+});
+
+describe("öğrenci avatar menüsü (kullanıcı kararı, 22 Eyl 2026)", () => {
+  it("sıra: Genel Bakış · Mesajlar · Derslerim · Favorilerim · Ayarlar · Yardım · Oturumu kapat", () => {
+    useAuthStore.setState({
+      user: { id: 6, role_id: ROLE_IDS.CLIENT, display_name: "Ö", email: "o@example.com" },
+    } as never);
+    sar(UYE_NAV as NavItem[]);
+    fireEvent.click(screen.getByRole("button", { name: "Hesap menüsü" }));
+
+    const menu = screen.getByRole("button", { name: "Oturumu kapat" }).parentElement!;
+    const satirlar = Array.from(menu.querySelectorAll("a, button")).map((el) =>
+      (el.textContent ?? "").trim()
+    );
+    expect(satirlar).toEqual([
+      "Genel Bakış",
+      "Mesajlar",
+      "Derslerim",
+      "Favorilerim",
+      "Ayarlar",
+      "Yardım",
+      "Oturumu kapat",
+    ]);
+    expect(screen.getByRole("link", { name: "Derslerim" })).toHaveAttribute(
+      "href",
+      ROUTES.reservations
+    );
   });
 });

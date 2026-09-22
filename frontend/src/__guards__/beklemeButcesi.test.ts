@@ -52,7 +52,7 @@ import { butceKapisi } from "@/test-utils/beklemeButcesi";
  *     bırakıldı (eski 5000'den indirildi).
  */
 const DOSYA_BUTCELERI = [
-  "src/pages/dashboards/operatorPanel.acceptance.test.tsx:98 5000",
+  "src/pages/dashboards/operatorPanel.acceptance.test.tsx:99 5000",
   "src/pages/operatorBalance.acceptance.test.tsx:66 3000",
 ];
 

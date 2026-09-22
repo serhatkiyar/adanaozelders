@@ -385,7 +385,7 @@ export interface ClientPublicOut {
   avatar_url?: string | null;
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD" — yalnız admin yanıtında dolu (KVKK)
-  age?: number | null; // eğitmen yüzeyi yaş bilgisini buradan alır
+  age?: number | null; // öğretmen yüzeyi yaş bilgisini buradan alır
   gender?: Gender | null;
   created_at: string;
   last_seen_at?: string | null;
@@ -955,12 +955,43 @@ export interface TimeOffCreated {
 /* ============================ DERS TEKLİFİ (Modül 8) ============================ */
 
 /** Eğitmenin ders ilişkisi olan öğrencisi. */
+/** Öğrencinin ders aldığı öğretmen ("Derslerim → Öğretmenlerim"). */
+export interface ClientTutor {
+  tutor_id: number;
+  full_name: string | null;
+  avatar_url: string | null;
+  hourly_rate: string | null;
+  last_lesson_at: string | null;
+  next_lesson_at: string | null;
+  /** Yalnız onaylı dersler. */
+  completed_lesson_count: number;
+  /** Yalnız ücretsiz ilk ders alınmış, tamamlanmış ders yok. */
+  trial_only: boolean;
+}
+
 export interface TutorStudent {
   client_id: number;
   full_name: string | null;
   avatar_url: string | null;
+  /** Başlamış kabul edilmiş/tamamlanmış son ders; iptal/red sayılmaz. */
   last_lesson_at: string | null;
+  /** Kabul edilmiş ilk gelecek ders; bekleyen teklif/talep sayılmaz. */
+  next_lesson_at: string | null;
+  /** Yalnız onaylı (COMPLETED) dersler — Öğrenciler sayfasındaki "Toplam ders". */
+  completed_lesson_count: number;
+  /** Tüm rezervasyon kaydı (talep/teklif dahil) — ders teklifi penceresi. */
   lesson_count: number;
+  /** TRIAL | WEEKLY | SINGLE; yalnız iptal/red kaydı olanda null. */
+  kind: "TRIAL" | "WEEKLY" | "SINGLE" | null;
+  /** Ücretsiz ilk dersin tarihi. */
+  trial_at: string | null;
+  /** Bu eğitmenle ilk ders (kabul edilmiş/tamamlanmış). */
+  first_lesson_at: string | null;
+  /** "Önerilen eylem" — yalnız gerçekten yapılabilen eylemler. */
+  suggested_action: {
+    kind: "RESPOND_REQUEST" | "COMPLETE_LESSON" | "OFFER_PENDING" | "PLAN_LESSON";
+    booking_id: number | null;
+  } | null;
 }
 
 /** Eğitmenin gönderdiği ders teklifi; fiyat boşsa ilan ücreti kullanılır. */
@@ -1111,7 +1142,7 @@ export interface TutorSeries {
 export enum PaymentStatus {
   PENDING = "PENDING", // tutor kabul etti; öğrencinin ödemesi bekleniyor
   HELD = "HELD", // ödendi; tutar emanette (escrow)
-  RELEASED = "RELEASED", // ders tamamlandı; eğitmene aktarıldı
+  RELEASED = "RELEASED", // ders tamamlandı; öğretmene aktarıldı
   REFUNDING = "REFUNDING", // iade süreci başladı; sağlayıcı teyidi bekleniyor
   REFUNDED = "REFUNDED", // iptal; öğrenciye iade
   FAILED = "FAILED", // ödeme başarısız
@@ -1313,8 +1344,8 @@ export interface DemandOut {
   budget_max?: string | null; // Decimal -> string
   status: DemandStatus;
   created_at: string;
-  client_name?: string | null; // eğitmen browse'ında öğrencinin görünen adı
-  responded?: boolean; // eğitmen browse'ında: bu eğitmen yanıtladı mı
+  client_name?: string | null; // öğretmen browse'ında öğrencinin görünen adı
+  responded?: boolean; // öğretmen browse'ında: bu öğretmen yanıtladı mı
   response_count?: number; // öğrenci kendi talebinde: gelen yanıt sayısı
 }
 

@@ -154,15 +154,15 @@ describe("Mesajlar · telefon başlığı", () => {
     expect(screen.getByRole("heading", { name: "Mesajlar" })).toBeTruthy();
   });
 
-  it("boş kutuda üyeye eğitmen arama yolu gösterilir", () => {
+  it("boş kutuda üyeye öğretmen arama yolu gösterilir", () => {
     ekraniBas(ROLE_IDS.CLIENT);
-    const bag = screen.getByRole("link", { name: "Eğitmenleri keşfet" });
+    const bag = screen.getByRole("link", { name: "Öğretmenleri keşfet" });
     expect(bag.getAttribute("href")).toBe(ROUTES.tutors);
   });
 
-  it("eğitmende o düğme YOKTUR — eğitmen sohbeti başlatan taraf değil", () => {
+  it("öğretmende o düğme YOKTUR — öğretmen sohbeti başlatan taraf değil", () => {
     ekraniBas(ROLE_IDS.TUTOR);
     expect(screen.getByText("Henüz mesajın yok")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Eğitmenleri keşfet" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Öğretmenleri keşfet" })).toBeNull();
   });
 });

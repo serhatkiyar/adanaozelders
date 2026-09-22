@@ -34,10 +34,11 @@ export function usePublicSessions(libraryId: number | undefined) {
   });
 }
 
-export function useMyRegistrations() {
+export function useMyRegistrations(enabled = true) {
   return useQuery({
     queryKey: ["exam-registrations", "mine"],
     queryFn: fetchMyRegistrations,
+    enabled,
   });
 }
 

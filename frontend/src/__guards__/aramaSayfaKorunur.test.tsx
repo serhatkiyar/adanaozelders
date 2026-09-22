@@ -106,7 +106,7 @@ beforeEach(() => {
   vi.mocked(useLibrarySearch).mockClear();
 });
 
-describe("?sayfa= korunur · eğitmen", () => {
+describe("?sayfa= korunur · öğretmen", () => {
   it("DOLULUK: arama kancası gerçekten çağrılıyor", () => {
     ciz(PublicMarketplace, "/egitmenler");
     expect(vi.mocked(useTutorSearch)).toHaveBeenCalled();

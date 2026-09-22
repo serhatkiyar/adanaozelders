@@ -52,7 +52,7 @@ function olcuKur({
 
 const ciz = () =>
   render(
-    <HScroll className="gap-5" etiket="Eğitmenler" baslik={<h2>Eğitmenler</h2>}>
+    <HScroll className="gap-5" etiket="Öğretmenler" baslik={<h2>Öğretmenler</h2>}>
       {Array.from({ length: 12 }).map((_, i) => (
         <div key={i} style={{ width: 200 }}>
           kart {i}
@@ -61,8 +61,8 @@ const ciz = () =>
     </HScroll>
   );
 
-const sol = () => screen.getByRole("button", { name: "Eğitmenler: sola kaydır" });
-const sag = () => screen.getByRole("button", { name: "Eğitmenler: sağa kaydır" });
+const sol = () => screen.getByRole("button", { name: "Öğretmenler: sola kaydır" });
+const sag = () => screen.getByRole("button", { name: "Öğretmenler: sağa kaydır" });
 
 afterEach(() => cleanup());
 
@@ -77,7 +77,7 @@ describe("vitrin kuşağı · kaydırma okları", () => {
     expect(kap.contains(sag()), "ok kaydırma kabının içinde").toBe(false);
 
     // Başlıkla AYNI satırda: ortak en yakın kap hem başlığı hem oku taşır.
-    const satir = screen.getByText("Eğitmenler").parentElement!;
+    const satir = screen.getByText("Öğretmenler").parentElement!;
     expect(satir.contains(sag()), "ok başlık satırında değil").toBe(true);
   });
 
@@ -167,7 +167,7 @@ describe("vitrin kuşağı · kaydırma okları", () => {
     olcuKur({ scrollLeft: 0, clientWidth: 2000, scrollWidth: 2000 });
     expect(screen.queryByRole("button", { name: /kaydır/ })).toBeNull();
     // DOLULUK: başlık yine de duruyor — kuşak render olmuş.
-    expect(screen.getByText("Eğitmenler")).toBeTruthy();
+    expect(screen.getByText("Öğretmenler")).toBeTruthy();
   });
 
   it("`baslik` verilmezse ok çizilmez (eski üstüne binen desen geri gelmez)", () => {

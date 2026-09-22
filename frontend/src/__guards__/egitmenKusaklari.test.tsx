@@ -122,7 +122,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("ana sayfa eğitmen kuşakları", () => {
+describe("ana sayfa öğretmen kuşakları", () => {
   it("NÖBETÇİ: kuşak gerçekten dolu render oluyor (boş kümede ölçüm yok)", async () => {
     sayfayiBas();
     // Eğitmen kartları basılmazsa aşağıdaki "sahte başlık yok" iddiaları
@@ -131,10 +131,10 @@ describe("ana sayfa eğitmen kuşakları", () => {
     expect(screen.getAllByText("Mehmet")[0]).toBeTruthy();
   });
 
-  it("tek eğitmen kuşağı var ve başlığı 'Eğitmenler'", async () => {
+  it("tek öğretmen kuşağı var ve başlığı 'Öğretmenler'", async () => {
     sayfayiBas();
     await waitFor(() => expect(screen.getAllByText("Ayşe")[0]).toBeTruthy());
-    expect(kusakBasliklari()).toEqual(["Eğitmenler"]);
+    expect(kusakBasliklari()).toEqual(["Öğretmenler"]);
   });
 
   it("öne çıkarma YOKKEN 'Reklam' başlığı hiç çizilmez", async () => {
@@ -160,7 +160,7 @@ describe("ana sayfa eğitmen kuşakları", () => {
     ];
     sayfayiBas();
     await waitFor(() => expect(screen.getAllByText("Zeynep")[0]).toBeTruthy());
-    expect(kusakBasliklari()).toEqual(["Reklam", "Eğitmenler"]);
+    expect(kusakBasliklari()).toEqual(["Reklam", "Öğretmenler"]);
     // Yasal zorunluluk: ücretli yerleşim kartın ÜZERİNDE ayırt edilebilir.
     expect(screen.getAllByText("Reklam").length).toBeGreaterThanOrEqual(2);
   });
@@ -185,7 +185,7 @@ describe("ana sayfa eğitmen kuşakları", () => {
     }
   });
 
-  it("eğitmen araması TEK KEZ yapılıyor (üç kopya kuşak kalktı)", async () => {
+  it("öğretmen araması TEK KEZ yapılıyor (üç kopya kuşak kalktı)", async () => {
     sayfayiBas();
     await waitFor(() => expect(screen.getAllByText("Ayşe")[0]).toBeTruthy());
     // Üç sabit kuşak üç ayrı istek üretiyordu; aynı sonucu üç kez çekmek

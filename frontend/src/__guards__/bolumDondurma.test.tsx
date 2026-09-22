@@ -86,13 +86,13 @@ describe("ÖN KOŞUL — bayrak değerleri", () => {
 });
 
 describe("A — kategori çubuğu (gerçek DOM)", () => {
-  it("NÖBETÇİ: çubuk render oluyor; Eğitmenler ve Kütüphaneler GERÇEK bağlantı", () => {
+  it("NÖBETÇİ: çubuk render oluyor; Öğretmenler ve Kütüphaneler GERÇEK bağlantı", () => {
     sar(<CategoryBar />);
     // Eğitmenler hedefi 10 Eyl 2026'da `/egitmenler`den `/`e çekildi:
     // kategori değiştirmek arama yapmak değildir, hedef o kategorinin KEŞİF
     // yüzeyidir (kullanıcı kararı — bkz. `CategoryBar` içindeki gerekçe).
     expect(
-      screen.getByRole("link", { name: /Eğitmenler/ }).getAttribute("href")
+      screen.getByRole("link", { name: /Öğretmenler/ }).getAttribute("href")
     ).toBe("/");
     expect(
       screen.getByRole("link", { name: /Kütüphaneler/ }).getAttribute("href")
@@ -131,7 +131,7 @@ describe("A — kategori çubuğu (gerçek DOM)", () => {
 
     // Mağaza yalnız bayrak açıkken çubukta (16 Eyl 2026: kapalı, gizli).
     for (const [etiket, hedef] of [
-      ["Eğitmenler", "/"],
+      ["Öğretmenler", "/"],
       ["Kütüphaneler", "/kutuphaneler"],
       ...(MAGAZA_ACIK ? ([["Mağaza", "/magaza"]] as const) : []),
     ] as const) {
@@ -337,7 +337,7 @@ describe("F — öğrenci talepleri donduruldu (6 Eyl · gerçek App + gerçek D
     expect(await screen.findByText(/Yakında/i)).toBeTruthy();
   });
 
-  it("İKİ UÇ birden kalktı: öğrencinin 'Taleplerim'i ve eğitmenin 'Gelen Talepler'i", () => {
+  it("İKİ UÇ birden kalktı: öğrencinin 'Taleplerim'i ve öğretmenin 'Gelen Talepler'i", () => {
     // Tek uç kapatılsaydı eğitmen, hiç dolmayacak bir gelen kutusuna bakmaya
     // devam ederdi — akışın iki ucu aynı bayrağa bağlı olmak ZORUNDA.
     expect(UYE_NAV.some((i) => i.to === ROUTES.demands)).toBe(false);

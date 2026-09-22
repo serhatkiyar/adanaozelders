@@ -134,7 +134,7 @@ function sar() {
   return render(
     <QueryClientProvider client={qc}>
       <MemoryRouter>
-        <ReservationsList />
+        <ReservationsList turler={["ders", "deneme", "calisma"]} />
       </MemoryRouter>
     </QueryClientProvider>
   );

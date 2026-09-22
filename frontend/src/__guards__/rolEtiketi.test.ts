@@ -123,7 +123,7 @@ describe("rol etiketi tek kaynaktan gelir", () => {
     // Kararın kendisi. Değer testte yazılı olmasaydı, etiketin sessizce geri
     // dönmesini hiçbir şey tutmazdı.
     expect(rolEtiketi(ROLE_IDS.CLIENT)).toBe("Üye");
-    expect(rolEtiketi(ROLE_IDS.TUTOR)).toBe("Eğitmen");
+    expect(rolEtiketi(ROLE_IDS.TUTOR)).toBe("Öğretmen");
     expect(ADSIZ_UYE).toBe("Üye");
   });
 

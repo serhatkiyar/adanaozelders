@@ -102,7 +102,7 @@ describe("ana sayfa arama hapları ikizdir", () => {
     expect(b).toBe(a);
   });
 
-  it("bölmeler EŞİT genişlikte; eğitmende üç, kütüphanede tek", () => {
+  it("bölmeler EŞİT genişlikte; öğretmende üç, kütüphanede tek", () => {
     // 8 Eyl: sınıf dizesi iki bölmeye ELLE yazılmıyor artık, ortak `BOLME`
     // sabitinden geliyor (alan başlıkları eklenirken bölme `flex-col` bir
     // sarmalayıcıya dönüştü). Bu ikizliği ZAYIFLATMAZ, güçlendirir: eşitlik

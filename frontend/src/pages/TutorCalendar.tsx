@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import type { DateSelectArg, DatesSetArg, EventClickArg, EventInput } from "@fullcalendar/core";
 import trLocale from "@fullcalendar/core/locales/tr";
@@ -22,7 +22,7 @@ import { IzinModal, izinAraligiMetni, type IzinAraligi } from "@/components/takv
 import { Modal } from "@/components/ui/Modal";
 import { useBookings } from "@/hooks/useBookings";
 import { useEkAraliklar } from "@/hooks/useEkAralik";
-import { useMobil } from "@/hooks/useMedyaSorgusu";
+import { useMedyaSorgusu, useMobil } from "@/hooks/useMedyaSorgusu";
 import { useDeleteTimeOff, useTimeOff } from "@/hooks/useTimeOff";
 import { useMyTutorProfile } from "@/hooks/useTutorProfile";
 import { toBusinessHours } from "@/lib/availability";
@@ -62,6 +62,44 @@ function kaydirmaSaati(): string {
  * pek olası değil, o yüzden şu ana göre değil sabit 09:00'dan açılır —
  * eğitmen doğrudan çalışma saatlerine gelir, gerekirse kendi kaydırır. */
 const ILK_ACILIS_SAATI = "09:00:00";
+
+/** Sol panelin açık/kapalı tercihi (tarayıcıda, kişisel kolaylık). */
+const PANEL_ANAHTARI = "egitmen-takvim-sol-panel";
+
+/**
+ * Panel YALNIZ açılır/kapanır (kullanıcı kararı, 22 Eyl 2026): sürükleyerek
+ * genişletme kaldırıldı. Kapalıyken kolon Google Takvim gibi yalnız "+"
+ * düğmesine iner.
+ */
+const PANEL_ACIK = 232;
+const PANEL_KAPALI = 56;
+
+/**
+ * Google Takvim'den ölçüldü (22 Eyl 2026): panel ve ızgara aynı anda, 300ms,
+ * Material "standart" eğrisiyle hareket eder. Düzen tek karede son hâline
+ * geçer; hareket yalnız `transform` ile oynatılır (FLIP) — FullCalendar
+ * boyutu bir kez hesaplar, animasyon boyunca yeniden çizilmez.
+ */
+const PANEL_GECISI = "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)";
+
+/** Öğeyi `baslangic` dönüşümünden kendi yerine oynatır (FLIP'in "P"si). */
+function yerineOynat(el: HTMLElement, baslangic: string) {
+  el.style.transition = "none";
+  el.style.transform = baslangic;
+  void el.getBoundingClientRect();
+  requestAnimationFrame(() => {
+    el.style.transition = PANEL_GECISI;
+    el.style.transform = "";
+  });
+  el.addEventListener(
+    "transitionend",
+    () => {
+      el.style.transition = "";
+      el.style.transformOrigin = "";
+    },
+    { once: true }
+  );
+}
 
 /** "Ders planla" düğmesinin varsayılanı: yarın 10:00, bir saat. */
 function varsayilanDersAraligi(): TeklifAraligi {
@@ -184,6 +222,21 @@ export default function TutorCalendar() {
   const mobil = useMobil();
   const takvimRef = useRef<FullCalendar>(null);
   const izgaraSarmalayiciRef = useRef<HTMLDivElement>(null);
+  const aracSatiriRef = useRef<HTMLDivElement>(null);
+  const panelIcerikRef = useRef<HTMLDivElement>(null);
+
+  // Sol panel yalnız geniş ekranda kapanır; dar ekranda panel ızgaranın
+  // üstünde durur ve hep açıktır.
+  const genis = useMedyaSorgusu("(min-width: 1024px)");
+  const [panelTercihi, setPanelTercihi] = useState(() => {
+    try {
+      return localStorage.getItem(PANEL_ANAHTARI) !== "kapali";
+    } catch {
+      return true;
+    }
+  });
+  const panelAcik = !genis || panelTercihi;
+  const flipOnce = useRef<{ izgara: DOMRect; arac: DOMRect } | null>(null);
 
   const [ilkGorunum] = useState(() => (mobil ? "listWeek" : "timeGridWeek"));
   const [scrollTime] = useState(ILK_ACILIS_SAATI);
@@ -192,6 +245,12 @@ export default function TutorCalendar() {
   const [izinAraligi, setIzinAraligi] = useState<IzinAraligi | null>(null);
   const [silinecekIzin, setSilinecekIzin] = useState<TimeOff | null>(null);
   const [teklifAraligi, setTeklifAraligi] = useState<TeklifAraligi | null>(null);
+  // Öğrenciler sayfasındaki "Ders teklif et" → `?ogrenci=<id>`: eğitmen saati
+  // ızgaradan seçer, teklif penceresi o öğrenci seçili açılır.
+  const [aramaParametreleri, setAramaParametreleri] = useSearchParams();
+  const ogrenciParam = Number(aramaParametreleri.get("ogrenci")) || undefined;
+  const ogrenciSeciminiBirak = () =>
+    setAramaParametreleri({}, { replace: true });
   // Ek aralık penceresi: seçilen aralıkla "Ekle" ya da ajandadan "Eklenen aralıklar".
   const [ekAralik, setEkAralik] = useState<
     { aralik?: EkAralik; sekme: "ekle" | "liste" } | null
@@ -330,6 +389,49 @@ export default function TutorCalendar() {
 
   const api = () => takvimRef.current?.getApi();
 
+  /** Aç/kapat — 300ms FLIP animasyonuyla. */
+  function paneliDegistir(acik = !panelTercihi) {
+    if (acik === panelTercihi) return;
+    const iz = izgaraSarmalayiciRef.current;
+    const ar = aracSatiriRef.current;
+    if (iz && ar) {
+      flipOnce.current = { izgara: iz.getBoundingClientRect(), arac: ar.getBoundingClientRect() };
+    }
+    setOlusturAcik(false);
+    setPanelTercihi(acik);
+    try {
+      localStorage.setItem(PANEL_ANAHTARI, acik ? "acik" : "kapali");
+    } catch {
+      /* tercih hatırlanmaz; panel yine çalışır */
+    }
+  }
+
+  useLayoutEffect(() => {
+    // Düzen yeni genişliğe geçti: FullCalendar'ı bir kez yeniden ölçtür.
+    takvimRef.current?.getApi().updateSize();
+    const once = flipOnce.current;
+    flipOnce.current = null;
+    if (!once || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const iz = izgaraSarmalayiciRef.current;
+    if (iz) {
+      const yeni = iz.getBoundingClientRect();
+      if (yeni.width > 0 && Math.abs(yeni.width - once.izgara.width) > 1) {
+        // Google gibi: ızgara SAĞ kenarı sabit, eski genişlikten esner.
+        iz.style.transformOrigin = "right center";
+        yerineOynat(iz, `scaleX(${once.izgara.width / yeni.width})`);
+      }
+    }
+    const ar = aracSatiriRef.current;
+    if (ar) {
+      const dx = once.arac.left - ar.getBoundingClientRect().left;
+      if (Math.abs(dx) > 1) yerineOynat(ar, `translateX(${dx}px)`);
+    }
+    if (panelAcik && panelIcerikRef.current) {
+      yerineOynat(panelIcerikRef.current, `translateX(-${PANEL_ACIK + 28}px)`);
+    }
+  }, [panelAcik]);
+
   // "Bugün" tıklaması (kullanıcı kararı, 22 Eyl 2026): Google Takvim'deki
   // gibi ızgara "şu an" çizgisine YUMUŞAK kaysın. `scrollToTime` kendisi
   // scrollTop'u anında değiştiriyor; burada onu bir an için tetikleyip
@@ -380,10 +482,31 @@ export default function TutorCalendar() {
       <div className="pb-6 pt-0">
         <h1 className="sr-only">Takvim</h1>
 
+        {ogrenciParam && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-marka-mid bg-marka-soft/40 px-4 py-3">
+            <p className={ACIKLAMA}>Ders teklif etmek için takvimden bir saat seç.</p>
+            <button type="button" onClick={ogrenciSeciminiBirak} className={DUGME_SATIR_IKINCIL}>
+              Vazgeç
+            </button>
+          </div>
+        )}
+
         {/* Preply düzeni (17 Eyl 2026): solda eylemler ve renk açıklaması,
             sağda hafta gezinme satırı ve ızgara. */}
-        <div className="gap-6 lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
-          <aside className="mb-6 space-y-6 lg:mb-0">
+        {/* Üç kolon: panel · sürükleme tutamağı (eski 24px boşluğun yerinde)
+            · ızgara. Kolon genişliği satır içi stil — sürüklemede her piksel
+            değişir, Tailwind sınıfı üretilemez; `lg:grid` yokken (dar ekran)
+            `gridTemplateColumns` etkisizdir. Panel kapanınca kolon Google
+            Takvim gibi yalnız "+" düğmesine (56px) iner. `overflow-x-clip`:
+            panel kayarak girerken sayfanın soluna taşmasın. */}
+        <div
+          className="lg:grid lg:overflow-x-clip"
+          style={{
+            gridTemplateColumns: `${panelAcik ? PANEL_ACIK : PANEL_KAPALI}px 24px minmax(0,1fr)`,
+          }}
+        >
+          <aside className="mb-6 lg:mb-0">
+            <div ref={panelIcerikRef} className="space-y-6">
             {/* Google Takvim'deki "+ Oluştur" düğmesi (kullanıcı kararı, 22 Eyl
                 2026): eskiden burada 4 ayrı düğme yan yana duruyordu, artık
                 tek düğme + açılır menü. */}
@@ -392,15 +515,23 @@ export default function TutorCalendar() {
                 type="button"
                 onClick={() => setOlusturAcik((o) => !o)}
                 aria-expanded={olusturAcik}
-                className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 shadow-sm transition hover:shadow-md active:scale-95"
+                aria-label={panelAcik ? undefined : "Oluştur"}
+                className={`-mt-0.5 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white text-base font-medium text-slate-900 shadow-md transition hover:bg-slate-900/[0.05] active:scale-95 ${
+                  panelAcik ? "h-11 w-auto px-5" : "h-11 w-11"
+                }`}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-5 w-5" aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5" aria-hidden>
+                  <rect x="9" y="4" width="1.5" height="12" rx="0.75" />
+                  <rect x="4" y="9" width="12" height="1.5" rx="0.75" />
                 </svg>
-                Oluştur
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-4 w-4" aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                </svg>
+                {panelAcik && (
+                  <>
+                    Oluştur
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-[18px] w-[18px]" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </>
+                )}
               </button>
               {olusturAcik && (
                 <div className="absolute left-0 top-full z-20 mt-2 w-full min-w-[220px] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
@@ -434,7 +565,7 @@ export default function TutorCalendar() {
                   >
                     Ek zaman aralığı aç
                   </button>
-                  <div className="my-1 border-t border-slate-100" />
+                  <div className="my-1 border-t border-slate-200" />
                   <Link
                     to={ROUTES.tutorListing}
                     className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
@@ -445,6 +576,8 @@ export default function TutorCalendar() {
                 </div>
               )}
             </div>
+            {panelAcik && (
+            <>
             <MiniAyTakvimi onSecim={(gun) => api()?.gotoDate(gun)} />
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Etiketler</p>
@@ -457,12 +590,43 @@ export default function TutorCalendar() {
                 ))}
               </ul>
             </div>
+            </>
+            )}
+            </div>
           </aside>
+
+          {/* Aç/kapat tutamağı: panelle ızgara arasındaki boşlukta durur,
+              üzerine gelince çizgi ve ok belirir. Sürükleyerek boyutlandırma
+              KALDIRILDI (kullanıcı kararı, 22 Eyl 2026). */}
+          <button
+            type="button"
+            onClick={() => paneliDegistir()}
+            aria-label={panelAcik ? "Sol paneli kapat" : "Sol paneli aç"}
+            aria-expanded={panelAcik}
+            className="group relative hidden outline-none lg:block"
+          >
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 rounded-full bg-transparent transition-colors group-hover:bg-marka/60 group-focus-visible:bg-marka"
+            />
+            <span
+              aria-hidden
+              className="absolute left-1/2 top-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 opacity-0 shadow-sm transition group-hover:opacity-100 group-focus-visible:opacity-100"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-4 w-4">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d={panelAcik ? "m15 6-6 6 6 6" : "m9 6 6 6-6 6"}
+                />
+              </svg>
+            </span>
+          </button>
 
           <div className="min-w-0 space-y-4">
             {/* Sıra Google Takvim'deki gibi: Bugün → geri/ileri → başlık
                 (kullanıcı kararı, 22 Eyl 2026 — önceden Bugün en sağdaydı). */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div ref={aracSatiriRef} className="flex flex-wrap items-center gap-3">
               {/* Siyah (kullanıcı kararı, 22 Eyl 2026). Ortak `DUGME_SATIR_IKINCIL`
                   KULLANILMADI: onun çerçevesi varsayılanda soluk `slate-200`,
                   yalnız hover'da siyaha dönüyor — durağan haldeyken gri bir
@@ -470,7 +634,7 @@ export default function TutorCalendar() {
                   Burada çerçeve HER ZAMAN siyah. */}
               <button
                 type="button"
-                className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full border border-slate-900 bg-white px-6 text-base font-semibold text-slate-900 transition hover:bg-slate-900/[0.08] active:scale-[0.98]"
+                className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full border border-slate-900 bg-white px-6 text-base font-semibold text-slate-900 transition hover:bg-slate-900/[0.08] active:scale-95"
                 onClick={yumusakKaydirBugune}
               >
                 Bugün
@@ -485,9 +649,9 @@ export default function TutorCalendar() {
                   type="button"
                   aria-label="Önceki hafta"
                   onClick={() => api()?.prev()}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+                  className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/[0.05] hover:text-slate-900 active:scale-95"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-4 w-4" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-[18px] w-[18px]" aria-hidden>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
@@ -495,9 +659,9 @@ export default function TutorCalendar() {
                   type="button"
                   aria-label="Sonraki hafta"
                   onClick={() => api()?.next()}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
+                  className="flex h-[34px] w-[34px] items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-900/[0.05] hover:text-slate-900 active:scale-95"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} className="h-4 w-4" aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-[18px] w-[18px]" aria-hidden>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -571,7 +735,14 @@ export default function TutorCalendar() {
       )}
 
       {teklifAraligi && (
-        <DersTeklifModal aralik={teklifAraligi} onClose={() => setTeklifAraligi(null)} />
+        <DersTeklifModal
+          aralik={teklifAraligi}
+          varsayilanOgrenciId={ogrenciParam}
+          onClose={() => {
+            setTeklifAraligi(null);
+            if (ogrenciParam) ogrenciSeciminiBirak();
+          }}
+        />
       )}
 
       {ekAralik && (

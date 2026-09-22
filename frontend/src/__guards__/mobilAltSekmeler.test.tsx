@@ -115,19 +115,26 @@ describe("mobil alt sekme çubuğu", () => {
       "Keşfet",
       "Favoriler",
       "Mesajlar",
-      "Pano",
-      "Hesabım",
+      "Genel Bakış",
+      "Ayarlar",
     ]);
   });
 
-  it("eğitmen (TUTOR): Ana sayfa · Mesajlar · Takvim · Analizler — Keşfet/Favoriler/Hesabım hamburger'de", () => {
+  it("öğretmen (TUTOR): Ana sayfa · Mesajlar · Takvim · Analizler — Keşfet/Favoriler/Hesabım hamburger'de", () => {
     // Eğitmen çubuğu üyeden ayrıldı (kullanıcı kararı, 19 Eyl 2026):
     // masaüstü şeridiyle (Pano→"Ana sayfa" · Mesajlar · Takvim · Analizler)
     // birebir aynı sırayı taşır; Keşfet ve Favoriler `lib/nav.ts::TUTOR_NAV`
     // üzerinden hamburger menüsünde yaşar.
     girisYap(ROLE_IDS.TUTOR);
     sar();
-    expect(sekmeAdlari()).toEqual(["Ana sayfa", "Mesajlar", "Takvim", "Analizler"]);
+    // "Öğrenciler" 22 Eyl 2026'da çubuğa girdi (kullanıcı kararı).
+    expect(sekmeAdlari()).toEqual([
+      "Genel Bakış",
+      "Mesajlar",
+      "Takvim",
+      "Öğrenciler",
+      "Analizler",
+    ]);
     expect(screen.queryByText("Keşfet")).toBeNull();
     expect(screen.queryByText("Favoriler")).toBeNull();
     expect(screen.queryByText("Hesabım")).toBeNull();
@@ -197,7 +204,7 @@ describe("mobil alt sekme çubuğu", () => {
     expect(giris?.getAttribute("href")).not.toContain("modal=hesap");
   });
 
-  it("EĞİTMEN KAYDI ERİŞİLEBİLİR KALIR: giriş ekranı ders verme kapısını taşır", () => {
+  it("ÖĞRETMEN KAYDI ERİŞİLEBİLİR KALIR: giriş ekranı ders verme kapısını taşır", () => {
     // Üst bardaki "Ders Ver" telefonda kaldırıldı ve eğitmen kaydına giden
     // BAŞKA yol yok. Bu bağlantı `AuthModal`ın giriş görünümünde yaşar;
     // düşerse eğitmen hiç kaydolamaz ve hiçbir şey itiraz etmez.
@@ -212,7 +219,7 @@ describe("mobil alt sekme çubuğu", () => {
     // Çıpa PAZARLAMA METNİ DEĞİL, ROL: kapının etiketi değişebilir (11 Eyl
     // 2026'da "Ders vermek istiyorum" → "Eğitmen misin?" oldu), değişemeyecek
     // olan `role=tutor` ile açılan bir kayıt yolunun VARLIĞI.
-    expect(kaynak, "giriş ekranında eğitmen kaydı kapısı yok").toContain(
+    expect(kaynak, "giriş ekranında öğretmen kaydı kapısı yok").toContain(
       '"role", "tutor"'
     );
     // Kapı 16 Eyl 2026'dan beri ORTAK bileşen (`EgitmenMisinSatiri`): giriş
@@ -226,7 +233,7 @@ describe("mobil alt sekme çubuğu", () => {
       "utf8"
     );
     expect(satir, "kapı tıklanabilir bir denetim değil").toContain("<button");
-    expect(satir, "kapının görünür bir etiketi yok").toMatch(/Eğitmen/);
+    expect(satir, "kapının görünür bir etiketi yok").toMatch(/Öğretmen/);
   });
 
   it("favoriler ve mesajlar rota kaynağından gelir (elle yazılmış yol yok)", () => {

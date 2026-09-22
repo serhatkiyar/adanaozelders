@@ -29,6 +29,8 @@ export function useMyStudents(enabled: boolean) {
 function dersVerisiniYenile(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: ["bookings"] });
   qc.invalidateQueries({ queryKey: TUTOR_DASHBOARD_KEY });
+  // Öğrenciler sayfasındaki "sonraki ders" kolonu bayat kalmasın.
+  qc.invalidateQueries({ queryKey: TUTOR_STUDENTS_KEY });
 }
 
 export function useOfferLesson() {

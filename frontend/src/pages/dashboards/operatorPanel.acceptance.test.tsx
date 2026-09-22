@@ -34,7 +34,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 //
 //   | Modül | Süre |
 //   |---|---|
-//   | Calendar / Leaderboard / Learn / Notifications | 46–260 ms |
+//   | Leaderboard / Learn / Notifications | 46–260 ms |
+// (Calendar satırı düştü: öğrencinin eski liste takvimi 22 Eyl 2026'da
+// kaldırıldı, sayfa artık yok.)
 //   | Settings / OperatorHome | 546–927 ms |
 //   | **OperatorSessions** | **11.235 ms** |
 //
@@ -42,7 +44,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // üretim kodunda değil test kurulumunda. Modül burada statik alınınca maliyet
 // TOPLAMA (collect) evresine geçer.
 import "@/components/admin/ui2/duzenlemeYuzeyi";
-import Calendar from "@/pages/Calendar";
 import Leaderboard from "@/pages/Leaderboard";
 import Learn from "@/pages/Learn";
 import Notifications from "@/pages/Notifications";
@@ -220,7 +221,6 @@ const EKRANLAR: Record<string, ComponentType> = {
   "../Notifications.tsx": Notifications,
   "../Leaderboard.tsx": Leaderboard,
   "../Settings.tsx": Settings,
-  "../Calendar.tsx": Calendar,
   "../Learn.tsx": Learn,
 };
 
@@ -771,7 +771,6 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
     ["../Notifications.tsx", "/bildirimler"],
     ["../Leaderboard.tsx", "/liderlik"],
     ["../Settings.tsx", "/ayarlar"],
-    ["../Calendar.tsx", "/takvim"],
     ["../Learn.tsx", "/ogren"],
   ];
 
