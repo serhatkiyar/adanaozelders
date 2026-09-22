@@ -26,46 +26,56 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(PATHS.login).toBe("/giris");
     expect(PATHS.register).toBe("/kayit");
     /*
-     * PANEL ŞERİDİ `/pano/*` ALTINDA (kullanıcı kararı, 8 Eyl 2026).
+     * PANEL ŞERİDİ DÜZ (kullanıcı kararı, 22 Eyl 2026).
      *
-     * Bu blok 8 Eyl'de DEĞİŞTİ: şeridin altı sayfası düz yollardan
-     * (`/mesajlar`, `/hesabim`, `/rezervasyonlar`, `/bakiyem`,
-     * `/ilan-ayarlari`) ortak bir kökün altına indi. Değişen yalnız
-     * ŞERİDİN sayfalarıdır — `/ayarlar`, `/favoriler`, `/takvim`,
-     * `/siparislerim`, `/ilanimi-one-cikar` ve sihirbaz DÜZ kaldı;
-     * aşağıdaki çıpalar bunu iki yönlü tutar.
+     * 8–22 Eyl 2026 arasında şeridin sayfaları `/pano/*` altındaydı; 22 Eyl'de
+     * yeniden düz oldu (`/takvim`, `/mesajlar`, `/ayarlar` …). Yalnız panonun
+     * kendisi `/pano`da kalır. Eski `/pano/*` adresleri yönlendirmedir.
      */
-    expect(PATHS.bookings).toBe("/pano");
+    expect(PATHS.bookings).toBe("/genel-bakis");
     // Öğrencinin listesi panodan ayrıldı (Modül 4, 18 Eyl 2026).
-    expect(PATHS.reservations).toBe("/pano/rezervasyonlar");
-    expect(PATHS.messages).toBe("/pano/mesajlar");
-    expect(PATHS.tutorListing).toBe("/pano/ilanim");
-    expect(PATHS.tutorReviews).toBe("/pano/degerlendirmeler");
-    expect(PATHS.balance).toBe("/pano/bakiyem");
-    expect(PATHS.tutorEarnings).toBe("/pano/kazanclar");
-    expect(PATHS.profile).toBe("/pano/hesabim");
-    expect(PATHS.profileEdit).toBe("/pano/hesabim/profil");
-    expect(PATHS.libraryReservation).toBe("/pano/rezervasyon/:tur/:id");
-    // Şeride GİRMEYENLER düz kalır — önek her oturum-içi yola yayılmaz.
+    expect(PATHS.reservations).toBe("/dersler");
+    expect(PATHS.messages).toBe("/mesajlar");
+    expect(PATHS.tutorListing).toBe("/profil");
+    expect(PATHS.tutorReviews).toBe("/degerlendirmeler");
+    expect(PATHS.balance).toBe("/bakiyem");
+    expect(PATHS.tutorEarnings).toBe("/kazanclar");
+    expect(PATHS.tutorCalendar).toBe("/takvim");
+    expect(PATHS.tutorAnalytics).toBe("/analizler");
+    // Öğrenciler listesi (22 Eyl 2026); kişi sayfası `/uyeler/:id` kalır.
+    expect(PATHS.tutorStudents).toBe("/ogrenciler");
+    expect(ROUTES.tutorStudents).toBe(PATHS.tutorStudents);
+    expect(ROUTES.dersPlanla(5)).toBe("/takvim?ogrenci=5");
+    expect(PATHS.profile).toBe("/hesabim");
+    expect(PATHS.profileEdit).toBe("/hesabim/profil");
+    expect(PATHS.libraryReservation).toBe("/rezervasyon/:tur/:id");
     expect(PATHS.settings).toBe("/ayarlar");
     expect(PATHS.lesson).toBe("/ders-talepleri/:id");
     expect(PATHS.tutorPromotion).toBe("/ilanimi-one-cikar");
     expect(PATHS.tutorOnboarding).toBe("/ilanini-olustur");
     /*
-     * ESKİ DÜZ YOLLAR KALICI YÖNLENDİRMEDİR.
+     * ESKİ YOLLAR KALICI YÖNLENDİRMEDİR.
      *
      * Üretimde canlıydılar: DB'deki bildirim satırları, gönderilmiş
      * e-postalar ve kullanıcıların yer imleri bunları taşıyor. Biri silinirse
      * o linkler 404 olur ve bunu ancak eski bir e-postaya tıklayan kullanıcı
-     * fark eder. `/degerlendirmelerim` listede YOK — hiç yayınlanmadı.
+     * fark eder. `/pano/*` yolları 8–22 Eyl 2026 arasında canlıydı.
      */
     const eskiYollar = LEGACY_STATIC.map(([from]) => from);
     for (const eski of [
+      "/pano",
+      "/pano/rezervasyonlar",
       "/rezervasyonlar",
-      "/mesajlar",
-      "/hesabim",
-      "/hesabim/profil",
-      "/bakiyem",
+      "/pano/mesajlar",
+      "/pano/hesabim",
+      "/pano/hesabim/profil",
+      "/pano/bakiyem",
+      "/pano/kazanclar",
+      "/pano/takvim",
+      "/pano/analizler",
+      "/pano/ilanim",
+      "/ilanim",
+      "/pano/degerlendirmeler",
       "/ilan-ayarlari",
       // Bilet metaforu kalktı ama bu yönlendirme aynı sebeple duruyor.
       "/biletlerim",
@@ -122,7 +132,7 @@ describe("ROUTES — tek kaynak tutarlılığı", () => {
 
   it("messageWith query'yi encode eder", () => {
     expect(ROUTES.messageWith(5, "Ayşe Yılmaz")).toBe(
-      "/pano/mesajlar?to=5&name=Ay%C5%9Fe%20Y%C4%B1lmaz",
+      "/mesajlar?to=5&name=Ay%C5%9Fe%20Y%C4%B1lmaz",
     );
   });
 });
@@ -139,7 +149,7 @@ describe("kök SEO adresleri (Modül 6)", () => {
     );
   });
 
-  it("eğitmen linki TEK kapıdan: ilan adresi varsa o, yoksa eski adres", () => {
+  it("öğretmen linki TEK kapıdan: ilan adresi varsa o, yoksa eski adres", () => {
     expect(ilanYolu({ id: 4, slug: "dilan-4", url_slug: "lgs-matematik-seyhan" })).toBe(
       "/lgs-matematik-seyhan"
     );

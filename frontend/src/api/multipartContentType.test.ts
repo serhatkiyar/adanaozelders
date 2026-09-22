@@ -2,7 +2,7 @@
 // yazmamalı.
 //
 // Arka plan (2026-09-11): `store.ts`, `libraries.ts`, `examCatalogs.ts`,
-// `libraryExams.ts` ve `tutorPreApplications.ts`'te paylaşılan `MULTIPART`
+// `libraryExams.ts` ve (kaldırılan) `tutorPreApplications.ts`'te paylaşılan `MULTIPART`
 // sabiti `Content-Type: "multipart/form-data"` yazıyordu — boundary
 // parametresi OLMADAN. Kurulu axios'un (bkz. `node_modules/axios/lib/
 // adapters/xhr.js`, "Remove Content-Type if data is undefined") XHR
@@ -38,7 +38,6 @@ import { uploadProductCover } from "@/api/store";
 import { uploadLibraryLogo } from "@/api/libraries";
 import { uploadCatalogAnswerKey } from "@/api/examCatalogs";
 import { uploadResultDocument } from "@/api/libraryExams";
-import { submitTutorPreApplication } from "@/api/tutorPreApplications";
 import { uploadEducationDocument } from "@/api/educations";
 import { uploadStoreMedia } from "@/api/storeMerchandising";
 import { uploadCourierPhoto, uploadStopPhoto } from "@/api/delivery";
@@ -101,18 +100,6 @@ describe("multipart yüklemede elle Content-Type yazılmıyor", () => {
   it("libraryExams.ts: uploadResultDocument", async () => {
     const file = new File(["x"], "karne.pdf", { type: "application/pdf" });
     await uploadResultDocument(1, 2, file);
-
-    expect(sonIstek?.data).toBeInstanceOf(FormData);
-    expect(contentType()).toBe(false);
-  });
-
-  it("tutorPreApplications.ts: submitTutorPreApplication", async () => {
-    await submitTutorPreApplication({
-      full_name: "Ayşe Yılmaz",
-      phone: "05551234567",
-      subjects: ["Matematik"],
-      kvkk_accepted: true,
-    });
 
     expect(sonIstek?.data).toBeInstanceOf(FormData);
     expect(contentType()).toBe(false);

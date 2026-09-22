@@ -74,7 +74,6 @@ const BlogPostPage = lazy(() => import("@/pages/blog/BlogPostPage"));
 const FaqPage = lazy(() => import("@/pages/FaqPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
 // Eğitmen ön başvurusu — sosyal medyada paylaşılan hesapsız lead sayfası.
-const TutorPreApply = lazy(() => import("@/pages/tutorPreApply/TutorPreApply"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 // Kurye açılış ekranı (rol 5) — menüsüz; aktif tura yönlendirir.
 const CourierHome = lazy(() => import("@/pages/dashboards/CourierHome"));
@@ -288,10 +287,10 @@ const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
 const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
-const Calendar = lazy(() => import("@/pages/Calendar"));
 // FullCalendar yalnız bu chunk'a girer (Modül 7).
 const TutorCalendar = lazy(() => import("@/pages/TutorCalendar"));
 const TutorAnalytics = lazy(() => import("@/pages/TutorAnalytics"));
+const TutorStudents = lazy(() => import("@/pages/TutorStudents"));
 const Learn = lazy(() => import("@/pages/Learn"));
 const DeepWork = lazy(() => import("@/pages/DeepWork"));
 const Grapher = lazy(() => import("@/pages/Grapher"));
@@ -400,9 +399,9 @@ function WsManager() {
 }
 
 // Kök (`/`) root dispatcher: anonim → public Landing (prerender/SEO hedefi),
-// oturumlu → role workspace (URL `/` kalır). Hem öğrenci hem EĞİTMEN kökten,
-// Landing workspace'inden başlar (zenginleştirilecek); ders talepleri kökte DEĞİL,
-// `/ders-talepleri`'ndedir. ADMIN dahil herkes kökte Landing görür.
+// oturumlu → role workspace (URL `/` kalır). EĞİTMEN siteye girdiğinde doğrudan
+// panosuna (`/genel-bakis`) gider (kullanıcı kararı, 22 Eyl 2026); öğrenci ve ADMIN
+// kökte Landing görür. Ders talepleri kökte DEĞİL, `/ders-talepleri`'ndedir.
 function RootDispatcher() {
   const token = useAuthStore((s) => s.token);
   const { data: user, isLoading } = useCurrentUser();
@@ -413,6 +412,8 @@ function RootDispatcher() {
   // menüsündeki "Yönetim Paneli" bağlantısıyla.
   if (user.role_id === ROLE_IDS.LIBRARY_OPERATOR) return <OperatorHome />;
   if (user.role_id === ROLE_IDS.COURIER) return <CourierHome />;
+  if (user.role_id === ROLE_IDS.TUTOR)
+    return <Navigate to={ROUTES.bookings} replace />;
   return <Landing />;
 }
 
@@ -432,16 +433,41 @@ function RootDispatcher() {
 function AccountDispatcher() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
-  if (user.role_id === ROLE_IDS.CLIENT) return <AccountHub />;
-  if (user.role_id === ROLE_IDS.TUTOR)
+  // Öğrencinin hesap merkezi 22 Eyl 2026'da "Ayarlar" (`/ayarlar`) oldu.
+  if (
+    user.role_id === ROLE_IDS.CLIENT ||
+    user.role_id === ROLE_IDS.TUTOR
+  )
     return <Navigate to={ROUTES.settings} replace />;
   return <Profile />;
 }
 
-// Pano — ortak `/pano` URL'i, rol göre içerik:
+// Ayarlar — ortak `/ayarlar` URL'i (kullanıcı kararı, 22 Eyl 2026): öğrenciye
+// kartlı hesap merkezi (`AccountHub`), diğer rollere hesap ayarları. Öğrenci
+// asıl ayarlara merkezdeki "Hesap & Güvenlik" kartından (`/ayarlar/hesap`) gider.
+function AyarlarDispatcher() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading || !user) return <FullScreenSpinner />;
+  if (user.role_id === ROLE_IDS.CLIENT) return <AccountHub />;
+  return <Settings />;
+}
+
+// Takvim — ortak `/takvim` URL'i: öğretmene kendi ızgarası, öğrenciye
+// "Derslerim → Takvim" sekmesi (kullanıcı kararı, 22 Eyl 2026: öğrencinin
+// eski haftalık LİSTE takvimi kaldırıldı, yerine aynı ızgara geldi ve
+// Derslerim'in içine taşındı). Adres korunuyor: eski linkler ve bildirimler
+// `/takvim` taşıyor.
+function TakvimDispatcher() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading || !user) return <FullScreenSpinner />;
+  if (user.role_id === ROLE_IDS.TUTOR) return <TutorCalendar />;
+  return <Navigate to={`${ROUTES.reservations}?sekme=takvim`} replace />;
+}
+
+// Genel Bakış — ortak `/genel-bakis` URL'i (eski `/pano`), rol göre içerik:
 //  • TUTOR  → panosu (gelen talepler/kazanç) = TutorDashboard
 //  • CLIENT → öğrenci panosu = OgrenciPano (Modül 4, 18 Eyl 2026). Liste
-//    `/pano/rezervasyonlar`a taşındı (`ReservationsRoute`).
+//    `/rezervasyonlar`a taşındı (`ReservationsRoute`).
 function BookingsHome() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
@@ -478,6 +504,9 @@ export const LEGACY_STATIC: [string, string][] = [
   ["/reset-password", ROUTES.resetPassword],
   ["/verify-email", ROUTES.verifyEmail],
   ["/kesfet", ROUTES.tutors],
+  // Öğretmen ön başvuru sayfası kaldırıldı (kullanıcı kararı, 22 Eyl 2026);
+  // adres sosyal medyada paylaşılmıştı, kayıt akışına yönlendirilir.
+  ["/egitmen-on-basvuru", ROUTES.register],
   ["/admin", ROUTES.admin],
   ["/tutor", ROUTES.home],
   ["/student", ROUTES.tutors],
@@ -496,20 +525,30 @@ export const LEGACY_STATIC: [string, string][] = [
   // KALICI: bilet metaforu kalktı ama bu yol SİLİNEMEZ. Veritabanındaki eski
   // bildirim satırları ve gönderilmiş e-postalar hâlâ "/biletlerim" taşıyor;
   // yönlendirme kalkarsa o linkler 404 olur. Nöbetçisi routes.test.ts.
-  // Hedef Modül 4'te listeye döndü (`/pano/rezervasyonlar`); bilet = kayıt.
+  // Hedef Modül 4'te listeye döndü (`/rezervasyonlar`); bilet = kayıt.
   ["/biletlerim", ROUTES.reservations],
   /*
-   * Şeridin altı sayfası `/pano/*` altına toplandı (kullanıcı kararı,
-   * 8 Eyl 2026). Aşağıdakiler ÜRETİMDE canlı olan eski düz yollardır:
+   * Şerit sekmeleri 8–22 Eyl 2026 arasında `/pano/*` altındaydı; 22 Eyl'de
+   * yeniden düz oldu (kullanıcı kararı). Aşağıdakiler o dönemin adresleridir:
    * veritabanındaki bildirim satırları, gönderilmiş e-postalar ve
    * kullanıcıların yer imleri bunları taşıyor. Silinirlerse 404 olurlar.
-   * (`/pano/degerlendirmeler` listede YOK — o yol hiç yayınlanmadı.)
    */
+  ["/pano/rezervasyonlar", ROUTES.reservations],
+  // Panonun kendisi 22 Eyl 2026'da "Genel Bakış" (`/genel-bakis`) oldu.
+  ["/pano", ROUTES.bookings],
+  // Öğrencinin listesi 22 Eyl 2026'da "Derslerim" (`/dersler`) oldu.
   ["/rezervasyonlar", ROUTES.reservations],
-  ["/mesajlar", ROUTES.messages],
-  ["/hesabim", ROUTES.profile],
-  ["/hesabim/profil", ROUTES.profileEdit],
-  ["/bakiyem", ROUTES.balance],
+  ["/pano/mesajlar", ROUTES.messages],
+  ["/pano/hesabim", ROUTES.profile],
+  ["/pano/hesabim/profil", ROUTES.profileEdit],
+  ["/pano/bakiyem", ROUTES.balance],
+  ["/pano/kazanclar", ROUTES.tutorEarnings],
+  ["/pano/takvim", ROUTES.tutorCalendar],
+  ["/pano/analizler", ROUTES.tutorAnalytics],
+  ["/pano/ilanim", ROUTES.tutorListing],
+  // "Profilim" sekmesinin adresi 22 Eyl 2026'da kısa süre `/ilanim`dı.
+  ["/ilanim", ROUTES.tutorListing],
+  ["/pano/degerlendirmeler", ROUTES.tutorReviews],
   ["/ilan-ayarlari", ROUTES.tutorListing],
   // Eski `/panel/*` öneki → yeni path
   ["/panel", ROUTES.home],
@@ -659,7 +698,6 @@ function App() {
 
           <Route path={PATHS.faq} element={<FaqPage />} />
           <Route path={PATHS.contact} element={<ContactPage />} />
-          <Route path={PATHS.tutorPreApply} element={<TutorPreApply />} />
 
           {/* ── Geliştirme prototipleri ──
               YALNIZ dev sunucusunda. Üretimde bu rotalar kimlik doğrulamasız
@@ -692,7 +730,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path={PATHS.messages} element={<Messages />} />
             <Route path={PATHS.messageCenter} element={<MessageCenter />} />
-            <Route path={PATHS.calendar} element={<Calendar />} />
+            <Route path={PATHS.calendar} element={<TakvimDispatcher />} />
             {OGREN_ACIK && (
               <>
                 <Route path={PATHS.learn} element={<Learn />} />
@@ -718,7 +756,8 @@ function App() {
             <Route path={PATHS.notifications} element={<Notifications />} />
             <Route path={PATHS.profile} element={<AccountDispatcher />} />
             <Route path={PATHS.profileEdit} element={<Profile />} />
-            <Route path={PATHS.settings} element={<Settings />} />
+            <Route path={PATHS.settings} element={<AyarlarDispatcher />} />
+            <Route path={PATHS.accountSettings} element={<Settings />} />
             <Route path={PATHS.questions} element={<PanelQuestions />} />
             {/* Ders talepleri — CLIENT + TUTOR ortak (rol göre içerik) */}
             <Route path={PATHS.bookings} element={<BookingsHome />} />
@@ -730,8 +769,8 @@ function App() {
             />
           </Route>
 
-          {/* ── Favoriler: öğrenci + eğitmen (ÜK-6) ──
-              Eğitmen de eğitmen/kütüphane favoriler; sunucu tarafında gölge
+          {/* ── Favoriler: öğrenci + öğretmen (ÜK-6) ──
+              Öğretmen de öğretmen/kütüphane favoriler; sunucu tarafında gölge
               `Client`e çevrilir (docs/urun-kararlari.md). */}
           <Route
             element={
@@ -749,8 +788,8 @@ function App() {
             {DENEMELER_ACIK && <Route path={PATHS.exams} element={<Exams />} />}
           </Route>
 
-          {/* ── Mağaza alıcı yüzeyi: öğrenci + eğitmen ──
-              Eğitmen kendi oturumuyla alışveriş yapar; sunucu tarafında bir
+          {/* ── Mağaza alıcı yüzeyi: öğrenci + öğretmen ──
+              Öğretmen kendi oturumuyla alışveriş yapar; sunucu tarafında bir
               `Client` yansımasına çevrilir (docs/egitmen-alici-sozlesme.md). */}
           <Route element={<ProtectedRoute allowedRoleIds={[...ALISVERIS_ROLLERI]} />}>
             <Route path={PATHS.storeCheckout} element={<CheckoutPage />} />
@@ -768,8 +807,8 @@ function App() {
             />
             <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
             <Route path={PATHS.tutorReviews} element={<TutorReviews />} />
-            <Route path={PATHS.tutorCalendar} element={<TutorCalendar />} />
             <Route path={PATHS.tutorAnalytics} element={<TutorAnalytics />} />
+            <Route path={PATHS.tutorStudents} element={<TutorStudents />} />
             <Route path={PATHS.uyeProfili} element={<UyeProfili />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
@@ -943,7 +982,8 @@ function App() {
             element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
           />
           {/* Kütüphane rezervasyon detayı `/rezervasyonlar/:tur/:id`ten
-              `/pano/rezervasyon/:tur/:id`e taşındı. Kapıda okunan giriş kodu
+              `/rezervasyon/:tur/:id`e taşındı (8–22 Eyl arası
+              `/pano/rezervasyon/:tur/:id`). Kapıda okunan giriş kodu
               bu URL'le paylaşılıyor (SMS + bildirim) — yönlendirme şart. */}
           <Route
             path="/rezervasyonlar/:tur/:id"
@@ -958,9 +998,23 @@ function App() {
               />
             }
           />
-          {/* /ogrenciler -> /uyeler. Oturum içi ve eğitmen-özel bir yol,
-              SEO'ya girmez; yine de paylaşılmış bir link kırılmasın diye
-              yönlendirme bırakıldı (aynı desen: `/panel/ogrenciler`). */}
+          <Route
+            path="/pano/rezervasyon/:tur/:id"
+            element={
+              <LegacyRedirect
+                to={(p) =>
+                  ROUTES.libraryReservation(
+                    p.tur as "deneme" | "calisma",
+                    p.id!
+                  )
+                }
+              />
+            }
+          />
+          {/* /ogrenciler/:id -> /uyeler/:id. `/ogrenciler` (tam) 22 Eyl
+              2026'dan beri öğretmenin öğrenci LİSTESİ; kişi adresi yine
+              yönlenir, paylaşılmış linkler kırılmaz (aynı desen:
+              `/panel/ogrenciler`). */}
           <Route
             path="/ogrenciler/:id"
             element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}

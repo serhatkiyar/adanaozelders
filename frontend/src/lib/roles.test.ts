@@ -6,7 +6,7 @@ import { ROLE_IDS } from "@/types";
 describe("roleHome", () => {
   it("tüm roller kök (`/`) workspace'inden başlar", () => {
     expect(roleHome(ROLE_IDS.ADMIN)).toBe("/");
-    expect(roleHome(ROLE_IDS.TUTOR)).toBe("/");
+    expect(roleHome(ROLE_IDS.TUTOR)).toBe("/genel-bakis");
     expect(roleHome(ROLE_IDS.CLIENT)).toBe("/");
     expect(roleHome(ROLE_IDS.LIBRARY_OPERATOR)).toBe("/");
     expect(roleHome(ROLE_IDS.COURIER)).toBe("/");
@@ -19,7 +19,7 @@ describe("roleHome", () => {
 });
 
 describe("alisverisYapabilir", () => {
-  it("öğrenci ve eğitmen mağazadan alışveriş yapabilir", () => {
+  it("öğrenci ve öğretmen mağazadan alışveriş yapabilir", () => {
     expect(alisverisYapabilir(ROLE_IDS.CLIENT)).toBe(true);
     expect(alisverisYapabilir(ROLE_IDS.TUTOR)).toBe(true);
   });

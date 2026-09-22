@@ -5,14 +5,12 @@
 //  • Public (SEO): Türkçe/anlamlı path'ler.
 //  • Oturum-içi: çoğunlukla DÜZ. Kök (`/`) bir "root dispatcher"dır: anonim →
 //    public Landing, oturumlu → role workspace.
-//  • `/pano/*` — PANEL ŞERİDİNİN altı sayfası (kullanıcı kararı, 8 Eyl 2026).
-//    Eski `/panel` öneki kaldırılmıştı ve buradaki sözleşme "önek YOKTUR"
-//    diyordu; kullanıcı şeridi kurarken sekmelerin ortak bir kök altında
-//    toplanmasını istedi: *"/pano yazıcak /pano/mesajlar olacak."* Önek YALNIZ
-//    şeridin altı sayfasını kapsar — favoriler, ayarlar, bildirimler, takvim,
-//    siparişler, öne çıkarma ve sihirbaz DÜZ kalır. Eski düz karşılıkları
-//    kalıcı yönlendirme olarak yaşar (`App.tsx::LEGACY_STATIC`); bildirim
-//    satırları ve gönderilmiş e-postalar hâlâ onları taşıyor.
+//  • Panel şeridinin sekmeleri de DÜZDÜR (`/takvim`, `/mesajlar`, `/ayarlar`
+//    …); panonun kendisi `/genel-bakis`tir (22 Eyl 2026'ya kadar `/pano`;
+//    kullanıcı kararı, 22 Eyl 2026).
+//    8–22 Eyl 2026 arasında sekmeler `/pano/*` altındaydı; o adresler kalıcı
+//    yönlendirme olarak yaşar (`App.tsx::LEGACY_STATIC`) — bildirim satırları
+//    ve gönderilmiş e-postalar hâlâ onları taşıyor.
 //
 // `PATHS`  = react-router `path` desenleri (`:param` dahil) — `<Route path>` için.
 // `ROUTES` = gezinme/`Link` için URL üreticileri; statikler PATHS'ten türer
@@ -77,11 +75,6 @@ export const PATHS = {
   faq: "/sss",
   contact: "/iletisim",
 
-  /**
-   * Eğitmen ön başvurusu (public lead formu) — sosyal medyada paylaşılan
-   * hesapsız başvuru sayfası; tam kayıt /kayit'ta kalır.
-   */
-  tutorPreApply: "/egitmen-on-basvuru",
 
   // ── Kimlik & token akışları ──
   login: "/giris",
@@ -99,20 +92,20 @@ export const PATHS = {
    * Panonun kökü — rol dağıtıcısı (`App.tsx::BookingsHome`): eğitmene
    * `TutorDashboard`, öğrenciye `OgrenciPano` (Modül 4, 18 Eyl 2026).
    */
-  bookings: "/pano",
+  bookings: "/genel-bakis",
   /**
    * Öğrencinin birleşik rezervasyon listesi (ders + deneme + çalışma alanı).
    * Modül 4'e kadar `/pano`nun kendisiydi; pano öğrenciye açılınca liste
    * şeridin ikinci sekmesine taşındı.
    */
-  reservations: "/pano/rezervasyonlar",
+  reservations: "/dersler",
   /** Kütüphane rezervasyon detayı. `tur`: `deneme` | `calisma`.
    *  Kapıda söylenecek giriş kodu URL'lenebilir olmalı — bildirimden ya da
    *  telefondan tek tıkla açılsın diye ayrı bir yol var. */
-  libraryReservation: "/pano/rezervasyon/:tur/:id",
+  libraryReservation: "/rezervasyon/:tur/:id",
   /** Ders/talep detayı — CLIENT + TUTOR ortak. */
   lesson: "/ders-talepleri/:id",
-  messages: "/pano/mesajlar",
+  messages: "/mesajlar",
   calendar: "/takvim",
   favorites: "/favoriler",
   questions: "/sorular",
@@ -131,14 +124,23 @@ export const PATHS = {
   /** Eğitmenin dijital ürünleri (TUTOR). */
   sellerProducts: "/dijital-urunlerim",
   /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
-  balance: "/pano/bakiyem",
+  balance: "/bakiyem",
   // Eğitmen kazanç dökümü. "Bakiyem" yalnız kütüphane operatöründe kaldı;
   // eğitmen eski adresten buraya yönlendirilir (Balance.tsx).
-  tutorEarnings: "/pano/kazanclar",
-  /** Eğitmen takvimi — saat ızgarası, izin ekleme (Modül 7). `/takvim` eğitmeni buraya yollar. */
-  tutorCalendar: "/pano/takvim",
+  tutorEarnings: "/kazanclar",
+  /**
+   * Eğitmen takvimi — saat ızgarası, izin ekleme (Modül 7). `calendar` ile
+   * AYNI adres: `/takvim` rol dağıtıcısıdır (`App.tsx::TakvimDispatcher`).
+   */
+  tutorCalendar: "/takvim",
   /** Eğitmen analizleri — genel bakış ve başarı hedefleri (Modül 7). */
-  tutorAnalytics: "/pano/analizler",
+  tutorAnalytics: "/analizler",
+  /**
+   * Eğitmenin öğrenci listesi (şerit sekmesi, 22 Eyl 2026). Kişi sayfası
+   * `uyeProfili`dir (`/uyeler/:id`); eski `/ogrenciler/:id` yönlendirmesi
+   * `App.tsx`te AYRI yaşar.
+   */
+  tutorStudents: "/ogrenciler",
   leaderboard: "/liderlik",
   // Öğren bölümü (aralıklı tekrar / odak / grafik / alışkanlıklar)
   learn: "/ogren",
@@ -154,18 +156,24 @@ export const PATHS = {
   srsBrowser: "/ogren/tekrar/tarayici",
   srsStats: "/ogren/tekrar/istatistik",
   /** Hesabım — CLIENT'ta birleşik hub, TUTOR/ADMIN'de profil editörü (dağıtıcı). */
-  profile: "/pano/hesabim",
+  profile: "/hesabim",
   /** Profil bilgileri editörü (about/eğitim/avatar) — hub'dan erişilir. */
-  profileEdit: "/pano/hesabim/profil",
+  profileEdit: "/hesabim/profil",
   /** Teslimat adresleri (CLIENT) — mağaza + ders ortak. */
   addresses: "/adreslerim",
+  /**
+   * Ayarlar — rol dağıtıcısı (`App.tsx::AyarlarDispatcher`): öğrenciye kartlı
+   * hesap merkezi (`AccountHub`, 22 Eyl 2026'ya kadar `/hesabim`), diğer
+   * rollere doğrudan hesap ayarları (`Settings`).
+   */
   settings: "/ayarlar",
-  tutorListing: "/pano/ilanim",
+  /** Hesap ayarları sayfasının (`Settings`) her rolde açılan adresi. */
+  accountSettings: "/ayarlar/hesap",
+  tutorListing: "/profil",
   /**
    * İlan oluşturma sihirbazı — kayıt olan eğitmenin ilk durağı.
-   * `/pano/ilanim` MEVCUT ilanın editörüdür; ikisi bilerek ayrıdır.
-   * Sihirbaz şeritte değil, o yüzden `/pano` altına GİRMEZ — tek seferlik bir
-   * kurulum akışıdır, panelin bir bölümü değil.
+   * `/profil` MEVCUT ilanın editörüdür ("Profilim" sekmesi); ikisi bilerek ayrıdır. Sihirbaz
+   * şeritte değil — tek seferlik bir kurulum akışıdır, panelin bir bölümü değil.
    */
   tutorOnboarding: "/ilanini-olustur",
   /** Eğitmenin ilanını öne çıkarma (reklam paketi satın alma). */
@@ -177,7 +185,7 @@ export const PATHS = {
    * sayfasından (`TutorProfile`) görebiliyordu, yani öğrencinin gördüğü
    * ekrandan. Panel şeridi kurulurken kendi ekranına çıkarıldı.
    */
-  tutorReviews: "/pano/degerlendirmeler",
+  tutorReviews: "/degerlendirmeler",
   /** Dağıtıcı saha ekranı — kendi-filo teslimat turu (ADMIN + KURYE). */
   deliveryRun: "/dagitim/:id",
   /** Zimmet ekranı — paketleri araca alma (ADMIN + KURYE, F30 §3.4). */
@@ -353,7 +361,6 @@ export const ROUTES = {
   faq: PATHS.faq,
   contact: PATHS.contact,
 
-  tutorPreApply: PATHS.tutorPreApply,
 
   // ── Kimlik & token akışları ──
   login: PATHS.login,
@@ -369,7 +376,7 @@ export const ROUTES = {
   reservations: PATHS.reservations,
   lesson: (id: string | number) => `/ders-talepleri/${id}`,
   libraryReservation: (tur: "deneme" | "calisma", id: string | number) =>
-    `/pano/rezervasyon/${tur}/${id}`,
+    `/rezervasyon/${tur}/${id}`,
   messages: PATHS.messages,
   /** Belirli bir kişiyle/kütüphaneyle sohbeti açar (to/name + opsiyonel role). */
   messageWith: (
@@ -395,6 +402,9 @@ export const ROUTES = {
   tutorEarnings: PATHS.tutorEarnings,
   tutorCalendar: PATHS.tutorCalendar,
   tutorAnalytics: PATHS.tutorAnalytics,
+  tutorStudents: PATHS.tutorStudents,
+  /** Takvimi, ders teklif penceresi bu öğrenci seçili açılacak şekilde açar. */
+  dersPlanla: (clientId: number) => `${PATHS.tutorCalendar}?ogrenci=${clientId}`,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,
   deepwork: PATHS.deepwork,
@@ -409,6 +419,7 @@ export const ROUTES = {
   profileEdit: PATHS.profileEdit,
   addresses: PATHS.addresses,
   settings: PATHS.settings,
+  accountSettings: PATHS.accountSettings,
   tutorListing: PATHS.tutorListing,
   tutorOnboarding: PATHS.tutorOnboarding,
   tutorPromotion: PATHS.tutorPromotion,

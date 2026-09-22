@@ -48,7 +48,7 @@ export function alisverisYapabilir(roleId: number | null | undefined): boolean {
  */
 export const ROL_ETIKETI: Record<number, string> = {
   [ROLE_IDS.ADMIN]: "Yönetici",
-  [ROLE_IDS.TUTOR]: "Eğitmen",
+  [ROLE_IDS.TUTOR]: "Öğretmen",
   [ROLE_IDS.CLIENT]: "Üye",
   [ROLE_IDS.LIBRARY_OPERATOR]: "Operatör",
   [ROLE_IDS.COURIER]: "Kurye",
@@ -68,12 +68,14 @@ export function rolEtiketi(roleId: number | null | undefined): string {
  */
 export const ADSIZ_UYE = "Üye";
 
-// Tüm roller kök (`/`) workspace'inden başlar; `RootDispatcher` orada role göre
-// uygun ekranı (Admin/Tutor panosu ya da üye keşif Landing'i) render eder.
+// Eğitmen doğrudan panosuna (`/genel-bakis`) gider (kullanıcı kararı, 22 Eyl 2026).
+// Diğer roller kök (`/`) workspace'inden başlar; `RootDispatcher` orada role
+// göre uygun ekranı (operatör/kurye paneli ya da keşif Landing'i) render eder.
 export function roleHome(roleId: number | null | undefined): string {
   switch (roleId) {
-    case ROLE_IDS.ADMIN:
     case ROLE_IDS.TUTOR:
+      return ROUTES.bookings;
+    case ROLE_IDS.ADMIN:
     case ROLE_IDS.CLIENT:
     case ROLE_IDS.LIBRARY_OPERATOR:
     case ROLE_IDS.COURIER:
