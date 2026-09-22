@@ -169,6 +169,7 @@ REZERVE_ADLAR: frozenset[str] = frozenset(
         "ogrenciler",
         "test-canli-ders",
         "test-kutuphane-karti",
+        "test-livekit",
         # ── Sunucu ve altyapı ──
         "api",
         "assets",
