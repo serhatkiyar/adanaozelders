@@ -227,7 +227,11 @@ describe("DagitimBugun", () => {
     expect(son(useDeliveryRuns)).toEqual(["2026-09-20", true]);
     fireEvent.change(screen.getByLabelText("Tur tarihi"), { target: { value: "2026-09-21" } });
     await waitFor(() => expect(son(useDeliveryRuns)).toEqual(["2026-09-21", true]));
-    expect(screen.getByTestId("konum")).toHaveTextContent("tarih=2026-09-21");
+    // `waitFor`: `useDeliveryRuns` mock'u render sırasında çağrılır ve `konum`
+    // metnini besleyen router navigasyonundan bir adım önce tetiklenebilir —
+    // CI'da (yerelde değil) ara sıra bu iki güncelleme farklı tick'lere
+    // düşüyordu, senkron `expect` yarış durumuna giriyordu (22 Eyl 2026).
+    await waitFor(() => expect(screen.getByTestId("konum")).toHaveTextContent("tarih=2026-09-21"));
     await userEvent.click(screen.getByRole("button", { name: "geri" }));
     await waitFor(() => expect(son(useDeliveryRuns)).toEqual(["2026-09-20", true]));
     expect((screen.getByLabelText("Tur tarihi") as HTMLInputElement).value).toBe("2026-09-20");
