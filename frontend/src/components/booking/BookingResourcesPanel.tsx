@@ -138,7 +138,7 @@ export function BookingResourcesPanel({
 
         {/* Ekleme aksiyonları */}
         {canEdit && !showAddResource && (
-          <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
+          <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 sm:flex-row">
             <button
               onClick={() => setShowAddResource(true)}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-600 transition hover:border-marka-mid hover:bg-marka-soft hover:text-marka-soft-fg "
@@ -165,7 +165,7 @@ export function BookingResourcesPanel({
         {canEdit && showAddResource && (
           <form
             onSubmit={handleAddResource}
-            className="flex flex-col gap-3 border-t border-slate-100 pt-4 "
+            className="flex flex-col gap-3 border-t border-slate-200 pt-4 "
           >
             <input
               type="text"

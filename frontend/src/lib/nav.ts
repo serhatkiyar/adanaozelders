@@ -88,24 +88,26 @@ export const UYE_NAV: NavItem[] = [
 ];
 
 /**
- * ÖĞRENCİNİN PANEL ŞERİDİ — Pano · Rezervasyonlar · Mesajlar · Hesabım
- * (Modül 4, 18 Eyl 2026).
+ * ÖĞRENCİNİN PANEL ŞERİDİ — Pano · Derslerim · Mesajlar · Ayarlar
+ * (Modül 4, 18 Eyl 2026; etiketler 22 Eyl 2026'da değişti, kullanıcı kararı).
  *
- *  • "Pano": eğitmen şeridi, mobil alt sekme ve menüdeki "Panom" ile aynı ad.
- *    "Ana sayfa" alt çubuktaki "Keşfet" (site ana sayfası) ile karışırdı.
- *  • "Rezervasyonlar": liste deneme sınavı ve çalışma alanını da taşıyor;
- *    "Derslerim" yanlış olurdu.
- *  • "Hesabım": öğrencinin hesap merkezi (`AccountHub`); eğitmende yok,
- *    çünkü eğitmenin hesabı Ayarlar'dadır.
+ *  • "Genel Bakış" (22 Eyl 2026'ya kadar "Pano"): eğitmen şeridi, mobil alt
+ *    sekme ve menüdeki satırla aynı ad. "Ana sayfa" alt çubuktaki "Keşfet"
+ *    (site ana sayfası) ile karışırdı.
+ *  • "Derslerim" (`/dersler`): liste deneme sınavı ve çalışma alanını da
+ *    taşır; önceki adı "Rezervasyonlar"dı.
+ *  • "Ayarlar" (`/ayarlar`): öğrencinin kartlı hesap merkezi (`AccountHub`,
+ *    önceki adı "Hesabım"). Eğitmende aynı adres doğrudan hesap ayarlarıdır.
  *  • Favoriler şeride GİRMEZ: üst bardaki kalp kısayolu ve menü taşıyor.
  *
  * Nöbetçi: `__guards__/panoSeridi.test.tsx`.
  */
 export const UYE_PANO_SEKMELERI: NavItem[] = [
-  { to: ROUTES.bookings, label: "Pano", end: true },
+  { to: ROUTES.bookings, label: "Genel Bakış", end: true },
   {
     to: ROUTES.reservations,
-    label: "Rezervasyonlar",
+    // "Rezervasyonlar" → "Derslerim", adres `/dersler` (kullanıcı kararı, 22 Eyl 2026).
+    label: "Derslerim",
     // Ders ve kütüphane rezervasyon detayı listenin alt sayfalarıdır.
     altYollar: [
       PATHS.lesson.replace(":id", ""),
@@ -114,10 +116,10 @@ export const UYE_PANO_SEKMELERI: NavItem[] = [
   },
   { to: ROUTES.messages, label: "Mesajlar" },
   {
-    to: ROUTES.profile,
-    label: "Hesabım",
-    // Adresler ve siparişler hesap merkezinden açılır.
-    altYollar: [ROUTES.addresses, ROUTES.orders],
+    to: ROUTES.settings,
+    label: "Ayarlar",
+    // Adresler, siparişler ve profil bilgileri hesap merkezinden açılır.
+    altYollar: [ROUTES.addresses, ROUTES.orders, ROUTES.profileEdit],
   },
 ];
 
@@ -161,7 +163,7 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
   // listesini açıyordu — nöbetçi bu düğümü çıpalar.
   {
     to: ROUTES.bookings,
-    label: "Pano",
+    label: "Genel Bakış",
     end: true,
     // Ders detayı panonun alt sayfasıdır (panodaki karttan açılır).
     altYollar: [
@@ -181,10 +183,17 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
   // hamburger menüsüne taşındı. Bkz. `MobilAltSekmeler.tsx::EGITMEN_SEKMELERI`.
   { to: ROUTES.tutorCalendar, label: "Takvim" },
   { to: ROUTES.messages, label: "Mesajlar" },
+  // "Öğrenciler" 22 Eyl 2026'da şeride girdi (kullanıcı kararı; Preply §4).
+  // Kişi sayfası (`/uyeler/:id`) listenin alt sayfasıdır.
+  {
+    to: ROUTES.tutorStudents,
+    label: "Öğrenciler",
+    altYollar: [PATHS.uyeProfili.replace(":id", "")],
+  },
   { to: ROUTES.tutorAnalytics, label: "Analizler" },
   {
     // "İlanım" → "Profilim" (kullanıcı kararı, 22 Eyl 2026): rota/sayfa
-    // (`TutorSettings.tsx`, `/pano/ilanim`) AYNI kalıyor, yalnız etiket
+    // (`TutorSettings.tsx`) AYNI kalıyor; adres de 22 Eyl'de `/profil` oldu, yalnız etiket
     // değişti — "Profilim" kullanıcıya daha sezgisel geldi.
     to: ROUTES.tutorListing,
     label: "Profilim",

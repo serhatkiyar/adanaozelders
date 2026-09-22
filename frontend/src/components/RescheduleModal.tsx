@@ -52,7 +52,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
       },
       {
         onSuccess: () => {
-          toast.success("Ders talebi yeni saate taşındı; eğitmen onayı bekliyor.");
+          toast.success("Ders talebi yeni saate taşındı; öğretmen onayı bekliyor.");
           onClose();
         },
         onError: (err) => {
@@ -66,7 +66,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
             toast.error(
               typeof detail === "string" && detail.trim()
                 ? detail
-                : "Seçtiğin saat eğitmenin müsaitliği dışında."
+                : "Seçtiğin saat öğretmenin müsaitliği dışında."
             );
             return;
           }
@@ -88,7 +88,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
           Ders Talebini Ertele
         </h3>
         <p className="mt-1 text-sm text-slate-500 ">
-          Yeni saat eğitmenin onayına sunulur.
+          Yeni saat öğretmenin onayına sunulur.
         </p>
 
         <form onSubmit={submit} className="mt-4 space-y-3">

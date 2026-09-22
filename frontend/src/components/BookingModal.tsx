@@ -412,7 +412,7 @@ export function BookingModal({
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.ONLINE
                         ? "border-marka bg-marka-soft/50 text-marka-metin-hover "
-                        : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 "
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-200 "
                     }`}
                   >
                     <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -426,7 +426,7 @@ export function BookingModal({
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.IN_PERSON
                         ? "border-marka bg-marka-soft/50 text-marka-metin-hover "
-                        : "border-slate-100 bg-white text-slate-600 hover:border-slate-200 "
+                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-200 "
                     }`}
                   >
                     <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -439,7 +439,7 @@ export function BookingModal({
               ) : (
                 <div className="rounded-2xl border-2 border-marka-line bg-marka-soft p-5 mt-4 ">
                   <p className="text-sm font-medium text-marka-soft-fg text-center">
-                    Bu eğitmen sadece <strong>{mode === TeachingMode.ONLINE ? "Uzaktan" : "Yüzyüze"}</strong> ders vermektedir.
+                    Bu öğretmen sadece <strong>{mode === TeachingMode.ONLINE ? "Uzaktan" : "Yüzyüze"}</strong> ders vermektedir.
                   </p>
                 </div>
               )}
@@ -474,7 +474,7 @@ export function BookingModal({
                 </div>
               ) : !slotVerisi.has_availability ? (
                 <div className={`${KART} space-y-3`}>
-                  <p className={ETIKET}>Eğitmen henüz ders saati açmadı</p>
+                  <p className={ETIKET}>Öğretmen henüz ders saati açmadı</p>
                   <p className={ACIKLAMA}>Uygun olduğu zamanı mesajla sorabilirsin.</p>
                   <Link
                     to={ROUTES.messageWith(tutor.id, tutor.display_name, "TUTOR")}
@@ -753,14 +753,14 @@ export function BookingModal({
                       İlk dersim ücretsiz olsun
                     </span>
                     <span className="mt-0.5 block text-xs text-emerald-700/80 ">
-                      Bu eğitmenle ilk dersin ücretsiz. İşaretlersen ödeme alınmaz.
+                      Bu öğretmenle ilk dersin ücretsiz. İşaretlersen ödeme alınmaz.
                     </span>
                   </span>
                 </label>
               )}
 
               {/* Ek Not */}
-              <Field label="Eğitmene Mesaj (Opsiyonel)" labelClassName="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
+              <Field label="Öğretmene Mesaj (Opsiyonel)" labelClassName="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 {(id) => (
                     <textarea
                     id={id}
@@ -830,13 +830,13 @@ function OzetKarti({
         <>
           {ucret !== null && <p className={ETIKET}>{formatTRY(ucret)}</p>}
           <p className={KUCUK_ACIKLAMA}>
-            Şimdi ödeme alınmaz. Eğitmen kabul edince ödersin; para ders onaylanana kadar
+            Şimdi ödeme alınmaz. Öğretmen kabul edince ödersin; para ders onaylanana kadar
             bekletilir.
           </p>
         </>
       )}
       <p className={KUCUK_ACIKLAMA}>
-        Eğitmen kabul etmeden önce istediğin zaman, kabul ettikten sonra{" "}
+        Öğretmen kabul etmeden önce istediğin zaman, kabul ettikten sonra{" "}
         {formatIstanbulDay(iptalSonu)} {formatIstanbulTime(iptalSonu)} tarihine kadar ücretsiz
         iptal.
       </p>
@@ -859,7 +859,7 @@ function BasariEkrani({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className={BOLUM_BASLIGI}>Ders talebin eğitmene iletildi</h3>
+        <h3 className={BOLUM_BASLIGI}>Ders talebin öğretmene iletildi</h3>
         <p className={`mt-2 ${ACIKLAMA}`}>
           {formatIstanbulDay(booking.start_at)}, {saatAraligi(booking.start_at, booking.end_at)}
         </p>

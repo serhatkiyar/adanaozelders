@@ -240,8 +240,8 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
 
       {/* ── ARZ TARAFININ KAPISI — buradan silinemez ──
           "Ders Ver" bağlantısı telefonda üst bardan kaldırıldı (mobil yeniden
-          tasarımı, 9 Eyl 2026) ve eğitmen kaydına giden başka bir yol yok.
-          Kaldırılırsa eğitmen hiç kaydolamaz; nöbetçi
+          tasarımı, 9 Eyl 2026) ve öğretmen kaydına giden başka bir yol yok.
+          Kaldırılırsa öğretmen hiç kaydolamaz; nöbetçi
           `__guards__/mobilAltSekmeler.test.tsx` bu kapıyı arar.
 
           ## Neden düz bir bağlantı DEĞİL (kullanıcı itirazı, 11 Eyl 2026)
@@ -255,19 +255,19 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
           Uygulanan ayrım üç katmanlı:
 
             1. RENK — birincil yol (üye kaydı) markanın rengini TEK BAŞINA
-               taşır; eğitmen yolu nötr (slate). Renk bu ekranda "asıl iş"i
+               taşır; öğretmen yolu nötr (slate). Renk bu ekranda "asıl iş"i
                işaretler, iki yerde birden kullanılınca hiçbir şeyi işaretlemez.
             2. GEOMETRİ — saç teli çizgi + simge·başlık·alt başlık·ok satırı.
                Farklı bir biçim, "burası başka bir yere gidiyor" der. Kutu
                DEĞİL: bu ekranda ikinci bir kart, formla yarışırdı.
             3. DİL — "Ders vermek istiyorum" (kullanıcının ağzından bir istek)
-               yerine "Eğitmen misin?" (kendi kitlesini adıyla çağıran bir
+               yerine "Öğretmen misin?" (kendi kitlesini adıyla çağıran bir
                soru). Soru formu kendi kendini eler: değilsen okumazsın.
 
           MASAÜSTÜNDE DE VAR (kullanıcı kararı, 16 Eyl 2026): önce yalnız
           telefonda çiziliyordu çünkü masaüstünde üst barda "Ders Ver" duruyor.
           Ama giriş penceresi açıkken üst bar arkada; pencerenin içinden
-          eğitmen yoluna aynı resimli satırla gidilmesi iki yüzeyi eşitler. */}
+          öğretmen yoluna aynı resimli satırla gidilmesi iki yüzeyi eşitler. */}
       <EgitmenMisinSatiri
         onSec={() => {
           searchParams.set("modal", "register");

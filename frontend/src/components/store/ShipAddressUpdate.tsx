@@ -25,7 +25,7 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
   if (!canChangeAddress(order)) {
     if (order.status === "SHIPPED") {
       return (
-        <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-400 ">
+        <p className="mt-3 border-t border-slate-200 pt-3 text-xs text-slate-400 ">
           Kurye yola çıktı, adres değişikliği kapandı
         </p>
       );
@@ -56,7 +56,7 @@ export function ShipAddressUpdate({ order }: { order: OrderOut }) {
   };
 
   return (
-    <div className="mt-3 border-t border-slate-100 pt-3 ">
+    <div className="mt-3 border-t border-slate-200 pt-3 ">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

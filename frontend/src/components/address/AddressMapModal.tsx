@@ -23,7 +23,7 @@ export function AddressMapModal({
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
       <div className="flex h-[80vh] w-[90vw] max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl ">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 ">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 ">
           <h3 className="font-semibold text-slate-800 ">Konum Seç</h3>
           <button
             type="button"

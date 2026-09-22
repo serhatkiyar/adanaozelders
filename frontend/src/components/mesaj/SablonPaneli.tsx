@@ -181,7 +181,7 @@ export function SablonPaneli({
           {yeniAcik ? (
             <form
               onSubmit={kaydet}
-              className="mt-3 space-y-2 border-t border-slate-100 pt-3"
+              className="mt-3 space-y-2 border-t border-slate-200 pt-3"
             >
               <input
                 value={baslik}
@@ -219,7 +219,7 @@ export function SablonPaneli({
             <button
               type="button"
               onClick={() => setYeniAcik(true)}
-              className="mt-3 w-full border-t border-slate-100 pt-3 text-left text-sm font-semibold text-marka-metin hover:text-marka-metin-hover"
+              className="mt-3 w-full border-t border-slate-200 pt-3 text-left text-sm font-semibold text-marka-metin hover:text-marka-metin-hover"
             >
               + Yeni şablon ekle
             </button>

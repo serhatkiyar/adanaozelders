@@ -101,7 +101,7 @@ export function StockMovementTable({
           {rows.map((m) => (
             <tr
               key={m.id}
-              className="border-b border-slate-100 align-top last:border-0 "
+              className="border-b border-slate-200 align-top last:border-0 "
             >
               <td className="whitespace-nowrap py-2 pr-4 text-slate-600 ">
                 {new Date(m.created_at).toLocaleString("tr-TR")}

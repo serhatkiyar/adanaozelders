@@ -172,13 +172,13 @@ export function KayitAkisi({
             (adım 1'de rol, adım 2-3'te "Üyelik") bağlamı yok ediyordu; geri
             oku zaten hangi adımda olduğumuzu gösteriyor. */}
         <h1 className="text-2xl font-bold text-slate-900">
-          {role === "tutor" ? "Eğitmen kaydı" : "Üye kaydı"}
+          {role === "tutor" ? "Öğretmen kaydı" : "Üye kaydı"}
         </h1>
       </div>
 
       {/* ROL METİN SATIRI YOK (kullanıcı kararı, 16 Eyl 2026): "Üye olarak
-          kaydoluyorsun · Eğitmen olarak kaydol" kalktı. Eğitmen yolu formun
-          ALTINDA, giriş penceresiyle aynı resimli "Eğitmen misin?" satırı. */}
+          kaydoluyorsun · Öğretmen olarak kaydol" kalktı. Öğretmen yolu formun
+          ALTINDA, giriş penceresiyle aynı resimli "Öğretmen misin?" satırı. */}
       <form onSubmit={ilerle} className="mt-6 space-y-4">
         {adim === "eposta" && (
           <>
@@ -301,7 +301,7 @@ export function KayitAkisi({
 
       {girisBaglantisi}
 
-      {/* Yalnız ÜYE kaydının ilk adımında: eğitmen yolunu açar. Eğitmen
+      {/* Yalnız ÜYE kaydının ilk adımında: öğretmen yolunu açar. Öğretmen
           kaydına "Ders Ver" ya da bu satırdan gelinir; oradan geri dönüş
           giriş bağlantısı ve üst bar. */}
       {adim === "eposta" && role === "client" && (

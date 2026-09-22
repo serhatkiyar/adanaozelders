@@ -74,16 +74,16 @@ describe("KayitAkisi — ilk ekran", () => {
     expect(screen.getByRole("heading", { name: "Üye kaydı" })).toBeTruthy();
   });
 
-  it("eğitmen yolundan gelince başlık bunu söyler", async () => {
+  it("öğretmen yolundan gelince başlık bunu söyler", async () => {
     kur("tutor");
-    expect(screen.getByRole("heading", { name: "Eğitmen kaydı" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Öğretmen kaydı" })).toBeTruthy();
   });
 
   /* Rol, adres parametresinde yaşayan ve sonradan DEĞİŞTİRİLEMEYEN bir hesap
      özelliği. Başlık bir adımda rolü, sonraki adımlarda ilerlemeyi söylerken
      eğitmen adayı ikinci ekranda "Üyelik" görüyordu — yani başka bir rolün
      adını. Bu iki düğüm o bağlam kaybının geri gelmesini engeller. */
-  it("ROL KAYBOLMAZ: sonraki adımlarda da başlık eğitmen kaydı der", async () => {
+  it("ROL KAYBOLMAZ: sonraki adımlarda da başlık öğretmen kaydı der", async () => {
     const kullanici = userEvent.setup();
     kur("tutor");
 
@@ -93,21 +93,21 @@ describe("KayitAkisi — ilk ekran", () => {
     );
 
     expect(await screen.findByLabelText(/^Adınız/i)).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Eğitmen kaydı" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Öğretmen kaydı" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: /Üye/ })).toBeNull();
   });
 
-  it("üye kaydının ilk adımında altta 'Eğitmen misin?' satırı vardır", async () => {
+  it("üye kaydının ilk adımında altta 'Öğretmen misin?' satırı vardır", async () => {
     // Metin satırı ("Üye olarak kaydoluyorsun · Eğitmen olarak kaydol")
     // kalktı (16 Eyl 2026); eğitmen yolu giriş penceresiyle aynı satır.
     kur();
     expect(screen.queryByText(/olarak kaydoluyorsun/)).toBeNull();
-    expect(screen.getByRole("button", { name: /Eğitmen misin\?/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Öğretmen misin\?/ })).toBeTruthy();
   });
 
-  it("eğitmen kaydında 'Eğitmen misin?' satırı yoktur", async () => {
+  it("öğretmen kaydında 'Öğretmen misin?' satırı yoktur", async () => {
     kur("tutor");
-    expect(screen.queryByRole("button", { name: /Eğitmen misin\?/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Öğretmen misin\?/ })).toBeNull();
   });
 
   it("ilk adımın düğmesi ne yapacağını söyler", async () => {

@@ -165,7 +165,7 @@ export function OrderInvoiceModal({
                     (s) => s.order_item_id === it.id
                   );
                   return (
-                    <tr key={it.id} className="border-b border-slate-100 ">
+                    <tr key={it.id} className="border-b border-slate-200 ">
                       <td className="py-2 pr-2 align-top text-slate-800 ">{it.title}</td>
                       <td className="py-2 text-center align-top text-slate-600 ">
                         {it.quantity}
@@ -211,7 +211,7 @@ export function OrderInvoiceModal({
               <span className="text-slate-900 ">{formatTL(order.total)}</span>
             </div>
             {belge && Number(belge.refund.refunded_amount) > 0 && (
-              <div className="flex justify-between border-t border-slate-100 pt-1.5 text-slate-500 ">
+              <div className="flex justify-between border-t border-slate-200 pt-1.5 text-slate-500 ">
                 <span>
                   İade edilen (KDV {formatTL(belge.refund.tax_total)} dahil)
                 </span>
@@ -220,7 +220,7 @@ export function OrderInvoiceModal({
             )}
           </div>
 
-          <p className="mt-6 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400 ">
+          <p className="mt-6 border-t border-slate-200 pt-4 text-[11px] leading-relaxed text-slate-400 ">
             {belge
               ? belge.notice
               : "Bu belge sipariş bilgilerinizi özetler; resmî fatura değildir. Vergi kırılımı bu sipariş için kayıtlı olmadığından gösterilmemiştir."}
@@ -253,7 +253,7 @@ export function OrderInvoiceModal({
 function TaxLines({ belge }: { belge: OrderInvoiceOut }) {
   return (
     <>
-      <div className="flex justify-between border-t border-slate-100 pt-1.5 ">
+      <div className="flex justify-between border-t border-slate-200 pt-1.5 ">
         <span className="text-slate-500 ">Matrah</span>
         <span className="text-slate-800 ">
           {formatTL(belge.totals.net_total)}

@@ -146,7 +146,7 @@ export function CouponsPanel() {
       {!canManage && <ReadOnlyNotice />}
       {/* Oluştur */}
       {canManage && (
-        <div className="rounded-2xl border border-slate-100 p-4 ">
+        <div className="rounded-2xl border border-slate-200 p-4 ">
           <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Yeni kupon</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Form.Field
@@ -263,7 +263,7 @@ export function CouponsPanel() {
           {coupons.map((c) => (
             <div
               key={c.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 p-3 "
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3 "
             >
               <div className="text-sm">
                 <span className="font-semibold text-slate-900 ">{c.code}</span>

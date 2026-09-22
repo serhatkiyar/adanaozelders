@@ -88,7 +88,7 @@ export function BookingPrivateNotesPanel({
 
         <form
           onSubmit={handleAddPrivateNote}
-          className="flex gap-2 border-t border-slate-100 pt-2 "
+          className="flex gap-2 border-t border-slate-200 pt-2 "
         >
           <textarea
             rows={2}

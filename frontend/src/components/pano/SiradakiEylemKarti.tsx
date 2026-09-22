@@ -48,7 +48,7 @@ const METIN: Record<
   BOOK_AGAIN: { etiket: "Kaldığın yerden", baslik: (e) => `${e} ile devam et` },
 };
 
-const egitmenAdi = (b: BookingOut) => b.tutor_name || "Eğitmen";
+const egitmenAdi = (b: BookingOut) => b.tutor_name || "Öğretmen";
 
 /** Ücretsiz ilk derste ödeme kaydı hiç oluşmaz (`price=0`). */
 const ucretsiz = (b: BookingOut) => b.is_free_lesson || Number(b.price ?? 0) === 0;
@@ -74,18 +74,18 @@ export function SiradakiEylemKarti({
     return (
       <section className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
         <p className={ETIKET}>
-          {bekleyenVar ? "Talebin eğitmenin onayını bekliyor" : "Sıradaki dersin yok"}
+          {bekleyenVar ? "Talebin öğretmenin onayını bekliyor" : "Sıradaki dersin yok"}
         </p>
         <p className={`mt-1 ${ACIKLAMA}`}>
           {bekleyenVar
-            ? "Eğitmen talebini onayladığında sıradaki dersin burada görünecek."
-            : "Yeni bir konuya başlamak ya da çalışmayı sürdürmek için eğitmenlere göz at."}
+            ? "Öğretmen talebini onayladığında sıradaki dersin burada görünecek."
+            : "Yeni bir konuya başlamak ya da çalışmayı sürdürmek için öğretmenlere göz at."}
         </p>
         <Link
           to={ROUTES.tutors}
           className={`mt-6 ${bekleyenVar ? DUGME_IKINCIL : DUGME_BIRINCIL}`}
         >
-          Eğitmen bul
+          Öğretmen bul
         </Link>
       </section>
     );
@@ -284,7 +284,7 @@ function OnayKarti({ booking }: { booking: BookingOut }) {
     <EylemIskeleti
       kind="CONFIRM_LESSON"
       booking={booking}
-      aciklama={`Onayladığında ücret eğitmenine aktarılır. Bir sorun olduysa ${sonAn} bildirebilirsin; bildirim yapılmazsa ders onaylanmış sayılır.`}
+      aciklama={`Onayladığında ücret öğretmenine aktarılır. Bir sorun olduysa ${sonAn} bildirebilirsin; bildirim yapılmazsa ders onaylanmış sayılır.`}
     >
       <button
         type="button"
@@ -313,7 +313,7 @@ function DegerlendirmeKarti({ booking }: { booking: BookingOut }) {
       kind="REVIEW"
       booking={booking}
       dersBilgisi={false}
-      aciklama="Yorumun, başka öğrencilerin kendilerine uygun eğitmeni bulmasına yardım eder."
+      aciklama="Yorumun, başka öğrencilerin kendilerine uygun öğretmeni bulmasına yardım eder."
     >
       <button type="button" onClick={() => setAcik(true)} className={`sm:w-auto ${DUGME_BIRINCIL}`}>
         Değerlendir

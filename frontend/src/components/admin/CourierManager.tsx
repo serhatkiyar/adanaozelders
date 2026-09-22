@@ -99,7 +99,7 @@ function CourierAccountPanel({ c }: { c: Courier }) {
   if (account?.is_active) {
     return (
       <>
-        <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 ">
+        <div className="mb-3 space-y-2 border-t border-slate-200 pt-3 ">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <p className="text-xs text-slate-500 ">
               <span className="font-semibold text-slate-700 ">
@@ -157,7 +157,7 @@ function CourierAccountPanel({ c }: { c: Courier }) {
   }
 
   return (
-    <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 ">
+    <div className="mb-3 space-y-2 border-t border-slate-200 pt-3 ">
       <p className="text-xs text-slate-500 ">
         Giriş hesabı yok: kurye saha ekranına kendi hesabıyla girsin diye oluşturun.
       </p>
@@ -615,7 +615,7 @@ export function CourierManager() {
 
   return (
     <section className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 ">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 ">
         <div>
           <h2 className="text-base font-bold text-slate-900 ">Kuryeler</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -642,7 +642,7 @@ export function CourierManager() {
           </p>
         ) : !canManage ? (
           // Salt-okunur rol: kimlik listesi görünür, düzenleme/hesap yüzeyi açılmaz.
-          <ul className="divide-y divide-slate-100 ">
+          <ul className="divide-y divide-slate-200 ">
             {couriers.map((c) => (
               <li key={c.id} className="flex items-center gap-3 py-3">
                 <CourierAvatar c={c} />
@@ -656,7 +656,7 @@ export function CourierManager() {
             ))}
           </ul>
         ) : (
-          <ul className="divide-y divide-slate-100 ">
+          <ul className="divide-y divide-slate-200 ">
             {couriers.map((c) => (
               <CourierRow key={c.id} c={c} />
             ))}
@@ -699,7 +699,7 @@ function KuryeEklemeFormu({ onBitti }: { onBitti: () => void }) {
   const genelHata = form.formState.errors.root?.sunucu?.message;
 
   return (
-    <div className="border-b border-slate-100 py-3 ">
+    <div className="border-b border-slate-200 py-3 ">
       {genelHata && (
         <p role="alert" className="mb-1 text-xs text-rose-600 ">
           {genelHata}

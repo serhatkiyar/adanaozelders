@@ -139,7 +139,7 @@ export function CategoriesPanel() {
       )}
       <div className="mt-4 space-y-2">
         {(categories ?? []).map((c) => (
-          <div key={c.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-slate-100 px-3 py-2 ">
+          <div key={c.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-slate-200 px-3 py-2 ">
             <span className={`text-sm text-slate-700 ${!c.is_active ? "opacity-50" : ""}`} style={{ paddingLeft: `${categoryDepth(c, categories ?? []) * 18}px` }}>
               {c.parent_id ? "↳ " : ""}{c.name} <span className="text-slate-400">({c.product_count ?? 0})</span>
             </span>

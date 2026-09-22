@@ -260,7 +260,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
                 );
               })}
             </div>
-            <div className="mt-1 flex gap-1 border-t border-slate-100 pt-1.5 ">
+            <div className="mt-1 flex gap-1 border-t border-slate-200 pt-1.5 ">
               <input value={newLabel} maxLength={60} onChange={(e) => setNewLabel(e.target.value)} placeholder="Yeni etiket…"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addNewLabel(); } }}
                 className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-marka-mid " />
@@ -299,7 +299,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
       )}
 
       {/* Alt bar: proje seçici + aksiyonlar */}
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 ">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-200 pt-3 ">
         <div className="relative">
           <button type="button" onClick={() => setMenu(menu === "project" ? null : "project")} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 ">
             <span className="text-base font-bold leading-none" style={{ color: project?.color || "#94a3b8" }}>{project?.is_inbox ? "📥" : "#"}</span>

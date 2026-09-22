@@ -34,7 +34,7 @@ function TutorRow({
     <button
       type="button"
       onClick={() => onPick(id)}
-      className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-left transition hover:border-marka-line hover:bg-marka-soft/50 active:scale-[0.99] "
+      className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left transition hover:border-marka-line hover:bg-marka-soft/50 active:scale-[0.99] "
     >
       <Avatar name={name} avatar_url={avatar} size="sm" />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800 ">
@@ -80,7 +80,7 @@ export function NewLessonRequestModal({
       if (!map.has(b.tutor_id)) {
         map.set(b.tutor_id, {
           id: b.tutor_id,
-          name: b.tutor_name ?? "Eğitmen",
+          name: b.tutor_name ?? "Öğretmen",
           avatar: b.tutor_avatar_url,
         });
       }
@@ -112,14 +112,14 @@ export function NewLessonRequestModal({
       hideCloseButton
       panelClassName="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200"
     >
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 ">
           <div>
             <h2 className="text-lg font-bold text-slate-900 ">
               Ders Talebi Oluştur
             </h2>
             {dateLabel && (
               <p className="text-xs text-slate-500 ">
-                {dateLabel} için eğitmen seç
+                {dateLabel} için öğretmen seç
               </p>
             )}
           </div>
@@ -141,7 +141,7 @@ export function NewLessonRequestModal({
           {pastTutors.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
-                Ders aldığın eğitmenler
+                Ders aldığın öğretmenler
               </p>
               {pastTutors.map((t) => (
                 <TutorRow
@@ -175,13 +175,13 @@ export function NewLessonRequestModal({
           {empty && (
             <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center ">
               <p className="text-sm text-slate-500 ">
-                Henüz ders aldığın ya da görüntülediğin bir eğitmen yok.
+                Henüz ders aldığın ya da görüntülediğin bir öğretmen yok.
               </p>
             </div>
           )}
         </div>
 
-        <div className="border-t border-slate-100 p-4 ">
+        <div className="border-t border-slate-200 p-4 ">
           <button
             type="button"
             onClick={goSearch}
@@ -190,7 +190,7 @@ export function NewLessonRequestModal({
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
             </svg>
-            {empty ? "Eğitmen Ara" : "Başka bir eğitmen ara"}
+            {empty ? "Öğretmen Ara" : "Başka bir öğretmen ara"}
           </button>
         </div>
     </Modal>

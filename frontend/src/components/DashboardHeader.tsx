@@ -154,11 +154,113 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
    * çizilmez, panele dönüşün tek yolu odur (nöbetçi: `panoSeridi.test.tsx`
    * "eğitmen menüsünün ilk satırı PANOM").
    */
+  const cikisDugmesi = (onClick: () => void) => (
+    <button
+      onClick={() => {
+        onClick();
+        logout();
+      }}
+      className="flex w-full items-center rounded-lg py-2.5 pl-11 pr-3 text-left text-base font-medium leading-6 text-slate-900 transition hover:bg-slate-50 hover:text-marka-metin"
+    >
+      Oturumu kapat
+    </button>
+  );
+
+  /**
+   * EĞİTMENİN AVATAR MENÜSÜ — sabit liste (kullanıcı kararı, 22 Eyl 2026):
+   * Mesajlar · Öğrenciler · Takvim · Analizler · Profilim · Ayarlar · Yardım ·
+   * Oturumu kapat.
+   * Yalnız masaüstü açılır menüsünde; mobil çekmece kendi düzenini (panel
+   * bölümleri + hesap satırları) korur. Favorilerim masaüstünde yalnız bu
+   * menüdeydi ve çıktı — çekmecede duruyor.
+   */
+  /**
+   * ÖĞRENCİNİN AVATAR MENÜSÜ — sabit liste (kullanıcı kararı, 22 Eyl 2026):
+   * Genel Bakış · Mesajlar · Derslerim · Favorilerim · Ayarlar · Yardım ·
+   * Oturumu kapat. Bildirimler satırı yok; tam sayfaya üst bardaki zilin
+   * panelindeki "Tüm bildirimleri gör" götürür.
+   */
+  const ogrenciMenusu = (onClick: () => void) => (
+    <>
+      <NavLink to={ROUTES.bookings} onClick={onClick} className={menuItemClass}>
+        <Icon name="clipboard" className="h-5 w-5" />
+        Genel Bakış
+      </NavLink>
+      <NavLink to={ROUTES.messages} onClick={onClick} className={menuItemClass}>
+        <Icon name="messages" className="h-5 w-5" />
+        Mesajlar
+        {msgUnread > 0 && (
+          <span className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
+            {msgUnread > 9 ? "9+" : msgUnread}
+          </span>
+        )}
+      </NavLink>
+      <NavLink to={ROUTES.reservations} onClick={onClick} className={menuItemClass}>
+        <Icon name="bookings" className="h-5 w-5" />
+        Derslerim
+      </NavLink>
+      <NavLink to={ROUTES.favorites} onClick={onClick} className={menuItemClass}>
+        <Icon name="favorites" className="h-5 w-5" />
+        Favorilerim
+      </NavLink>
+      <NavLink to={ROUTES.settings} onClick={onClick} className={menuItemClass}>
+        <Icon name="settings" className="h-5 w-5" />
+        Ayarlar
+      </NavLink>
+      <NavLink to={ROUTES.faq} onClick={onClick} className={menuItemClass}>
+        <Icon name="help" className="h-5 w-5" />
+        Yardım
+      </NavLink>
+      <div className="my-1 border-t border-slate-200 " />
+      {cikisDugmesi(onClick)}
+    </>
+  );
+
+  const egitmenMenusu = (onClick: () => void) => (
+    <>
+      <NavLink to={ROUTES.messages} onClick={onClick} className={menuItemClass}>
+        <Icon name="messages" className="h-5 w-5" />
+        Mesajlar
+        {msgUnread > 0 && (
+          <span className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
+            {msgUnread > 9 ? "9+" : msgUnread}
+          </span>
+        )}
+      </NavLink>
+      <NavLink to={ROUTES.tutorStudents} onClick={onClick} className={menuItemClass}>
+        <Icon name="students" className="h-5 w-5" />
+        Öğrenciler
+      </NavLink>
+      <NavLink to={ROUTES.tutorCalendar} onClick={onClick} className={menuItemClass}>
+        <Icon name="calendar" className="h-5 w-5" />
+        Takvim
+      </NavLink>
+      <NavLink to={ROUTES.tutorAnalytics} onClick={onClick} className={menuItemClass}>
+        <Icon name="analytics" className="h-5 w-5" />
+        Analizler
+      </NavLink>
+      <NavLink to={ROUTES.tutorListing} onClick={onClick} className={menuItemClass}>
+        <Icon name="profile" className="h-5 w-5" />
+        Profilim
+      </NavLink>
+      <NavLink to={ROUTES.settings} onClick={onClick} className={menuItemClass}>
+        <Icon name="settings" className="h-5 w-5" />
+        Ayarlar
+      </NavLink>
+      <NavLink to={ROUTES.faq} onClick={onClick} className={menuItemClass}>
+        <Icon name="help" className="h-5 w-5" />
+        Yardım
+      </NavLink>
+      <div className="my-1 border-t border-slate-200 " />
+      {cikisDugmesi(onClick)}
+    </>
+  );
+
   const accountLinks = (onClick: () => void, panomGizle = false) => {
     return (
       <>
         {/* MENÜNÜN İLK SATIRI ROLE GÖRE DEĞİŞİR (kullanıcı kararı, 8 Eyl 2026).
-            Eğitmende "Panom" → `/pano`: şeridi olan tek rol odur ve ana
+            Öğretmende "Panom" → `/pano`: şeridi olan tek rol odur ve ana
             sayfada (Landing) şerit çizilmediği için panele dönüş yolu bu
             satırdır. Kullanıcı: *"hesabım tıklamıcaz menüden Panom yazıcak
             ona tıklayacağız."* Öğrenci de Modül 4'te (18 Eyl 2026) şeride
@@ -168,7 +270,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           panomGizle ? null : (
             <NavLink to={ROUTES.bookings} onClick={onClick} className={menuItemClass}>
               <Icon name="clipboard" className="h-5 w-5" />
-              Panom
+              Genel Bakış
             </NavLink>
           )
         ) : (
@@ -233,23 +335,14 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         </NavLink>
 
         {/* Etiket sayfanın kendi başlığıyla aynı ("Ayarlar", 17 Eyl 2026).
-            Eğitmende bu satır artık hesabın TEK girişi: "Hesabım" sekmesi
+            Öğretmende bu satır artık hesabın TEK girişi: "Hesabım" sekmesi
             şeritten kalktı ve içeriği gerçek sahiplerine dağıldı. */}
         <NavLink to={ROUTES.settings} onClick={onClick} className={menuItemClass}>
           <Icon name="settings" className="h-5 w-5" />
           Ayarlar
         </NavLink>
-        <div className="my-1 border-t border-slate-100 " />
-        <button
-          onClick={() => {
-            onClick();
-            logout();
-          }}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-base font-medium leading-6 text-slate-900 transition hover:bg-slate-50 hover:text-marka-metin"
-        >
-          <Icon name="logout" className="h-5 w-5" />
-          Çıkış yap
-        </button>
+        <div className="my-1 border-t border-slate-200 " />
+        {cikisDugmesi(onClick)}
       </>
     );
   };
@@ -260,7 +353,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   // kendi max-width'ini bağımsız yönetebiliyor (çift girintileme önlenir).
   const headerClass = transparent
     // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    ? "sticky top-0 z-40 border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md "
+    ? "sticky top-0 z-40 border-b border-slate-200 bg-[#f4f4f4]/95 backdrop-blur-md "
     // Panel üst barı BEYAZ (17 Eyl 2026 kullanıcı kararı, Preply gibi; önceki
     // #f4f4f4 kararı yalnız ana sayfa/anonim kabukta sürüyor).
     // TELEFONDA BAR YOK (19 Eyl 2026, kullanıcı kararı). Önce barın yalnız
@@ -307,6 +400,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           >
             <NavbarWidget logoClass={logoClass} logoCompactClass={logoCompactClass} />
           </Link>
+
         </div>
 
         {/* Navbar ortası — kategori çubuğu (yalnız Landing'de geçilir) */}
@@ -368,9 +462,15 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               <div className="absolute right-0 top-full z-40 mt-3 w-72 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_8px_32px_rgba(18,17,23,0.15)]">
 
                 <div className="mt-1 flex flex-col">
-                  {accountLinks(() => {
-                    setAccountOpen(false);
-                  })}
+                  {user?.role_id === ROLE_IDS.TUTOR ? (
+                    egitmenMenusu(() => setAccountOpen(false))
+                  ) : user?.role_id === ROLE_IDS.CLIENT ? (
+                    ogrenciMenusu(() => setAccountOpen(false))
+                  ) : (
+                    accountLinks(() => {
+                      setAccountOpen(false);
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -388,7 +488,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         <div className="absolute right-0 top-2 z-10 flex items-center gap-0 sm:hidden">
           {/* Masaüstüyle AYNI türev (`favoriKisayolu`). Burada eskiden ayrı
               bir rol kontrolü yazılıydı ve bir kez zaten yanlış yazılmıştı:
-              kısayol role bakmadan basılınca eğitmenin ve kütüphane
+              kısayol role bakmadan basılınca öğretmenin ve kütüphane
               operatörünün mobil üst barında, kendilerine ait olmayan ve boş
               açılan bir ekrana giden ikon duruyordu. Operatörün işi fiziksel
               olarak mobildir (QR kapıda okutulur), yani yanlış ikonu en çok o

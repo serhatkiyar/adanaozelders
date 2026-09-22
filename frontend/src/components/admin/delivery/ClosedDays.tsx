@@ -83,7 +83,7 @@ export function ClosedDays() {
 
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">Teslimat Takvimi</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -98,7 +98,7 @@ export function ClosedDays() {
       </div>
 
       {canManage && (
-        <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-6 py-4 ">
+        <div className="flex flex-wrap items-end gap-2 border-b border-slate-200 px-6 py-4 ">
           <Form.Field
             control={form.control}
             name="day"
@@ -163,7 +163,7 @@ export function ClosedDays() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 ">
+        <ul className="divide-y divide-slate-200 px-6 ">
           {days.map((d) => (
             <li key={d.id} className="flex items-center gap-3 py-3">
               <span className="w-52 shrink-0 text-sm font-medium text-slate-900 ">

@@ -46,7 +46,7 @@ export function SiradakiDersKarti({
 
   const egitmenGoster = karsiTaraf === "egitmen";
   const kisi = egitmenGoster
-    ? (lesson.tutor_name ?? "Eğitmen")
+    ? (lesson.tutor_name ?? "Öğretmen")
     : (lesson.client_name ?? `Öğrenci #${lesson.client_id}`);
   const kisiAvatar = egitmenGoster ? lesson.tutor_avatar_url : lesson.client_avatar_url;
   const yuzYuze = lesson.mode === "IN_PERSON";

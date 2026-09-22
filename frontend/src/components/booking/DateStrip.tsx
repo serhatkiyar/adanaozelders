@@ -97,7 +97,7 @@ export function DateStrip({
               }${
                 active
                   ? "border-marka bg-marka shadow-md "
-                  : "border-slate-100 bg-white hover:border-marka-line hover:bg-marka-soft "
+                  : "border-slate-200 bg-white hover:border-marka-line hover:bg-marka-soft "
               }`}
             >
               <span

@@ -96,7 +96,7 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
       )}
 
       {(library.open_now != null || library.study_hourly_price != null) && (
-        <div className="mt-3 flex items-center gap-3 border-t border-slate-100 pt-3 text-[13px] ">
+        <div className="mt-3 flex items-center gap-3 border-t border-slate-200 pt-3 text-[13px] ">
           {library.open_now != null && (
             <span className="flex items-center gap-1.5">
               <span

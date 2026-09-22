@@ -228,7 +228,7 @@ function SessionRow({
   };
 
   return (
-    <div className="rounded-xl border border-slate-100 p-3 ">
+    <div className="rounded-xl border border-slate-200 p-3 ">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -366,7 +366,7 @@ function RosterPanel({ sessionId }: { sessionId: number }) {
           </span>
         )}
       </p>
-      <ul className="mt-2 divide-y divide-slate-100 rounded-lg bg-slate-50 ">
+      <ul className="mt-2 divide-y divide-slate-200 rounded-lg bg-slate-50 ">
       {data.map((r) => (
         <li key={r.registration_id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
           <span className="min-w-0 truncate text-slate-700 ">{r.client_name}</span>
@@ -564,7 +564,7 @@ function ResultsPanel({
                 <th className="px-1 py-1.5"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 ">
+            <tbody className="divide-y divide-slate-200 ">
               {data.map((r) => (
                 <ResultRow key={r.registration_id} sessionId={session.id} row={r} />
               ))}

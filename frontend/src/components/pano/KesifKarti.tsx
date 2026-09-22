@@ -11,21 +11,21 @@ import { ROUTES } from "@/lib/routes";
  */
 export function KesifKarti({ ucretsizIlkDersSayisi }: { ucretsizIlkDersSayisi: number }) {
   return (
-    <section aria-label="Eğitmen bul" className={KART}>
+    <section aria-label="Öğretmen bul" className={KART}>
       <h2 className="text-2xl font-bold leading-8 text-slate-900">
         Öğrenmek istediğin konuya bugün başla
       </h2>
       <p className={`mt-2 ${ACIKLAMA}`}>
-        Eğitmenleri ders, fiyat ve yorumlarına göre karşılaştır; sana uyanla
+        Öğretmenleri ders, fiyat ve yorumlarına göre karşılaştır; sana uyanla
         online ya da yüz yüze ders planla.
       </p>
       {ucretsizIlkDersSayisi > 0 && (
         <p className="mt-3 text-base font-semibold leading-6 text-slate-900">
-          {ucretsizIlkDersSayisi} eğitmen ilk dersi ücretsiz veriyor.
+          {ucretsizIlkDersSayisi} öğretmen ilk dersi ücretsiz veriyor.
         </p>
       )}
       <Link to={ROUTES.tutors} className={`mt-6 w-full sm:w-auto ${DUGME_BIRINCIL}`}>
-        Eğitmenleri keşfet
+        Öğretmenleri keşfet
       </Link>
     </section>
   );

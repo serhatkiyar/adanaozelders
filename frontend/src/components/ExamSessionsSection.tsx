@@ -142,7 +142,7 @@ function ExamSessionRow({
     dm % 60 === 0 ? `${dm / 60} saat` : dm < 60 ? `${dm} dk` : `${(dm / 60).toFixed(1)} saat`;
 
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-100 p-4 ">
+    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 p-4 ">
       {/* Tarih kutusu */}
       <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-marka-soft ">
         <span className="text-xl font-extrabold leading-none text-marka-metin-hover ">

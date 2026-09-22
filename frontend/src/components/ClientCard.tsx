@@ -32,7 +32,7 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
         </p>
       )}
 
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-3 ">
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-200 pt-3 ">
         <div className="flex flex-wrap gap-1.5">
           {age !== null && (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ">

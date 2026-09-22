@@ -84,11 +84,12 @@ const MESAJLAR: Sekme = {
   icon: "messages",
   rozet: true,
 };
+// Öğrencinin hesap merkezi: "Hesabım" → "Ayarlar", `/ayarlar` (22 Eyl 2026).
 const HESABIM: Sekme = {
   key: "hesabim",
-  to: ROUTES.profile,
-  label: "Hesabım",
-  icon: "profile",
+  to: ROUTES.settings,
+  label: "Ayarlar",
+  icon: "settings",
 };
 
 /* `clipboard` (kullanıcı kararı, 16 Eyl 2026): `dashboard` bir ev çizimi ve
@@ -97,7 +98,7 @@ const HESABIM: Sekme = {
 const PANO: Sekme = {
   key: "pano",
   to: ROUTES.bookings,
-  label: "Pano",
+  label: "Genel Bakış",
   icon: "clipboard",
   end: true,
 };
@@ -123,7 +124,7 @@ const UYE_SEKMELERI: Sekme[] = [KESFET, FAVORILER, MESAJLAR, PANO, HESABIM];
 const ANA_SAYFA: Sekme = {
   key: "ana-sayfa",
   to: ROUTES.bookings,
-  label: "Ana sayfa",
+  label: "Genel Bakış",
   icon: "dashboard",
   end: true,
 };
@@ -137,10 +138,18 @@ const ANALIZLER: Sekme = {
   key: "analizler",
   to: ROUTES.tutorAnalytics,
   label: "Analizler",
-  icon: "exams",
+  icon: "analytics",
 };
 
-const EGITMEN_SEKMELERI: Sekme[] = [ANA_SAYFA, MESAJLAR, TAKVIM, ANALIZLER];
+// "Öğrenciler" alt çubuğa girdi (kullanıcı kararı, 22 Eyl 2026).
+const OGRENCILER: Sekme = {
+  key: "ogrenciler",
+  to: ROUTES.tutorStudents,
+  label: "Öğrenciler",
+  icon: "students",
+};
+
+const EGITMEN_SEKMELERI: Sekme[] = [ANA_SAYFA, MESAJLAR, TAKVIM, OGRENCILER, ANALIZLER];
 
 /** Anonim kullanıcıda son yuva bir bağlantı değil, giriş ekranını açar. */
 const ANONIM_SEKMELERI: Sekme[] = [KESFET, FAVORILER];

@@ -80,7 +80,7 @@ export function MiniCartDrawer({
         aria-label="Sepete eklendi"
         className="relative flex h-full w-full max-w-sm flex-col overflow-y-auto bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
           <div>
             <h2 className="text-base font-semibold text-slate-900">Sepete eklendi</h2>
             <p className="mt-0.5 text-sm text-slate-500">
@@ -123,7 +123,7 @@ export function MiniCartDrawer({
           </div>
         </div>
 
-        <div className="mt-auto border-t border-slate-100 p-5">
+        <div className="mt-auto border-t border-slate-200 p-5">
           <div className="flex items-baseline justify-between text-sm">
             <span className="text-slate-500">Ara toplam</span>
             <span className="font-semibold text-slate-900">

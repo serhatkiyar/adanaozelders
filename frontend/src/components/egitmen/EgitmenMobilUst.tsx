@@ -206,7 +206,7 @@ export function EgitmenMobilUst({
           <dl
             className={`mt-4 grid ${
               SUTUN_SINIFI[sutunlar.length as 1 | 2 | 3]
-            } divide-x divide-slate-100 rounded-2xl py-3 ring-1 ring-slate-200/70`}
+            } divide-x divide-slate-200 rounded-2xl py-3 ring-1 ring-slate-200/70`}
           >
             {sutunlar.map((s) => (
               /* `dt` → `dd` DOM sırası HTML5 zorunluluğu; göze değer ÖNCE

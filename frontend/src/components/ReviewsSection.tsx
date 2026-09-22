@@ -192,7 +192,7 @@ function ReviewCard({
       {review.reply && (
         <div className="mt-3 rounded-xl border-l-2 border-slate-300 bg-slate-50 px-4 py-3 ">
           <p className="text-xs font-semibold text-slate-700 ">
-            Eğitmen yanıtı
+            Öğretmen yanıtı
           </p>
           <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
             {review.reply}

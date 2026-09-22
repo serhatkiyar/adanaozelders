@@ -116,7 +116,7 @@ export function StoreAccountMenu() {
           )}
           {/* "Ayarlar" kaldırıldı (1 Eyl, kullanıcı kararı) — Hesabım
               üzerinden zaten ulaşılıyor, menü sade kalsın. */}
-          <div className="my-1 border-t border-slate-100 " />
+          <div className="my-1 border-t border-slate-200 " />
           <button
             type="button"
             onClick={() => {

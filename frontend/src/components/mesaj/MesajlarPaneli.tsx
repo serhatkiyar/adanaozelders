@@ -201,7 +201,7 @@ export function MesajlarPaneli() {
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 flex h-[32rem] w-[25rem] origin-top-right flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-150 ">
           {/* Başlık: sohbet açıkken geri oku + karşı taraf, kapalıyken "Mesajlar" */}
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-5 py-4 ">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-5 py-4 ">
             {activeConv ? (
               <button
                 type="button"
@@ -347,7 +347,7 @@ export function MesajlarPaneli() {
                   stil — beyaz zemin + ince çerçeve, dolgulu gri kutu DEĞİL
                   (önceki hali hem Preply referansından hem kendi gerçek
                   sayfamızdan sapıyordu, kullanıcı fark etti, 22 Eyl 2026). */}
-              <div className="border-b border-slate-100 px-5 py-4 ">
+              <div className="border-b border-slate-200 px-5 py-4 ">
                 <div className="flex items-center gap-2.5 rounded-full border border-slate-300 bg-white px-4 py-2.5 transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200 ">
                   <Icon name="search" className="h-4 w-4 shrink-0 text-slate-500" />
                   <input
@@ -361,7 +361,7 @@ export function MesajlarPaneli() {
               </div>
 
               {!searching && (
-                <div className="flex items-center gap-5 border-b border-slate-100 px-5 ">
+                <div className="flex items-center gap-5 border-b border-slate-200 px-5 ">
                   {(
                     [
                       { key: "all", label: "Tümü" },
@@ -428,7 +428,7 @@ export function MesajlarPaneli() {
                 ) : (
                   // `slate-50` neredeyse görünmüyordu (Preply referansındaki
                   // çizgi belirgin) — `slate-100`e koyulaştırıldı, 22 Eyl 2026.
-                  <ul className="divide-y divide-slate-100 ">
+                  <ul className="divide-y divide-slate-200 ">
                     {list.map((c) => (
                       <li key={c.id}>
                         <button

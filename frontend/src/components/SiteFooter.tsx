@@ -15,7 +15,7 @@ import { usePopulerDersler } from "@/hooks/useSeo";
    bilerek hafiftir: metinleri taşıyan `legalContent.ts`'i import etmez, yoksa
    tüm sözleşme metinleri ana bundle'a girerdi.)
 
-   Stil Landing.tsx'teki footer'dan alındı (border-slate-100 / py-10 /
+   Stil Landing.tsx'teki footer'dan alındı (border-slate-200 / py-10 /
    max-w-[1216px]); mağaza footer'ının `mt-auto w-full`'u korundu çünkü
    StoreLayout dikey flex kolonudur ve onsuz footer yukarı kayar. */
 
@@ -110,7 +110,7 @@ export function SiteFooter() {
 
   return (
     // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <footer className="mt-auto w-full border-t border-slate-100 bg-[#f4f4f4] ">
+    <footer className="mt-auto w-full border-t border-slate-200 bg-[#f4f4f4] ">
       {/* "Başa dön" — Amazon deseni (30 Ağu): yüzen FAB yerine footer'ın hemen
           üstünde tam genişlik şerit. Gerekçe: FAB içerik/aksiyonların üstünde
           yüzüp mobilde parmak alanı çalar; şerit ise tam kullanıcının "sayfa
@@ -163,7 +163,7 @@ export function SiteFooter() {
              sütun, hangi bağlantının hangi gruba ait olduğunu gizliyordu.
 
              Masaüstü DEĞİŞMEDİ: `sm:` üstünde hâlâ üç sütun. */
-          className={`grid grid-cols-1 gap-y-0 divide-y divide-slate-100 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8 sm:divide-y-0 ${dersSutunu ? "lg:grid-cols-4" : ""}`}
+          className={`grid grid-cols-1 gap-y-0 divide-y divide-slate-200 text-sm text-slate-500 sm:grid-cols-3 sm:gap-x-14 sm:gap-y-8 sm:divide-y-0 ${dersSutunu ? "lg:grid-cols-4" : ""}`}
         >
             {/* 31 Ağu (kullanıcı kararları): Destek EN SOLDA, sonra Hakkımızda.
                 Destek linkleri — mesafeli satışta erişilebilir iletişim
@@ -226,7 +226,7 @@ export function SiteFooter() {
 
         {/* Alt bölge — Trendyol deseni (31 Ağu): sosyal ikonlar da BURADA.
             Satır 1: sosyaller (solda). Satır 2: solda telif, sağda yasal. */}
-        <div className="mt-10 space-y-4 border-t border-slate-100 pt-6">
+        <div className="mt-10 space-y-4 border-t border-slate-200 pt-6">
           {SOSYAL_HESAPLAR.some((h) => h.url) && (
             <div className="flex items-center gap-4">
               {SOSYAL_HESAPLAR.filter((h) => h.url).map((h) => (

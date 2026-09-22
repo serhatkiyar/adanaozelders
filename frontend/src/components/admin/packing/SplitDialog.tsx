@@ -169,7 +169,7 @@ function SplitIcerik({
 
   return (
     <>
-      <ul className="divide-y divide-slate-100">
+      <ul className="divide-y divide-slate-200">
         {items.map((satir) => (
           <li key={satir.order_item_id} className="flex items-center gap-4 py-3">
             <div className="min-w-0 flex-1">

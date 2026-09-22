@@ -58,7 +58,7 @@ function sar(booking: BookingOut, kolAcik = true) {
 }
 
 describe("ders satırı", () => {
-  it("eğitmen adı ve detay bağlantısı vardır", () => {
+  it("öğretmen adı ve detay bağlantısı vardır", () => {
     sar(ders());
     expect(screen.getByText(/Ahmet Yılmaz/)).toBeTruthy();
     const link = screen.getByRole("link");

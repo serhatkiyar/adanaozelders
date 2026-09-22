@@ -46,7 +46,7 @@ describe("satır tür etiketi", () => {
     expect(screen.getByText("Yaşam Kütüphanesi")).toBeTruthy();
   });
 
-  it("derste de tekrarlanmaz — alt satırda yalnız eğitmen kalır", () => {
+  it("derste de tekrarlanmaz — alt satırda yalnız öğretmen kalır", () => {
     const { container } = sar(item({ tur: "ders", baslik: "Ders", altBaslik: "Eda Yılmaz" }));
     const metin = container.textContent ?? "";
     expect(metin.match(/Ders/g)?.length).toBe(1);

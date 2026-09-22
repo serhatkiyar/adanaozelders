@@ -91,7 +91,7 @@ export function ProductPicker({
               Eşleşen ürün bulunamadı.
             </p>
           ) : (
-            <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto ">
+            <ul className="max-h-56 divide-y divide-slate-200 overflow-y-auto ">
               {adaylar.map((p) => (
                 <li key={p.id}>
                   <button

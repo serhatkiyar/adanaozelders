@@ -44,7 +44,7 @@ type Category = {
  * Nöbetçi: `__guards__/aramaSekmesiGezinir.test.tsx`.
  */
 const CATEGORIES: Category[] = [
-  { key: "egitmenler", label: "Eğitmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.home },
+  { key: "egitmenler", label: "Öğretmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.home },
   { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries, donuk: !KUTUPHANELER_ACIK },
   // Deneme oturumları kütüphane profillerinde yer alır. Kütüphaneler'den farklı
   // olarak donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
@@ -140,7 +140,7 @@ export function CategoryBar({
   return (
     <div className="w-full">
       {/* Kaydırma kabında justify-center KULLANILMAZ: içerik ekrandan genişse
-          sol uç erişilmez kesilir (telefonda "Eğitmenler taşmış" hatası).
+          sol uç erişilmez kesilir (telefonda "Öğretmenler taşmış" hatası).
           İç sarmalayıcının mx-auto'su dar içerikte ortalar, geniş içerikte
           soldan kaydırmaya izin verir. */}
       <div

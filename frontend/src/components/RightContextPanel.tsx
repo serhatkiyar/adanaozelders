@@ -140,7 +140,7 @@ export function RightContextPanel({ bookingId }: { bookingId: number }) {
             </span>
           </div>
           {booking.price && (
-            <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-sm font-semibold ">
+            <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm font-semibold ">
               <span className="text-slate-900 ">Toplam</span>
               <span className="text-marka-metin ">
                 {formatTRY(booking.price)}

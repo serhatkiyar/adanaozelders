@@ -10,7 +10,7 @@ import type { TutorSearchOut } from "@/types";
 export function VerifiedTutorBadge() {
   return (
     <span
-      title="Bu eğitmen yönetici onayından geçti"
+      title="Bu öğretmen yönetici onayından geçti"
       className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-200 "
     >
       <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
@@ -159,7 +159,7 @@ export function TutorTrustBar({
 
   return (
     <div
-      className={`mt-5 grid grid-cols-1 gap-2.5 border-t border-slate-100 pt-5 ${
+      className={`mt-5 grid grid-cols-1 gap-2.5 border-t border-slate-200 pt-5 ${
         vertical ? "" : "sm:grid-cols-3"
       }`}
     >

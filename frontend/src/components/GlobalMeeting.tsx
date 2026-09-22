@@ -34,7 +34,7 @@ function MeetingDrawer({ bookingId }: { bookingId: number }) {
   return (
     <div className="flex h-full w-full flex-col bg-white text-slate-900 ">
       {/* Sekmeler */}
-      <div className="flex shrink-0 gap-1 border-b border-slate-100 p-2 ">
+      <div className="flex shrink-0 gap-1 border-b border-slate-200 p-2 ">
         {tabs.map((t) => (
           <button
             key={t.id}

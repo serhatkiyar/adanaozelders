@@ -113,7 +113,7 @@ export function StoreCategoryBar() {
 
       {/* Mega menu — kaydırıcının dışında, nav'a göre konumlanır (full-bleed) */}
       {openKids.length > 0 && (
-        <div className="absolute inset-x-0 top-full z-40 border-b border-slate-100 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.06)] ">
+        <div className="absolute inset-x-0 top-full z-40 border-b border-slate-200 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.06)] ">
           <div className="mx-auto max-w-[1500px] px-4 py-6 min-[1500px]:px-0">
             <div className="grid grid-cols-2 gap-x-8 gap-y-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {openKids.map((kid) => (

@@ -47,7 +47,7 @@ export function PublicNavbar({
   const egitmenKayitAdresi = useGirisAdresi("register", "tutor");
   return (
     // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md ">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-[#f4f4f4]/95 backdrop-blur-md ">
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
         <div
           className={`w-full items-start justify-between gap-4 pt-5 pb-2 ${
@@ -97,8 +97,8 @@ export function PublicNavbar({
           )}
           <div className="flex-1 flex shrink-0 items-center justify-end gap-2">
             {/* ARZ TARAFININ TEK KAPISI — her genişlikte görünür.
-                Sitede eğitmen kaydına giden hiçbir bağlantı yoktu; kayıt
-                ekranındaki "Eğitmen" sekmesini ancak oraya kendi yolunu bulan
+                Sitede öğretmen kaydına giden hiçbir bağlantı yoktu; kayıt
+                ekranındaki "Öğretmen" sekmesini ancak oraya kendi yolunu bulan
                 görüyordu.
 
                 Buraya üçüncü bir düğme sığmıyor: ÖLÇÜLDÜ, varsayılmadı —
@@ -107,7 +107,7 @@ export function PublicNavbar({
                 kategori şeridi 768'de 441px yer kaplıyor). Bu yüzden ayrı
                 "Kayıt Ol" düğmesi KALDIRILDI — giriş modalı zaten "Hesabın yok
                 mu? Kayıt ol" bağlantısını taşıyor, yani öğrenci kaydı tek
-                dokunuş uzakta. Eğitmen kaydının ise başka hiçbir yolu yoktu.
+                dokunuş uzakta. Öğretmen kaydının ise başka hiçbir yolu yoktu.
                 Düğme sayısı değişirse taşma yeniden ölçülmelidir. */}
             {kayitAcik && (
               <Link

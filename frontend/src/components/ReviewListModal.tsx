@@ -23,7 +23,7 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 ">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 ">
           <h2 className="text-lg font-bold text-slate-900 ">
             {tutorName} - Değerlendirmeler
           </h2>
@@ -57,7 +57,7 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
                 return (
                   <div
                     key={review.id}
-                    className="rounded-xl border border-slate-100 bg-white p-4 "
+                    className="rounded-xl border border-slate-200 bg-white p-4 "
                   >
                     <div className="flex items-start gap-3">
                       <Avatar name={name} avatar_url={review.client_avatar_url} size="sm" />
@@ -81,7 +81,7 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
                         {review.tutor_reply && (
                           <div className="mt-3 rounded-xl border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3 ">
                             <p className="text-xs font-semibold text-marka-metin-hover ">
-                              Eğitmen yanıtı
+                              Öğretmen yanıtı
                             </p>
                             <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
                               {review.tutor_reply}

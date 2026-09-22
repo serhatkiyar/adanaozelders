@@ -93,7 +93,7 @@ export function ReturnsPanel() {
         returns.map((r) => {
           const badge = RETURN_STATUS_LABELS[r.status] ?? { label: r.status, cls: "bg-slate-100 text-slate-500" };
           return (
-            <div key={r.id} className="rounded-xl border border-slate-100 p-3 ">
+            <div key={r.id} className="rounded-xl border border-slate-200 p-3 ">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-800 ">
                   Sipariş #{r.order_id}

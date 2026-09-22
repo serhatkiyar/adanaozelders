@@ -92,7 +92,7 @@ export function EgitmenFiltreModali({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
       <div className="absolute inset-0" onClick={kapat} />
       <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 duration-200 sm:zoom-in-95">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 ">
           <h2 className="text-lg font-bold text-slate-900 ">Filtrele</h2>
           <button
             onClick={kapat}
@@ -142,9 +142,9 @@ export function EgitmenFiltreModali({
             </div>
           )}
 
-          {/* Eğitmen cinsiyeti — bölmeli seçici */}
+          {/* Öğretmen cinsiyeti — bölmeli seçici */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Eğitmen cinsiyeti</h3>
+            <h3 className="mb-3 text-sm font-semibold text-slate-900 ">Öğretmen cinsiyeti</h3>
             <SegmentedControl<CinsiyetSecimi>
               options={GENDER_OPTIONS.map((opt) => {
                 // Sayı, filtre TIKLANMADAN ÖNCE kendini açıklar.
@@ -159,14 +159,14 @@ export function EgitmenFiltreModali({
                 Yalnız filtre ETKİNKEN gösterilir. */}
             {gender && !!fasetler?.gorunmeyen && (
               <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
-                Cinsiyetini belirtmemiş {fasetler.gorunmeyen} eğitmen bu
+                Cinsiyetini belirtmemiş {fasetler.gorunmeyen} öğretmen bu
                 filtreyle görünmüyor.
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
+        <div className="flex gap-3 border-t border-slate-200 bg-slate-50 p-4 sm:px-6 sm:py-5">
           <button
             onClick={temizle}
             className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "

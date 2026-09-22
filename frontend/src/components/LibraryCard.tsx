@@ -73,7 +73,7 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
         {/* Alt gradyan maskesi */}
         <div className="absolute inset-x-0 bottom-0 h-[65%] bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
 
-        {/* Görsel üstündeki metin. Eğitmen kartındaki xl, KISA bir ön ad
+        {/* Görsel üstündeki metin. Öğretmen kartındaki xl, KISA bir ön ad
             içindir; kütüphanenin uzun tam adı aynı boyutta kart kaplıyordu.
             Optik denge için base + iki satır. Logo overlay'i sıkıştırdığı
             için kalktı. */}

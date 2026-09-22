@@ -543,6 +543,26 @@ path.district-poly {
   }
 }
 
+/* Eğitmenin öğrenci paneli — Preply'dan ölçüldü (22 Eyl 2026): sağdan
+   translateX(100%) → 0, 300ms, ease-in-out. */
+@keyframes ogrenci-paneli-gir {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.ogrenci-paneli {
+  animation: ogrenci-paneli-gir 300ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ogrenci-paneli {
+    animation: none;
+  }
+}
+
 @keyframes admin-drawer-enter {
   from {
     transform: translateX(-100%);

@@ -377,7 +377,7 @@ function DiscoverySection() {
             Son görüntülenen ilanlar
           </p>
           <p className="text-[11px] text-slate-500 ">
-            Ana sayfada baktığın eğitmenleri göster
+            Ana sayfada baktığın öğretmenleri göster
           </p>
         </div>
         <Switch checked={show} onChange={setShow} />
@@ -415,11 +415,11 @@ export function PersonalizePanel({
       <NavbarWidgetSection />
       {navItems && navItems.length > 0 && roleId != null && (
         <>
-          <div className="border-t border-slate-100 " />
+          <div className="border-t border-slate-200 " />
           <NavigationSection roleId={roleId} navItems={navItems} />
         </>
       )}
-      <div className="border-t border-slate-100 " />
+      <div className="border-t border-slate-200 " />
       <DiscoverySection />
     </div>
   );
@@ -547,7 +547,7 @@ export function PersonalizeModal({
         aria-label="Kişiselleştir"
       >
         {/* Başlık */}
-        <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4 ">
+        <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 ">
           <div>
             <h3 className="text-lg font-bold text-slate-900 ">
               Kişiselleştir
@@ -582,12 +582,12 @@ export function PersonalizeModal({
         {/* Gövde: sol panel + içerik */}
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
           {/* Mobil sekmeler */}
-          <div className="flex gap-1 overflow-x-auto border-b border-slate-100 p-2 sm:hidden">
+          <div className="flex gap-1 overflow-x-auto border-b border-slate-200 p-2 sm:hidden">
             {sections.map((s) => railButton(s, "chip"))}
           </div>
 
           {/* Masaüstü sol panel */}
-          <nav className="hidden w-52 shrink-0 space-y-1 overflow-y-auto border-r border-slate-100 p-3 sm:block">
+          <nav className="hidden w-52 shrink-0 space-y-1 overflow-y-auto border-r border-slate-200 p-3 sm:block">
             {sections.map((s) => railButton(s, "rail"))}
           </nav>
 

@@ -18,7 +18,7 @@ export function CapacityStrip({
 
   return (
     <div
-      className="flex items-stretch gap-1.5 overflow-x-auto border-b border-slate-100 px-6 py-3 "
+      className="flex items-stretch gap-1.5 overflow-x-auto border-b border-slate-200 px-6 py-3 "
       aria-label="Önümüzdeki günlerin teslimat kapasitesi"
     >
       {days.map((d) => {

@@ -146,7 +146,7 @@ export function StoreSearch() {
       </form>
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl ">
+        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ">
           {suggestions.length > 0 ? (
             <>
               {suggestions.map((p, i) => (
@@ -176,7 +176,7 @@ export function StoreSearch() {
               <button
                 type="button"
                 onClick={searchAll}
-                className="w-full border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-marka-metin transition-colors hover:bg-slate-50 "
+                className="w-full border-t border-slate-200 px-3 py-2.5 text-left text-sm font-medium text-marka-metin transition-colors hover:bg-slate-50 "
               >
                 "{q.trim()}" için tüm sonuçlar →
               </button>
@@ -190,7 +190,7 @@ export function StoreSearch() {
       )}
 
       {showHistory && (
-        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl ">
+        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl ">
           <div className="flex items-center justify-between px-3 py-2">
             <span className="text-xs font-medium text-slate-400 ">
               Son aramalar

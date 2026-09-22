@@ -205,7 +205,7 @@ export default function TaskCommandPalette(props: Props) {
         onKeyDown={onKeyDown}
       >
         {/* Arama girişi */}
-        <div className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 ">
+        <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-3 ">
           <svg className="h-5 w-5 flex-none text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" /></svg>
           <input
             ref={inputRef}

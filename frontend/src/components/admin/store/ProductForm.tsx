@@ -1263,7 +1263,7 @@ function VariantMembershipFields({
           <p className="mb-1 text-xs font-medium text-slate-500 ">
             Gruptaki varyantlar
           </p>
-          <ul className="divide-y divide-slate-100 text-sm ">
+          <ul className="divide-y divide-slate-200 text-sm ">
             {groupDetail.members.map((m) => (
               <li
                 key={m.id}

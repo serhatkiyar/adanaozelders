@@ -240,7 +240,7 @@ export function DeliveryPrefControls({
   }
 
   return (
-    <div className="border-t border-slate-100 px-6 py-5 text-left ">
+    <div className="border-t border-slate-200 px-6 py-5 text-left ">
       <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
         Teslimat tercihin
       </h2>

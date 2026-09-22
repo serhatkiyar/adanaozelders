@@ -97,7 +97,7 @@ export function MobilPanelCekmecesi({
         </div>
 
         {sekmeler && sekmeler.length > 0 && (
-          <div className="flex flex-col gap-0.5 border-b border-slate-100 p-2">
+          <div className="flex flex-col gap-0.5 border-b border-slate-200 p-2">
             {sekmeler.map((item) =>
               // Donmuş bölüm bağlantı DEĞİL — şeritteki (`PanelSekmeleri`) ve
               // hesap menüsündeki aynı kuralın karşılığı.

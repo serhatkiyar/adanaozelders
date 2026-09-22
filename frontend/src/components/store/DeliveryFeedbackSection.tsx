@@ -28,7 +28,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
 
   if (props.feedbackGiven || submitted) {
     return (
-      <div className="border-t border-slate-100 px-6 py-5 text-sm text-slate-500 ">
+      <div className="border-t border-slate-200 px-6 py-5 text-sm text-slate-500 ">
         Değerlendirmen için teşekkürler.
       </div>
     );
@@ -77,7 +77,7 @@ export function DeliveryFeedbackSection(props: DeliveryFeedbackSectionProps) {
   return (
     <form
       onSubmit={submit}
-      className="border-t border-slate-100 px-6 py-5 text-left "
+      className="border-t border-slate-200 px-6 py-5 text-left "
     >
       <h2 className="text-sm font-semibold text-slate-900 ">
         Teslimatın nasıldı?

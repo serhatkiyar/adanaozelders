@@ -388,7 +388,7 @@ export function KesifKabugu() {
       </Suspense>
       {/* Telefonda ADIMLI arama (Airbnb deseni) — masaüstündeki hap değil.
           Akışın tamamı (taslak seçimler, kategori, "Ara"nın nereye gittiği)
-          `MobilAramaAkisi`nde: aynı yüzey eğitmen SONUÇ ekranından da
+          `MobilAramaAkisi`nde: aynı yüzey öğretmen SONUÇ ekranından da
           açılıyor ve o ekran bu kabuğun çocuğu değil. */}
       <MobilAramaAkisi
         acik={mobilAramaAcik}

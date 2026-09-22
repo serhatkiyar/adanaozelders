@@ -49,7 +49,7 @@ export function SorunBildirModal({ booking, onClose }: { booking: BookingOut; on
     >
       <h3 className={BOLUM_BASLIGI}>Sorun bildir</h3>
       <p className={`${ACIKLAMA} mt-2`}>
-        Ders ücreti inceleme bitene kadar eğitmene aktarılmaz. Ekibimiz iki tarafla da
+        Ders ücreti inceleme bitene kadar öğretmene aktarılmaz. Ekibimiz iki tarafla da
         iletişime geçip karar verir.
       </p>
       <form onSubmit={submit} className="mt-4 space-y-4">
@@ -130,7 +130,7 @@ export function DersOnayKarti({ booking }: { booking: BookingOut }) {
       <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-base leading-6 text-amber-800">
         <p className="font-semibold">Sorun bildirdin: {sorunNedeniEtiketi(booking.issue_reason)}</p>
         <p className="mt-1 text-sm leading-5">
-          Ekibimiz inceliyor. Karar verilene kadar ders ücreti eğitmene aktarılmaz.
+          Ekibimiz inceliyor. Karar verilene kadar ders ücreti öğretmene aktarılmaz.
         </p>
       </div>
     );
@@ -150,7 +150,7 @@ export function DersOnayKarti({ booking }: { booking: BookingOut }) {
     >
       <p className={ETIKET}>Dersin gerçekleşti mi?</p>
       <p className={`${ACIKLAMA} mt-1`}>
-        Onayladığında ücret eğitmenine aktarılır. Bir sorun olduysa
+        Onayladığında ücret öğretmenine aktarılır. Bir sorun olduysa
         {booking.issue_report_deadline
           ? ` ${formatDateTime(booking.issue_report_deadline)} tarihine kadar`
           : " 72 saat içinde"}{" "}

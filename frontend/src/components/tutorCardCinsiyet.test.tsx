@@ -71,7 +71,7 @@ describe("TutorCard · cinsiyet listede yazılmaz", () => {
   it.each([
     ["kadın", Gender.FEMALE],
     ["erkek", Gender.MALE],
-  ])("%s eğitmende cinsiyet METNİ YOK", (_ad, g) => {
+  ])("%s öğretmende cinsiyet METNİ YOK", (_ad, g) => {
     ciz(g);
     expect(screen.queryByText(/Kadın/)).toBeNull();
     expect(screen.queryByText(/Erkek/)).toBeNull();

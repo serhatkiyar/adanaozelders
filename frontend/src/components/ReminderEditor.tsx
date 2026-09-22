@@ -94,7 +94,7 @@ export default function ReminderEditor({ reminders, due, onChange }: {
               ) : (
                 <p className="px-2 py-1.5 text-xs text-slate-400">Ön ayarlar için önce son tarih ekle.</p>
               )}
-              <button type="button" onClick={() => add({ type: "absolute", remind_at: defaultAbs() })} className="block w-full rounded-lg border-t border-slate-100 px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 ">Özel tarih…</button>
+              <button type="button" onClick={() => add({ type: "absolute", remind_at: defaultAbs() })} className="block w-full rounded-lg border-t border-slate-200 px-2 py-1.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-100 ">Özel tarih…</button>
             </div>
           </>
         )}

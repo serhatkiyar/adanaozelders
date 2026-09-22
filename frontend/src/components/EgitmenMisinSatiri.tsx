@@ -13,7 +13,7 @@ import { SIMGE_KUTUSU } from "@/components/ui/SecenekSatiri";
  */
 export function EgitmenMisinSatiri({ onSec }: { onSec: () => void }) {
   return (
-    <div className="mt-5 border-t border-slate-100 pt-3">
+    <div className="mt-5 border-t border-slate-200 pt-3">
       <button
         type="button"
         onClick={onSec}
@@ -31,7 +31,7 @@ export function EgitmenMisinSatiri({ onSec }: { onSec: () => void }) {
           />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-slate-900">Eğitmen misin?</span>
+          <span className="block text-sm font-semibold text-slate-900">Öğretmen misin?</span>
           <span className="block text-xs text-slate-500">İlanını oluştur, öğrencilerle buluş</span>
         </span>
         <svg

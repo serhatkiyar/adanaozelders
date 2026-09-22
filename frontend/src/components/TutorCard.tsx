@@ -74,7 +74,7 @@ export function TutorCard({
     >
       {/* ── Picture Area ── */}
       <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 ">
-        {/* Avatarı olmayan eğitmenin adı ARTIK DIŞARI GİTMİYOR. Burada
+        {/* Avatarı olmayan öğretmenin adı ARTIK DIŞARI GİTMİYOR. Burada
             ui-avatars.com'a `name=<Ad Soyad>` query parametresiyle istek
             atılıyordu; yani her kart render'ında tam ad üçüncü tarafa
             veriliyordu. Ortak `Avatar` bileşeni baş harfi YERELDE üretiyor. */}
@@ -146,7 +146,7 @@ export function TutorCard({
             yoksa başlığı kısa olan kartın fiyat satırı yukarı kayıp ızgarayı
             tırtıklı gösterir. */}
         <h3 className="mt-1 line-clamp-2 min-h-[36px] text-[13px] leading-snug text-slate-800 ">
-          {tutor.headline || tutor.bio || `${mainSubject} alanında uzman eğitmen ile derslere hemen başlayın.`}
+          {tutor.headline || tutor.bio || `${mainSubject} alanında uzman öğretmen ile derslere hemen başlayın.`}
         </h3>
 
         {/* Pricing */}
@@ -166,7 +166,7 @@ export function TutorCard({
               bitişik tek birim olarak akmalı. */}
           <span className="flex items-baseline">
             {/* Kart ₺rakam biçimini kullanır (kullanıcı kararı, 21 Eyl 2026);
-                aynı biçim eğitmen profili kartında da geçerli —
+                aynı biçim öğretmen profili kartında da geçerli —
                 `formatRate` yalnız yönetim listesinde "TL" sonekiyle kalır. */}
             <span className="text-sm font-bold">
               {rate !== null ? formatRateSymbol(rate) : "Ücret belirtilmemiş"}
@@ -175,7 +175,7 @@ export function TutorCard({
               <span className="text-[11px] font-normal">/saat</span>
             )}
           </span>
-          {/* İlk ders ücretsiz etiketi — yalnız eğitmen sunuyorsa */}
+          {/* İlk ders ücretsiz etiketi — yalnız öğretmen sunuyorsa */}
           {tutor.first_lesson_free !== false && (
             <>
               <span className="text-base leading-none text-emerald-600">·</span>

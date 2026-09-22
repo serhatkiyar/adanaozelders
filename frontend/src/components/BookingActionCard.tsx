@@ -160,7 +160,7 @@ export function BookingActionCard({ meta }: BookingActionCardProps) {
           )}
         </div>
 
-        {/* Sadece Eğitmen ve Bekliyor durumunda Aksiyonlar */}
+        {/* Sadece Öğretmen ve Bekliyor durumunda Aksiyonlar */}
         {isTutor && isPending && !acted && (
           <div className="mt-4 flex gap-2">
             <button

@@ -104,7 +104,7 @@ export function CancelModal({
           >
             Derse 12 saatten az kaldı.{" "}
             {odendi
-              ? "Şimdi iptal edersen ödediğin ücret iade edilmez, eğitmene aktarılır."
+              ? "Şimdi iptal edersen ödediğin ücret iade edilmez, öğretmene aktarılır."
               : "Bu saatten sonra ders ertelenemez."}
           </p>
         )}

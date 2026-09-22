@@ -21,7 +21,7 @@ function LessonGroup({
   onAsk: (a: AskState) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const tutorName = group.tutor_name ?? "Eğitmen";
+  const tutorName = group.tutor_name ?? "Öğretmen";
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 ">
@@ -67,7 +67,7 @@ function LessonGroup({
       </button>
 
       {open && (
-        <div className="space-y-3 border-t border-slate-100 px-5 py-4 ">
+        <div className="space-y-3 border-t border-slate-200 px-5 py-4 ">
           <Link
             to={ROUTES.tutor(group.tutor_id)}
             className="inline-flex items-center gap-1 text-xs font-medium text-marka-metin transition hover:text-marka-metin-hover "
@@ -136,7 +136,7 @@ export function QuestionRights() {
         </h2>
         <p className="mt-0.5 text-xs text-slate-500 ">
           Tamamlanan her ders, bitiminden sonra 7 gün boyunca 3 soru başlığı hakkı
-          verir. Her başlıkta eğitmenle karşılıklı yazışabilirsin.
+          verir. Her başlıkta öğretmenle karşılıklı yazışabilirsin.
         </p>
       </div>
 

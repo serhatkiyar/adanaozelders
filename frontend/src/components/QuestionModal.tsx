@@ -45,7 +45,7 @@ export function QuestionModal({
         },
         onError: (err) => {
           if (err instanceof AxiosError && err.response?.status === 403) {
-            toast.warning("Bu eğitmene soru sorma süren dolmuş.");
+            toast.warning("Bu öğretmene soru sorma süren dolmuş.");
             onClose();
             return;
           }
@@ -67,7 +67,7 @@ export function QuestionModal({
           Soru Sor
         </h3>
         <p className="mt-1 text-sm text-slate-500 ">
-          {tutorName} eğitmenine bu dersle ilgili soru yöneltebilirsin.
+          {tutorName} öğretmenine bu dersle ilgili soru yöneltebilirsin.
           {typeof remaining === "number" && (
             <span className="font-medium text-marka-metin ">
               {" "}

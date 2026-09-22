@@ -288,7 +288,7 @@ export function LibraryRow({
               <LibraryCard library={lib} />
             </div>
           ))}
-          {/* Eğitmen şeridiyle AYNI kapanış: iki şerit tasarımı ayrışamaz
+          {/* Öğretmen şeridiyle AYNI kapanış: iki şerit tasarımı ayrışamaz
               (bkz. dosya başlığı). */}
           <div className={VITRIN_KART}>
             <TumunuGorKarti
@@ -316,7 +316,7 @@ export function AnnouncementBanner() {
   return (
     <div className="relative bg-marka px-4 py-2.5 text-center text-xs font-semibold text-marka-fg sm:text-sm">
       <span>
-        🎓 YKS 2025 hazırlığına başla - uzman eğitmenlerle ilk dersin{" "}
+        🎓 YKS 2025 hazırlığına başla - uzman öğretmenlerle ilk dersin{" "}
         <Link to={ROUTES.tutors} className="underline underline-offset-2 hover:text-marka-fg">
           hemen randevu al →
         </Link>

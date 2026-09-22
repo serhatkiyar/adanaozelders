@@ -231,7 +231,7 @@ function KonumSimgesi() {
  */
 function AsagiOk({ onAc }: { onAc: () => void }) {
   return (
-    <div className="-mb-2 mt-1 shrink-0 border-t border-slate-100">
+    <div className="-mb-2 mt-1 shrink-0 border-t border-slate-200">
       {/* İNCE şerit (kullanıcı kararı, 16 Eyl 2026): 44px'lik düğme ve kartın
           alt boşluğu üst üste binince ok kartın altında koca bir boşlukta
           yüzüyordu. Düğme 32px, kartın p-5 alt boşluğunu -mb-3 ile yiyor;
@@ -571,7 +571,7 @@ export function AramaAdimlari({
           />
         )}
 
-        {/* ── 2. NASIL (yalnız eğitmen) ── */}
+        {/* ── 2. NASIL (yalnız öğretmen) ── */}
         {!kutuphaneMi &&
           (adim === "nasil" ? (
             <AcikKart baslik="Ders nasıl işlensin?">
