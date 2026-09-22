@@ -86,7 +86,7 @@ function ExceptionQueue() {
 
   return (
     <section className="mb-6 rounded-2xl border border-rose-200 bg-white ">
-      <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex items-center gap-2 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">İstisna Kuyruğu</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -95,7 +95,7 @@ function ExceptionQueue() {
         </div>
         <Badge tone="danger">{orders.length}</Badge>
       </div>
-      <ul className="divide-y divide-slate-100 px-6 ">
+      <ul className="divide-y divide-slate-200 px-6 ">
         {orders.map((o) => (
           <li key={o.order_id} className="flex flex-wrap items-center gap-3 py-3">
             <div className="min-w-0 flex-1 basis-48">
@@ -244,7 +244,7 @@ export default function DeliveryTodayPage() {
       <ExceptionQueue />
 
       <section className="rounded-2xl border border-slate-200 bg-white ">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
           <div className="mr-auto">
             <h2 className="text-base font-bold text-slate-900 ">Günün Turları</h2>
             <p className="mt-0.5 text-xs text-slate-500 ">
@@ -334,7 +334,7 @@ export default function DeliveryTodayPage() {
             />
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 ">
+          <ul className="divide-y divide-slate-200 ">
             {sortedRuns.map((r) => (
               <RunRow key={r.id} run={r} />
             ))}

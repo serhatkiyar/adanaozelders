@@ -58,9 +58,9 @@ export function egitmenHapBasligi(a: {
   }
   const baslik = ders
     ? a.dersler.length > 1 && !a.q
-      ? `${a.dersler.length} ders için eğitmenler`
-      : `${ders} eğitmenleri`
-    : "Tüm eğitmenler";
+      ? `${a.dersler.length} ders için öğretmenler`
+      : `${ders} öğretmenleri`
+    : "Tüm öğretmenler";
   return { baslik, ozet: `Tüm Adana  •  ${sekilAdi}`, parcalar };
 }
 

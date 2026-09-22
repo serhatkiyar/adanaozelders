@@ -105,7 +105,7 @@ function Ozet({ oturum }: { oturum: CountSessionDetailOut }) {
     ],
   ];
   return (
-    <div className="flex flex-wrap items-start gap-x-8 gap-y-3 border-b border-slate-100 px-6 py-4 ">
+    <div className="flex flex-wrap items-start gap-x-8 gap-y-3 border-b border-slate-200 px-6 py-4 ">
       <div className="mr-auto">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-slate-900 ">{oturum.code}</h2>
@@ -321,7 +321,7 @@ function UygulaPenceresi({
             Fark yok: hiçbir stok hareketi yazılmayacak, oturum yalnız kapanacak.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 ">
+          <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 ">
             {etkiler.map(({ satir, fark }) => (
               <li key={satir.id} className="px-4 py-2.5 text-sm text-slate-800 ">
                 {productDisplayName(satir)} · {bucketLabel(satir.bucket)}{" "}
@@ -426,7 +426,7 @@ export default function CountSessionDetailPage() {
         <Ozet oturum={oturum} />
 
         {/* Eylem barı — FSM ve izne göre yalnız anlamlı olanlar */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3 ">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-6 py-3 ">
           {canCount && eylemler.includes("products") && (
             <UrunEklemeFormu ekle={urunEkle} />
           )}
@@ -510,7 +510,7 @@ export default function CountSessionDetailPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[64rem] text-left">
             <thead>
-              <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 ">
+              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500 ">
                 <th scope="col" className="px-3 py-2 font-semibold">Ürün</th>
                 <th scope="col" className="px-3 py-2 font-semibold">Kova</th>
                 <th scope="col" className="px-3 py-2 text-right font-semibold">Sistem</th>
@@ -523,7 +523,7 @@ export default function CountSessionDetailPage() {
                 <th scope="col" className="px-3 py-2 text-right font-semibold">Eylem</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 ">
+            <tbody className="divide-y divide-slate-200 ">
               {oturum.lines.map((s) => (
                 <SatirGorunumu
                   key={s.id}

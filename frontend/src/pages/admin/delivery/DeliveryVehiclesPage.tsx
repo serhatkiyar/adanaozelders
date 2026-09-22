@@ -407,7 +407,7 @@ function AracEklemeFormu({ onBitti }: { onBitti: () => void }) {
   }, ilkHatayaOdaklan(form, ARAC_SIRA));
 
   return (
-    <div className="border-b border-slate-100 py-3.5 ">
+    <div className="border-b border-slate-200 py-3.5 ">
       <GenelHata mesaj={form.formState.errors.root?.sunucu?.message} />
       <VehicleFields form={form} withCode />
       <div className="mt-2.5 flex items-center gap-2">
@@ -429,7 +429,7 @@ function VehicleSection() {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 ">
         <div>
           <h2 className="text-base font-bold text-slate-900 ">Araçlar</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -456,7 +456,7 @@ function VehicleSection() {
             Filoda araç yok: tur kurabilmek için en az bir araç ekleyin.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 ">
+          <ul className="divide-y divide-slate-200 ">
             {vehicles.map((v) =>
               canManage ? (
                 <VehicleRow key={v.id} v={v} />
@@ -677,7 +677,7 @@ function NoktaEklemeFormu({ onBitti }: { onBitti: () => void }) {
   }, ilkHatayaOdaklan(form, NOKTA_SIRA));
 
   return (
-    <div className="border-b border-slate-100 py-3.5 ">
+    <div className="border-b border-slate-200 py-3.5 ">
       <GenelHata mesaj={form.formState.errors.root?.sunucu?.message} />
       <NoktaAlanlari form={form} />
       <div className="mt-2.5 flex items-center gap-2">
@@ -703,7 +703,7 @@ function BasePointSection() {
 
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
+      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 ">
         <div>
           <h2 className="text-base font-bold text-slate-900 ">Başlangıç Noktası</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -726,7 +726,7 @@ function BasePointSection() {
             Tanımlı başlangıç noktası yok: rota optimizasyonu için bir nokta ekleyin.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 ">
+          <ul className="divide-y divide-slate-200 ">
             {basePoints.map((p) => (
               <BasePointRow key={p.id} p={p} isDefault={p.id === defaultId} />
             ))}

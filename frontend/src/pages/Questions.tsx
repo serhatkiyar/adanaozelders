@@ -57,7 +57,7 @@ export default function Questions() {
                 <Avatar name={selectedThread.tutor_name || "T"} avatar_url={selectedThread.tutor_avatar_url} />
                 <div>
                   <h3 className="font-semibold">{selectedThread.subject || "Konusuz"}</h3>
-                  <p className="text-xs text-slate-500">Eğitmen: {selectedThread.tutor_name}</p>
+                  <p className="text-xs text-slate-500">Öğretmen: {selectedThread.tutor_name}</p>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto pr-2 mb-2">

@@ -238,10 +238,10 @@ export function EgitmenOneCikarmalar() {
 
   const kolonlar: TableProps<AdminPromotion>["columns"] = [
     {
-      title: "Eğitmen",
+      title: "Öğretmen",
       key: "egitmen",
       render: (_: unknown, p: AdminPromotion) => {
-        const ad = p.tutor_name ?? `Eğitmen #${p.tutor_id}`;
+        const ad = p.tutor_name ?? `Öğretmen #${p.tutor_id}`;
         return kullaniciGorebilir ? (
           <Link id={`one-cikarma-ad-${p.id}`} to={ROUTES.adminNewCustomer("tutor", p.tutor_id)} style={{ fontWeight: 500, ...AD_KUTUSU }}>
             {ad}
@@ -314,7 +314,7 @@ export function EgitmenOneCikarmalar() {
   const bosDurum = sayfa > 1
     ? <BosDurumu baslik="Satış arşivinin sonu" aciklama="Bu sayfada kayıt yok; daha yeni satışlara dönebilirsiniz." aksiyon={<Button onClick={() => sayfayaGit(sayfa - 1)}>← Daha yeni</Button>} />
     : secim === VARSAYILAN_DURUM
-      ? <BosDurumu baslik="Öne çıkarma satışı yok" aciklama="Bir eğitmen reklam paketi satın aldığında kayıt burada listelenir." />
+      ? <BosDurumu baslik="Öne çıkarma satışı yok" aciklama="Bir öğretmen reklam paketi satın aldığında kayıt burada listelenir." />
       : <BosDurumu baslik="Bu filtreye uyan satış yok" aciklama="Başka bir durumu seçebilir ya da tüm satışlara dönebilirsiniz." aksiyon={<Button onClick={() => secimiAyarla(VARSAYILAN_DURUM)}>Tümünü göster</Button>} />;
 
   const doluListe = veriHazir && liste.length > 0;
@@ -355,7 +355,7 @@ export function EgitmenOneCikarmalar() {
         <div style={{ padding: "16px 24px", borderBottom: `1px solid ${ayrac}` }}>
           <Typography.Text style={{ fontSize: 18, fontWeight: 500, display: "block" }}>Satın alınan reklam paketleri</Typography.Text>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Eğitmenlerin satın aldığı reklam paketleri. Arama sonuçlarının organik sıralamasını değiştirmez; öne çıkan ilan ayrı bir blokta gösterilir.
+            Öğretmenlerin satın aldığı reklam paketleri. Arama sonuçlarının organik sıralamasını değiştirmez; öne çıkan ilan ayrı bir blokta gösterilir.
           </Typography.Text>
         </div>
         {tazelemeHatasi ? (

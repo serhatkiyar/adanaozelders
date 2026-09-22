@@ -214,7 +214,7 @@ export function IncelemePenceresi({
         <Flex vertical gap={12}>
           <div>
             <Typography.Text style={{ fontSize: 16, fontWeight: 500, display: "block", ...SAR }}>
-              {kayit.tutor_name ?? `Eğitmen #${kayit.tutor_id}`}
+              {kayit.tutor_name ?? `Öğretmen #${kayit.tutor_id}`}
             </Typography.Text>
             <Typography.Text type="secondary" style={{ fontSize: 12, ...SAR }}>
               Hesap adı — belgedeki adla karşılaştırılacak isim budur.
@@ -334,7 +334,7 @@ export function IncelemePenceresi({
                 />
               </label>
               <Typography.Text id="diploma-red-yardim" type="secondary" style={{ fontSize: 12 }}>
-                {`Not eğitmene gösterilir; boş bırakılabilir (${not.length}/${NOT_MAX}).`}
+                {`Not öğretmene gösterilir; boş bırakılabilir (${not.length}/${NOT_MAX}).`}
               </Typography.Text>
               {gosterilen("note") ? (
                 <Typography.Text id="diploma-red-hata" type="danger" role="alert">

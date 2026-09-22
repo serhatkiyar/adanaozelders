@@ -24,7 +24,7 @@ export default function Landing() {
     <>
       <Seo
         canonicalPath="/"
-        description="Adana'da TYT, AYT, LGS, KPSS ve daha fazlası için alanında uzman, onaylı eğitmenlerle online veya yüz yüze özel ders. Kütüphaneler ve denemeler tek yerde."
+        description="Adana'da TYT, AYT, LGS, KPSS ve daha fazlası için alanında uzman, onaylı öğretmenlerle online veya yüz yüze özel ders. Kütüphaneler ve denemeler tek yerde."
       >
         <JsonLd
           data={[
@@ -57,13 +57,13 @@ export default function Landing() {
         paketi yoksa `FeaturedTutorRow` kendini gizler), yani fark gözle
         görünmüyordu — ama kural ayrışmıştı. */}
     <main className="space-y-8 pb-8 md:pb-24">
-      {/* ── EĞİTMENLER: TEK kuşak ──────────────────────────────────────────
+      {/* ── ÖĞRETMENLER: TEK kuşak ──────────────────────────────────────────
           Burada eskiden "TYT'ye hazırlık" / "YKS Hazırlık" / "AYT'ye
           hazırlık" / "Ortaokul Matematik" / "LGS Matematik" diye SABİT
           yazılmış kuşaklar vardı. İkisi gerçek bir daraltma yapıyordu
           (`subject` sert filtredir), üçü YAPMIYORDU: `exam` backend'de sert
-          filtre değil, yalnız SIRALAMA BOOST'udur, üç kuşak da aynı eğitmen
-          listesini gösteriyordu (ölçüm: 7 eğitmenin üçünde de aynısı).
+          filtre değil, yalnız SIRALAMA BOOST'udur, üç kuşak da aynı öğretmen
+          listesini gösteriyordu (ölçüm: 7 öğretmenin üçünde de aynısı).
           Kategori vaat edip kategori uygulamayan başlık, kullanıcıya "sahte
           veri" gibi görünür; şikâyetin sebebi buydu.
 
@@ -72,7 +72,7 @@ export default function Landing() {
           anlamlı sayıya ulaştığında ve VERİDEN türetilebildiğinde geri
           gelmelidir, sabit liste olarak değil.
           Nöbetçi: `__guards__/egitmenKusaklari.test.tsx`. */}
-      {/* Ücretli öne çıkarma şeridi — eğitmen kuşağının ÜSTÜNDE ve ondan
+      {/* Ücretli öne çıkarma şeridi — öğretmen kuşağının ÜSTÜNDE ve ondan
           bağımsız bir uçtan gelir. Organik kuşağın sırasını değiştirmez;
           "Reklam" ibaresi yönetmelik gereği zorunludur ve blok yalnız
           yürürlükte bir paket varsa çizilir. Ana sayfa filtresiz olduğu için
@@ -84,7 +84,7 @@ export default function Landing() {
           onlarla birlikte gitti — `/kutuphaneler` rotası zaten bayrakla
           kapılı, ikinci kontrol ölü koddu. */}
       <FeaturedTutorRow />
-      <TutorRow heading="Eğitmenler" params={{ limit: 12, offset: 0 }} />
+      <TutorRow heading="Öğretmenler" params={{ limit: 12, offset: 0 }} />
     </main>
     </>
   );

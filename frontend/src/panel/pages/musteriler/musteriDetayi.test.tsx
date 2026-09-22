@@ -93,7 +93,7 @@ describe("MusteriDetayi", () => {
     expect(screen.getByRole("button", { name: "Hesabı sil" })).toBeInTheDocument();
   });
 
-  it("eğitmende ilan durumu görünür, müşteriye özel sayılar yok; pasif hesap etiketi", () => {
+  it("öğretmende ilan durumu görünür, müşteriye özel sayılar yok; pasif hesap etiketi", () => {
     veri(kullanici({ role: "TUTOR", is_active: false, email_verified: false, tutor_status: "APPROVED", last_seen_at: "2026-09-06T08:00:00Z" }));
     kur("/yonetim-yeni/musteriler/tutor/42");
     expect(screen.getByText("Pasif")).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe("MusteriDetayi", () => {
     expect(api.deleteAdminUser).toHaveBeenCalledTimes(1);
   });
 
-  it("eğitmen silme payload'ı tutor rolüyle gider; başarıda users cache'i geçersiz kılınır", async () => {
+  it("öğretmen silme payload'ı tutor rolüyle gider; başarıda users cache'i geçersiz kılınır", async () => {
     vi.mocked(api.deleteAdminUser).mockResolvedValue(undefined);
     veri(kullanici({ role: "TUTOR", tutor_status: "APPROVED" }));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });

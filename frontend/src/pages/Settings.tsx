@@ -268,7 +268,7 @@ function SettingRow({
 }) {
   const label = actionLabel ?? (isOpen ? "İptal" : empty ? "Ekle" : "Düzenle");
   return (
-    <div className="border-b border-slate-100 py-5 last:border-b-0 ">
+    <div className="border-b border-slate-200 py-5 last:border-b-0 ">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h3 className="text-base font-medium text-slate-900 ">

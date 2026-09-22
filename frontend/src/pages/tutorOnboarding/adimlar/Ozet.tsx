@@ -22,7 +22,7 @@ function Satir({
   gitAdim: (n: number) => void;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-slate-100 py-3.5">
+    <div className="flex items-baseline justify-between gap-6 border-b border-slate-200 py-3.5">
       <div className="min-w-0">
         <span className="block text-[13px] text-slate-400">{etiket}</span>
         <span className="mt-0.5 block truncate text-[15px] text-slate-800">

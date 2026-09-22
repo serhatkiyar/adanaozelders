@@ -338,7 +338,7 @@ export function KutuphaneListesi() {
         {yonetim.kayit ? (
           <div className="space-y-6">
             <OperatorsManager libraryId={yonetim.kayit.id} />
-            <div className="border-t border-slate-100 pt-5">
+            <div className="border-t border-slate-200 pt-5">
               <ExamSessionsManager libraryId={yonetim.kayit.id} />
             </div>
           </div>

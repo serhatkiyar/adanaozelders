@@ -26,13 +26,13 @@ function DeliveryConfig() {
   if (!info) return null;
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white ">
-      <div className="border-b border-slate-100 px-6 py-4 ">
+      <div className="border-b border-slate-200 px-6 py-4 ">
         <h2 className="text-base font-bold text-slate-900 ">Operasyon Yapılandırması</h2>
         <p className="mt-0.5 text-xs text-slate-500 ">
           Salt okunur: bu kurallar sunucu yapılandırmasında (.env) tanımlıdır, değişiklik dağıtım gerektirir.
         </p>
       </div>
-      <ul className="divide-y divide-slate-100 px-6 ">
+      <ul className="divide-y divide-slate-200 px-6 ">
         <ConfigRow
           label="Aynı gün teslim eşiği"
           value={`${String(info.cutoff_hour).padStart(2, "0")}:00`}

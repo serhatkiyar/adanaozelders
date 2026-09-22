@@ -50,7 +50,7 @@ const HEDEF_METNI: Record<
   MISSED_LESSONS: {
     baslik: "Kaçırılan ders",
     aciklama:
-      "Öğrencinin “eğitmen gelmedi” bildirimi incelenip ücreti iade edilen dersler.",
+      "Öğrencinin “öğretmen gelmedi” bildirimi incelenip ücreti iade edilen dersler.",
     orneklem: "geçmiş ders",
     bicim: (v) => String(v),
   },
@@ -277,7 +277,7 @@ export default function TutorAnalytics() {
             </div>
           ) : (
             <>
-              {/* Hero: eğitmenin gerçekten takip ettiği tek şey — kazanç trendi. */}
+              {/* Hero: öğretmenin gerçekten takip ettiği tek şey — kazanç trendi. */}
               <div aria-busy={genel.isFetching} className={genel.isPlaceholderData ? "opacity-60" : ""}>
                 <Link
                   to={ROUTES.tutorEarnings}

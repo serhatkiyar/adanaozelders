@@ -147,7 +147,7 @@ export default function LibraryRegister() {
           </fieldset>
 
           {/* Operatör hesabı */}
-          <fieldset className="space-y-4 border-t border-slate-100 pt-6 ">
+          <fieldset className="space-y-4 border-t border-slate-200 pt-6 ">
             <legend className="text-sm font-bold uppercase tracking-wide text-slate-400">
               Yönetici Hesabın
             </legend>

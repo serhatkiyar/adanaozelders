@@ -62,7 +62,7 @@ function StudentDemands() {
             İlan / Taleplerim
           </h1>
           <p className="mt-1 text-sm text-slate-500 ">
-            Bir alan seçip ne aradığını anlat; o alandaki eğitmenler talebini görür ve
+            Bir alan seçip ne aradığını anlat; o alandaki öğretmenler talebini görür ve
             isterse sana yazar.
           </p>
         </div>
@@ -286,7 +286,7 @@ function MyDemandCard({ demand }: { demand: DemandOut }) {
         onClick={() => setShowResponses((v) => !v)}
         className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-marka-metin hover:underline "
       >
-        {count > 0 ? `${count} eğitmen yanıtladı` : "Henüz yanıt yok"}
+        {count > 0 ? `${count} öğretmen yanıtladı` : "Henüz yanıt yok"}
         {count > 0 && (
           <svg
             viewBox="0 0 24 24"
@@ -316,7 +316,7 @@ function DemandResponders({ demandId }: { demandId: number }) {
   if (!data || data.length === 0) return null;
 
   return (
-    <ul className="mt-3 divide-y divide-slate-100 ">
+    <ul className="mt-3 divide-y divide-slate-200 ">
       {data.map((r) => (
         <li key={r.tutor_id} className="flex items-center justify-between gap-3 py-2.5">
           <div className="flex min-w-0 items-center gap-3">

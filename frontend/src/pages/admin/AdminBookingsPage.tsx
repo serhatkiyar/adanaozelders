@@ -145,7 +145,7 @@ export default function AdminBookingsPage() {
       enableSorting: false,
       cell: ({ row }) => (
         <div className="min-w-48">
-          <Link to={ROUTES.adminUser("tutor", row.original.tutor_id)} className="font-semibold text-panel-accent-text hover:underline">{row.original.tutor_name || `Eğitmen #${row.original.tutor_id}`}</Link>
+          <Link to={ROUTES.adminUser("tutor", row.original.tutor_id)} className="font-semibold text-panel-accent-text hover:underline">{row.original.tutor_name || `Öğretmen #${row.original.tutor_id}`}</Link>
           <span className="mx-1.5 text-slate-300">↔</span>
           <Link to={ROUTES.adminUser("client", row.original.client_id)} className="font-semibold text-panel-accent-text hover:underline">{row.original.client_name || `Öğrenci #${row.original.client_id}`}</Link>
         </div>
@@ -216,7 +216,7 @@ export default function AdminBookingsPage() {
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
         <div className="grid gap-3 md:grid-cols-[minmax(15rem,1fr)_11rem_11rem_auto]">
-          <input aria-label="Rezervasyon ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Eğitmen, öğrenci veya e-posta ara" className="input" />
+          <input aria-label="Rezervasyon ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Öğretmen, öğrenci veya e-posta ara" className="input" />
           <select aria-label="Rezervasyon durumu" value={degerler.status} onChange={(event) => ayarla({ status: event.target.value })} className="input">
             <option value="">Tüm durumlar</option>
             {Object.values(BookingStatus).map((status) => <option key={status} value={status}>{BOOKING_STATUS_LABEL[status]}</option>)}
@@ -243,7 +243,7 @@ export default function AdminBookingsPage() {
           emptyDescription={
             filtreliMi
               ? "Aradığınız ölçütlere uyan rezervasyon yok. Filtreleri temizleyip tüm listeye bakabilirsiniz."
-              : "Öğrenciler eğitmenlerden ders talep ettikçe rezervasyonlar burada listelenir."
+              : "Öğrenciler öğretmenlerden ders talep ettikçe rezervasyonlar burada listelenir."
           }
           emptyAction={
             filtreliMi ? (

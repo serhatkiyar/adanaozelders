@@ -125,7 +125,7 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
               <th className="py-2" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 ">
+          <tbody className="divide-y divide-slate-200 ">
             {data.map((b) => (
               <tr key={`${b.payee_type}-${b.payee_id}`}>
                 <td className="py-3 pr-4">
@@ -133,7 +133,7 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
                     {b.name}
                   </span>
                   <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 ">
-                    {b.payee_type === "TUTOR" ? "Eğitmen" : "Kütüphane"}
+                    {b.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"}
                   </span>
                 </td>
                 <td className="py-3 pr-4 font-mono text-xs text-slate-500 ">
@@ -210,14 +210,14 @@ function HistoryList() {
             <th className="py-2 font-medium">IBAN (o anki)</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100 ">
+        <tbody className="divide-y divide-slate-200 ">
           {data.map((r) => (
             <tr key={r.id}>
               <td className="py-3 pr-4 text-slate-600 ">
                 {formatDate(r.paid_at)}
               </td>
               <td className="py-3 pr-4 text-slate-600 ">
-                {r.payee_type === "TUTOR" ? "Eğitmen" : "Kütüphane"} #{r.payee_id}
+                {r.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"} #{r.payee_id}
               </td>
               <td className="py-3 pr-4 text-right font-medium text-slate-900 ">
                 {formatTL(r.amount)}

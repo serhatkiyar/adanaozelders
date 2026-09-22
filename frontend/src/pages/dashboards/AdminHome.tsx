@@ -124,7 +124,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         {/* Onay kuyruğu aksiyonları. P1-1: bunlar eskiden `AdminHome`'un
             ULAŞILAMAZ "overview" dalındaki ayrı bir kartta duruyordu; admin
-            onaylamak için ya SQL'e iniyor ya eğitmeni siliyordu. */}
+            onaylamak için ya SQL'e iniyor ya öğretmeni siliyordu. */}
         {tutor.status === TutorStatus.PENDING_APPROVAL && (
           <>
             <Button
@@ -201,7 +201,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
       })}
     />
     {/* Red GEREKÇESİ zorunlu (backend `TutorRejectIn`): karar denetim izine
-        gerekçesiz yazılamaz ve eğitmen neden reddedildiğini öğrenemezdi. */}
+        gerekçesiz yazılamaz ve öğretmen neden reddedildiğini öğrenemezdi. */}
     <ReasonDialog
       open={redYuzeyi.acik}
       title="Başvuruyu reddet"
@@ -285,7 +285,7 @@ function ListingManagement() {
         <section className="space-y-3">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-semibold text-slate-900 ">
-              Onay Bekleyen Eğitmenler
+              Onay Bekleyen Öğretmenler
             </h2>
             <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
               {pending.length}
@@ -370,7 +370,7 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-slate-900 ">
-            {edu.tutor_name ?? `Eğitmen #${edu.tutor_id}`}
+            {edu.tutor_name ?? `Öğretmen #${edu.tutor_id}`}
           </p>
           <p className="mt-0.5 text-sm text-slate-600 ">{edu.school_name}</p>
           <p className="mt-0.5 text-xs text-slate-400">
@@ -423,17 +423,17 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
         )}
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-slate-400 ">
-        Belgedeki ad, eğitmenin hesap adıyla (<strong>{edu.tutor_name}</strong>) aynı olmalı (aitlik);
+        Belgedeki ad, öğretmenin hesap adıyla (<strong>{edu.tutor_name}</strong>) aynı olmalı (aitlik);
         barkodu e-Devlet'te teyit et (sahihlik).
       </p>
 
       {!canManage ? null : rejecting ? (
         <div className="mt-3 space-y-2">
           {/* İP-A7d3: alan ADSIZDI — `placeholder` etiket yerine kullanılıyordu.
-              Bir eğitmene gösterilecek red gerekçesi yazılan yer burası. */}
+              Bir öğretmene gösterilecek red gerekçesi yazılan yer burası. */}
           <label className="block">
             <span className="mb-1 block text-sm font-semibold text-slate-700 ">
-              Red nedeni (eğitmene gösterilir)
+              Red nedeni (öğretmene gösterilir)
             </span>
             <input
               value={note}
@@ -566,7 +566,7 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
       </div>
 
       {isPending ? (
-        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row">
+        <div className="mt-4 flex flex-col gap-2 border-t border-slate-200 pt-3 sm:flex-row">
           {/* İP-A7d3: alan ADSIZDI (`placeholder` etiket yerine). */}
           <label className="flex-1">
             <span className="mb-1 block text-xs font-semibold text-slate-500 ">
@@ -613,7 +613,7 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
         </div>
       ) : (
         req.review_note && (
-          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500 ">
+          <p className="mt-3 border-t border-slate-200 pt-3 text-xs text-slate-500 ">
             Not: {req.review_note}
           </p>
         )
@@ -699,7 +699,7 @@ const SECTION_AREA: Record<Tab, string> = {
   names: "users",
 };
 const SECTION_LABEL: Record<Tab, string> = {
-  listings: "Eğitmen ilanları",
+  listings: "Öğretmen ilanları",
   diplomas: "Diploma doğrulama",
   names: "Ad değişiklikleri",
 };

@@ -144,7 +144,7 @@ describe("EgitmenDiplomaDogrulama · liste", () => {
     expect(satir(3).getByText("Denklik Belgesi")).toBeInTheDocument();
     expect(satir(2).getByText("Belge türü yok")).toBeInTheDocument();
     expect(satir(2).getByText("Derece belirtilmemiş")).toBeInTheDocument();
-    expect(satir(3).getByText("Eğitmen #9")).toBeInTheDocument();
+    expect(satir(3).getByText("Öğretmen #9")).toBeInTheDocument();
     expect(satir(2).getByText("Belge ve barkod yok")).toBeInTheDocument();
     expect(satir(1).queryByText("Belge ve barkod yok")).not.toBeInTheDocument();
     expect(son(usePendingEducations)).toEqual([true]);
@@ -160,7 +160,7 @@ describe("EgitmenDiplomaDogrulama · liste", () => {
     expect(satir(1).getByText("TCKN var")).toBeInTheDocument();
   });
 
-  it("eğitmen adı users.view ile Link, izin yokken düz metin (ölü bağlantı yok)", () => {
+  it("öğretmen adı users.view ile Link, izin yokken düz metin (ölü bağlantı yok)", () => {
     const a = kur();
     expect(satir(1).getByRole("link", { name: "Ayşe Yılmaz" })).toHaveAttribute("href", ROUTES.adminNewCustomer("tutor", 7));
     a.unmount();
@@ -328,7 +328,7 @@ describe("EgitmenDiplomaDogrulama · doğrulama", () => {
     // Yalnız barkodu olan kayıt (DENKLIK): "yüklenen belge" denmez.
     vi.mocked(usePendingEducations).mockReturnValue(sonuc([DENKLIK]));
     kur();
-    await incele(3, "Eğitmen #9");
+    await incele(3, "Öğretmen #9");
     await userEvent.click(cekmeceDugmesi("Doğrula"));
     const barkodMetni = (await screen.findAllByText(/doğrulayın; belge onaylanmış sayılacak/)).map((e) => e.textContent).join(" ");
     expect(barkodMetni).toContain("barkodu e-Devlet'te doğruladıysanız");
@@ -419,7 +419,7 @@ describe("EgitmenDiplomaDogrulama · reddetme", () => {
   it("boş not `undefined` gider, dolu not trimlenir; başarıda mesaj + kapanış", async () => {
     const a = kur();
     await redModu();
-    expect(pencere().getByText(/Not eğitmene gösterilir/)).toBeInTheDocument();
+    expect(pencere().getByText(/Not öğretmene gösterilir/)).toBeInTheDocument();
     await userEvent.click(cekmeceDugmesi("Belgeyi reddet"));
     await waitFor(() => expect(karar).toHaveBeenCalledWith({ id: 1, action: "reject", note: undefined }));
     await sonuclandir(0);
@@ -441,7 +441,7 @@ describe("EgitmenDiplomaDogrulama · reddetme", () => {
     const alan = pencere().getByLabelText(/Red notu/) as HTMLTextAreaElement;
     expect(alan).toHaveAttribute("maxLength", String(NOT_MAX));
     fireEvent.change(alan, { target: { value: "x".repeat(NOT_MAX) } });
-    expect(pencere().getByText(`Not eğitmene gösterilir; boş bırakılabilir (${NOT_MAX}/${NOT_MAX}).`)).toBeInTheDocument();
+    expect(pencere().getByText(`Not öğretmene gösterilir; boş bırakılabilir (${NOT_MAX}/${NOT_MAX}).`)).toBeInTheDocument();
     // Üst sınırı aşan değer alanda hata olarak bildirilir (gönderim yapılmaz).
     fireEvent.change(alan, { target: { value: "x".repeat(NOT_MAX + 1) } });
     await userEvent.click(cekmeceDugmesi("Belgeyi reddet"));

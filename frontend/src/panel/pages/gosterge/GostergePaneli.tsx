@@ -99,11 +99,11 @@ type Kuyruk = { etiket: string; deger: number; hedef: string; ton?: string; acik
 
 function kuyruklar(d: AdminDashboardOut, donemEtiketi: string, esik?: number): Kuyruk[] {
   const liste = [
-    { etiket: "Eğitmen başvuruları", deger: d.pending_tutors, hedef: ROUTES.adminNewTutors, ton: "warning", aciklama: "Onay veya ret kararı bekliyor." },
+    { etiket: "Öğretmen başvuruları", deger: d.pending_tutors, hedef: ROUTES.adminNewTutors, ton: "warning", aciklama: "Onay veya ret kararı bekliyor." },
     { etiket: "Diploma doğrulamaları", deger: d.pending_diplomas, hedef: ROUTES.adminNewTutorDiplomas, ton: "warning", aciklama: "Belge teyidi bekleyen eğitim kayıtları." },
     { etiket: "Açık şikâyetler", deger: d.open_reports, hedef: ROUTES.adminNewReports, ton: "error", aciklama: "Moderasyon kararı bekleyen bildirimler." },
     { etiket: "İhtilaflı rezervasyonlar", deger: d.disputed_bookings, hedef: ROUTES.adminNewBookings, ton: "error", aciklama: `${d.active_bookings} aktif rezervasyon içinde.` },
-    { etiket: "Açık öğrenci talepleri", deger: d.open_demands, hedef: ROUTES.adminNewDemands, ton: "processing", aciklama: "Eğitmenlerden yanıt bekleyen ders ilanları." },
+    { etiket: "Açık öğrenci talepleri", deger: d.open_demands, hedef: ROUTES.adminNewDemands, ton: "processing", aciklama: "Öğretmenlerden yanıt bekleyen ders ilanları." },
     { etiket: "Hazırlanacak siparişler", deger: d.paid_orders, hedef: ROUTES.adminNewPacking, ton: "processing", aciklama: `${d.pending_returns} açık iade talebi bulunuyor.` },
     { etiket: "Düşük stok", deger: d.low_stock_products, hedef: `${ROUTES.adminNewProducts}?stok=kritik`, ton: "warning", aciklama: `Aktif fiziksel ürünlerde stok ${esik ?? "eşiğin"} veya altında.` },
     { etiket: "Kütüphane başvuruları", deger: d.pending_libraries, hedef: ROUTES.adminNewLibraries, ton: "warning", aciklama: "Katalog onayı bekleyen işletmeler." },
@@ -189,7 +189,7 @@ export function GostergePaneli() {
               <KpiSeridi
                 kalemler={[
                   { etiket: "Yeni öğrenciler", deger: String(d.new_clients), degisim: adet(d.new_clients, d.previous_new_clients), ipucu: "hesap" },
-                  { etiket: "Yeni eğitmenler", deger: String(d.new_tutors), degisim: adet(d.new_tutors, d.previous_new_tutors), ipucu: "başvuru" },
+                  { etiket: "Yeni öğretmenler", deger: String(d.new_tutors), degisim: adet(d.new_tutors, d.previous_new_tutors), ipucu: "başvuru" },
                   { etiket: "Yeni siparişler", deger: String(d.new_orders), degisim: adet(d.new_orders, d.previous_new_orders), ipucu: "sipariş" },
                   ...(p
                     ? [

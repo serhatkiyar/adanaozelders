@@ -50,16 +50,16 @@ describe("kalanSure", () => {
 
 describe("panoAltSatir", () => {
   const now = new Date(2026, 8, 17, 10, 0);
-  it("hiç dersi olmayan yeni eğitmen", () => {
+  it("hiç dersi olmayan yeni öğretmen", () => {
     expect(panoAltSatir({ nextLessonStart: null, completedTotal: 0, now })).toMatch(
       /Burada olman ne güzel/
     );
   });
-  it("bugün dersi olan eğitmende alt satır yok", () => {
+  it("bugün dersi olan öğretmende alt satır yok", () => {
     const bugun = new Date(2026, 8, 17, 16, 0).toISOString();
     expect(panoAltSatir({ nextLessonStart: bugun, completedTotal: 4, now })).toBeNull();
   });
-  it("bugün dersi olmayan eğitmen", () => {
+  it("bugün dersi olmayan öğretmen", () => {
     expect(panoAltSatir({ nextLessonStart: null, completedTotal: 4, now })).toMatch(
       /Bugün dersin yok/
     );

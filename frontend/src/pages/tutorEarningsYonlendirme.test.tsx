@@ -47,7 +47,7 @@ afterEach(() => {
 });
 
 describe("Bakiyem → Kazançlar yönlendirmesi", () => {
-  it("eğitmen eski Bakiyem adresinden Kazançlar'a gider", () => {
+  it("öğretmen eski Bakiyem adresinden Kazançlar'a gider", () => {
     rol = ROLE_IDS.TUTOR;
     ciz(ROUTES.balance);
     expect(screen.getByText("kazanclar-yonlendirildi")).toBeTruthy();

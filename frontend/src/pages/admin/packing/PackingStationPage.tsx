@@ -429,7 +429,7 @@ export default function PackingStationPage() {
 
       {/* ── Kalemler ── */}
       <section className="rounded-2xl border border-slate-200 bg-white ">
-        <div className="border-b border-slate-100 px-6 py-3 ">
+        <div className="border-b border-slate-200 px-6 py-3 ">
           <h2 className="text-sm font-bold text-slate-900 ">
             Kutuya girecek kalemler
           </h2>
@@ -438,7 +438,7 @@ export default function PackingStationPage() {
             gerekçeyle elle kapatılır ve gerekçe kayda geçer.
           </p>
         </div>
-        <ul className="divide-y divide-slate-100 px-6 ">
+        <ul className="divide-y divide-slate-200 px-6 ">
           {paket.items.map((satir) => {
             const kalan = satir.expected_qty - satir.scanned_qty;
             const tamam = kalan <= 0;

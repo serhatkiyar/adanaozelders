@@ -66,7 +66,7 @@ export default function AdminBlogListPage({ yeniPanel = false }: { yeniPanel?: b
           action={canManage ? <Button onClick={() => navigate(yeniYolu)}>Yeni yazı</Button> : undefined}
         />
       ) : (
-        <ul className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white ">
+        <ul className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white ">
           {posts.map((post) => (
             <li key={post.id}>
               <GezinmeBaglantisi

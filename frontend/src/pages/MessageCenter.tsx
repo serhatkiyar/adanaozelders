@@ -50,7 +50,7 @@ export default function MessageCenter() {
 
         <div className="mt-6 grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]">
           {/* Sol: bölüm seçici */}
-          <aside className="md:border-r md:border-slate-100 md:pr-6 ">
+          <aside className="md:border-r md:border-slate-200 md:pr-6 ">
             <nav className="flex flex-col gap-0.5">
               <button
                 type="button"

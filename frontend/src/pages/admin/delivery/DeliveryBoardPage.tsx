@@ -308,7 +308,7 @@ export default function DeliveryBoardPage() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,340px)_1fr]">
           {/* ── Havuz: atanmamış siparişler ── */}
           <section className="rounded-2xl border border-slate-200 bg-white ">
-            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 ">
+            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-3.5 ">
               <h3 className="mr-auto text-sm font-bold text-slate-900 ">
                 Havuz
               </h3>
@@ -319,7 +319,7 @@ export default function DeliveryBoardPage() {
                 Havuz boş: dağıtım bekleyen atanmamış sipariş yok.
               </p>
             ) : (
-              <ul className="divide-y divide-slate-100 ">
+              <ul className="divide-y divide-slate-200 ">
                 {pool.map((o) => (
                   <PoolCard
                     key={o.order_id}
@@ -334,7 +334,7 @@ export default function DeliveryBoardPage() {
 
           {/* ── Turlar: araç bazlı drop hedefleri ── */}
           <section className="rounded-2xl border border-slate-200 bg-white ">
-            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 ">
+            <div className="flex items-center gap-2 border-b border-slate-200 px-5 py-3.5 ">
               <h3 className="mr-auto text-sm font-bold text-slate-900 ">
                 Turlar
               </h3>
@@ -348,7 +348,7 @@ export default function DeliveryBoardPage() {
                 />
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 ">
+              <div className="divide-y divide-slate-200 ">
                 {runs.map((r) => (
                   <RunLane
                     key={r.id}

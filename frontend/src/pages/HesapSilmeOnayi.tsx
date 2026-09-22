@@ -57,7 +57,7 @@ export default function HesapSilmeOnayi() {
             Silme bağlantısı eksik ya da bozuk görünüyor.
           </p>
           <Link
-            to={ROUTES.settings}
+            to={ROUTES.accountSettings}
             className="mt-5 inline-block text-sm font-semibold text-marka-metin hover:text-marka-metin-hover"
           >
             Ayarlara dön
@@ -95,7 +95,7 @@ export default function HesapSilmeOnayi() {
 
           <div className="mt-5 flex justify-end gap-2">
             <Link
-              to={ROUTES.settings}
+              to={ROUTES.accountSettings}
               className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
             >
               Vazgeç

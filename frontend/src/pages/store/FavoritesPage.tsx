@@ -67,7 +67,7 @@ export default function FavoritesPage() {
       <div className={`${CONTAINER} py-8`}>
         <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
           {/* Sol: Favori Listem + koleksiyonlar alt alta */}
-          <aside className="md:border-r md:border-slate-100 md:pr-6 ">
+          <aside className="md:border-r md:border-slate-200 md:pr-6 ">
             <button
               type="button"
               onClick={() => {
@@ -109,7 +109,7 @@ export default function FavoritesPage() {
             </nav>
 
             {!alisverisAcik && (
-              <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 ">
+              <p className="mt-4 border-t border-slate-200 pt-4 text-xs leading-relaxed text-slate-400 ">
                 Kendi listelerini oluşturmak için{" "}
                 <Link to={girisAdresiDegeri} className="font-semibold text-marka-metin hover:underline ">
                   giriş yap
@@ -457,7 +457,7 @@ function AddToCollectionModal({ product, onClose }: { product: ProductSearchOut;
         )}
       </div>
 
-      <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4 ">
+      <div className="mt-4 flex gap-2 border-t border-slate-200 pt-4 ">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}

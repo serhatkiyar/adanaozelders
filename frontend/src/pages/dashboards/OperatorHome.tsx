@@ -344,13 +344,13 @@ function BugunBlogu({ libraryId }: { libraryId: number }) {
           {siradaki ? (
             <p
               data-testid="bugun-siradaki"
-              className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-700 "
+              className="mt-3 border-t border-slate-200 pt-3 text-sm text-slate-700 "
             >
               <span className="text-slate-400 ">Sıradaki:</span>{" "}
               <b>{formatIstanbulTime(siradaki.startsAt)}</b> · {siradaki.ad}
             </p>
           ) : (
-            <p className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-500 ">
+            <p className="mt-3 border-t border-slate-200 pt-3 text-sm text-slate-500 ">
               Bugün için bekleyen randevu kalmadı.
             </p>
           )}
@@ -551,7 +551,7 @@ function EarningsCard({ libraryId }: { libraryId: number }) {
 
   // Tek sakin kart; sütunlar saç-teli çizgiyle ayrılır, renk yalnız rakamın üstünde.
   return (
-    <div className="grid grid-cols-1 divide-y divide-slate-100 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 ">
+    <div className="grid grid-cols-1 divide-y divide-slate-200 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0 ">
       <div className="pb-4 sm:pb-0 sm:pr-5">
         <p className="text-xs font-medium text-slate-500 ">Serbest kazanç</p>
         <p className="mt-1 text-2xl font-bold text-emerald-600 ">

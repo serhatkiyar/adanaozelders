@@ -46,7 +46,7 @@ const YURURLUKTE = satis();
 const BEKLEYEN = satis({ id: 2, tutor_id: 8, tutor_name: "Berk Demir", package_days: 7, price: "300", currency: "TRY", payment_status: "PENDING", provider_ref: null, paid_at: null, starts_at: null, ends_at: null });
 const IPTALLI = satis({ id: 3, tutor_id: 9, tutor_name: null, payment_status: "REFUNDING", cancelled_at: "2026-09-12T10:00:00Z", refunded_amount: "1250.50" });
 const LISTE = [YURURLUKTE, BEKLEYEN, IPTALLI];
-const TAM_SAYFA = Array.from({ length: SAYFA_BOYUTU }, (_, i) => satis({ id: 100 + i, tutor_name: `Eğitmen ${i}` }));
+const TAM_SAYFA = Array.from({ length: SAYFA_BOYUTU }, (_, i) => satis({ id: 100 + i, tutor_name: `Öğretmen ${i}` }));
 
 const sonuc = (data: unknown, ek: object = {}) => ({ data, isPending: false, isError: false, error: null, refetch: vi.fn(), ...ek }) as never;
 const son = (h: unknown) => vi.mocked(h as () => unknown).mock.calls.at(-1);
@@ -202,7 +202,7 @@ describe("EgitmenOneCikarmalar · liste", () => {
   it("sunucu sırası korunur, kolonlar ve iki eksen ayrı gösterilir, toplam uydurulmaz", () => {
     kur();
     expect(screen.getAllByTestId(/^one-cikarma-/).map((d) => d.getAttribute("data-testid"))).toEqual(["one-cikarma-1", "one-cikarma-2", "one-cikarma-3"]);
-    for (const baslik of ["Eğitmen", "Paket", "Yürürlük", "Tutar", "Para durumu", "Görünürlük", "İşlemler"]) {
+    for (const baslik of ["Öğretmen", "Paket", "Yürürlük", "Tutar", "Para durumu", "Görünürlük", "İşlemler"]) {
       expect(screen.getByRole("columnheader", { name: baslik })).toBeInTheDocument();
     }
     expect(satir(1).getByText("Ödendi")).toBeInTheDocument();
@@ -212,13 +212,13 @@ describe("EgitmenOneCikarmalar · liste", () => {
     expect(satir(3).getByText("İade sürüyor")).toBeInTheDocument();
     expect(satir(3).getByText("İptal edildi")).toBeInTheDocument();
     expect(satir(1).getByText("30 gün")).toBeInTheDocument();
-    expect(satir(3).getByText("Eğitmen #9")).toBeInTheDocument();
+    expect(satir(3).getByText("Öğretmen #9")).toBeInTheDocument();
     // Toplam sayı YOK; yalnız sayfa numarası (tek sayfa dolduğunda).
     expect(screen.queryByText(/3 kayıt/)).not.toBeInTheDocument();
     expect(screen.getByText(/organik sıralamasını değiştirmez/)).toBeInTheDocument();
   });
 
-  it("eğitmen adı users.view ile Link, izin yokken düz metin", () => {
+  it("öğretmen adı users.view ile Link, izin yokken düz metin", () => {
     const a = kur();
     expect(satir(1).getByRole("link", { name: "Ayşe Yılmaz" })).toHaveAttribute("href", ROUTES.adminNewCustomer("tutor", 7));
     a.unmount();
@@ -429,7 +429,7 @@ describe("EgitmenOneCikarmalar · iptal", () => {
   it("aynı tick çift gönderim TEK istek; başarıda pencere kapanır ve mesaj verilir", async () => {
     kur();
     await iptalAc();
-    fireEvent.change(pencere().getByLabelText(/İptal gerekçesi/), { target: { value: "eğitmen talebi" } });
+    fireEvent.change(pencere().getByLabelText(/İptal gerekçesi/), { target: { value: "öğretmen talebi" } });
     const dugme = cekmeceDugmesi("İptal et ve iade başlat");
     fireEvent.click(dugme);
     fireEvent.click(dugme);

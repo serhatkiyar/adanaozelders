@@ -95,7 +95,7 @@ export default function FaqPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               {cat.title}
             </h2>
-            <div className="mt-3 divide-y divide-slate-100 border-y border-slate-100 ">
+            <div className="mt-3 divide-y divide-slate-200 border-y border-slate-200 ">
               {cat.items.map((item) => {
                 const isOpen = open === item.id;
                 return (

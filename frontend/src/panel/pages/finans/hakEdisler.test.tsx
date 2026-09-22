@@ -19,7 +19,7 @@ const gonder = vi.fn();
 const bakiye = {
   payee_type: "TUTOR" as const,
   payee_id: 7,
-  name: "Ayşe Eğitmen",
+  name: "Ayşe Öğretmen",
   iban: "TR120006200000000000000001",
   earned: "1500.00",
   paid: "250.00",
@@ -64,7 +64,7 @@ describe("HakEdisler", () => {
   it("view-only görünümde para alanları var, ödeme aksiyonu yoktur", () => {
     izin("payments.view");
     kur();
-    expect(screen.getByText("Ayşe Eğitmen")).toBeInTheDocument();
+    expect(screen.getByText("Ayşe Öğretmen")).toBeInTheDocument();
     expect(screen.getByText(/Salt okunur görünüm/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ödedim" })).not.toBeInTheDocument();
   });
@@ -81,7 +81,7 @@ describe("HakEdisler", () => {
   it("ödeme penceresi eski alanları açar ve gerçek payloadı gönderir", async () => {
     kur();
     fireEvent.click(screen.getByRole("button", { name: "Ödedim" }));
-    expect(screen.getByRole("dialog", { name: "Ödeme kaydı: Ayşe Eğitmen" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Ödeme kaydı: Ayşe Öğretmen" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Tutar (TL)"), { target: { value: "500" } });
     fireEvent.change(screen.getByLabelText("Havale referansı"), { target: { value: "  EFT-42  " } });
     fireEvent.change(screen.getByLabelText("Not"), { target: { value: "  Eylül ödemesi  " } });

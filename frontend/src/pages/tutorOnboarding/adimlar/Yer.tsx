@@ -44,7 +44,7 @@ export function AdimYer({ d, guncelle }: AdimProps) {
             dolgu
             ad="ilce"
             etiket="İlçen"
-            ipucu="Öğrenciler aramada ilçeye göre eğitmen süzüyor."
+            ipucu="Öğrenciler aramada ilçeye göre öğretmen süzüyor."
             deger={d.district}
             onChange={(v) => guncelle({ district: v })}
             secenekler={ADANA_DISTRICTS.map((i) => ({ deger: i, etiket: i }))}

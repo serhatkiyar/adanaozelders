@@ -156,7 +156,7 @@ const ORNEK_DEGERLER: Record<string, unknown> = {
   varyant: ["Renk:Mavi"],
 };
 
-describe("arama URL · eğitmen", () => {
+describe("arama URL · öğretmen", () => {
   it("round-trip: yazılan her alan aynen okunuyor", () => {
     const deger: EgitmenAramasi = {
       q: "",

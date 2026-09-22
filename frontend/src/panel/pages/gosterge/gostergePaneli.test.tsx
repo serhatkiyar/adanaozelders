@@ -80,7 +80,7 @@ describe("GostergePaneli", () => {
 
     const kuyruk = screen.getByRole("region", { name: "Operasyon kuyrukları" });
     expect(within(kuyruk).getAllByRole("listitem")).toHaveLength(10);
-    expect(within(kuyruk).getAllByRole("listitem")[0]).toHaveTextContent("Eğitmen başvuruları");
+    expect(within(kuyruk).getAllByRole("listitem")[0]).toHaveTextContent("Öğretmen başvuruları");
     expect(within(kuyruk).getAllByRole("listitem")[9]).toHaveTextContent("Açık şikâyetler");
     const dusukStok = within(kuyruk).getByText("Düşük stok").closest("[role=listitem]") as HTMLElement;
     expect(within(dusukStok).getByRole("link")).toHaveAttribute("href", `${ROUTES.adminNewProducts}?stok=kritik`);
@@ -92,7 +92,7 @@ describe("GostergePaneli", () => {
         within(satir).getByRole("link").getAttribute("href"),
       ]),
     );
-    expect(hedefler.get("Eğitmen başvuruları")).toBe(ROUTES.adminNewTutors);
+    expect(hedefler.get("Öğretmen başvuruları")).toBe(ROUTES.adminNewTutors);
     expect(hedefler.get("Diploma doğrulamaları")).toBe(ROUTES.adminNewTutorDiplomas);
     expect(hedefler.get("Açık şikâyetler")).toBe(ROUTES.adminNewReports);
     expect(hedefler.get("İhtilaflı rezervasyonlar")).toBe(ROUTES.adminNewBookings);

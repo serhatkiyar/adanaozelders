@@ -150,13 +150,13 @@ export default function AdminTutorApplicationsPage() {
     useAdminTutorPreApplications(filtre);
   const guncelle = useUpdateTutorPreApplicationStatus();
 
-  if (!canView) return <AccessDenied area="Eğitmen ön başvuruları" />;
+  if (!canView) return <AccessDenied area="Öğretmen ön başvuruları" />;
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">
-          Eğitmen ön başvuruları
+          Öğretmen ön başvuruları
         </h2>
         <p className="mt-1 text-sm text-slate-500">
           /egitmen-on-basvuru sayfasından gelen kayıtlar. Hedef: yeni başvuruyu{" "}
@@ -207,7 +207,7 @@ export default function AdminTutorApplicationsPage() {
                 <th className="py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {data.map((b: AdminTutorPreApplication) => (
                 <Fragment key={b.id}>
                 <tr className="align-top">

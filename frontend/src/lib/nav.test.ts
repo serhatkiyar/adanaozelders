@@ -64,7 +64,7 @@ describe("Öğren hub'ı — donduruldu", () => {
     expect(favoriler?.visible, "navbar: Favorilerim görünür değil").toBe(true);
     expect(
       TUTOR_PANO_SEKMELERI.some((i) => i.to === ROUTES.messages),
-      "eğitmenin Mesajlar sekmesi şeritten düşmüş"
+      "öğretmenin Mesajlar sekmesi şeritten düşmüş"
     ).toBe(true);
   });
 

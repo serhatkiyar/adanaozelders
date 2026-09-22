@@ -124,7 +124,7 @@ export default function LessonDetail() {
 
   const isClient = role === "CLIENT";
   const counterpartName = isClient
-    ? booking.tutor_name ?? "Eğitmen"
+    ? booking.tutor_name ?? "Öğretmen"
     : booking.client_name ?? ADSIZ_UYE;
   const counterpartLink = isClient
     ? `/student/tutors/${booking.tutor_id}`
@@ -272,7 +272,7 @@ export default function LessonDetail() {
                   joinMeeting(
                     bookingId,
                     booking.meeting_room!,
-                    booking.tutor_name || "Eğitmen",
+                    booking.tutor_name || "Öğretmen",
                     booking.client_name || ADSIZ_UYE
                   )
                 }
@@ -415,8 +415,8 @@ export default function LessonDetail() {
               </button>
             )} */}
 
-            {/* Bekleyen dersin yanıtını KİM verir: öğrencinin talebinde eğitmen,
-                eğitmenin teklifinde öğrenci (Modül 8). Sunucu da aynı kuralı
+            {/* Bekleyen dersin yanıtını KİM verir: öğrencinin talebinde öğretmen,
+                öğretmenin teklifinde öğrenci (Modül 8). Sunucu da aynı kuralı
                 uygular; buradaki tek iş doğru düğmeyi doğru tarafa göstermek. */}
             {role === "CLIENT" && isPending && booking.offered_by_tutor && (
               <>
@@ -455,7 +455,7 @@ export default function LessonDetail() {
                 </button>
               </>
             )}
-            {/* Eğitmen, yanıt bekleyen kendi teklifini geri çeker: ders iptal
+            {/* Öğretmen, yanıt bekleyen kendi teklifini geri çeker: ders iptal
                 sayılmaz (sunucu REJECTED yazar); ödemesi olan derste sunucu 409 verir. */}
             {canWithdraw && (
               <button
@@ -492,7 +492,7 @@ export default function LessonDetail() {
                 Ertele
               </button>
             )}
-            {/* Ödemesiz bekleyen kendi teklifinde eğitmene "İptal" yerine yalnız
+            {/* Ödemesiz bekleyen kendi teklifinde öğretmene "İptal" yerine yalnız
                 "Teklifi geri çek" gösterilir: iptal, iptal oranı metriğine yazılır. */}
             {canMessage && !canWithdraw && (
               <button
@@ -503,7 +503,7 @@ export default function LessonDetail() {
               </button>
             )}
             {/* Düğme sunucunun `can_review` kararına bağlı (16 Eyl 2026):
-                tamamlanmış + kartla ödenmiş + bu eğitmene ilk yorum. Yerel
+                tamamlanmış + kartla ödenmiş + bu öğretmene ilk yorum. Yerel
                 `alreadyReviewed`, pencere kapanır kapanmaz düğmeyi gizler. */}
             {isClient && booking.can_review && !alreadyReviewed && (
               <button
@@ -531,7 +531,7 @@ export default function LessonDetail() {
             {review.tutor_reply && (
               <div className="mt-4 rounded-lg border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3">
                 <p className="text-sm font-semibold text-marka-metin-hover">
-                  Eğitmen yanıtı
+                  Öğretmen yanıtı
                 </p>
                 <p className={`${ACIKLAMA} mt-1 whitespace-pre-line`}>
                   {review.tutor_reply}

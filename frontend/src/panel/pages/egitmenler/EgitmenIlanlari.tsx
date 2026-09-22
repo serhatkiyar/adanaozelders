@@ -139,7 +139,7 @@ export function EgitmenIlanlari() {
     });
   };
 
-  if (!canView) return <AccessDenied area="Eğitmenler" />;
+  if (!canView) return <AccessDenied area="Öğretmenler" />;
   const ayrac = token.colorBorderSecondary;
   const kart = { background: token.colorBgContainer, border: `1px solid ${ayrac}`, borderRadius: 4 };
   const bolumBasligi = (baslik: string, aciklama: string, sag?: React.ReactNode) => (
@@ -195,8 +195,8 @@ export function EgitmenIlanlari() {
 
   // Hata / yükleniyor / boş: üçü de aynı kart iskeletinde (veri gelince çerçeve birden belirmez).
   const tekBolum = (icerik: React.ReactNode) => (
-    <section aria-label="Eğitmen ilanları" style={kart}>
-      {bolumBasligi("Eğitmen ilanları", "Onay kuyruğu ve yayındaki ilanlar tek listede.")}
+    <section aria-label="Öğretmen ilanları" style={kart}>
+      {bolumBasligi("Öğretmen ilanları", "Onay kuyruğu ve yayındaki ilanlar tek listede.")}
       <div style={{ padding: "16px 24px" }}>{icerik}</div>
     </section>
   );
@@ -206,14 +206,14 @@ export function EgitmenIlanlari() {
     tekBolum(<YukleniyorDurumu etiket="İlanlar yükleniyor…" />)
   ) : liste.length === 0 ? (
     // Oluşturma ucu yok: boş durumda aksiyon uydurulmaz.
-    tekBolum(<BosDurumu baslik="Henüz ilan yok" aciklama="Eğitmen başvurusu geldikçe ilanlar burada listelenir." />)
+    tekBolum(<BosDurumu baslik="Henüz ilan yok" aciklama="Öğretmen başvurusu geldikçe ilanlar burada listelenir." />)
   ) : (
     <>
       {/* Kuyruk başlığı yalnız iş VARKEN basılır. */}
       {bekleyenler.length > 0 ? (
-        <section aria-label="Onay bekleyen eğitmenler" style={kart}>
+        <section aria-label="Onay bekleyen öğretmenler" style={kart}>
           {bolumBasligi(
-            "Onay bekleyen eğitmenler",
+            "Onay bekleyen öğretmenler",
             "Bu başvurular incelemenizi bekliyor. Onay ilanı yayına alır; red gerekçesi denetim izine yazılır.",
             <Tag style={{ marginInlineEnd: 0, ...SAYI }}>{bekleyenler.length}</Tag>,
           )}
@@ -238,7 +238,7 @@ export function EgitmenIlanlari() {
   return (
     <Flex vertical gap={16}>
       <Flex align="center" justify="space-between" wrap gap={12} style={{ minHeight: 40 }}>
-        <Typography.Title level={3} style={{ margin: 0, fontSize: 20, fontWeight: 500, lineHeight: "30px" }}>Eğitmen ilanları</Typography.Title>
+        <Typography.Title level={3} style={{ margin: 0, fontSize: 20, fontWeight: 500, lineHeight: "30px" }}>Öğretmen ilanları</Typography.Title>
       </Flex>
       {!canManage ? <Typography.Text type="secondary">Salt okunur görünüm: onay, red, pasife alma ve silme için tutors.manage izni gerekir.</Typography.Text> : null}
       {govde}

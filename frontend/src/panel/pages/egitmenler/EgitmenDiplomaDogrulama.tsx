@@ -77,7 +77,7 @@ export function EgitmenDiplomaDogrulama() {
   const dogrulaOnayi = (kayit: AdminEducation) => {
     // Hedef kimlik ve bağlam ONAY AÇILDIĞI anda sabitlenir; sonraki tazelemeler hedefi kaydırmaz.
     const hedefId = kayit.id;
-    const ad = kayit.tutor_name ?? `Eğitmen #${kayit.tutor_id}`;
+    const ad = kayit.tutor_name ?? `Öğretmen #${kayit.tutor_id}`;
     const okul = kayit.school_name;
     const varlik = `education:${hedefId}`;
     if (kilitli(varlik) || onayAcikRef.current) return;
@@ -137,7 +137,7 @@ export function EgitmenDiplomaDogrulama() {
   const kart = { background: token.colorBgContainer, border: `1px solid ${ayrac}`, borderRadius: 4 };
 
   const satir = (kayit: AdminEducation, i: number, dizi: AdminEducation[]) => {
-    const ad = kayit.tutor_name ?? `Eğitmen #${kayit.tutor_id}`;
+    const ad = kayit.tutor_name ?? `Öğretmen #${kayit.tutor_id}`;
     const isaretler = varlikIsaretleri(kayit);
     return (
       <div
@@ -206,7 +206,7 @@ export function EgitmenDiplomaDogrulama() {
   ) : !veriHazir ? (
     <YukleniyorDurumu etiket="Diploma kuyruğu yükleniyor…" />
   ) : liste.length === 0 ? (
-    <BosDurumu baslik="Teyit bekleyen belge yok" aciklama="Eğitmen yeni bir diploma ya da barkod gönderdiğinde burada listelenir." />
+    <BosDurumu baslik="Teyit bekleyen belge yok" aciklama="Öğretmen yeni bir diploma ya da barkod gönderdiğinde burada listelenir." />
   ) : (
     liste.map(satir)
   );

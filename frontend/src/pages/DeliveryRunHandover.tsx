@@ -316,7 +316,7 @@ export default function DeliveryRunHandover() {
               {manifestQuery.isLoading ? "Yükleniyor…" : "Bu turda bekleyen durak yok."}
             </p>
           ) : (
-            <ul className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 ">
+            <ul className="divide-y divide-slate-200 rounded-2xl bg-white px-4 ring-1 ring-slate-100 ">
               {satirlar.map((row) => (
                 <li
                   key={row.stop_id}

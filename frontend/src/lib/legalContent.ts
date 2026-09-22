@@ -123,12 +123,12 @@ const KVKK: LegalDoc = {
           "Kimlik bilgileri: ad, soyad, doğum tarihi, cinsiyet (isteğe bağlı).",
           "Google ile giriş yapmayı seçerseniz Google'dan alınan bilgiler: ad, soyad, e-posta adresi, e-posta adresinin doğrulanmış olup olmadığı ve Google hesabınızın kalıcı kullanıcı kimliği. Bu bilgiler yalnızca hesabınızı açmak ve girişinizi tanımak için işlenir; Google'a bizden kişisel veri AKTARILMAZ ve Google ile giriş düğmesine basmadığınız sürece Google'a hiçbir istek gitmez.",
           "İletişim bilgileri: e-posta adresi.",
-          "Eğitmen profil bilgileri (eğitmenler için): eğitim geçmişi, verilen dersler, saatlik ücret, biyografi, profil fotoğrafı, ders verilen konum.",
-          "Konum bilgileri: \"yakınımda\" araması yaptığınızda tarayıcınızın paylaştığı yaklaşık konum (sunucuda saklanmaz, yalnız arama için kullanılır); eğitmen/kütüphane konumları (ilan amaçlı, ilgili kullanıcının kendi girdisidir).",
+          "Öğretmen profil bilgileri (öğretmenler için): eğitim geçmişi, verilen dersler, saatlik ücret, biyografi, profil fotoğrafı, ders verilen konum.",
+          "Konum bilgileri: \"yakınımda\" araması yaptığınızda tarayıcınızın paylaştığı yaklaşık konum (sunucuda saklanmaz, yalnız arama için kullanılır); öğretmen/kütüphane konumları (ilan amaçlı, ilgili kullanıcının kendi girdisidir).",
           "Eğitim ve kullanım verileri: ders rezervasyonları, deneme sınavı kayıtları ve sonuçları, çalışma alanı rezervasyonları, soru-cevaplar, değerlendirme ve yorumlar, çalışma araçları verileri (görevler, aralıklı tekrar desteleri ve tekrar geçmişi, alışkanlıklar).",
-          "Mesajlaşma içerikleri: Platform üzerinden eğitmen-öğrenci yazışmaları (hizmet güvenliği ve uyuşmazlık çözümü amacıyla saklanır).",
+          "Mesajlaşma içerikleri: Platform üzerinden öğretmen-öğrenci yazışmaları (hizmet güvenliği ve uyuşmazlık çözümü amacıyla saklanır).",
           "Finansal işlem bilgileri: ödeme tutarı, ödeme durumu ve ödeme kuruluşu işlem referansı. Kart bilgileriniz Platform tarafından GÖRÜLMEZ ve SAKLANMAZ; ödeme sayfası doğrudan iyzico Ödeme Hizmetleri A.Ş. tarafından sunulur.",
-          "Kimlik ve ödeme doğrulama verileri (yalnızca ödeme alan eğitmen ve kütüphane sorumluları için): T.C. Kimlik Numarası, IBAN ve diploma/denklik/öğrenci belgesi ile e-Devlet doğrulama (barkod) kodu. T.C. Kimlik Numarası veritabanında şifreli (kriptolu) saklanır; arayüzde yalnızca son dört hanesi gösterilir. Ödeme alıcısı hesabının kurulması için ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi ödeme kuruluşuna (iyzico) aktarılır.",
+          "Kimlik ve ödeme doğrulama verileri (yalnızca ödeme alan öğretmen ve kütüphane sorumluları için): T.C. Kimlik Numarası, IBAN ve diploma/denklik/öğrenci belgesi ile e-Devlet doğrulama (barkod) kodu. T.C. Kimlik Numarası veritabanında şifreli (kriptolu) saklanır; arayüzde yalnızca son dört hanesi gösterilir. Ödeme alıcısı hesabının kurulması için ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi ödeme kuruluşuna (iyzico) aktarılır.",
           "Ön başvuru bilgileri (hesap açmadan iletilen): ad-soyad, cep telefonu, verdiğiniz dersler, isteğe bağlı e-posta, profil fotoğrafı, tanıtım metni, saatlik ücret, müsaitlik ve diploma/sertifika belgeleri. Bu veriler yalnızca başvurunuzun değerlendirilmesi ve sizinle iletişime geçilmesi için işlenir; üyelik açılmadığı sürece profil olarak yayımlanmaz.",
           "İşlem güvenliği bilgileri: IP adresi, oturum kayıtları, hata/erişim logları."
         ),
@@ -141,12 +141,12 @@ const KVKK: LegalDoc = {
         p("Kişisel verileriniz aşağıdaki amaçlarla işlenir:"),
         list(
           "Üyelik sözleşmesinin kurulması ve ifası (hesap oluşturma, kimlik doğrulama, oturum yönetimi).",
-          "Eğitmen-öğrenci eşleştirme, rezervasyon, deneme sınavı ve çalışma alanı hizmetlerinin sunulması.",
+          "Öğretmen-öğrenci eşleştirme, rezervasyon, deneme sınavı ve çalışma alanı hizmetlerinin sunulması.",
           "Ödeme ve emanet (escrow) süreçlerinin yürütülmesi, komisyon hesaplanması, mali yükümlülüklerin yerine getirilmesi.",
-          "Para alan tarafların (eğitmen, kütüphane) kimlik ve diploma/öğrenim belgesi doğrulaması ile ödeme alıcısı (alt üye işyeri) hesabının ödeme kuruluşu nezdinde kurulması.",
+          "Para alan tarafların (öğretmen, kütüphane) kimlik ve diploma/öğrenim belgesi doğrulaması ile ödeme alıcısı (alt üye işyeri) hesabının ödeme kuruluşu nezdinde kurulması.",
           "Platform güvenliğinin sağlanması, kötüye kullanımın önlenmesi ve uyuşmazlıkların çözümü.",
           "Yasal yükümlülüklerin yerine getirilmesi ve yetkili kurum taleplerinin karşılanması.",
-          "Eğitmen ön başvurularının değerlendirilmesi ve başvuru sahibiyle telefonla iletişime geçilmesi.",
+          "Öğretmen ön başvurularının değerlendirilmesi ve başvuru sahibiyle telefonla iletişime geçilmesi.",
           "Hizmet kalitesinin ölçülmesi ve geliştirilmesi."
         ),
       ],
@@ -166,10 +166,10 @@ const KVKK: LegalDoc = {
       blocks: [
         p("Kişisel verileriniz, yalnızca hizmetin gerektirdiği ölçüde aşağıdaki alıcı gruplarına aktarılabilir:"),
         list(
-          "Ödeme kuruluşu: iyzico Ödeme Hizmetleri A.Ş.: ödeme işlemleri ve 6493 sayılı Kanun kapsamındaki yükümlülükler için; ayrıca ödeme alan eğitmen/kütüphane için alt üye işyeri (sub-merchant) kurulumu amacıyla ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi aktarılır. Kimlik doğrulaması (MERNIS/IBAN kontrolü) mevzuat gereği ödeme kuruluşunca yapılır.",
+          "Ödeme kuruluşu: iyzico Ödeme Hizmetleri A.Ş.: ödeme işlemleri ve 6493 sayılı Kanun kapsamındaki yükümlülükler için; ayrıca ödeme alan öğretmen/kütüphane için alt üye işyeri (sub-merchant) kurulumu amacıyla ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi aktarılır. Kimlik doğrulaması (MERNIS/IBAN kontrolü) mevzuat gereği ödeme kuruluşunca yapılır.",
           "Barındırma ve bulut altyapı sağlayıcıları (sunucu, veritabanı, dosya depolama).",
           "E-posta gönderim altyapısı (doğrulama ve bilgilendirme e-postaları).",
-          "Hizmetin doğası gereği diğer kullanıcılar: eğitmen profiliniz öğrencilere; rezervasyon yaptığınızda ad-soyadınız ilgili eğitmene/kütüphaneye gösterilir.",
+          "Hizmetin doğası gereği diğer kullanıcılar: öğretmen profiliniz öğrencilere; rezervasyon yaptığınızda ad-soyadınız ilgili öğretmene/kütüphaneye gösterilir.",
           "Yetkili kamu kurum ve kuruluşları (yasal talep hâlinde)."
         ),
         p("Verileriniz ticari amaçla üçüncü kişilere satılmaz veya kiralanmaz."),
@@ -322,7 +322,7 @@ const TERMS: LegalDoc = {
       heading: "2. Platformun Rolü",
       blocks: [
         p(
-          "Platform, 6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun kapsamında ARACI HİZMET SAĞLAYICIDIR: özel ders hizmeti eğitmenler, deneme sınavı oturumu ve çalışma alanı hizmeti kütüphaneler/etüt merkezleri tarafından sunulur. Platform; eşleştirme, rezervasyon, mesajlaşma ve güvenli ödeme (emanet/escrow) altyapısı sağlar; ders içeriğinin ve hizmetin ifasının tarafı değildir. Eğitmen ve kurum profillerindeki bilgilerin doğruluğu ilgili hizmet sağlayıcının sorumluluğundadır; Platform makul bir ön inceleme (onay) süreci uygular ancak garanti vermez."
+          "Platform, 6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun kapsamında ARACI HİZMET SAĞLAYICIDIR: özel ders hizmeti öğretmenler, deneme sınavı oturumu ve çalışma alanı hizmeti kütüphaneler/etüt merkezleri tarafından sunulur. Platform; eşleştirme, rezervasyon, mesajlaşma ve güvenli ödeme (emanet/escrow) altyapısı sağlar; ders içeriğinin ve hizmetin ifasının tarafı değildir. Öğretmen ve kurum profillerindeki bilgilerin doğruluğu ilgili hizmet sağlayıcının sorumluluğundadır; Platform makul bir ön inceleme (onay) süreci uygular ancak garanti vermez."
         ),
       ],
     },
@@ -340,13 +340,13 @@ const TERMS: LegalDoc = {
     },
     {
       id: "egitmenler",
-      heading: "4. Eğitmenlere İlişkin Esaslar",
+      heading: "4. Öğretmenlere İlişkin Esaslar",
       blocks: [
         list(
-          "Eğitmen profilleri yayına alınmadan önce Platform onayından geçer; Platform başvuruyu gerekçe göstermeksizin reddedebilir veya yayını askıya alabilir.",
-          "Eğitmen; profilinde beyan ettiği eğitim, deneyim ve ücret bilgilerinin doğruluğundan sorumludur.",
-          "Eğitmen, Platform üzerinden elde ettiği kazanca ilişkin vergi ve diğer yasal yükümlülüklerini kendisi yerine getirir.",
-          "Ders ücreti, eğitmenin ilan ettiği saatlik ücret esas alınarak Platform tarafından hesaplanır."
+          "Öğretmen profilleri yayına alınmadan önce Platform onayından geçer; Platform başvuruyu gerekçe göstermeksizin reddedebilir veya yayını askıya alabilir.",
+          "Öğretmen; profilinde beyan ettiği eğitim, deneyim ve ücret bilgilerinin doğruluğundan sorumludur.",
+          "Öğretmen, Platform üzerinden elde ettiği kazanca ilişkin vergi ve diğer yasal yükümlülüklerini kendisi yerine getirir.",
+          "Ders ücreti, öğretmenin ilan ettiği saatlik ücret esas alınarak Platform tarafından hesaplanır."
         ),
       ],
     },
@@ -355,7 +355,7 @@ const TERMS: LegalDoc = {
       heading: "5. Rezervasyon, Ödeme ve Emanet (Escrow)",
       blocks: [
         p(
-          "Rezervasyon eğitmen tarafından kabul edildiğinde öğrenciden ödeme alınır ve tutar Platform nezdinde emanette tutulur. Öğrenci dersin gerçekleştiğini onayladığında ya da ders bitiminden itibaren 72 saat içinde sorun bildirilmediğinde platform hizmet komisyonu düşülerek kalan tutar eğitmene aktarılır. Derse 12 saatten fazla süre varken yapılan iptallerde ödeme iade edilir; derse 12 saatten az kala öğrencinin yaptığı iptallerde ödeme iade edilmez ve eğitmene aktarılır. Ödemeler iyzico altyapısıyla alınır; tüm fiyatlar sunucu tarafında hesaplanır. Ayrıntılar İptal ve İade Politikası ile Mesafeli Satış Sözleşmesi'nde düzenlenmiştir."
+          "Rezervasyon öğretmen tarafından kabul edildiğinde öğrenciden ödeme alınır ve tutar Platform nezdinde emanette tutulur. Öğrenci dersin gerçekleştiğini onayladığında ya da ders bitiminden itibaren 72 saat içinde sorun bildirilmediğinde platform hizmet komisyonu düşülerek kalan tutar öğretmene aktarılır. Derse 12 saatten fazla süre varken yapılan iptallerde ödeme iade edilir; derse 12 saatten az kala öğrencinin yaptığı iptallerde ödeme iade edilmez ve öğretmene aktarılır. Ödemeler iyzico altyapısıyla alınır; tüm fiyatlar sunucu tarafında hesaplanır. Ayrıntılar İptal ve İade Politikası ile Mesafeli Satış Sözleşmesi'nde düzenlenmiştir."
         ),
       ],
     },
@@ -398,7 +398,7 @@ const TERMS: LegalDoc = {
       heading: "9. Sorumluluğun Sınırlandırılması",
       blocks: [
         p(
-          "Platform \"olduğu gibi\" sunulur; kesintisiz veya hatasız çalışacağı garanti edilmez. Platform; eğitmen veya kurumların sunduğu hizmetin kalitesinden, ders sonuçlarından ve kullanıcılar arasındaki uyuşmazlıklardan: aracı hizmet sağlayıcı sıfatının gerektirdiği sınırlar içinde: sorumlu değildir. Zorunlu tüketici mevzuatı hükümleri saklıdır."
+          "Platform \"olduğu gibi\" sunulur; kesintisiz veya hatasız çalışacağı garanti edilmez. Platform; öğretmen veya kurumların sunduğu hizmetin kalitesinden, ders sonuçlarından ve kullanıcılar arasındaki uyuşmazlıklardan: aracı hizmet sağlayıcı sıfatının gerektirdiği sınırlar içinde: sorumlu değildir. Zorunlu tüketici mevzuatı hükümleri saklıdır."
         ),
       ],
     },
@@ -438,7 +438,7 @@ const DISTANCE_SALES: LegalDoc = {
       blocks: [
         list(
           "ALICI: Platform üzerinden hizmet veya ürün satın alan öğrenci/müşteri (18 yaşından küçükse veli/vasisi).",
-          "HİZMET SAĞLAYICI (SATICI): Hizmeti fiilen sunan, Platformda ilanı yayımlanan eğitmen veya kütüphane/etüt merkezi.",
+          "HİZMET SAĞLAYICI (SATICI): Hizmeti fiilen sunan, Platformda ilanı yayımlanan öğretmen veya kütüphane/etüt merkezi.",
           `ARACI HİZMET SAĞLAYICI: ${OPERATOR.name} platformu işletmecisi. ${operatorIdentity()}. Platform, hizmet satışına aracılık eder ve ödemeyi emanet (escrow) modeliyle güvence altına alır.`,
           `SATICI (mağaza ürünleri): Platform mağazasında satışa sunulan basılı kitap ve benzeri fiziksel ürünlerde satıcı, aracı değil doğrudan ${OPERATOR.entity}'dır. Bu ürünlerde emanet modeli uygulanmaz; satış, işletmenin kendi ürününün doğrudan satışıdır.`
         ),
@@ -467,7 +467,7 @@ const DISTANCE_SALES: LegalDoc = {
       heading: "3. Bedel ve Ödeme",
       blocks: [
         p(
-          "Hizmet bedeli, sipariş anında Platformda gösterilen ve tüm vergiler dâhil nihai tutardır: özel derste eğitmenin saatlik ücreti × ders süresi; deneme oturumunda ilan edilen katılım ücreti; çalışma alanında saatlik ücret × rezervasyon süresi. Ödeme, iyzico ödeme altyapısı üzerinden kredi/banka kartı ile peşin alınır ve hizmet ifa edilene kadar Platform nezdinde emanette tutulur. Kart bilgileri Platform tarafından saklanmaz."
+          "Hizmet bedeli, sipariş anında Platformda gösterilen ve tüm vergiler dâhil nihai tutardır: özel derste öğretmenin saatlik ücreti × ders süresi; deneme oturumunda ilan edilen katılım ücreti; çalışma alanında saatlik ücret × rezervasyon süresi. Ödeme, iyzico ödeme altyapısı üzerinden kredi/banka kartı ile peşin alınır ve hizmet ifa edilene kadar Platform nezdinde emanette tutulur. Kart bilgileri Platform tarafından saklanmaz."
         ),
         p(
           "Mağaza ürünlerinde bedel, ürün sayfasında ve sipariş özetinde gösterilen tutardır. PLATFORMDA GÖSTERİLEN TÜM FİYATLAR KDV DÂHİLDİR; ALICI'dan sipariş özetinde yer alan tutar dışında ek bir vergi veya masraf talep edilmez. Varsa kargo/teslimat bedeli sipariş özetinde ayrı bir satır olarak gösterilir ve ödeme adımından önce toplam tutara dâhil edilir; sipariş özetinde kargo bedeli görünmüyorsa teslimat ücretsizdir."
@@ -514,7 +514,7 @@ const DISTANCE_SALES: LegalDoc = {
           "Mesafeli Sözleşmeler Yönetmeliği m.15/1-g uyarınca; BELİRLİ BİR TARİHTE veya dönemde yapılması gereken, konaklama, eşya taşıma, araba kiralama, yiyecek-içecek tedariki ve eğlence veya dinlenme amacıyla yapılan BOŞ ZAMANIN DEĞERLENDİRİLMESİNE İLİŞKİN hizmetlere dair sözleşmelerde cayma hakkı kullanılamaz. Bu kapsamda, belirli tarih ve saate bağlanan deneme sınavı oturumu katılım hakkı ve çalışma alanı rezervasyonlarında cayma hakkı BULUNMAZ. Bununla birlikte SATICI, kanuni bir zorunluluk olmaksızın kendi ticari politikası gereği, oturum/rezervasyon başlangıcına 24 SAATTEN FAZLA süre kalması hâlinde iptal ve tam iade imkânı tanır; bu süreden sonra iptal yapılamaz ve katılım sağlanmaması (no-show) hâlinde iade yapılmaz."
         ),
         p(
-          "Özel ders rezervasyonlarında, ders başlangıcına 12 SAATTEN FAZLA süre varken yapılan iptallerde ödeme emanetten iade edilir. Ders belirli bir tarih ve saate bağlı olduğundan, SATICI'nın ticari politikası gereği ders başlangıcına 12 saatten az kala ALICI tarafından yapılan iptallerde ödeme iade edilmez ve eğitmene aktarılır. Hizmetin ifasına ALICI onayı ile başlanmış ve hizmet tamamlanmışsa cayma hakkı kullanılamaz (Yönetmelik m.15/1-h). Ayrıntılı iptal/iade kuralları İptal ve İade Politikası'nda yer alır ve bu sözleşmenin ayrılmaz parçasıdır."
+          "Özel ders rezervasyonlarında, ders başlangıcına 12 SAATTEN FAZLA süre varken yapılan iptallerde ödeme emanetten iade edilir. Ders belirli bir tarih ve saate bağlı olduğundan, SATICI'nın ticari politikası gereği ders başlangıcına 12 saatten az kala ALICI tarafından yapılan iptallerde ödeme iade edilmez ve öğretmene aktarılır. Hizmetin ifasına ALICI onayı ile başlanmış ve hizmet tamamlanmışsa cayma hakkı kullanılamaz (Yönetmelik m.15/1-h). Ayrıntılı iptal/iade kuralları İptal ve İade Politikası'nda yer alır ve bu sözleşmenin ayrılmaz parçasıdır."
         ),
         p(
           "FİZİKSEL ÜRÜNLERDE (basılı kitap) durum farklıdır: Mesafeli Sözleşmeler Yönetmeliği m.9 uyarınca ALICI, ürünü teslim aldığı günden itibaren ON DÖRT GÜN içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin sözleşmeden cayabilir. Cayma hakkı, sözleşmenin kurulmasından teslime kadar olan sürede de kullanılabilir. Cayma bildirimini hesabınızdaki sipariş detayından iade talebi oluşturarak veya aşağıdaki iletişim kanallarından yazılı olarak iletebilirsiniz."
@@ -617,11 +617,11 @@ const REFUND: LegalDoc = {
       heading: "2. Özel Dersler",
       blocks: [
         list(
-          "Eğitmen talebi henüz kabul etmemişse: ödeme alınmamıştır, talebi serbestçe iptal edebilirsiniz.",
+          "Öğretmen talebi henüz kabul etmemişse: ödeme alınmamıştır, talebi serbestçe iptal edebilirsiniz.",
           "Ders başlangıcına 12 SAATTEN FAZLA süre varsa: dersi iptal edebilir veya erteleyebilirsiniz; ödeme yaptıysanız emanetteki tutarın TAMAMI iade edilir.",
-          "Ders başlangıcına 12 SAATTEN AZ süre kaldıysa: ders ertelenemez. Öğrenci dersi iptal edebilir ancak ödenmiş tutar İADE EDİLMEZ ve eğitmene aktarılır. Eğitmen bu süre içinde dersi iptal edemez.",
-          "Ders sonrasında: dersin gerçekleştiğini onayladığınızda bedel eğitmene aktarılır. Ders gerçekleşmediyse veya bir sorun yaşandıysa, ders bitiminden itibaren 72 SAAT içinde ders sayfasındaki \"Sorun bildir\" seçeneğiyle bildirebilirsiniz; bu durumda bedel Platform itirazı inceleyip karara bağlayana kadar emanette tutulur ve karara göre size iade edilir ya da eğitmene aktarılır.",
-          "72 saat içinde onay verilmez veya sorun bildirilmezse ders gerçekleşmiş kabul edilir ve bedel eğitmene aktarılır."
+          "Ders başlangıcına 12 SAATTEN AZ süre kaldıysa: ders ertelenemez. Öğrenci dersi iptal edebilir ancak ödenmiş tutar İADE EDİLMEZ ve öğretmene aktarılır. Öğretmen bu süre içinde dersi iptal edemez.",
+          "Ders sonrasında: dersin gerçekleştiğini onayladığınızda bedel öğretmene aktarılır. Ders gerçekleşmediyse veya bir sorun yaşandıysa, ders bitiminden itibaren 72 SAAT içinde ders sayfasındaki \"Sorun bildir\" seçeneğiyle bildirebilirsiniz; bu durumda bedel Platform itirazı inceleyip karara bağlayana kadar emanette tutulur ve karara göre size iade edilir ya da öğretmene aktarılır.",
+          "72 saat içinde onay verilmez veya sorun bildirilmezse ders gerçekleşmiş kabul edilir ve bedel öğretmene aktarılır."
         ),
       ],
     },
@@ -792,7 +792,7 @@ const PRELIMINARY_INFO: LegalDoc = {
       blocks: [
         p(operatorIdentity()),
         p(
-          "Özel ders, deneme sınavı oturumu ve çalışma alanı rezervasyonlarında hizmeti fiilen sunan taraf, Platformda ilanı yayımlanan eğitmen veya kütüphane/etüt merkezidir; Platform bu satışlarda aracı hizmet sağlayıcıdır. Mağazadan satılan basılı kitaplarda ise satıcı doğrudan yukarıda kimliği verilen işletmedir."
+          "Özel ders, deneme sınavı oturumu ve çalışma alanı rezervasyonlarında hizmeti fiilen sunan taraf, Platformda ilanı yayımlanan öğretmen veya kütüphane/etüt merkezidir; Platform bu satışlarda aracı hizmet sağlayıcıdır. Mağazadan satılan basılı kitaplarda ise satıcı doğrudan yukarıda kimliği verilen işletmedir."
         ),
       ],
     },
@@ -909,7 +909,7 @@ const ABOUT: LegalDoc = {
       heading: "Kimiz?",
       blocks: [
         p(
-          `${SITE_NAME}, Adana'da öğrenciler ile özel ders eğitmenlerini buluşturan, bölgedeki kütüphane ve etüt merkezlerini tek bir katalogda toplayan ve eğitim kitabı satışı yapan yerel bir eğitim platformudur. Platform, aşağıda kimliği verilen tescilli işletme tarafından işletilmektedir.`
+          `${SITE_NAME}, Adana'da öğrenciler ile özel ders öğretmenlerini buluşturan, bölgedeki kütüphane ve etüt merkezlerini tek bir katalogda toplayan ve eğitim kitabı satışı yapan yerel bir eğitim platformudur. Platform, aşağıda kimliği verilen tescilli işletme tarafından işletilmektedir.`
         ),
         p(operatorIdentity()),
       ],
@@ -919,7 +919,7 @@ const ABOUT: LegalDoc = {
       heading: "Ne Yapıyoruz?",
       blocks: [
         list(
-          "ÖZEL DERS EŞLEŞTİRME: Öğrenciler branşa, ilçeye, bütçeye ve ders biçimine (online / yüz yüze) göre eğitmen arar, uygun saati seçip rezervasyon oluşturur.",
+          "ÖZEL DERS EŞLEŞTİRME: Öğrenciler branşa, ilçeye, bütçeye ve ders biçimine (online / yüz yüze) göre öğretmen arar, uygun saati seçip rezervasyon oluşturur.",
           "KÜTÜPHANE VE ETÜT MERKEZİ KATALOĞU: Adana'daki çalışma mekânlarının konumu, çalışma saatleri ve olanakları (sessiz alan, wifi, kafeterya vb.) tek yerde listelenir.",
           "ÇALIŞMA ALANI REZERVASYONU: Anlaşmalı kütüphanelerde saatlik koltuk rezervasyonu yapılır; girişte QR kod okutularak kullanım başlar.",
           "DENEME SINAVI OTURUMLARI: Kütüphanelerin düzenlediği deneme sınavlarına çevrimiçi kayıt ve rezervasyon yapılır.",
@@ -933,11 +933,11 @@ const ABOUT: LegalDoc = {
       heading: "Nasıl Çalışıyor?",
       blocks: [
         list(
-          "Platformda ilan yayımlayan her eğitmen, yayına alınmadan önce başvurusu incelenerek onaylanır.",
+          "Platformda ilan yayımlayan her öğretmen, yayına alınmadan önce başvurusu incelenerek onaylanır.",
           "Ders ücreti sunucu tarafında hesaplanır ve rezervasyon anında sabitlenir; ödeme adımında sürpriz tutar çıkmaz.",
           "Hizmet ödemeleri, hizmet gerçekleşene kadar emanette (escrow) tutulur; ders yapılmazsa ücret öğrenciye iade edilir.",
           "Ödemeler iyzico altyapısı üzerinden alınır; kart bilgileri Platform tarafından saklanmaz.",
-          "Eğitmen ile öğrenci arasındaki mesajlaşma, güvenlik ve kayıt altına alınabilirlik için Platform içinde yürütülür."
+          "Öğretmen ile öğrenci arasındaki mesajlaşma, güvenlik ve kayıt altına alınabilirlik için Platform içinde yürütülür."
         ),
       ],
     },
@@ -972,7 +972,7 @@ const RANKING_CRITERIA: LegalDoc = {
   id: "ranking-criteria",
   title: "Sıralama Ölçütleri",
   description:
-    "Adana Özel Ders'te eğitmen arama sonuçlarının hangi ölçütlere göre sıralandığı ve ücretli öne çıkarmanın nasıl çalıştığı.",
+    "Adana Özel Ders'te öğretmen arama sonuçlarının hangi ölçütlere göre sıralandığı ve ücretli öne çıkarmanın nasıl çalıştığı.",
   updatedAt: "2026-08-29",
   sections: [
     {
@@ -989,17 +989,17 @@ const RANKING_CRITERIA: LegalDoc = {
       heading: "Organik sıralama neye göre yapılır",
       blocks: [
         p(
-          "Filtrelerinize (ders, ilçe, eğitim şekli, fiyat aralığı, yaş, cinsiyet) uyan eğitmenler belirlendikten sonra sonuçlar şu ölçütlerle sıralanır:"
+          "Filtrelerinize (ders, ilçe, eğitim şekli, fiyat aralığı, yaş, cinsiyet) uyan öğretmenler belirlendikten sonra sonuçlar şu ölçütlerle sıralanır:"
         ),
         list(
-          "Değerlendirme puanı: öğrenci puanlarının ağırlıklı ortalaması. Az sayıda puanı olan eğitmenin ortalaması platform ortalamasına doğru dengelenir; böylece tek bir beş yıldız, yüzlerce dersi olan bir eğitmenin önüne geçmez.",
+          "Değerlendirme puanı: öğrenci puanlarının ağırlıklı ortalaması. Az sayıda puanı olan öğretmenin ortalaması platform ortalamasına doğru dengelenir; böylece tek bir beş yıldız, yüzlerce dersi olan bir öğretmenin önüne geçmez.",
           "Konum: konumunuzu paylaştıysanız mesafe önceliklidir.",
           "Fiyat: fiyata göre sıralamayı siz seçerseniz o ölçüt öne alınır.",
           "Metin uyumu: arama kutusuna yazdığınız ifadenin ilan başlığı ve tanıtımıyla ne kadar örtüştüğü.",
           "Eşitlik hâlinde ilanın yayına giriş tarihi."
         ),
         p(
-          "Eğitmenin platforma ödeme yapmış olması bu ölçütlerin hiçbirine girmez."
+          "Öğretmenin platforma ödeme yapmış olması bu ölçütlerin hiçbirine girmez."
         ),
       ],
     },
@@ -1008,20 +1008,20 @@ const RANKING_CRITERIA: LegalDoc = {
       heading: "Ücretli öne çıkarma",
       blocks: [
         p(
-          "Eğitmenler ilanlarının arama sonuçlarının üstündeki ayrı blokta gösterilmesi için süreli bir paket satın alabilir. Bu blok her zaman \"Reklam\" ibaresi taşır."
+          "Öğretmenler ilanlarının arama sonuçlarının üstündeki ayrı blokta gösterilmesi için süreli bir paket satın alabilir. Bu blok her zaman \"Reklam\" ibaresi taşır."
         ),
         list(
           "Blokta aynı anda en fazla üç ilan gösterilir.",
           "Blok, aramanızla aynı filtrelere tabidir: Fizik ararken Matematik reklamı görmezsiniz.",
           "Uygun ilan sayısı üçten fazlaysa hangilerinin gösterileceği rastgele belirlenir; sıra, ödenen tutara veya satın alma zamanına göre değişmez.",
           "Eşleşen ücretli ilan yoksa blok hiç gösterilmez.",
-          "Öne çıkarma yalnız görünürlük sağlar; eğitmenin puanını, yorumlarını veya organik sıradaki yerini değiştirmez."
+          "Öne çıkarma yalnız görünürlük sağlar; öğretmenin puanını, yorumlarını veya organik sıradaki yerini değiştirmez."
         ),
       ],
     },
     {
       id: "egitmen-icin",
-      heading: "Öne çıkarma satın alan eğitmenler için",
+      heading: "Öne çıkarma satın alan öğretmenler için",
       blocks: [
         list(
           "Öne çıkarma yalnız onaylanmış ilanlar için satın alınabilir.",

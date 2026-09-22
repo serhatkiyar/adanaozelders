@@ -126,8 +126,8 @@ describe("EgitmenIlanlari", () => {
   it("iki bölüm: onay kuyruğu önce ve sayaçlı, diğer ilanlar sonra; kuyruk boşsa başlık hiç basılmaz", () => {
     const a = kur();
     const bolumler = [...document.querySelectorAll("section")].map((s) => s.getAttribute("aria-label"));
-    expect(bolumler).toEqual(["Onay bekleyen eğitmenler", "Diğer ilanlar"]);
-    const kuyruk = within(screen.getByRole("region", { name: "Onay bekleyen eğitmenler" }));
+    expect(bolumler).toEqual(["Onay bekleyen öğretmenler", "Diğer ilanlar"]);
+    const kuyruk = within(screen.getByRole("region", { name: "Onay bekleyen öğretmenler" }));
     expect(kuyruk.getByText("2")).toBeInTheDocument();
     expect(kuyruk.getByText(/Onay ilanı yayına alır; red gerekçesi denetim izine yazılır/)).toBeInTheDocument();
     expect(kuyruk.getByTestId("ilan-14")).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe("EgitmenIlanlari", () => {
     a.unmount();
     vi.mocked(useAdminTutors).mockReturnValue(sonuc(LISTE.filter((t) => t.status !== TutorStatus.PENDING_APPROVAL)));
     kur();
-    expect(screen.queryByRole("region", { name: "Onay bekleyen eğitmenler" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Onay bekleyen öğretmenler" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Diğer ilanlar" })).toBeInTheDocument();
   });
 
@@ -230,7 +230,7 @@ describe("EgitmenIlanlari", () => {
     await waitFor(() => expect(onayGorunur()).toBe(false));
   });
 
-  it("varlık kilidi: aynı eğitmende onay sürerken red/sil kapalı ve nedenli; farklı eğitmenler paralel; bitince bırakılır", async () => {
+  it("varlık kilidi: aynı öğretmende onay sürerken red/sil kapalı ve nedenli; farklı öğretmenler paralel; bitince bırakılır", async () => {
     kur();
     fireEvent.click(satir(14).getByRole("button", { name: /Onayla$/ }));
     expect(satir(14).getByRole("button", { name: /Onayla$/ })).toHaveClass("ant-btn-loading");
@@ -328,7 +328,7 @@ describe("EgitmenIlanlari", () => {
     vi.mocked(useAdminTutors).mockReturnValue(sonuc(undefined, { isError: true, error: { response: { status: 500, data: { detail: "Liste çöktü" } } }, refetch }));
     const b = kur();
     expect(screen.getByText("Liste çöktü")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Eğitmen ilanları" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Öğretmen ilanları" })).toBeInTheDocument();
     await userEvent.click(within(screen.getByText("Liste çöktü").closest(".ant-alert") as HTMLElement).getByRole("button", { name: "Tekrar dene" }));
     expect(refetch).toHaveBeenCalledTimes(1);
     b.unmount();
@@ -336,9 +336,9 @@ describe("EgitmenIlanlari", () => {
     kur();
     expect(screen.getByText("Henüz ilan yok")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /ekle/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Onay bekleyen eğitmenler" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Onay bekleyen öğretmenler" })).not.toBeInTheDocument();
     // Üç durum da aynı kart iskeletinde: veri gelince çerçeve birden belirmez.
-    expect(screen.getByRole("region", { name: "Eğitmen ilanları" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Öğretmen ilanları" })).toBeInTheDocument();
   });
 
   it("rota, menü grubu ve yer tutucular, izin, selectedKey/openKeys", () => {

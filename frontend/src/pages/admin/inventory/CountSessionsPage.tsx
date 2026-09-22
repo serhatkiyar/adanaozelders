@@ -376,7 +376,7 @@ export default function CountSessionsPage() {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">Sayım oturumları</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">

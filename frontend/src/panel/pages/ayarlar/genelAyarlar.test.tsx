@@ -22,11 +22,11 @@ const BAYRAK: FeatureFlagOut = {
   key: "payments.store", label: "Mağaza ödemeleri", description: "Platformun kendi kitap satışı.",
   enabled: true, default: false, enforced: true, updated_at: "2026-09-01T10:00:00Z", note: "sandbox tamam", locked_reason: null,
 };
-const KAPALI: FeatureFlagOut = { ...BAYRAK, key: "payments.tutor", label: "Eğitmen tahsilatı", enabled: false, enforced: false, updated_at: null, note: null };
+const KAPALI: FeatureFlagOut = { ...BAYRAK, key: "payments.tutor", label: "Öğretmen tahsilatı", enabled: false, enforced: false, updated_at: null, note: null };
 const KILITLI: FeatureFlagOut = { ...BAYRAK, key: "payments.library", label: "Kütüphane tahsilatı", enabled: false, locked_reason: "Üretimde pazaryeri sözleşmesi imzalanmadan açılamaz." };
 const KOLLAR = [
   { branch: "store", label: "Mağaza", open: true, flag_enabled: true, blockers: [] },
-  { branch: "tutor_marketplace", label: "Eğitmen pazaryeri", open: false, flag_enabled: false, blockers: ["flag_disabled", "provider_marketplace_support"] },
+  { branch: "tutor_marketplace", label: "Öğretmen pazaryeri", open: false, flag_enabled: false, blockers: ["flag_disabled", "provider_marketplace_support"] },
 ];
 
 const sonuc = (data: unknown, ek: object = {}) => ({ data, isPending: false, isError: false, error: null, refetch: vi.fn(), ...ek }) as never;
@@ -91,7 +91,7 @@ describe("GenelAyarlar", () => {
     expect(within(bayraklar).getByText("Üretimde kilitli")).toBeInTheDocument();
     expect(within(bayraklar).getByText(/pazaryeri sözleşmesi imzalanmadan/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mağaza ödemeleri bayrağını kapat" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Eğitmen tahsilatı bayrağını aç" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Öğretmen tahsilatı bayrağını aç" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Kütüphane tahsilatı bayrağını aç" })).toBeDisabled();
   });
 
@@ -119,7 +119,7 @@ describe("GenelAyarlar", () => {
 
   it("422 note alana düşer, genel hata Alert'te; gerekçe korunur; hata sonrası yeniden gönderim; kirli kapatma onayı", async () => {
     kur();
-    await userEvent.click(screen.getByRole("button", { name: "Eğitmen tahsilatı bayrağını aç" }));
+    await userEvent.click(screen.getByRole("button", { name: "Öğretmen tahsilatı bayrağını aç" }));
     const pencere = await screen.findByRole("dialog");
     expect(within(pencere).getByText("Bayrağı aç")).toBeInTheDocument();
     await userEvent.type(within(pencere).getByLabelText("Gerekçe"), "pazaryeri onayı geldi");
@@ -154,14 +154,14 @@ describe("GenelAyarlar", () => {
 
   it("boş pencere doğrudan kapanır; pending iken kapanmaz", async () => {
     kur();
-    await userEvent.click(screen.getByRole("button", { name: "Eğitmen tahsilatı bayrağını aç" }));
+    await userEvent.click(screen.getByRole("button", { name: "Öğretmen tahsilatı bayrağını aç" }));
     const pencere = await screen.findByRole("dialog");
     await userEvent.click(within(pencere).getByRole("button", { name: "Vazgeç" }));
     await waitFor(() => expect(document.querySelector(".ant-drawer-open")).toBeNull());
 
     vi.mocked(useUpdateFeatureFlag).mockReturnValue({ mutate: guncelle, isPending: true } as never);
     kur();
-    await userEvent.click(screen.getAllByRole("button", { name: "Eğitmen tahsilatı bayrağını aç" }).at(-1)!);
+    await userEvent.click(screen.getAllByRole("button", { name: "Öğretmen tahsilatı bayrağını aç" }).at(-1)!);
     await waitFor(() => expect(document.querySelector(".ant-drawer-open")).not.toBeNull());
     const acik = document.querySelector(".ant-drawer-open .ant-drawer-content") as HTMLElement;
     await userEvent.click(within(acik).getByRole("button", { name: "Vazgeç" }));

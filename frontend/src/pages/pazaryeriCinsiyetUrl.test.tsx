@@ -179,13 +179,13 @@ describe("pazaryeri · SESSİZ ELEME görünür kılındı", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Filtreler/i })[0]);
   };
 
-  it("filtre ETKİNKEN kaç eğitmenin elendiğini SÖYLER", async () => {
+  it("filtre ETKİNKEN kaç öğretmenin elendiğini SÖYLER", async () => {
     // Asıl ürün kusurunun düzeltmesi: `Tutor.gender == FEMALE` hem NULL hem
     // UNSPECIFIED satırları eliyordu ve öğrenci bunu göremiyordu.
     ciz(`/egitmenler?gender=${Gender.FEMALE}`);
     cekmeceyiAc();
     await waitFor(() => {
-      expect(screen.getByText(/87 eğitmen bu\s+filtreyle görünmüyor/)).toBeTruthy();
+      expect(screen.getByText(/87 öğretmen bu\s+filtreyle görünmüyor/)).toBeTruthy();
     });
   });
 
@@ -196,7 +196,7 @@ describe("pazaryeri · SESSİZ ELEME görünür kılındı", () => {
     // DOLULUK: çekmece gerçekten açıldı mı; açılmasaydı yukarıdaki `queryBy`
     // her koşulda null dönerdi ve iddia bedava geçerdi.
     // Bölüm başlığı 16 Eyl 2026'dan beri "Eğitmen cinsiyeti" (bölmeli seçici).
-    expect(screen.getByText("Eğitmen cinsiyeti")).toBeTruthy();
+    expect(screen.getByText("Öğretmen cinsiyeti")).toBeTruthy();
   });
 
   it("çip başına sayı, filtre TIKLANMADAN ÖNCE görünür", () => {

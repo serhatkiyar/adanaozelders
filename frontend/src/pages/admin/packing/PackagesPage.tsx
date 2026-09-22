@@ -290,7 +290,7 @@ export default function PackagesPage() {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">Paketler</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -304,7 +304,7 @@ export default function PackagesPage() {
       <div
         role="group"
         aria-label="Durum süzgeci"
-        className="flex flex-wrap gap-1.5 border-b border-slate-100 px-6 py-3 "
+        className="flex flex-wrap gap-1.5 border-b border-slate-200 px-6 py-3 "
       >
         {SUZGECLER.map((s) => {
           const secili = (durum ?? null) === s.value;
@@ -347,7 +347,7 @@ export default function PackagesPage() {
           {basilabilirler.length > 0 && (
             // Vardiyada tek tek yazdırmak gerçekçi değil: kapanan kutuların
             // etiketleri tek sayfada basılır (A4, sayfa başına 8).
-            <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-3 ">
+            <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-3 ">
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 ">
                 <input
                   type="checkbox"

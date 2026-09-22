@@ -20,7 +20,7 @@ export default function TestLiveLesson() {
   const active = !!roomName;
 
   const [room, setRoom] = useState("adana-test-oda");
-  const [tutor, setTutor] = useState("Eğitmen Test");
+  const [tutor, setTutor] = useState("Öğretmen Test");
   const [client, setClient] = useState("Öğrenci Test");
   // Çekmecedeki Kaynaklar/Notlar gerçek booking'den çekilir; boşsa yalnız
   // "Dosya Aktar" sekmesi (booking gerektirmez) ve kabuk önizlenir.
@@ -48,7 +48,7 @@ export default function TestLiveLesson() {
             <input className="input" value={room} onChange={(e) => setRoom(e.target.value)} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Eğitmen adı">
+            <Field label="Öğretmen adı">
               <input className="input" value={tutor} onChange={(e) => setTutor(e.target.value)} />
             </Field>
             <Field label="Üye adı">

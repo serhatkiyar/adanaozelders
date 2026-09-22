@@ -28,7 +28,7 @@ export function onayDurumu(booking: BookingOut, now: number = Date.now()): OnayD
 }
 
 export const SORUN_NEDENLERI: { value: BookingIssueReason; label: string }[] = [
-  { value: "TUTOR_ABSENT", label: "Eğitmen derse gelmedi" },
+  { value: "TUTOR_ABSENT", label: "Öğretmen derse gelmedi" },
   { value: "LESSON_NOT_HELD", label: "Ders yapılmadı / yarım kaldı" },
   { value: "OTHER", label: "Başka bir sorun" },
 ];
@@ -40,7 +40,7 @@ export function sorunNedeniEtiketi(reason: string | null | undefined): string {
 export type IptalKurali =
   | "ucretsiz" // derse 12 saatten fazla var ya da ders henüz kabul edilmedi
   | "ogrenci_gec" // öğrenci iptal edebilir, ödenmiş ücret iade edilmez
-  | "egitmen_gec"; // eğitmen iptal edemez
+  | "egitmen_gec"; // öğretmen iptal edemez
 
 /** İptal penceresinde gösterilecek kural (sunucunun `late_for_changes` alanına dayanır). */
 export function iptalKurali(booking: BookingOut, rol: "TUTOR" | "CLIENT"): IptalKurali {

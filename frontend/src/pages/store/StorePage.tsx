@@ -229,7 +229,7 @@ export default function StorePage() {
     <StoreLayout title="Mağaza">
       <Seo
         title="Mağaza, Adana Özel Ders"
-        description="Kitaplar, deneme setleri, kırtasiye ve eğitmenlerin dijital ders notları. Tek hesapla alışveriş."
+        description="Kitaplar, deneme setleri, kırtasiye ve öğretmenlerin dijital ders notları. Tek hesapla alışveriş."
       />
 
       {isFiltering ? (
@@ -238,7 +238,7 @@ export default function StorePage() {
           <div className="flex flex-col gap-8 md:flex-row">
             {/* Yan filtre */}
             <aside className="w-full flex-shrink-0 md:w-64">
-              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-slate-100 bg-white p-5 pr-4 ">
+              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 pr-4 ">
                 <h3 className="mb-4 text-base font-semibold text-slate-900 ">
                   {aramaModu ? "İlgili kategoriler" : "Kategoriler"}
                 </h3>
@@ -312,7 +312,7 @@ export default function StorePage() {
                   )}
                 </div>
 
-                <hr className="my-5 border-slate-100 " />
+                <hr className="my-5 border-slate-200 " />
 
                 {/* Fiyat aralığı */}
                 <h3 className="mb-3 text-base font-semibold text-slate-900 ">
@@ -342,7 +342,7 @@ export default function StorePage() {
                     kullanıcı kararı): dijital ürün kolu şu an kullanılmıyor;
                     müşteriye anlamsız bir teknik ayrım gösteriyordu. Backend
                     `kind` paramı duruyor — kol açılırsa filtre geri gelir. */}
-                <hr className="my-5 border-slate-100 " />
+                <hr className="my-5 border-slate-200 " />
 
                 <h3 className="mb-3 text-base font-semibold text-slate-900 ">
                   Değerlendirme
@@ -363,7 +363,7 @@ export default function StorePage() {
                   ))}
                 </div>
 
-                <hr className="my-5 border-slate-100 " />
+                <hr className="my-5 border-slate-200 " />
 
                 <label className="flex cursor-pointer items-center gap-2.5 text-sm font-medium text-slate-700 ">
                   <input
@@ -461,7 +461,7 @@ export default function StorePage() {
                   {Array.from({ length: 12 }).map((_, i) => (
                     <div
                       key={i}
-                      className="animate-pulse rounded-xl border border-slate-100 bg-white p-4 "
+                      className="animate-pulse rounded-xl border border-slate-200 bg-white p-4 "
                     >
                       <div className="aspect-[4/5] rounded-lg bg-slate-100 " />
                       <div className="mt-4 h-4 w-3/4 rounded bg-slate-100 " />
@@ -491,7 +491,7 @@ export default function StorePage() {
                   )}
                 </>
               ) : (
-                <div className="rounded-2xl border border-slate-100 bg-white py-24 text-center ">
+                <div className="rounded-2xl border border-slate-200 bg-white py-24 text-center ">
                   <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 ">
                     <svg
                       width="24"
@@ -644,7 +644,7 @@ function FacetGroup({
 
   return (
     <>
-      <hr className="my-5 border-slate-100 " />
+      <hr className="my-5 border-slate-200 " />
       <h3 className="mb-3 text-base font-semibold text-slate-900 ">
         {title}
       </h3>

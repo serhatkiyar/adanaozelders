@@ -74,7 +74,7 @@ export default function AdminPromotionsPage() {
           İlan öne çıkarma satışları
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Eğitmenlerin satın aldığı reklam paketleri. İptal, kaydı{" "}
+          Öğretmenlerin satın aldığı reklam paketleri. İptal, kaydı{" "}
           <span className="font-medium">anında</span> yayından düşürür ve iade
           sürecini başlatır.
         </p>
@@ -115,7 +115,7 @@ export default function AdminPromotionsPage() {
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                <th className="py-3 pr-4">Eğitmen</th>
+                <th className="py-3 pr-4">Öğretmen</th>
                 <th className="py-3 pr-4">Paket</th>
                 <th className="py-3 pr-4">Yürürlük</th>
                 <th className="py-3 pr-4">Tutar</th>
@@ -123,7 +123,7 @@ export default function AdminPromotionsPage() {
                 <th className="py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {data.map((p) => (
                 <tr key={p.id}>
                   <td className="py-3 pr-4">
@@ -169,7 +169,7 @@ export default function AdminPromotionsPage() {
         }
         description="Kayıt anında yayından düşer ve ödenmiş tutar iade sürecine girer. Gerekçe denetim kaydına yazılır."
         label="İptal gerekçesi"
-        placeholder="Örn. yanlış satın alma, eğitmen talebi…"
+        placeholder="Örn. yanlış satın alma, öğretmen talebi…"
         required
         minLength={3}
         maxLength={500}

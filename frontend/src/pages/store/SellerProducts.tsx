@@ -107,7 +107,7 @@ function EarningStat({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-100 p-3 ">
+    <div className="rounded-xl border border-slate-200 p-3 ">
       <p className="text-xs text-slate-500 ">{label}</p>
       <p className={`mt-1 text-lg font-semibold ${accent ? "text-marka-metin " : "text-slate-900 "}`}>
         {value}
@@ -229,7 +229,7 @@ function SellerRow({
   });
 
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-slate-100 p-3 ">
+    <div className="flex items-center gap-4 rounded-xl border border-slate-200 p-3 ">
       <div className="h-16 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 ">
         {product.cover_url && (
           <img src={product.cover_url} alt="" className="h-full w-full object-cover" />

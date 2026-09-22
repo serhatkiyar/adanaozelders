@@ -162,7 +162,7 @@ export function RezervasyonListesi() {
               disabled={mesgul}
               onClick={() => kararYuzeyi.ac({ kind: "release", booking })}
             >
-              Eğitmene öde
+              Öğretmene öde
             </Button>
           </>
         ) : null}
@@ -250,7 +250,7 @@ export function RezervasyonListesi() {
           ) : null}
           {booking.late_cancel ? (
             <Typography.Text type="secondary" style={{ display: "block", fontSize: 12 }}>
-              Geç iptal (12 saatten az kala); ücret eğitmene aktarıldı.
+              Geç iptal (12 saatten az kala); ücret öğretmene aktarıldı.
             </Typography.Text>
           ) : null}
           {booking.admin_notes ? (
@@ -307,7 +307,7 @@ export function RezervasyonListesi() {
             toast.success(
               karar.kind === "refund"
                 ? "Ders iptal edildi, ücret öğrenciye iade ediliyor."
-                : "İhtilaf kapandı, ücret eğitmene aktarıldı.",
+                : "İhtilaf kapandı, ücret öğretmene aktarıldı.",
             );
             kararYuzeyi.kapat();
           },
@@ -361,7 +361,7 @@ export function RezervasyonListesi() {
                 aria-label="Rezervasyon ara"
                 value={arama}
                 maxLength={100}
-                placeholder="Eğitmen, öğrenci veya e-posta ara"
+                placeholder="Öğretmen, öğrenci veya e-posta ara"
                 onChange={(event) => setArama(event.target.value)}
                 style={{ width: 320, maxWidth: "100%" }}
               />
@@ -412,7 +412,7 @@ export function RezervasyonListesi() {
         bosAciklama={
           filtreliMi
             ? "Aradığınız ölçütlere uyan rezervasyon yok. Filtreleri temizleyip tüm listeye bakabilirsiniz."
-            : "Öğrenciler eğitmenlerden ders talep ettikçe rezervasyonlar burada listelenir."
+            : "Öğrenciler öğretmenlerden ders talep ettikçe rezervasyonlar burada listelenir."
         }
         bosAksiyon={filtreliMi ? <Button onClick={filtreleriTemizle}>Filtreleri temizle</Button> : undefined}
         rowKey={(booking) => booking.id}
@@ -421,18 +421,18 @@ export function RezervasyonListesi() {
 
       <ReasonDialog
         open={karar?.kind === "refund" || karar?.kind === "release"}
-        title={karar?.kind === "refund" ? "Öğrenciye iade et" : "Eğitmene öde"}
+        title={karar?.kind === "refund" ? "Öğrenciye iade et" : "Öğretmene öde"}
         description={
           karar?.kind === "refund"
             ? "Ders iptal edilir ve emanetteki ücret öğrenciye iade edilir. Bu işlem geri alınamaz."
-            : "İhtilaf kapanır, ders tamamlanmış sayılır ve ücret eğitmene aktarılır. Bu işlem geri alınamaz."
+            : "İhtilaf kapanır, ders tamamlanmış sayılır ve ücret öğretmene aktarılır. Bu işlem geri alınamaz."
         }
         label="Karar notu"
         required
         minLength={3}
         maxLength={500}
         danger={karar?.kind === "refund"}
-        confirmLabel={karar?.kind === "refund" ? "İade et" : "Eğitmene öde"}
+        confirmLabel={karar?.kind === "refund" ? "İade et" : "Öğretmene öde"}
         isPending={mesgul}
         onClose={kararYuzeyi.kapat}
         onConfirm={gerekceGonder}

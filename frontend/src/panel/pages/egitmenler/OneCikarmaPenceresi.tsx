@@ -68,7 +68,7 @@ export function AyrintiPenceresi({ acik, kayit, kapat, tarih, tutar, paraDurumu,
       {/* Gövde YALNIZ açıkken mount edilir: sağlayıcı referansı kapanınca DOM'da kalmaz. */}
       {acik && kayit ? (
         <Descriptions column={1} size="small" bordered items={[
-          { key: "egitmen", label: "Eğitmen", children: kayit.tutor_name ?? `Eğitmen #${kayit.tutor_id}` },
+          { key: "egitmen", label: "Öğretmen", children: kayit.tutor_name ?? `Öğretmen #${kayit.tutor_id}` },
           { key: "paket", label: "Paket", children: `${kayit.package_days} gün` },
           { key: "tutar", label: "Tutar", children: tutar ? tutar(kayit.price, kayit.currency) : kayit.price },
           { key: "para", label: "Para durumu", children: paraDurumu ? paraDurumu(kayit.payment_status) : kayit.payment_status },
@@ -136,7 +136,7 @@ export function IptalPenceresi({ acik, kayit, kapat, kaydediyor, alanHatalari, h
     onayla?.(gerekce.trim());
   };
 
-  const ad = kayit ? (kayit.tutor_name ?? `Eğitmen #${kayit.tutor_id}`) : "";
+  const ad = kayit ? (kayit.tutor_name ?? `Öğretmen #${kayit.tutor_id}`) : "";
   // Başlık önce EYLEMİ söyler: geri dönüşü olmayan bir karar penceresi olduğu ekran okuyucuda da duyulsun.
   const baslik = kayit ? `Öne çıkarmayı iptal et · ${ad} · ${kayit.package_days} günlük paket` : "Öne çıkarmayı iptal et";
   return (
@@ -168,7 +168,7 @@ export function IptalPenceresi({ acik, kayit, kapat, kaydediyor, alanHatalari, h
               }}
               rows={4}
               maxLength={GEREKCE_MAX}
-              placeholder="Örn. yanlış satın alma, eğitmen talebi…"
+              placeholder="Örn. yanlış satın alma, öğretmen talebi…"
               status={gosterilen("reason") ? "error" : undefined}
               aria-describedby={gosterilen("reason") ? "one-cikarma-gerekce-hata one-cikarma-gerekce-yardim" : "one-cikarma-gerekce-yardim"}
               style={{ marginTop: 4 }}

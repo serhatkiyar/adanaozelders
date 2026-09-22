@@ -449,7 +449,7 @@ function Collapsible({
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-      {open && <div className="border-t border-slate-100 p-4 ">{children}</div>}
+      {open && <div className="border-t border-slate-200 p-4 ">{children}</div>}
     </div>
   );
 }
@@ -500,7 +500,7 @@ function CartItemsSection({
       </button>
 
       {open && (
-        <div className="mt-4 divide-y divide-slate-100 ">
+        <div className="mt-4 divide-y divide-slate-200 ">
           {selectedItems.map((i) => (
             <div key={i.product_id} className="flex items-center gap-3 py-3">
               <div className="h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-slate-100 ">
@@ -532,7 +532,7 @@ function PreInfoForm({
   const fact = "flex justify-between gap-4 py-1.5 text-xs";
   return (
     <div className="text-xs leading-relaxed text-slate-600 ">
-      <dl className="divide-y divide-slate-100 ">
+      <dl className="divide-y divide-slate-200 ">
         <div className={fact}>
           <dt className="text-slate-400">Satıcı</dt>
           <dd className="text-right font-medium text-slate-700 ">{OPERATOR.entity}</dd>
@@ -651,7 +651,7 @@ function CouponBox({
 }) {
   const [open, setOpen] = useState(!!couponCode);
   return (
-    <div className="mt-4 border-t border-slate-100 pt-4 ">
+    <div className="mt-4 border-t border-slate-200 pt-4 ">
       {couponCode && !couponError ? (
         <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm ">
           <span className="font-medium text-emerald-700 ">{couponCode} uygulandı</span>

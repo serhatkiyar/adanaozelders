@@ -202,7 +202,7 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
             const sayac = yoklamaSayaci(grup.items);
             return (
               <section key={grup.kova} data-testid={`rez-grup-${grup.kova}`}>
-                <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 pb-1.5 ">
+                <div className="flex items-baseline justify-between gap-2 border-b border-slate-200 pb-1.5 ">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 ">
                     {grup.label}
                   </h3>
@@ -213,7 +213,7 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
                     kayıt · {sayac.giren} giriş
                   </span>
                 </div>
-                <ul className="divide-y divide-slate-100 ">
+                <ul className="divide-y divide-slate-200 ">
                   {grup.items.map((r) => (
                     <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                       <div className="min-w-0">

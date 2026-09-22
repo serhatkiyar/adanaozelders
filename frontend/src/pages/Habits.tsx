@@ -265,7 +265,7 @@ function HabitCard({ habit }: { habit: Habit }) {
   const color = habit.color ?? "#6366f1";
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md ">
+    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md ">
       <div className="flex items-start gap-3">
         <button
           onClick={toggle}

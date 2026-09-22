@@ -266,7 +266,7 @@ export default function Profile() {
 
   return (
     <>
-      {/* Eğitmenin sol menülü "Hesabım" kabuğu (TutorAccountLayout) kalktı:
+      {/* Öğretmenin sol menülü "Hesabım" kabuğu (TutorAccountLayout) kalktı:
           içindeki üç bölümden ikisi (İlan ayarları, Öne çıkar) artık panel
           şeridinde ya da ilan sayfasında yaşıyor, geriye tek öğe kalıyordu.
           Şerit gezinmeyi taşıyor, sayfa yalnız kendi içeriğini çiziyor. */}
@@ -310,5 +310,5 @@ function AvatarImage({
 }
 
 function Divider() {
-  return <div className="border-t border-slate-100 " />;
+  return <div className="border-t border-slate-200 " />;
 }

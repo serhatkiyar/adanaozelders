@@ -100,7 +100,7 @@ describe("üç kaynak tek modele iner", () => {
     expect(i.bitis).toBe("2026-09-05T13:00:00+03:00");
   });
 
-  it("ders: alt başlık eğitmen adı", () => {
+  it("ders: alt başlık öğretmen adı", () => {
     const i = toReservationItem(ders(), SIMDI);
     expect(i.tur).toBe("ders");
     expect(i.altBaslik).toBe("Ahmet Yılmaz");

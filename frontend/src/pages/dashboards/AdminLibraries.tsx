@@ -275,7 +275,7 @@ export default function AdminLibraries() {
         {yonetim.kayit && (
           <div className="space-y-6">
             <OperatorsManager libraryId={yonetim.kayit.id} />
-            <div className="border-t border-slate-100 pt-5 ">
+            <div className="border-t border-slate-200 pt-5 ">
               <ExamSessionsManager libraryId={yonetim.kayit.id} />
             </div>
           </div>
@@ -353,7 +353,7 @@ export function OperatorsManager({ libraryId }: { libraryId: number }) {
       </div>
 
       {operators && operators.length > 0 ? (
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 ">
+        <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 ">
           {operators.map((op) => (
             <li key={op.id} className="flex items-center justify-between px-3 py-2">
               <div className="min-w-0">

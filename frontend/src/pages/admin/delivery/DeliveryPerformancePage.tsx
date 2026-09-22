@@ -34,7 +34,7 @@ function ParetoList({
   if (entries.length === 0) return null;
   const max = entries[0][1];
   return (
-    <div className="border-t border-slate-100 px-6 py-4 ">
+    <div className="border-t border-slate-200 px-6 py-4 ">
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
         {title}
       </p>
@@ -135,7 +135,7 @@ function OpsMetricsSection() {
       data-testid="ops-metrikler"
       className="rounded-2xl border border-slate-200 bg-white "
     >
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">
             Operasyon Metrikleri
@@ -175,7 +175,7 @@ function OpsMetricsSection() {
         </div>
       ) : (
         <>
-          <ul className="divide-y divide-slate-100 ">
+          <ul className="divide-y divide-slate-200 ">
             {rows.map((r) => (
               <li
                 key={r.key}
@@ -234,7 +234,7 @@ export default function DeliveryPerformancePage() {
       <OpsMetricsSection />
 
       <section className="rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">
             Teslimat Göstergeleri
@@ -298,7 +298,7 @@ export default function DeliveryPerformancePage() {
             ))}
           </div>
 
-          <div className="border-t border-slate-100 px-6 py-4 ">
+          <div className="border-t border-slate-200 px-6 py-4 ">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
@@ -332,7 +332,7 @@ export default function DeliveryPerformancePage() {
       )}
 
       {/* Son değerlendirmeler — 👎 önce; siparişe link (aksiyon zinciri kopmasın) */}
-      <div className="border-t border-slate-100 px-6 py-4 ">
+      <div className="border-t border-slate-200 px-6 py-4 ">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
           Son değerlendirmeler
         </p>
@@ -343,7 +343,7 @@ export default function DeliveryPerformancePage() {
         ) : recentFeedback.length === 0 ? (
           <p className="mt-2 text-sm text-slate-400 ">Henüz değerlendirme yok.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-slate-100 ">
+          <ul className="mt-2 divide-y divide-slate-200 ">
             {recentFeedback.map((item) => (
               <li key={item.id} className="py-3 first:pt-1 last:pb-0">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

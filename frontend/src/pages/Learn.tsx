@@ -164,7 +164,7 @@ export default function Learn() {
               </span>
               <h2 className="mt-4 text-lg font-bold">Sorularım</h2>
               <p className="mt-1 text-sm text-fuchsia-50">
-                Çözemediğin soruları sor, uzman eğitmenlerden adım adım destek al.
+                Çözemediğin soruları sor, uzman öğretmenlerden adım adım destek al.
               </p>
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
                 Başla

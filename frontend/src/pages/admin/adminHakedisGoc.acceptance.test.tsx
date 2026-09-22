@@ -128,7 +128,7 @@ afterEach(() => {
 const BAKIYE = (over: Record<string, unknown> = {}) => ({
   payee_type: "TUTOR",
   payee_id: 5,
-  name: "Deniz Eğitmen",
+  name: "Deniz Öğretmen",
   iban: "TR120006200000000000000001",
   earned: "1200.00",
   paid: "200.00",
@@ -192,7 +192,7 @@ describe("H-1 · liste ve sekmeler", () => {
   it("ödenecekler listesi toplamı ve alıcıyı gösterir", async () => {
     sunucu("/payouts/pending", { data: [BAKIYE()] }, "get");
     sar();
-    expect(await screen.findByText("Deniz Eğitmen", undefined, YUK)).toBeTruthy();
+    expect(await screen.findByText("Deniz Öğretmen", undefined, YUK)).toBeTruthy();
     expect(screen.getByText(/1 alıcı/)).toBeTruthy();
   });
 

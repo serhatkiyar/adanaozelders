@@ -141,7 +141,7 @@ export default function AdminAccessPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ">
         <h2 className="text-lg font-bold text-slate-950 ">Yönetici atamaları</h2>
         <p className="mt-1 text-sm text-slate-500 ">Son Super Admin başka bir role indirilemez.</p>
-        <div className="mt-5 divide-y divide-slate-100 ">
+        <div className="mt-5 divide-y divide-slate-200 ">
           {(assignmentsQuery.data ?? []).map((assignment) => (
             <div key={assignment.admin_id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>

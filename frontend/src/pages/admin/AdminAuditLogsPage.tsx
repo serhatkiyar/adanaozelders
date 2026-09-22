@@ -98,7 +98,7 @@ function AuditDetailPenceresi({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<AuditLog
     <DuzenlemePenceresi yuzey={yuzey} baslik="Denetim kaydı">
       {log && (
         <div>
-          <dl className="divide-y divide-slate-100 ">
+          <dl className="divide-y divide-slate-200 ">
             <DetailRow label="Aksiyon"><Badge tone="info">{log.action}</Badge></DetailRow>
             <DetailRow label="Hedef">{log.target_type}{log.target_id ? ` #${log.target_id}` : ""}</DetailRow>
             <DetailRow label="Aktör">{actorLabel(log)}</DetailRow>

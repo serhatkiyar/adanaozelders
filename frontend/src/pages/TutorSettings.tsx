@@ -527,11 +527,11 @@ export default function TutorSettings() {
                     </span>
                   </div>
                   <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
-                    Öğrenciler aramada ilçeye göre eğitmen filtreler.
+                    Öğrenciler aramada ilçeye göre öğretmen filtreler.
                   </p>
                 </div>
 
-                {/* Konum — yüzyüze ders ve "yakınımdaki eğitmenler" araması için */}
+                {/* Konum — yüzyüze ders ve "yakınımdaki öğretmenler" araması için */}
                 <div>
                   <label htmlFor={`${uid}-konum-yuzyuze-ders-icin`} className={labelCls}>Konum (yüzyüze ders için)</label>
                   <input id={`${uid}-konum-yuzyuze-ders-icin`}
@@ -706,7 +706,7 @@ export default function TutorSettings() {
                       İlk ders ücretsiz
                     </span>
                     <span className={`mt-1 block ${KUCUK_ACIKLAMA}`}>
-                      Açıkken öğrenciler bu eğitmenle ilk derslerini ücretsiz talep
+                      Açıkken öğrenciler bu öğretmenle ilk derslerini ücretsiz talep
                       edebilir. Kapatırsan ilanında ücretsiz ders rozeti görünmez.
                     </span>
                   </span>
@@ -758,7 +758,7 @@ export default function TutorSettings() {
               şeritle çakışmayan tek öğe kalmıştı) buraya taşındı. Öne çıkarma
               ilana ait bir eylemdir, hesaba değil — yeri de burasıdır.
               Silinirse rota ayakta kalır, sayfa çalışır, hiçbir test kırılmaz;
-              yalnız eğitmen oraya gidemez. Nöbetçi: `panoSeridi.test.tsx`. */}
+              yalnız öğretmen oraya gidemez. Nöbetçi: `panoSeridi.test.tsx`. */}
           {data.status === TutorStatus.APPROVED ? (
             <Link
               to={ROUTES.tutorPromotion}
@@ -798,7 +798,7 @@ export default function TutorSettings() {
 
           {/* DEĞERLENDİRMELER — sayfanın TEK girişi (18 Eyl 2026): hesap
               menüsünden kalktı (Preply'da da ayrı yeri yok). Yorumlar ilanın
-              parçası; yanıtlama bu sayfada. Silinirse eğitmen yorumlara
+              parçası; yanıtlama bu sayfada. Silinirse öğretmen yorumlara
               yanıt veremez. */}
           <Link
             to={ROUTES.tutorReviews}

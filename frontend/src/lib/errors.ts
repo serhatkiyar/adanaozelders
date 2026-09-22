@@ -5,7 +5,7 @@ const DETAIL_GUIDANCE: { match: RegExp; message: string }[] = [
   {
     match: /time slot conflicts/i,
     message:
-      "Seçtiğin saat aralığı bu eğitmende dolu. Lütfen farklı bir gün ya da saat seç.",
+      "Seçtiğin saat aralığı bu öğretmende dolu. Lütfen farklı bir gün ya da saat seç.",
   },
   {
     match: /weekly question quota/i,

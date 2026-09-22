@@ -41,7 +41,7 @@ export default function FavorilerGirisDaveti() {
       <Seo
         canonicalPath="/favoriler"
         title="Favoriler"
-        description="Beğendiğin eğitmenleri ve kütüphaneleri favorilerine ekle, tek yerden takip et."
+        description="Beğendiğin öğretmenleri ve kütüphaneleri favorilerine ekle, tek yerden takip et."
       />
       {/* Kart YOK (tasarım dili §3.2): boş bir durumu kutuya almak, olmayan
           bir içeriğe çerçeve çizmektir. Boşluk ve tipografi yeterli. */}
@@ -53,7 +53,7 @@ export default function FavorilerGirisDaveti() {
           Favori listelerinizi görmek için oturum açın
         </h2>
         <p className="mt-3 text-[15px] leading-relaxed text-slate-500">
-          Oturum açtıktan sonra beğendiğiniz eğitmenleri ve kütüphaneleri
+          Oturum açtıktan sonra beğendiğiniz öğretmenleri ve kütüphaneleri
           favorilerinize ekleyebilir, listelerinizi buradan görüntüleyebilirsiniz.
         </p>
         <Link

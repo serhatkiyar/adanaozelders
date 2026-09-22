@@ -573,7 +573,7 @@ export default function ProductDetailPage() {
             )}
 
             {/* Teslimat & satıcı — kutu yok, saç-teli ayraçlı, yalnız gerçek bilgi */}
-            <div className="mt-8 space-y-3 border-t border-slate-100 pt-6 text-sm ">
+            <div className="mt-8 space-y-3 border-t border-slate-200 pt-6 text-sm ">
               {/*
                 Tedarikçiden temin edilen üründe AYNI GÜN sözü VERİLMEZ.
 
@@ -650,7 +650,7 @@ export default function ProductDetailPage() {
 
             {/* Öne çıkan bilgiler (kompakt künye) */}
             {highlightRows.length > 0 && (
-              <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2 ">
+              <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 border-t border-slate-200 pt-4 text-sm sm:grid-cols-2 ">
                 {highlightRows.map((r) => (
                   <div key={r.key} className="flex justify-between gap-3">
                     <dt className="text-slate-400 ">{r.label}</dt>
@@ -749,7 +749,7 @@ export default function ProductDetailPage() {
               <div className="mt-5 space-y-5">
                 {reviews && reviews.length > 0 ? (
                   reviews.map((r) => (
-                    <div key={r.id} className="border-b border-slate-100 pb-4 ">
+                    <div key={r.id} className="border-b border-slate-200 pb-4 ">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-800 ">
                           {r.client_name ?? "Müşteri"}
@@ -773,7 +773,7 @@ export default function ProductDetailPage() {
 
         {/* Benzer ürünler */}
         {related.length > 0 && (
-          <div className="mt-12 border-t border-slate-100 pt-8 ">
+          <div className="mt-12 border-t border-slate-200 pt-8 ">
             <h2 className="mb-6 text-lg font-semibold text-slate-900 ">
               Benzer ürünler
             </h2>
@@ -789,7 +789,7 @@ export default function ProductDetailPage() {
 
         {/* Daha fazlasını keşfet — kategori çipleri */}
         {discoverChips.length > 0 && (
-          <div className="mt-12 border-t border-slate-100 pt-8 ">
+          <div className="mt-12 border-t border-slate-200 pt-8 ">
             <h2 className="mb-4 text-lg font-semibold text-slate-900 ">
               Daha fazlasını keşfet
             </h2>

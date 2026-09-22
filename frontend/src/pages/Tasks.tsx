@@ -555,7 +555,7 @@ function TaskRow({
       className={`group relative flex items-center gap-1.5 rounded-xl border bg-white px-2 py-2.5 transition-colors ${
         dropMode === "child"
           ? "border-transparent ring-2 ring-inset ring-marka-focus"
-          : "border-slate-100 hover:bg-slate-50 "
+          : "border-slate-200 hover:bg-slate-50 "
       }`}
     >
       {/* Kardeş bırakma çizgisi (layout shift yok) */}
@@ -1056,7 +1056,7 @@ function FiltersAndLabelsPanel({
     <div className="space-y-8">
       {/* Filtrelerim */}
       <section>
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 ">
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2 ">
           <h2 className="text-base font-bold text-slate-800 ">Filtrelerim</h2>
           <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ">{filters.length} filtre</span>
           <span className="ml-auto" />
@@ -1067,7 +1067,7 @@ function FiltersAndLabelsPanel({
         ) : (
           <div className="mt-1">
             {filters.map((f) => (
-              <div key={f.id} className="group flex items-center gap-3 border-b border-slate-50 px-1 py-2.5 transition hover:bg-slate-50 ">
+              <div key={f.id} className="group flex items-center gap-3 border-b border-slate-200 px-1 py-2.5 transition hover:bg-slate-50 ">
                 <button onClick={() => onApplyFilter(f)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                   <svg className="h-5 w-5 flex-none" viewBox="0 0 24 24" fill="none" stroke={f.color || "#64748b"} strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h18l-7 8v6l-4 2v-8l-7-8Z" /></svg>
                   <span className="truncate text-sm font-medium text-slate-700 ">{f.name}</span>
@@ -1085,7 +1085,7 @@ function FiltersAndLabelsPanel({
 
       {/* Etiketler */}
       <section>
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2 ">
+        <div className="flex items-center gap-2 border-b border-slate-200 pb-2 ">
           <h2 className="text-base font-bold text-slate-800 ">Etiketler</h2>
           <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 ">{labels.length} etiket</span>
           <span className="ml-auto" />
@@ -1098,7 +1098,7 @@ function FiltersAndLabelsPanel({
             {labels.map((l) => {
               const count = labelCounts.get(l.id) ?? 0;
               return (
-                <div key={l.id} className="group flex items-center gap-3 border-b border-slate-50 px-1 py-2.5 transition hover:bg-slate-50 ">
+                <div key={l.id} className="group flex items-center gap-3 border-b border-slate-200 px-1 py-2.5 transition hover:bg-slate-50 ">
                   <button onClick={() => onSelectLabel(l)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                     <svg className="h-5 w-5 flex-none" viewBox="0 0 24 24" fill="none" stroke={l.color || "#94a3b8"} strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581a2.25 2.25 0 0 0 3.182 0l4.318-4.318a2.25 2.25 0 0 0 0-3.182L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" /></svg>
                     <span className="truncate text-sm font-medium text-slate-700 ">{l.name}</span>

@@ -849,7 +849,7 @@ export default function DeliveryDriver() {
         {/* Durak listesi */}
         <ul
           data-testid="durak-listesi"
-          className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 "
+          className="divide-y divide-slate-200 rounded-2xl bg-white px-4 ring-1 ring-slate-100 "
         >
           {[...run.stops]
             .sort((a, b) => a.sequence - b.sequence)

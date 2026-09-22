@@ -49,7 +49,7 @@ export default function OgrenciPano() {
   const { joinMeeting } = useMeetingStore();
 
   const derseKatil = (bk: BookingOut) =>
-    joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE);
+    joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Öğretmen", bk.client_name || ADSIZ_UYE);
 
   const ad = (user as { first_name?: string } | undefined)?.first_name;
   const kind = pano?.next_action?.kind ?? null;
@@ -67,7 +67,7 @@ export default function OgrenciPano() {
     !isBranchOpen(availability, "tutor_marketplace") && (pano?.payment_due_count ?? 0) > 0;
 
   return (
-    <DashboardShell title="Pano" navItems={UYE_NAV} genislik="orta">
+    <DashboardShell title="Genel Bakış" navItems={UYE_NAV} genislik="orta">
       <div className="space-y-8 pb-16 pt-2">
         <header>
           <h1 className={SAYFA_BASLIGI}>

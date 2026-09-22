@@ -387,7 +387,7 @@ function AssignmentSection({ deckId }: { deckId: number }) {
           Henüz atama yok.
         </p>
       ) : (
-        <div className="mt-2 divide-y divide-slate-100 ">
+        <div className="mt-2 divide-y divide-slate-200 ">
           {(assignments.data ?? []).map((a) => (
             <div key={a.client_id} className="flex items-center gap-3 py-2.5">
               <span className="flex-1 text-sm text-slate-700 ">
@@ -621,7 +621,7 @@ export default function SrsDeckDetail() {
           </section>
         )}
 
-        {/* Atamalar (yalnız eğitmen + kendi destesi) */}
+        {/* Atamalar (yalnız öğretmen + kendi destesi) */}
         {isTutor && isOwn && <AssignmentSection deckId={deck.id} />}
 
         {/* Notlar */}
@@ -706,7 +706,7 @@ export default function SrsDeckDetail() {
               />
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 ">
+            <div className="divide-y divide-slate-200 ">
               {notes.map((note) =>
                 editingNoteId === note.note_id ? (
                   <div key={note.note_id} className="py-4">

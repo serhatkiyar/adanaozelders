@@ -474,7 +474,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
     const notice = (
       <div className={`${KART} mx-auto max-w-md py-16 text-center`}>
         <p className={ACIKLAMA}>
-          Mesajlaşma yalnızca öğrenci ve eğitmenler içindir.
+          Mesajlaşma yalnızca öğrenci ve öğretmenler içindir.
         </p>
       </div>
     );
@@ -496,7 +496,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
             showChat ? "hidden md:flex" : "flex"
           } w-full shrink-0 flex-col md:w-[380px] md:border-r md:border-slate-200 lg:w-[460px]`}
         >
-          <div className="space-y-3 border-b border-slate-100 px-5 pb-3 pt-5 ">
+          <div className="space-y-3 border-b border-slate-200 px-5 pb-3 pt-5 ">
             {/* Başlık ↔ arama (Airbnb gibi: ikona tıklayınca animasyonla açılır) */}
             {searchOpen ? (
               <div className="animate-searchbar flex items-center gap-2">
@@ -642,7 +642,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   {searchResults.chats.length > 0 && (
                     <>
                       <SectionHeader label="Sohbetler" />
-                      <ul className="divide-y divide-slate-50 ">
+                      <ul className="divide-y divide-slate-200 ">
                         {searchResults.chats.map((c) => (
                           <li key={c.id}>
                             <ConversationRow
@@ -662,7 +662,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                         label="Mesajlar"
                         count={searchResults.messages.length}
                       />
-                      <ul className="divide-y divide-slate-50 ">
+                      <ul className="divide-y divide-slate-200 ">
                         {searchResults.messages.map((hit) => (
                           <li key={hit.message_id}>
                             <MessageHitRow
@@ -699,8 +699,9 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 <EmptyInbox role={role} />
               )
             ) : !filteredConversations || filteredConversations.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                <p className={ETIKET}>
+              <div className="flex h-full flex-col items-center justify-center px-6 pb-28 text-center">
+                <img src="/icons/omuz-silkme.png" alt="" aria-hidden className="h-36 w-36" />
+                <p className={`mt-4 ${ETIKET}`}>
                   Okunmamış mesaj yok
                 </p>
                 <p className={`mt-1 ${ACIKLAMA}`}>
@@ -708,7 +709,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 </p>
               </div>
             ) : (
-              <ul className="divide-y divide-slate-50 ">
+              <ul className="divide-y divide-slate-200 ">
                 {filteredConversations.map((c) => (
                   <li key={c.id}>
                     <ConversationRow
@@ -731,17 +732,19 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
           } min-w-0 flex-1 flex-col`}
         >
           {!showChat ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
-                <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                </svg>
-              </div>
-              <p className={`mt-4 ${ETIKET}`}>
-                Bir sohbet seç
-              </p>
-              <p className={`mt-1 ${ACIKLAMA}`}>
-                Soldaki listeden bir konuşma aç.
+            <div className="flex flex-1 flex-col items-center justify-center px-6 pb-28 text-center">
+              {/* Fluent Emoji "Incoming envelope" (3D) — kullanıcı kararı,
+                  22 Eyl 2026: gri kutu içindeki çizgi ikonunun yerine. */}
+              <img src="/icons/incoming-envelope.png" alt="" aria-hidden className="h-40 w-40" />
+              {/* Tek satır ve GRİ (kullanıcı kararı, 22 Eyl 2026): siyah
+                  başlık + onu tekrar eden alt satır yerine. Metin role göre
+                  değişir — aynı sayfayı öğrenci de öğretmen de açar. */}
+              <p className={`mt-4 ${ACIKLAMA}`}>
+                {role === "TUTOR"
+                  ? "Sohbete başlamak için bir öğrenci seç"
+                  : role === "LIBRARY"
+                    ? "Sohbete başlamak için bir kişi seç"
+                    : "Sohbete başlamak için bir öğretmen seç"}
               </p>
             </div>
           ) : (
@@ -764,7 +767,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     className="-mx-1.5 flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1.5 py-1 transition hover:bg-slate-100 "
                     title={
                       role === "CLIENT"
-                        ? "Eğitmenin ilanını görüntüle"
+                        ? "Öğretmenin ilanını görüntüle"
                         : "Öğrencinin profilini görüntüle"
                     }
                   >
@@ -811,7 +814,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                     </svg>
                   </button>
                 )}
-                {/* Sohbet seçenekleri (Modül 5): şikâyet ve eğitmen için engel.
+                {/* Sohbet seçenekleri (Modül 5): şikâyet ve öğretmen için engel.
                     Kütüphane sohbetinde karşılığı olan bir eylem yok. */}
                 {activeCounterpartyId !== null &&
                   (activeCounterpartyRole === "TUTOR" ||
@@ -895,7 +898,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   )}
               </div>
 
-              {/* Güvenlik bandı — yalnız öğrenci↔eğitmen sohbetinde */}
+              {/* Güvenlik bandı — yalnız öğrenci↔öğretmen sohbetinde */}
               {activeStage && (ogrenciEgitmene || egitmenOgrenciye) && (
                 <GuvenlikBandi stage={activeStage} rol={role === "TUTOR" ? "TUTOR" : "CLIENT"} />
               )}
@@ -1017,17 +1020,17 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                   </button>
                 </YazmaKapali>
               ) : ogrenciEgitmene && activeBlocked ? (
-                <YazmaKapali metin="Bu eğitmen şu anda mesaj kabul etmiyor.">
+                <YazmaKapali metin="Bu öğretmen şu anda mesaj kabul etmiyor.">
                   <Link
                     to={ROUTES.tutors}
                     className="shrink-0 rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                   >
-                    Başka eğitmen bul
+                    Başka öğretmen bul
                   </Link>
                 </YazmaKapali>
               ) : ogrenciEgitmene && uygunluk && !uygunluk.can_send ? (
                 <YazmaKapali
-                  metin={uygunluk.reason_message ?? "Şu anda bu eğitmene mesaj gönderemezsin."}
+                  metin={uygunluk.reason_message ?? "Şu anda bu öğretmene mesaj gönderemezsin."}
                 >
                   {uygunluk.reason_code === "INQUIRY_DAILY_LIMIT" &&
                     egitmenIlanYolu !== null && (
@@ -1095,7 +1098,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
               </form>
               {ogrenciEgitmene && uygunluk?.remaining_before_reply != null && (
                 <p className={`mx-auto -mt-1 w-full max-w-4xl px-3 pb-3 sm:px-6 ${KUCUK_ACIKLAMA}`}>
-                  Eğitmen yanıt verene kadar {uygunluk.remaining_before_reply} mesaj hakkın kaldı.
+                  Öğretmen yanıt verene kadar {uygunluk.remaining_before_reply} mesaj hakkın kaldı.
                 </p>
               )}
               </>
@@ -1439,7 +1442,7 @@ function ConversationRow({
             <span className="truncate text-base font-semibold leading-6 text-slate-900">
               {c.counterparty_name ?? "Kullanıcı"}
             </span>
-            {/* Eğitmene: bu öğrenci henüz ders ayırtmadı (Modül 5). */}
+            {/* Öğretmene: bu öğrenci henüz ders ayırtmadı (Modül 5). */}
             {role === "TUTOR" && c.stage === "INQUIRY" && (
               <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                 Ders öncesi
@@ -1525,12 +1528,9 @@ function MessageHitRow({
 // aynı düğmeyle değişiyor; farklı boyutta olmaları geçişi zıplatıyordu.
 function EmptyArchived() {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-8 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-100 text-marka-metin">
-        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-        </svg>
-      </div>
+    <div className="flex h-full flex-col items-center justify-center px-8 pb-36 pt-6 text-center">
+      {/* Fluent Emoji "Card file box" (3D) — kullanıcı kararı, 22 Eyl 2026. */}
+      <img src="/icons/arsiv.png" alt="" aria-hidden className="h-36 w-36" />
       <p className={`mt-5 ${BOLUM_BASLIGI}`}>
         Arşiv boş
       </p>
@@ -1551,18 +1551,15 @@ function EmptyArchived() {
  */
 function EmptyInbox({ role }: { role: Role }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-8 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-100 text-marka-metin">
-        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-        </svg>
-      </div>
+    <div className="flex h-full flex-col items-center justify-center px-8 pb-36 pt-6 text-center">
+      {/* Fluent Emoji "Person shrugging" (3D) — kullanıcı kararı, 22 Eyl 2026. */}
+      <img src="/icons/omuz-silkme.png" alt="" aria-hidden className="h-36 w-36" />
       <p className={`mt-5 ${BOLUM_BASLIGI}`}>
         Henüz mesajın yok
       </p>
       <p className={`mt-2 max-w-xs ${ACIKLAMA}`}>
         {role === "CLIENT"
-          ? "Bir eğitmenin ilanındaki “Mesaj Gönder” ile sohbet başlatabilirsin."
+          ? "Bir öğretmenin ilanındaki “Mesaj Gönder” ile sohbet başlatabilirsin."
           : "Sana yazıldığında sohbetler burada görünür."}
       </p>
       {role === "CLIENT" && (
@@ -1570,7 +1567,7 @@ function EmptyInbox({ role }: { role: Role }) {
           to={ROUTES.tutors}
           className={`mt-6 ${DUGME_BIRINCIL}`}
         >
-          Eğitmenleri keşfet
+          Öğretmenleri keşfet
         </Link>
       )}
     </div>

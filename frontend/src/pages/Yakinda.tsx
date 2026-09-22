@@ -49,7 +49,7 @@ export default function Yakinda() {
             to={ROUTES.tutors}
             className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 "
           >
-            Eğitmenlere göz at
+            Öğretmenlere göz at
           </Link>
           <Link
             to={ROUTES.home}

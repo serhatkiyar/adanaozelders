@@ -75,7 +75,7 @@ export default function DeliveryRunsPage() {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">Turlar</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
@@ -122,7 +122,7 @@ export default function DeliveryRunsPage() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 ">
+        <ul className="divide-y divide-slate-200 ">
           {runs.map((r) => (
             <RunArchiveRow key={r.id} run={r} />
           ))}
@@ -130,7 +130,7 @@ export default function DeliveryRunsPage() {
       )}
 
       {!dateFilter && (page > 0 || !isLastPage) && (
-        <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 ">
+        <div className="flex items-center justify-between border-t border-slate-200 px-6 py-3 ">
           <Button
             size="sm"
             variant="ghost"
@@ -152,7 +152,7 @@ export default function DeliveryRunsPage() {
           </Button>
         </div>
       )}
-      <p className="flex items-center gap-1.5 border-t border-slate-100 px-6 py-2 text-[11px] text-slate-400 ">
+      <p className="flex items-center gap-1.5 border-t border-slate-200 px-6 py-2 text-[11px] text-slate-400 ">
         <TruckIcon className="h-3.5 w-3.5" />
         Turlar en yeni tarihten eskiye sıralanır.
       </p>

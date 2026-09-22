@@ -321,7 +321,7 @@ export const PANEL_MENU: PanelMenuItem[] = [
   },
   {
     key: "egitmenler",
-    label: "Eğitmenler",
+    label: "Öğretmenler",
     icon: "solution",
     children: [
       { key: "egitmenler-ilanlar", label: "İlanlar", path: PATHS.adminNewTutors, requiredPermission: "tutors" },

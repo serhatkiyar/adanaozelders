@@ -112,34 +112,34 @@ export const FAQ: readonly FaqCategory[] = [
   },
   {
     id: "ders",
-    title: "Ders ve eğitmenler",
+    title: "Ders ve öğretmenler",
     items: [
       {
         id: "rezervasyon",
         question: "Nasıl ders alırım?",
         answer: [
-          "Eğitmenler sayfasından branşa, fiyata ve konuma göre arama yapabilir, eğitmenin takviminden uygun saati seçerek rezervasyon oluşturabilirsin. Eğitmen talebini onayladıktan sonra ödeme adımı açılır.",
+          "Öğretmenler sayfasından branşa, fiyata ve konuma göre arama yapabilir, öğretmenin takviminden uygun saati seçerek rezervasyon oluşturabilirsin. Öğretmen talebini onayladıktan sonra ödeme adımı açılır.",
         ],
       },
       {
         id: "odeme-guvenlik",
-        question: "Ödediğim para doğrudan eğitmene mi gidiyor?",
+        question: "Ödediğim para doğrudan öğretmene mi gidiyor?",
         answer: [
-          "Hayır. Ders ücreti, ders tamamlanana kadar eğitmene aktarılmaz; ders gerçekleştikten sonra ödenir. Ders iptal edilirse ödemen iade edilir.",
+          "Hayır. Ders ücreti, ders tamamlanana kadar öğretmene aktarılmaz; ders gerçekleştikten sonra ödenir. Ders iptal edilirse ödemen iade edilir.",
         ],
       },
       {
         id: "egitmen-secimi",
-        question: "Eğitmenler nasıl seçiliyor?",
+        question: "Öğretmenler nasıl seçiliyor?",
         answer: [
-          "Platformda ilan açmak isteyen her eğitmen başvuru yapar; kimlik ve eğitim belgeleri incelendikten sonra yayına alınır. Onaylanmamış eğitmenler arama sonuçlarında görünmez.",
+          "Platformda ilan açmak isteyen her öğretmen başvuru yapar; kimlik ve eğitim belgeleri incelendikten sonra yayına alınır. Onaylanmamış öğretmenler arama sonuçlarında görünmez.",
         ],
       },
       {
         id: "iletisim-kurallari",
-        question: "Eğitmenle nasıl iletişim kurarım?",
+        question: "Öğretmenle nasıl iletişim kurarım?",
         answer: [
-          "Onaylanmış bir rezervasyonun varsa mesajlar bölümünden eğitmenle yazışabilirsin. Güvenliğin için mesajlarda telefon ve e-posta gibi iletişim bilgileri otomatik gizlenir.",
+          "Onaylanmış bir rezervasyonun varsa mesajlar bölümünden öğretmenle yazışabilirsin. Güvenliğin için mesajlarda telefon ve e-posta gibi iletişim bilgileri otomatik gizlenir.",
         ],
       },
     ],

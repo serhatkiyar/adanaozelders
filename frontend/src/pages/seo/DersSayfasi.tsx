@@ -111,7 +111,7 @@ export function DersSayfasi({ veri }: { veri: DersSayfasiVerisi }) {
             <h2 id="ders-sss" className={BOLUM_BASLIGI}>
               Sık sorulan sorular
             </h2>
-            <div className="mt-3 divide-y divide-slate-100 border-y border-slate-100">
+            <div className="mt-3 divide-y divide-slate-200 border-y border-slate-200">
               {veri.sss.map((s) => (
                 <details key={s.soru} className="group py-4">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-slate-800">

@@ -53,7 +53,7 @@ export default function NotFound() {
             to={ROUTES.tutors}
             className="rounded-xl border border-white/70 bg-white/10 px-6 py-3 text-sm font-semibold text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-white/20"
           >
-            Eğitmen ara
+            Öğretmen ara
           </Link>
         </div>
       </div>

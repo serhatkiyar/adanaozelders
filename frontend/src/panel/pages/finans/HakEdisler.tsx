@@ -31,7 +31,7 @@ export function HakEdisler() {
         </Typography.Title>
         <Typography.Text type="secondary">
           {canManage
-            ? "Eğitmen ve kütüphanelere bankadan yapılan ödemeleri hak ediş defterine kaydedin."
+            ? "Öğretmen ve kütüphanelere bankadan yapılan ödemeleri hak ediş defterine kaydedin."
             : "Salt okunur görünüm: ödeme kaydetmek için payments.manage izni gerekir."}
         </Typography.Text>
       </div>
@@ -86,7 +86,7 @@ function Bekleyenler({ sorgu, canManage, onPay }: {
         pagination={false}
         scroll={{ x: 760 }}
         columns={[
-          { title: "Alıcı", render: (_, kayit) => <Flex gap={8} align="center"><Typography.Text strong>{kayit.name}</Typography.Text><Tag>{kayit.payee_type === "TUTOR" ? "Eğitmen" : "Kütüphane"}</Tag></Flex> },
+          { title: "Alıcı", render: (_, kayit) => <Flex gap={8} align="center"><Typography.Text strong>{kayit.name}</Typography.Text><Tag>{kayit.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"}</Tag></Flex> },
           { title: "IBAN", render: (_, kayit) => kayit.iban ? <Typography.Text style={{ fontFamily: "monospace" }}>{kayit.iban}</Typography.Text> : <Typography.Text type="warning">IBAN yok</Typography.Text> },
           { title: "Hak edilen", align: "right", render: (_, kayit) => formatTL(kayit.earned) },
           { title: "Ödenen", align: "right", render: (_, kayit) => formatTL(kayit.paid) },
@@ -115,7 +115,7 @@ function Gecmis({ sorgu }: { sorgu: ReturnType<typeof usePayoutHistory> }) {
       scroll={{ x: 680 }}
       columns={[
         { title: "Tarih", dataIndex: "paid_at", render: (deger: string) => formatDate(deger) },
-        { title: "Alıcı", render: (_, kayit) => `${kayit.payee_type === "TUTOR" ? "Eğitmen" : "Kütüphane"} #${kayit.payee_id}` },
+        { title: "Alıcı", render: (_, kayit) => `${kayit.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"} #${kayit.payee_id}` },
         { title: "Tutar", align: "right", render: (_, kayit) => <Typography.Text strong>{formatTL(kayit.amount)}</Typography.Text> },
         { title: "Referans", dataIndex: "reference", render: (deger?: string | null) => deger || "-" },
         { title: "IBAN (o anki)", dataIndex: "iban_snapshot", render: (deger?: string | null) => <Typography.Text style={{ fontFamily: "monospace" }}>{deger || "-"}</Typography.Text> },

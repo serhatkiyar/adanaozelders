@@ -62,7 +62,7 @@ export default function AdminUserDetailPage() {
           <Badge tone="info">{rolEtiketi(ROLE_IDS[user.role])}</Badge>
         </div>
 
-        <dl className="mt-6 grid gap-4 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4 ">
+        <dl className="mt-6 grid gap-4 border-t border-slate-200 pt-5 sm:grid-cols-2 lg:grid-cols-4 ">
           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">E-posta</dt><dd className="mt-1 text-sm font-semibold text-slate-800 ">{user.email_verified ? "Doğrulandı" : "Doğrulanmadı"}</dd></div>
           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kayıt</dt><dd className="mt-1 text-sm text-slate-700 ">{formatDateTime(user.created_at)}</dd></div>
           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Son güncelleme</dt><dd className="mt-1 text-sm text-slate-700 ">{formatDateTime(user.updated_at)}</dd></div>

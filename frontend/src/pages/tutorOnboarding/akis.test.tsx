@@ -118,7 +118,7 @@ describe("adım geçişi", () => {
     fireEvent.change(await screen.findByLabelText(/İlan başlığı/), {
       target: {
         value:
-          "Lise ve hazırlık öğrencilerine sekiz yıldır birebir ders veren mühendislik mezunu bir eğitmenim",
+          "Lise ve hazırlık öğrencilerine sekiz yıldır birebir ders veren mühendislik mezunu bir öğretmenim",
       },
     });
     fireEvent.click(screen.getByRole("button", { name: /^Sırada:/ }));
@@ -184,7 +184,7 @@ describe("yayın kapısı", () => {
   // 5 Eyl 2026: belge yayın kapısı olmaktan çıktı. Belgesiz eğitmene
   // düzeltemeyeceği bir eksik gösterilmemeli — eski metin geri gelirse
   // kullanıcı akışın sonunda yine duvara toslar.
-  it("belgesiz eğitmene BELGE ENGELİ gösterilmez", async () => {
+  it("belgesiz öğretmene BELGE ENGELİ gösterilmez", async () => {
     ekran(adimIndeksi("ozet"));
     await screen.findByText(/En az bir ders seç/i);
     expect(screen.queryByText(/en az bir eğitim kaydı ve belgesi/i)).toBeNull();

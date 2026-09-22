@@ -43,7 +43,7 @@ const BODY_CLASS = [
   "[&_pre]:mt-6 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-slate-900 [&_pre]:p-4 [&_pre]:text-slate-100 [&_pre_code]:bg-transparent [&_pre_code]:p-0",
   "[&_img]:mt-6 [&_img]:rounded-xl",
   "[&_hr]:my-10 [&_hr]:border-slate-200 ",
-  "[&_table]:mt-6 [&_table]:w-full [&_table]:text-sm [&_th]:border-b [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border-b [&_td]:border-slate-100 [&_td]:px-3 [&_td]:py-2 ",
+  "[&_table]:mt-6 [&_table]:w-full [&_table]:text-sm [&_th]:border-b [&_th]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border-b [&_td]:border-slate-200 [&_td]:px-3 [&_td]:py-2 ",
 ].join(" ");
 
 export default function BlogPostPage() {

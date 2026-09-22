@@ -102,7 +102,7 @@ describe("yasal metin borcu kütüğü", () => {
       emanetGecisi,
       `1. bölümde "emanet" ${emanetGecisi} kez geçiyor — yalnız mağaza cümlesinde geçmeli`,
     ).toBe(1);
-    for (const kapaliAkis of ["escrow", "eğitmene aktarılır", "kütüphaneye aktarılır"]) {
+    for (const kapaliAkis of ["escrow", "öğretmene aktarılır", "kütüphaneye aktarılır"]) {
       expect(bolum.toLocaleLowerCase("tr")).not.toContain(
         kapaliAkis.toLocaleLowerCase("tr"),
       );

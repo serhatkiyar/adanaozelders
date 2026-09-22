@@ -67,13 +67,13 @@ export default function Leaderboard() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Board
-              title="En çok ders veren eğitmenler"
+              title="En çok ders veren öğretmenler"
               icon="🎓"
               entries={data.tutors_by_lessons}
               fmt={(v) => `${v} ders`}
             />
             <Board
-              title="En yüksek puanlı eğitmenler"
+              title="En yüksek puanlı öğretmenler"
               icon="★"
               entries={data.tutors_by_rating}
               fmt={(v) => v.toFixed(1)}

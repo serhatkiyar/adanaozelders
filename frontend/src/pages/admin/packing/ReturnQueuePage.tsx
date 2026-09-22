@@ -58,7 +58,7 @@ export default function ReturnQueuePage() {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">
             Kuryeden dönmesi beklenen kutular
@@ -90,7 +90,7 @@ export default function ReturnQueuePage() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 ">
+        <ul className="divide-y divide-slate-200 px-6 ">
           {satirlar.map((satir) => (
             <li key={satir.package_id} className="flex flex-wrap items-center gap-3 py-3">
               <div className="min-w-0 flex-1 basis-56">
@@ -119,7 +119,7 @@ export default function ReturnQueuePage() {
       )}
 
       {toplam > LIMIT && (
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3 ">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-3 ">
           <span className="text-xs text-slate-500 ">
             Sayfa {sayfa} / {sonSayfa}
           </span>

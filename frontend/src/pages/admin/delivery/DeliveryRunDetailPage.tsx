@@ -508,7 +508,7 @@ export default function DeliveryRunDetailPage() {
         )}
 
         {/* Duraklar */}
-        <div className="border-t border-slate-100 px-6 py-4 ">
+        <div className="border-t border-slate-200 px-6 py-4 ">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
               Rota: {run.stops.length} durak
@@ -524,7 +524,7 @@ export default function DeliveryRunDetailPage() {
               Henüz durak yok: aşağıdaki hazır siparişlerden ekleyin.
             </p>
           ) : (
-            <ul className="mt-1 divide-y divide-slate-100 ">
+            <ul className="mt-1 divide-y divide-slate-200 ">
               {sorted.map((s, i) => (
                 <StopRow
                   key={s.id}
@@ -567,7 +567,7 @@ export default function DeliveryRunDetailPage() {
 
         {/* Eklenebilecek siparişler */}
         {planning && (
-          <div className="border-t border-slate-100 px-6 py-4 ">
+          <div className="border-t border-slate-200 px-6 py-4 ">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                 Dağıtıma hazır siparişler
@@ -610,7 +610,7 @@ export default function DeliveryRunDetailPage() {
                 sekmesinden paket hazırlayın.
               </p>
             ) : (
-              <ul className="mt-1 divide-y divide-slate-100 ">
+              <ul className="mt-1 divide-y divide-slate-200 ">
                 {eligible.map((o) => (
                   <li key={o.order_id} className="flex flex-wrap items-center gap-3 py-3">
                     <div className="min-w-0 flex-1 basis-48">

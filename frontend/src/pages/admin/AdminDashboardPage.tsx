@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <MetricCard label="Yeni öğrenciler" value={data.new_clients} previous={data.previous_new_clients} description="hesap" />
-          <MetricCard label="Yeni eğitmenler" value={data.new_tutors} previous={data.previous_new_tutors} description="başvuru" />
+          <MetricCard label="Yeni öğretmenler" value={data.new_tutors} previous={data.previous_new_tutors} description="başvuru" />
           <MetricCard label="Yeni siparişler" value={data.new_orders} previous={data.previous_new_orders} description="sipariş" />
         </div>
       </section>
@@ -97,11 +97,11 @@ export default function AdminDashboardPage() {
       <section aria-labelledby="queue-title">
         <div className="mb-4"><h2 id="queue-title" className="text-lg font-bold text-slate-950 ">Operasyon kuyrukları</h2><p className="text-sm text-slate-500">Karar veya takip bekleyen gerçek zamanlı iş yükü.</p></div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <QueueCard label="Eğitmen başvuruları" value={data.pending_tutors} to={ROUTES.adminTutors} tone="warning" description="Onay veya ret kararı bekliyor." />
+          <QueueCard label="Öğretmen başvuruları" value={data.pending_tutors} to={ROUTES.adminTutors} tone="warning" description="Onay veya ret kararı bekliyor." />
           <QueueCard label="Diploma doğrulamaları" value={data.pending_diplomas} to={ROUTES.adminDiplomas} tone="warning" description="Belge teyidi bekleyen eğitim kayıtları." />
           <QueueCard label="Açık şikâyetler" value={data.open_reports} to={ROUTES.adminReports} tone="danger" description="Moderasyon kararı bekleyen bildirimler." />
           <QueueCard label="İhtilaflı rezervasyonlar" value={data.disputed_bookings} to={ROUTES.adminBookings} tone="danger" description={`${data.active_bookings} aktif rezervasyon içinde.`} />
-          <QueueCard label="Açık öğrenci talepleri" value={data.open_demands} to={ROUTES.adminDemands} tone="info" description="Eğitmenlerden yanıt bekleyen ders ilanları." />
+          <QueueCard label="Açık öğrenci talepleri" value={data.open_demands} to={ROUTES.adminDemands} tone="info" description="Öğretmenlerden yanıt bekleyen ders ilanları." />
           {/* Kart, işin YAPILDIĞI ekrana gider: ödenmiş sipariş hazırlanmak
               üzere paketleme kuyruğuna düşer; sipariş listesi bir kayıt
               görünümüdür, kuyruk değil. */}

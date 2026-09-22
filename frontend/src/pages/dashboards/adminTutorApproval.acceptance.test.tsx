@@ -344,7 +344,7 @@ describe("A-4 · Reddet gerekçe olmadan gönderilemiyor", () => {
 
 /* ═════════════════════ A-5 · Liste tazeleniyor ═════════════════════ */
 
-describe("A-5 · onay sonrası liste tazeleniyor ve eğitmen kuyruktan düşüyor", () => {
+describe("A-5 · onay sonrası liste tazeleniyor ve öğretmen kuyruktan düşüyor", () => {
   it("onaydan sonra liste yeniden çekilir ve satır kuyrukta kalmaz", async () => {
     izinVer(TUTORS_VIEW, TUTORS_MANAGE);
     let liste: Record<string, unknown>[] = [BEKLEYEN];

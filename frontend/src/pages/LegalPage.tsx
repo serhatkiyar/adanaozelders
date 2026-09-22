@@ -106,7 +106,7 @@ export default function LegalPage({ doc: docId }: { doc: LegalDocId }) {
               </ol>
             </nav>
 
-            <div className="mt-2 divide-y divide-slate-100 ">
+            <div className="mt-2 divide-y divide-slate-200 ">
               {doc.sections.map((s) => (
                 <section key={s.id} id={s.id} className="scroll-mt-24 py-6">
                   <h2 className="text-base font-bold text-slate-900 ">

@@ -174,7 +174,7 @@ export default function Libraries() {
           KIRPIYORDU: içerik kaptan genişse ortalama taşmayı iki yana eşit
           dağıtır, yani şerit ortasından açılır — soldaki "Filtreler" düğmesi
           yarım görünüyordu (ölçüldü, 11 Eyl 2026). Telefonda soldan başlar
-          (eğitmen sonuç ekranındaki çip şeridi gibi), sığdığı genişlikten
+          (öğretmen sonuç ekranındaki çip şeridi gibi), sığdığı genişlikten
           itibaren yine ortalanır. */}
       <div
         className="flex items-center justify-start gap-2 overflow-x-auto px-4 pb-2.5 pt-3 md:justify-center md:px-6"
@@ -197,7 +197,7 @@ export default function Libraries() {
       >
         <FilterIconSvg />
         Filtreler
-        {/* Rozet eğitmen şeridiyle aynı: koyu, düğmenin sağ üst köşesinde. */}
+        {/* Rozet öğretmen şeridiyle aynı: koyu, düğmenin sağ üst köşesinde. */}
         {filtreSayisi > 0 && (
           <span
             aria-hidden
@@ -212,7 +212,7 @@ export default function Libraries() {
           uygulanan filtreler" — tek ayraç. */}
       <div className="h-5 w-px shrink-0 bg-slate-200 " />
 
-      {/* AÇILIR UZAKLIK ÇİPİ — eğitmen şeridiyle aynı bileşen (16 Eyl 2026). */}
+      {/* AÇILIR UZAKLIK ÇİPİ — öğretmen şeridiyle aynı bileşen (16 Eyl 2026). */}
       {degerler.yakinimda && (
         <FiltreAcilir
           etiket={uzaklikCipi(degerler.yaricap)}
@@ -232,7 +232,7 @@ export default function Libraries() {
       )}
 
       {/* İLÇE ÇİPİ YOK (16 Eyl 2026): konum hapta yazıyor ("Merkez"); Merkez
-          seçimi burada dört ayrı ilçe çipine açılıyordu. Eğitmen şeridiyle
+          seçimi burada dört ayrı ilçe çipine açılıyordu. Öğretmen şeridiyle
           aynı kural — hapta olan şeritte tekrar etmez. */}
 
       {/* Aktif olanak chip'leri */}
@@ -279,7 +279,7 @@ export default function Libraries() {
   });
   const mobilBaslik = (
     <div
-      className="-mx-4 mb-3 border-b border-slate-100 bg-[#f4f4f4]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
+      className="-mx-4 mb-3 border-b border-slate-200 bg-[#f4f4f4]/95 px-4 pb-2 pt-3 backdrop-blur-md sticky z-30 md:hidden"
       style={{ top: "var(--yapiskan-ust, 0px)" }}
     >
       <AramaMobilBaslik
@@ -316,7 +316,7 @@ export default function Libraries() {
       {filtreli && mobil && mobilBaslik}
       {filtreli && (
         <div
-          className="-mx-4 mb-3 hidden border-b border-slate-100 bg-[#f4f4f4]/95 backdrop-blur-md sticky z-20 sm:-mx-6 md:block"
+          className="-mx-4 mb-3 hidden border-b border-slate-200 bg-[#f4f4f4]/95 backdrop-blur-md sticky z-20 sm:-mx-6 md:block"
           style={{ top: "var(--yapiskan-ust, 0px)" }}
         >
           {filterBar}
@@ -331,16 +331,16 @@ export default function Libraries() {
         description="Bölgendeki çalışma kütüphanelerini ve etüt merkezlerini keşfet, değerlendirmeler, konum ve çalışma saatleriyle."
       />
 
-      {/* KEŞİF ŞERİTLERİ — ana sayfadaki eğitmen vitriniyle AYNI ÖLÇEK.
+      {/* KEŞİF ŞERİTLERİ — ana sayfadaki öğretmen vitriniyle AYNI ÖLÇEK.
           Şeritler `max-w-[1100px]` kabının ve `-mx-4` negatif margin'inin
           DIŞINDA durur; ikisi de kartı küçültüp/büyütüp ana sayfayla ayrışmaya
           yol açıyordu.
 
           ÖLÇÜLDÜ (gerçek Chrome, 10 Eyl 2026 — kullanıcı: *"kütüphanelerde
-          farklı ölçek kullanılıyor, eğitmenlerde farklı"*):
+          farklı ölçek kullanılıyor, öğretmenlerde farklı"*):
 
-            telefon   eğitmen kartı 157px · kütüphane kartı 173px
-            masaüstü  eğitmen kartı 218px · kütüphane kartı 204px
+            telefon   öğretmen kartı 157px · kütüphane kartı 173px
+            masaüstü  öğretmen kartı 218px · kütüphane kartı 204px
 
           Kart sınıfı (`VITRIN_KART`) ve boşluklar İKİSİNDE DE AYNIYDI; ayrışan
           şey KAPTI. Genişlik kaptan yüzde hesabıyla türediği için farklı taban
@@ -366,7 +366,7 @@ export default function Libraries() {
 
         {/* ── ARAMA SONUÇLARI — yalnız arama/filtre varken ──
             Filtre yokken bu blok HİÇ çizilmez: kategori değişimi ana sayfanın
-            eğitmen vitrini gibi bir KEŞİF yüzeyi açar, arama sonucu değil.
+            öğretmen vitrini gibi bir KEŞİF yüzeyi açar, arama sonucu değil.
             Liste/Harita anahtarı, sayaç, ızgara ve sayfalama sonuca aittir;
             ortada sonuç yokken hepsi anlamsızdır. */}
         {filtreli && (
@@ -374,7 +374,7 @@ export default function Libraries() {
         {/* ── Sonuç satırı: solda sayaç, sağda Liste/Harita ──
             Anahtar eskiden TEK BAŞINA sağa yaslı bir satırdaydı: 64px boş yer
             yiyor, hiçbir şeye tutunmuyor ve ilk kartı katlamanın altına
-            itiyordu (eğitmen sonuç ekranında böyle bir satır yok). Sayaç
+            itiyordu (öğretmen sonuç ekranında böyle bir satır yok). Sayaç
             aşağıdan buraya çıktı; ikisi tek satırda dengeleniyor. */}
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0 truncate text-xs text-slate-400">
@@ -436,7 +436,7 @@ export default function Libraries() {
           </div>
         ) : (
           <>
-            {/* Izgara boşluğu eğitmen sonuç ekranıyla AYNI (`gap-8`);
+            {/* Izgara boşluğu öğretmen sonuç ekranıyla AYNI (`gap-8`);
                 `gap-6`ydı ve iki liste yan yana konunca ayrışıyordu. */}
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {data.map((lib) => (
@@ -465,7 +465,7 @@ export default function Libraries() {
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm sm:items-center sm:p-6">
             <div className="absolute inset-0" onClick={() => setShowFilters(false)} />
             <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 ">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 ">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 ">
                 <h2 className="text-lg font-bold text-slate-900 ">Olanaklar</h2>
                 <button
                   onClick={() => setShowFilters(false)}
@@ -479,7 +479,7 @@ export default function Libraries() {
               </div>
 
               <div className="flex-1 space-y-8 overflow-y-auto p-6">
-                {/* Mesafe — eğitmen penceresiyle AYNI kural: yalnız Yakınımda
+                {/* Mesafe — öğretmen penceresiyle AYNI kural: yalnız Yakınımda
                     seçiliyken; Farketmez niyeti kaldırır. */}
                 {degerler.yakinimda && (
                   <div>
@@ -517,7 +517,7 @@ export default function Libraries() {
                 </div>
               </div>
 
-              <div className="flex gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:px-6 sm:py-5">
+              <div className="flex gap-3 border-t border-slate-200 bg-slate-50 p-4 sm:px-6 sm:py-5">
                 <button
                   onClick={() => ayarla({ olanaklar: [] })}
                   className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "

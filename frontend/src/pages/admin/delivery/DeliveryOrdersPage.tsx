@@ -128,7 +128,7 @@ function PrepQueue() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-3 ">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-3 ">
             <p className="text-xs text-slate-500 ">
               Hazırlama paketleme istasyonunda yapılır: paketi aç, her kalemi okut,
               tamamla. Sipariş ancak bütün kalemler doğrulanınca tura hazır olur.
@@ -140,7 +140,7 @@ function PrepQueue() {
               Paketleme istasyonunu aç →
             </Link>
           </div>
-          <ul className="divide-y divide-slate-100 px-6 ">
+          <ul className="divide-y divide-slate-200 px-6 ">
             {queue.map((o) => (
               <OrderRow key={o.order_id} order={o} />
             ))}
@@ -195,7 +195,7 @@ function ReadyQueue() {
       ) : (
         <>
           {canManage && (
-            <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-100 px-6 py-3 ">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-b border-slate-200 px-6 py-3 ">
               {openRuns.length > 0 ? (
                 <>
                   <label className="text-xs text-slate-500 " htmlFor="target-run">
@@ -235,7 +235,7 @@ function ReadyQueue() {
               )}
             </div>
           )}
-          <ul className="divide-y divide-slate-100 px-6 ">
+          <ul className="divide-y divide-slate-200 px-6 ">
             {eligible.map((o) => (
               <OrderRow key={o.order_id} order={o}>
                 {canManage && (
@@ -290,7 +290,7 @@ function OutsourcedQueue() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 ">
+        <ul className="divide-y divide-slate-200 px-6 ">
           {orders.map((o) => (
             <OrderRow key={o.order_id} order={o}>
               {(o.district || o.city) && (
@@ -421,7 +421,7 @@ export default function DeliveryOrdersPage() {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white ">
-      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 ">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-6 py-4 ">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 ">Sipariş Havuzu</h2>
           <p className="mt-0.5 text-xs text-slate-500 ">

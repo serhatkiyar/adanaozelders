@@ -33,7 +33,7 @@ const DATE_FMT = new Intl.DateTimeFormat("tr-TR", {
 });
 
 const LIST =
-  "divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white ";
+  "divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white ";
 const ROW = "px-6 py-4";
 
 export default function AdminSettingsPage() {
@@ -78,7 +78,7 @@ export default function AdminSettingsPage() {
         <p className="mb-4 max-w-3xl text-sm text-slate-600 ">
           Bir kolun açık olması için hem bayrağının açık olması hem de ödeme sağlayıcısının
           gerekli yeteneği sunması şarttır. Platformun kendi kitap satışı alt üye işyeri
-          gerektirmez; eğitmen ve kütüphane adına yapılan tahsilatlar gerektirir.
+          gerektirmez; öğretmen ve kütüphane adına yapılan tahsilatlar gerektirir.
         </p>
 
         {branchesQuery.isLoading ? (

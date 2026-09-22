@@ -284,7 +284,7 @@ export function OrderItemRow({
   const productLink = item.product_id ? ROUTES.storeProduct(item.product_id) : null;
   return (
     <div className="flex gap-4">
-      <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-white ">
+      <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white ">
         {productLink ? (
           <Link to={productLink} className="block h-full w-full">
             <ItemImg item={item} />

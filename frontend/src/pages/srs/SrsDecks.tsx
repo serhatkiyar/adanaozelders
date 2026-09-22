@@ -120,7 +120,7 @@ function DeckTree({ decks }: { decks: SrsDeck[] }) {
   walk(null, 0);
 
   return (
-    <div className="divide-y divide-slate-100 ">
+    <div className="divide-y divide-slate-200 ">
       {rows.map(({ deck, depth }) => (
         <DeckRow key={deck.id} deck={deck} depth={depth} studyable />
       ))}
@@ -352,7 +352,7 @@ export default function SrsDecks() {
                 <div className="border-b border-slate-200 pb-2 ">
                   <SectionTitle>Bana Atananlar</SectionTitle>
                 </div>
-                <div className="divide-y divide-slate-100 ">
+                <div className="divide-y divide-slate-200 ">
                   {assigned.map((deck) => (
                     <div key={deck.id} className="flex items-center gap-3 py-3">
                       <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800 ">
@@ -405,7 +405,7 @@ export default function SrsDecks() {
                   />
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 ">
+                <div className="divide-y divide-slate-200 ">
                   {(platformQuery.data ?? []).map((deck) => (
                     <div key={deck.id} className="flex items-center gap-3 py-3">
                       <div className="min-w-0 flex-1">

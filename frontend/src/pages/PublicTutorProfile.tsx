@@ -74,7 +74,7 @@ export default function PublicTutorProfile({
   if (isError || !tutor) {
     return (
       <PublicShell>
-        <Seo title="Eğitmen bulunamadı" noindex />
+        <Seo title="Öğretmen bulunamadı" noindex />
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
@@ -84,7 +84,7 @@ export default function PublicTutorProfile({
           </button>
           <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
             <p className="text-sm text-slate-500 ">
-              Eğitmen bulunamadı.
+              Öğretmen bulunamadı.
             </p>
           </div>
         </div>
@@ -103,14 +103,14 @@ export default function PublicTutorProfile({
     tutor.bio ||
     tutor.headline ||
     (tutor.subjects?.length
-      ? `${tutor.display_name}, ${tutor.subjects.join(", ")} özel ders eğitmeni.`
+      ? `${tutor.display_name}, ${tutor.subjects.join(", ")} özel ders öğretmeni.`
       : `${tutor.display_name} ile özel ders.`);
   const personLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
     name: tutor.display_name,
     url: absoluteUrl(canonicalPath),
-    jobTitle: "Özel Ders Eğitmeni",
+    jobTitle: "Özel Ders Öğretmeni",
     ...(tutor.avatar_url ? { image: tutor.avatar_url } : {}),
     ...(tutor.headline ? { description: tutor.headline } : {}),
     ...(tutor.subjects?.length ? { knowsAbout: tutor.subjects } : {}),
@@ -203,7 +203,7 @@ export default function PublicTutorProfile({
               onYorumlar={() => setShowReviews(true)}
             />
           )}
-          {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
+          {/* ── Sağ: öğretmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
           {/* Kart ekrandan TAŞMASIN (kullanıcı kararı, 7 Eyl 2026): sticky kart
               viewport'tan uzunsa alt kısmı görünmüyordu ve kullanıcı kartın
               tamamını görmek için SAYFAYI en aşağı kaydırmak zorunda kalıyordu.
@@ -227,7 +227,7 @@ export default function PublicTutorProfile({
               </div>
               <div className="flex flex-col items-center text-center">
                 {/* Fotoğraf 64px'ten 128px'e çıktı. Kartın tek görseli o ve
-                    eğitmen seçiminde yüz belirleyici; küçük hâli avatar değil
+                    öğretmen seçiminde yüz belirleyici; küçük hâli avatar değil
                     "yer tutucu" gibi duruyordu. */}
                 <Avatar name={tutor.display_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
                 {/* İsim TAM ORTADA durur; rozet onu ittirmez.
@@ -378,7 +378,7 @@ export default function PublicTutorProfile({
 
             {/* Bio */}
             {tutor.bio && (
-              <section className="border-t border-slate-100 pt-6 ">
+              <section className="border-t border-slate-200 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   {tutor.display_name} ile ilgili bilgiler
                 </h2>
@@ -390,7 +390,7 @@ export default function PublicTutorProfile({
 
             {/* Ders Mekânı — kartta rozet olarak duruyordu, buraya taşındı */}
             {modeLabel && (
-              <section className="border-t border-slate-100 pt-6 ">
+              <section className="border-t border-slate-200 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   Ders Mekânı
                 </h2>
@@ -402,7 +402,7 @@ export default function PublicTutorProfile({
 
             {/* Ders Hakkında — metodoloji */}
             {tutor.lesson_info && (
-              <section className="border-t border-slate-100 pt-6 ">
+              <section className="border-t border-slate-200 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   Ders Hakkında
                 </h2>
@@ -414,7 +414,7 @@ export default function PublicTutorProfile({
 
             {/* Müsait Saatler — Wyzant tarzı haftalık çizelge (7 günün tamamı) */}
             {tutor.availability && tutor.availability.length > 0 && (
-              <section className="border-t border-slate-100 pt-6 ">
+              <section className="border-t border-slate-200 pt-6 ">
                 <h2 className="mb-3 text-xl font-bold text-slate-900 ">
                   Müsait Saatler
                 </h2>

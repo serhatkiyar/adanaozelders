@@ -73,7 +73,7 @@ export default function LibraryReservationDetail() {
         <div className="mx-auto max-w-2xl py-16 text-center">
           <p className="text-sm text-slate-600">Rezervasyon bulunamadı.</p>
           <Link to={ROUTES.reservations} className="mt-3 inline-block text-sm font-medium underline">
-            Rezervasyonlarıma dön
+            Derslerime dön
           </Link>
         </div>
       </DashboardShell>
@@ -162,7 +162,7 @@ export default function LibraryReservationDetail() {
             ]}
           />
 
-          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
             <button
               type="button"
               onClick={() => icsIndir(rezervasyonIcs(item))}

@@ -394,7 +394,7 @@ export default function CargoTrackingPage() {
                 <SectionTitle>
                   {shipments.length > 1 ? `Teslimatlar (${shipments.length})` : "Teslimat"}
                 </SectionTitle>
-                <ul className="mt-3 divide-y divide-slate-100">
+                <ul className="mt-3 divide-y divide-slate-200">
                   {shipments.map((s) => (
                     <ShipmentRow key={s.no} s={s} tek={shipments.length === 1} />
                   ))}

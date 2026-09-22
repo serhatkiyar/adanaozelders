@@ -115,7 +115,7 @@ export default function TutorProfile({
 
   if (isError || !tutor) {
     return (
-      <DashboardShell title="Eğitmen" navItems={navItems} sekmeler={null}>
+      <DashboardShell title="Öğretmen" navItems={navItems} sekmeler={null}>
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
@@ -124,7 +124,7 @@ export default function TutorProfile({
             ← Geri dön
           </button>
           <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-slate-300 py-16 text-center ">
-            <p className="text-sm text-slate-500">Eğitmen bulunamadı.</p>
+            <p className="text-sm text-slate-500">Öğretmen bulunamadı.</p>
           </div>
         </div>
       </DashboardShell>
@@ -152,7 +152,7 @@ export default function TutorProfile({
 
   return (
     <DashboardShell
-      title="Eğitmen Detayı"
+      title="Öğretmen Detayı"
       navItems={navItems}
       sekmeler={null}
       center={center}
@@ -216,7 +216,7 @@ export default function TutorProfile({
               }
             />
           )}
-          {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
+          {/* ── Sağ: öğretmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
           {/* Kart ekrandan TAŞMASIN (kullanıcı kararı, 7 Eyl 2026): sticky kart
               viewport'tan uzunsa alt kısmı (fiyat + birincil düğme) görünmüyor
               ve sabitlendiği için sayfa kaydırılsa bile gelmiyordu. Artık
@@ -385,13 +385,13 @@ export default function TutorProfile({
             {/* Headline / İlan Başlığı */}
             {(tutor.headline || isOwnerTutor) && (
               <h1 className="text-3xl font-extrabold leading-tight text-slate-900 ">
-                {tutor.headline || "Eğitmen"}
+                {tutor.headline || "Öğretmen"}
               </h1>
             )}
 
             {/* Bio */}
             {tutor.bio && (
-              <section className="border-t border-slate-100 pt-6 ">
+              <section className="border-t border-slate-200 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   {tutor.display_name} ile ilgili bilgiler
                 </h2>
@@ -403,7 +403,7 @@ export default function TutorProfile({
 
             {/* Ders Mekânı — kartta rozet olarak duruyordu, buraya taşındı */}
             {modeLabel && (
-              <section className="border-t border-slate-100 pt-6 ">
+              <section className="border-t border-slate-200 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   Ders Mekânı
                 </h2>
@@ -415,7 +415,7 @@ export default function TutorProfile({
 
             {/* Ders Hakkında — metodoloji */}
             {tutor.lesson_info && (
-              <section className="border-t border-slate-100 pt-6 ">
+              <section className="border-t border-slate-200 pt-6 ">
                 <h2 className="mb-2 text-xl font-bold text-slate-900 ">
                   Ders Hakkında
                 </h2>
@@ -461,7 +461,7 @@ export default function TutorProfile({
         </div>
       </div>
 
-      {/* Telefonda sayfanın TEK eylemi. Eğitmen KENDİ profiline bakıyorsa
+      {/* Telefonda sayfanın TEK eylemi. Öğretmen KENDİ profiline bakıyorsa
           şerit hiç basılmaz — karttaki düğmenin `!isOwnerTutor` kapısı burada
           da geçerli. */}
       {mobil && !isOwnerTutor && (

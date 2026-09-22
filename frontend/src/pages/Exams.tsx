@@ -129,7 +129,7 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
       </button>
 
       {open && hasSubjects && (
-        <div className="border-t border-slate-100 px-5 py-3 ">
+        <div className="border-t border-slate-200 px-5 py-3 ">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-400 ">
@@ -140,7 +140,7 @@ function HistoryItem({ exam }: { exam: PracticeExamOut }) {
                 <th className="pb-2 text-right font-medium">Net</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 ">
+            <tbody className="divide-y divide-slate-200 ">
               {exam.subjects.map((s) => (
                 <tr key={s.id} className="text-slate-700 ">
                   <td className="py-1.5 font-medium">{s.subject}</td>

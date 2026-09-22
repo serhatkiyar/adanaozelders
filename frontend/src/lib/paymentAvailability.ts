@@ -39,7 +39,7 @@ const CLOSED_MESSAGE: Record<PaymentBranch, string> = {
   // Bu kol ders ödemesini VE eğitmenin dijital ürününü kapsar; metin ikisini de
   // karşılamalı (backend `BRANCH_CLOSED_MESSAGE` ile aynı).
   tutor_marketplace:
-    "Eğitmenlere yapılan ödemeler henüz açılmadı. Ödeme altyapımız hazır olduğunda ders rezervasyonu ve eğitmen ürünleri satın alınabilecek.",
+    "Öğretmenlere yapılan ödemeler henüz açılmadı. Ödeme altyapımız hazır olduğunda ders rezervasyonu ve öğretmen ürünleri satın alınabilecek.",
   library_marketplace:
     "Kütüphane rezervasyon ödemeleri henüz açılmadı. Ödeme altyapımız hazır olduğunda satışa açılacak.",
 };

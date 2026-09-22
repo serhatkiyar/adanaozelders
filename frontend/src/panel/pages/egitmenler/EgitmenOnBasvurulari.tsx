@@ -198,7 +198,7 @@ export function EgitmenOnBasvurulari() {
     });
   };
 
-  if (!canView) return <AccessDenied area="Eğitmen ön başvuruları" />;
+  if (!canView) return <AccessDenied area="Öğretmen ön başvuruları" />;
   const ayrac = token.colorBorderSecondary;
   const kart = { background: token.colorBgContainer, border: `1px solid ${ayrac}`, borderRadius: 4 };
 

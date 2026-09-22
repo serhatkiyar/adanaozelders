@@ -100,7 +100,7 @@ export default function TutorDashboard() {
   const { joinMeeting } = useMeetingStore();
 
   const derseKatil = (bk: BookingOut) =>
-    joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || ADSIZ_UYE);
+    joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Öğretmen", bk.client_name || ADSIZ_UYE);
 
   const now = new Date();
   const ad = (user as { first_name?: string } | undefined)?.first_name;
@@ -114,7 +114,7 @@ export default function TutorDashboard() {
   const gizleyenVar = pano?.visibility_issues.some((i) => i.severity === "hidden") ?? false;
 
   return (
-    <DashboardShell title="Pano" navItems={TUTOR_NAV} genislik="genis">
+    <DashboardShell title="Genel Bakış" navItems={TUTOR_NAV} genislik="genis">
       <div className="space-y-8 pb-16 pt-2">
         <header>
           <h1 className={SAYFA_BASLIGI}>

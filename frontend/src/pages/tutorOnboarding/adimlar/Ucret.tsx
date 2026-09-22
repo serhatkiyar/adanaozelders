@@ -42,7 +42,7 @@ export function AdimUcret({ d, guncelle, odakla }: AdimProps) {
         etiket="Saatlik ücret (₺)"
         ipucu={
           ortanca != null
-            ? `${ders} veren eğitmenlerin ortanca ücreti ${ortanca} ₺. ${UCRET_EN_AZ}–${UCRET_EN_COK} ₺ aralığında bir değer yaz.`
+            ? `${ders} veren öğretmenlerin ortanca ücreti ${ortanca} ₺. ${UCRET_EN_AZ}–${UCRET_EN_COK} ₺ aralığında bir değer yaz.`
             : `${UCRET_EN_AZ}–${UCRET_EN_COK} ₺ aralığında bir değer yaz.`
         }
         tip="text"
@@ -55,7 +55,7 @@ export function AdimUcret({ d, guncelle, odakla }: AdimProps) {
         duzeltmeKapali
       />
 
-      <div className="border-t border-slate-100 pt-6">
+      <div className="border-t border-slate-200 pt-6">
         <OnayKutusu
           ad="ilkDersUcretsiz"
           isaretli={d.firstLessonFree}

@@ -103,7 +103,7 @@ export function AdimFotograf(props: AdimProps) {
         </div>
       </div>
 
-      <div className="border-t border-slate-100 pt-7" data-alan="cinsiyet">
+      <div className="border-t border-slate-200 pt-7" data-alan="cinsiyet">
         <SegmentSecim
           aktifSinif={SECILI_SEGMENT}
           etiket="Cinsiyetin (isteğe bağlı)"
@@ -114,7 +114,7 @@ export function AdimFotograf(props: AdimProps) {
         />
       </div>
 
-      <div className="border-t border-slate-100 pt-7">
+      <div className="border-t border-slate-200 pt-7">
         <TanitimVideosu {...props} />
       </div>
 

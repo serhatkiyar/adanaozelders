@@ -70,7 +70,7 @@ const rezervasyon = (ek: Partial<AdminBookingOut> = {}) =>
     id: 41,
     tutor_id: 12,
     client_id: 13,
-    tutor_name: "Ayşe Eğitmen",
+    tutor_name: "Ayşe Öğretmen",
     client_name: "Mert Öğrenci",
     start_at: "2026-09-15T10:00:00+03:00",
     end_at: "2026-09-15T11:00:00+03:00",
@@ -145,17 +145,17 @@ describe("RezervasyonListesi", () => {
     kur();
     expect(vi.mocked(useAdminBookingList).mock.calls.at(-1)?.[1]).toBe(true);
     expect(screen.getByText(/Salt okunur görünüm/)).toBeInTheDocument();
-    expect(screen.getByText("Ayşe Eğitmen")).toBeInTheDocument();
+    expect(screen.getByText("Ayşe Öğretmen")).toBeInTheDocument();
     expect(screen.getByText("Mert Öğrenci")).toBeInTheDocument();
     expect(screen.getByText("Admin notu: İncelenecek")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Ayşe Eğitmen" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ayşe Öğretmen" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "İptal / iade" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "İhtilaf işaretle" })).not.toBeInTheDocument();
   });
 
   it("dolu liste taraf, zaman, tutar, durum ve notları; boş liste doğru durumu gösterir", () => {
     const gorunum = kur();
-    expect(screen.getByRole("link", { name: "Ayşe Eğitmen" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Ayşe Öğretmen" })).toHaveAttribute(
       "href",
       ROUTES.adminNewCustomer("tutor", 12),
     );
@@ -224,7 +224,7 @@ describe("RezervasyonListesi", () => {
     );
   });
 
-  it("ihtilaflı derste iade / eğitmene ödeme kararı ve öğrencinin bildirdiği sorun görünür", () => {
+  it("ihtilaflı derste iade / öğretmene ödeme kararı ve öğrencinin bildirdiği sorun görünür", () => {
     vi.mocked(useAdminBookingList).mockReturnValue(
       sonuc([
         rezervasyon({
@@ -237,7 +237,7 @@ describe("RezervasyonListesi", () => {
       ]),
     );
     const gorunum = kur();
-    expect(screen.getByText(/Eğitmen derse gelmedi — Kapıya gelmedi/)).toBeTruthy();
+    expect(screen.getByText(/Öğretmen derse gelmedi — Kapıya gelmedi/)).toBeTruthy();
     // Tamamlanmış derste "İptal / iade" yok; para kararı ihtilaf düğmeleriyle verilir.
     expect(screen.queryByRole("button", { name: "İptal / iade" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Öğrenciye iade et" }));
@@ -253,10 +253,10 @@ describe("RezervasyonListesi", () => {
     gorunum.unmount();
 
     kur();
-    fireEvent.click(screen.getByRole("button", { name: "Eğitmene öde" }));
+    fireEvent.click(screen.getByRole("button", { name: "Öğretmene öde" }));
     fireEvent.click(
-      within(screen.getByRole("dialog", { name: "Eğitmene öde" })).getByRole("button", {
-        name: "Eğitmene öde",
+      within(screen.getByRole("dialog", { name: "Öğretmene öde" })).getByRole("button", {
+        name: "Öğretmene öde",
       }),
     );
     expect(cozum).toHaveBeenCalledWith(

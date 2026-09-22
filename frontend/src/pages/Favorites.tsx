@@ -57,8 +57,8 @@ export default function Favorites() {
             </h1>
             <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3">
               <CollectionCard
-                title="Eğitmenler"
-                subtitle={countLabel(tutors?.length, "kayıtlı eğitmen")}
+                title="Öğretmenler"
+                subtitle={countLabel(tutors?.length, "kayıtlı öğretmen")}
                 tiles={tutorTiles}
                 icon={<BookmarkIcon />}
                 onClick={() => setView("tutors")}
@@ -73,7 +73,7 @@ export default function Favorites() {
               {showRecent && recent.length > 0 && (
                 <CollectionCard
                   title="Son görüntülenenler"
-                  subtitle={countLabel(recent.length, "eğitmen")}
+                  subtitle={countLabel(recent.length, "öğretmen")}
                   tiles={recentTiles}
                   icon={<ClockIcon />}
                   onClick={() => setView("recent")}
@@ -85,8 +85,8 @@ export default function Favorites() {
 
         {view === "tutors" && (
           <Detail
-            title="Eğitmenler"
-            count={countLabel(tutors?.length, "kayıtlı eğitmen")}
+            title="Öğretmenler"
+            count={countLabel(tutors?.length, "kayıtlı öğretmen")}
             onBack={backToIndex}
           >
             <TutorsTab data={tutors} isLoading={tutorsLoading} />
@@ -106,16 +106,16 @@ export default function Favorites() {
         {view === "recent" && (
           <Detail
             title="Son görüntülenenler"
-            count={countLabel(recent.length, "eğitmen")}
+            count={countLabel(recent.length, "öğretmen")}
             onBack={backToIndex}
           >
             {recent.length === 0 ? (
               <EmptyState
                 icon={<ClockIcon className="h-7 w-7" />}
-                title="Henüz bir eğitmen görüntülemedin"
-                hint="İncelediğin eğitmenler burada birikir."
+                title="Henüz bir öğretmen görüntülemedin"
+                hint="İncelediğin öğretmenler burada birikir."
                 ctaTo={ROUTES.tutors}
-                ctaLabel="Eğitmenleri keşfet"
+                ctaLabel="Öğretmenleri keşfet"
               />
             ) : (
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -321,10 +321,10 @@ function TutorsTab({
     return (
       <EmptyState
         icon={<BookmarkIcon className="h-7 w-7" />}
-        title="Henüz favori eğitmenin yok"
-        hint="Eğitmen kartındaki kaydet ikonuna dokunarak favorilerine ekleyebilirsin."
+        title="Henüz favori öğretmenin yok"
+        hint="Öğretmen kartındaki kaydet ikonuna dokunarak favorilerine ekleyebilirsin."
         ctaTo={ROUTES.tutors}
-        ctaLabel="Eğitmenleri keşfet"
+        ctaLabel="Öğretmenleri keşfet"
       />
     );
   }

@@ -169,13 +169,13 @@ export default function PublicMarketplace() {
     (degerler.seviye !== undefined ? 1 : 0);
 
   const seoTitle = subjects.length
-    ? `${subjects.join(", ")} Eğitmenleri`
+    ? `${subjects.join(", ")} Öğretmenleri`
     : debouncedQ.trim()
-      ? `"${debouncedQ.trim()}" için eğitmenler`
-      : "Eğitmen Ara";
+      ? `"${debouncedQ.trim()}" için öğretmenler`
+      : "Öğretmen Ara";
   const seoDesc = subjects.length
-    ? `Adana'da ${subjects.join(", ")} dersi veren onaylı, uzman özel ders eğitmenlerini keşfet.`
-    : "Adana'daki onaylı özel ders eğitmenlerini puan, fiyat ve branşa göre ara.";
+    ? `Adana'da ${subjects.join(", ")} dersi veren onaylı, uzman özel ders öğretmenlerini keşfet.`
+    : "Adana'daki onaylı özel ders öğretmenlerini puan, fiyat ve branşa göre ara.";
 
   // Geniş aramada arama butonuna basınca (q/district zaten canlı state'i
   // sürdüğü için) yalnızca geniş paneli kapat.
@@ -410,7 +410,7 @@ export default function PublicMarketplace() {
       )}
 
       {/* DERS ÇİPİ ve DERS ŞEKLİ ŞERİTTE YOK (kullanıcı kararı, 16 Eyl 2026):
-          ikisi de üstteki hapta yazıyor ("Çukurova bölgesindeki eğitmenler /
+          ikisi de üstteki hapta yazıyor ("Çukurova bölgesindeki öğretmenler /
           Matematik • Yüz yüze"); şeritte tekrar gürültüydü. Değiştirmek için
           hap açılır. Sınav çipi kalıyor — hap onu taşımıyor. */}
       </div>
@@ -521,7 +521,7 @@ export default function PublicMarketplace() {
           ) : isError ? (
             <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 ">
               <span>⚠</span>
-              {getErrorMessage(error, "Eğitmenler yüklenemedi.")}
+              {getErrorMessage(error, "Öğretmenler yüklenemedi.")}
             </div>
           ) : organicTutors.length === 0 && featuredIds.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
@@ -529,7 +529,7 @@ export default function PublicMarketplace() {
                 🔍
               </div>
               <p className="mt-4 text-sm font-medium text-slate-700 ">
-                Kriterlere uyan eğitmen bulunamadı
+                Kriterlere uyan öğretmen bulunamadı
               </p>
             </div>
           ) : (
@@ -540,7 +540,7 @@ export default function PublicMarketplace() {
                 onIds={setFeaturedIds}
               />
               <div className="mb-3 flex items-center gap-2 text-xs text-slate-400 ">
-                <span>{organicTutors.length} eğitmen listeleniyor</span>
+                <span>{organicTutors.length} öğretmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-marka-mid" />
