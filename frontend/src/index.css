@@ -568,7 +568,7 @@ path.district-poly {
 .fc {
   --fc-border-color: theme("colors.slate.200");
   --fc-today-bg-color: rgb(var(--marka-soft) / 0.5);
-  --fc-now-indicator-color: rgb(var(--marka-mid));
+  --fc-now-indicator-color: theme("colors.red.600");
   --fc-highlight-color: rgb(var(--marka) / 0.25);
   --fc-non-business-color: theme("colors.slate.200 / 50%");
   --fc-list-event-hover-bg-color: theme("colors.slate.50");
@@ -581,15 +581,61 @@ path.district-poly {
   border-radius: 8px;
 }
 
-/* Izgara ölçüleri — Preply'ın kendi takvim DOM'undan ölçüldü (17 Eyl 2026;
-   16:00 olayı 1280px ⇒ saat 80px): 30 dk satır 40px, saat etiketi 12px
-   ikincil, yarım saat çizgisi soluk, gün başlığı 14px 600, bugün koyu +
-   alt çizgi. Preply de FullCalendar kullanıyor, sınıf adları birebir aynı. */
+/* Izgara ölçüleri — ilk sürüm Preply'ın DOM'undan ölçülmüştü (17 Eyl 2026;
+   saat 80px). Kullanıcı kararı (22 Eyl 2026, Google Takvim referansı): o
+   yükseklik fazla geldi, daha sık/kompakt bir ızgaraya küçültüldü (30 dk
+   satır 28px ⇒ saat 56px). Saat etiketi 12px ikincil, yarım saat çizgisi
+   soluk, gün başlığı 14px 600, bugün koyu + alt çizgi kalanlar aynı. */
 .fc .fc-timegrid-slot {
-  height: 40px;
+  height: 28px;
 }
 .fc .fc-timegrid-slot-minor {
   border-top-color: theme("colors.slate.100");
+}
+
+/* "Şu an" çizgisi — Google Takvim referansı (22 Eyl 2026): sol saat
+   sütunundaki OK işareti kaldırıldı (kullanıcı: "bulunduğumuz saati
+   gösteren onu da kaldır"), çizginin soluna Google'daki gibi dolu bir
+   nokta eklendi (`currentColor` — çizgiyle aynı renk, `--fc-now-indicator-color`
+   üzerinden marka rengini takip eder, ayrı bir renk icat edilmedi). */
+.fc .fc-timegrid-now-indicator-arrow {
+  display: none;
+}
+/* Çekirdek konteynere `overflow: hidden` veriyor — bizim eklediğimiz sol
+   taşan nokta (`::before`, `left: -5px`) tam da bu yüzden kırpılıp hiç
+   görünmüyordu. Google'da nokta komşu sütuna doğru taşar; biz de aynısını
+   istiyoruz (kullanıcı, 22 Eyl 2026: "taşması gerekirken altta kalıyor"). */
+.fc .fc-timegrid-now-indicator-container {
+  overflow: visible;
+}
+.fc .fc-timegrid-now-indicator-line {
+  /* Çizgi elemanı `border-color` kullanıyor, `color` DEĞİL (FullCalendar
+     çekirdeği) — ::before'daki `currentColor` doğru rengi bulsun diye
+     burada AÇIKÇA `color` tanımlanıyor; yoksa nokta miras alınan koyu metin
+     rengine (siyaha yakın) düşerdi, çizgiyle uyuşmazdı.
+     `position` BURADA YAZILMAZ: çekirdek zaten `position: absolute` +
+     `z-index: 4` veriyor (olaylar `z-index: 3`, yani çizgi zaten üstte).
+     Daha önce buraya yanlışlıkla `position: relative` eklenmişti — bu,
+     mutlak konumlandırmayı bozup çizgiyi normal akışa gömüyordu (kullanıcı
+     hatası bildirdi, 22 Eyl 2026); giderildi. Kullanıcı hâlâ "sütunun
+     arasında sıkışıyor" dedi — devtools'ta z-index/position doğruydu,
+     asıl sebep çizginin çekirdek `border-width: 1px 0 0` kalınlığının
+     ızgaranın kendi ince satır çizgileriyle (`fc-timegrid-slot` kenarları)
+     neredeyse aynı incelikte olup görsel olarak onlara karışmasıydı —
+     buraya AÇIKÇA kalınlık veriliyor. */
+  color: var(--fc-now-indicator-color);
+  border-top-width: 2px;
+}
+.fc .fc-timegrid-now-indicator-line::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  transform: translateY(-50%);
 }
 .fc .fc-timegrid-slot-label-cushion {
   padding-right: 12px;
