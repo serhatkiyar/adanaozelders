@@ -1,30 +1,27 @@
 import { useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
-import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
-import { EgitmenYanitAksiyonu } from "@/components/EgitmenYanitAksiyonu";
+import { ReviewsSection } from "@/components/ReviewsSection";
 import { ReportModal } from "@/components/ReportModal";
 import { useMyTutorProfile } from "@/hooks/useTutorProfile";
 import {
-  useReplyToReview,
   useReviewsByTutor,
   useTutorRatingDistribution,
 } from "@/hooks/useReviews";
 import { getErrorMessage } from "@/lib/errors";
 import { ErrorState } from "@/components/admin/ui/PageState";
-import { ADSIZ_UYE } from "@/lib/roles";
+import { kriterOrtalamalari, reviewOutToItem } from "@/lib/reviewStats";
 import { ACIKLAMA, ETIKET } from "@/components/pano/stil";
 
 /**
  * DEĞERLENDİRMELER — eğitmenin ALDIĞI yorumlar (panel şeridi sekmesi).
  *
  * Bu ekran yeni; daha önce eğitmenin yorumlarını göreceği tek yer kendi ilan
- * sayfasıydı (`TutorProfile`), yani öğrencinin gördüğü ekran. Yanıt yazmak da
- * oradan yapılıyordu. Panel şeridi kurulunca kendi yüzeyine çıkarıldı.
+ * sayfasıydı (`TutorProfile`), yani öğrencinin gördüğü ekran. Panel şeridi
+ * kurulunca kendi yüzeyine çıkarıldı.
  *
- * Veri ve yanıt akışı yeniden yazılmadı: `useReviewsByTutor`,
- * `useTutorRatingDistribution`, `useReplyToReview` ve `ReviewsSection` zaten
- * vardı; yanıt düzenleyicisi `EgitmenYanitAksiyonu`'na çıkarılıp iki yüzeyde
- * paylaşıldı.
+ * Öğretmen yanıtı özelliği kaldırıldı (23 Eyl 2026); öğretmen yorumu yalnız
+ * görür ve gerekirse şikayet eder. Anonim yorumda yazar kimliği sunucudan hiç
+ * gelmez.
  */
 export default function TutorReviews() {
   const { data: ilan, isLoading: ilanYukleniyor } = useMyTutorProfile();
@@ -38,22 +35,13 @@ export default function TutorReviews() {
     refetch,
   } = useReviewsByTutor(tutorId);
   const { data: dist } = useTutorRatingDistribution(tutorId);
-  const replyMutation = useReplyToReview(tutorId);
 
   const [raporHedefi, setRaporHedefi] = useState<{
     id: number;
     label: string;
   } | null>(null);
 
-  const items: ReviewItem[] = (reviews ?? []).map((r) => ({
-    id: r.id,
-    name: r.client_name ?? ADSIZ_UYE,
-    avatarUrl: r.client_avatar_url,
-    rating: r.rating,
-    text: r.comment_text,
-    createdAt: r.created_at,
-    reply: r.tutor_reply,
-  }));
+  const items = (reviews ?? []).map(reviewOutToItem);
 
   return (
     <DashboardShell title="Değerlendirmeler" genislik="orta">
@@ -75,7 +63,7 @@ export default function TutorReviews() {
             <p className={ETIKET}>Henüz değerlendirme almadın</p>
             <p className={`mt-2 max-w-md ${ACIKLAMA}`}>
               Tamamlanan her dersten sonra öğrencin puan ve yorum bırakabilir;
-              yazdıkları burada görünür ve buradan yanıtlarsın.
+              yazdıkları burada görünür.
             </p>
           </div>
         ) : (
@@ -83,27 +71,21 @@ export default function TutorReviews() {
             average={dist?.average}
             count={dist?.count ?? items.length}
             distribution={dist}
+            criteria={kriterOrtalamalari(dist)}
             reviews={items}
             // Panelde "tümünü göster" modalı yok: bu sayfanın kendisi tam
             // liste. Sunucu ilk 50 yorumu döner (useReviewsByTutor).
             previewCount={items.length}
             renderItemAction={(item) => (
-              // EgitmenYanitAksiyonu kendi üst boşluğunu (mt-3) zaten taşıyor;
-              // burada tekrar mt-3 eklemek çift boşluğa yol açar. Yanıt
-              // aksiyonu yoksa Bildir tek başına kalır ve mt-3'e ihtiyaç duyar.
-              <div className={item.reply ? "mt-3" : "space-y-2"}>
-                {!item.reply && (
-                  <EgitmenYanitAksiyonu
-                    reviewId={item.id}
-                    replyMutation={replyMutation}
-                  />
-                )}
+              <div className="mt-3">
                 <button
                   type="button"
                   onClick={() =>
                     setRaporHedefi({
                       id: item.id,
-                      label: `${item.name} kişisinin değerlendirmesi`,
+                      label: item.anonymous
+                        ? "Anonim Öğrenci değerlendirmesi"
+                        : `${item.name} kişisinin değerlendirmesi`,
                     })
                   }
                   className="text-xs font-medium text-slate-400 transition hover:text-rose-600"

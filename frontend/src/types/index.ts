@@ -1232,28 +1232,47 @@ export interface ReportOut {
 
 /* ============================ REVIEW ============================ */
 
+/** Değerlendirme (client, tutor) çiftine aittir: öğrenci öğretmeni bir kez
+ *  değerlendirir, sonra aynı kaydı düzenler. booking_id yalnız hakkı veren ders. */
 export interface ReviewCreate {
   booking_id: number;
+  /** Genel puan (zorunlu, alt kriterlerden hesaplanmaz). */
   rating: number;
+  clarity_rating?: number | null;
+  motivation_rating?: number | null;
+  preparation_rating?: number | null;
   comment_text?: string | null;
+  is_anonymous?: boolean;
 }
 
+/** Kısmi güncelleme; alt kriterde `null` puanı temizler. */
 export interface ReviewUpdate {
-  rating?: number | null;
+  rating?: number;
+  clarity_rating?: number | null;
+  motivation_rating?: number | null;
+  preparation_rating?: number | null;
   comment_text?: string | null;
+  is_anonymous?: boolean;
 }
 
 export interface ReviewOut {
   id: number;
-  booking_id: number;
-  client_id: number;
+  /** Anonim değerlendirme sahibi olmayana döndüğünde null. */
+  booking_id: number | null;
+  /** Anonim değerlendirme sahibi olmayana döndüğünde null. */
+  client_id: number | null;
   tutor_id: number;
   rating: number;
+  clarity_rating?: number | null;
+  motivation_rating?: number | null;
+  preparation_rating?: number | null;
   comment_text?: string | null;
-  tutor_reply?: string | null;
+  is_anonymous: boolean;
   created_at: string;
+  /** "Düzenlendi" etiketinin tek kaynağı (updated_at değil). */
+  edited_at?: string | null;
   client_name?: string | null;
-  client_avatar_url?: string | null; // yalnızca liste uçlarında dolu
+  client_avatar_url?: string | null;
 }
 
 /** Yıldız puan dağılımı — özet başlık + 5→1 dağılım çubukları için (eğitmen + kütüphane ortak). */
@@ -1262,6 +1281,14 @@ export interface RatingDistribution {
   average?: number | null;
   /** Yıldız ("1".."5") → adet. */
   distribution: Record<string, number>;
+}
+
+/** Öğretmen değerlendirme özeti: dağılım + alt kriter ortalamaları
+ *  (yalnız o kritere puan verilmiş değerlendirmelerden). */
+export interface TutorRatingSummary extends RatingDistribution {
+  clarity_average?: number | null;
+  motivation_average?: number | null;
+  preparation_average?: number | null;
 }
 
 /* ============================ QA ============================ */

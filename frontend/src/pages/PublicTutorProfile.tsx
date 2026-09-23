@@ -5,7 +5,8 @@ import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
-import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
+import { ReviewsSection } from "@/components/ReviewsSection";
+import { kriterOrtalamalari, reviewOutToItem } from "@/lib/reviewStats";
 import { useEffect, useState } from "react";
 import { useReviewsByTutor, useTutorRatingDistribution } from "@/hooks/useReviews";
 import { useTutorDetail } from "@/hooks/useTutorSearch";
@@ -451,17 +452,8 @@ export default function PublicTutorProfile({
                 average={tutor.rating_average}
                 count={tutor.rating_count}
                 distribution={ratingDist}
-                reviews={(reviews ?? []).map(
-                  (r): ReviewItem => ({
-                    id: r.id,
-                    name: r.client_name ?? "Anonim",
-                    avatarUrl: r.client_avatar_url,
-                    rating: r.rating,
-                    text: r.comment_text,
-                    createdAt: r.created_at,
-                    reply: r.tutor_reply,
-                  })
-                )}
+                criteria={kriterOrtalamalari(ratingDist)}
+                reviews={(reviews ?? []).map(reviewOutToItem)}
                 onShowAll={() => setShowReviews(true)}
               />
             </section>

@@ -39,6 +39,7 @@ import { useReviewByBooking } from "@/hooks/useReviews";
 import { useQaRights } from "@/hooks/useQa";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { formatRange } from "@/lib/datetime";
+import { degerlendirmeTarihi } from "@/lib/reviewStats";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { isLessonJoinable } from "@/lib/lesson";
 import { useMeetingStore } from "@/store/meetingStore";
@@ -87,6 +88,7 @@ export default function LessonDetail() {
   const [showCancel, setShowCancel] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [editReview, setEditReview] = useState(false);
   const [showAsk, setShowAsk] = useState(false);
   const [reviewed, setReviewed] = useState(false);
   const [editingLoc, setEditingLoc] = useState(false);
@@ -523,20 +525,38 @@ export default function LessonDetail() {
             <div className="mt-3">
               <StarRating value={review.rating} />
             </div>
+            {/* Alt kriterler yalnız burada (sahibine / öğretmene) listelenir;
+                public kartlarda tekrarlanmaz. */}
+            {(() => {
+              const kriterler = [
+                ["Netlik", review.clarity_rating],
+                ["Motivasyon", review.motivation_rating],
+                ["Hazırlık", review.preparation_rating],
+              ].filter(([, v]) => v != null);
+              return kriterler.length > 0 ? (
+                <p className={`${ACIKLAMA} mt-2`}>
+                  {kriterler.map(([ad, v]) => `${ad} ${v}`).join(" · ")}
+                </p>
+              ) : null;
+            })()}
             {review.comment_text && (
-              <p className={`${ACIKLAMA} mt-2`}>
+              <p className={`${ACIKLAMA} mt-2 whitespace-pre-line`}>
                 {review.comment_text}
               </p>
             )}
-            {review.tutor_reply && (
-              <div className="mt-4 rounded-lg border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3">
-                <p className="text-sm font-semibold text-marka-metin-hover">
-                  Öğretmen yanıtı
-                </p>
-                <p className={`${ACIKLAMA} mt-1 whitespace-pre-line`}>
-                  {review.tutor_reply}
-                </p>
-              </div>
+            <p className="mt-2 text-xs text-slate-400">
+              {degerlendirmeTarihi(review.created_at, review.edited_at)}
+              {isClient && review.is_anonymous && " · Anonim paylaşıldı"}
+            </p>
+            {/* Değerlendirme dersin değil öğretmenin: o öğretmenle yapılan her
+                dersin detayında aynı kayıt görünür ve buradan düzenlenir. */}
+            {isClient && (
+              <button
+                onClick={() => setEditReview(true)}
+                className={`${DUGME_SATIR_IKINCIL} mt-4`}
+              >
+                Düzenle
+              </button>
             )}
           </section>
         )}
@@ -747,6 +767,14 @@ export default function LessonDetail() {
         <ReviewModal
           bookingId={bookingId}
           onClose={() => setShowReview(false)}
+          onReviewed={() => setReviewed(true)}
+        />
+      )}
+      {editReview && review && (
+        <ReviewModal
+          bookingId={bookingId}
+          existing={review}
+          onClose={() => setEditReview(false)}
           onReviewed={() => setReviewed(true)}
         />
       )}

@@ -1,10 +1,15 @@
 import { apiClient } from "@/api/axios";
-import type { RatingDistribution, ReviewCreate, ReviewOut } from "@/types";
+import type {
+  ReviewCreate,
+  ReviewOut,
+  ReviewUpdate,
+  TutorRatingSummary,
+} from "@/types";
 
 export async function tutorRatingDistribution(
   tutorId: number
-): Promise<RatingDistribution> {
-  const { data } = await apiClient.get<RatingDistribution>(
+): Promise<TutorRatingSummary> {
+  const { data } = await apiClient.get<TutorRatingSummary>(
     "/reviews/distribution",
     { params: { tutor_id: tutorId } }
   );
@@ -40,13 +45,13 @@ export async function reviewByBooking(
   return data;
 }
 
-export async function replyToReview(
+export async function updateReview(
   reviewId: number,
-  reply: string
+  payload: ReviewUpdate
 ): Promise<ReviewOut> {
-  const { data } = await apiClient.post<ReviewOut>(
-    `/reviews/${reviewId}/reply`,
-    { reply }
+  const { data } = await apiClient.patch<ReviewOut>(
+    `/reviews/${reviewId}`,
+    payload
   );
   return data;
 }

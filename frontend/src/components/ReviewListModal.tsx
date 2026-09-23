@@ -1,8 +1,8 @@
-import { Avatar } from "@/components/Avatar";
+import { YorumYazari } from "@/components/ReviewsSection";
 import { StarRating } from "@/components/StarRating";
 import { useReviewsByTutor } from "@/hooks/useReviews";
 import { useModalPanel } from "@/hooks/useModalA11y";
-import { formatDateTime } from "@/lib/datetime";
+import { reviewOutToItem } from "@/lib/reviewStats";
 
 interface ReviewListModalProps {
   tutorId: number;
@@ -53,43 +53,21 @@ export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModal
           ) : (
             <div className="space-y-4">
               {reviews.map((review) => {
-                const name = review.client_name ?? "Anonim";
+                const item = reviewOutToItem(review);
                 return (
                   <div
                     key={review.id}
                     className="rounded-xl border border-slate-200 bg-white p-4 "
                   >
-                    <div className="flex items-start gap-3">
-                      <Avatar name={name} avatar_url={review.client_avatar_url} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold text-slate-800 ">
-                            {name}
-                          </span>
-                          <span className="shrink-0 text-xs text-slate-400">
-                            {formatDateTime(review.created_at)}
-                          </span>
-                        </div>
-                        <div className="mt-1">
-                          <StarRating value={review.rating} />
-                        </div>
-                        {review.comment_text && (
-                          <p className="mt-2 text-sm leading-relaxed text-slate-600 ">
-                            {review.comment_text}
-                          </p>
-                        )}
-                        {review.tutor_reply && (
-                          <div className="mt-3 rounded-xl border-l-2 border-marka-mid bg-marka-soft/60 px-4 py-3 ">
-                            <p className="text-xs font-semibold text-marka-metin-hover ">
-                              Öğretmen yanıtı
-                            </p>
-                            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
-                              {review.tutor_reply}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                    <YorumYazari review={item} size="sm" />
+                    <div className="mt-2">
+                      <StarRating value={review.rating} />
                     </div>
+                    {review.comment_text && (
+                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
+                        {review.comment_text}
+                      </p>
+                    )}
                   </div>
                 );
               })}

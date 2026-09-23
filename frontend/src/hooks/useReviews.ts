@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createReview,
   listReviews,
-  replyToReview,
   reviewByBooking,
   tutorRatingDistribution,
+  updateReview,
 } from "@/api/reviews";
-import type { ReviewCreate } from "@/types";
+import type { ReviewCreate, ReviewUpdate } from "@/types";
 
 export function useCreateReview() {
   const qc = useQueryClient();
@@ -45,13 +45,15 @@ export function useTutorRatingDistribution(tutorId: number) {
   });
 }
 
-export function useReplyToReview(tutorId: number) {
+export function useUpdateReview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ reviewId, reply }: { reviewId: number; reply: string }) =>
-      replyToReview(reviewId, reply),
+    mutationFn: ({ reviewId, payload }: { reviewId: number; payload: ReviewUpdate }) =>
+      updateReview(reviewId, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews", "tutor", tutorId] });
+      // Profil listesi, özet ortalamaları ve tutor rating'i tazelenmeli.
+      qc.invalidateQueries({ queryKey: ["reviews"] });
+      qc.invalidateQueries({ queryKey: ["tutors"] });
     },
   });
 }

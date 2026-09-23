@@ -4,8 +4,8 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
-import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
-import { EgitmenYanitAksiyonu } from "@/components/EgitmenYanitAksiyonu";
+import { ReviewsSection } from "@/components/ReviewsSection";
+import { kriterOrtalamalari, reviewOutToItem } from "@/lib/reviewStats";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
 import {
@@ -19,7 +19,6 @@ import { ReviewListModal } from "@/components/ReviewListModal";
 import { useTutorDetail } from "@/hooks/useTutorSearch";
 import {
   useReviewsByTutor,
-  useReplyToReview,
   useTutorRatingDistribution,
 } from "@/hooks/useReviews";
 import { useBookings } from "@/hooks/useBookings";
@@ -81,7 +80,6 @@ export default function TutorProfile({
 
   const [showBookingModal, setShowBookingModal] = useState(false);
 
-  const replyMutation = useReplyToReview(tutorId);
   /* Anonim kabukla AYNI karar — bkz. `PublicTutorProfile`. Rotanın iki kabuğu
      ayrışmasın diye mobil düzen ortak bileşende. */
   const mobil = useMobil();
@@ -432,29 +430,9 @@ export default function TutorProfile({
                 average={tutor.rating_average}
                 count={tutor.rating_count}
                 distribution={ratingDist}
-                reviews={(reviews ?? []).map(
-                  (r): ReviewItem => ({
-                    id: r.id,
-                    name: r.client_name ?? "Anonim",
-                    avatarUrl: r.client_avatar_url,
-                    rating: r.rating,
-                    text: r.comment_text,
-                    createdAt: r.created_at,
-                    reply: r.tutor_reply,
-                  })
-                )}
+                criteria={kriterOrtalamalari(ratingDist)}
+                reviews={(reviews ?? []).map(reviewOutToItem)}
                 onShowAll={() => setShowReviews(true)}
-                renderItemAction={
-                  isOwnerTutor
-                    ? (item) =>
-                        item.reply ? null : (
-                          <EgitmenYanitAksiyonu
-                            reviewId={item.id}
-                            replyMutation={replyMutation}
-                          />
-                        )
-                    : undefined
-                }
               />
             </section>
           </div>

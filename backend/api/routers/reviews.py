@@ -14,13 +14,11 @@ from core.database import get_db
 from models.client import Client
 from models.review import Review
 from models.role import RoleType
-from models.tutor import Tutor
 from schemas.review import (
-    RatingDistributionOut,
     ReviewCreate,
     ReviewOut,
     ReviewUpdate,
-    TutorReply,
+    TutorRatingSummaryOut,
 )
 from services import review_service
 
@@ -56,7 +54,11 @@ async def create_review(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
-    return await review_service.create_review(db, client, payload)
+    out = await review_service.create_review(db, client, payload)
+    # get_db commit'i yanıttan SONRA çalışır; mutation sonrası anında gelen
+    # refetch eski veriyi okumasın diye commit yanıttan önce (blog.py deseni).
+    await db.commit()
+    return out
 
 
 @router.get("", response_model=list[ReviewOut])
@@ -71,7 +73,7 @@ async def list_reviews(
     )
 
 
-@router.get("/distribution", response_model=RatingDistributionOut)
+@router.get("/distribution", response_model=TutorRatingSummaryOut)
 async def review_distribution(
     tutor_id: int = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -87,16 +89,20 @@ async def get_review_by_booking(
 ):
     # Sahiplik kararı TEK ortak yardımcıda (İP-3 §5.3) — router kopyalamaz.
     await review_service.assert_booking_review_viewer(db, user, booking_id)
-    return await review_service.get_by_booking(db, booking_id)
+    return await review_service.get_by_booking(db, booking_id, viewer=user)
 
 
 @router.get("/{review_id}", response_model=ReviewOut)
 async def get_review(
     review_id: int,
-    _user: CurrentUser = Depends(get_current_active_user),
+    user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await _get_review_or_404(db, review_id)
+    review = await _get_review_or_404(db, review_id)
+    # Moderasyonla gizlenen yorum yalnız sahibine / admine görünür.
+    if review.is_hidden and not review_service.yazari_gorebilir_mi(user, review):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Review not found")
+    return await review_service.review_out(db, review, viewer=user)
 
 
 @router.patch("/{review_id}", response_model=ReviewOut)
@@ -108,7 +114,9 @@ async def update_review(
 ):
     review = await _get_review_or_404(db, review_id)
     _assert_owner(review, client)
-    return await review_service.update_review(db, review, payload)
+    out = await review_service.update_review(db, review, payload, viewer=client)
+    await db.commit()
+    return out
 
 
 @router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -120,16 +128,4 @@ async def delete_review(
     review = await _get_review_or_404(db, review_id)
     _assert_owner(review, client)
     await review_service.delete_review(db, review)
-
-
-@router.post("/{review_id}/reply", response_model=ReviewOut)
-async def reply_to_review(
-    review_id: int,
-    payload: TutorReply,
-    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
-    db: AsyncSession = Depends(get_db),
-):
-    review = await _get_review_or_404(db, review_id)
-    if review.tutor_id != tutor.id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your review")
-    return await review_service.add_reply(db, review, payload.reply)
+    await db.commit()

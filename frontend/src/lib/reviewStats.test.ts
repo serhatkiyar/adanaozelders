@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { toDistributionRows } from "@/lib/reviewStats";
+import {
+  degerlendirmeTarihi,
+  kriterOrtalamalari,
+  reviewOutToItem,
+  toDistributionRows,
+} from "@/lib/reviewStats";
+import type { ReviewOut } from "@/types";
 
 describe("toDistributionRows", () => {
   it("boş/tanımsız girdide 5 satır, hepsi 0", () => {
@@ -43,5 +49,59 @@ describe("toDistributionRows", () => {
   it("toplam 0 iken bölme hatası vermez", () => {
     const rows = toDistributionRows({ count: 0, distribution: {} });
     expect(rows.every((r) => r.pct === 0)).toBe(true);
+  });
+});
+
+describe("degerlendirmeTarihi", () => {
+  it("düzenlenmemişse yalnız oluşturma tarihi", () => {
+    expect(degerlendirmeTarihi("2026-09-12T10:00:00Z")).toBe("12 Eylül 2026");
+  });
+  it("düzenlendiyse edited_at ikinci tarih olur", () => {
+    expect(
+      degerlendirmeTarihi("2026-09-12T10:00:00Z", "2026-09-20T10:00:00Z")
+    ).toBe("12 Eylül 2026 · Düzenlendi 20 Eylül 2026");
+  });
+});
+
+describe("reviewOutToItem", () => {
+  const temel: ReviewOut = {
+    id: 1,
+    booking_id: 10,
+    client_id: 20,
+    tutor_id: 30,
+    rating: 5,
+    comment_text: "Harika",
+    is_anonymous: false,
+    created_at: "2026-09-12T10:00:00Z",
+    client_name: "Ayşe",
+    client_avatar_url: "avatars/a.jpg",
+  };
+  it("anonimse ad 'Anonim Öğrenci', fotoğraf yok", () => {
+    const item = reviewOutToItem({ ...temel, is_anonymous: true });
+    expect(item.name).toBe("Anonim Öğrenci");
+    expect(item.avatarUrl).toBeNull();
+    expect(item.anonymous).toBe(true);
+  });
+  it("anonim değilse ad ve fotoğraf korunur", () => {
+    const item = reviewOutToItem(temel);
+    expect(item.name).toBe("Ayşe");
+    expect(item.avatarUrl).toBe("avatars/a.jpg");
+  });
+});
+
+describe("kriterOrtalamalari", () => {
+  it("yalnız puan almış kriterleri döner", () => {
+    expect(
+      kriterOrtalamalari({
+        count: 2,
+        distribution: {},
+        clarity_average: 4.9,
+        motivation_average: null,
+        preparation_average: 4.7,
+      })
+    ).toEqual([
+      { ad: "Netlik", ortalama: 4.9 },
+      { ad: "Hazırlık", ortalama: 4.7 },
+    ]);
   });
 });

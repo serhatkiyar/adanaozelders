@@ -1,39 +1,76 @@
 from __future__ import annotations
 
 import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+Puan = Annotated[int, Field(ge=1, le=5)]
+YORUM_MAKS = 2000
+
+
+def _bos_yorum_none(v: str | None) -> str | None:
+    if v is None:
+        return None
+    v = v.strip()
+    return v or None
 
 
 class ReviewCreate(BaseModel):
     booking_id: int
-    rating: int = Field(ge=1, le=5)
-    comment_text: str | None = None
+    # Genel puan zorunlu; alt kriterlerden hesaplanmaz.
+    rating: Puan
+    clarity_rating: Puan | None = None
+    motivation_rating: Puan | None = None
+    preparation_rating: Puan | None = None
+    comment_text: str | None = Field(default=None, max_length=YORUM_MAKS)
+    is_anonymous: bool = False
+
+    _yorum = field_validator("comment_text")(_bos_yorum_none)
 
 
 class ReviewUpdate(BaseModel):
-    rating: int | None = Field(default=None, ge=1, le=5)
-    comment_text: str | None = None
+    """Kısmi güncelleme (`exclude_unset`). Alt kriterde açık `null` puanı
+    temizler; genel puan ve anonimlik için `null` kabul edilmez."""
+
+    rating: Puan | None = None
+    clarity_rating: Puan | None = None
+    motivation_rating: Puan | None = None
+    preparation_rating: Puan | None = None
+    comment_text: str | None = Field(default=None, max_length=YORUM_MAKS)
+    is_anonymous: bool | None = None
+
+    _yorum = field_validator("comment_text")(_bos_yorum_none)
+
+    @model_validator(mode="after")
+    def _zorunlular_null_olamaz(self) -> "ReviewUpdate":
+        for alan in ("rating", "is_anonymous"):
+            if alan in self.model_fields_set and getattr(self, alan) is None:
+                raise ValueError(f"{alan} boş bırakılamaz")
+        return self
 
 
 class ReviewOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    booking_id: int
-    client_id: int
+    # Anonim değerlendirme sahibi olmayana döndüğünde kimliği ele veren
+    # alanlar (booking_id, client_id, ad, fotoğraf) None'dır.
+    booking_id: int | None = None
+    client_id: int | None = None
     tutor_id: int
     rating: int
+    clarity_rating: int | None = None
+    motivation_rating: int | None = None
+    preparation_rating: int | None = None
     comment_text: str | None = None
-    tutor_reply: str | None = None
+    is_anonymous: bool = False
     created_at: datetime.datetime
-    # Yorum geçmişinde göstermek için; list_reviews dışında None döner.
+    # "Düzenlendi" etiketi yalnız bundan beslenir (updated_at değil).
+    edited_at: datetime.datetime | None = None
     client_name: str | None = None
     client_avatar_url: str | None = None
-
-
-class TutorReply(BaseModel):
-    reply: str = Field(min_length=1, max_length=2000)
 
 
 class RatingDistributionOut(BaseModel):
@@ -44,3 +81,12 @@ class RatingDistributionOut(BaseModel):
     average: float | None = None
     # Yıldız (1..5) → adet.
     distribution: dict[int, int] = Field(default_factory=dict)
+
+
+class TutorRatingSummaryOut(RatingDistributionOut):
+    """Öğretmen değerlendirme özeti: genel dağılım + alt kriter ortalamaları.
+    Alt kriter ortalaması yalnız o kritere puan verilmiş kayıtlardan hesaplanır."""
+
+    clarity_average: float | None = None
+    motivation_average: float | None = None
+    preparation_average: float | None = None

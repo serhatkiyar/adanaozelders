@@ -4,6 +4,7 @@ import datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
@@ -14,7 +15,13 @@ from models.payment import Payment, PaymentStatus
 from models.review import Review
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
-from schemas.review import RatingDistributionOut, ReviewCreate, ReviewUpdate
+from schemas.review import (
+    RatingDistributionOut,
+    ReviewCreate,
+    ReviewOut,
+    ReviewUpdate,
+    TutorRatingSummaryOut,
+)
 from services import notification_service
 
 
@@ -123,7 +130,7 @@ async def degerlendirilebilir_mi(db: AsyncSession, booking: Booking) -> bool:
 
 async def create_review(
     db: AsyncSession, client: Client, data: ReviewCreate
-) -> Review:
+) -> ReviewOut:
     booking = await db.get(Booking, data.booking_id)
     if booking is None or booking.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
@@ -131,13 +138,8 @@ async def create_review(
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "You can only review your own bookings"
         )
-    booking_degerlendirildi = (
-        await db.scalar(
-            select(Review.id).where(
-                Review.booking_id == data.booking_id, Review.deleted_at.is_(None)
-            )
-        )
-    ) is not None
+    # Değerlendirme (client, tutor) çiftine aittir; "zaten değerlendirdi"
+    # kararı booking üzerinden değil çift üzerinden verilir.
     engel = degerlendirme_engeli(
         booking,
         booking.payment,
@@ -145,7 +147,6 @@ async def create_review(
         egitmen_zaten_degerlendirildi=await egitmen_degerlendirildi_mi(
             db, client_id=booking.client_id, tutor_id=booking.tutor_id
         ),
-        booking_zaten_degerlendirildi=booking_degerlendirildi,
     )
     if engel is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, engel)
@@ -155,13 +156,26 @@ async def create_review(
         client_id=booking.client_id,
         tutor_id=booking.tutor_id,
         rating=data.rating,
+        clarity_rating=data.clarity_rating,
+        motivation_rating=data.motivation_rating,
+        preparation_rating=data.preparation_rating,
         # Yorumlar public profilde görünür — maskesiz kalan bir kanaldı.
         comment_text=mask_contact_info(data.comment_text),
+        is_anonymous=data.is_anonymous,
     )
-    db.add(review)
-    await db.flush()
+    try:
+        # Eşzamanlı iki istek servis kontrolünü birlikte geçebilir; son söz
+        # uq_reviews_client_tutor_active index'inindir.
+        async with db.begin_nested():
+            db.add(review)
+            await db.flush()
+    except IntegrityError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu öğretmeni zaten değerlendirdiniz."
+        ) from None
     await db.execute(_adjust_tutor_rating(booking.tutor_id, 1, data.rating))
     await db.refresh(review)
+    # Anonim olabilir: bildirim metni öğrenci adı içermez.
     await notification_service.notify(
         db,
         user_id=booking.tutor_id,
@@ -169,20 +183,7 @@ async def create_review(
         message="Tamamlanan bir dersin için yeni bir değerlendirme aldın.",
         link="/tutor",
     )
-    return review
-
-
-async def add_reply(db: AsyncSession, review: Review, reply: str) -> Review:
-    review.tutor_reply = reply
-    await db.flush()
-    await notification_service.notify(
-        db,
-        user_id=review.client_id,
-        role_id=ROLE_IDS[RoleType.CLIENT],
-        message="Öğretmen değerlendirmene yanıt verdi.",
-        link="/student/bookings",
-    )
-    return review
+    return herkese_acik_yap(review, client.first_name, client.avatar_url, sahip_mi=True)
 
 
 async def get_review(db: AsyncSession, review_id: int) -> Review | None:
@@ -222,22 +223,92 @@ async def assert_booking_review_viewer(
     raise HTTPException(status.HTTP_404_NOT_FOUND, "Ders bulunamadı")
 
 
-async def get_by_booking(db: AsyncSession, booking_id: int) -> Review | None:
+def herkese_acik_yap(
+    review: Review, ad: str | None, avatar_url: str | None, *, sahip_mi: bool
+) -> ReviewOut:
+    """Değerlendirmeyi yanıta çevirir — yazar görünürlüğünün TEK karar yeri.
+
+    Yazar yalnız ADIYLA görünür (ÜK-9). Anonim değerlendirmede sahibi olmayana
+    (public, öğretmen) ad, fotoğraf ve yazarı ele verebilecek `client_id` /
+    `booking_id` hiç gönderilmez.
+    """
+    out = ReviewOut.model_validate(review)
+    if review.is_anonymous and not sahip_mi:
+        return out.model_copy(
+            update={
+                "client_id": None,
+                "booking_id": None,
+                "client_name": None,
+                "client_avatar_url": None,
+            }
+        )
+    return out.model_copy(update={"client_name": ad, "client_avatar_url": avatar_url})
+
+
+def yazari_gorebilir_mi(user, review: Review) -> bool:
+    """Anonimliğe rağmen yazarı görebilen: yalnız değerlendirmenin sahibi.
+    Moderasyon admini gerçek yazarı ders ucundan (`reports.view` denetimli)
+    ve admin şikayet ekranından görür."""
+    return isinstance(user, Client) and review.client_id == user.id
+
+
+async def _yazar(db: AsyncSession, review: Review) -> tuple[str | None, str | None]:
     row = (
         await db.execute(
-            select(Review, Client.first_name, Client.avatar_url)
-            .join(Client, Review.client_id == Client.id)
-            .where(Review.booking_id == booking_id, Review.deleted_at.is_(None))
+            select(Client.first_name, Client.avatar_url).where(
+                Client.id == review.client_id
+            )
         )
     ).first()
-    if row is None:
+    return (row[0], row[1]) if row else (None, None)
+
+
+async def review_out(
+    db: AsyncSession, review: Review, *, viewer, yetkili_admin: bool = False
+) -> ReviewOut:
+    ad, avatar_url = await _yazar(db, review)
+    return herkese_acik_yap(
+        review,
+        ad,
+        avatar_url,
+        sahip_mi=yetkili_admin or yazari_gorebilir_mi(viewer, review),
+    )
+
+
+async def get_by_booking(
+    db: AsyncSession, booking_id: int, *, viewer
+) -> ReviewOut | None:
+    """Dersin (client, tutor) çiftine ait aktif değerlendirme.
+
+    Değerlendirme booking'e değil çifte aittir: öğrenci o öğretmenle yaptığı
+    HER dersin detayında aynı değerlendirmeyi görür ve düzenler. Öğretmen
+    anonim değerlendirmeyi ders üzerinden göremez — ders, yazarın kim
+    olduğunu söylerdi.
+    """
+    booking = await db.get(Booking, booking_id)
+    if booking is None or booking.deleted_at is not None:
         return None
-    review, ad, avatar_url = row
-    # Yorum yazarı yalnız ADIYLA görünür (ÜK-9): bu uç auth'suz, yani
-    # öğrencinin tam adı giriş yapmamış herkese açık olurdu.
-    review.client_name = ad
-    review.client_avatar_url = avatar_url
-    return review
+    review = await db.scalar(
+        select(Review).where(
+            Review.client_id == booking.client_id,
+            Review.tutor_id == booking.tutor_id,
+            Review.deleted_at.is_(None),
+        )
+    )
+    if review is None:
+        return None
+    from models.admin import Admin
+
+    # Admin buraya yalnız assert_booking_review_viewer'daki reports.view
+    # denetiminden geçerek ulaşır; moderasyon için gerçek yazarı görür.
+    yetkili_admin = isinstance(viewer, Admin)
+    if (
+        review.is_anonymous
+        and not yetkili_admin
+        and not yazari_gorebilir_mi(viewer, review)
+    ):
+        return None
+    return await review_out(db, review, viewer=viewer, yetkili_admin=yetkili_admin)
 
 
 async def list_reviews(
@@ -247,7 +318,7 @@ async def list_reviews(
     client_id: int | None = None,
     limit: int = 20,
     offset: int = 0,
-) -> list[Review]:
+) -> list[ReviewOut]:
     stmt = (
         select(Review, Client.first_name, Client.avatar_url)
         .join(Client, Review.client_id == Client.id)
@@ -261,50 +332,96 @@ async def list_reviews(
         stmt = stmt.where(Review.client_id == client_id)
     stmt = stmt.order_by(Review.created_at.desc()).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
-    reviews: list[Review] = []
-    for review, ad, avatar_url in rows:
-        # Yalnız ad (ÜK-9) — transient alan, serileştirme için.
-        review.client_name = ad
-        review.client_avatar_url = avatar_url
-        reviews.append(review)
-    return reviews
+    return [
+        herkese_acik_yap(review, ad, avatar_url, sahip_mi=False)
+        for review, ad, avatar_url in rows
+    ]
 
 
 async def rating_distribution(
     db: AsyncSession, tutor_id: int
-) -> RatingDistributionOut:
-    """Bir eğitmenin yıldız dağılımı (silinmemiş VE gizlenmemiş yorumlar)."""
+) -> TutorRatingSummaryOut:
+    """Bir öğretmenin yıldız dağılımı + alt kriter ortalamaları (silinmemiş VE
+    gizlenmemiş yorumlar). AVG NULL'ları saymaz: alt kriter ortalaması yalnız
+    o kritere puan verilmiş değerlendirmelerden çıkar."""
+    canli = (
+        Review.tutor_id == tutor_id,
+        Review.deleted_at.is_(None),
+        Review.hidden_at.is_(None),
+    )
     rows = (
         await db.execute(
-            select(Review.rating, func.count())
-            .where(
-                Review.tutor_id == tutor_id,
-                Review.deleted_at.is_(None),
-                Review.hidden_at.is_(None),
-            )
-            .group_by(Review.rating)
+            select(Review.rating, func.count()).where(*canli).group_by(Review.rating)
         )
     ).all()
-    return _build_distribution(rows)
+    netlik, motivasyon, hazirlik = (
+        await db.execute(
+            select(
+                func.avg(Review.clarity_rating),
+                func.avg(Review.motivation_rating),
+                func.avg(Review.preparation_rating),
+            ).where(*canli)
+        )
+    ).one()
+
+    def _f(v) -> float | None:
+        return float(v) if v is not None else None
+
+    return TutorRatingSummaryOut(
+        **_build_distribution(rows).model_dump(),
+        clarity_average=_f(netlik),
+        motivation_average=_f(motivasyon),
+        preparation_average=_f(hazirlik),
+    )
+
+
+# Değişince "Düzenlendi" etiketini tetikleyen alanlar. is_anonymous bilerek
+# yok: yalnız görünürlük tercihini değiştirmek içerik düzenlemesi sayılmaz.
+ICERIK_ALANLARI = (
+    "rating",
+    "clarity_rating",
+    "motivation_rating",
+    "preparation_rating",
+    "comment_text",
+)
+
+
+def icerik_degisti_mi(review: Review, yeni: dict) -> bool:
+    """`yeni` (maskelenmiş, exclude_unset payload) içerik alanlarından birini
+    gerçekten değiştiriyor mu? Aynı değeri tekrar göndermek düzenleme değildir."""
+    return any(
+        alan in yeni and yeni[alan] != getattr(review, alan)
+        for alan in ICERIK_ALANLARI
+    )
 
 
 async def update_review(
-    db: AsyncSession, review: Review, data: ReviewUpdate
-) -> Review:
+    db: AsyncSession, review: Review, data: ReviewUpdate, *, viewer
+) -> ReviewOut:
     payload = data.model_dump(exclude_unset=True)
-    new_rating = payload.get("rating")
-    if new_rating is not None and new_rating != review.rating:
-        await db.execute(
-            _adjust_tutor_rating(review.tutor_id, 0, new_rating - review.rating)
-        )
-        review.rating = new_rating
     if "comment_text" in payload:
-        review.comment_text = mask_contact_info(payload["comment_text"])
+        payload["comment_text"] = mask_contact_info(payload["comment_text"])
+    if icerik_degisti_mi(review, payload):
+        review.edited_at = datetime.datetime.now(datetime.timezone.utc)
+    new_rating = payload.pop("rating", None)
+    if new_rating is not None and new_rating != review.rating:
+        # Gizlenmiş yorum puan toplamından zaten düşülmüştür; farkı uygulamak
+        # toplamı bozar (unhide o anki rating'i geri ekler).
+        if not review.is_hidden:
+            await db.execute(
+                _adjust_tutor_rating(review.tutor_id, 0, new_rating - review.rating)
+            )
+        review.rating = new_rating
+    for alan, deger in payload.items():
+        setattr(review, alan, deger)
     await db.flush()
-    return review
+    await db.refresh(review)
+    return await review_out(db, review, viewer=viewer)
 
 
 async def delete_review(db: AsyncSession, review: Review) -> None:
-    await db.execute(_adjust_tutor_rating(review.tutor_id, -1, -review.rating))
+    # Gizlenmiş yorum toplamdan zaten düşülmüştür; ikinci kez düşülmez.
+    if not review.is_hidden:
+        await db.execute(_adjust_tutor_rating(review.tutor_id, -1, -review.rating))
     review.deleted_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()

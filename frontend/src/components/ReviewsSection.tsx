@@ -1,8 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
-import { formatDate } from "@/lib/datetime";
-import { toDistributionRows } from "@/lib/reviewStats";
+import { degerlendirmeTarihi, toDistributionRows } from "@/lib/reviewStats";
 import type { RatingDistribution } from "@/types";
 
 /** Eğitmen ve kütüphane değerlendirmeleri için ortak, normalize edilmiş öğe. */
@@ -13,8 +12,10 @@ export interface ReviewItem {
   rating: number;
   text?: string | null;
   createdAt: string;
-  /** Eğitmen yanıtı (varsa). */
-  reply?: string | null;
+  /** Öğrenci içeriği düzenlediyse "Düzenlendi" tarihi. */
+  editedAt?: string | null;
+  /** Anonim: fotoğraf yerine nötr yer tutucu gösterilir. */
+  anonymous?: boolean;
   /** Kütüphane: doğrulanmış ziyaretçi. */
   verified?: boolean;
 }
@@ -24,6 +25,8 @@ interface ReviewsSectionProps {
   average?: number | null;
   count: number;
   distribution?: RatingDistribution | null;
+  /** Alt kriter ortalamaları (yalnız puan almış olanlar), özetin altında tek satır. */
+  criteria?: { ad: string; ortalama: number }[];
   /** Zaten yüklü (ilk sayfa) değerlendirmeler. */
   reviews: ReviewItem[];
   /** Gömük gösterilecek kart sayısı (varsayılan 6). */
@@ -32,7 +35,7 @@ interface ReviewsSectionProps {
   form?: ReactNode;
   /** "Tümünü göster" — taşan değerlendirmeleri görüntüler (genelde modal). */
   onShowAll?: () => void;
-  /** Her kartın altına ek aksiyon (ör. eğitmen yanıtı düzenleyici). */
+  /** Her kartın altına ek aksiyon (ör. şikayet et). */
   renderItemAction?: (review: ReviewItem) => ReactNode;
 }
 
@@ -43,6 +46,7 @@ export function ReviewsSection({
   average,
   count,
   distribution,
+  criteria = [],
   reviews,
   previewCount = 6,
   form,
@@ -69,6 +73,19 @@ export function ReviewsSection({
             : "· Henüz değerlendirme yok"}
         </span>
       </div>
+      {count > 0 && criteria.length > 0 && (
+        <p className="mt-2 text-sm text-slate-600 ">
+          {criteria.map((k, i) => (
+            <span key={k.ad}>
+              {i > 0 && <span className="text-slate-300"> · </span>}
+              {k.ad}{" "}
+              <span className="font-semibold tabular-nums text-slate-900">
+                {k.ortalama.toFixed(1)}
+              </span>
+            </span>
+          ))}
+        </p>
+      )}
 
       {/* Dağılım + yorum formu */}
       {(count > 0 || form) && (
@@ -126,7 +143,7 @@ export function ReviewsSection({
 }
 
 // Tek yorum kartı: avatar + ad + tarih, yıldız, 4 satıra kırpılan metin
-// ("Daha fazlasını göster" ile açılır) ve varsa eğitmen yanıtı.
+// ("Daha fazlasını göster" ile açılır). Alt kriterler kartta tekrarlanmaz.
 function ReviewCard({
   review,
   action,
@@ -140,17 +157,7 @@ function ReviewCard({
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <Avatar name={review.name} avatar_url={review.avatarUrl} size="md" />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900 ">
-            {review.name}
-          </p>
-          <p className="text-xs text-slate-400 ">
-            {formatDate(review.createdAt)}
-          </p>
-        </div>
-      </div>
+      <YorumYazari review={review} size="md" />
 
       <div className="mt-2 flex items-center gap-2">
         <StarRating value={review.rating} />
@@ -189,18 +196,44 @@ function ReviewCard({
         </>
       )}
 
-      {review.reply && (
-        <div className="mt-3 rounded-xl border-l-2 border-slate-300 bg-slate-50 px-4 py-3 ">
-          <p className="text-xs font-semibold text-slate-700 ">
-            Öğretmen yanıtı
-          </p>
-          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
-            {review.reply}
-          </p>
-        </div>
-      )}
-
       {action}
+    </div>
+  );
+}
+
+/** Yorum kartı başlığı: avatar (anonimse nötr yer tutucu) + ad + tarih satırı.
+ *  Profil ızgarası ve "tümünü göster" penceresi aynı kuralı kullanır. */
+export function YorumYazari({
+  review,
+  size,
+}: {
+  review: Pick<ReviewItem, "name" | "avatarUrl" | "anonymous" | "createdAt" | "editedAt">;
+  size: "sm" | "md";
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {review.anonymous ? (
+        <span
+          aria-hidden
+          className={`flex shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 ${
+            size === "md" ? "h-11 w-11" : "h-9 w-9"
+          }`}
+        >
+          <svg viewBox="0 0 20 20" className="h-1/2 w-1/2" fill="currentColor">
+            <path d="M10 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 8a7 7 0 0 1 14 0H3z" />
+          </svg>
+        </span>
+      ) : (
+        <Avatar name={review.name} avatar_url={review.avatarUrl} size={size} />
+      )}
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-slate-900 ">
+          {review.name}
+        </p>
+        <p className="text-xs text-slate-400 ">
+          {degerlendirmeTarihi(review.createdAt, review.editedAt)}
+        </p>
+      </div>
     </div>
   );
 }

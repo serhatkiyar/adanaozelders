@@ -1335,13 +1335,26 @@ async def get_booking(
     booking.tutor_avatar_url = tutor_avatar
     booking.client_name = client_name
     booking.client_avatar_url = client_avatar
-    review_id = await db.scalar(
-        select(Review.id).where(
-            Review.booking_id == booking.id, Review.deleted_at.is_(None)
+    # Değerlendirme dersin değil (client, tutor) çiftinindir.
+    review_anonim = await db.scalar(
+        select(Review.is_anonymous).where(
+            Review.client_id == booking.client_id,
+            Review.tutor_id == booking.tutor_id,
+            Review.deleted_at.is_(None),
         )
     )
-    booking.reviewed = review_id is not None
-    booking.can_review = await review_service.degerlendirilebilir_mi(db, booking)
+    booking.reviewed = _reviewed_bayragi(
+        review_anonim,
+        ogretmen_bakiyor=viewer is not None
+        and viewer.role_id == ROLE_IDS[RoleType.TUTOR],
+    )
+    # Yalnız öğrenciye hesaplanır (liste ucuyla aynı): öğretmene dönseydi
+    # "bu öğrenci beni değerlendirdi" bilgisini anonim yorumda da ele verirdi.
+    booking.can_review = (
+        viewer is not None
+        and viewer.role_id == ROLE_IDS[RoleType.CLIENT]
+        and await review_service.degerlendirilebilir_mi(db, booking)
+    )
     # Özel notlar yalnızca sahibine döner. viewer verilmezse (örn. dahili çağrı)
     # güvenli tarafta kalıp tüm notları gizleriz.
     if viewer is not None:
@@ -1377,17 +1390,34 @@ async def resolve_signal_target(
     return None
 
 
+def _reviewed_bayragi(review_anonim: bool | None, *, ogretmen_bakiyor: bool) -> bool:
+    """Ders çıktısındaki ``reviewed``: öğrenci bu öğretmeni değerlendirdi mi?
+
+    Anonim değerlendirme öğretmene "değerlendirildi" olarak görünmez; aksi
+    halde ders listesinden yazarın kim olduğu okunurdu.
+    """
+    if review_anonim is None:
+        return False
+    return not (review_anonim and ogretmen_bakiyor)
+
+
 def _hydrated_booking_select():
     """Ad/avatar ve ``reviewed`` bayrağıyla birlikte ders satırı seçer.
 
     Listeleme ve eğitmen panosu aynı zenginleştirmeyi kullanır; sahiplik ve
     durum filtreleri çağıran tarafta eklenir.
     """
+    # Çiftin değerlendirmesinin anonimlik bayrağı; değerlendirme yoksa NULL.
     reviewed_col = (
-        select(Review.id)
-        .where(Review.booking_id == Booking.id, Review.deleted_at.is_(None))
-        .exists()
-        .label("reviewed")
+        select(Review.is_anonymous)
+        .where(
+            Review.client_id == Booking.client_id,
+            Review.tutor_id == Booking.tutor_id,
+            Review.deleted_at.is_(None),
+        )
+        .limit(1)
+        .scalar_subquery()
+        .label("review_anonim")
     )
     return (
         select(Booking, Tutor.full_name, Tutor.avatar_url, Client.full_name, Client.avatar_url, reviewed_col)
@@ -1405,12 +1435,14 @@ async def _hydrate_booking_rows(
     db: AsyncSession, rows, *, role_id: int, user_id: int
 ) -> list[Booking]:
     bookings: list[Booking] = []
-    for booking, tutor_name, tutor_avatar, client_name, client_avatar, reviewed in rows:
+    for booking, tutor_name, tutor_avatar, client_name, client_avatar, review_anonim in rows:
         booking.tutor_name = tutor_name
         booking.tutor_avatar_url = tutor_avatar
         booking.client_name = client_name
         booking.client_avatar_url = client_avatar
-        booking.reviewed = reviewed
+        booking.reviewed = _reviewed_bayragi(
+            review_anonim, ogretmen_bakiyor=role_id == ROLE_IDS[RoleType.TUTOR]
+        )
         # Yalnız öğrencinin tamamlanmış dersleri için sorgu; ötekilerde bayrak
         # zaten False ve her satıra ek sorgu atmak gereksiz.
         booking.can_review = (
