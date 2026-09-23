@@ -36,6 +36,19 @@ async def _sayac(tutor_id: int) -> tuple[int, int]:
         return t.rating_count, t.rating_sum
 
 
+TAM = dict(clarity_rating=4, motivation_rating=4, preparation_rating=4)
+
+
+async def _tam_puanla(review_id: int) -> None:
+    """Fabrika yorumu legacy gibi (alt kriterler NULL) oluşur; yeni kurala
+    uygun tam puanlı kayıt gereken testler için kriterleri doldurur."""
+    async with AsyncSessionLocal() as s:
+        r = await s.get(Review, review_id)
+        for alan, deger in TAM.items():
+            setattr(r, alan, deger)
+        await s.commit()
+
+
 async def _anonim_yap(review_id: int) -> None:
     async with AsyncSessionLocal() as s:
         r = await s.get(Review, review_id)
@@ -77,7 +90,7 @@ async def test_esitmanli_iki_olusturma_tek_kayit_birakir(ip3, monkeypatch):
             client = await s.get(Client, ogrenci.id)
             try:
                 out = await review_service.create_review(
-                    s, client, ReviewCreate(booking_id=booking_id, rating=5)
+                    s, client, ReviewCreate(booking_id=booking_id, rating=5, **TAM)
                 )
                 await s.commit()
                 return out
@@ -117,7 +130,7 @@ async def test_soft_delete_sonrasi_yeni_degerlendirme_serbest(ip3, monkeypatch):
     async with AsyncSessionLocal() as s:
         client = await s.get(Client, ogrenci.id)
         out = await review_service.create_review(
-            s, client, ReviewCreate(booking_id=booking.id, rating=4)
+            s, client, ReviewCreate(booking_id=booking.id, rating=4, **TAM)
         )
         await s.commit()
     assert out.id != eski.id
@@ -130,6 +143,7 @@ async def test_farkli_derslerden_ayni_degerlendirme(ip3, http):
     ilk = await ip3.booking(egitmen, ogrenci)
     ikinci = await ip3.booking(egitmen, ogrenci)
     review = await ip3.review(ilk)
+    await _tam_puanla(review.id)
 
     r = await http.get(f"{KOK}/booking/{ikinci.id}", headers=yetki_basligi(ogrenci))
     assert r.status_code == 200 and r.json()["id"] == review.id
@@ -210,6 +224,7 @@ async def test_edited_at_kurallari(ip3, http):
     egitmen = await ip3.tutor()
     ogrenci = await ip3.client()
     review = await ip3.review(await ip3.booking(egitmen, ogrenci))
+    await _tam_puanla(review.id)
     h = yetki_basligi(ogrenci)
 
     async def patch(body):
@@ -229,12 +244,12 @@ async def test_edited_at_kurallari(ip3, http):
         await s.commit()
         assert (await s.get(Review, review.id)).edited_at is None
 
-    ilk = await patch({"motivation_rating": 4})
+    assert await patch({"motivation_rating": 4}) is None, "aynı alt kriter değeri"
+    ilk = await patch({"motivation_rating": 2})
     assert ilk is not None, "alt kriter değişikliği"
     assert await patch({"is_anonymous": False}) == ilk, "anonimlik edited_at'i ilerletmez"
-    assert await patch({"motivation_rating": None}) not in (None, ilk), "temizlemek düzenlemedir"
     son = await patch({"comment_text": "Yeni metin"})
-    assert son is not None
+    assert son not in (None, ilk), "yorum değişikliği"
 
 
 @pytest.mark.asyncio
@@ -243,6 +258,7 @@ async def test_genel_puan_sinirlari(ip3, http, puan, kod):
     egitmen = await ip3.tutor()
     ogrenci = await ip3.client()
     review = await ip3.review(await ip3.booking(egitmen, ogrenci))
+    await _tam_puanla(review.id)
     r = await http.patch(
         f"{KOK}/{review.id}", json={"rating": puan}, headers=yetki_basligi(ogrenci)
     )
@@ -261,6 +277,7 @@ async def test_gizli_yorum_duzenleme_ve_silme_sayaci_bozmaz(ip3, http):
         )
         await s.commit()
     review = await ip3.review(booking, rating=5)
+    await _tam_puanla(review.id)
     assert await _sayac(egitmen.id) == (1, 5)
 
     async with AsyncSessionLocal() as s:
@@ -309,3 +326,67 @@ async def test_alt_kriter_ortalamalari_null_saymaz(ip3, http):
     assert ozet["clarity_average"] == 5.0, "NULL netlik ortalamaya girmez"
     assert ozet["motivation_average"] is None
     assert ozet["preparation_average"] is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("alan", ["clarity_rating", "motivation_rating", "preparation_rating"])
+async def test_alt_kriter_null_ile_guncellenemez(ip3, http, alan):
+    egitmen = await ip3.tutor()
+    ogrenci = await ip3.client()
+    review = await ip3.review(await ip3.booking(egitmen, ogrenci))
+    await _tam_puanla(review.id)
+    r = await http.patch(
+        f"{KOK}/{review.id}", json={alan: None}, headers=yetki_basligi(ogrenci)
+    )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_legacy_null_kriterli_kayit_tamamlanmadan_kaydedilemez(ip3, http):
+    """Eski kayıtta alt kriterler NULL: hangi alan değişirse değişsin eksikler
+    tamamlanmadan güncelleme reddedilir; tamamlanınca başarılı olur."""
+    egitmen = await ip3.tutor()
+    ogrenci = await ip3.client()
+    review = await ip3.review(await ip3.booking(egitmen, ogrenci))  # legacy: NULL
+    h = yetki_basligi(ogrenci)
+    url = f"{KOK}/{review.id}"
+
+    for govde in (
+        {"comment_text": "Yeni metin"},
+        {"is_anonymous": True},
+        {"rating": 4},
+        {"clarity_rating": 5, "motivation_rating": 5},  # hâlâ Hazırlık eksik
+    ):
+        r = await http.patch(url, json=govde, headers=h)
+        assert r.status_code == 422, (govde, r.text)
+        assert r.json()["detail"] == "Değerlendirmeni göndermek için tüm puanları seç."
+
+    async with AsyncSessionLocal() as s:
+        kayit = await s.get(Review, review.id)
+        assert kayit.clarity_rating is None and kayit.comment_text == "IP3 test yorumu"
+        assert kayit.edited_at is None
+
+    r = await http.patch(
+        url,
+        json={"clarity_rating": 5, "motivation_rating": 4, "preparation_rating": 3},
+        headers=h,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    puanlar = (body["clarity_rating"], body["motivation_rating"], body["preparation_rating"])
+    assert puanlar == (5, 4, 3)
+    assert body["rating"] == 5, "genel puan alt kriterlerden hesaplanmaz"
+    assert body["edited_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_legacy_null_kriterler_ortalamaya_girmez(ip3, http):
+    egitmen = await ip3.tutor()
+    tam = await ip3.review(await ip3.booking(egitmen, await ip3.client()), rating=5)
+    await _tam_puanla(tam.id)
+    await ip3.review(await ip3.booking(egitmen, await ip3.client()), rating=1)  # legacy
+    ozet = (
+        await http.get(f"{KOK}/distribution", params={"tutor_id": egitmen.id})
+    ).json()
+    assert ozet["count"] == 2 and ozet["average"] == 3.0
+    assert ozet["clarity_average"] == 4.0

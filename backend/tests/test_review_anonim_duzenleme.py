@@ -4,6 +4,8 @@
   göndermez (`herkese_acik_yap`).
 - `edited_at` yalnız genel puan, alt kriterler veya yorum metni GERÇEKTEN
   değiştiğinde güncellenir; yalnız anonimlik tercihi değişikliği saymaz.
+- Dört puan da zorunludur (23 Eyl 2026): create'te eksik puan, update'te
+  açık `null` reddedilir.
 """
 from __future__ import annotations
 
@@ -69,7 +71,8 @@ def test_anonim_olmayan_yorum_adiyla_doner():
         ({"rating": 5, "comment_text": "Harika"}, False),  # aynı değerler
         ({"is_anonymous": True}, False),  # yalnız anonimlik
         ({"rating": 4}, True),
-        ({"clarity_rating": None}, True),  # alt kriteri temizlemek
+        ({"clarity_rating": 4}, False),  # aynı alt kriter değeri
+        ({"clarity_rating": 5}, True),
         ({"motivation_rating": 3}, True),
         ({"comment_text": "Güzel"}, True),
     ],
@@ -78,30 +81,45 @@ def test_icerik_degisti_mi(yeni, beklenen):
     assert icerik_degisti_mi(_review(), yeni) is beklenen
 
 
-def test_guncellemede_genel_puan_null_olamaz():
+TAM = dict(rating=5, clarity_rating=4, motivation_rating=3, preparation_rating=2)
+PUANLAR = ("rating", "clarity_rating", "motivation_rating", "preparation_rating")
+
+
+def test_dort_puanla_create_gecerli():
+    data = ReviewCreate(booking_id=1, **TAM)
+    assert (data.rating, data.clarity_rating) == (5, 4)
+    # Genel puan alt kriterlerden türetilmez.
+    assert data.rating != round((4 + 3 + 2) / 3)
+
+
+@pytest.mark.parametrize("eksik", PUANLAR)
+def test_create_eksik_puan_reddedilir(eksik):
+    alanlar = {k: v for k, v in TAM.items() if k != eksik}
     with pytest.raises(ValidationError):
-        ReviewUpdate(rating=None)
+        ReviewCreate(booking_id=1, **alanlar)
     with pytest.raises(ValidationError):
-        ReviewUpdate(is_anonymous=None)
+        ReviewCreate(booking_id=1, **{**TAM, eksik: None})
 
 
-def test_guncellemede_alt_kriter_null_temizler():
-    data = ReviewUpdate(clarity_rating=None)
-    assert data.model_dump(exclude_unset=True) == {"clarity_rating": None}
-
-
+@pytest.mark.parametrize("alan", PUANLAR)
 @pytest.mark.parametrize("puan", [0, 6])
-def test_alt_kriter_araligi(puan):
+def test_puan_araligi(alan, puan):
     with pytest.raises(ValidationError):
-        ReviewCreate(booking_id=1, rating=5, clarity_rating=puan)
+        ReviewCreate(booking_id=1, **{**TAM, alan: puan})
+    with pytest.raises(ValidationError):
+        ReviewUpdate(**{alan: puan})
 
 
-def test_genel_puan_zorunlu_ve_bos_yorum_none():
+@pytest.mark.parametrize("alan", (*PUANLAR, "is_anonymous"))
+def test_guncellemede_null_kabul_edilmez(alan):
     with pytest.raises(ValidationError):
-        ReviewCreate(booking_id=1)
-    assert ReviewCreate(booking_id=1, rating=3, comment_text="   ").comment_text is None
+        ReviewUpdate(**{alan: None})
+
+
+def test_bos_yorum_none():
+    assert ReviewCreate(booking_id=1, **TAM, comment_text="   ").comment_text is None
 
 
 def test_yorum_uzunluk_siniri():
     with pytest.raises(ValidationError):
-        ReviewCreate(booking_id=1, rating=3, comment_text="a" * 2001)
+        ReviewCreate(booking_id=1, **TAM, comment_text="a" * 2001)

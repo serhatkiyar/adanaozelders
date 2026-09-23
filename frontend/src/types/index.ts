@@ -1236,21 +1236,22 @@ export interface ReportOut {
  *  değerlendirir, sonra aynı kaydı düzenler. booking_id yalnız hakkı veren ders. */
 export interface ReviewCreate {
   booking_id: number;
-  /** Genel puan (zorunlu, alt kriterlerden hesaplanmaz). */
+  /** Dört puan da zorunlu; genel puan alt kriterlerden hesaplanmaz. */
   rating: number;
-  clarity_rating?: number | null;
-  motivation_rating?: number | null;
-  preparation_rating?: number | null;
+  clarity_rating: number;
+  motivation_rating: number;
+  preparation_rating: number;
   comment_text?: string | null;
   is_anonymous?: boolean;
 }
 
-/** Kısmi güncelleme; alt kriterde `null` puanı temizler. */
+/** Kısmi güncelleme; puanlar boşaltılamaz. Eski kayıtta boş kriter varsa
+ *  sunucu dördü tamamlanmadan güncellemeyi reddeder. */
 export interface ReviewUpdate {
   rating?: number;
-  clarity_rating?: number | null;
-  motivation_rating?: number | null;
-  preparation_rating?: number | null;
+  clarity_rating?: number;
+  motivation_rating?: number;
+  preparation_rating?: number;
   comment_text?: string | null;
   is_anonymous?: boolean;
 }

@@ -18,7 +18,8 @@ interface ReviewModalProps {
   onReviewed: (bookingId: number) => void;
 }
 
-/** Alt kriterler isteğe bağlı; genel puandan otomatik doldurulmaz. */
+/** Dört puan da zorunlu (23 Eyl 2026); alt kriterler genel puandan otomatik
+ *  doldurulmaz, her biri ayrı seçilir. */
 const ALT_KRITERLER = [
   { alan: "clarity_rating", ad: "Netlik" },
   { alan: "motivation_rating", ad: "Motivasyon" },
@@ -47,13 +48,15 @@ export function ReviewModal({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (rating < 1) {
-      toast.error("Lütfen genel puanı seç.");
+    // Eski (legacy) kayıtta boş gelen kriterler de burada yakalanır: dördü
+    // seçilmeden ne oluşturma ne düzenleme gider (sunucu da reddeder).
+    if (rating < 1 || ALT_KRITERLER.some(({ alan }) => alt[alan] == null)) {
+      toast.error("Değerlendirmeni göndermek için tüm puanları seç.");
       return;
     }
     const icerik = {
       rating,
-      ...alt,
+      ...(alt as Record<AltKriter, number>),
       comment_text: comment.trim() || null,
       is_anonymous: anonim,
     };
@@ -139,29 +142,17 @@ export function ReviewModal({
           </div>
 
           <div className="space-y-2 border-t border-slate-100 pt-4">
-            <p className="text-xs text-slate-500">
-              İsteğe bağlı: öğretmeni ayrıntılı puanla.
-            </p>
             {ALT_KRITERLER.map(({ alan, ad }) => (
               <div key={alan} className="flex items-center justify-between gap-3">
-                <span className="text-sm text-slate-700">{ad}</span>
-                <div className="flex items-center gap-2">
-                  <YildizSecici
-                    ad={ad}
-                    deger={alt[alan] ?? 0}
-                    onChange={(v) => setAlt((o) => ({ ...o, [alan]: v }))}
-                    boyut="h-6 w-6"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setAlt((o) => ({ ...o, [alan]: null }))}
-                    disabled={alt[alan] == null}
-                    aria-label={`${ad} puanını temizle`}
-                    className="w-14 text-right text-xs font-medium text-slate-500 transition hover:text-slate-800 disabled:invisible"
-                  >
-                    Temizle
-                  </button>
-                </div>
+                <span className="text-sm text-slate-700">
+                  {ad} <span className="text-rose-600">*</span>
+                </span>
+                <YildizSecici
+                  ad={ad}
+                  deger={alt[alan] ?? 0}
+                  onChange={(v) => setAlt((o) => ({ ...o, [alan]: v }))}
+                  boyut="h-6 w-6"
+                />
               </div>
             ))}
           </div>

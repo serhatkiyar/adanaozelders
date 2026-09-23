@@ -17,13 +17,19 @@ def _bos_yorum_none(v: str | None) -> str | None:
     return v or None
 
 
+#: Dört puan da zorunludur (23 Eyl 2026). Kolonlar legacy NULL kayıtlar yüzünden
+#: nullable kalır; zorunluluk create/update doğrulamasındadır.
+PUAN_ALANLARI = ("rating", "clarity_rating", "motivation_rating", "preparation_rating")
+EKSIK_PUAN_MESAJI = "Değerlendirmeni göndermek için tüm puanları seç."
+
+
 class ReviewCreate(BaseModel):
     booking_id: int
-    # Genel puan zorunlu; alt kriterlerden hesaplanmaz.
+    # Genel puan alt kriterlerden hesaplanmaz; dördü bağımsız seçimlerdir.
     rating: Puan
-    clarity_rating: Puan | None = None
-    motivation_rating: Puan | None = None
-    preparation_rating: Puan | None = None
+    clarity_rating: Puan
+    motivation_rating: Puan
+    preparation_rating: Puan
     comment_text: str | None = Field(default=None, max_length=YORUM_MAKS)
     is_anonymous: bool = False
 
@@ -31,8 +37,9 @@ class ReviewCreate(BaseModel):
 
 
 class ReviewUpdate(BaseModel):
-    """Kısmi güncelleme (`exclude_unset`). Alt kriterde açık `null` puanı
-    temizler; genel puan ve anonimlik için `null` kabul edilmez."""
+    """Kısmi güncelleme (`exclude_unset`). Puanlar ve anonimlik için açık
+    `null` kabul edilmez. Legacy NULL kriterli kaydın eksikleri tamamlanmadan
+    kaydedilemeyeceği kuralı birleşik kayda bakar (review_service)."""
 
     rating: Puan | None = None
     clarity_rating: Puan | None = None
@@ -45,7 +52,7 @@ class ReviewUpdate(BaseModel):
 
     @model_validator(mode="after")
     def _zorunlular_null_olamaz(self) -> "ReviewUpdate":
-        for alan in ("rating", "is_anonymous"):
+        for alan in (*PUAN_ALANLARI, "is_anonymous"):
             if alan in self.model_fields_set and getattr(self, alan) is None:
                 raise ValueError(f"{alan} boş bırakılamaz")
         return self

@@ -19,6 +19,8 @@ from schemas.review import (
     RatingDistributionOut,
     ReviewCreate,
     ReviewOut,
+    EKSIK_PUAN_MESAJI,
+    PUAN_ALANLARI,
     ReviewUpdate,
     TutorRatingSummaryOut,
 )
@@ -399,6 +401,12 @@ async def update_review(
     db: AsyncSession, review: Review, data: ReviewUpdate, *, viewer
 ) -> ReviewOut:
     payload = data.model_dump(exclude_unset=True)
+    # Legacy kayıtta NULL kalmış kriter varsa, hangi alan değişirse değişsin
+    # dört puan tamamlanmadan kayıt güncellenmez.
+    if payload and any(
+        payload.get(alan, getattr(review, alan)) is None for alan in PUAN_ALANLARI
+    ):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, EKSIK_PUAN_MESAJI)
     if "comment_text" in payload:
         payload["comment_text"] = mask_contact_info(payload["comment_text"])
     if icerik_degisti_mi(review, payload):
