@@ -3,15 +3,17 @@
  * (La Suite Meet, MIT — DINUM/Etalab): 80px yükseklik, üç sütun, ortada
  * Mikrofon▴ · Kamera▴ · Ekran paylaş · ⋯ · kırmızı Ayrıl. Oklar cihaz menüsünü, ⋯ Tam ekran
  * ve Ayarlar'ı açar. Ayrıl, sayfanın ONAYLI çıkış penceresini açar; ders
- * karşı taraf için sürer.
+ * karşı taraf için sürer. Sağ sütun Meet `MoreOptions`: Katılımcılar ve
+ * Sohbet yan panel düğmeleri (`YanPanelDugmeleri`).
  */
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
+import { useOdaDeposu } from "../zoom/odaDeposu";
 import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
 import { Acilir } from "./Acilir";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
@@ -19,13 +21,25 @@ import { CihazMenusu } from "./CihazMenusu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
 import { PaylasimDugmesi } from "./PaylasimDugmesi";
 import { useTamEkran } from "./useTamEkran";
+import type { PanelTuru } from "./YanPanel";
+
+/** Yan panel düğmelerinin ortak girdisi (masaüstü ve telefon çubuğu). */
+export interface PanelDenetimi {
+  panel: PanelTuru | null;
+  onPanel: (tur: PanelTuru) => void;
+  /** Ders içi sohbet var mı (ders bilgisi yüklenmediyse yok). */
+  sohbetVar: boolean;
+  okunmamis: number;
+}
 
 export function KontrolCubugu({
   onAyril,
   onAyarlar,
+  panel,
 }: {
   onAyril?: () => void;
   onAyarlar: (sekme: AyarSekmesi) => void;
+  panel: PanelDenetimi;
 }) {
   const { t } = useTranslation();
   const m = useMedyaKontrolleri();
@@ -72,8 +86,75 @@ export function KontrolCubugu({
           </PlainButton>
         )}
       </div>
-      <div className="flex flex-1 basis-1/3" />
+      <div className="flex flex-1 basis-1/3 items-center justify-end gap-2">
+        <YanPanelDugmeleri {...panel} />
+      </div>
     </div>
+  );
+}
+
+/** Meet `ParticipantsToggle` + `ChatToggle` (`primaryTextDark`, seçiliyken açık). */
+function YanPanelDugmeleri({ panel, onPanel, sohbetVar, okunmamis }: PanelDenetimi) {
+  const { t } = useTranslation();
+  const sayi = useOdaDeposu((d) => d.katilimcilar.length);
+  const sayiId = useId();
+  const okunmamisId = useId();
+  const katilimciAcik = panel === "katilimcilar";
+  const sohbetAcik = panel === "sohbet";
+  const rozet =
+    "pointer-events-none absolute -right-1 -top-1 z-10 flex h-5 min-w-[1.25rem] select-none items-center justify-center rounded-full px-1 text-xs";
+
+  return (
+    <>
+      <div className="relative inline-block">
+        <PlainButton
+          onClick={() => onPanel("katilimcilar")}
+          aria-label={t(`controls.participants.${katilimciAcik ? "open" : "closed"}`)}
+          title={t(`controls.participants.${katilimciAcik ? "open" : "closed"}`)}
+          aria-describedby={sayiId}
+          aria-pressed={katilimciAcik}
+          className={`${DUGME_TABANI} ${ODA_DUGMESI.boyut} ${
+            katilimciAcik ? ODA_DUGMESI.secili : ODA_DUGMESI.metin
+          }`}
+        >
+          <Icon name="people" className="h-6 w-6" />
+        </PlainButton>
+        <span id={sayiId} className="sr-only">
+          {t("controls.participants.count", { count: sayi })}
+        </span>
+        {sayi > 0 && (
+          <span aria-hidden className={`${rozet} bg-gray-500 text-white`}>
+            {sayi}
+          </span>
+        )}
+      </div>
+      {sohbetVar && (
+        <div className="relative inline-block">
+          <PlainButton
+            onClick={() => onPanel("sohbet")}
+            aria-label={t(`controls.chat.${sohbetAcik ? "open" : "closed"}`)}
+            title={t(`controls.chat.${sohbetAcik ? "open" : "closed"}`)}
+            aria-describedby={okunmamis > 0 ? okunmamisId : undefined}
+            aria-pressed={sohbetAcik}
+            className={`${DUGME_TABANI} ${ODA_DUGMESI.boyut} ${
+              sohbetAcik ? ODA_DUGMESI.secili : ODA_DUGMESI.metin
+            }`}
+          >
+            <Icon name="messages" className="h-6 w-6" />
+          </PlainButton>
+          {okunmamis > 0 && (
+            <>
+              <span id={okunmamisId} className="sr-only">
+                {t("controls.chat.unread", { count: okunmamis })}
+              </span>
+              <span aria-hidden className={`${rozet} bg-marka font-semibold text-marka-fg`}>
+                {okunmamis > 9 ? "9+" : okunmamis}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 

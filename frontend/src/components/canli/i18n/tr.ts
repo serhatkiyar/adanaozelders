@@ -50,6 +50,51 @@ export const tr = {
         start: "Ekranını paylaş",
         stop: "Paylaşımı durdur",
       },
+      /** Meet `controls.chat` — `open`: panel açıkken düğmenin adı. */
+      chat: {
+        open: "Sohbeti kapat",
+        closed: "Sohbeti aç",
+        unread_one: "{{count}} okunmamış mesaj",
+        unread_other: "{{count}} okunmamış mesaj",
+      },
+      /** Meet `controls.participants`. */
+      participants: {
+        open: "Katılımcıları gizle",
+        closed: "Katılımcıları gör",
+        count_one: "{{count}} katılımcı",
+        count_other: "{{count}} katılımcı",
+      },
+    },
+    /** Meet `sidePanel` — yalnız Katılımcılar ve Sohbet. */
+    sidePanel: {
+      ariaLabel: "Yan panel: {{title}}",
+      heading: {
+        participants: "Katılımcılar",
+        chat: "Ders sohbeti",
+      },
+      content: {
+        participants: "Katılımcıları",
+        chat: "Sohbeti",
+      },
+      closeButton: "{{content}} gizle (Esc)",
+      escapeHint: "Kapatmak için Esc tuşuna bas",
+    },
+    /** Meet `participants` — yönetici işlemleri yok. */
+    participants: {
+      subheading: "Derste",
+      you: "sen",
+      contributors: "Katılımcılar",
+      collapsable: {
+        open: "{{name}} listesini aç",
+        close: "{{name}} listesini kapat",
+      },
+      muteYourself: "Mikrofonunu kapat",
+      micOn: "Mikrofonu açık",
+      micOff: "Mikrofonu kapalı",
+    },
+    /** Ders içi sohbet: sitenin mesajlaşması (Meet sohbeti taşınmadı). */
+    chat: {
+      hint: "Yazışman Mesajlar sayfasında da görünür.",
     },
     selectDevice: {
       loading: "Yükleniyor…",
@@ -82,6 +127,8 @@ export const tr = {
       buttonLabel: "Daha fazla seçenek",
       items: {
         switchCamera: "Kamerayı çevir",
+        participants: "Katılımcılar",
+        chat: "Sohbet",
         settings: "Ayarlar",
         fullscreen: {
           enter: "Tam ekran",

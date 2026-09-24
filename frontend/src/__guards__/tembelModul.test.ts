@@ -70,7 +70,8 @@ const GEREKCELI = [
   // 15a24756) 942'den 948'e kaydırmıştı ve bu satır o gün güncellenmemişti;
   // cüzdan + mesaj paneli dosyalarının kapı kayıtları (`CuzdanPaneli`,
   // `mesaj/EmojiSecici`, `mesaj/MesajlarPaneli`, `mesaj/SablonPaneli`) 948'den 965'e.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:965 /src/**/*.tsx",
+  // 973 (24 Eyl 2026): `mesaj/SohbetGorunumu` KAPI_DISI kaydı 965'ten 973'e.
+  "src/__guards__/calismaZamaniKapisi.test.tsx:973 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

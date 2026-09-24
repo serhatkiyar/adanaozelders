@@ -1,8 +1,10 @@
 /**
  * Telefon kontrol çubuğu — Meet `MobileControlBar` (La Suite Meet, MIT —
  * DINUM/Etalab) sadeleştirilmiş: etiketli tek satır
- * Mikrofon · Kamera · Daha fazla (Kamerayı çevir, Tam ekran, Ayarlar) · Çık.
- * Telefonda cihaz okları yok; cihaz seçimi Ayarlar'da.
+ * Mikrofon · Kamera · Daha fazla (Kamerayı çevir, Tam ekran, Ayarlar,
+ * Katılımcılar, Sohbet) · Çık. Telefonda cihaz okları yok; cihaz seçimi
+ * Ayarlar'da. Okunmamış mesaj varsa "Daha fazla" üstünde nokta, çekmecedeki
+ * Sohbet'te sayı görünür; yan panel telefonda tam ekran açılır.
  */
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,6 +16,7 @@ import { ODA_DUGMESI, TELEFON_DUGMESI } from "../stiller";
 import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
 import { AltCekmece } from "./AltCekmece";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
+import type { PanelDenetimi } from "./KontrolCubugu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
 import { useTamEkran } from "./useTamEkran";
 
@@ -23,9 +26,11 @@ const CEKMECE_OGESI =
 export function TelefonCubugu({
   onAyril,
   onAyarlar,
+  panel,
 }: {
   onAyril?: () => void;
   onAyarlar: (sekme: AyarSekmesi) => void;
+  panel: PanelDenetimi;
 }) {
   const { t } = useTranslation();
   const m = useMedyaKontrolleri();
@@ -61,8 +66,14 @@ export function TelefonCubugu({
           aria-expanded={menuAcik}
           className={TELEFON_DUGMESI.kutu}
         >
-          <span className={`${TELEFON_DUGMESI.ikon} ${ODA_DUGMESI.acik}`}>
+          <span className={`relative ${TELEFON_DUGMESI.ikon} ${ODA_DUGMESI.acik}`}>
             <Icon name="moreHorizontal" className="h-6 w-6" />
+            {panel.sohbetVar && panel.okunmamis > 0 && (
+              <span
+                aria-hidden
+                className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-ders-zemin bg-marka"
+              />
+            )}
           </span>
           <span aria-hidden className="truncate">
             {t("controls.moreOptions")}
@@ -121,6 +132,43 @@ export function TelefonCubugu({
           <Icon name="settings" className="h-6 w-6" />
           {t("options.items.settings")}
         </PlainButton>
+        <PlainButton
+          onClick={() => {
+            menuyuKapat();
+            panel.onPanel("katilimcilar");
+          }}
+          className={CEKMECE_OGESI}
+        >
+          <Icon name="people" className="h-6 w-6" />
+          {t("options.items.participants")}
+        </PlainButton>
+        {panel.sohbetVar && (
+          <PlainButton
+            onClick={() => {
+              menuyuKapat();
+              panel.onPanel("sohbet");
+            }}
+            aria-label={
+              panel.okunmamis > 0
+                ? `${t("options.items.chat")}, ${t("controls.chat.unread", { count: panel.okunmamis })}`
+                : undefined
+            }
+            className={CEKMECE_OGESI}
+          >
+            <span className="relative">
+              <Icon name="messages" className="h-6 w-6" />
+              {panel.okunmamis > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute -right-2 -top-2 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[10px] font-bold text-marka-fg"
+                >
+                  {panel.okunmamis > 9 ? "9+" : panel.okunmamis}
+                </span>
+              )}
+            </span>
+            {t("options.items.chat")}
+          </PlainButton>
+        )}
       </AltCekmece>
     </>
   );

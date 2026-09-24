@@ -205,6 +205,10 @@ export const OLCUM_TABANI = [
   "src/components/mesaj/EmojiSecici.tsx",
   "src/components/mesaj/MesajlarPaneli.tsx",
   "src/components/mesaj/SablonPaneli.tsx",
+  // 24 Eyl 2026 · panelin konuşma görünümü ayrı dosyaya çıktı (canlı dersin
+  // yan panelindeki sohbetle ortak); `MesajlarPaneli` import grafiğiyle girdi.
+  // Taşınan gönder düğmesi ve yazı alanı yeni borç değil, yer değiştirdi.
+  "src/components/mesaj/SohbetGorunumu.tsx",
   // Dairesel ok düğmesi (7 Eyl 2026): vitrin/şerit kaydırma ve "tümünü gör"
   // oklarının TEK kaynağı. Üç ayrı el yazımını değiştirdi; ölçüme sıfır borç
   // ekler (ham düğme değil, adı zorunlu `aria-label` ile geliyor).

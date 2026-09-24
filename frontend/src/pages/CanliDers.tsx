@@ -2,7 +2,11 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { Icon } from "@/components/AppIcon";
-import type { DersBilgisi, ZoomOdasiTutamak } from "@/components/canli/ZoomOdasi";
+import type {
+  DersBilgisi,
+  DersSohbetBilgisi,
+  ZoomOdasiTutamak,
+} from "@/components/canli/ZoomOdasi";
 import { Modal } from "@/components/ui/Modal";
 import { useBooking, useZoomToken } from "@/hooks/useBookings";
 import {
@@ -37,13 +41,10 @@ const DUGME =
  *
  * Yerleşim: koyu oda yüzeyi (La Suite Meet görünümü; `ders-*` token'ları,
  * `dark:` yok) — sade üst şerit (karşı taraf adı, sayaç) + sahne + Meet
- * kontrol çubuğu (`ZoomOdasi` içinde). Sonraki paketlerin yuvaları:
- *   - Paket 5 (tahta): masaüstünde ORTAYA gelir, video sağ sütuna geçer;
- *     telefonda tahta tam ekran olur, video yüzen küçük kutuya iner.
- *   - Paket 4 (ders içi sohbet): masaüstünde sağ sütunun altı, telefonda
- *     alttan tam ekran çekmece.
- * Video kutusu (`ZoomOdasi`'nın kabı) bu değişimlerde AYNI DOM düğümünde
- * kalmalı; yalnız yerleşimi değişir, yoksa görüşme yeniden bağlanır.
+ * kontrol çubuğu (`ZoomOdasi` içinde). Katılımcılar ve ders içi sohbet
+ * `ZoomOdasi`'nın yan panelindedir (masaüstünde sağda, telefonda tam ekran).
+ * İleride tahta eklenirse video kutusu (`ZoomOdasi`'nın kabı) AYNI DOM
+ * düğümünde kalmalı; yalnız yerleşimi değişir, yoksa görüşme yeniden bağlanır.
  */
 export default function CanliDers() {
   const { id } = useParams();
@@ -204,6 +205,26 @@ function DersOdasi({
         : undefined,
     [ders, karsiAd],
   );
+  // Ders içi sohbetin karşı tarafı: `mesajAdresi` ile AYNI kişi ve tür.
+  const sohbet = useMemo<DersSohbetBilgisi | undefined>(
+    () =>
+      ders
+        ? rol === "host"
+          ? {
+              karsiTarafId: ders.client_id,
+              karsiTarafRol: "CLIENT",
+              karsiTarafAd: karsiAd,
+              benimRolum: "TUTOR",
+            }
+          : {
+              karsiTarafId: ders.tutor_id,
+              karsiTarafRol: "TUTOR",
+              karsiTarafAd: karsiAd,
+              benimRolum: "CLIENT",
+            }
+        : undefined,
+    [ders, rol, karsiAd],
+  );
   const dersSayfasi = ROUTES.lesson(dersId);
 
   const ayril = async () => {
@@ -258,8 +279,8 @@ function DersOdasi({
             {sayac}
           </span>
         )}
-        {/* Paket 5 (ders içi sohbet) gelene kadar sohbet, sitenin Mesajlar
-            sayfasında (yeni sekmede; görüşme bu sekmede sürer). */}
+        {/* Tam Mesajlar sayfası yeni sekmede (görüşme bu sekmede sürer);
+            ders içi sohbet odanın yan panelinde. */}
         {mesajAdresi && (
           <a
             href={mesajAdresi}
@@ -288,7 +309,6 @@ function DersOdasi({
       </header>
 
       <main className="relative flex min-h-0 flex-1">
-        {/* Paket 5: tahta masaüstünde buraya (ortaya) gelir. */}
         {/* `isolate`: odanın iç z-index'leri bu kutuda kalsın; sayfanın
             pencereleri (portal, z-100) her zaman üstte. */}
         <section className="relative isolate min-w-0 flex-1 bg-ders-zemin" aria-label="Görüntülü ders">
@@ -310,11 +330,10 @@ function DersOdasi({
               onAyrilIstegi={() => setCikisAcik(true)}
               biletTazele={biletTazele}
               dersBilgisi={dersBilgisi}
+              sohbet={sohbet}
             />
           </Suspense>
         </section>
-        {/* Paket 4: masaüstünde sağ sütun (video + ders içi sohbet). */}
-
         {not && (
           <p
             role="status"

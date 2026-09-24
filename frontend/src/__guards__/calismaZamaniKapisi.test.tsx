@@ -211,6 +211,14 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu islem (kilit anahtari) + children (dugme metni)",
   },
+  // 24 Eyl 2026 · mesaj panelinin konuşma görünümü (canlı dersle ortak).
+  // Kontrollü: taslak `metin`/`setMetin` çağırandan gelir; propsuz mount
+  // `metin.trim()`de TypeError fırlatır. Açık dalı `MesajlarPaneli`nin
+  // içinde render edilir; yazı alanı ve gönder düğmesi `aria-label`lı.
+  "src/components/mesaj/SohbetGorunumu.tsx": {
+    tur: "props",
+    gerekce: "zorunlu metin/setMetin (kontrollu taslak) + konusma",
+  },
 };
 
 /**
@@ -1048,7 +1056,7 @@ describe("İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur", ()
     //   • listede olup artık kapsanmayan  → ekran sessizce kapı dışına çıktı
     //   • kapsanıp listede olmayan        → kapı sessizce başka bir şey ölçüyor
     // Sayısal taban ikisini de göremezdi: biri çıkıp biri girince 88 sabit
-    // kalır. Bugün ölçülen: 105 taban `.tsx` − 17 gerekçeli = 88 ekran kapıda.
+    // kalır. Bugün ölçülen: 106 taban `.tsx` − 18 gerekçeli = 88 ekran kapıda.
     expect([...kapsanan].sort()).toEqual([...KAPI_KAPSAMI].sort());
   });
 

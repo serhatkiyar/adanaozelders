@@ -200,7 +200,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   // tabanına `DashboardHeader` import grafiğiyle girdi): boş mesajda
   // gönderilecek ÖZNE yok — `VariantMatrixPanel` "Tümüne fiyat uygula"
   // (`!topluFiyat.trim()`) emsaliyle aynı sınıf; `isPending` kısmı `islem`.
-  "src/components/mesaj/MesajlarPaneli.tsx <button> send.isPending || !text.trim()": "secim",
+  // Düğme 24 Eyl 2026'da panelin konuşma görünümüyle `SohbetGorunumu`ne taşındı
+  // (canlı dersin yan panel sohbetiyle ortak); sınıf değişmedi.
+  "src/components/mesaj/SohbetGorunumu.tsx <button> send.isPending || !metin.trim()": "secim",
   // 24 Eyl 2026 · öğretmen cüzdanı "Para çek": sunucunun verdiği engel
   // gerekçesi (`withdraw_block_reason`) düğmenin hemen altında yazılı,
   // açık talep varsa talebin durumu görünür; `isPending` kısmı `islem`.

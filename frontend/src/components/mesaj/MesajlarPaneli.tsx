@@ -1,23 +1,13 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/AppIcon";
-import { EmojiSecici } from "@/components/mesaj/EmojiSecici";
-import { SablonPaneli } from "@/components/mesaj/SablonPaneli";
-import {
-  useConversations,
-  useMarkConversationRead,
-  useMessages,
-  useMessageSearch,
-  useMessagesUnreadCount,
-  useSendMessage,
-} from "@/hooks/useMessages";
+import { SohbetGorunumu } from "@/components/mesaj/SohbetGorunumu";
+import { useConversations, useMessageSearch, useMessagesUnreadCount } from "@/hooks/useMessages";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatChatTime } from "@/lib/datetime";
-import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
-import { toast } from "@/store/toastStore";
 import { ROLE_IDS } from "@/types";
 import type { ConversationOut } from "@/types";
 
@@ -34,7 +24,8 @@ type Rol = "CLIENT" | "TUTOR" | "LIBRARY";
  * konuşma görünümü açılır (kullanıcı kararı, 22 Eyl 2026: "sohbet seçince
  * böyle açılsın" — Preply referansı). Liste/arama/mesaj/gönderme/kompozer
  * hepsi `Messages.tsx`teki AYNI hook'ları ve AYNI bileşenleri kullanır
- * (`SablonPaneli`, `EmojiSecici`, birleşik kompozer kutusu) — burada ikinci
+ * (`SablonPaneli`, `EmojiSecici`, birleşik kompozer kutusu; konuşma görünümü
+ * 24 Eyl 2026'dan beri `SohbetGorunumu`nde, canlı dersin sohbetiyle ortak) — burada ikinci
  * bir sohbet arayüzü icat edilmedi, bizim gerçek sohbetimiz küçük bir
  * pencerede tekrar kullanıldı. Preply'nin klasör/AI-öneri/sesli mesaj
  * düğmeleri atlandı — bunların backend karşılığı yok (CLAUDE.md: backend
@@ -47,8 +38,6 @@ export function MesajlarPaneli() {
   const [activeConv, setActiveConv] = useState<ConversationOut | null>(null);
   const [text, setText] = useState("");
   const ref = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
 
   const { data: user } = useCurrentUser();
@@ -84,12 +73,6 @@ export function MesajlarPaneli() {
     open && !activeConv ? term : ""
   );
 
-  const { data: messages, isLoading: messagesLoading } = useMessages(
-    activeConv ? activeConv.id : null
-  );
-  const send = useSendMessage();
-  const markRead = useMarkConversationRead();
-
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
@@ -109,15 +92,6 @@ export function MesajlarPaneli() {
       setText("");
     }
   }, [open]);
-
-  useEffect(() => {
-    if (activeConv) markRead.mutate(activeConv.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeConv?.id]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, activeConv?.id]);
 
   const list: ConversationOut[] | undefined = searching
     ? searchResults?.chats
@@ -141,40 +115,6 @@ export function MesajlarPaneli() {
     } else {
       navigate(ROUTES.messages);
     }
-  };
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const body = text.trim();
-    if (!body || !activeConv?.counterparty_id) return;
-    send.mutate(
-      {
-        counterpartyId: activeConv.counterparty_id,
-        body,
-        counterpartyRole: activeConv.counterparty_role,
-      },
-      {
-        onSuccess: () => setText(""),
-        onError: (err) => toast.error(getErrorMessage(err, "Mesaj gönderilemedi.")),
-      }
-    );
-  };
-
-  // `Messages.tsx::emojiEkle` ile birebir aynı — imleç konumuna basar.
-  const emojiEkle = (emoji: string) => {
-    const el = textareaRef.current;
-    if (!el) {
-      setText((t) => t + emoji);
-      return;
-    }
-    const start = el.selectionStart ?? text.length;
-    const end = el.selectionEnd ?? text.length;
-    setText(text.slice(0, start) + emoji + text.slice(end));
-    requestAnimationFrame(() => {
-      el.focus();
-      const konum = start + emoji.length;
-      el.setSelectionRange(konum, konum);
-    });
   };
 
   return (
@@ -259,89 +199,14 @@ export function MesajlarPaneli() {
 
           {activeConv ? (
             <>
-              {/* ── Sohbet görünümü — arka plan `Messages.tsx`teki AYNI slate-50 ── */}
-              <div className="flex-1 space-y-2.5 overflow-y-auto bg-slate-50 px-5 py-4 ">
-                {messagesLoading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-10 animate-pulse rounded-2xl bg-slate-100 " />
-                    ))}
-                  </div>
-                ) : !messages || messages.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center text-center">
-                    {/* Mesajlar sayfasıyla AYNI görsel (23 Eyl 2026). */}
-                    <img src="/icons/incoming-envelope.png" alt="" aria-hidden className="h-24 w-24" />
-                    <p className="mt-4 text-sm font-semibold text-slate-700 ">Henüz mesaj yok</p>
-                    <p className="mt-1 text-xs text-slate-500 ">İlk mesajı sen yaz.</p>
-                  </div>
-                ) : (
-                  messages.map((m) => {
-                    // `Messages.tsx::MessageRow` ile AYNI balon renkleri —
-                    // "kendim" bariz turuncu, karşı taraf beyaz+ince halka.
-                    const mine = role !== null && m.sender_role === role;
-                    return (
-                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div
-                          className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${
-                            mine
-                              ? "bg-marka text-marka-fg "
-                              : "bg-white text-slate-700 ring-1 ring-slate-100 "
-                          }`}
-                        >
-                          <p className="whitespace-pre-wrap break-words leading-relaxed ">{m.body}</p>
-                          <p className={`mt-0.5 text-[10px] ${mine ? "text-marka-fg/80 " : "text-slate-500 "}`}>
-                            {formatChatTime(m.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={bottomRef} />
-              </div>
-
-              {/* ── Yazma alanı: `Messages.tsx`teki AYNI birleşik kutu —
-                  yazı alanı ve araç satırı (şablonlar + emoji) tek çerçevenin
-                  içinde (kullanıcı kararı, 22 Eyl 2026, panel için de
-                  geçerli: "bizim chatin elemanlarını koy"). ── */}
-              <form onSubmit={submit} className="p-4 pt-3 ">
-                <div className="rounded-2xl border border-slate-200 bg-white transition focus-within:border-marka-mid focus-within:ring-2 focus-within:ring-marka/20 ">
-                  <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        submit(e);
-                      }
-                    }}
-                    placeholder="Mesajın"
-                    aria-label="Mesajın"
-                    className="max-h-24 min-h-[38px] w-full resize-none border-0 bg-transparent px-3.5 pt-2.5 text-sm text-slate-900 placeholder-slate-500 outline-none focus:ring-0 "
-                  />
-                  <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
-                    <div className="flex items-center gap-0.5">
-                      {role === "TUTOR" && <SablonPaneli onSec={(body) => setText(body)} />}
-                      <EmojiSecici onSec={emojiEkle} />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={send.isPending || !text.trim()}
-                      aria-label="Gönder"
-                      title="Gönder"
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-marka text-marka-fg transition hover:bg-marka-hover active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-300 "
-                    >
-                      {send.isPending ? (
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent " />
-                      ) : (
-                        <Icon name="send" className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </form>
+              <SohbetGorunumu
+                konusmaId={activeConv.id}
+                karsiTarafId={activeConv.counterparty_id}
+                karsiTarafRol={activeConv.counterparty_role}
+                rol={role}
+                metin={text}
+                setMetin={setText}
+              />
             </>
           ) : (
             <>
