@@ -52,7 +52,7 @@ const girdi = (p: Partial<YerlesimGirdisi>): YerlesimGirdisi => ({
   ogrenciTelefon: false,
   kucukEkran: false,
   pencereDikey: false,
-  yanPanelPx: null,
+  yanPanelOrani: null,
   bolunmusOran: null,
   surukleme: { x: 0, y: 0 },
   ...p,
@@ -61,8 +61,11 @@ const girdi = (p: Partial<YerlesimGirdisi>): YerlesimGirdisi => ({
 describe("yerlesimHesapla", () => {
   it("yan panel en az 240px, en çok %50 (içerik genişliğiyle)", () => {
     expect(yanPanelGenisligi(1416, null)).toBe(240);
-    expect(yanPanelGenisligi(1416, 2000)).toBe(708);
-    expect(yanPanelGenisligi(1416, 100)).toBe(240);
+    expect(yanPanelGenisligi(1416, 0.9)).toBe(708);
+    expect(yanPanelGenisligi(1416, 0.05)).toBe(240);
+    // Oran korunur: grup daralınca (sohbet açıldı) genişlik de orantılı.
+    expect(yanPanelGenisligi(1000, 0.3)).toBe(300);
+    expect(yanPanelGenisligi(700, 0.3)).toBe(240);
   });
 
   it("araçsız SPOTLIGHT: kendi karon 160×120 sağ üstte 16px içeride", () => {

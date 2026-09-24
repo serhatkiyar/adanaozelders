@@ -100,8 +100,11 @@ export interface YerlesimGirdisi {
   kucukEkran: boolean;
   /** Pencere dikey mi (`innerHeight > innerWidth`, Preply `ry`). */
   pencereDikey: boolean;
-  /** Kullanıcının sürüklediği yan panel genişliği (px) ya da varsayılan. */
-  yanPanelPx: number | null;
+  /**
+   * Kullanıcının sürüklediği yan panel genişliği, grubun ORANI olarak (Preply
+   * yüzde tutar: sohbet açılınca grup daralır, oran korunur) ya da varsayılan.
+   */
+  yanPanelOrani: number | null;
   /** Kullanıcının sürüklediği bölünmüş oran (paylaşım %) ya da varsayılan. */
   bolunmusOran: number | null;
   /** Yüzen kutunun / araçsız kendi karonun başlangıçtan kayması. */
@@ -149,11 +152,15 @@ export interface Yerlesim {
 
 const sinirla = (d: number, a: number, b: number) => Math.min(b, Math.max(a, d));
 
-/** Yan panelin kısıtlı genişliği: en az 240px, en çok grubun %50'si. */
-export function yanPanelGenisligi(grupGenisligi: number, istenen: number | null): number {
+/**
+ * Yan panelin kısıtlı genişliği: en az 240px, en çok grubun %50'si. Hesap
+ * İÇERİK (grup) genişliğiyle — Preply'ın `outerWidth` hatası kopyalanmadı.
+ */
+export function yanPanelGenisligi(grupGenisligi: number, oran: number | null): number {
   const enCok = Math.floor(grupGenisligi * YAN_PANEL_EN_COK_ORAN);
   const enAz = Math.min(YAN_PANEL_EN_AZ, enCok);
-  return sinirla(istenen ?? YAN_PANEL_EN_AZ, enAz, enCok);
+  const istenen = oran === null ? YAN_PANEL_EN_AZ : Math.round(oran * grupGenisligi);
+  return sinirla(istenen, enAz, enCok);
 }
 
 /** Bölünmüş görünümde paylaşımın yüzdesi (varsayılan 50; küçük ekranda 65). */
@@ -267,7 +274,7 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
   } else {
     let icerik: Kutu = grup;
     if (!yuzen) {
-      const yp = yanPanelGenisligi(grup.w, g.yanPanelPx);
+      const yp = yanPanelGenisligi(grup.w, g.yanPanelOrani);
       icerik = { x: grup.x, y: grup.y, w: grup.w - yp - BOLME, h: grup.h };
       bolme = {
         tur: "yanPanel",

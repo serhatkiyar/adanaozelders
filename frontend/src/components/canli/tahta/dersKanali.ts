@@ -127,8 +127,19 @@ export function dersKanaliAc(
       },
     });
     s.on("error", () => {});
+    let aboneSayisi = 0;
     s.on("subscribed", () => {
       olaylar.onHazir(true);
+      // Yeniden abonelikte (bağlantı koptu/geldi) SDK önbellekteki token'ı
+      // kullanabilir; kopukken kaçan aç/kapa yayını geçmiş kapalı olduğu için
+      // gelmez — son durum sunucudan yeniden okunur.
+      if (++aboneSayisi > 1) {
+        void getTahtaToken(dersId)
+          .then((d) => {
+            if (!kapandi) olaylar.onTahta(d.tahta_acik);
+          })
+          .catch(() => {});
+      }
       for (const f of aboneDinleyicileri) f();
     });
     s.on("publication", (ctx) => {

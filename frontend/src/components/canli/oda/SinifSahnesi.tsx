@@ -112,7 +112,7 @@ export function SinifSahnesi({
   const karsiTarafVar = Boolean(useKarsiTaraf());
   const [sonVideo, setSonVideo] = useState<VideoGorunumu | null>(sonVideoOku);
   const [sonArac, setSonArac] = useState<AracGorunumu | null>(sonAracOku);
-  const [yanPanelPx, setYanPanelPx] = useState<number | null>(null);
+  const [yanPanelOrani, setYanPanelOrani] = useState<number | null>(null);
   const [bolunmusOran, setBolunmusOran] = useState<number | null>(null);
   const [surukleme, setSurukleme] = useState<Nokta>({ x: 0, y: 0 });
   const [menu, setMenu] = useState<{ sag: number; ust: number } | null>(null);
@@ -132,7 +132,7 @@ export function SinifSahnesi({
   if (imza !== sonImza) {
     setSonImza(imza);
     setSurukleme({ x: 0, y: 0 });
-    setYanPanelPx(null);
+    setYanPanelOrani(null);
     setBolunmusOran(null);
     setMenu(null);
   }
@@ -151,11 +151,11 @@ export function SinifSahnesi({
         ogrenciTelefon: telefon && !ogretmen,
         kucukEkran,
         pencereDikey: pencere.h > pencere.w,
-        yanPanelPx,
+        yanPanelOrani,
         bolunmusOran,
         surukleme,
       }),
-    [olcu, gorunum, paylasim, tahtaAcik, karsiTarafVar, telefon, pencere, ogretmen, kucukEkran, yanPanelPx, bolunmusOran, surukleme],
+    [olcu, gorunum, paylasim, tahtaAcik, karsiTarafVar, telefon, pencere, ogretmen, kucukEkran, yanPanelOrani, bolunmusOran, surukleme],
   );
   const yRef = useRef(y);
   yRef.current = y;
@@ -200,7 +200,7 @@ export function SinifSahnesi({
     const hareket = (h: PointerEvent) => {
       const g = yRef.current.grup;
       if (b.tur === "yanPanel") {
-        setYanPanelPx(Math.round(r.left + g.x + g.w - h.clientX));
+        setYanPanelOrani((r.left + g.x + g.w - h.clientX) / g.w);
       } else if (b.yon === "yatay") {
         setBolunmusOran(((h.clientX - r.left - g.x) / g.w) * 100);
       } else {
@@ -305,7 +305,7 @@ export function SinifSahnesi({
                   : 0;
             if (!adim) return;
             e.preventDefault();
-            if (bolme.tur === "yanPanel") setYanPanelPx(bolme.deger - adim * 16);
+            if (bolme.tur === "yanPanel") setYanPanelOrani((bolme.deger - adim * 16) / y.grup.w);
             else setBolunmusOran(bolme.deger + adim * 2);
           }}
           className={`group absolute z-20 flex touch-none items-center justify-center outline-none focus-visible:bg-marka-focus ${
