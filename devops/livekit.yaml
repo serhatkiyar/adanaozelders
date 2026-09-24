@@ -1,0 +1,29 @@
+# Adana Özel Ders — canlı ders SFU'su (LiveKit, Apache-2.0, self-hosted).
+#
+# BU DOSYA SIR İÇERMEZ ve git'e eklenir. API anahtarı/sırrı ortamdan gelir
+# (docker-compose.prod.yml içindeki LIVEKIT_KEYS), .env.prod'da durur.
+#
+# 7880 (signaling/HTTP) host'a YAYINLANMAZ: Caddy `canli.<alan>` bloğundan
+# iç ağ üzerinden erişir ve TLS'i o sonlandırır. Dışarı yalnız medya
+# portları (7881/tcp, 7882/udp) çıkar.
+port: 7880
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  # Tek VPS + Docker: dış IP `NODE_IP` ile açıkça verilir, STUN'la keşfedilmez.
+  use_external_ip: false
+  # Kurumsal/kısıtlı ağlarda UDP kapalı olabilir; TCP'ye düşebilsin.
+  allow_tcp_fallback: true
+room:
+  # Oda adı `Booking.meeting_room`'dur ve kabul anında üretilir; ayrıca
+  # sunucuda oda oluşturmaya gerek yok.
+  auto_create: true
+  # Boş oda 5 dk sonra kapanır (ilk katılımcıyı bekleme payı).
+  empty_timeout: 300
+  # Birebir ders + yedek bağlantılar; kalabalık toplantı yüzeyi değil.
+  max_participants: 6
+logging:
+  level: info
+turn:
+  # Kendi TURN'ümüz yok; TCP fallback + Caddy TLS bu ölçekte yeter.
+  enabled: false

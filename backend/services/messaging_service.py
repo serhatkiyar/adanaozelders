@@ -1275,6 +1275,37 @@ async def mark_read(
         )
 
 
+async def typing_targets(
+    db: AsyncSession, user: CurrentUser, conversation_id: int
+) -> list[tuple[int, int]]:
+    """"Yazıyor…" ipucunun gideceği alıcılar: ``(role_id, user_id)`` çiftleri.
+
+    Sohbet üyeliği denetimi burada, ``mark_read`` ile AYNI kapıdan geçer:
+    router kendi ``select``'ini açıp ikinci bir yetkilendirme yolu üretmesin
+    (yetki mantığı bu serviste tektir; ikinci kopya zamanla sapar).
+
+    Kütüphane tarafı bir kullanıcı değil bir İŞLETMEDİR: ``_other_party``
+    ``library_id`` döner ve ondan kişisel kanal türetilemez — ``_notify_party``
+    gibi o kütüphanenin tüm operatörlerine açılır.
+
+    Hiç kimse yoksa (tek yuvası dolu sohbet) boş liste döner; çağıran hiçbir
+    şey yayınlamaz.
+    """
+    conv = await db.get(Conversation, conversation_id)
+    if conv is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
+    if not _is_party(conv, user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your conversation")
+    my_role, _ = _party_of(user)
+    other = _other_party(conv, my_role)
+    if other is None:
+        return []
+    name, pid = other
+    if name == "LIBRARY":
+        return [(_ROLE_LIBRARY, oid) for oid in await _operator_ids(db, pid)]
+    return [(_ROLE_OF_NAME[name], pid)]
+
+
 async def unread_counts(db: AsyncSession, user: CurrentUser) -> MessagesUnreadCounts:
     """Okunmamış mesajları gelen kutusu (arşivlenmemiş) ve arşiv olarak ayrı sayar.
     Böylece "Okunmamış" rozeti tıklayınca açılamayan arşiv mesajlarını saymaz."""

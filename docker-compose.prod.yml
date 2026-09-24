@@ -69,6 +69,47 @@ services:
       timeout: 3s
       retries: 10
 
+  # ── Gerçek-zamanlı pub/sub (Centrifugo) ──
+  # NEDEN: core/ws_manager.py tek-process bellek-içidir; replika sayısı 1'den
+  # büyüdüğünde replikalar arası push kaybolur. Centrifugo Redis üzerinden
+  # fan-out yapar. Sürüm SABİT (`:latest` yok — minio dersi).
+  centrifugo:
+    image: centrifugo/centrifugo:v6.9.6
+    restart: unless-stopped
+    command: centrifugo -c /centrifugo/config.json
+    volumes:
+      - ./devops/centrifugo/config.json:/centrifugo/config.json:ro
+    environment:
+      CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET:?CENTRIFUGO_TOKEN_HMAC_SECRET gerekli (openssl rand -hex 32)}
+      CENTRIFUGO_HTTP_API_KEY: ${CENTRIFUGO_API_KEY:?CENTRIFUGO_API_KEY gerekli (openssl rand -hex 32)}
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    mem_limit: 256m
+    cpus: "0.5"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Canlı ders SFU (LiveKit, Apache-2.0, self-hosted) ──
+  # Signaling (7880) yayınlanmaz: Caddy `canli.<alan>` bloğundan iç ağ
+  # üzerinden erişir. Dışarı yalnız medya portları çıkar.
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?LIVEKIT_API_KEY gerekli}: ${LIVEKIT_API_SECRET:?LIVEKIT_API_SECRET gerekli}"
+      NODE_IP: ${LIVEKIT_NODE_IP:?LIVEKIT_NODE_IP gerekli}
+    volumes:
+      - ./devops/livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
+    mem_limit: 768m
+    cpus: "1.0"
+
   # İmaj kaynağı quay.io ve SÜRÜM SABİT: `minio/minio:latest` (Docker Hub) artık
   # çekilemiyor — depo kaldırıldı, anonim çekme `repository does not exist` ile
   # reddediliyor (CI bu yüzden düştü). MinIO'nun kanonik kayıt defteri quay.io.
@@ -166,6 +207,12 @@ services:
       # konteynerinden iç istekle alınır (60 sn önbellek). Frontend nginx'i
       # SEO şeklindeki yolları `/__sayfa`ya yollar (frontend/nginx.conf).
       FRONTEND_INTERNAL_URL: http://frontend:80
+      # Gerçek-zamanlı katman. Burada yalnız şalter ve adres var; iki sır
+      # (CENTRIFUGO_API_KEY / CENTRIFUGO_TOKEN_HMAC_SECRET) yukarıdaki
+      # `env_file: .env.prod` ile gelir — tek kaynakta durur, burada
+      # tekrarlanmaz. Boş kalırlarsa uygulama AÇILMAZ (_guard_centrifugo).
+      CENTRIFUGO_ENABLED: "True"
+      CENTRIFUGO_API_URL: http://centrifugo:8000/api
     depends_on:
       postgres:
         condition: service_healthy

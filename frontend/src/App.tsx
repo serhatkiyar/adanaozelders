@@ -307,6 +307,9 @@ const Demands = lazy(() => import("@/pages/Demands"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
 const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
+// Geliştirme prototipi: LiveKit (kendi SFU'muz) denemesi (/test-livekit).
+// Jitsi akışına PARALEL durur; geçiş canlı testten sonra yapılacak.
+const TestLiveKit = lazy(() => import("@/pages/TestLiveKit"));
 // Geliştirme prototipi: kütüphane kartı tasarım karşılaştırması (/test-kutuphane-karti)
 const LibraryCardTest = lazy(() => import("@/pages/LibraryCardTest"));
 // Bilinmeyen URL'ler — shell-uyarlamalı 404 (sessiz redirect yerine)
@@ -690,6 +693,7 @@ function App() {
           {import.meta.env.DEV && (
             <>
               <Route path="/test-canli-ders" element={<TestLiveLesson />} />
+              <Route path="/test-livekit" element={<TestLiveKit />} />
               <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
             </>
           )}

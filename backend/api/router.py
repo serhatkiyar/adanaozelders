@@ -27,6 +27,7 @@ from api.routers import (
     payouts,
     payout,
     qa,
+    realtime,
     reports,
     reviews,
     seo,
@@ -60,6 +61,7 @@ api_router.include_router(blog.admin_router)
 api_router.include_router(bookings.router)
 api_router.include_router(bookmarks.router)
 api_router.include_router(qa.router)
+api_router.include_router(realtime.router)
 api_router.include_router(exams.router)
 api_router.include_router(geocode.router)
 api_router.include_router(habits.router)
