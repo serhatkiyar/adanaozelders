@@ -22,7 +22,9 @@ from services import booking_service
 
 TZ = ZoneInfo("Europe/Istanbul")
 
-PENDING_LIMIT = 5
+# Panodaki "yanıt bekleyen istekler" penceresi (23 Eyl 2026) bu kadarını
+# listeler; fazlası "+N istek daha" olarak söylenir.
+PENDING_LIMIT = 20
 UPCOMING_LIMIT = 3
 UPCOMING_DAYS = 3
 
@@ -41,7 +43,6 @@ def compute_visibility_issues(
     status: TutorStatus,
     availability_count: int,
     subject_count: int,
-    payout_status: str | None,
 ) -> list[dict[str, str]]:
     """İlanın görünürlüğünü ya da ödeme almayı engelleyen nedenler.
 
@@ -56,8 +57,9 @@ def compute_visibility_issues(
         issues.append({"code": "NO_SUBJECTS", "severity": "hidden"})
     if availability_count == 0:
         issues.append({"code": "NO_AVAILABILITY", "severity": "warning"})
-    if payout_status != "ACTIVE":
-        issues.append({"code": "PAYOUT_NOT_ACTIVE", "severity": "warning"})
+    # IBAN eksikliği bir neden DEĞİL (kullanıcı kararı, 23 Eyl 2026): ders
+    # işlemeyi engellemez — IBAN yalnız para çekerken gerekir ve orada
+    # (cüzdan kutusu) söylenir. Panoda uyarı olarak gösterilmez.
     return issues
 
 
@@ -91,17 +93,16 @@ async def build_dashboard(
         )
 
     # Eğitmenin KENDİ teklifleri "yanıt bekleyen istek" değildir: onları
-    # öğrenci yanıtlar (Modül 8).
-    pending_count = await _count(
-        Booking.status == BookingStatus.PENDING,
-        Booking.offered_by_tutor.is_(False),
-    )
-    pending = await _rows(
+    # öğrenci yanıtlar (Modül 8). Sayı ile liste AYNI koşula bakar: saati
+    # geçmiş istek yanıtlanamaz, eskiden sayıya girip listede görünmüyordu
+    # ("2 istek" deyip boş liste — 23 Eyl 2026).
+    pending_conds = (
         Booking.status == BookingStatus.PENDING,
         Booking.offered_by_tutor.is_(False),
         Booking.start_at >= now,
-        limit=PENDING_LIMIT,
     )
+    pending_count = await _count(*pending_conds)
+    pending = await _rows(*pending_conds, limit=PENDING_LIMIT)
 
     # Süren ders de "sıradaki"dir: bitmemiş en yakın kabul edilmiş ders.
     next_rows = await _rows(
@@ -157,6 +158,5 @@ async def build_dashboard(
             status=tutor.status,
             availability_count=availability_count,
             subject_count=subject_count,
-            payout_status=tutor.payout_status,
         ),
     }

@@ -34,8 +34,9 @@ function Kart({
 
 /**
  * Kısa özet. Kazanç rakamları `GET /payments/earnings`, ders sayısı pano
- * ucundan gelir; tarayıcıda sayım yapılmaz. Kazanç kartları Kazançlar
- * sayfasına, tamamlanan ders sayısı takvime açılır.
+ * ucundan gelir; tarayıcıda sayım yapılmaz. Kazanç kartları bağlantı değil
+ * (Kazançlar sayfası 23 Eyl 2026'da kalktı; bakiye üst bardaki cüzdanda),
+ * tamamlanan ders sayısı takvime açılır.
  */
 export function OzetKartlari({
   earnings,
@@ -47,17 +48,15 @@ export function OzetKartlari({
   escrowWording: boolean;
 }) {
   return (
-    <section aria-label="Özet" className="grid grid-cols-2 gap-4 md:grid-cols-3">
+    <section aria-label="Özet" className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
       <Kart
         etiket="Bu ay kazancın"
         deger={formatTRY(earnings?.this_month ?? "0")}
-        to={ROUTES.tutorEarnings}
       />
       <Kart
         etiket="Hesabına geçecek"
         deger={formatTRY(earnings?.pending ?? "0")}
         alt={escrowWording ? "Ders bitince hesabına geçer" : "Onay bekleyen ödemeler"}
-        to={ROUTES.tutorEarnings}
       />
       <Kart
         etiket="Bu ay tamamlanan"

@@ -250,18 +250,9 @@ describe("panel şeridi · hiçbir yüzey erişilemez kalmadı", () => {
     ).toEqual([]);
   });
 
-  it("Kazançlar: Bakiyem şeritte yok, sayfa panodan açılıyor ve Pano sekmesi aktif kalıyor", () => {
-    // Sekme kalktığında ekranın erişilemez kalması sessiz olur. Kazançlar'a
-    // tek giriş panodaki özet kartlarıdır; kart bağlantısı düşerse burası konuşur.
+  it("Bakiyem öğretmen şeridinde yok (cüzdan üst barda, 23 Eyl 2026)", () => {
     expect(TUTOR_PANO_SEKMELERI.map((s) => s.label)).not.toContain("Bakiyem");
     expect(TUTOR_PANO_SEKMELERI.map((s) => s.to)).not.toContain(ROUTES.balance);
-    const ozet = readFileSync(
-      join(KOK, "src", "components", "pano", "OzetKartlari.tsx"),
-      "utf8"
-    );
-    expect(ozet).toContain("ROUTES.tutorEarnings");
-    const pano = TUTOR_PANO_SEKMELERI.find((s) => s.label === "Genel Bakış");
-    expect(pano?.altYollar).toContain(ROUTES.tutorEarnings);
   });
 
   it("şeritteki hedefler rol menüsünde TEKRARLANMAZ", () => {

@@ -14,7 +14,6 @@ VisibilityCode = Literal[
     "SUSPENDED",
     "NO_SUBJECTS",
     "NO_AVAILABILITY",
-    "PAYOUT_NOT_ACTIVE",
 ]
 
 

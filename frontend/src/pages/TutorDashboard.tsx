@@ -1,103 +1,150 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ProfileCompleteness } from "@/components/ProfileCompleteness";
 import { ErrorState } from "@/components/admin/ui/PageState";
 import { AcilSerit } from "@/components/pano/AcilSerit";
 import { DersKarti } from "@/components/pano/DersKarti";
 import { GorunurlukBandi } from "@/components/pano/GorunurlukBandi";
-import { OzetKartlari } from "@/components/pano/OzetKartlari";
 import { SiradakiDersKarti } from "@/components/pano/SiradakiDersKarti";
-import { ACIKLAMA, BOLUM_BASLIGI, METIN_BAGLANTI, SAYFA_BASLIGI } from "@/components/pano/stil";
-import { useBookings } from "@/hooks/useBookings";
+import {
+  ACIKLAMA,
+  BOLUM_BASLIGI,
+  DUGME_BIRINCIL,
+  METIN_BAGLANTI,
+  SAYFA_BASLIGI,
+} from "@/components/pano/stil";
+import { Modal } from "@/components/ui/Modal";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
-import { useEarnings } from "@/hooks/usePayments";
 import { useTutorDashboard } from "@/hooks/useTutorDashboard";
 import { useMyTutorProfile } from "@/hooks/useTutorProfile";
 import { getErrorMessage } from "@/lib/errors";
 import { TUTOR_NAV } from "@/lib/nav";
 import { panoAltSatir, selamlama } from "@/lib/pano";
-import { canPromiseEscrow } from "@/lib/paymentAvailability";
 import { ADSIZ_UYE } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 import { useMeetingStore } from "@/store/meetingStore";
-import type { BookingOut } from "@/types";
+import type { BookingOut, TutorDashboardOut as Pano } from "@/types";
 
-function Bolum({
-  id,
+/*
+ * Genel Bakış — Preply öğretmen ana sayfası düzeni (araştırma: masaüstü
+ * `preply-arastirma/BULGULAR.md` 4o, 23 Eyl 2026). Sıra:
+ *   selamlama → ilan uyarıları → acil şeritler (yalnız iş varken) →
+ *   TEK odak kartı (sıradaki ders ya da bir sonraki adım) → sıradaki
+ *   dersler (yalnız ders varken).
+ * Kaldırılanlar (kullanıcı kararı, 23 Eyl 2026): "Yanıt bekleyen istekler"
+ * bölümü (istekler artık şeritten açılan pencerede), özet kartları
+ * (`OzetKartlari` dosyası duruyor; geri açmak için buraya eklemek yeter) ve
+ * "Tüm derslerim" (dersler takvimden ve ders sayfasından yönetilir).
+ */
+
+const ISTEKLER_CAPASI = "#bekleyen-istekler";
+
+/** Ders yokken odak kartı: bir "yok" mesajı değil, bir sonraki adım. */
+function BosOdakKarti({
   baslik,
-  sag,
-  children,
+  metin,
+  gri = false,
+  eylem,
 }: {
-  id?: string;
   baslik: string;
-  sag?: React.ReactNode;
-  children: React.ReactNode;
+  metin?: string;
+  gri?: boolean;
+  eylem: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-28">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className={BOLUM_BASLIGI}>{baslik}</h2>
-        {sag}
+    <section className="flex items-center justify-between gap-6 overflow-hidden rounded-lg bg-slate-100 px-6 py-6 sm:px-8">
+      <div className="min-w-0 space-y-4">
+        <div>
+          <h2
+            className={`text-xl font-semibold leading-7 ${gri ? "text-slate-500" : "text-slate-900"}`}
+          >
+            {baslik}
+          </h2>
+          {metin && <p className={`mt-1 ${ACIKLAMA}`}>{metin}</p>}
+        </div>
+        {eylem}
       </div>
-      <div className="space-y-3">{children}</div>
+      <img
+        src="/icons/ayakta-kisi.png"
+        alt=""
+        aria-hidden
+        className="hidden h-28 w-28 shrink-0 sm:block"
+      />
     </section>
   );
 }
 
-/**
- * Tüm dersler (geçmiş dahil) kapalı başlar; pano "şimdi ne yapmalıyım" sorusuna
- * odaklanır ama eski panodaki tam liste ve satır aksiyonları kaybolmaz.
- */
-function TumDersler({ onJoinMeeting }: { onJoinMeeting: (b: BookingOut) => void }) {
-  const [acik, setAcik] = useState(false);
-  const { data, isLoading, isError, error } = useBookings({ limit: 100 }, { enabled: acik });
-
+function OdakKarti({
+  pano,
+  onJoinMeeting,
+  istekleriAc,
+}: {
+  pano: Pano;
+  onJoinMeeting: (b: BookingOut) => void;
+  istekleriAc: () => void;
+}) {
+  if (pano.next_lesson) {
+    return (
+      <SiradakiDersKarti
+        lesson={pano.next_lesson}
+        onJoinMeeting={onJoinMeeting}
+      />
+    );
+  }
+  if (pano.pending_count > 0) {
+    return (
+      <BosOdakKarti
+        baslik="Önce ders isteklerine bak"
+        metin="Öğrenciler senden yanıt bekliyor; kabul ettiğin ders burada görünür."
+        eylem={
+          <button type="button" onClick={istekleriAc} className={DUGME_BIRINCIL}>
+            İstekleri gör
+          </button>
+        }
+      />
+    );
+  }
+  if (pano.completed_total === 0) {
+    return (
+      <BosOdakKarti
+        baslik="Aramıza hoş geldin"
+        metin="Profilini ve müsaitliğini güncel tut; ilk ders isteği buraya düşer."
+        eylem={
+          <Link to={ROUTES.tutorListing} className={DUGME_BIRINCIL}>
+            Profilime git
+          </Link>
+        }
+      />
+    );
+  }
   return (
-    <section className="rounded-lg border border-slate-200 bg-white">
-      <button
-        type="button"
-        aria-expanded={acik}
-        onClick={() => setAcik((v) => !v)}
-        className="flex min-h-14 w-full items-center justify-between gap-3 px-6 py-4 text-left"
-      >
-        <span className={BOLUM_BASLIGI}>Tüm derslerim</span>
-        <span aria-hidden className="text-2xl leading-none text-slate-500">
-          {acik ? "−" : "+"}
-        </span>
-      </button>
-      {acik && (
-        <div className="space-y-3 border-t border-slate-200 p-4 sm:p-6">
-          {isLoading ? (
-            <div className="h-20 animate-pulse rounded-lg bg-slate-100" />
-          ) : isError ? (
-            <p role="alert" className="text-base text-red-700">
-              {getErrorMessage(error, "Dersler yüklenemedi.")}
-            </p>
-          ) : (data ?? []).length === 0 ? (
-            <p className={`py-4 text-center ${ACIKLAMA}`}>Henüz dersin yok.</p>
-          ) : (
-            (data ?? []).map((b) => (
-              <DersKarti key={b.id} booking={b} onJoinMeeting={onJoinMeeting} />
-            ))
-          )}
-        </div>
-      )}
-    </section>
+    <BosOdakKarti
+      baslik="Sıradaki dersin yok"
+      gri
+      eylem={
+        <Link to={ROUTES.tutorCalendar} className={DUGME_BIRINCIL}>
+          Takvimi aç
+        </Link>
+      }
+    />
   );
 }
 
 export default function TutorDashboard() {
   const { data: user } = useCurrentUser();
   const { data: pano, isLoading, isError, error, refetch } = useTutorDashboard();
-  const { data: earnings } = useEarnings();
   const { data: ilan } = useMyTutorProfile();
   const { data: unread } = useMessagesUnreadCount();
-  const { data: paymentAvailability } = usePaymentAvailability();
-  const escrowWording = canPromiseEscrow(paymentAvailability, "tutor_marketplace");
   const { joinMeeting } = useMeetingStore();
+  const location = useLocation();
+
+  // Eski bağlantılar (`/genel-bakis#bekleyen-istekler`) istekler penceresini açar.
+  const [isteklerAcik, setIsteklerAcik] = useState(location.hash === ISTEKLER_CAPASI);
+  useEffect(() => {
+    if (location.hash === ISTEKLER_CAPASI) setIsteklerAcik(true);
+  }, [location.hash]);
 
   const derseKatil = (bk: BookingOut) =>
     joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Öğretmen", bk.client_name || ADSIZ_UYE);
@@ -112,9 +159,11 @@ export default function TutorDashboard() {
       })
     : null;
   const gizleyenVar = pano?.visibility_issues.some((i) => i.severity === "hidden") ?? false;
+  const fazlaIstek = pano ? pano.pending_count - pano.pending.length : 0;
 
   return (
-    <DashboardShell title="Genel Bakış" navItems={TUTOR_NAV} genislik="genis">
+    // Tek sütun, dar (Preply ana sayfası da ortada tek dar sütun).
+    <DashboardShell title="Genel Bakış" navItems={TUTOR_NAV} genislik="dar">
       <div className="space-y-8 pb-16 pt-2">
         <header>
           <h1 className={SAYFA_BASLIGI}>
@@ -128,11 +177,6 @@ export default function TutorDashboard() {
           <div className="space-y-3" aria-busy="true">
             <div className="h-16 animate-pulse rounded-lg bg-slate-100" />
             <div className="h-44 animate-pulse rounded-lg bg-slate-100" />
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-lg bg-slate-100" />
-              ))}
-            </div>
           </div>
         ) : isError || !pano ? (
           <ErrorState
@@ -141,83 +185,73 @@ export default function TutorDashboard() {
           />
         ) : (
           <>
-            {/* Geniş ekranda iki sütun (17 Eyl 2026): kartlar 1600px'e yayılıp
-                okunmaz hale gelmesin; sağ sütun özet ve durum bilgisi taşır. */}
             <GorunurlukBandi issues={pano.visibility_issues} />
             {/* Müsaitlik ve belge ilan yayına girdikten SONRA burada
                 tamamlanıyor; ilan zaten gizliyse önce o nedenler çözülür. */}
             {ilan && !gizleyenVar && <ProfileCompleteness tutor={ilan} />}
 
-            <div className="space-y-2">
-              <AcilSerit
-                count={pano.pending_count}
-                metin="ders isteği yanıtını bekliyor"
-                to={`${ROUTES.bookings}#bekleyen-istekler`}
-              />
-              <AcilSerit
-                count={unread?.inbox ?? 0}
-                metin="okunmamış mesajın var"
-                to={ROUTES.messages}
-              />
-            </div>
-
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-              <div className="min-w-0 space-y-8">
-            <SiradakiDersKarti
-              lesson={pano.next_lesson}
-              bosMetin={
-                pano.completed_total === 0
-                  ? "İlk ders isteği geldiğinde burada göreceksin."
-                  : "Yeni bir ders kabul ettiğinde burada görünür."
-              }
-              onJoinMeeting={derseKatil}
-            />
-
-            <Bolum
-              baslik="Önümüzdeki 3 gün"
-              sag={
-                pano.upcoming_count > pano.upcoming.length ? (
-                  <Link
-                    to={ROUTES.tutorCalendar}
-                    className={METIN_BAGLANTI}
-                  >
-                    Tümünü gör ({pano.upcoming_count})
-                  </Link>
-                ) : undefined
-              }
-            >
-              {pano.upcoming.length > 0 ? (
-                pano.upcoming.map((b) => (
-                  <DersKarti key={b.id} booking={b} onJoinMeeting={derseKatil} />
-                ))
-              ) : (
-                <p className={`py-4 text-center ${ACIKLAMA}`}>
-                  Önümüzdeki 3 günde planlanmış dersin yok.
-                </p>
-              )}
-            </Bolum>
-
-            <Bolum id="bekleyen-istekler" baslik="Yanıt bekleyen istekler">
-              {pano.pending.length > 0 ? (
-                pano.pending.map((b) => (
-                  <DersKarti key={b.id} booking={b} onJoinMeeting={derseKatil} />
-                ))
-              ) : (
-                <p className={`py-4 text-center ${ACIKLAMA}`}>Yanıt bekleyen isteğin yok.</p>
-              )}
-            </Bolum>
-
-            <TumDersler onJoinMeeting={derseKatil} />
-              </div>
-
-              <div className="min-w-0 space-y-8">
-                <OzetKartlari
-                  earnings={earnings}
-                  completedThisMonth={pano.completed_this_month}
-                  escrowWording={escrowWording}
+            {(pano.pending_count > 0 || (unread?.inbox ?? 0) > 0) && (
+              <div className="space-y-2">
+                <AcilSerit
+                  count={pano.pending_count}
+                  metin="ders isteğin yanıt bekliyor"
+                  ikon="/icons/el-kaldiran.svg"
+                  onClick={() => setIsteklerAcik(true)}
+                />
+                <AcilSerit
+                  count={unread?.inbox ?? 0}
+                  metin="okunmamış mesajın var"
+                  to={ROUTES.messages}
                 />
               </div>
-            </div>
+            )}
+
+            <OdakKarti
+              pano={pano}
+              onJoinMeeting={derseKatil}
+              istekleriAc={() => setIsteklerAcik(true)}
+            />
+
+            {/* Önümüzdeki 3 günün dersleri; ders yoksa bölüm hiç çizilmez. */}
+            {pano.upcoming.length > 0 && (
+              <section>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2 className={BOLUM_BASLIGI}>Yaklaşan dersler</h2>
+                  <Link to={ROUTES.tutorCalendar} className={METIN_BAGLANTI}>
+                    {pano.upcoming_count > pano.upcoming.length
+                      ? `Tümünü gör (${pano.upcoming_count})`
+                      : "Tümünü gör"}
+                  </Link>
+                </div>
+                <div className="space-y-3">
+                  {pano.upcoming.map((b) => (
+                    <DersKarti key={b.id} booking={b} onJoinMeeting={derseKatil} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <Modal
+              open={isteklerAcik}
+              onClose={() => setIsteklerAcik(false)}
+              title="Yanıt bekleyen ders istekleri"
+              maxWidth="max-w-2xl"
+            >
+              <div className="mt-5 space-y-3">
+                {pano.pending.length > 0 ? (
+                  pano.pending.map((b) => (
+                    <DersKarti key={b.id} booking={b} onJoinMeeting={derseKatil} />
+                  ))
+                ) : (
+                  <p className={`py-6 text-center ${ACIKLAMA}`}>
+                    Yanıt bekleyen isteğin kalmadı.
+                  </p>
+                )}
+                {fazlaIstek > 0 && (
+                  <p className={`text-center ${ACIKLAMA}`}>+{fazlaIstek} istek daha</p>
+                )}
+              </div>
+            </Modal>
           </>
         )}
       </div>

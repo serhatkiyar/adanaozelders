@@ -4,7 +4,6 @@ import {
   ACIKLAMA,
   DUGME_BIRINCIL,
   DUGME_IKINCIL,
-  ETIKET,
   KART,
   KUCUK_ACIKLAMA,
 } from "@/components/pano/stil";
@@ -30,7 +29,8 @@ export function SiradakiDersKarti({
   ustEtiket = "Sıradaki ders",
 }: {
   lesson: BookingOut | null;
-  bosMetin: string;
+  /** Boş durumda başlığın altındaki açıklama; verilmezse yalnız başlık. */
+  bosMetin?: string;
   onJoinMeeting: (booking: BookingOut) => void;
   karsiTaraf?: "ogrenci" | "egitmen";
   ustEtiket?: string;
@@ -38,8 +38,9 @@ export function SiradakiDersKarti({
   if (!lesson) {
     return (
       <section className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
-        <p className={ETIKET}>Sıradaki dersin yok</p>
-        <p className={`mt-1 ${ACIKLAMA}`}>{bosMetin}</p>
+        {/* Boş durum yalnız gri tek satır (kullanıcı kararı, 23 Eyl 2026). */}
+        <p className="text-base font-semibold leading-6 text-slate-500">Sıradaki dersin yok</p>
+        {bosMetin && <p className={`mt-1 ${ACIKLAMA}`}>{bosMetin}</p>}
       </section>
     );
   }

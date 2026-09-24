@@ -21,7 +21,6 @@ def _codes(**kw):
         status=TutorStatus.APPROVED,
         availability_count=3,
         subject_count=2,
-        payout_status="ACTIVE",
     )
     base.update(kw)
     return [(i["code"], i["severity"]) for i in svc.compute_visibility_issues(**base)]
@@ -29,6 +28,13 @@ def _codes(**kw):
 
 def test_hazir_ilan_icin_neden_yok():
     assert _codes() == []
+
+
+def test_iban_eksikligi_neden_sayilmaz():
+    """IBAN yalnız para çekerken gerekir; ders işlemeyi engellemez (23 Eyl 2026)."""
+    import inspect
+
+    assert "payout_status" not in inspect.signature(svc.compute_visibility_issues).parameters
 
 
 @pytest.mark.parametrize(
@@ -44,12 +50,9 @@ def test_yayinda_olmayan_durum_gizli_sayilir(status, code):
     assert _codes(status=status) == [(code, "hidden")]
 
 
-def test_musaitlik_ve_odeme_hesabi_uyari_duzeyinde():
-    """Arama yalnız APPROVED'a bakar; müsaitlik/ödeme hesabı ilanı gizlemez."""
-    assert _codes(availability_count=0, payout_status="PENDING") == [
-        ("NO_AVAILABILITY", "warning"),
-        ("PAYOUT_NOT_ACTIVE", "warning"),
-    ]
+def test_musaitlik_uyari_duzeyinde():
+    """Arama yalnız APPROVED'a bakar; müsaitlik ilanı gizlemez."""
+    assert _codes(availability_count=0) == [("NO_AVAILABILITY", "warning")]
 
 
 def test_oncelik_sirasi_gizleyenler_once():
@@ -57,12 +60,10 @@ def test_oncelik_sirasi_gizleyenler_once():
         status=TutorStatus.DRAFT,
         subject_count=0,
         availability_count=0,
-        payout_status=None,
     ) == [
         ("DRAFT", "hidden"),
         ("NO_SUBJECTS", "hidden"),
         ("NO_AVAILABILITY", "warning"),
-        ("PAYOUT_NOT_ACTIVE", "warning"),
     ]
 
 
@@ -128,6 +129,26 @@ async def test_her_ders_sorgusu_egitmene_ve_silinmemise_bagli():
         assert "bookings.deleted_at IS NULL" in sql, sql
     assert out["next_lesson"] is None
     assert out["pending_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_bekleyen_sayisi_saati_gecmis_istegi_saymaz():
+    """Sayı ile liste aynı koşula bakar: saati geçmiş PENDING sayılmaz."""
+    tutor = Tutor()
+    tutor.id = 4242
+    tutor.status = TutorStatus.APPROVED
+    db = _KayitDb()
+    now = datetime.datetime(2026, 9, 17, 12, 0, tzinfo=datetime.timezone.utc)
+
+    await svc.build_dashboard(db, tutor, now=now)  # type: ignore[arg-type]
+
+    bekleyen = [
+        s for s in db.sorgular
+        if "bookings.status = 'PENDING'" in s and "count(" in s
+    ]
+    assert bekleyen, "bekleyen sayım sorgusu yakalanmadı"
+    for sql in bekleyen:
+        assert "bookings.start_at >= '2026-09-17 12:00:00+00:00'" in sql, sql
 
 
 @pytest.mark.parametrize(
