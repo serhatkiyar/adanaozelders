@@ -5,7 +5,6 @@ import { Icon } from "@/components/AppIcon";
 import type {
   DersBilgisi,
   DersSohbetBilgisi,
-  SohbetDurumu,
   ZoomOdasiTutamak,
 } from "@/components/canli/ZoomOdasi";
 import { Modal } from "@/components/ui/Modal";
@@ -41,9 +40,11 @@ const DUGME =
  * sitenin geri kalanına sızmasın.
  *
  * Yerleşim: koyu oda yüzeyi (La Suite Meet görünümü; `ders-*` token'ları,
- * `dark:` yok) — sade üst şerit (karşı taraf adı, sayaç) + sahne + Meet
- * kontrol çubuğu (`ZoomOdasi` içinde). Katılımcılar ve ders içi sohbet
- * `ZoomOdasi`'nın yan panelindedir (masaüstünde sağda, telefonda tam ekran).
+ * `dark:` yok) — üst şerit YOK (Meet): sahne + Meet kontrol çubuğu
+ * (`ZoomOdasi` içinde). Ayrıl ve Sohbet yalnız kontrol çubuğunda; ayrıl
+ * onay penceresi burada. Tarayıcı uyarısı, karşı taraf notu ve ders sayacı
+ * sahnenin üst ortasında hap (`sahneUstu`). Katılımcılar ve ders içi sohbet
+ * `ZoomOdasi`'nın yan panelindedir (Preply yerleşimi).
  * İleride tahta eklenirse video kutusu (`ZoomOdasi`'nın kabı) AYNI DOM
  * düğümünde kalmalı; yalnız yerleşimi değişir, yoksa görüşme yeniden bağlanır.
  */
@@ -187,7 +188,6 @@ function DersOdasi({
   const [kapandi, setKapandi] = useState(false);
   const [cikisAcik, setCikisAcik] = useState(false);
   const [ayriliyor, setAyriliyor] = useState(false);
-  const [sohbetDurumu, setSohbetDurumu] = useState<SohbetDurumu | null>(null);
   const simdi = useSimdi();
 
   const rol = oda.bilet.rol;
@@ -211,12 +211,14 @@ function DersOdasi({
               karsiTarafId: ders.client_id,
               karsiTarafRol: "CLIENT",
               karsiTarafAd: karsiAd,
+              karsiTarafAvatar: ders.client_avatar_url,
               benimRolum: "TUTOR",
             }
           : {
               karsiTarafId: ders.tutor_id,
               karsiTarafRol: "TUTOR",
               karsiTarafAd: karsiAd,
+              karsiTarafAvatar: ders.tutor_avatar_url,
               benimRolum: "CLIENT",
             }
         : undefined,
@@ -235,88 +237,6 @@ function DersOdasi({
 
   return (
     <div className="fixed inset-0 flex flex-col bg-ders-zemin font-sans text-white">
-      {/* Tarayıcı uyarısı — Meet bildirim görünümü: koyu yüzeyde yuvarlak
-          kutu, oda token'larıyla (açık sarı şerit koyu odada sırıtıyordu). */}
-      {firefoxSeridi && (
-        <div className="flex shrink-0 justify-center px-4 pt-2">
-          <div
-            role="status"
-            className="flex w-full max-w-xl items-center gap-3 rounded-ders bg-ders-yuzey py-2 pl-4 pr-2 text-sm text-white shadow-lg"
-          >
-            <Icon name="help" className="h-5 w-5 shrink-0 text-white/70" />
-            <p className="min-w-0 flex-1">En iyi deneyim için Chrome önerilir.</p>
-            <button
-              type="button"
-              onClick={() => setFirefoxSeridi(false)}
-              aria-label="Uyarıyı kapat"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-ders-dugme"
-            >
-              <Icon name="dismiss" className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <header
-        className={`flex shrink-0 items-center gap-3 bg-ders-zemin px-4 ${
-          telefon ? "h-12" : "h-14"
-        }`}
-      >
-        <div className="min-w-0 flex-1">
-          <p className={`truncate font-semibold ${telefon ? "text-sm" : "text-base"}`}>
-            {telefon ? karsiAd : `Canlı ders · ${karsiAd}`}
-          </p>
-        </div>
-        {sayac && (
-          <span
-            role="status"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-ders-dugme px-3 py-1 text-sm font-semibold text-white"
-          >
-            <Icon name="clock" className="h-4 w-4" />
-            {sayac}
-          </span>
-        )}
-        {/* Ders içi sohbet: odanın yan panelini açıp kapatır (yeni sekme
-            açmaz, görüşme sürer). Yalnız odadayken ve sohbet varken. */}
-        {sohbetDurumu?.kullanilabilir && (
-          <button
-            type="button"
-            onClick={() => odaRef.current?.sohbetiDegistir()}
-            aria-pressed={sohbetDurumu.acik}
-            aria-label={
-              sohbetDurumu.okunmamis > 0 && !sohbetDurumu.acik
-                ? `Mesajlar, ${sohbetDurumu.okunmamis} okunmamış`
-                : "Mesajlar"
-            }
-            className={`${DUGME} relative h-10 shrink-0 text-white ${
-              sohbetDurumu.acik ? "bg-ders-hover" : "bg-ders-dugme hover:bg-ders-hover"
-            } ${telefon ? "w-10" : "px-4 text-base"}`}
-          >
-            <Icon name="messages" className="h-5 w-5" />
-            {!telefon && "Mesajlar"}
-            {sohbetDurumu.okunmamis > 0 && !sohbetDurumu.acik && (
-              <span
-                aria-hidden
-                className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-marka px-1 text-xs font-semibold text-marka-fg"
-              >
-                {sohbetDurumu.okunmamis > 9 ? "9+" : sohbetDurumu.okunmamis}
-              </span>
-            )}
-          </button>
-        )}
-        {/* Telefonda çıkış alt çubuktaki "Çık"tadır. */}
-        {!telefon && (
-          <button
-            type="button"
-            onClick={() => setCikisAcik(true)}
-            className={`${DUGME} h-10 shrink-0 bg-ders-tehlike px-4 text-base text-white hover:bg-ders-tehlike-hover`}
-          >
-            <Icon name="logout" className="h-5 w-5" />
-            Dersten ayrıl
-          </button>
-        )}
-      </header>
-
       <main className="relative flex min-h-0 flex-1">
         {/* `isolate`: odanın iç z-index'leri bu kutuda kalsın; sayfanın
             pencereleri (portal, z-100) her zaman üstte. */}
@@ -340,19 +260,49 @@ function DersOdasi({
               biletTazele={biletTazele}
               dersBilgisi={dersBilgisi}
               sohbet={sohbet}
-              onSohbetDurumu={setSohbetDurumu}
+              sahneUstu={
+                firefoxSeridi || not || sayac ? (
+                  <>
+                    {/* Tarayıcı uyarısı — Meet bildirim görünümü. */}
+                    {firefoxSeridi && (
+                      <div
+                        role="status"
+                        className="flex w-full max-w-xl items-center gap-3 rounded-ders bg-ders-yuzey py-2 pl-4 pr-2 text-sm text-white shadow-lg"
+                      >
+                        <Icon name="help" className="h-5 w-5 shrink-0 text-white/70" />
+                        <p className="min-w-0 flex-1">En iyi deneyim için Chrome önerilir.</p>
+                        <button
+                          type="button"
+                          onClick={() => setFirefoxSeridi(false)}
+                          aria-label="Uyarıyı kapat"
+                          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-ders-dugme"
+                        >
+                          <Icon name="dismiss" className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                    {sayac && (
+                      <span
+                        role="status"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-ders-yuzey/95 px-4 py-2 text-sm font-semibold text-white shadow-lg"
+                      >
+                        <Icon name="clock" className="h-4 w-4" />
+                        {sayac}
+                      </span>
+                    )}
+                    {not && (
+                      <p
+                        role="status"
+                        className="max-w-full rounded-full bg-ders-yuzey/95 px-4 py-2 text-center text-sm font-medium text-white shadow-lg"
+                      >
+                        {not}
+                      </p>
+                    )}
+                  </>
+                ) : undefined
+              }
             />
           </Suspense>
-          {/* Bölümün İÇİNDE: telefonda tam ekran yan panel (odanın z-40'ı)
-              notun üstüne çıkabilsin. */}
-          {not && (
-            <p
-              role="status"
-              className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-ders-yuzey/95 px-4 py-2 text-center text-sm font-medium text-white shadow-lg"
-            >
-              {not}
-            </p>
-          )}
         </section>
 
         {kapandi && (

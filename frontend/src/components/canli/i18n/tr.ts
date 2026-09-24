@@ -44,18 +44,21 @@ export const tr = {
       microphone: "Mikrofon",
       camera: "Kamera",
       leave: "Ayrıl",
-      leaveShort: "Çık",
+      /** Meet `controls.moreOptions` — dar pencerede sağ bölgeyi toplayan ok. */
       moreOptions: "Daha fazla",
       screenShare: {
         start: "Ekranını paylaş",
         stop: "Paylaşımı durdur",
       },
-      /** Meet `controls.chat` — `open`: panel açıkken düğmenin adı. */
+      /**
+       * Sohbet düğmesi — adı Preply'daki gibi "Sohbet"; ipucu Preply
+       * `classroom.tooltip.tooltip_chat` ("Chat with {userName}").
+       * Okunmamışta yalnız nokta (sayı yok); ekran okuyucuya sayısız metin.
+       */
       chat: {
-        open: "Sohbeti kapat",
-        closed: "Sohbeti aç",
-        unread_one: "{{count}} okunmamış mesaj",
-        unread_other: "{{count}} okunmamış mesaj",
+        label: "Sohbet",
+        tooltip: "{{name}} ile sohbet",
+        unread: "Okunmamış mesaj var",
       },
       /** Meet `controls.reactions` — emoji tepkileri (Zoom command channel). */
       reactions: {
@@ -76,19 +79,16 @@ export const tr = {
         count_other: "{{count}} katılımcı",
       },
     },
-    /** Meet `sidePanel` — yalnız Katılımcılar ve Sohbet. */
+    /** Meet `sidePanel` — Katılımcılar başlığı (sohbetin başlığı kendinde, Preply). */
     sidePanel: {
       ariaLabel: "Yan panel: {{title}}",
       heading: {
         participants: "Katılımcılar",
-        chat: "Ders sohbeti",
+        chat: "Sohbet",
       },
-      content: {
-        participants: "Katılımcıları",
-        chat: "Sohbeti",
-      },
-      closeButton: "{{content}} gizle (Esc)",
+      closeButton: "Katılımcıları gizle (Esc)",
       escapeHint: "Kapatmak için Esc tuşuna bas",
+      resize: "Paneli yeniden boyutlandır",
     },
     /** Meet `participants` — yönetici işlemleri yok. */
     participants: {
@@ -103,9 +103,31 @@ export const tr = {
       micOn: "Mikrofonu açık",
       micOff: "Mikrofonu kapalı",
     },
-    /** Ders içi sohbet: sitenin mesajlaşması (Meet sohbeti taşınmadı). */
+    /**
+     * Ders içi sohbet: sitenin mesajlaşması, görünümü Preply sınıf sohbeti
+     * (Preply `shared.tr` metinleri: "Mesajın", "… için saat", "Mesajları
+     * kapat", "Mesaj eylemleri", "Yanıtla", "Kopyala", "… tarafından
+     * görüldü", "Gönderildi", "Bugün", "Dün", "… yeni mesaj").
+     */
     chat: {
-      hint: "Yazışman Mesajlar sayfasında da görünür.",
+      close: "Mesajları kapat",
+      localTime: "{{name}} için saat {{time}}",
+      placeholder: "Mesajın",
+      actions: "Mesaj eylemleri",
+      reply: "Yanıtla",
+      copy: "Kopyala",
+      react: "{{emoji}} tepkisi",
+      seenBy: "{{name}} tarafından görüldü",
+      sent: "Gönderildi",
+      today: "Bugün",
+      yesterday: "Dün",
+      newMessages: "{{count}} yeni mesaj",
+      scrollDown: "En yeni mesajlara in",
+      send: "Gönder",
+      sendError: "Mesaj gönderilemedi.",
+      charCount: "{{used}} / {{limit}} karakter",
+      replyingTo: "{{name}} yanıtlanıyor",
+      cancelReply: "Yanıtı kaldır",
     },
     selectDevice: {
       loading: "Yükleniyor…",

@@ -16,6 +16,8 @@ export interface DersSohbetBilgisi {
   karsiTarafId: number;
   karsiTarafRol: "CLIENT" | "TUTOR";
   karsiTarafAd: string;
+  /** Karşı tarafın profil fotoğrafı (dersten); yoksa baş harf. */
+  karsiTarafAvatar?: string | null;
   benimRolum: "CLIENT" | "TUTOR";
 }
 
@@ -23,6 +25,8 @@ export interface DersKonusmasi {
   konusmaId: number | null;
   /** Karşı taraftan gelen, okunmamış mesaj sayısı. */
   okunmamis: number;
+  /** Karşı tarafın konuşmayı en son okuduğu an ("… tarafından görüldü"). */
+  karsiOkuma: string | null;
   gonderildi: (mesaj: MessageOut) => void;
 }
 
@@ -41,6 +45,7 @@ export function useDersKonusmasi(sohbet: DersSohbetBilgisi | undefined): DersKon
   return {
     konusmaId: konusma?.id ?? olusanId,
     okunmamis: konusma?.unread ?? 0,
+    karsiOkuma: konusma?.counterparty_last_read_at ?? null,
     gonderildi,
   };
 }

@@ -1,5 +1,7 @@
 /**
  * Canlı ders (Zoom) sayfası — kapı hataları, oda yerleşimi ve çıkış akışı.
+ * Üst şerit yok (Meet): Ayrıl ve Sohbet odanın kontrol çubuğunda; sayfa
+ * yalnız onaylı çıkış penceresini ve sahne üstü haplarını verir.
  *
  * jsdom Zoom toolkit'ini yükleyemez: `ZoomOdasi` taklit edilir; taklit aldığı
  * geri çağrıları dışarı verir ki karşı taraf/kopma olayları sürülebilsin.
@@ -20,19 +22,18 @@ import type { BookingOut, ZoomDersTokenOut } from "@/types";
 const oda = vi.hoisted(() => ({
   props: null as ZoomOdasiProps | null,
   ayril: vi.fn(async () => {}),
-  sohbetiDegistir: vi.fn(),
   kurulum: 0,
 }));
 
 vi.mock("@/components/canli/ZoomOdasi", () => ({
   default: forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function SahteOda(props, ref) {
     oda.props = props;
-    useImperativeHandle(
-      ref,
-      () => ({ ayril: oda.ayril, sohbetiDegistir: oda.sohbetiDegistir }),
-      [],
+    useImperativeHandle(ref, () => ({ ayril: oda.ayril }), []);
+    return (
+      <div data-testid="zoom-kabi">
+        <div data-testid="sahne-ustu">{props.sahneUstu}</div>
+      </div>
     );
-    return <div data-testid="zoom-kabi" />;
   }),
 }));
 vi.mock("@/api/bookings", async (asil) => ({
@@ -129,30 +130,29 @@ describe("CanliDers — giriş kapıları", () => {
 });
 
 describe("CanliDers — oda", () => {
-  it("bilet gelince oda sunucunun verdiği biletle kurulur", async () => {
+  it("bilet gelince oda sunucunun verdiği biletle kurulur; üst şerit yok", async () => {
     ciz();
     expect(await screen.findByTestId("zoom-kabi")).toBeInTheDocument();
     expect(oda.props?.bilet).toEqual(BILET);
-    expect(screen.getByText("Canlı ders · Mehmet")).toBeInTheDocument();
-    // Mesajlar yeni sekme/bağlantı değil; oda sohbete hazır olana dek yok.
+    // Ayrıl ve Sohbet yalnız odanın kontrol çubuğunda (Meet): sayfada ikinci
+    // bir ayrıl/mesajlar düğmesi ya da başlık yok.
+    expect(screen.queryByText("Canlı ders · Mehmet")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Dersten ayrıl/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Mesajlar|Sohbet/ })).toBeNull();
     expect(screen.queryByRole("link", { name: /Mesajlar/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Mesajlar/ })).toBeNull();
+    expect(screen.queryByRole("banner")).toBeNull();
   });
 
-  it("Mesajlar yan paneldeki ders içi sohbeti açıp kapatır", async () => {
+  it("ders içi sohbet odaya karşı tarafın genel konuşmasıyla verilir", async () => {
     ciz();
     await screen.findByTestId("zoom-kabi");
-    act(() => oda.props!.onSohbetDurumu?.({ kullanilabilir: true, acik: false, okunmamis: 2 }));
-
-    const dugme = screen.getByRole("button", { name: "Mesajlar, 2 okunmamış" });
-    expect(dugme).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(dugme);
-    expect(oda.sohbetiDegistir).toHaveBeenCalledTimes(1);
-
-    act(() => oda.props!.onSohbetDurumu?.({ kullanilabilir: true, acik: true, okunmamis: 0 }));
-    expect(screen.getByRole("button", { name: "Mesajlar" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    await waitFor(() =>
+      expect(oda.props?.sohbet).toMatchObject({
+        karsiTarafId: 20,
+        karsiTarafRol: "CLIENT",
+        karsiTarafAd: "Mehmet",
+        benimRolum: "TUTOR",
+      }),
     );
   });
 
@@ -177,11 +177,12 @@ describe("CanliDers — oda", () => {
     expect(screen.getByText("Öğretmenin henüz derse katılmadı.")).toBeInTheDocument();
   });
 
-  it("Dersten ayrıl → onay → yalnız ayrılır (bitirmez) ve ders sayfasına döner", async () => {
+  it("çubuktaki Ayrıl → onay → yalnız ayrılır (bitirmez) ve ders sayfasına döner", async () => {
     ciz();
     await screen.findByTestId("zoom-kabi");
 
-    fireEvent.click(screen.getByRole("button", { name: /Dersten ayrıl/ }));
+    // Kontrol çubuğundaki kırmızı Ayrıl (oda taklit edildi: geri çağrısı sürülür).
+    act(() => oda.props!.onAyrilIstegi?.());
     const pencere = screen.getByRole("dialog");
     expect(within(pencere).getByText(/karşı taraf için açık kalır/)).toBeInTheDocument();
 
@@ -190,7 +191,7 @@ describe("CanliDers — oda", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(oda.ayril).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /Dersten ayrıl/ }));
+    act(() => oda.props!.onAyrilIstegi?.());
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Ayrıl" }));
 
     await waitFor(() => expect(tamSayfaGit).toHaveBeenCalledWith("/ders-talepleri/5"));

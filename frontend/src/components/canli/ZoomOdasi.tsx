@@ -13,14 +13,16 @@
  *
  * Props ve `ZoomOdasiTutamak.ayril()` toolkit sürümüyle aynı; yalnız isteğe
  * bağlı props eklendi (`onAyrilIstegi`, `biletTazele`, `dersBilgisi`,
- * `sohbet`, `onSohbetDurumu`); tutamağa `sohbetiDegistir()` (üst şeritteki
- * "Mesajlar" yan paneli açar, yeni sekme açmaz).
+ * `sohbet`, `sahneUstu`). Sayfanın üst şeridi yok (Meet): Ayrıl ve Sohbet
+ * yalnız kontrol çubuğunda.
  *
- * ## Yan panel (Katılımcılar, ders içi sohbet)
+ * ## Yan panel (Katılımcılar, ders içi sohbet) — Preply yerleşimi
  *
- * Masaüstünde sahnenin sağında açılır; sahne kabı AYNI düğümde kalır, yalnız
- * sağ boşluğu değişir (video yeniden bağlanmaz). Telefonda tam ekran açılır,
- * sahne altında çizili kalır ve ses sürer. Sohbet sitenin mesajlaşmasıdır.
+ * Odanın en sağında tam yükseklik (`YanPanel`): >880px'te sahneyi ve
+ * kontrol çubuğunu daraltır, ≤880px'te karartmalı kaplayan pencere,
+ * telefonda tam ekran (sahne altta çizili kalır, ses sürer). Ağaç sabit:
+ * yalnız sınıflar değişir, video kapları yeniden kurulmaz. Sohbet bir kez
+ * açılınca DOM'da kalır (kapalıyken gizli): taslak ve kaydırma korunur.
  *
  * ## Ayrılma = argümansız `leave()`
  *
@@ -35,7 +37,15 @@
  * Mikrofon/kamera açık tercihi ve seçilen cihazlar tarayıcıda saklanır
  * (`zoom/tercihler.ts`); önizlemede seçilen cihazla derse girilir.
  */
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { I18nextProvider } from "react-i18next";
 
 import { biletTazeMi, type KarsiTarafDurumu } from "@/lib/canliDers";
@@ -91,16 +101,24 @@ const AYRILDI_BEKLEME_MS = 5_000;
 export interface ZoomOdasiTutamak {
   /** Yalnız KENDİNİ oturumdan çıkarır (host için de). En çok ~3 sn bekler. */
   ayril: () => Promise<void>;
-  /** Üst şeritteki "Mesajlar": yan paneli sohbet sekmesiyle açar/kapatır. */
-  sohbetiDegistir: () => void;
 }
 
-/** Üst şeritteki "Mesajlar" düğmesinin durumu. */
-export interface SohbetDurumu {
-  /** Odadayız ve ders içi sohbet var (önizlemede yan panel yok). */
-  kullanilabilir: boolean;
-  acik: boolean;
-  okunmamis: number;
+/** Preply: ≤880px masaüstünde yan panel kaplayan pencereye döner. */
+const DAR_PENCERE = "(max-width: 880px)";
+
+function useDarPencere(): boolean {
+  const [dar, setDar] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia(DAR_PENCERE).matches,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(DAR_PENCERE);
+    const degisti = () => setDar(mq.matches);
+    degisti();
+    mq.addEventListener?.("change", degisti);
+    return () => mq.removeEventListener?.("change", degisti);
+  }, []);
+  return dar;
 }
 
 export interface ZoomOdasiProps {
@@ -120,8 +138,11 @@ export interface ZoomOdasiProps {
   dersBilgisi?: DersBilgisi;
   /** Ders içi sohbetin karşı tarafı; yoksa sohbet düğmesi görünmez. */
   sohbet?: DersSohbetBilgisi;
-  /** Sohbet paneli durumu değişince (üst şeritteki "Mesajlar" için). */
-  onSohbetDurumu?: (durum: SohbetDurumu) => void;
+  /**
+   * Sahnenin üst ortasındaki durum hapları (tarayıcı uyarısı, karşı taraf
+   * notu, ders sayacı). Sahnenin İÇİNDE: yan panelin üstüne binmez.
+   */
+  sahneUstu?: ReactNode;
 }
 
 const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdasi(
@@ -131,7 +152,8 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   // Geri çağrılar her çizimde güncel; bilet/süre ise İLK değerleriyle donar.
   const guncel = useRef(props);
   guncel.current = props;
-  const { telefon, onAyrilIstegi, dersBilgisi, bilet, sohbet } = props;
+  const { telefon, onAyrilIstegi, dersBilgisi, bilet, sohbet, sahneUstu } = props;
+  const darPencere = useDarPencere();
 
   const asama = useAsama();
   const [mikTercihi, setMikTercihiDurumu] = useState(() => tercihleriOku().mikAcik);
@@ -161,30 +183,18 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   );
   const paneliKapat = useCallback(() => setPanel(null), []);
   const konusma = useDersKonusmasi(sohbet);
-  const [sohbetTaslagi, setSohbetTaslagi] = useState("");
+  // Sohbet bir kez açılınca DOM'da kalır (Preply `SidebarPanelChat`).
+  const [sohbetKuruldu, setSohbetKuruldu] = useState(false);
+  if (panel === "sohbet" && !sohbetKuruldu) setSohbetKuruldu(true);
   const panelDenetimi: PanelDenetimi = {
     panel,
     onPanel: panelDegistir,
     sohbetVar: Boolean(sohbet),
     okunmamis: konusma.okunmamis,
+    karsiAd: sohbet?.karsiTarafAd ?? "",
   };
 
-  useImperativeHandle(
-    ref,
-    () => ({ ayril: () => odadanAyril(), sohbetiDegistir: () => panelDegistir("sohbet") }),
-    [panelDegistir],
-  );
-
-  const sohbetKullanilabilir = asama === "odada" && Boolean(sohbet);
-  const sohbetAcik = sohbetKullanilabilir && panel === "sohbet";
-  const okunmamis = konusma.okunmamis;
-  useEffect(() => {
-    guncel.current.onSohbetDurumu?.({
-      kullanilabilir: sohbetKullanilabilir,
-      acik: sohbetAcik,
-      okunmamis,
-    });
-  }, [sohbetKullanilabilir, sohbetAcik, okunmamis]);
+  useImperativeHandle(ref, () => ({ ayril: () => odadanAyril() }), []);
 
   // Kurulum: depo sıfır, init (WASM ön yükleme) önizleme sırasında başlar,
   // olay köprüsü bağlanır. StrictMode'un kur-sök-kur döngüsü: söküm yalnız
@@ -350,6 +360,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   if (asama !== "odada") {
     return (
       <I18nextProvider i18n={dersI18n}>
+        {sahneUstu && <SahneUstu>{sahneUstu}</SahneUstu>}
         <OnIzleme
           telefon={telefon}
           mikAcik={mikTercihi}
@@ -371,39 +382,39 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
 
   return (
     <I18nextProvider i18n={dersI18n}>
-      <div className="absolute inset-0 flex flex-col bg-ders-zemin">
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          {/* Sahne HEP aynı düğüm: panel açılınca yalnız sağ boşluğu değişir
-              (Meet `RoomContentArea`); kaplar yeniden kurulmaz. */}
-          <div
-            className="absolute inset-y-0 left-0 transition-[right] duration-500 ease-in-out"
-            style={{ right: panel !== null && !telefon ? "calc(360px + 0.75rem)" : 0 }}
-          >
+      {/* Ağaç sabit: [sol sütun: sahne + çubuk] [yan panel]. Düzen yalnız
+          sınıflarla değişir; sahne düğümü yeniden kurulmaz. */}
+      <div className="absolute inset-0 flex bg-ders-zemin">
+        {/* `isolate`: sahnenin z-index'leri (tepkiler, haplar) kendi içinde
+            kalır; ≤880px'teki karartma ve panel her zaman üstte. */}
+        <div className="relative isolate flex min-w-0 flex-1 flex-col">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
             <ZoomVideoSahnesi telefon={telefon} />
             <UcanTepkiler />
             <DurumSeritleri mikTercihi={mikTercihi} />
+            {sahneUstu && <SahneUstu>{sahneUstu}</SahneUstu>}
           </div>
-          <YanPanel panel={panel} telefon={telefon} onKapat={paneliKapat}>
-            {(tur) =>
-              tur === "sohbet" && sohbet ? (
-                <DersSohbeti
-                  acik={panel === "sohbet"}
-                  sohbet={sohbet}
-                  konusma={konusma}
-                  taslak={sohbetTaslagi}
-                  setTaslak={setSohbetTaslagi}
-                />
-              ) : (
-                <KatilimciListesi benimRolum={bilet.rol} />
-              )
-            }
-          </YanPanel>
+          {telefon ? (
+            <TelefonCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} panel={panelDenetimi} />
+          ) : (
+            <KontrolCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} panel={panelDenetimi} />
+          )}
         </div>
-        {telefon ? (
-          <TelefonCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} panel={panelDenetimi} />
-        ) : (
-          <KontrolCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} panel={panelDenetimi} />
-        )}
+        <YanPanel panel={panel} telefon={telefon} dar={darPencere} onKapat={paneliKapat}>
+          {sohbet && sohbetKuruldu && (
+            <div className={panel === "sohbet" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+              <DersSohbeti
+                acik={panel === "sohbet"}
+                sohbet={sohbet}
+                konusma={konusma}
+                telefon={telefon}
+                dar={telefon || darPencere}
+                onKapat={paneliKapat}
+              />
+            </div>
+          )}
+          {panel === "katilimcilar" && <KatilimciListesi benimRolum={bilet.rol} />}
+        </YanPanel>
       </div>
       <AyarlarPenceresi
         acik={ayarlar.acik}
@@ -415,6 +426,15 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     </I18nextProvider>
   );
 });
+
+/** Sahnenin üst ortasındaki haplar; tıklamayı yalnız kendi öğeleri alır. */
+function SahneUstu({ children }: { children: ReactNode }) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex flex-col items-center gap-2 px-4 [&>*]:pointer-events-auto">
+      {children}
+    </div>
+  );
+}
 
 /**
  * Önizleme kapanışı BEKLENMEZ: kamera izni sorusu açıkken önizleme sırası

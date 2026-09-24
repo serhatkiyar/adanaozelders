@@ -1,27 +1,75 @@
 /**
  * Telefon kontrol çubuğu — Meet `MobileControlBar` (La Suite Meet, MIT —
- * DINUM/Etalab) sadeleştirilmiş: etiketli tek satır
- * Mikrofon · Kamera · Daha fazla (tepkiler, El kaldır, Kamerayı çevir,
- * Ayarlar, Katılımcılar, Sohbet) · Çık. Telefonda cihaz okları yok; cihaz seçimi
- * Ayarlar'da. Okunmamış mesaj varsa "Daha fazla" üstünde nokta, çekmecedeki
- * Sohbet'te sayı görünür; yan panel telefonda tam ekran açılır.
+ * DINUM/Etalab): ortalanmış tek satır kare düğmeler
+ * kırmızı Ayrıl · Mikrofon · Kamera · Tepkiler · El kaldır · ⋮ Seçenekler.
+ * Telefonda cihaz okları yok (Meet `hideMenu`). Satır sığmazsa önce El
+ * kaldır, sonra Tepkiler menüye taşınır (Meet `COLLAPSIBLE_COUNT`).
+ *
+ * Menü (Meet `ResponsiveMenu` sırası): [taşan Tepkiler] [taşan El kaldır]
+ * Sohbet · Katılımcılar · Ayarlar · Kamerayı çevir. Meet'teki Ekran paylaş
+ * telefonda desteklenmediği için, Araçlar/Efektler/Geri bildirim bizde
+ * olmadığı için yok (arka plan efektleri Ayarlar'da). Okunmamış mesaj varsa
+ * ⋮ ve menüdeki Sohbet köşesinde kırmızı nokta (sayı yok, Preply).
  */
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
-import { ODA_DUGMESI, TELEFON_DUGMESI } from "../stiller";
+import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
 import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
 import { AltCekmece } from "./AltCekmece";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
-import type { PanelDenetimi } from "./KontrolCubugu";
+import { OkunmamisNoktasi, type PanelDenetimi } from "./KontrolCubugu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
-import { TelefonTepkileri } from "./Tepkiler";
+import { ElDugmesi, TelefonTepkileri, TepkiDugmesi } from "./Tepkiler";
 
 const CEKMECE_OGESI =
   "flex flex-col items-center gap-2 rounded-ders p-3 text-sm text-white hover:bg-ders-dugme disabled:opacity-40";
+
+/** Meet: önce El, sonra Tepkiler menüye taşınır. */
+const TASINABILIR = 2;
+
+/** Meet `useSize` + kalibrasyon: kaç düğmenin menüye taşınacağı. */
+function useTasanSayi() {
+  const kap = useRef<HTMLDivElement>(null);
+  const satir = useRef<HTMLDivElement>(null);
+  const tasinabilir = useRef<HTMLDivElement>(null);
+  const [gizli, setGizli] = useState(0);
+  const olcu = useRef<{ zorunlu: number; yuva: number } | null>(null);
+
+  const hesapla = useCallback(() => {
+    const k = kap.current;
+    const s = satir.current;
+    if (!k || !s) return;
+    const tw = tasinabilir.current?.getBoundingClientRect().width ?? 0;
+    if (gizli === 0 && tw > 0) {
+      const bosluk = parseFloat(getComputedStyle(s).columnGap) || 0;
+      olcu.current = {
+        zorunlu: s.getBoundingClientRect().width - tw - bosluk,
+        yuva: (tw + bosluk) / TASINABILIR,
+      };
+    }
+    const genislik = k.getBoundingClientRect().width;
+    if (!olcu.current || genislik <= 0) return;
+    const sigan = Math.floor((genislik - olcu.current.zorunlu) / olcu.current.yuva);
+    const sonraki = Math.min(TASINABILIR, Math.max(0, TASINABILIR - sigan));
+    if (sonraki !== gizli) setGizli(sonraki);
+  }, [gizli]);
+
+  useLayoutEffect(() => {
+    hesapla();
+    if (typeof ResizeObserver === "undefined") return;
+    const g = new ResizeObserver(hesapla);
+    if (kap.current) g.observe(kap.current);
+    if (satir.current) g.observe(satir.current);
+    if (tasinabilir.current) g.observe(tasinabilir.current);
+    return () => g.disconnect();
+  }, [hesapla]);
+
+  return { kap, satir, tasinabilir, gizli };
+}
 
 export function TelefonCubugu({
   onAyril,
@@ -36,76 +84,105 @@ export function TelefonCubugu({
   const m = useMedyaKontrolleri();
   const [menuAcik, setMenuAcik] = useState(false);
   const menuyuKapat = useCallback(() => setMenuAcik(false), []);
+  const { kap, satir, tasinabilir, gizli } = useTasanSayi();
+  const elGizli = gizli >= 1;
+  const tepkiGizli = gizli >= 2;
+  const nokta = panel.sohbetVar && panel.okunmamis > 0 && panel.panel !== "sohbet";
 
   return (
     <>
-      <div
-        role="region"
-        aria-label={t("controls.region")}
-        className="flex w-full shrink-0 items-stretch gap-1 bg-ders-zemin px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
-      >
-        <MedyaDugmesi
-          tur="mik"
-          gorunum="telefon"
-          acik={m.mikAcik}
-          mesgul={m.mesgul === "mik"}
-          onDegistir={(ac) => void m.mikDegistir(ac)}
-        />
-        <MedyaDugmesi
-          tur="kamera"
-          gorunum="telefon"
-          acik={m.kameraAcik}
-          mesgul={m.mesgul === "kamera"}
-          onDegistir={(ac) => void m.kameraDegistir(ac)}
-        />
-        <PlainButton
-          onClick={() => setMenuAcik(true)}
-          aria-label={t("options.buttonLabel")}
-          aria-haspopup="dialog"
-          aria-expanded={menuAcik}
-          className={TELEFON_DUGMESI.kutu}
-        >
-          <span className={`relative ${TELEFON_DUGMESI.ikon} ${ODA_DUGMESI.acik}`}>
-            <Icon name="moreHorizontal" className="h-6 w-6" />
-            {panel.sohbetVar && panel.okunmamis > 0 && (
-              <span
-                aria-hidden
-                className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-ders-zemin bg-marka"
-              />
-            )}
-          </span>
-          <span aria-hidden className="truncate">
-            {t("controls.moreOptions")}
-          </span>
-        </PlainButton>
-        {onAyril && (
-          <PlainButton
-            onClick={onAyril}
-            aria-label={t("controls.leave")}
-            className={TELEFON_DUGMESI.kutu}
+      <div className="w-full shrink-0 bg-ders-zemin p-[1.125rem] pb-[max(1.125rem,env(safe-area-inset-bottom))]">
+        <div ref={kap} className="flex w-full justify-center">
+          <div
+            role="region"
+            aria-label={t("controls.region")}
+            className="flex w-full items-center justify-center gap-[0.65rem]"
           >
-            <span className={`${TELEFON_DUGMESI.ikon} ${ODA_DUGMESI.tehlike}`}>
-              <Icon name="callEnd" className="h-6 w-6" />
-            </span>
-            <span aria-hidden className="truncate">
-              {t("controls.leaveShort")}
-            </span>
-          </PlainButton>
-        )}
+            <div ref={satir} className="inline-flex shrink-0 items-center gap-[inherit]">
+              {onAyril && (
+                <PlainButton
+                  onClick={onAyril}
+                  aria-label={t("controls.leave")}
+                  title={t("controls.leave")}
+                  className={`${DUGME_TABANI} h-[46px] min-w-[46px] rounded px-4 ${ODA_DUGMESI.tehlike}`}
+                >
+                  <Icon name="callEnd" className="h-6 w-6" />
+                </PlainButton>
+              )}
+              <MedyaDugmesi
+                tur="mik"
+                gorunum="oda"
+                acik={m.mikAcik}
+                mesgul={m.mesgul === "mik"}
+                onDegistir={(ac) => void m.mikDegistir(ac)}
+              />
+              <MedyaDugmesi
+                tur="kamera"
+                gorunum="oda"
+                acik={m.kameraAcik}
+                mesgul={m.mesgul === "kamera"}
+                onDegistir={(ac) => void m.kameraDegistir(ac)}
+              />
+              {!tepkiGizli && (
+                <div ref={tasinabilir} className="inline-flex shrink-0 items-center gap-[inherit]">
+                  <TepkiDugmesi />
+                  {!elGizli && <ElDugmesi />}
+                </div>
+              )}
+              <div className="relative inline-block">
+                <PlainButton
+                  onClick={() => setMenuAcik(true)}
+                  aria-label={t("options.buttonLabel")}
+                  title={t("options.buttonLabel")}
+                  aria-haspopup="dialog"
+                  aria-expanded={menuAcik}
+                  className={`${DUGME_TABANI} ${ODA_DUGMESI.boyut} ${ODA_DUGMESI.acik}`}
+                >
+                  <Icon name="moreVertical" className="h-6 w-6" />
+                </PlainButton>
+                {nokta && <OkunmamisNoktasi />}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <AltCekmece acik={menuAcik} onKapat={menuyuKapat} baslik={t("options.buttonLabel")}>
-        <TelefonTepkileri onKapat={menuyuKapat} ogeSinifi={CEKMECE_OGESI} />
+        <TelefonTepkileri
+          onKapat={menuyuKapat}
+          ogeSinifi={CEKMECE_OGESI}
+          tepkiler={tepkiGizli}
+          el={elGizli}
+        />
+        {panel.sohbetVar && (
+          <PlainButton
+            onClick={() => {
+              menuyuKapat();
+              panel.onPanel("sohbet");
+            }}
+            aria-label={
+              nokta ? `${t("options.items.chat")}, ${t("controls.chat.unread")}` : undefined
+            }
+            aria-pressed={panel.panel === "sohbet"}
+            className={CEKMECE_OGESI}
+          >
+            <span className="relative">
+              <Icon name={panel.panel === "sohbet" ? "chatFilled" : "chat"} className="h-6 w-6" />
+              {nokta && <OkunmamisNoktasi />}
+            </span>
+            {t("options.items.chat")}
+          </PlainButton>
+        )}
         <PlainButton
           onClick={() => {
             menuyuKapat();
-            void m.kameraCevir();
+            panel.onPanel("katilimcilar");
           }}
-          disabled={!m.kameraAcik || m.mesgul !== null}
+          aria-pressed={panel.panel === "katilimcilar"}
           className={CEKMECE_OGESI}
         >
-          <Icon name="cameraSwitch" className="h-6 w-6" />
-          {t("options.items.switchCamera")}
+          <Icon name="people" className="h-6 w-6" />
+          {t("options.items.participants")}
         </PlainButton>
         <PlainButton
           onClick={() => {
@@ -120,40 +197,14 @@ export function TelefonCubugu({
         <PlainButton
           onClick={() => {
             menuyuKapat();
-            panel.onPanel("katilimcilar");
+            void m.kameraCevir();
           }}
+          disabled={!m.kameraAcik || m.mesgul !== null}
           className={CEKMECE_OGESI}
         >
-          <Icon name="people" className="h-6 w-6" />
-          {t("options.items.participants")}
+          <Icon name="cameraSwitch" className="h-6 w-6" />
+          {t("options.items.switchCamera")}
         </PlainButton>
-        {panel.sohbetVar && (
-          <PlainButton
-            onClick={() => {
-              menuyuKapat();
-              panel.onPanel("sohbet");
-            }}
-            aria-label={
-              panel.okunmamis > 0
-                ? `${t("options.items.chat")}, ${t("controls.chat.unread", { count: panel.okunmamis })}`
-                : undefined
-            }
-            className={CEKMECE_OGESI}
-          >
-            <span className="relative">
-              <Icon name="messages" className="h-6 w-6" />
-              {panel.okunmamis > 0 && (
-                <span
-                  aria-hidden
-                  className="absolute -right-2 -top-2 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-marka px-1 text-[10px] font-bold text-marka-fg"
-                >
-                  {panel.okunmamis > 9 ? "9+" : panel.okunmamis}
-                </span>
-              )}
-            </span>
-            {t("options.items.chat")}
-          </PlainButton>
-        )}
       </AltCekmece>
     </>
   );

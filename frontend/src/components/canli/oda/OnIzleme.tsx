@@ -102,7 +102,7 @@ export function OnIzleme({
   onMik: (ac: boolean) => void;
   onKamera: (ac: boolean) => void;
   onKatil: () => void;
-  /** Telefonda üst şeritte çıkış yok; önizlemeden çıkış buradan. */
+  /** Sayfada üst şerit yok (Meet): önizlemeden çıkış buradan. */
   onAyril?: () => void;
   katiliyor: boolean;
   hata: string | null;
@@ -479,7 +479,7 @@ export function OnIzleme({
             )}
             {t(katiliyor ? "join.joining" : "join.joinLabel")}
           </PlainButton>
-          {telefon && onAyril && (
+          {onAyril && (
             <PlainButton
               onClick={onAyril}
               disabled={katiliyor}

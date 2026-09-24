@@ -98,13 +98,21 @@ export function ElDugmesi() {
   );
 }
 
-/** Telefon alt çekmecesi: emoji satırı (tam genişlik) + El kaldır. */
+/**
+ * Telefon alt çekmecesi: çubuğa sığmayıp menüye taşınan Tepkiler (emoji
+ * satırı, tam genişlik) ve El kaldır (Meet `MobileControlBar` `hideReactions`
+ * / `hideHand`).
+ */
 export function TelefonTepkileri({
   onKapat,
   ogeSinifi,
+  tepkiler,
+  el,
 }: {
   onKapat: () => void;
   ogeSinifi: string;
+  tepkiler: boolean;
+  el: boolean;
 }) {
   const { t } = useTranslation();
   const kanal = useKomutKanali();
@@ -112,10 +120,13 @@ export function TelefonTepkileri({
   if (!kanal) return null;
   return (
     <>
-      <div className="col-span-full flex flex-col items-center gap-2">
-        <span className="text-xs text-white/70">{t("controls.reactions.button")}</span>
-        <EmojiSatiri onGonderildi={onKapat} />
-      </div>
+      {tepkiler && (
+        <div className="col-span-full flex flex-col items-center gap-2">
+          <span className="text-xs text-white/70">{t("controls.reactions.button")}</span>
+          <EmojiSatiri onGonderildi={onKapat} />
+        </div>
+      )}
+      {el && (
       <PlainButton
         onClick={() => {
           onKapat();
@@ -133,6 +144,7 @@ export function TelefonTepkileri({
         </span>
         {t(kalkik ? "controls.hand.lower" : "controls.hand.raise")}
       </PlainButton>
+      )}
     </>
   );
 }
