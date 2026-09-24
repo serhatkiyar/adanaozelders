@@ -113,6 +113,8 @@ export function OnIzleme({
   const kameraSecimi = useRef(secili.kamera);
   kameraSecimi.current = secili.kamera;
   const [yerelDeneme, setYerelDeneme] = useState(0);
+  // Hatalı kamerada yeni seçim: iz yok, `switchCamera` işsiz; efekt yeniden kurar.
+  const [kameraDeneme, setKameraDeneme] = useState(0);
   const hoparlorVar = hoparlorSecilebilir();
   const pencereAcildi = useRef(false);
 
@@ -152,7 +154,7 @@ export function OnIzleme({
       gecerli = false;
       void kameraOnizlemeDurdur();
     };
-  }, [kameraAcik, katiliyor, deneme, yerelDeneme]);
+  }, [kameraAcik, katiliyor, deneme, yerelDeneme, kameraDeneme]);
 
   // Mikrofon önizlemesi (seviye çubuğu). Mikrofon değişince iz yeniden kurulur.
   const mikId = secili.mikrofon;
@@ -217,12 +219,14 @@ export function OnIzleme({
       if (tur === "hoparlor") tercihleriYaz({ hoparlorId: id });
       if (tur === "kamera") {
         tercihleriYaz({ kameraId: id });
-        if (kameraAcik) {
+        if (kameraAcik && kameraHatali) {
+          setKameraDeneme((n) => n + 1);
+        } else if (kameraAcik) {
           onizlemeKameraSec(id).catch((e: unknown) => setKamera({ hata: kameraHataAnahtari(e) }));
         }
       }
     },
-    [kameraAcik],
+    [kameraAcik, kameraHatali],
   );
 
   // İpucu (Meet `getPreviewMessages`): hata `alert`, durum `status`.

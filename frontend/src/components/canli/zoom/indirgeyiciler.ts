@@ -19,6 +19,8 @@ export interface ZoomKullanici {
   muted?: boolean;
   /** `''` sese bağlı değil, `computer` bilgisayar sesi. */
   audio?: string;
+  /** Mikrofon izni yokken yalnız hoparlörle bağlı (`startAudio({ speakerOnly })`). */
+  isSpeakerOnly?: boolean;
   sharerOn?: boolean;
 }
 
@@ -111,7 +113,7 @@ export function katilimciyaCevir(k: ZoomKullanici): Katilimci {
     userId: k.userId,
     ad: k.displayName,
     videoAcik: Boolean(k.bVideoOn),
-    mikKapali: !sesBagli || k.muted !== false,
+    mikKapali: !sesBagli || Boolean(k.isSpeakerOnly) || k.muted !== false,
     sesBagli,
     paylasiyor: Boolean(k.sharerOn),
   };

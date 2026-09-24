@@ -187,7 +187,9 @@ function benimKaydim(): ZoomKullanici | undefined {
 
 /** Ders içinde mikrofon değişimi: ses bağlantısı KOPMADAN `switchMicrophone`. */
 export async function mikrofonSec(id: string): Promise<void> {
-  if (benimKaydim()?.audio) {
+  const ben = benimKaydim();
+  // Yalnız hoparlörde değiştirilecek mikrofon yok; tercih sonraki `startAudio`da kullanılır.
+  if (ben?.audio && !ben.isSpeakerOnly) {
     const sonuc = await akis().switchMicrophone(id);
     if (basarisizMi(sonuc)) throw sonuc;
   }
@@ -359,10 +361,25 @@ export async function sesiAc(mikAcik: boolean): Promise<void> {
   kullanicilariOku();
 }
 
+/** `mikIzniReddedildiMi`nin tanıdığı ad: arayan izin penceresini açar. */
+function mikIzniYokHatasi(): Error {
+  const hata = new Error("mikrofon izni yok");
+  hata.name = "NotAllowedError";
+  return hata;
+}
+
 export async function mikrofonuDegistir(ac: boolean): Promise<void> {
   const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
   if (!ben?.audio) {
-    if ((await sesiBaslat(!ac)) === "yalnizHoparlor" && ac) throw new Error("mikrofon izni yok");
+    if ((await sesiBaslat(!ac)) === "yalnizHoparlor" && ac) throw mikIzniYokHatasi();
+  } else if (ben.isSpeakerOnly) {
+    // Yalnız hoparlörle bağlı: mikrofon zaten yok, kapatmak işsiz. Açmak için
+    // ses mikrofonla yeniden kurulur; izin hâlâ yoksa yine yalnız hoparlör.
+    if (ac) {
+      const durdur = await akis().stopAudio();
+      if (basarisizMi(durdur)) throw durdur;
+      if ((await sesiBaslat(false)) === "yalnizHoparlor") throw mikIzniYokHatasi();
+    }
   } else {
     const sonuc = ac ? await akis().unmuteAudio() : await akis().muteAudio();
     if (basarisizMi(sonuc)) throw sonuc;
