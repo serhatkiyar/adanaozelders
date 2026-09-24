@@ -60,6 +60,10 @@ export function MesajlarPaneli() {
         : user?.role_id === ROLE_IDS.LIBRARY_OPERATOR
           ? "LIBRARY"
           : null;
+  // Arama kutusu karşı tarafı adıyla anar: öğrenci öğretmenlerini, öğretmen
+  // öğrencilerini arar (24 Eyl 2026 — önceden her rolde "Öğrencileri" yazıyordu).
+  const aramaMetni =
+    role === "CLIENT" ? "Öğretmenleri veya mesajları ara" : "Öğrencileri veya mesajları ara";
 
   const { data: unreadCounts } = useMessagesUnreadCount();
   const inboxUnread = unreadCounts?.inbox ?? 0;
@@ -352,8 +356,8 @@ export function MesajlarPaneli() {
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Öğrencileri veya mesajları ara"
-                    aria-label="Öğrencileri veya mesajları ara"
+                    placeholder={aramaMetni}
+                    aria-label={aramaMetni}
                     className="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-slate-900 placeholder-slate-500 outline-none focus:ring-0 "
                   />
                 </div>

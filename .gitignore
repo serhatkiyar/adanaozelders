@@ -64,3 +64,7 @@ docs/tedarikci-tur/
 
 # Playwright MCP aracının oturum çıktıları (ekran görüntüsü, iz kaydı)
 .playwright-mcp/
+
+# Yerel deneme klasörleri (ekran görüntüsü, geçici betik, log) — her seviyede
+# eşleşir (kök ve `frontend/` altındakiler dahil).
+.scratch/

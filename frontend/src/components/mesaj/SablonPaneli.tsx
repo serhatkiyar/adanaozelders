@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/AppIcon";
 import { KUCUK_ACIKLAMA } from "@/components/pano/stil";
@@ -56,6 +56,11 @@ export function SablonPaneli({
   const [yeniAcik, setYeniAcik] = useState(false);
   const [baslik, setBaslik] = useState("");
   const [govde, setGovde] = useState("");
+  // Eksik alan basınca ALANIN altında yazılır; "Kaydet" geçerlilikle kapanmaz
+  // (`__guards__/gonderDugmesi.test.ts` kilitli kararı, 24 Eyl 2026).
+  const [hata, setHata] = useState<{ baslik?: string; govde?: string }>({});
+  const baslikHataId = useId();
+  const govdeHataId = useId();
 
   const { data: sablonlar, isLoading } = useMessageTemplates();
   const olustur = useCreateMessageTemplate();
@@ -70,13 +75,18 @@ export function SablonPaneli({
     e.preventDefault();
     const temizBaslik = baslik.trim();
     const temizGovde = govde.trim();
-    if (!temizBaslik || !temizGovde) return;
+    const yeniHata: typeof hata = {};
+    if (!temizBaslik) yeniHata.baslik = "Şablon başlığı yaz.";
+    if (!temizGovde) yeniHata.govde = "Mesaj metni yaz.";
+    setHata(yeniHata);
+    if (yeniHata.baslik || yeniHata.govde) return;
     olustur.mutate(
       { title: temizBaslik, body: temizGovde },
       {
         onSuccess: () => {
           setBaslik("");
           setGovde("");
+          setHata({});
           setYeniAcik(false);
         },
         onError: (err) =>
@@ -181,36 +191,60 @@ export function SablonPaneli({
           {yeniAcik ? (
             <form
               onSubmit={kaydet}
+              noValidate
               className="mt-3 space-y-2 border-t border-slate-200 pt-3"
             >
               <input
                 value={baslik}
-                onChange={(e) => setBaslik(e.target.value)}
+                onChange={(e) => {
+                  setBaslik(e.target.value);
+                  setHata((h) => ({ ...h, baslik: undefined }));
+                }}
                 maxLength={BASLIK_UST_SINIR}
                 placeholder="Şablon başlığı"
                 aria-label="Şablon başlığı"
+                aria-invalid={hata.baslik ? true : undefined}
+                aria-describedby={hata.baslik ? baslikHataId : undefined}
                 className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20"
               />
+              {hata.baslik && (
+                <p id={baslikHataId} role="alert" className="text-xs text-red-700">
+                  {hata.baslik}
+                </p>
+              )}
               <textarea
                 value={govde}
-                onChange={(e) => setGovde(e.target.value)}
+                onChange={(e) => {
+                  setGovde(e.target.value);
+                  setHata((h) => ({ ...h, govde: undefined }));
+                }}
                 maxLength={GOVDE_UST_SINIR}
                 rows={3}
                 placeholder="Mesaj metni"
                 aria-label="Mesaj metni"
+                aria-invalid={hata.govde ? true : undefined}
+                aria-describedby={hata.govde ? govdeHataId : undefined}
                 className="w-full resize-none rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20"
               />
+              {hata.govde && (
+                <p id={govdeHataId} role="alert" className="text-xs text-red-700">
+                  {hata.govde}
+                </p>
+              )}
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setYeniAcik(false)}
+                  onClick={() => {
+                    setHata({});
+                    setYeniAcik(false);
+                  }}
                   className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:text-slate-700"
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
-                  disabled={olustur.isPending || !baslik.trim() || !govde.trim()}
+                  disabled={olustur.isPending}
                   className="rounded-lg bg-marka px-3 py-1 text-xs font-semibold text-marka-fg hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {olustur.isPending ? "Kaydediliyor…" : "Kaydet"}

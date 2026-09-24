@@ -126,6 +126,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/dashboards/CourierHome.tsx <button> isRefetching": "islem",
   "src/pages/dashboards/OperatorLibrary.tsx <Button> busy": "islem",
   "src/components/LibraryMediaManager.tsx <button> disabled": "islem",
+  // Mesaj şablonu "Kaydet"i yalnız istek uçarken kilitli; boş başlık/metin
+  // basınca alanın altında yazılır (borç kaydı 24 Eyl 2026'da kapandı).
+  "src/components/mesaj/SablonPaneli.tsx <button> olustur.isPending": "islem",
 
   // ── sinir: sayfalama ──
   // Medya sekmesi sıralama okları: ilkin ÜSTÜNDE, sonuncunun ALTINDA taşınacak
@@ -242,10 +245,13 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
 
   // ── gecerlilik-borc: KİLİTLİ KARARIN İHLALİ (İP-A8'de kayda geçti) ──
   //
-  // Dokuzu da göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
+  // Sekizi de göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
   // "Kargola") kapattı; bunlar kapsam dışı ve ayrı bir pakete bırakıldı.
-  // Kayıtta durmalarının işlevi: onuncusu doğduğu gün CI kırılır.
-  // (8 → 9, 24 Eyl 2026: `SablonPaneli` "Kaydet", aşağıdaki son kayıt.)
+  // Kayıtta durmalarının işlevi: dokuzuncusu doğduğu gün CI kırılır.
+  // (8 → 9 → 8, 24 Eyl 2026: `SablonPaneli` "Kaydet" aynı gün dokuzuncu üye
+  // olarak kayda geçti ve aynı gün KAPANDI — düğme artık geçerlilikle
+  // kapanmıyor, boş başlık/metin alanın altında yazılıyor; kaydı yukarıda
+  // `islem` sınıfında, yalnız `olustur.isPending` ile.)
   //
   // (İ9 · Boşluk 1'de eklenen `UrunFormu.tsx` "Grubu Oluştur" ve
   // `VaryantPenceresi.tsx` "Önizle" kayıtları commit `2287611`de KAPANDI —
@@ -260,14 +266,6 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> busy || note.trim().length < 3": "gecerlilik-borc",
   "src/pages/DeliveryRunHandover.tsx <button> !kod.trim() || scan.isPending": "gecerlilik-borc",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> !kod.trim()": "gecerlilik-borc",
-  // DOKUZUNCU üye (24 Eyl 2026): mesaj şablonu "Kaydet" düğmesi başlık ya da
-  // metin boşken kapanıyor, sebep alanda yazmıyor. Düğme 22 Eyl 2026'da
-  // ("feat(mesajlar): mesaj sablonlari…") doğdu ama dosya ölçüm tabanına
-  // 24 Eyl'e kadar girmediği için nöbetçi görmüyordu. Kilitli kararın ihlali
-  // olarak İSİMLE kayda geçti; kapatılması (düğme açık kalır, eksik alan
-  // alanda yazılır) kullanıcıya görünen bir değişiklik olduğu için ayrı iştir.
-  "src/components/mesaj/SablonPaneli.tsx <button> olustur.isPending || !baslik.trim() || !govde.trim()":
-    "gecerlilik-borc",
 };
 
 /**

@@ -69,6 +69,12 @@ const ATLANAN_DIZINLER = new Set([
   ".git",
   ".vite",
   "fonts", // ikili varlıklar; metin taraması anlamsız
+  // Yerel deneme klasörü (24 Eyl 2026). Tarama git'e değil DİSKE bakar, yani
+  // izlenmeyen dosyaları da okur; `.scratch/` içine kaydedilmiş dış sayfa
+  // kopyaları (HTML/betik denemeleri) nöbetçiyi yalnız o makinede kırıyordu.
+  // Klasör kök `.gitignore`da yok sayılır, depoya ve CI'a hiç girmez — ürün
+  // kaynağı olmadığı için KVKK iddiasının kapsamında değildir.
+  ".scratch",
 ]);
 
 /** `frontend/` ağacındaki taranabilir dosyalar (repo köküne göre değil, frontend'e göre). */
