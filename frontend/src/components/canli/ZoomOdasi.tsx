@@ -24,6 +24,14 @@
  * yalnız sınıflar değişir, video kapları yeniden kurulmaz. Sohbet bir kez
  * açılınca DOM'da kalır (kapalıyken gizli): taslak ve kaydırma korunur.
  *
+ * ## Beyaz tahta — Preply sınıfı (spesifikasyon `preply-sinif-tahta-duzen.md`)
+ *
+ * Yalnız öğretmen açar/kapatır ("Araçlar" menüsü, telefonda "Seçenekler";
+ * başlıktaki X). Durum sunucuda saklanır ve `ders:{id}` kanalından iki tarafa
+ * yayılır: öğrencide bildirimsiz kendiliğinden açılır/kapanır, geç katılan
+ * son durumu token yanıtından okur. Düzen (Odaklanma/Kareler, Kenar
+ * çubuğu/Köşe, paylaşım + tahta bölmesi) `SinifSahnesi`nde.
+ *
  * ## Ayrılma = argümansız `leave()`
  *
  * Öğretmen dahil herkes yalnız KENDİSİ ayrılır, ders karşı taraf için sürer
@@ -53,18 +61,24 @@ import { toast } from "@/store/toastStore";
 import type { ZoomDersTokenOut } from "@/types";
 
 import { dersI18n } from "./i18n";
+import { Modal } from "@/components/ui/Modal";
+import { PlainButton } from "@/components/ui/PlainButton";
+import { useTahtaDurumu } from "@/hooks/useBookings";
+
 import { AyarlarPenceresi, type AyarSekmesi } from "./oda/AyarlarPenceresi";
 import { useDersKonusmasi, type DersSohbetBilgisi } from "./oda/dersKonusmasi";
 import { DersSohbeti } from "./oda/DersSohbeti";
 import { DurumSeritleri } from "./oda/DurumSeritleri";
 import { IzinPenceresi } from "./oda/IzinPenceresi";
 import { KatilimciListesi } from "./oda/KatilimciListesi";
-import { KontrolCubugu, type PanelDenetimi } from "./oda/KontrolCubugu";
+import { KontrolCubugu, type AracDenetimi, type PanelDenetimi } from "./oda/KontrolCubugu";
 import { OnIzleme, type DersBilgisi } from "./oda/OnIzleme";
 import { TelefonCubugu } from "./oda/TelefonCubugu";
 import { UcanTepkiler } from "./oda/Tepkiler";
 import { YanPanel, type PanelTuru } from "./oda/YanPanel";
-import { ZoomVideoSahnesi } from "./oda/ZoomVideoSahnesi";
+import { SinifSahnesi } from "./oda/SinifSahnesi";
+import { TahtaAlani } from "./oda/TahtaAlani";
+import { dersKanaliAc, type DersKanali } from "./tahta/dersKanali";
 import {
   beklenmedikKapanis,
   kameraHataAnahtari,
@@ -121,8 +135,21 @@ function useDarPencere(): boolean {
   return dar;
 }
 
+/** Tahta kapatma onayında "Bir daha gösterme" (tarayıcıda, kişiye özel). */
+const KAPATMA_ONAYI_GIZLI = "ders_tahta_kapatma_onayi_gizli";
+
+function kapatmaOnayiGizliMi(): boolean {
+  try {
+    return window.localStorage.getItem(KAPATMA_ONAYI_GIZLI) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export interface ZoomOdasiProps {
   bilet: ZoomDersTokenOut;
+  /** Ders kimliği — tahta kanalı ve ders kaynağı yüklemesi için. */
+  dersId?: number;
   /** Telefon düzeni: etiketli alt çubuk, kamerayı çevir. */
   telefon: boolean;
   /** Tek kişi kalınca oturumun kapanma süresi (dk; yalnız host'unki geçer). */
@@ -152,8 +179,9 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   // Geri çağrılar her çizimde güncel; bilet/süre ise İLK değerleriyle donar.
   const guncel = useRef(props);
   guncel.current = props;
-  const { telefon, onAyrilIstegi, dersBilgisi, bilet, sohbet, sahneUstu } = props;
+  const { telefon, onAyrilIstegi, dersBilgisi, bilet, sohbet, sahneUstu, dersId } = props;
   const darPencere = useDarPencere();
+  const ogretmen = bilet.rol === "host";
 
   const asama = useAsama();
   const [mikTercihi, setMikTercihiDurumu] = useState(() => tercihleriOku().mikAcik);
@@ -193,6 +221,50 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     okunmamis: konusma.okunmamis,
     karsiAd: sohbet?.karsiTarafAd ?? "",
   };
+
+  // ── Beyaz tahta ──
+  const odada = asama === "odada";
+  const [kanal, setKanal] = useState<DersKanali | null>(null);
+  const [tahtaHazir, setTahtaHazir] = useState(false);
+  const [tahtaAcik, setTahtaAcik] = useState(false);
+  const [kapatmaOnayi, setKapatmaOnayi] = useState(false);
+  const [birDahaGosterme, setBirDahaGosterme] = useState(false);
+  const tahtaDurumu = useTahtaDurumu(dersId ?? 0);
+  useEffect(() => {
+    if (!odada || !dersId) return;
+    const k = dersKanaliAc(dersId, { onTahta: setTahtaAcik, onHazir: setTahtaHazir });
+    setKanal(k);
+    return () => {
+      k.kapat();
+      setKanal(null);
+      setTahtaHazir(false);
+    };
+  }, [odada, dersId]);
+  const tahtaMutasyonu = tahtaDurumu.mutate;
+  const tahtayiDegistir = useCallback(
+    (acik: boolean) => {
+      tahtaMutasyonu(acik, {
+        onSuccess: (d) => setTahtaAcik(d.acik),
+        onError: () => toast.error(dersI18n.t("tahta.acilamadi")),
+      });
+    },
+    [tahtaMutasyonu],
+  );
+  const tahtaKapatIstegi = useCallback(() => {
+    if (kapatmaOnayiGizliMi()) tahtayiDegistir(false);
+    else {
+      setBirDahaGosterme(false);
+      setKapatmaOnayi(true);
+    }
+  }, [tahtayiDegistir]);
+  const aracDenetimi: AracDenetimi | undefined =
+    ogretmen && tahtaHazir
+      ? {
+          tahtaAcik,
+          onTahtaAc: () => tahtayiDegistir(true),
+          onTahtaKapat: tahtaKapatIstegi,
+        }
+      : undefined;
 
   useImperativeHandle(ref, () => ({ ayril: () => odadanAyril() }), []);
 
@@ -389,15 +461,42 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
             kalır; ≤880px'teki karartma ve panel her zaman üstte. */}
         <div className="relative isolate flex min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1 overflow-hidden">
-            <ZoomVideoSahnesi telefon={telefon} />
-            <UcanTepkiler />
-            <DurumSeritleri mikTercihi={mikTercihi} />
-            {sahneUstu && <SahneUstu>{sahneUstu}</SahneUstu>}
+            <SinifSahnesi
+              telefon={telefon}
+              ogretmen={ogretmen}
+              tahtaAcik={tahtaAcik && kanal !== null && dersId !== undefined}
+              tahta={
+                kanal &&
+                dersId !== undefined && (
+                  <TahtaAlani
+                    kanal={kanal}
+                    dersId={dersId}
+                    ogretmen={ogretmen}
+                    karsiAd={sohbet?.karsiTarafAd ?? ""}
+                    onKapat={tahtaKapatIstegi}
+                  />
+                )
+              }
+            >
+              <UcanTepkiler />
+              <DurumSeritleri mikTercihi={mikTercihi} />
+              {sahneUstu && <SahneUstu>{sahneUstu}</SahneUstu>}
+            </SinifSahnesi>
           </div>
           {telefon ? (
-            <TelefonCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} panel={panelDenetimi} />
+            <TelefonCubugu
+              onAyril={onAyrilIstegi}
+              onAyarlar={ayarlariAc}
+              panel={panelDenetimi}
+              arac={aracDenetimi}
+            />
           ) : (
-            <KontrolCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} panel={panelDenetimi} />
+            <KontrolCubugu
+              onAyril={onAyrilIstegi}
+              onAyarlar={ayarlariAc}
+              panel={panelDenetimi}
+              arac={aracDenetimi}
+            />
           )}
         </div>
         <YanPanel panel={panel} telefon={telefon} dar={darPencere} onKapat={paneliKapat}>
@@ -423,6 +522,52 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
         onKapat={() => setAyarlar((a) => ({ ...a, acik: false }))}
       />
       {izinPenceresi}
+      {/* Preply `MODAL_CLOSING_TOOL`: "{araç} kapatılsın mı? / Bu araç
+          {öğrenci} için de kapanacak." + "Bir daha gösterme". */}
+      <Modal
+        open={kapatmaOnayi}
+        onClose={() => setKapatmaOnayi(false)}
+        title={dersI18n.t("tahta.kapatOnay.baslik")}
+        description={
+          sohbet?.karsiTarafAd
+            ? dersI18n.t("tahta.kapatOnay.metin", { ad: sohbet.karsiTarafAd })
+            : dersI18n.t("tahta.kapatOnay.metinAdsiz")
+        }
+      >
+        <label className="mt-4 flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={birDahaGosterme}
+            onChange={(e) => setBirDahaGosterme(e.target.checked)}
+            className="h-4 w-4"
+          />
+          {dersI18n.t("tahta.kapatOnay.birDaha")}
+        </label>
+        <div className="mt-5 flex justify-end gap-2">
+          <PlainButton
+            onClick={() => setKapatmaOnayi(false)}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            {dersI18n.t("tahta.kapatOnay.iptal")}
+          </PlainButton>
+          <PlainButton
+            onClick={() => {
+              if (birDahaGosterme) {
+                try {
+                  window.localStorage.setItem(KAPATMA_ONAYI_GIZLI, "1");
+                } catch {
+                  /* hatırlanmaz */
+                }
+              }
+              setKapatmaOnayi(false);
+              tahtayiDegistir(false);
+            }}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            {dersI18n.t("tahta.kapatOnay.onay")}
+          </PlainButton>
+        </div>
+      </Modal>
     </I18nextProvider>
   );
 });

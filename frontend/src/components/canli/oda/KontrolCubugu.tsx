@@ -25,6 +25,17 @@ import { PaylasimDugmesi } from "./PaylasimDugmesi";
 import { ElDugmesi, TepkiDugmesi } from "./Tepkiler";
 import type { PanelTuru } from "./YanPanel";
 
+/**
+ * Araçlar (Preply `btn-open-tools`): yalnız öğretmende — öğrencinin Preply
+ * araç menüsündeki öğeler (Kelimeler/Notlar/Ödev) bizde yok, menü boş kalırdı.
+ */
+export interface AracDenetimi {
+  tahtaAcik: boolean;
+  onTahtaAc: () => void;
+  /** Kapatma onayı ("öğrenci için de kapanacak") çağıranda. */
+  onTahtaKapat: () => void;
+}
+
 /** Yan panel düğmelerinin ortak girdisi (masaüstü ve telefon çubuğu). */
 export interface PanelDenetimi {
   panel: PanelTuru | null;
@@ -40,10 +51,12 @@ export function KontrolCubugu({
   onAyril,
   onAyarlar,
   panel,
+  arac,
 }: {
   onAyril?: () => void;
   onAyarlar: (sekme: AyarSekmesi) => void;
   panel: PanelDenetimi;
+  arac?: AracDenetimi;
 }) {
   const { t } = useTranslation();
   const m = useMedyaKontrolleri();
@@ -82,6 +95,7 @@ export function KontrolCubugu({
           <CihazMenusu tur="kamera" acik={m.kameraAcik} onAyarlar={onAyarlar} />
         </div>
         <TepkiDugmesi />
+        {arac && <AraclarDugmesi {...arac} />}
         <PaylasimDugmesi />
         <ElDugmesi />
         <SecenekMenusu onAyarlar={() => onAyarlar("ses")} />
@@ -295,6 +309,61 @@ function SecenekMenusu({ onAyarlar }: { onAyarlar: () => void }) {
             <Icon name="settings" className="h-5 w-5" />
             {t("options.items.settings")}
           </PlainButton>
+        </div>
+      </Acilir>
+    </div>
+  );
+}
+
+/**
+ * Preply "Araçlar": yukarı açılan menü. Tahta kapalıyken "Beyaz tahta";
+ * açıkken o öğe kalkar, yerine kırmızı "Beyaz tahtayı kapat" gelir. Tahta
+ * açıkken düğme dolu (beyaz zemin + dolu ikon).
+ */
+export function AraclarDugmesi({ tahtaAcik, onTahtaAc, onTahtaKapat }: AracDenetimi) {
+  const { t } = useTranslation();
+  const [acik, setAcik] = useState(false);
+  const dugme = useRef<HTMLButtonElement>(null);
+  const kapat = () => setAcik(false);
+  const oge = `${DUGME_TABANI} h-11 w-full justify-start rounded-ders px-3 text-sm`;
+  return (
+    <div className="relative">
+      <PlainButton
+        ref={dugme}
+        onClick={() => setAcik((a) => !a)}
+        aria-label={t("araclarMenu.dugme")}
+        title={t("araclarMenu.dugme")}
+        aria-haspopup="dialog"
+        aria-expanded={acik}
+        className={`${DUGME_TABANI} ${ODA_DUGMESI.boyut} ${tahtaAcik ? ODA_DUGMESI.secili : ODA_DUGMESI.acik}`}
+      >
+        <Icon name={tahtaAcik ? "shapesFilled" : "shapes"} className="h-6 w-6" />
+      </PlainButton>
+      <Acilir acik={acik} onKapat={kapat} tetikleyici={dugme} etiket={t("araclarMenu.dugme")}>
+        <div className="flex w-60 flex-col">
+          {tahtaAcik ? (
+            <PlainButton
+              onClick={() => {
+                kapat();
+                onTahtaKapat();
+              }}
+              className={`${oge} text-[#F65E55] hover:bg-ders-dugme`}
+            >
+              <Icon name="dismiss" className="h-5 w-5" />
+              {t("araclarMenu.kapat")}
+            </PlainButton>
+          ) : (
+            <PlainButton
+              onClick={() => {
+                kapat();
+                onTahtaAc();
+              }}
+              className={`${oge} ${ODA_DUGMESI.metin}`}
+            >
+              <Icon name="whiteboard" className="h-5 w-5" />
+              {t("araclarMenu.beyazTahta")}
+            </PlainButton>
+          )}
         </div>
       </Acilir>
     </div>

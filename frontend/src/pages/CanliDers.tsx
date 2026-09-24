@@ -45,8 +45,8 @@ const DUGME =
  * onay penceresi burada. Tarayıcı uyarısı, karşı taraf notu ve ders sayacı
  * sahnenin üst ortasında hap (`sahneUstu`). Katılımcılar ve ders içi sohbet
  * `ZoomOdasi`'nın yan panelindedir (Preply yerleşimi).
- * İleride tahta eklenirse video kutusu (`ZoomOdasi`'nın kabı) AYNI DOM
- * düğümünde kalmalı; yalnız yerleşimi değişir, yoksa görüşme yeniden bağlanır.
+ * Beyaz tahta `ZoomOdasi` içinde (Preply düzeni, `SinifSahnesi`); video
+ * kapları AYNI DOM düğümünde kalır, yalnız yerleşimi değişir.
  */
 export default function CanliDers() {
   const { id } = useParams();
@@ -252,6 +252,7 @@ function DersOdasi({
             <ZoomOdasi
               ref={odaRef}
               bilet={oda.bilet}
+              dersId={dersId}
               telefon={telefon}
               bostaKalmaDk={oda.bostaKalmaDk}
               onKarsiTaraf={setKarsiTaraf}

@@ -21,7 +21,12 @@ import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
 import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
 import { AltCekmece } from "./AltCekmece";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
-import { OkunmamisNoktasi, type PanelDenetimi } from "./KontrolCubugu";
+import {
+  AraclarDugmesi,
+  OkunmamisNoktasi,
+  type AracDenetimi,
+  type PanelDenetimi,
+} from "./KontrolCubugu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
 import { ElDugmesi, TelefonTepkileri, TepkiDugmesi } from "./Tepkiler";
 
@@ -71,15 +76,35 @@ function useTasanSayi() {
   return { kap, satir, tasinabilir, gizli };
 }
 
+/** Preply: yatay telefonda "Araçlar" alt çubuğa gelir, dikeyde "Daha fazla"da. */
+function useYatay(): boolean {
+  const sorgu = "(orientation: landscape)";
+  const [yatay, setYatay] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia(sorgu).matches,
+  );
+  useLayoutEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(sorgu);
+    const degisti = () => setYatay(mq.matches);
+    mq.addEventListener?.("change", degisti);
+    return () => mq.removeEventListener?.("change", degisti);
+  }, []);
+  return yatay;
+}
+
 export function TelefonCubugu({
   onAyril,
   onAyarlar,
   panel,
+  arac,
 }: {
   onAyril?: () => void;
   onAyarlar: (sekme: AyarSekmesi) => void;
   panel: PanelDenetimi;
+  /** Yalnız öğretmende (bkz. `AracDenetimi`). */
+  arac?: AracDenetimi;
 }) {
+  const yatay = useYatay();
   const { t } = useTranslation();
   const m = useMedyaKontrolleri();
   const [menuAcik, setMenuAcik] = useState(false);
@@ -123,6 +148,7 @@ export function TelefonCubugu({
                 mesgul={m.mesgul === "kamera"}
                 onDegistir={(ac) => void m.kameraDegistir(ac)}
               />
+              {arac && yatay && <AraclarDugmesi {...arac} />}
               {!tepkiGizli && (
                 <div ref={tasinabilir} className="inline-flex shrink-0 items-center gap-[inherit]">
                   <TepkiDugmesi />
@@ -154,6 +180,19 @@ export function TelefonCubugu({
           tepkiler={tepkiGizli}
           el={elGizli}
         />
+        {arac && !yatay && (
+          <PlainButton
+            onClick={() => {
+              menuyuKapat();
+              if (arac.tahtaAcik) arac.onTahtaKapat();
+              else arac.onTahtaAc();
+            }}
+            className={`${CEKMECE_OGESI} ${arac.tahtaAcik ? "text-[#F65E55]" : ""}`}
+          >
+            <Icon name={arac.tahtaAcik ? "dismiss" : "whiteboard"} className="h-6 w-6" />
+            {t(arac.tahtaAcik ? "araclarMenu.kapat" : "araclarMenu.beyazTahta")}
+          </PlainButton>
+        )}
         {panel.sohbetVar && (
           <PlainButton
             onClick={() => {

@@ -8,7 +8,14 @@
  * opak zemin koymaz. Fare hareketleri yalnız bu katmanda dinlenir: sahne ve
  * video yeniden çizilmez.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "@/components/AppIcon";
@@ -18,6 +25,8 @@ import { BaglantiCubugu, useBaglantiMetni } from "./BaglantiCubugu";
 
 /** Meet `MOUSE_IDLE_TIME`: fare bu kadar durunca kutu kaybolur. */
 const HAREKETSIZLIK_MS = 3000;
+/** Preply `rl`: karo üstü düğmeler fare hareketinde 1 sn görünür. */
+const UST_DUGME_MS = 1000;
 
 export function KaroBilgisi({
   ad,
@@ -90,21 +99,30 @@ export function KaroBilgisi({
  */
 export function KaroKatmani({
   className,
+  style,
   ad,
   konusuyor,
   agSeviyesi,
   telefon,
+  ust,
+  onPointerDown,
   children,
 }: {
   className: string;
+  style?: CSSProperties;
   ad: string | undefined;
   konusuyor: boolean;
   agSeviyesi: number | null;
   telefon: boolean;
+  /** Sağ üstte fare hareketinde 1 sn beliren denetim (Preply "Düzeni değiştir"). */
+  ust?: ReactNode;
+  /** Sürüklenebilir karo/kutu (Preply yüzen kutu, araçsız kendi karon). */
+  onPointerDown?: (e: ReactPointerEvent<HTMLElement>) => void;
   children: ReactNode;
 }) {
   const katman = useRef<HTMLDivElement>(null);
   const [etkin, setEtkin] = useState(false);
+  const [ustGorunur, setUstGorunur] = useState(false);
   const [klavye, setKlavye] = useState(false);
   const { kalite, etiket, ipucu } = useBaglantiMetni(agSeviyesi);
   // Gerçek ölçüm yoksa bağlantı kutusu da yok ("bilinmiyor" yazılmaz).
@@ -115,21 +133,28 @@ export function KaroKatmani({
     const el = katman.current;
     if (!el || telefon) return;
     let zamanlayici: number | undefined;
+    let ustZamanlayici: number | undefined;
     const hareket = (e: PointerEvent) => {
       if (e.pointerType !== "mouse") return;
       setEtkin(true);
+      setUstGorunur(true);
       window.clearTimeout(zamanlayici);
+      window.clearTimeout(ustZamanlayici);
       zamanlayici = window.setTimeout(() => setEtkin(false), HAREKETSIZLIK_MS);
+      ustZamanlayici = window.setTimeout(() => setUstGorunur(false), UST_DUGME_MS);
     };
     const ayrildi = () => {
       window.clearTimeout(zamanlayici);
+      window.clearTimeout(ustZamanlayici);
       setEtkin(false);
+      setUstGorunur(false);
     };
     el.addEventListener("pointerenter", hareket);
     el.addEventListener("pointermove", hareket);
     el.addEventListener("pointerleave", ayrildi);
     return () => {
       window.clearTimeout(zamanlayici);
+      window.clearTimeout(ustZamanlayici);
       el.removeEventListener("pointerenter", hareket);
       el.removeEventListener("pointermove", hareket);
       el.removeEventListener("pointerleave", ayrildi);
@@ -145,11 +170,21 @@ export function KaroKatmani({
       onFocus={(e) => setKlavye(e.target.matches(":focus-visible"))}
       onBlur={() => setKlavye(false)}
       data-konusuyor={konusuyor || undefined}
+      onPointerDown={onPointerDown}
+      style={style}
       className={`absolute overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marka-focus ${
-        telefon ? "pointer-events-none" : ""
-      } ${className}`}
+        telefon && !onPointerDown ? "pointer-events-none" : "pointer-events-auto"
+      } ${onPointerDown ? "cursor-move touch-none" : ""} ${className}`}
     >
       {children}
+      {ust && (
+        <div
+          className={`absolute right-2 top-2 z-10 ${ustGorunur || klavye ? "" : "invisible"}`}
+          onFocus={() => setUstGorunur(true)}
+        >
+          {ust}
+        </div>
+      )}
       {/* Konuşma halkası: içeriğin ÜSTÜNDE (video/avatar kaplamasın). */}
       {konusuyor && (
         <div className="pointer-events-none absolute inset-0 rounded-[inherit] animate-ders-konusma" aria-hidden />
