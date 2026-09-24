@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 
+import { Icon } from "@/components/AppIcon";
 import { KUCUK_ACIKLAMA } from "@/components/pano/stil";
 import {
   useCreateMessageTemplate,
@@ -98,11 +99,10 @@ export function SablonPaneli({
         aria-expanded={acik}
         className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-slate-100 "
       >
-        {/* Fluent UI Emoji "Bookmark tabs" (High Contrast) — kullanıcı
-            kararı, 22 Eyl 2026 (Color varyantından değiştirildi). Tek renk
-            (#212121); çizgi ikon setinden (`AppIcon.tsx`) bilerek ayrı bir
-            statik dosya, ama artık monokrom — daha sade araç çubuğuna uyuyor. */}
-        <img src="/icons/sablonlar.svg" alt="" aria-hidden className="h-5 w-5" />
+        {/* Fluent System "Document One Page" (Regular) — uygulama ikon seti
+            (AppIcon); kullanıcı kararı, 23 Eyl 2026 (önceki: Fluent UI Emoji
+            "Bookmark tabs" statik dosyası). */}
+        <Icon name="documentOnePage" className="h-5 w-5 text-slate-800" />
       </button>
 
       {acik && (

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Icon } from "@/components/AppIcon";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { PinIcon } from "@/components/PinIcon";
 import { StarRating } from "@/components/StarRating";
@@ -8,7 +9,6 @@ import { formatTRY } from "@/lib/money";
 import { regionLabel } from "@/lib/region";
 import { ROUTES } from "@/lib/routes";
 import type { LibrarySearchOut } from "@/types";
-import { IconBooks } from "@tabler/icons-react";
 
 export function LibraryCardCodex({ library }: { library: LibrarySearchOut }) {
   const region = regionLabel(
@@ -34,7 +34,7 @@ export function LibraryCardCodex({ library }: { library: LibrarySearchOut }) {
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-400 ">
-            <IconBooks size={40} stroke={1.5} aria-hidden />
+            <Icon name="libraryBooks" className="h-10 w-10" />
             <span className="text-[11px] font-medium uppercase tracking-[0.18em]">
               Görsel yakında
             </span>
@@ -104,7 +104,7 @@ export function LibraryCardCodex({ library }: { library: LibrarySearchOut }) {
           <div className="mt-4 flex min-w-0 items-center gap-x-4 gap-y-2 overflow-hidden text-xs text-slate-600 ">
             {visibleAmenities.map((amenity) => (
               <span key={amenity} className="flex shrink-0 items-center gap-1.5">
-                {(() => { const I = amenityIcon(amenity); return <I size={13} stroke={1.75} aria-hidden />; })()}
+                <Icon name={amenityIcon(amenity)} className="h-[13px] w-[13px]" />
                 {amenityLabel(amenity)}
               </span>
             ))}

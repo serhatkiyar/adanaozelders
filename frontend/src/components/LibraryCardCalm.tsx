@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Icon } from "@/components/AppIcon";
 import { ROUTES } from "@/lib/routes";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { regionLabel } from "@/lib/region";
@@ -6,7 +7,6 @@ import { formatTRY } from "@/lib/money";
 import { amenityLabel } from "@/lib/amenities";
 import { amenityIcon } from "@/lib/amenityIcons";
 import type { LibrarySearchOut } from "@/types";
-import { IconBooks, IconStarFilled } from "@tabler/icons-react";
 
 const VISIBLE_AMENITIES = 3;
 
@@ -29,7 +29,7 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <IconBooks size={32} stroke={1.5} className="text-slate-300 " aria-hidden />
+            <Icon name="libraryBooks" className="h-8 w-8 text-slate-300" />
           </div>
         )}
 
@@ -54,7 +54,7 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
         </h3>
         {library.rating_average != null ? (
           <span className="flex shrink-0 items-center gap-1 text-[13px] text-slate-700 ">
-            <IconStarFilled size={11} className="text-slate-900 " aria-hidden />
+            <Icon name="starFilled" className="h-[11px] w-[11px] text-slate-900" />
             {library.rating_average.toFixed(1)}
             {library.rating_count > 0 && (
               <span className="text-slate-400 ">
@@ -83,7 +83,7 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
         <p className="mt-1.5 flex items-center gap-3 text-[13px] text-slate-500 ">
           {amenities.map((slug) => (
             <span key={slug} className="flex items-center gap-1">
-              {(() => { const I = amenityIcon(slug); return <I size={13} stroke={1.75} aria-hidden />; })()}
+              <Icon name={amenityIcon(slug)} className="h-[13px] w-[13px]" />
               <span className="line-clamp-1">{amenityLabel(slug)}</span>
             </span>
           ))}

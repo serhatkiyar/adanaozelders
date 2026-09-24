@@ -265,9 +265,8 @@ export function MesajlarPaneli() {
                   </div>
                 ) : !messages || messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 ring-1 ring-slate-100 ">
-                      <Icon name="messages" className="h-7 w-7" />
-                    </div>
+                    {/* Mesajlar sayfasıyla AYNI görsel (23 Eyl 2026). */}
+                    <img src="/icons/incoming-envelope.png" alt="" aria-hidden className="h-24 w-24" />
                     <p className="mt-4 text-sm font-semibold text-slate-700 ">Henüz mesaj yok</p>
                     <p className="mt-1 text-xs text-slate-500 ">İlk mesajı sen yaz.</p>
                   </div>
@@ -332,9 +331,7 @@ export function MesajlarPaneli() {
                       {send.isPending ? (
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent " />
                       ) : (
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5 19.5 12 4.5 4.5l2.4 6.4a1 1 0 0 0 .94.65H14M6.9 17.1l.94-2.5" />
-                        </svg>
+                        <Icon name="send" className="h-5 w-5" />
                       )}
                     </button>
                   </div>
@@ -407,9 +404,21 @@ export function MesajlarPaneli() {
                   </div>
                 ) : !list || list.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 ">
-                      <Icon name={searching ? "search" : "messages"} className="h-7 w-7" />
-                    </div>
+                    {/* Boş durum görselleri Mesajlar sayfasıyla AYNI (23 Eyl 2026):
+                        arşiv → arşiv kutusu, gelen/okunmamış → omuz silkme.
+                        Aramada sayfanın görsel karşılığı yok; büyüteç kalır. */}
+                    {searching ? (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 ">
+                        <Icon name="search" className="h-7 w-7" />
+                      </div>
+                    ) : (
+                      <img
+                        src={sekme === "archived" ? "/icons/arsiv.png" : "/icons/omuz-silkme.png"}
+                        alt=""
+                        aria-hidden
+                        className="h-24 w-24"
+                      />
+                    )}
                     <p className="mt-4 text-sm font-semibold text-slate-700 ">
                       {searching
                         ? "Sonuç bulunamadı"
@@ -451,7 +460,7 @@ export function MesajlarPaneli() {
                               </span>
                             </div>
                             <div className="mt-0.5 flex items-center justify-between gap-2">
-                              <p className="truncate text-sm text-slate-500 ">
+                              <p className="min-w-0 truncate text-sm text-slate-500 ">
                                 {c.last_message ?? "Yeni sohbet"}
                               </p>
                               {(c.unread ?? 0) > 0 && (

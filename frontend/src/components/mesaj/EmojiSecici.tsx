@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { Icon } from "@/components/AppIcon";
 import { SIK_EMOJILER } from "@/lib/emoji";
 
 /**
@@ -29,10 +30,10 @@ export function EmojiSecici({
         aria-expanded={acik}
         className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-slate-100 "
       >
-        {/* Fluent UI Emoji "Smiling face" (High Contrast) — kullanıcı
-            kararı, 22 Eyl 2026. Şablonlar simgesiyle AYNI stil (tek renk
-            #212121, `Bookmark tabs`in High Contrast varyantıyla eşleşsin). */}
-        <img src="/icons/emoji.svg" alt="" aria-hidden className="h-5 w-5" />
+        {/* Fluent System "Emoji" (Regular) — uygulama ikon seti (AppIcon);
+            kullanıcı kararı, 23 Eyl 2026 (önceki: Fluent UI Emoji statik
+            dosyası). Şablonlar düğmesiyle aynı set ve renk. */}
+        <Icon name="emoji" className="h-5 w-5 text-slate-800" />
       </button>
 
       {acik && (

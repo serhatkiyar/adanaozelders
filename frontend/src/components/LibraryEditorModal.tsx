@@ -35,6 +35,7 @@
 // kuralı "davranışı taşımak", yeni iş kuralı getirmek değil. Sunucu bu
 // alanları zaten doğruluyorsa 422 artık alanın altına düşer.
 import { useEffect, useMemo, useRef } from "react";
+import { Icon } from "@/components/AppIcon";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -711,7 +712,6 @@ function EditorIcerik({
           <div className="flex flex-wrap gap-2">
             {AMENITY_OPTIONS.map((a) => {
               const secili = (degerler.amenities ?? []).includes(a);
-              const I = amenityIcon(a);
               return (
                 <button
                   key={a}
@@ -724,7 +724,7 @@ function EditorIcerik({
                       : "bg-slate-100 text-slate-600 "
                   }`}
                 >
-                  <I size={14} stroke={1.75} aria-hidden />
+                  <Icon name={amenityIcon(a)} className="h-3.5 w-3.5" />
                   {amenityLabel(a)}
                 </button>
               );

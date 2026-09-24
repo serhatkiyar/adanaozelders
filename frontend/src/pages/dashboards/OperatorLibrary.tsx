@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "@/components/AppIcon";
 import { Button } from "@/components/admin/ui";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -689,7 +690,7 @@ function AmenitiesSection({ lib }: { lib: LibraryDetailOut }) {
                       : "bg-slate-100 text-slate-600 "
                   }`}
                 >
-                  {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
+                  <Icon name={amenityIcon(a)} className="h-3.5 w-3.5" />
                   {amenityLabel(a)}
                 </button>
               );

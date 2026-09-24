@@ -1,4 +1,5 @@
 import { type CSSProperties, useMemo, useState } from "react";
+import { Icon } from "@/components/AppIcon";
 import { Link } from "react-router-dom";
 import {
 
@@ -242,7 +243,7 @@ export default function Libraries() {
           onClick={() => toggleAmenity(a)}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-marka-line bg-marka-soft px-3.5 py-1.5 text-sm font-medium text-marka-metin-hover transition hover:bg-marka-line "
         >
-          {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
+          <Icon name={amenityIcon(a)} className="h-3.5 w-3.5" />
           {amenityLabel(a)}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
         </button>
@@ -508,7 +509,7 @@ export default function Libraries() {
                             : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 "
                         }`}
                       >
-                        {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
+                        <Icon name={amenityIcon(a)} className="h-3.5 w-3.5" />
                         {amenityLabel(a)}
                       </button>
                     );

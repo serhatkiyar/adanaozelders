@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Icon } from "@/components/AppIcon";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { PinIcon } from "@/components/PinIcon";
 import { StarRating } from "@/components/StarRating";
@@ -88,7 +89,7 @@ export function LibraryCardCodexA({ library }: { library: LibrarySearchOut }) {
           <div className="mt-5 flex min-w-0 items-center gap-4 overflow-hidden text-xs text-slate-600 ">
             {amenities.map((amenity) => (
               <span key={amenity} className="flex shrink-0 items-center gap-1.5">
-                {(() => { const I = amenityIcon(amenity); return <I size={14} stroke={1.75} aria-hidden />; })()}
+                <Icon name={amenityIcon(amenity)} className="h-3.5 w-3.5" />
                 {amenityLabel(amenity)}
               </span>
             ))}
