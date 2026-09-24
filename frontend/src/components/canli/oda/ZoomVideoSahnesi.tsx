@@ -38,7 +38,7 @@ function uzakKutusu(duzen: SahneDuzeni, telefon: boolean): string {
 function benKutusu(duzen: SahneDuzeni, telefon: boolean): string {
   if (duzen === "yalniz") return telefon ? "inset-0" : "inset-2 rounded-ders";
   return telefon
-    ? "right-3 top-3 z-20 aspect-[3/4] w-[28%] rounded-ders shadow-lg"
+    ? "bottom-3 right-3 z-20 aspect-[3/4] w-[28%] rounded-ders shadow-lg"
     : "bottom-4 right-4 z-20 aspect-video w-[22%] min-w-[160px] max-w-[320px] rounded-ders shadow-lg";
 }
 

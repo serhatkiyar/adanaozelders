@@ -24,6 +24,7 @@ export function OnIzleme({
   onMik,
   onKamera,
   onKatil,
+  onAyril,
   katiliyor,
   hata,
 }: {
@@ -33,6 +34,8 @@ export function OnIzleme({
   onMik: (ac: boolean) => void;
   onKamera: (ac: boolean) => void;
   onKatil: () => void;
+  /** Telefonda üst şeritte çıkış yok; önizlemeden çıkış buradan. */
+  onAyril?: () => void;
   katiliyor: boolean;
   hata: string | null;
 }) {
@@ -126,6 +129,15 @@ export function OnIzleme({
             )}
             {t(katiliyor ? "join.joining" : "join.joinLabel")}
           </PlainButton>
+          {telefon && onAyril && (
+            <PlainButton
+              onClick={onAyril}
+              disabled={katiliyor}
+              className={`${DUGME_TABANI} h-11 w-full max-w-xs rounded-ders bg-ders-dugme px-6 text-base text-white hover:bg-ders-hover`}
+            >
+              {t("controls.leave")}
+            </PlainButton>
+          )}
           {hata && (
             <p role="alert" className="max-w-xs text-sm text-ders-hata-fg">
               {t(hata)}

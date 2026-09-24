@@ -171,6 +171,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
           onMik={setMikTercihi}
           onKamera={setKameraTercihi}
           onKatil={() => void derseKatil()}
+          onAyril={onAyrilIstegi}
           katiliyor={asama === "katiliyor"}
           hata={girisHatasi}
         />
