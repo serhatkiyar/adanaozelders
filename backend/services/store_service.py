@@ -2453,7 +2453,7 @@ async def list_seller_products(
     ).scalars().all()
     return [
         # Eğitmen ürünleri DİJİTALDİR; tedarikçi katmanı onları hiç kapsamaz.
-        _to_search_out(p, prior_mean, confidence, tutor_name=tutor.full_name)
+        _to_search_out(p, prior_mean, confidence, tutor_name=tutor.display_name)
         for p in products
     ]
 

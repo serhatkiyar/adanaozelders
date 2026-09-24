@@ -219,7 +219,7 @@ async def create_time_off(
                         db,
                         user_id=locked.client_id,
                         role_id=ROLE_IDS[RoleType.CLIENT],
-                        message=f"{tutor.full_name} ders teklifini geri çekti. {reason}",
+                        message=f"{tutor.display_name} ders teklifini geri çekti. {reason}",
                         link=f"/ders-talepleri/{locked.id}",
                     )
                 else:

@@ -83,9 +83,9 @@ async def create_thread(
     await db.flush()
     full = await _load_thread(db, thread.id)
     tutor = await db.get(Tutor, full.tutor_id)
-    full.tutor_name = tutor.full_name if tutor else None
+    full.tutor_name = tutor.display_name if tutor else None
     full.tutor_avatar_url = tutor.avatar_url if tutor else None
-    full.client_name = client.full_name
+    full.client_name = client.display_name
     full.client_avatar_url = client.avatar_url
     return full
 
@@ -147,9 +147,9 @@ async def get_thread(db: AsyncSession, thread_id: int) -> QAThread | None:
         return None
     tutor = await db.get(Tutor, thread.tutor_id)
     client = await db.get(Client, thread.client_id)
-    thread.tutor_name = tutor.full_name if tutor else None
+    thread.tutor_name = tutor.display_name if tutor else None
     thread.tutor_avatar_url = tutor.avatar_url if tutor else None
-    thread.client_name = client.full_name if client else None
+    thread.client_name = client.display_name if client else None
     thread.client_avatar_url = client.avatar_url if client else None
     return thread
 
@@ -164,7 +164,7 @@ async def list_threads(
     offset: int = 0,
 ) -> list[QAThread]:
     stmt = (
-        select(QAThread, Tutor.full_name, Tutor.avatar_url, Client.full_name, Client.avatar_url)
+        select(QAThread, Tutor.first_name, Tutor.avatar_url, Client.first_name, Client.avatar_url)
         .options(selectinload(QAThread.messages))
         .join(Tutor, QAThread.tutor_id == Tutor.id)
         .join(Client, QAThread.client_id == Client.id)
@@ -202,7 +202,7 @@ async def list_question_rights(
 
     rows = (
         await db.execute(
-            select(Booking, Tutor.full_name, Tutor.avatar_url, Tutor.headline)
+            select(Booking, Tutor.first_name, Tutor.avatar_url, Tutor.headline)
             .join(Tutor, Booking.tutor_id == Tutor.id)
             .where(
                 Booking.client_id == client.id,
@@ -258,7 +258,7 @@ async def list_question_rights(
         for t in b_threads:
             t.tutor_name = full_name
             t.tutor_avatar_url = avatar_url
-            t.client_name = client.full_name
+            t.client_name = client.display_name
             t.client_avatar_url = client.avatar_url
 
         groups.append(

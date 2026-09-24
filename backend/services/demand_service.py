@@ -267,7 +267,7 @@ async def respond_to_demand(
     return {
         "conversation_id": message.conversation_id,
         "client_id": demand.client_id,
-        "client_name": client.full_name if client else "Öğrenci",
+        "client_name": client.display_name if client else "Öğrenci",
     }
 
 

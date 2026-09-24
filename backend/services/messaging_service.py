@@ -974,7 +974,7 @@ async def _enrich_conversations(
     if by_type["CLIENT"]:
         for cid, fn, av in (
             await db.execute(
-                select(Client.id, Client.full_name, Client.avatar_url).where(
+                select(Client.id, Client.first_name, Client.avatar_url).where(
                     Client.id.in_(by_type["CLIENT"])
                 )
             )
@@ -983,7 +983,7 @@ async def _enrich_conversations(
     if by_type["TUTOR"]:
         for tid, fn, av in (
             await db.execute(
-                select(Tutor.id, Tutor.full_name, Tutor.avatar_url).where(
+                select(Tutor.id, Tutor.first_name, Tutor.avatar_url).where(
                     Tutor.id.in_(by_type["TUTOR"])
                 )
             )

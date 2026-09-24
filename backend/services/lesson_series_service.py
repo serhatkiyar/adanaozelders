@@ -351,7 +351,7 @@ async def create_series(db: AsyncSession, tutor: Tutor, data, *, now: datetime.d
         db,
         user_id=client.id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"{tutor.full_name} sana {data.weeks} haftalık ders serisi teklif etti.",
+        message=f"{tutor.display_name} sana {data.weeks} haftalık ders serisi teklif etti.",
         link=f"/ders-talepleri/{offered_ids[0]}" if offered_ids else "/student/bookings",
     )
     offered = [
@@ -408,12 +408,12 @@ async def end_series(db: AsyncSession, series_id: int, actor) -> LessonSeries:
     if actor.role_id == ROLE_IDS[RoleType.TUTOR]:
         alici, rol, link = series.client_id, RoleType.CLIENT, "/student/bookings"
         mesaj = (
-            f"{actor.full_name} haftalık ders serisini bitirdi; "
+            f"{actor.display_name} haftalık ders serisini bitirdi; "
             "bekleyen teklifler geri çekildi."
         )
     else:
         alici, rol, link = series.tutor_id, RoleType.TUTOR, "/tutor"
-        mesaj = f"{actor.full_name} haftalık ders serisini bitirdi."
+        mesaj = f"{actor.display_name} haftalık ders serisini bitirdi."
     await notification_service.notify(
         db, user_id=alici, role_id=ROLE_IDS[rol], message=mesaj, link=link
     )

@@ -465,7 +465,7 @@ async def list_assignments(
     return [
         {
             "client_id": a.client_id,
-            "client_name": c.full_name,
+            "client_name": c.display_name,
             "assigned_at": a.created_at,
         }
         for a, c in rows.all()
