@@ -165,6 +165,12 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     let taban: Set<string> | null = null;
     let sonListe: readonly Katilimci[] | null = null;
     const bekleyenAyrilma = new Map<string, number>();
+    let ayrildiZamanlayici: number | undefined;
+    const yayinla = (durum: KarsiTarafDurumu) => {
+      if (durum === onceki) return;
+      onceki = durum;
+      guncel.current.onKarsiTaraf(durum);
+    };
     const coz = useOdaDeposu.subscribe((d) => {
       if (d.asama !== "odada") return;
       // Kendi bağlantımız kopukken liste boşalabilir: fark alınmaz, taban
@@ -198,10 +204,26 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
           }
         }
       }
-      const durum = karsiTarafDurumu(d);
-      if (durum !== onceki) {
-        onceki = durum;
-        guncel.current.onKarsiTaraf(durum);
+      // Karşı taraf notu da bildirimle aynı kurala uyar: kendi bağlantımız
+      // kopukken durum yayınlanmaz; "odada" → "ayrildi" geçişi kısa kopmaya
+      // (yeni `userId` ile dönüş) karşı ertelenir, dönerse iptal edilir.
+      if (d.baglanti === "bagli" && !d.ayriliyor) {
+        const durum = karsiTarafDurumu(d);
+        if (durum === "ayrildi" && onceki === "odada") {
+          if (ayrildiZamanlayici === undefined) {
+            ayrildiZamanlayici = window.setTimeout(() => {
+              ayrildiZamanlayici = undefined;
+              const g = useOdaDeposu.getState();
+              if (g.baglanti === "bagli" && !g.ayriliyor && karsiTarafDurumu(g) === "ayrildi") {
+                yayinla("ayrildi");
+              }
+            }, AYRILDI_BEKLEME_MS);
+          }
+        } else {
+          window.clearTimeout(ayrildiZamanlayici);
+          ayrildiZamanlayici = undefined;
+          yayinla(durum);
+        }
       }
       if (!kapandiBildirildi && beklenmedikKapanis(d)) {
         kapandiBildirildi = true;
@@ -211,6 +233,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     return () => {
       coz();
       for (const z of bekleyenAyrilma.values()) window.clearTimeout(z);
+      window.clearTimeout(ayrildiZamanlayici);
     };
   }, []);
 

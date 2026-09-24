@@ -104,6 +104,33 @@ function kullanicilariOku() {
   const liste = istemci.getAllUser() as unknown as ZoomKullanici[];
   const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
   depoyaUygula((d) => katilimcilariEsitle(d, liste ?? [], ben));
+  agKaliteleriniOku();
+}
+
+/**
+ * `network-quality-change` yalnız DEĞİŞİMDE gelir: katılınca, kamera yeniden
+ * açılınca ya da yeni `userId` ile dönünce seviye aynıysa olay gelmez. Liste
+ * her okunduğunda kamerası açık herkesin güncel değeri SDK'dan okunur.
+ */
+function agKaliteleriniOku() {
+  const kameraAcik = useOdaDeposu
+    .getState()
+    .katilimcilar.filter((k) => k.videoAcik)
+    .map((k) => k.userId);
+  for (const userId of kameraAcik) {
+    let olcum;
+    try {
+      olcum = akis().getNetworkQuality(userId);
+    } catch {
+      continue;
+    }
+    for (const type of ["uplink", "downlink"] as const) {
+      const level = olcum?.[type];
+      if (typeof level === "number") {
+        depoyaUygula((d) => agKalitesiDegisti(d, { userId, type, level }));
+      }
+    }
+  }
 }
 
 export function oturumdaMi(): boolean {
