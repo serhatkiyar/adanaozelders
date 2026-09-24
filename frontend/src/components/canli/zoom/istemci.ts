@@ -60,8 +60,16 @@ const AYRILMA_BEKLEME_MS = 3000;
 let hazirlik: Promise<void> | null = null;
 
 /** SDK "başarısız" sonucu reddetmeden, çözülmüş bir nesneyle de bildirebilir. */
+/**
+ * Zoom'un hata nesnesi (`ExecutedFailure`: `type` + `reason`). Tip tanımı
+ * başarıda `''` der ama gerçekte `join` başarıda oturum bilgisi NESNESİ döner
+ * (`bAICompanionMgr`, `bCanPinMultiVideo`…; canlı denemede görüldü, 24 Eyl
+ * 2026) — "nesne = hata" varsayımı başarılı katılımı hata sayıyordu.
+ */
 function basarisizMi(sonuc: unknown): boolean {
-  return typeof sonuc === "object" && sonuc !== null;
+  if (typeof sonuc !== "object" || sonuc === null) return false;
+  const s = sonuc as { type?: unknown; reason?: unknown };
+  return typeof s.type === "string" && "reason" in s;
 }
 
 async function initDene(dil: string): Promise<boolean> {
