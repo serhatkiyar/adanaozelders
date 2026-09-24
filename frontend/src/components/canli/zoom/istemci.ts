@@ -542,6 +542,18 @@ export function paylasimVideoOgesiIster(): boolean {
   }
 }
 
+/**
+ * Host (öğretmen) mıyım? SDK varsayılanı `HostGrab`: biri paylaşırken yalnız
+ * host/yönetici paylaşımı devralabilir; diğerinin düğmesi kapatılır.
+ */
+export function paylasimDevralabilir(): boolean {
+  try {
+    return istemci.isHost() || istemci.isManager();
+  } catch {
+    return false;
+  }
+}
+
 /** Sahnedeki kalıcı kendi-paylaşım öğesi (ZoomVideoSahnesi kaydeder). */
 let paylasimOgesi: HTMLVideoElement | HTMLCanvasElement | null = null;
 
@@ -550,10 +562,22 @@ export function paylasimOgesiniKaydet(oge: HTMLVideoElement | HTMLCanvasElement 
 }
 
 /**
- * Kendi paylaşımım tüm ekran mı? Yalnız `<video>` yolunda iz okunabilir
- * (SDK yakalanan akışı öğeye verir); `<canvas>` yolunda bilinmez → uyarı yok.
+ * Kendi paylaşımım tüm ekran mı? Önce SDK'nın `getShareStreamSettings()`
+ * (öğe türünden bağımsız, canvas yolu dahil); yüzey bildirmezse `<video>`
+ * öğesinin izinden (ayar/kısıt/etiket) yedek okuma.
  */
 function tumEkranOku() {
+  let yuzey: string | undefined;
+  try {
+    yuzey = akis().getShareStreamSettings()?.displaySurface;
+  } catch {
+    yuzey = undefined;
+  }
+  if (yuzey) {
+    const tumEkran = tumEkranPaylasimiMi({ displaySurface: yuzey });
+    depoyaUygula((d) => (d.benPaylasiyorum ? benimPaylasimim(d, true, tumEkran) : d));
+    return;
+  }
   const oge = paylasimOgesi;
   if (!(oge instanceof HTMLVideoElement)) return;
   const akisNesnesi = oge.srcObject;

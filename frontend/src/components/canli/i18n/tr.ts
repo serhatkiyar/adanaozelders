@@ -109,6 +109,7 @@ export const tr = {
         retryHint: "İzni verdikten sonra tarayıcıyı yeniden başlatman gerekebilir.",
         closeButton: "Kapat",
         generic: "Ekran paylaşımı başlatılamadı. Yeniden dene.",
+        busy: "Karşı taraf ekran paylaşırken paylaşım başlatamazsın.",
       },
     },
     /** Meet `fullScreenWarning` — tüm ekranı paylaşırken sonsuz yansıma. */

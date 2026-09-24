@@ -539,8 +539,10 @@ export function paylasimVar(durum: OdaDurumu): boolean {
 /** Zoom `errorCode`: kullanıcı seçiciyi kapattı / sistem ayarı izin vermiyor. */
 const PAYLASIM_KULLANICI_REDDI = 6200;
 const PAYLASIM_SISTEM_REDDI = 6201;
+/** Zoom `SCREEN_SHARE_HOST_PRIVILEGE_REQUIRED`: başkası paylaşırken yalnız host devralabilir. */
+const PAYLASIM_HOST_GEREKLI = 6204;
 
-export type PaylasimHatasiTuru = "iptal" | "izin" | "diger";
+export type PaylasimHatasiTuru = "iptal" | "izin" | "mesgul" | "diger";
 
 /**
  * `startShareScreen` hatası → tepki. Kullanıcı seçiciden vazgeçtiyse sessiz
@@ -556,6 +558,7 @@ export function paylasimHatasiTuru(hata: unknown): PaylasimHatasiTuru {
     const kod = (hata as { errorCode?: unknown }).errorCode;
     if (kod === PAYLASIM_SISTEM_REDDI) return "izin";
     if (kod === PAYLASIM_KULLANICI_REDDI) return "iptal";
+    if (kod === PAYLASIM_HOST_GEREKLI) return "mesgul";
   }
   const metin = hataMetni(hata);
   if (/NotAllowedError/.test(metin)) return /by system/i.test(metin) ? "izin" : "iptal";
