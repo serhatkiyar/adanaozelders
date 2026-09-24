@@ -66,6 +66,8 @@ const SAYAC_ESIGI = KARAKTER_SINIRI - 500;
 const GONDERIM_ARALIGI_MS = 1000;
 const UZUN_BASMA_MS = 500;
 const ALTA_YAKIN_PX = 40;
+/** Eylem menüsünün yaklaşık yüksekliği (emoji kartı + Yanıtla/Kopyala). */
+const MENU_YUKSEKLIGI = 180;
 const TZ = "Europe/Istanbul";
 
 const saatBicimi = new Intl.DateTimeFormat("tr-TR", {
@@ -354,6 +356,7 @@ export function DersSohbeti({
         <div
           ref={liste}
           onScroll={kaydirildi}
+          data-sohbet-listesi
           className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         >
           <ul className="list-none px-1 min-[700px]:px-3">
@@ -745,6 +748,17 @@ function MesajMenusu({
   const dugme = useRef<HTMLButtonElement>(null);
   const kapat = useRef(() => onAcik(false));
   kapat.current = () => onAcik(false);
+  // Varsayılan aşağı açılır; listenin altına sığmıyorsa (son mesajlar) yukarı.
+  // (Kaynakta yok: menü kaydırma kabının dışına taşmasın diye.)
+  const [yukari, setYukari] = useState(false);
+  const ac = () => {
+    const d = dugme.current;
+    const kap = d?.closest("[data-sohbet-listesi]");
+    if (d && kap) {
+      setYukari(d.getBoundingClientRect().bottom + MENU_YUKSEKLIGI > kap.getBoundingClientRect().bottom);
+    }
+    onAcik(true);
+  };
 
   useEffect(() => {
     if (!acik) return;
@@ -777,7 +791,7 @@ function MesajMenusu({
     <div ref={kok} className="absolute right-3 top-3 z-10">
       <PlainButton
         ref={dugme}
-        onClick={() => onAcik(!acik)}
+        onClick={() => (acik ? onAcik(false) : ac())}
         aria-label={t("chat.actions")}
         title={t("chat.actions")}
         aria-haspopup="menu"
@@ -790,7 +804,10 @@ function MesajMenusu({
         <Icon name="moreHorizontal" className="h-6 w-6" />
       </PlainButton>
       {acik && (
-        <div role="menu" className="absolute right-0 top-full mt-1 flex w-[368px] max-w-[calc(100vw-2rem)] flex-col gap-1">
+        <div
+          role="menu"
+          className={`absolute right-0 ${yukari ? "bottom-full mb-1" : "top-full mt-1"} flex w-[368px] max-w-[calc(100vw-2rem)] flex-col gap-1`}
+        >
           <div className="flex justify-between rounded-lg bg-white p-2 shadow-lg ring-1 ring-[#DCDCE5]">
             {SIK_EMOJILER.map((emoji) => (
               <PlainButton
