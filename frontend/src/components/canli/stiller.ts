@@ -16,6 +16,8 @@ export const ODA_DUGMESI = {
   kapali: "bg-ders-hata text-ders-hata-fg hover:bg-ders-hata-hover",
   /** Meet `danger` — Ayrıl */
   tehlike: "bg-ders-tehlike text-white hover:bg-ders-tehlike-hover",
+  /** Meet `primaryDark` + `isSelected` — etkin geçiş (ör. ekran paylaşılıyor) */
+  secili: "bg-ders-secili text-ders-secili-fg hover:bg-white",
   /** Meet `primaryTextDark` — çekmece öğeleri */
   metin: "bg-transparent text-white hover:bg-ders-dugme",
 } as const;

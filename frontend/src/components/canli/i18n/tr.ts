@@ -46,6 +46,10 @@ export const tr = {
       leave: "Ayrıl",
       leaveShort: "Çık",
       moreOptions: "Daha fazla",
+      screenShare: {
+        start: "Ekranını paylaş",
+        stop: "Paylaşımı durdur",
+      },
     },
     selectDevice: {
       loading: "Yükleniyor…",
@@ -89,6 +93,30 @@ export const tr = {
       you: "Sen",
       muted: "Mikrofonu kapalı",
       waiting: "Karşı taraf bekleniyor",
+      screenShare: "Paylaşılan ekran: {{name}}",
+      myScreenShare: "Ekranını paylaşıyorsun",
+    },
+    /** Meet `error.screenShare` — ekran paylaşımı izni. */
+    error: {
+      screenShare: {
+        title: "Ekranın paylaşılamıyor",
+        message: "Tarayıcının bu bilgisayarda ekranı kaydetmesine izin verilmemiş olabilir.",
+        settingsInstructions: "İzni şuradan verebilirsin:",
+        settingsLabel: {
+          macos: "Sistem Ayarları › Gizlilik ve Güvenlik › Ekran Kaydı",
+          windows: "Windows gizlilik ayarları",
+        },
+        retryHint: "İzni verdikten sonra tarayıcıyı yeniden başlatman gerekebilir.",
+        closeButton: "Kapat",
+        generic: "Ekran paylaşımı başlatılamadı. Yeniden dene.",
+      },
+    },
+    /** Meet `fullScreenWarning` — tüm ekranı paylaşırken sonsuz yansıma. */
+    fullScreenWarning: {
+      message:
+        "Sonsuz yansıma görüntüsünü önlemek için tüm ekranını paylaşma; bunun yerine bir sekme ya da başka bir pencere paylaş.",
+      stop: "Sunumu durdur",
+      ignore: "Yoksay",
     },
     media: {
       startAudio: "Sesi aç",

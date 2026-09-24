@@ -13,6 +13,7 @@ import {
   benKimim,
   karsiTaraf,
   karsiTarafDurumu,
+  paylasimVar,
   type OdaDurumu,
 } from "./indirgeyiciler";
 
@@ -46,6 +47,12 @@ export const useIzinPenceresi = () => useOdaDeposu((d) => d.izinPenceresi);
 /** Kartın ağ seviyesi (0–5) ya da ölçüm yoksa `null` (bkz. `agKalitesi`). */
 export const useAgSeviyesi = (userId: number | undefined) =>
   useOdaDeposu((d) => agSeviyesi(d, userId));
+
+/* Ekran paylaşımı (Paket 4) */
+export const usePaylasimVar = () => useOdaDeposu(paylasimVar);
+export const useAktifPaylasim = () => useOdaDeposu((d) => d.aktifPaylasim);
+export const useBenPaylasiyorum = () => useOdaDeposu((d) => d.benPaylasiyorum);
+export const useBenTumEkran = () => useOdaDeposu((d) => d.benTumEkran);
 
 export function izinPenceresiniAc(acik: boolean): void {
   useOdaDeposu.setState({ izinPenceresi: acik });

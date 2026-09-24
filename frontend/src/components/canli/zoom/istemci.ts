@@ -27,9 +27,13 @@ import ZoomVideo, {
 
 import type { ZoomDersTokenOut } from "@/types";
 
+import { tumEkranPaylasimiMi } from "@/lib/canliDers";
+
 import {
   agKalitesiDegisti,
   aktifKonusanlar,
+  aktifPaylasimDegisti,
+  benimPaylasimim,
   baglantiDegisti,
   cihazlarDegisti,
   cihazSecildi,
@@ -39,6 +43,7 @@ import {
   listeleriKur,
   medyaHatasi,
   mikIzniReddedildiMi,
+  paylasimiEsitle,
   sesEngellendi,
   videoDurumuDegisti,
   yenidenBaglandi,
@@ -105,6 +110,18 @@ function kullanicilariOku() {
   const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
   depoyaUygula((d) => katilimcilariEsitle(d, liste ?? [], ben));
   agKaliteleriniOku();
+  paylasimiOku();
+}
+
+/** Olay kaçtıysa (katılmadan önce başlamış paylaşım) SDK'nın o anki paylaşımı. */
+function paylasimiOku() {
+  let aktifId = 0;
+  try {
+    aktifId = akis().getActiveShareUserId() || 0;
+  } catch {
+    return;
+  }
+  depoyaUygula((d) => paylasimiEsitle(d, aktifId));
 }
 
 /**
@@ -319,6 +336,13 @@ export function olaylariBagla(
   const izin = (olay: { name: "camera" | "microphone"; state: string }) =>
     depoyaUygula((d) => izinDegisti(d, olay));
   const kapaliykenKonusma = () => secenekler.kapaliykenKonusma?.();
+  const paylasimDegisti = (olay: { state: string; userId: number }) =>
+    depoyaUygula((d) => aktifPaylasimDegisti(d, olay));
+  // Tarayıcının "Paylaşımı durdur" düğmesi ya da başka birinin paylaşımı.
+  const paylasimDurduruldu = () => depoyaUygula((d) => benimPaylasimim(d, false));
+  const paylasimBoyutu = (olay: { type?: string }) => {
+    if (olay?.type === "sended") tumEkranOku();
+  };
 
   const dinleyiciler: Array<[string, (yuk: never) => void]> = [
     ["user-added", kullaniciDegisti],
@@ -334,6 +358,9 @@ export function olaylariBagla(
     ["speaking-while-muted", kapaliykenKonusma],
     ["network-quality-change", agKalitesi],
     ["active-media-failed", medyaBozuldu],
+    ["active-share-change", paylasimDegisti],
+    ["passively-stop-share", paylasimDurduruldu],
+    ["share-content-dimension-change", paylasimBoyutu],
   ];
   for (const [olay, dinleyici] of dinleyiciler) {
     istemci.on(olay, dinleyici as (yuk: unknown) => void);
@@ -475,6 +502,100 @@ export async function videoCoz(userId: number, oyuncu: HTMLElement): Promise<voi
   if (!oturumdaMi()) return;
   try {
     await akis().detachVideo(userId, oyuncu as VideoPlayer);
+  } catch {
+    // oyuncu zaten boş
+  }
+}
+
+/* ── Ekran paylaşımı (Paket 4) ──────────────────────────────────────── */
+
+/**
+ * Tarayıcı ekran paylaşabilir mi? Zoom'un denetimi + `getDisplayMedia`.
+ * Telefonda düğme zaten yok (plan §5 P4).
+ */
+export function paylasimDestekli(): boolean {
+  try {
+    return (
+      Boolean(ZoomVideo.checkSystemRequirements()?.screen) &&
+      typeof navigator !== "undefined" &&
+      typeof navigator.mediaDevices?.getDisplayMedia === "function"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Kendi paylaşımım `<video>` mu `<canvas>` mı ister (`isStartShareScreenWithVideoElement`). */
+export function paylasimVideoOgesiIster(): boolean {
+  try {
+    return akis().isStartShareScreenWithVideoElement();
+  } catch {
+    return false;
+  }
+}
+
+/** Sahnedeki kalıcı kendi-paylaşım öğesi (ZoomVideoSahnesi kaydeder). */
+let paylasimOgesi: HTMLVideoElement | HTMLCanvasElement | null = null;
+
+export function paylasimOgesiniKaydet(oge: HTMLVideoElement | HTMLCanvasElement | null): void {
+  paylasimOgesi = oge;
+}
+
+/**
+ * Kendi paylaşımım tüm ekran mı? Yalnız `<video>` yolunda iz okunabilir
+ * (SDK yakalanan akışı öğeye verir); `<canvas>` yolunda bilinmez → uyarı yok.
+ */
+function tumEkranOku() {
+  const oge = paylasimOgesi;
+  if (!(oge instanceof HTMLVideoElement)) return;
+  const akisNesnesi = oge.srcObject;
+  if (typeof MediaStream === "undefined" || !(akisNesnesi instanceof MediaStream)) return;
+  const iz = akisNesnesi.getVideoTracks()[0];
+  if (!iz) return;
+  const tumEkran = tumEkranPaylasimiMi({
+    displaySurface: (iz.getSettings() as { displaySurface?: string }).displaySurface,
+    kisitYuzeyi: (iz.getConstraints() as { displaySurface?: string }).displaySurface,
+    etiket: iz.label,
+  });
+  depoyaUygula((d) => (d.benPaylasiyorum ? benimPaylasimim(d, true, tumEkran) : d));
+}
+
+/** Ekranımı paylaş. Hata fırlatılır; tepkisi `paylasimHatasiTuru`. */
+export async function paylasimiBaslat(): Promise<void> {
+  const oge = paylasimOgesi;
+  if (!oge) throw new Error("paylasim ogesi yok");
+  const sonuc = await akis().startShareScreen(oge, { hideShareAudioOption: true });
+  if (basarisizMi(sonuc)) throw sonuc;
+  depoyaUygula((d) => benimPaylasimim(d, true));
+  tumEkranOku();
+}
+
+export async function paylasimiDurdur(): Promise<void> {
+  try {
+    const sonuc = await akis().stopShareScreen();
+    if (basarisizMi(sonuc)) console.warn("Zoom stopShareScreen", sonuc);
+  } finally {
+    depoyaUygula((d) => benimPaylasimim(d, false));
+  }
+}
+
+/** Karşı tarafın paylaşımını kalıcı `paylasim` kabındaki oyuncuya çizer. */
+export async function paylasimBagla(userId: number, oyuncu: HTMLElement): Promise<void> {
+  if (!oturumdaMi()) return;
+  try {
+    const sonuc = await akis().attachShareView(userId, oyuncu as VideoPlayer);
+    if (basarisizMi(sonuc) && !(sonuc instanceof HTMLElement)) {
+      console.warn("Zoom attachShareView", sonuc);
+    }
+  } catch (hata) {
+    console.warn("Zoom attachShareView", hata);
+  }
+}
+
+export async function paylasimCoz(userId: number, oyuncu: HTMLElement): Promise<void> {
+  if (!oturumdaMi()) return;
+  try {
+    await akis().detachShareView(userId, oyuncu as VideoPlayer);
   } catch {
     // oyuncu zaten boş
   }

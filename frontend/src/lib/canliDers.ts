@@ -169,7 +169,8 @@ export function basHarfler(ad: string): string {
  * Sahne düzeni:
  *   - `yalniz`   karşı taraf odada değil → kendi görüntün büyük
  *   - `birebir`  karşı taraf büyük, kendi görüntün köşede küçük
- *   - `paylasim` biri ekran paylaşıyor → paylaşım büyük (Paket 4)
+ *   - `paylasim` biri (ben de olabilirim) ekran paylaşıyor → paylaşım büyük,
+ *                iki görüntü masaüstünde sağda, telefonda altta şerit
  * Düzen yalnız sınıfları değiştirir; video kapları yeniden kurulmaz.
  */
 export type SahneDuzeni = "yalniz" | "birebir" | "paylasim";
@@ -254,4 +255,34 @@ export function agKalitesi(seviye: number | null | undefined): AgKalitesi {
   if (seviye <= 1) return "zayif";
   if (seviye < 3) return "orta";
   return "iyi";
+}
+
+/* ── Paket 4: ekran paylaşımı ─────────────────────────────────────────── */
+
+/**
+ * Paylaşılan yüzey tüm ekran mı? Meet `FullScreenShareWarning` yöntemi:
+ * önce `displaySurface` (Chrome/Edge; ayar ya da kısıt), yoksa iz etiketi
+ * (Firefox/Safari). Bilinmiyorsa `false` (gereksiz uyarı gösterilmez).
+ */
+export function tumEkranPaylasimiMi(iz: {
+  displaySurface?: string;
+  kisitYuzeyi?: string;
+  etiket?: string;
+}): boolean {
+  if (iz.displaySurface) return iz.displaySurface === "monitor";
+  if (iz.kisitYuzeyi) return iz.kisitYuzeyi === "monitor";
+  const etiket = (iz.etiket ?? "").toLowerCase();
+  if (!etiket) return false;
+  return ["monitor", "screen", "display", "entire screen", "full screen"].some((s) =>
+    etiket.includes(s),
+  );
+}
+
+/** Ekran kaydı izni için sistem ayarı derin bağlantısı (Meet `ScreenShareErrorModal`). */
+export function ekranKaydiAyarAdresi(os: IsletimSistemi): string | null {
+  if (os === "macos") {
+    return "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture";
+  }
+  if (os === "windows") return "ms-settings:privacy-graphicscaptureprogrammatic";
+  return null;
 }

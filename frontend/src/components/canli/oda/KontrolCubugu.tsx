@@ -1,7 +1,7 @@
 /**
  * Masaüstü kontrol çubuğu — Meet `DesktopControlBar` + `ControlBarRegion`
  * (La Suite Meet, MIT — DINUM/Etalab): 80px yükseklik, üç sütun, ortada
- * Mikrofon▴ · Kamera▴ · ⋯ · kırmızı Ayrıl. Oklar cihaz menüsünü, ⋯ Tam ekran
+ * Mikrofon▴ · Kamera▴ · Ekran paylaş · ⋯ · kırmızı Ayrıl. Oklar cihaz menüsünü, ⋯ Tam ekran
  * ve Ayarlar'ı açar. Ayrıl, sayfanın ONAYLI çıkış penceresini açar; ders
  * karşı taraf için sürer.
  */
@@ -17,6 +17,7 @@ import { Acilir } from "./Acilir";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
 import { CihazMenusu } from "./CihazMenusu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
+import { PaylasimDugmesi } from "./PaylasimDugmesi";
 import { useTamEkran } from "./useTamEkran";
 
 export function KontrolCubugu({
@@ -58,6 +59,7 @@ export function KontrolCubugu({
           />
           <CihazMenusu tur="kamera" acik={m.kameraAcik} onAyarlar={onAyarlar} />
         </div>
+        <PaylasimDugmesi />
         <SecenekMenusu onAyarlar={() => onAyarlar("ses")} />
         {onAyril && (
           <PlainButton

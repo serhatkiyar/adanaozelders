@@ -77,6 +77,12 @@ export interface OdaDurumu {
   izinPenceresi: boolean;
   /** Kullanıcı kimliğine göre son ağ kalitesi ölçümleri. */
   agKaliteleri: Record<number, AgOlcumu>;
+  /** Karşı tarafın izlenen ekran paylaşımı (`active-share-change`); yoksa `null`. */
+  aktifPaylasim: number | null;
+  /** Kendi ekranımı paylaşıyorum (`startShareScreen` başarılı → durdurulana dek). */
+  benPaylasiyorum: boolean;
+  /** Kendi paylaşımım tüm ekran (sonsuz yansıma uyarısı). */
+  benTumEkran: boolean;
 }
 
 export interface Cihaz {
@@ -118,6 +124,9 @@ export const BASLANGIC: OdaDurumu = {
   izinler: { kamera: "bilinmiyor", mikrofon: "bilinmiyor" },
   izinPenceresi: false,
   agKaliteleri: {},
+  aktifPaylasim: null,
+  benPaylasiyorum: false,
+  benTumEkran: false,
 };
 
 export function katilimciyaCevir(k: ZoomKullanici): Katilimci {
@@ -158,6 +167,11 @@ export function katilimcilariEsitle(
     // Ayrılan kişi konuşanlar listesinde kalmasın.
     konusanlar: durum.konusanlar.filter((id) => katilimcilar.some((k) => k.userId === id)),
     agKaliteleri: agKaliteleriniBuda(durum.agKaliteleri, katilimcilar),
+    // Paylaşan ayrıldıysa paylaşımı da gitmiştir (Inactive gelmeyebilir).
+    aktifPaylasim:
+      durum.aktifPaylasim !== null && katilimcilar.some((k) => k.userId === durum.aktifPaylasim)
+        ? durum.aktifPaylasim
+        : null,
   };
 }
 
@@ -476,4 +490,75 @@ export function gorunenCihazId(
   liste: readonly Cihaz[],
 ): string | undefined {
   return gecerliCihazId(tercih, liste) ?? liste[0]?.id;
+}
+
+/* ── Ekran paylaşımı (Paket 4) ──────────────────────────────────────── */
+
+/**
+ * `active-share-change`: karşı tarafın paylaşımı başladı/bitti. Kendi
+ * paylaşımımız burada izlenmez (`benPaylasiyorum`); kendi kimliğimizle gelen
+ * olay yok sayılır.
+ */
+export function aktifPaylasimDegisti(
+  durum: OdaDurumu,
+  olay: { state: string; userId: number },
+): OdaDurumu {
+  if (olay.state === "Active") {
+    if (olay.userId === durum.benId || durum.aktifPaylasim === olay.userId) return durum;
+    return { ...durum, aktifPaylasim: olay.userId };
+  }
+  if (olay.state === "Inactive" && durum.aktifPaylasim !== null) {
+    // Kimlik eşleşmese de temizlenir: birebir derste tek paylaşım izlenir.
+    return { ...durum, aktifPaylasim: null };
+  }
+  return durum;
+}
+
+/**
+ * Katılınca / yeniden bağlanınca SDK'nın o anki paylaşımı
+ * (`getActiveShareUserId`, yoksa 0). Olay kaçtıysa boşluğu doldurur; yalnız
+ * listede paylaşıyor görünen karşı taraf kabul edilir (bayat kimlik düzeni
+ * geri getirmesin).
+ */
+export function paylasimiEsitle(durum: OdaDurumu, aktifId: number): OdaDurumu {
+  if (durum.aktifPaylasim !== null || !aktifId || aktifId === durum.benId) return durum;
+  const paylasan = durum.katilimcilar.find((k) => k.userId === aktifId);
+  return paylasan?.paylasiyor ? { ...durum, aktifPaylasim: aktifId } : durum;
+}
+
+/** Kendi paylaşımım başladı / durdu (düğme ya da `passively-stop-share`). */
+export function benimPaylasimim(durum: OdaDurumu, acik: boolean, tumEkran = false): OdaDurumu {
+  return { ...durum, benPaylasiyorum: acik, benTumEkran: acik && tumEkran };
+}
+
+/** Sahnede paylaşım düzeni mi? Kendi paylaşımım da büyük gösterilir. */
+export function paylasimVar(durum: OdaDurumu): boolean {
+  return durum.benPaylasiyorum || durum.aktifPaylasim !== null;
+}
+
+/** Zoom `errorCode`: kullanıcı seçiciyi kapattı / sistem ayarı izin vermiyor. */
+const PAYLASIM_KULLANICI_REDDI = 6200;
+const PAYLASIM_SISTEM_REDDI = 6201;
+
+export type PaylasimHatasiTuru = "iptal" | "izin" | "diger";
+
+/**
+ * `startShareScreen` hatası → tepki. Kullanıcı seçiciden vazgeçtiyse sessiz
+ * kalınır (Meet de yalnız sistem reddinde pencere açar); izin/sistem reddi
+ * yönlendirme penceresi, diğerleri kısa bildirim.
+ *
+ * SDK 2.5.0'da seçiciden vazgeçme 6200, izin ve macOS ekran kaydı reddi
+ * 6201 döner; tarayıcının `DOMException`ı olduğu gibi gelirse Meet'in
+ * ayrımı ("by system") kullanılır.
+ */
+export function paylasimHatasiTuru(hata: unknown): PaylasimHatasiTuru {
+  if (typeof hata === "object" && hata !== null) {
+    const kod = (hata as { errorCode?: unknown }).errorCode;
+    if (kod === PAYLASIM_SISTEM_REDDI) return "izin";
+    if (kod === PAYLASIM_KULLANICI_REDDI) return "iptal";
+  }
+  const metin = hataMetni(hata);
+  if (/NotAllowedError/.test(metin)) return /by system/i.test(metin) ? "izin" : "iptal";
+  if (/screen recording|allow the permission/i.test(metin)) return "izin";
+  return "diger";
 }
