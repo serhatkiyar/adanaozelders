@@ -86,12 +86,29 @@ export interface OdaDurumu {
    * kartımın göstergesi buradan; veri kesilince (susunca) `istemci.ts` siler.
    */
   sesKalitesi: SesKalitesi;
+  /** Zoom command channel kullanılabilir mi (tepkiler ve el kaldırma). */
+  komutKanali: boolean;
+  /** Kendi elim kalkık mı. */
+  elimKalkik: boolean;
+  /** Elini kaldıran diğer katılımcıların `userId`leri. */
+  kalkikEller: number[];
+  /** Ekranda yükselen tepkiler (en çok `EN_COK_TEPKI`). */
+  tepkiler: UcanTepki[];
   /** Karşı tarafın izlenen ekran paylaşımı (`active-share-change`); yoksa `null`. */
   aktifPaylasim: number | null;
   /** Kendi ekranımı paylaşıyorum (`startShareScreen` başarılı → durdurulana dek). */
   benPaylasiyorum: boolean;
   /** Kendi paylaşımım tüm ekran (sonsuz yansıma uyarısı). */
   benTumEkran: boolean;
+}
+
+export interface UcanTepki {
+  id: number;
+  emoji: TepkiEmojisi;
+  ad: string;
+  ben: boolean;
+  /** Yatay konum, sahne genişliğine oran (0–1). */
+  sol: number;
 }
 
 export interface SesKalitesi {
@@ -139,6 +156,10 @@ export const BASLANGIC: OdaDurumu = {
   izinPenceresi: false,
   agKaliteleri: {},
   sesKalitesi: {},
+  komutKanali: false,
+  elimKalkik: false,
+  kalkikEller: [],
+  tepkiler: [],
   aktifPaylasim: null,
   benPaylasiyorum: false,
   benTumEkran: false,
@@ -182,6 +203,11 @@ export function katilimcilariEsitle(
     // Ayrılan kişi konuşanlar listesinde kalmasın.
     konusanlar: durum.konusanlar.filter((id) => katilimcilar.some((k) => k.userId === id)),
     agKaliteleri: agKaliteleriniBuda(durum.agKaliteleri, katilimcilar),
+    // Ayrılanın kalkık eli kalmasın.
+    kalkikEller: ayniysaKoru(
+      durum.kalkikEller,
+      durum.kalkikEller.filter((id) => katilimcilar.some((k) => k.userId === id)),
+    ),
     // Paylaşan ayrıldıysa paylaşımı da gitmiştir (Inactive gelmeyebilir).
     aktifPaylasim:
       durum.aktifPaylasim !== null && katilimcilar.some((k) => k.userId === durum.aktifPaylasim)
@@ -629,4 +655,63 @@ export function paylasimHatasiTuru(hata: unknown): PaylasimHatasiTuru {
   if (/NotAllowedError/.test(metin)) return /by system/i.test(metin) ? "izin" : "iptal";
   if (/screen recording|allow the permission/i.test(metin)) return "izin";
   return "diger";
+}
+
+/* ── Tepkiler ve el kaldırma (Paket 6, Zoom command channel) ─────────── */
+
+/** Meet `Emoji` kümesinin karşılığı; gelen mesajlar bu listeyle süzülür. */
+export const TEPKI_EMOJILERI = ["👍", "👏", "❤️", "😂", "😮", "🎉"] as const;
+export type TepkiEmojisi = (typeof TEPKI_EMOJILERI)[number];
+
+/** Aynı anda ekranda en çok bu kadar tepki (eskisi düşer). */
+export const EN_COK_TEPKI = 12;
+
+export type KomutMesaji = { tur: "tepki"; emoji: TepkiEmojisi } | { tur: "el"; kalkik: boolean };
+
+/** Command channel'a giden metin (kısa JSON; Zoom sınırının çok altında). */
+export function komutMesajiYaz(m: KomutMesaji): string {
+  return JSON.stringify(m.tur === "tepki" ? { t: "tepki", e: m.emoji } : { t: "el", k: m.kalkik });
+}
+
+/** Gelen metni doğrular; tanınmayan/bozuk mesaj `null`. SAF. */
+export function komutMesajiCoz(metin: unknown): KomutMesaji | null {
+  if (typeof metin !== "string" || metin.length > 200) return null;
+  let veri: unknown;
+  try {
+    veri = JSON.parse(metin);
+  } catch {
+    return null;
+  }
+  if (typeof veri !== "object" || veri === null) return null;
+  const v = veri as { t?: unknown; e?: unknown; k?: unknown };
+  if (v.t === "tepki" && (TEPKI_EMOJILERI as readonly unknown[]).includes(v.e)) {
+    return { tur: "tepki", emoji: v.e as TepkiEmojisi };
+  }
+  if (v.t === "el" && typeof v.k === "boolean") return { tur: "el", kalkik: v.k };
+  return null;
+}
+
+function ayniysaKoru(eski: number[], yeni: number[]): number[] {
+  return eski.length === yeni.length ? eski : yeni;
+}
+
+/** Başka bir katılımcının eli kalktı / indi. */
+export function eliDegisti(durum: OdaDurumu, userId: number, kalkik: boolean): OdaDurumu {
+  const simdiKalkik = durum.kalkikEller.includes(userId);
+  if (simdiKalkik === kalkik) return durum;
+  return {
+    ...durum,
+    kalkikEller: kalkik
+      ? [...durum.kalkikEller, userId]
+      : durum.kalkikEller.filter((id) => id !== userId),
+  };
+}
+
+export function tepkiEkle(durum: OdaDurumu, tepki: UcanTepki): OdaDurumu {
+  return { ...durum, tepkiler: [...durum.tepkiler, tepki].slice(-EN_COK_TEPKI) };
+}
+
+export function tepkiSil(durum: OdaDurumu, id: number): OdaDurumu {
+  if (!durum.tepkiler.some((t) => t.id === id)) return durum;
+  return { ...durum, tepkiler: durum.tepkiler.filter((t) => t.id !== id) };
 }

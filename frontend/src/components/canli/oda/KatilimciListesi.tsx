@@ -17,7 +17,7 @@ import { rolEtiketi } from "@/lib/roles";
 import { ROLE_IDS, type ZoomDersTokenOut } from "@/types";
 
 import type { Katilimci } from "../zoom/indirgeyiciler";
-import { useKonusuyor, useOdaDeposu } from "../zoom/odaDeposu";
+import { useEliKalkik, useKonusuyor, useOdaDeposu } from "../zoom/odaDeposu";
 import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
 import { Avatar } from "./Avatar";
 
@@ -98,8 +98,24 @@ function KatilimciSatiri({ k, ben, rol }: { k: Katilimci; ben: boolean; rol: str
           {rol && <span className="text-xs text-slate-500">{rol}</span>}
         </div>
       </div>
+      <ElGostergesi userId={k.userId} />
       <MikGostergesi k={k} ben={ben} />
     </li>
+  );
+}
+
+/** Meet `RaisedHandRow` yerine satırda el simgesi (birebir derste iki kişi). */
+function ElGostergesi({ userId }: { userId: number }) {
+  const { t } = useTranslation();
+  if (!useEliKalkik(userId)) return null;
+  return (
+    <span
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-marka/15 text-marka-metin"
+      role="img"
+      aria-label={t("participantTile.handRaised")}
+    >
+      <Icon name="handRight" className="h-5 w-5" />
+    </span>
   );
 }
 

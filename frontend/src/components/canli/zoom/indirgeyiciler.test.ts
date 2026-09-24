@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   agSeviyesi,
   BASLANGIC,
+  eliDegisti,
+  katilimcilariEsitle,
+  komutMesajiCoz,
+  komutMesajiYaz,
   sesIstatistigiSeviyesi,
   sesKalitesiDegisti,
   type OdaDurumu,
@@ -31,5 +35,29 @@ describe("bağlantı göstergesi — kamera kapalıyken", () => {
     const d = sesKalitesiDegisti({ ...BASLANGIC }, "decode", 4);
     expect(sesKalitesiDegisti(d, "decode", 4)).toBe(d);
     expect(sesKalitesiDegisti(d, "decode", null).sesKalitesi).toEqual({});
+  });
+});
+
+describe("tepki / el mesajları (command channel)", () => {
+  it("yazılan mesaj geri çözülür; tanınmayan emoji ve bozuk metin reddedilir", () => {
+    expect(komutMesajiCoz(komutMesajiYaz({ tur: "tepki", emoji: "🎉" }))).toEqual({
+      tur: "tepki",
+      emoji: "🎉",
+    });
+    expect(komutMesajiCoz(komutMesajiYaz({ tur: "el", kalkik: true }))).toEqual({
+      tur: "el",
+      kalkik: true,
+    });
+    expect(komutMesajiCoz(JSON.stringify({ t: "tepki", e: "<img>" }))).toBeNull();
+    expect(komutMesajiCoz("{bozuk")).toBeNull();
+    expect(komutMesajiCoz(42)).toBeNull();
+  });
+
+  it("ayrılanın kalkık eli liste eşitlenince düşer", () => {
+    let d: OdaDurumu = { ...BASLANGIC, benId: 1 };
+    d = eliDegisti(d, 2, true);
+    expect(d.kalkikEller).toEqual([2]);
+    d = katilimcilariEsitle(d, [{ userId: 1, displayName: "Ben", bVideoOn: false }], undefined);
+    expect(d.kalkikEller).toEqual([]);
   });
 });

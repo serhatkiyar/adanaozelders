@@ -2,10 +2,11 @@
  * Canlı ders cihaz tercihleri — Meet `userChoicesStore` karşılığı.
  *
  * Tarayıcıya özel kolaylıktır (mikrofon/kamera açık mı, hangi cihaz,
- * aynalama): sunucuya gitmez, kaybolursa varsayılana döner. Her okuma ve
+ * aynalama, arka plan): sunucuya gitmez, kaybolursa varsayılana döner. Her okuma ve
  * yazma try/catch içinde: gizli pencerede ya da depolama kapalıyken
  * `localStorage` erişimi fırlatabilir.
  */
+import { arkaPlanMi, type ArkaPlan } from "./arkaPlan";
 
 export interface DersTercihleri {
   mikAcik: boolean;
@@ -15,12 +16,15 @@ export interface DersTercihleri {
   kameraId?: string;
   /** Kendi görüntümü aynalı gör (yalnız bende; karşı taraf etkilenmez). */
   ayna: boolean;
+  /** Sanal arka plan (bulanıklaştırma / düz renk); desteklenmeyen cihazda yok sayılır. */
+  arkaPlan: ArkaPlan;
 }
 
 export const VARSAYILAN_TERCIHLER: DersTercihleri = {
   mikAcik: true,
   kameraAcik: true,
   ayna: true,
+  arkaPlan: "yok",
 };
 
 const ANAHTAR = "canliDers.tercihler.v1";
@@ -43,6 +47,7 @@ export function tercihleriCoz(ham: string | null): DersTercihleri {
     mikAcik: bayrak(veri.mikAcik, VARSAYILAN_TERCIHLER.mikAcik),
     kameraAcik: bayrak(veri.kameraAcik, VARSAYILAN_TERCIHLER.kameraAcik),
     ayna: bayrak(veri.ayna, VARSAYILAN_TERCIHLER.ayna),
+    arkaPlan: arkaPlanMi(veri.arkaPlan) ? veri.arkaPlan : VARSAYILAN_TERCIHLER.arkaPlan,
     mikrofonId: kimlik(veri.mikrofonId),
     hoparlorId: kimlik(veri.hoparlorId),
     kameraId: kimlik(veri.kameraId),

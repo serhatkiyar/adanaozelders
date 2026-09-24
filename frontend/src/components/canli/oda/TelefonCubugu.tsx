@@ -1,8 +1,8 @@
 /**
  * Telefon kontrol çubuğu — Meet `MobileControlBar` (La Suite Meet, MIT —
  * DINUM/Etalab) sadeleştirilmiş: etiketli tek satır
- * Mikrofon · Kamera · Daha fazla (Kamerayı çevir, Ayarlar,
- * Katılımcılar, Sohbet) · Çık. Telefonda cihaz okları yok; cihaz seçimi
+ * Mikrofon · Kamera · Daha fazla (tepkiler, El kaldır, Kamerayı çevir,
+ * Ayarlar, Katılımcılar, Sohbet) · Çık. Telefonda cihaz okları yok; cihaz seçimi
  * Ayarlar'da. Okunmamış mesaj varsa "Daha fazla" üstünde nokta, çekmecedeki
  * Sohbet'te sayı görünür; yan panel telefonda tam ekran açılır.
  */
@@ -18,6 +18,7 @@ import { AltCekmece } from "./AltCekmece";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
 import type { PanelDenetimi } from "./KontrolCubugu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
+import { TelefonTepkileri } from "./Tepkiler";
 
 const CEKMECE_OGESI =
   "flex flex-col items-center gap-2 rounded-ders p-3 text-sm text-white hover:bg-ders-dugme disabled:opacity-40";
@@ -94,6 +95,7 @@ export function TelefonCubugu({
       </div>
 
       <AltCekmece acik={menuAcik} onKapat={menuyuKapat} baslik={t("options.buttonLabel")}>
+        <TelefonTepkileri onKapat={menuyuKapat} ogeSinifi={CEKMECE_OGESI} />
         <PlainButton
           onClick={() => {
             menuyuKapat();

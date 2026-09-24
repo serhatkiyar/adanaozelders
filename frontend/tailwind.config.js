@@ -156,6 +156,13 @@ export default {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
         },
+        // Meet `FloatingReaction`: 3 sn'de 300px yükselir, son %30'da söner.
+        "ders-tepki": {
+          "0%": { transform: "translateY(0)", opacity: "0" },
+          "8%": { opacity: "1" },
+          "70%": { opacity: "1" },
+          "100%": { transform: "translateY(-300px)", opacity: "0" },
+        },
         snow: {
           "0%": { transform: "translateY(-10vh) translateX(0)" },
           "100%": { transform: "translateY(110vh) translateX(20px)" },
@@ -165,6 +172,7 @@ export default {
         "ders-nabiz": "ders-nabiz 1s ease-in-out infinite",
         "ders-konusma": "ders-konusma 1.2s ease-in-out infinite",
         "ders-belir": "ders-belir 200ms linear 300ms backwards",
+        "ders-tepki": "ders-tepki 3s ease-out forwards",
         snow: "snow 10s linear infinite",
       },
     },

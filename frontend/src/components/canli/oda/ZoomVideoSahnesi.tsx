@@ -45,6 +45,7 @@ import {
   useBaglanti,
   useBen,
   useCokluVideo,
+  useEliKalkik,
   useKarsiTaraf,
   useKonusuyor,
   usePaylasimVar,
@@ -113,6 +114,8 @@ export function ZoomVideoSahnesi({ telefon }: { telefon: boolean }) {
   const benKonusuyor = useKonusuyor(ben?.userId);
   const uzakAg = useAgSeviyesi(uzak?.userId);
   const benAg = useAgSeviyesi(ben?.userId);
+  const uzakEl = useEliKalkik(uzak?.userId);
+  const benEl = useEliKalkik(ben?.userId);
   // Kendi bağlantımız koptuysa kendi kartımız da "yeniden bağlanıyor" der.
   const benKoptu = useBaglanti() === "yenidenBaglaniyor";
   const paylasimVar = usePaylasimVar();
@@ -235,6 +238,7 @@ export function ZoomVideoSahnesi({ telefon }: { telefon: boolean }) {
             ad={uzak.ad}
             mikKapali={uzak.mikKapali}
             agSeviyesi={uzakAg}
+            elKalkik={uzakEl}
             yenidenBaglaniyor={uzak.yenidenBaglaniyor}
             kucuk={kucukUzak}
           />
@@ -253,6 +257,7 @@ export function ZoomVideoSahnesi({ telefon }: { telefon: boolean }) {
             ad={ben.ad}
             mikKapali={ben.mikKapali}
             agSeviyesi={benAg}
+            elKalkik={benEl}
             yenidenBaglaniyor={ben.yenidenBaglaniyor || benKoptu}
             kucuk={kucukBen}
           />

@@ -54,6 +54,19 @@ export const useAktifPaylasim = () => useOdaDeposu((d) => d.aktifPaylasim);
 export const useBenPaylasiyorum = () => useOdaDeposu((d) => d.benPaylasiyorum);
 export const useBenTumEkran = () => useOdaDeposu((d) => d.benTumEkran);
 
+/* Tepkiler ve el kaldırma (Paket 6) */
+export const useKomutKanali = () => useOdaDeposu((d) => d.komutKanali);
+export const useElimKalkik = () => useOdaDeposu((d) => d.elimKalkik);
+export const useEliKalkik = (userId: number | undefined) =>
+  useOdaDeposu((d) =>
+    userId === undefined
+      ? false
+      : userId === d.benId
+        ? d.elimKalkik
+        : d.kalkikEller.includes(userId),
+  );
+export const useTepkiler = () => useOdaDeposu((d) => d.tepkiler);
+
 export function izinPenceresiniAc(acik: boolean): void {
   useOdaDeposu.setState({ izinPenceresi: acik });
 }

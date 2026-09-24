@@ -37,18 +37,46 @@ async function dene(is: Promise<void | Error>): Promise<void> {
 
 let iz: LocalVideoTrack | null = null;
 
-export function onizlemeBaslat(video: HTMLVideoElement, kameraId?: string): Promise<void> {
+/**
+ * Kamera önizlemesi. `arkaPlan` (Zoom `imageUrl`: `'blur'` ya da görsel
+ * adresi) verildiyse öğe `<canvas>` olmalı: SDK sanal arka planı yalnız
+ * canvas/`video-player`a çizer. Arka planla açılamazsa arka plansız açılır
+ * ve `false` döner (kamera kapalı kalmasın).
+ */
+export function onizlemeBaslat(
+  oge: HTMLVideoElement | HTMLCanvasElement,
+  kameraId?: string,
+  arkaPlan?: string,
+): Promise<boolean> {
+  let uygulandi = true;
   return videoSirasi(async () => {
     if (iz) return;
-    const yeni = ZoomVideo.createLocalVideoTrack(kameraId);
-    iz = yeni;
+    const baslat = async (vb?: string) => {
+      const yeni = ZoomVideo.createLocalVideoTrack(kameraId);
+      iz = yeni;
+      try {
+        await dene(yeni.start(oge, vb ? { imageUrl: vb } : undefined));
+      } catch (hata) {
+        iz = null;
+        await yeni.stop().catch(() => undefined);
+        throw hata;
+      }
+    };
+    if (!arkaPlan) return baslat();
     try {
-      await dene(yeni.start(video));
+      await baslat(arkaPlan);
     } catch (hata) {
-      iz = null;
-      await yeni.stop().catch(() => undefined);
-      throw hata;
+      console.warn("Zoom önizleme (arka plan)", hata);
+      uygulandi = false;
+      await baslat();
     }
+  }).then(() => uygulandi);
+}
+
+/** Açık önizlemenin arka planını değiştirir (`undefined`: kaldırır). */
+export function onizlemeArkaPlan(arkaPlan: string | undefined): Promise<void> {
+  return videoSirasi(async () => {
+    if (iz) await dene(iz.updateVirtualBackground(arkaPlan));
   });
 }
 

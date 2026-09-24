@@ -57,6 +57,17 @@ export const tr = {
         unread_one: "{{count}} okunmamış mesaj",
         unread_other: "{{count}} okunmamış mesaj",
       },
+      /** Meet `controls.reactions` — emoji tepkileri (Zoom command channel). */
+      reactions: {
+        button: "Tepki gönder",
+        send: "{{emoji}} tepkisi gönder",
+        announce: "{{name}}: {{emoji}}",
+      },
+      /** Meet `controls.hand`. */
+      hand: {
+        raise: "El kaldır",
+        lower: "Elini indir",
+      },
       /** Meet `controls.participants`. */
       participants: {
         open: "Katılımcıları gizle",
@@ -138,6 +149,7 @@ export const tr = {
       waiting: "Karşı taraf bekleniyor",
       screenShare: "Paylaşılan ekran: {{name}}",
       myScreenShare: "Ekranını paylaşıyorsun",
+      handRaised: "El kaldırdı",
     },
     /** Meet `error.screenShare` — ekran paylaşımı izni. */
     error: {
@@ -172,6 +184,7 @@ export const tr = {
       activeMediaFailed:
         "Ses ya da görüntü beklenmedik biçimde durdu. Düzeltmek için sayfayı yenile.",
       reload: "Sayfayı yenile",
+      backgroundFailed: "Arka plan uygulanamadı; görüntün arka plansız sürüyor.",
     },
     connection: {
       reconnecting: "Bağlantı koptu, yeniden bağlanılıyor…",
@@ -189,6 +202,7 @@ export const tr = {
     notifications: {
       joined: "{{name}} derse katıldı",
       left: "{{name}} dersten ayrıldı",
+      handRaised: "{{name}} elini kaldırdı ✋",
     },
     /** Meet `Permissions` — tarayıcı izin yönlendirmesi. */
     permissionErrorDialog: {
@@ -268,6 +282,20 @@ export const tr = {
           heading: "Aynalama",
           label: "Kendi görüntümü aynalı göster",
           hint: "Yalnız sende değişir; karşı taraf seni her zaman düz görür.",
+        },
+        /** Meet `effects` — arka plan bulanıklaştırma ve düz renk. */
+        background: {
+          heading: "Arka plan",
+          none: "Yok",
+          blur: "Bulanıklaştır",
+          colors: {
+            gri: "Gri",
+            lacivert: "Lacivert",
+            yesil: "Koyu yeşil",
+            bej: "Bej",
+          },
+          hint: "Karşı taraf arka planını bu seçimle görür.",
+          unsupported: "Bu cihazda ya da tarayıcıda arka plan efektleri desteklenmiyor.",
         },
         permissionsRequired: "İzin gerekli",
       },

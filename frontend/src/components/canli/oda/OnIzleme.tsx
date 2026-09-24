@@ -3,7 +3,8 @@
  * DINUM/Etalab): koyu yüzey, 16:9 önizleme, üstte ve altta gradyan, ipucu
  * katmanı (kamera yok / izin yok / kullanımda / kapalı / açılıyor), altta
  * yuvarlak Mikrofon/Kamera düğmeleri; altında cihaz seçiciler, mikrofon
- * seviyesi ve hoparlör testi; sağda (telefonda altta) 360px sütun: ad
+ * seviyesi, hoparlör testi ve arka plan seçimi (Meet `EffectsConfiguration`;
+ * arka plan seçilince önizleme `<canvas>`a çizilir); sağda (telefonda altta) 360px sütun: ad
  * (biletten, salt okunur), ders ve saati, "Derse katıl". Lobi ve isim
  * alanı yok.
  *
@@ -25,7 +26,8 @@ import {
   type CihazListeleri,
   type CihazTuru,
 } from "../zoom/indirgeyiciler";
-import { hoparlorSecilebilir } from "../zoom/istemci";
+import { arkaPlanAdresi, type ArkaPlan } from "../zoom/arkaPlan";
+import { arkaPlanDestekli, hoparlorSecilebilir } from "../zoom/istemci";
 import {
   depoyaUygula,
   izinPenceresiniAc,
@@ -36,6 +38,7 @@ import {
 import {
   cihazlariGetir,
   kameraOnizlemeDurdur,
+  onizlemeArkaPlan,
   onizlemeBaslat,
   onizlemeKameraSec,
   sesOnizlemeBaslat,
@@ -43,6 +46,7 @@ import {
 } from "../zoom/onizleme";
 import { tercihleriOku, tercihleriYaz } from "../zoom/tercihler";
 import { useOnizlemeSeviyesi } from "../zoom/useOnizlemeSeviyesi";
+import { ArkaPlanSecici } from "./ArkaPlanSecici";
 import { CihazSecici, HoparlorTesti } from "./CihazSecici";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
 import { SesSeviyesi } from "./SesSeviyesi";
@@ -99,6 +103,15 @@ export function OnIzleme({
 }) {
   const { t } = useTranslation();
   const video = useRef<HTMLVideoElement>(null);
+  const tuval = useRef<HTMLCanvasElement>(null);
+  // Telefon tarayıcılarında Zoom sanal arka planı yok; bir kez okunur.
+  const [arkaPlanVar] = useState(() => !telefon && arkaPlanDestekli());
+  const [arkaPlan, setArkaPlan] = useState<ArkaPlan>(() => tercihleriOku().arkaPlan);
+  // Arka plan seçiliyken önizleme canvas'a çizilir (SDK `<video>`a arka plan koymaz).
+  const tuvalde = arkaPlanVar && arkaPlan !== "yok";
+  const arkaPlanSecimi = useRef(arkaPlan);
+  arkaPlanSecimi.current = arkaPlan;
+  const [arkaPlanHatasi, setArkaPlanHatasi] = useState(false);
   const cihazlar = useCihazlar();
   const izinler = useIzinler();
   const [kamera, setKamera] = useState<KameraDurumu>(kameraAcik ? "aciliyor" : "kapali");
@@ -130,7 +143,7 @@ export function OnIzleme({
 
   // Kamera önizlemesi.
   useEffect(() => {
-    const el = video.current;
+    const el = tuvalde ? tuval.current : video.current;
     if (!kameraAcik || !el || katiliyor) {
       setKamera("kapali");
       return;
@@ -141,9 +154,14 @@ export function OnIzleme({
       try {
         const liste = await listeyiYenile();
         if (!gecerli) return;
-        await onizlemeBaslat(el, gecerliCihazId(kameraSecimi.current, liste.kamera));
+        const uygulandi = await onizlemeBaslat(
+          el,
+          gecerliCihazId(kameraSecimi.current, liste.kamera),
+          tuvalde ? arkaPlanAdresi(arkaPlanSecimi.current) : undefined,
+        );
         if (!gecerli) return;
         setKamera("acik");
+        if (!uygulandi) setArkaPlanHatasi(true);
         // İzin şimdi verildiyse cihaz adları artık okunabilir.
         void listeyiYenile();
       } catch (e) {
@@ -154,7 +172,23 @@ export function OnIzleme({
       gecerli = false;
       void kameraOnizlemeDurdur();
     };
-  }, [kameraAcik, katiliyor, deneme, yerelDeneme, kameraDeneme]);
+  }, [kameraAcik, katiliyor, deneme, yerelDeneme, kameraDeneme, tuvalde]);
+
+  // Arka planlar arasında geçiş (ikisi de canvas'ta): iz yeniden kurulmaz.
+  const kameraHazir = kamera === "acik";
+  useEffect(() => {
+    if (!tuvalde || !kameraHazir) return;
+    onizlemeArkaPlan(arkaPlanAdresi(arkaPlan)).catch((e: unknown) => {
+      console.warn("Zoom önizleme arka planı", e);
+      setArkaPlanHatasi(true);
+    });
+  }, [arkaPlan, tuvalde, kameraHazir]);
+
+  const arkaPlanSec = useCallback((ap: ArkaPlan) => {
+    setArkaPlanHatasi(false);
+    setArkaPlan(ap);
+    tercihleriYaz({ arkaPlan: ap });
+  }, []);
 
   // Mikrofon önizlemesi (seviye çubuğu). Mikrofon değişince iz yeniden kurulur.
   const mikId = secili.mikrofon;
@@ -267,16 +301,27 @@ export function OnIzleme({
                     aria-label={t(`join.videoPreview.${kamera === "acik" ? "enabled" : "disabled"}`)}
                     className="absolute inset-0"
                   >
-                    <video
-                      ref={video}
-                      autoPlay
-                      playsInline
-                      muted
-                      disablePictureInPicture
-                      className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-                        tercihleriOku().ayna ? "-scale-x-100" : ""
-                      } ${kamera === "acik" ? "opacity-100" : "opacity-0"}`}
-                    />
+                    {tuvalde ? (
+                      <canvas
+                        ref={tuval}
+                        width={1280}
+                        height={720}
+                        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+                          tercihleriOku().ayna ? "-scale-x-100" : ""
+                        } ${kamera === "acik" ? "opacity-100" : "opacity-0"}`}
+                      />
+                    ) : (
+                      <video
+                        ref={video}
+                        autoPlay
+                        playsInline
+                        muted
+                        disablePictureInPicture
+                        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+                          tercihleriOku().ayna ? "-scale-x-100" : ""
+                        } ${kamera === "acik" ? "opacity-100" : "opacity-0"}`}
+                      />
+                    )}
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-4 text-center">
                     <p
@@ -362,6 +407,22 @@ export function OnIzleme({
                   bosMetin={bosMetin("kamera")}
                 />
               </div>
+            </div>
+            <div className="mx-auto mt-3 w-full px-1 sm:w-4/5 sm:px-0">
+              <p className="mb-1.5 text-sm font-medium text-white/80">
+                {t("settings.video.background.heading")}
+              </p>
+              <ArkaPlanSecici
+                secili={arkaPlan}
+                onSec={arkaPlanSec}
+                destekli={arkaPlanVar}
+                mesgul={katiliyor}
+              />
+              {arkaPlanHatasi && (
+                <p role="alert" className="mt-1.5 text-sm text-ders-hata-fg">
+                  {t("media.backgroundFailed")}
+                </p>
+              )}
             </div>
           </div>
         </div>

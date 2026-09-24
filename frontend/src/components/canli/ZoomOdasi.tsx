@@ -52,6 +52,7 @@ import { KatilimciListesi } from "./oda/KatilimciListesi";
 import { KontrolCubugu, type PanelDenetimi } from "./oda/KontrolCubugu";
 import { OnIzleme, type DersBilgisi } from "./oda/OnIzleme";
 import { TelefonCubugu } from "./oda/TelefonCubugu";
+import { UcanTepkiler } from "./oda/Tepkiler";
 import { YanPanel, type PanelTuru } from "./oda/YanPanel";
 import { ZoomVideoSahnesi } from "./oda/ZoomVideoSahnesi";
 import {
@@ -200,6 +201,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
         sonUyari = simdi;
         toast.info(dersI18n.t("media.speakingWhileMuted"));
       },
+      elKaldirildi: (ad) => toast.info(dersI18n.t("notifications.handRaised", { name: ad })),
     });
     const izinIzleme = izinleriIzle();
     return () => {
@@ -378,6 +380,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
             style={{ right: panel !== null && !telefon ? "calc(360px + 0.75rem)" : 0 }}
           >
             <ZoomVideoSahnesi telefon={telefon} />
+            <UcanTepkiler />
             <DurumSeritleri mikTercihi={mikTercihi} />
           </div>
           <YanPanel panel={panel} telefon={telefon} onKapat={paneliKapat}>

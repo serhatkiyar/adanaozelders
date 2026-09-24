@@ -23,11 +23,14 @@ export function KaroBilgisi({
   ad,
   mikKapali,
   agSeviyesi,
+  elKalkik = false,
   yenidenBaglaniyor = false,
   kucuk = false,
 }: {
   ad: string;
   mikKapali: boolean;
+  /** El kaldırdı (Meet `RaisedHandMetadataWrapper`). */
+  elKalkik?: boolean;
   agSeviyesi: number | null;
   yenidenBaglaniyor?: boolean;
   kucuk?: boolean;
@@ -50,6 +53,15 @@ export function KaroBilgisi({
       )}
       <div className="pointer-events-none absolute inset-x-1 bottom-1 flex items-end justify-between gap-1">
         <div className={`flex min-w-0 items-center gap-1 rounded bg-black/50 text-white ${kutu}`}>
+          {elKalkik && (
+            <span
+              className="inline-flex shrink-0 rounded bg-marka p-0.5 text-marka-fg"
+              title={t("participantTile.handRaised")}
+            >
+              <Icon name="handRight" className={kucuk ? "h-3 w-3" : "h-4 w-4"} />
+              <span className="sr-only">{t("participantTile.handRaised")}</span>
+            </span>
+          )}
           {mikKapali && (
             <span
               className="inline-flex shrink-0 rounded bg-ders-tehlike p-0.5"

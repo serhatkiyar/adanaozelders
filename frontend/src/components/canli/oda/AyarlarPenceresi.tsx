@@ -4,7 +4,8 @@
  * içinde; geniş ekranda solda dikey sekme rayı, telefonda üstte yatay.
  *
  * Görüntü sekmesinde Meet'teki küçük ikinci kamera önizlemesi YOK: aynı
- * kamerayı ikinci kez açmak telefonda VIDEO_CAMERA_IS_TAKEN verir.
+ * kamerayı ikinci kez açmak telefonda VIDEO_CAMERA_IS_TAKEN verir. Arka plan
+ * seçimi (Meet `effects`) oradadır; etkisi sahnedeki kendi görüntünde görünür.
  */
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -14,7 +15,13 @@ import { PlainButton } from "@/components/ui/PlainButton";
 import { Modal } from "@/components/ui/Modal";
 
 import { gorunenCihazId, odaSeviyeOrani } from "../zoom/indirgeyiciler";
-import { aynala, hoparlorSecilebilir } from "../zoom/istemci";
+import type { ArkaPlan } from "../zoom/arkaPlan";
+import {
+  arkaPlanDestekli,
+  arkaPlaniDegistir,
+  aynala,
+  hoparlorSecilebilir,
+} from "../zoom/istemci";
 import {
   useBen,
   useCihazlar,
@@ -24,6 +31,7 @@ import {
 } from "../zoom/odaDeposu";
 import { tercihleriOku } from "../zoom/tercihler";
 import { cihazDegistir } from "../zoom/useMedyaKontrolleri";
+import { ArkaPlanSecici } from "./ArkaPlanSecici";
 import { CihazSecici, HoparlorTesti } from "./CihazSecici";
 import { SesSeviyesi } from "./SesSeviyesi";
 
@@ -203,6 +211,22 @@ function GoruntuSekmesi() {
   const kameraAcik = Boolean(ben?.videoAcik);
   const [ayna, setAyna] = useState(() => tercihleriOku().ayna);
   const ipucuId = useId();
+  const [arkaPlan, setArkaPlan] = useState<ArkaPlan>(() => tercihleriOku().arkaPlan);
+  const [arkaPlanVar] = useState(arkaPlanDestekli);
+  const [arkaPlanMesgul, setArkaPlanMesgul] = useState(false);
+
+  const arkaPlanSec = async (ap: ArkaPlan) => {
+    setArkaPlan(ap);
+    setArkaPlanMesgul(true);
+    try {
+      await arkaPlaniDegistir(ap);
+    } catch (e) {
+      console.warn("Zoom arka plan", e);
+      useOdaDeposu.setState({ hata: "media.backgroundFailed" });
+    } finally {
+      setArkaPlanMesgul(false);
+    }
+  };
 
   const aynayiDegistir = async () => {
     const yeni = !ayna;
@@ -260,6 +284,18 @@ function GoruntuSekmesi() {
         <p id={ipucuId} className="mt-1 text-xs text-slate-500">
           {t("settings.video.mirror.hint")}
         </p>
+      </Satir>
+      <Satir baslik={t("settings.video.background.heading")}>
+        <ArkaPlanSecici
+          gorunum="acik"
+          secili={arkaPlan}
+          onSec={(ap) => void arkaPlanSec(ap)}
+          destekli={arkaPlanVar}
+          mesgul={arkaPlanMesgul}
+        />
+        {arkaPlanVar && (
+          <p className="mt-1 text-xs text-slate-500">{t("settings.video.background.hint")}</p>
+        )}
       </Satir>
     </>
   );
