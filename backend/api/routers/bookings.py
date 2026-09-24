@@ -11,16 +11,16 @@ from api.deps import (
     require_roles,
     user_rate_limit,
 )
-from core import storage
+from core import canli_ders, storage
 from core.config import settings
 from core.database import get_db
 from models.booking import Booking, BookingStatus
 from models.client import Client
-from models.payment import PaymentStatus
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.booking import (
     LiveLessonTokenOut,
+    ZoomDersTokenOut,
     BookingCancel,
     BookingCreate,
     BookingOffer,
@@ -43,6 +43,7 @@ from services import (
     livekit_service,
     payment_gates,
     phone_service,
+    zoom_service,
 )
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -72,11 +73,7 @@ _live_token_limit = user_rate_limit(
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 
-# Katılım penceresi. Bu iki değer `frontend/src/lib/lesson.ts` içindeki
-# JOIN_OPENS_BEFORE_MIN / JOIN_CLOSES_AFTER_MIN ile AYNI olmalıdır: ayrışırsa
-# arayüz "Derse Katıl" düğmesini gösterirken sunucu 409 döner (ya da tersi).
-_JOIN_OPENS_BEFORE = datetime.timedelta(minutes=15)
-_JOIN_CLOSES_AFTER = datetime.timedelta(minutes=30)
+# Katılım penceresi `core/canli_ders.py` içinde (frontend `lesson.ts` ile eş).
 # Token ömrü. Pencerenin tamamını kapsar, daha uzun değil: sızan bir token
 # ders bittikten sonra işe yaramasın.
 _LIVE_TOKEN_TTL_SECONDS = 60 * 60
@@ -250,21 +247,13 @@ async def get_booking(
     return booking
 
 
-@router.get(
-    "/{booking_id}/live-token",
-    response_model=LiveLessonTokenOut,
-    dependencies=[Depends(_live_token_limit)],
-)
-async def get_live_lesson_token(
-    booking_id: int,
-    user: CurrentUser = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Canlı ders (LiveKit) için kısa ömürlü erişim token'ı üretir.
+def _canli_ders_kapilari(booking: Booking, user: CurrentUser) -> datetime.datetime:
+    """Canlı ders token uçlarının ORTAK kapıları; geçerse şimdiki anı döndürür.
 
     Kapılar SIRAYLA uygulanır; her biri bir öncekini geçmiş isteği varsayar.
+    Sağlayıcıya özel kapılar (sağlayıcı seçimi, yapılandırma 503) çağıran
+    uçta, bunlardan SONRA uygulanır.
     """
-    booking = await _get_booking_or_404(db, booking_id, user)
     # 1. Yalnız dersin iki tarafı (eğitmen/öğrenci). Admin dahil değil: canlı
     #    derse katılmak izleme değil, katılımcı olmaktır.
     _assert_party(booking, user)
@@ -282,18 +271,13 @@ async def get_live_lesson_token(
             status.HTTP_409_CONFLICT, "Bu ders için canlı oda tanımlı değil."
         )
 
-    # 4. ÖDEME KAPISI — `schemas/booking.py::_gate_meeting_room`'un sunucu
-    #    tarafı İKİZİ. O kapı oda ADINI yanıttan siler; burası o adla token
-    #    verilmesini engeller. Bu uç ORM'den okuduğu için şema kapısından
-    #    GEÇMEZ; atlanırsa öğrenci ödeme yapmadan canlı derse girer.
-    #    İKİ KURAL BİRLİKTE DEĞİŞİR: koşul burada gevşetilirse orada da
-    #    gevşetilmeli, aksi halde oda adı gizli kalır ama token verilir.
-    odendi = booking.payment is not None and booking.payment.status in (
-        PaymentStatus.HELD,
-        PaymentStatus.RELEASED,
-    )
-    ucretsiz = booking.price is not None and booking.price == 0
-    if not (odendi or ucretsiz):
+    # 4. ÖDEME KAPISI — kural tek kaynakta: `core/canli_ders.py::
+    #    ders_odasi_acik_mi`. Şema (`BookingOut._gate_meeting_room`) aynı
+    #    kuralla oda ADINI yanıttan siler; burası o adla token verilmesini
+    #    engeller. Token uçları ORM'den okuduğu için şema kapısından GEÇMEZ;
+    #    bu kapı atlanırsa öğrenci ödeme yapmadan canlı derse girer.
+    payment_status = booking.payment.status if booking.payment is not None else None
+    if not canli_ders.ders_odasi_acik_mi(payment_status, booking.price):
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
             "Ders ücreti emanete alınmadan canlı derse katılınamaz.",
@@ -308,11 +292,30 @@ async def get_live_lesson_token(
         start = start.replace(tzinfo=datetime.timezone.utc)
     if end.tzinfo is None:
         end = end.replace(tzinfo=datetime.timezone.utc)
-    if not (start - _JOIN_OPENS_BEFORE <= now <= end + _JOIN_CLOSES_AFTER):
+    if not (start - canli_ders.KATILIM_ACILIS <= now <= end + canli_ders.KATILIM_KAPANIS):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Canlı ders yalnız ders saatinde açıktır.",
         )
+    return now
+
+
+@router.get(
+    "/{booking_id}/live-token",
+    response_model=LiveLessonTokenOut,
+    dependencies=[Depends(_live_token_limit)],
+)
+async def get_live_lesson_token(
+    booking_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Canlı ders (LiveKit) için kısa ömürlü erişim token'ı üretir.
+
+    Kapı 1–5 ortak (`_canli_ders_kapilari`); 6. kapı LiveKit yapılandırması.
+    """
+    booking = await _get_booking_or_404(db, booking_id, user)
+    now = _canli_ders_kapilari(booking, user)
 
     # 6. Özellik yapılandırılmamışsa sessizce bozuk bir token üretme.
     if not (
@@ -339,6 +342,62 @@ async def get_live_lesson_token(
         room=booking.meeting_room,
         identity=identity,
         expires_at=now + datetime.timedelta(seconds=_LIVE_TOKEN_TTL_SECONDS),
+    )
+
+
+@router.get(
+    "/{booking_id}/zoom-token",
+    response_model=ZoomDersTokenOut,
+    dependencies=[Depends(_live_token_limit)],
+)
+async def get_zoom_lesson_token(
+    booking_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Canlı ders (Zoom Video SDK) için kısa ömürlü giriş JWT'si üretir.
+
+    Kapı 1–5 ortak (`_canli_ders_kapilari`). Eğitmen host (role_type=1),
+    öğrenci katılımcı (0). Oturum adı dersin `meeting_room`'udur; istemci
+    oturum ya da kullanıcı adını kendisi seçmez.
+    """
+    booking = await _get_booking_or_404(db, booking_id, user)
+    now = _canli_ders_kapilari(booking, user)
+
+    # 6. Sunucu başka bir sağlayıcıya ayarlıysa Zoom oturumu açılmaz.
+    if settings.CANLI_DERS_SAGLAYICI != "zoom":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Canlı ders bu sunucuda Zoom ile yapılmıyor.",
+        )
+
+    # 7. Özellik yapılandırılmamışsa sessizce bozuk bir token üretme.
+    if not (settings.ZOOM_VIDEO_SDK_KEY and settings.ZOOM_VIDEO_SDK_SECRET):
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Canlı ders altyapısı yapılandırılmamış.",
+        )
+
+    egitmen_mi = user.role_id == ROLE_IDS[RoleType.TUTOR]
+    identity = f"{'t' if egitmen_mi else 'c'}{user.id}"
+    # Ad üçüncü tarafa (Zoom) gider: soyadsız görünen ad yeterli (ÜK-9).
+    kullanici_adi = (
+        getattr(user, "display_name", None)
+        or getattr(user, "full_name", None)
+        or identity
+    )
+    token, expires_at = zoom_service.ders_token_uret(
+        oturum=booking.meeting_room,
+        egitmen_mi=egitmen_mi,
+        ttl_seconds=_LIVE_TOKEN_TTL_SECONDS,
+        now=now,
+    )
+    return ZoomDersTokenOut(
+        token=token,
+        oturum_adi=booking.meeting_room,
+        kullanici_adi=kullanici_adi,
+        rol="host" if egitmen_mi else "katilimci",
+        expires_at=expires_at,
     )
 
 

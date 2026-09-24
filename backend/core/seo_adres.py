@@ -154,6 +154,7 @@ REZERVE_ADLAR: frozenset[str] = frozenset(
         "oturumlar",
         "yonetim",
         "yonetim-yeni",
+        "canli-ders",  # Zoom canlı ders sayfası (/canli-ders/:id)
         # ── Frontend: eski adresler (kalıcı yönlendirme) ve geliştirme ──
         "login",
         "register",

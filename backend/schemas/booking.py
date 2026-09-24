@@ -8,9 +8,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 from core.config import settings
-from core import ders_onay_hatirlatma
+from core import canli_ders, ders_onay_hatirlatma
 from models.booking import BookingStatus
-from models.payment import PaymentStatus
 from schemas.payment import PaymentOut
 from schemas.tutor import TeachingMode
 
@@ -255,6 +254,16 @@ class BookingOut(BaseModel):
         start = self.start_at if self.start_at.tzinfo else self.start_at.replace(tzinfo=datetime.timezone.utc)
         return start - datetime.timedelta(hours=settings.LESSON_LATE_CANCEL_HOURS)
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def canli_ders_saglayici(self) -> Literal["zoom", "livekit", "jitsi"] | None:
+        """"Derse katıl" hangi altyapıya gider? Yalnız ONLINE derste ve oda adı
+        görünürken (ödeme kapısı `_gate_meeting_room` sonrası) dolu; aksi halde
+        null — istemci düğmeyi göstermez."""
+        if self.mode != "ONLINE" or not self.meeting_room:
+            return None
+        return settings.CANLI_DERS_SAGLAYICI
+
     @model_validator(mode="after")
     def _gate_meeting_room(self) -> "BookingOut":
         """Canlı ders odası, ödeme yapılmadan ifşa edilmesin (anti-bedava ders).
@@ -262,18 +271,13 @@ class BookingOut(BaseModel):
         ücretsizse (ilk ders ücretsiz, price==0) görünür. Aksi halde istemci
         odaya erişemez → ödeme yapmadan canlı ders başlatılamaz.
 
-        İKİZİ VAR: `api/routers/bookings.py::get_live_lesson_token` aynı kuralı
-        LiveKit token'ı için uygular (orası ORM'den okuduğu için bu şemadan
-        geçmez). Buradaki koşul değişirse ORASI DA değişmeli — yoksa oda adı
-        gizlenir ama token yine verilir (ya da tersi)."""
+        Kural tek kaynakta: `core/canli_ders.py::ders_odasi_acik_mi`. Token
+        uçları (`api/routers/bookings.py::_canli_ders_kapilari`) ORM'den
+        okudukları için bu şemadan geçmez; aynı yardımcıyı çağırırlar."""
         if not self.meeting_room:
             return self
-        paid = self.payment is not None and self.payment.status in (
-            PaymentStatus.HELD,
-            PaymentStatus.RELEASED,
-        )
-        free = self.price is not None and self.price == 0
-        if not (paid or free):
+        payment_status = self.payment.status if self.payment is not None else None
+        if not canli_ders.ders_odasi_acik_mi(payment_status, self.price):
             self.meeting_room = None
         return self
 
@@ -292,6 +296,21 @@ class LiveLessonTokenOut(BaseModel):
     token: str
     room: str
     identity: str
+    expires_at: datetime.datetime
+
+
+class ZoomDersTokenOut(BaseModel):
+    """GET /bookings/{id}/zoom-token yanıtı (Zoom Video SDK).
+
+    `token` Video SDK JWT'sidir; YALNIZ `oturum_adi` oturumu için geçerlidir.
+    `oturum_adi` ve `kullanici_adi` sunucudan gelir — istemci kendisi seçmez.
+    Eğitmen `host` (role_type=1), öğrenci `katilimci` (role_type=0).
+    """
+
+    token: str
+    oturum_adi: str
+    kullanici_adi: str
+    rol: Literal["host", "katilimci"]
     expires_at: datetime.datetime
 
 

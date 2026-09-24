@@ -135,6 +135,18 @@ class Settings(BaseSettings):
     LIVEKIT_URL: str = ""
     LIVEKIT_API_KEY: str = ""
     LIVEKIT_API_SECRET: str = ""
+
+    # ── Canlı ders sağlayıcısı ──
+    # "Derse katıl" hangi altyapıya gider (`BookingOut.canli_ders_saglayici`).
+    # Açılış guard'ına EKLENMEZ: anahtar eksikse yalnız ilgili token ucu 503
+    # döner, açılışta tek bir uyarı loglanır (bkz. main.py::lifespan).
+    CANLI_DERS_SAGLAYICI: Literal["zoom", "livekit", "jitsi"] = "zoom"
+    # Zoom Video SDK (Zoom Marketplace → Video SDK uygulaması). İkisi de BOŞKEN
+    # `/bookings/{id}/zoom-token` 503 döner.
+    #   ZOOM_VIDEO_SDK_KEY    → JWT'nin `app_key` claim'i
+    #   ZOOM_VIDEO_SDK_SECRET → JWT'yi imzalayan HS256 sırrı
+    ZOOM_VIDEO_SDK_KEY: str = ""
+    ZOOM_VIDEO_SDK_SECRET: str = ""
     # Token ucu kullanıcı bazlı sınırlanır: ders penceresinde yeniden bağlanma
     # birkaç token ister, ama döngüye girmiş bir istemci SFU'yu boğmasın.
     RATE_LIMIT_LIVE_TOKEN: int = 20
