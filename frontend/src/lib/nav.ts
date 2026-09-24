@@ -96,8 +96,8 @@ export const UYE_NAV: NavItem[] = [
  *    (site ana sayfası) ile karışırdı.
  *  • "Derslerim" (`/dersler`): liste deneme sınavı ve çalışma alanını da
  *    taşır; önceki adı "Rezervasyonlar"dı.
- *  • "Ayarlar" (`/ayarlar`): öğrencinin kartlı hesap merkezi (`AccountHub`,
- *    önceki adı "Hesabım"). Eğitmende aynı adres doğrudan hesap ayarlarıdır.
+ *  • "Ayarlar" (`/ayarlar`): eğitmendeki gibi doğrudan hesap ayarları (23 Eyl
+ *    2026; önce kartlı hesap merkeziydi — `pages/AccountHub.tsx`, kullanılmıyor).
  *  • Favoriler şeride GİRMEZ: üst bardaki kalp kısayolu ve menü taşıyor.
  *
  * Nöbetçi: `__guards__/panoSeridi.test.tsx`.
@@ -170,8 +170,6 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
       PATHS.lesson.replace(":id", ""),
       // Kütüphane rezervasyon detayı da panonun altındadır.
       PATHS.libraryReservation.replace(":tur/:id", ""),
-      // Kazançlar sekmesi kaldırıldı (Bakiyem); özet kartlarından açılır.
-      ROUTES.tutorEarnings,
     ],
   },
   // Takvim ve Analizler şeride girdi (Modül 7, 17 Eyl 2026, kullanıcı kararı):
@@ -184,12 +182,8 @@ export const TUTOR_PANO_SEKMELERI: NavItem[] = [
   { to: ROUTES.tutorCalendar, label: "Takvim" },
   { to: ROUTES.messages, label: "Mesajlar" },
   // "Öğrenciler" 22 Eyl 2026'da şeride girdi (kullanıcı kararı; Preply §4).
-  // Kişi sayfası (`/uyeler/:id`) listenin alt sayfasıdır.
-  {
-    to: ROUTES.tutorStudents,
-    label: "Öğrenciler",
-    altYollar: [PATHS.uyeProfili.replace(":id", "")],
-  },
+  // Ayrı kişi sayfası (`/uyeler/:id`) 23 Eyl 2026'da kaldırıldı.
+  { to: ROUTES.tutorStudents, label: "Öğrenciler" },
   { to: ROUTES.tutorAnalytics, label: "Analizler" },
   {
     // "İlanım" → "Profilim" (kullanıcı kararı, 22 Eyl 2026): rota/sayfa
@@ -259,7 +253,7 @@ export const OPERATOR_NAV: NavItem[] = [
 /**
  * Role göre üst bar navigasyonu — **ortak sayfaların tek kaynağı**.
  *
- * Bildirimler, Liderlik, Ayarlar, Profil, Görevler, Öğren ve Takvim
+ * Bildirimler, Ayarlar, Profil, Görevler, Öğren ve Takvim
  * role-agnostiktir: her rol girebilir. Nav seçimi bu yedi sayfada tek tek
  * kopyalanmıştı ve hiçbiri `LIBRARY_OPERATOR`'ı tanımıyordu — operatör
  * bildirimlerine girdiğinde nav çubuğu ya BOŞ kalıyor ya da öğrenci menüsü

@@ -57,10 +57,7 @@ export function DersKarti({
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-      <Link
-        to={ROUTES.uyeProfili(booking.client_id)}
-        className="flex min-w-0 items-start gap-3 transition hover:opacity-80"
-      >
+      <div className="flex min-w-0 items-start gap-3">
         <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="md" />
         <div className="min-w-0">
           <p className={`truncate ${ETIKET}`}>{clientName}</p>
@@ -76,7 +73,7 @@ export function DersKarti({
             </p>
           )}
         </div>
-      </Link>
+      </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         <Link

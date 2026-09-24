@@ -61,7 +61,6 @@ const CartPage = lazy(() => import("@/pages/store/CartPage"));
 const FavoritesPage = lazy(() => import("@/pages/store/FavoritesPage"));
 const SharedCollectionPage = lazy(() => import("@/pages/store/SharedCollectionPage"));
 const CargoTrackingPage = lazy(() => import("@/pages/store/CargoTrackingPage"));
-const AccountHub = lazy(() => import("@/pages/AccountHub"));
 const AddressesPage = lazy(() => import("@/pages/AddressesPage"));
 const CheckoutPage = lazy(() => import("@/pages/store/CheckoutPage"));
 const OrdersPage = lazy(() => import("@/pages/store/OrdersPage"));
@@ -278,7 +277,6 @@ const AdminTutorApplicationsPage = lazy(
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
 const FavorilerGirisDaveti = lazy(() => import("@/pages/FavorilerGirisDaveti"));
-const UyeProfili = lazy(() => import("@/pages/UyeProfili"));
 const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
@@ -286,7 +284,6 @@ const OgrenciPano = lazy(() => import("@/pages/OgrenciPano"));
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
 const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));
-const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 // FullCalendar yalnız bu chunk'a girer (Modül 7).
 const TutorCalendar = lazy(() => import("@/pages/TutorCalendar"));
 const TutorAnalytics = lazy(() => import("@/pages/TutorAnalytics"));
@@ -306,7 +303,6 @@ const Profile = lazy(() => import("@/pages/Profile"));
 const MessageCenter = lazy(() => import("@/pages/MessageCenter"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Balance = lazy(() => import("@/pages/Balance"));
-const TutorEarnings = lazy(() => import("@/pages/TutorEarnings"));
 const Demands = lazy(() => import("@/pages/Demands"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
@@ -442,15 +438,6 @@ function AccountDispatcher() {
   return <Profile />;
 }
 
-// Ayarlar — ortak `/ayarlar` URL'i (kullanıcı kararı, 22 Eyl 2026): öğrenciye
-// kartlı hesap merkezi (`AccountHub`), diğer rollere hesap ayarları. Öğrenci
-// asıl ayarlara merkezdeki "Hesap & Güvenlik" kartından (`/ayarlar/hesap`) gider.
-function AyarlarDispatcher() {
-  const { data: user, isLoading } = useCurrentUser();
-  if (isLoading || !user) return <FullScreenSpinner />;
-  if (user.role_id === ROLE_IDS.CLIENT) return <AccountHub />;
-  return <Settings />;
-}
 
 // Takvim — ortak `/takvim` URL'i: öğretmene kendi ızgarası, öğrenciye
 // "Derslerim → Takvim" sekmesi (kullanıcı kararı, 22 Eyl 2026: öğrencinin
@@ -521,7 +508,6 @@ export const LEGACY_STATIC: [string, string][] = [
   ["/settings", ROUTES.settings],
   ["/messages", ROUTES.messages],
   ["/calendar", ROUTES.calendar],
-  ["/leaderboard", ROUTES.leaderboard],
   // KALICI: bilet metaforu kalktı ama bu yol SİLİNEMEZ. Veritabanındaki eski
   // bildirim satırları ve gönderilmiş e-postalar hâlâ "/biletlerim" taşıyor;
   // yönlendirme kalkarsa o linkler 404 olur. Nöbetçisi routes.test.ts.
@@ -542,7 +528,6 @@ export const LEGACY_STATIC: [string, string][] = [
   ["/pano/hesabim", ROUTES.profile],
   ["/pano/hesabim/profil", ROUTES.profileEdit],
   ["/pano/bakiyem", ROUTES.balance],
-  ["/pano/kazanclar", ROUTES.tutorEarnings],
   ["/pano/takvim", ROUTES.tutorCalendar],
   ["/pano/analizler", ROUTES.tutorAnalytics],
   ["/pano/ilanim", ROUTES.tutorListing],
@@ -559,7 +544,6 @@ export const LEGACY_STATIC: [string, string][] = [
   ["/panel/sorular", ROUTES.questions],
   ["/panel/denemeler", ROUTES.exams],
   ["/panel/gorevler", ROUTES.tasks],
-  ["/panel/liderlik", ROUTES.leaderboard],
   ["/panel/ayarlar", ROUTES.settings],
   ["/panel/ilan", ROUTES.tutorListing],
   ["/panel/rezervasyonlar", ROUTES.reservations],
@@ -747,16 +731,17 @@ function App() {
             <Route path={PATHS.tasks} element={<Tasks />} />
             {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
             <Route path={PATHS.balance} element={<Balance />} />
-            <Route path={PATHS.tutorEarnings} element={<TutorEarnings />} />
             {/* Talepler — rol delegasyonu sayfa içinde (CLIENT açar, TUTOR yanıtlar) */}
             {TALEPLER_ACIK && (
               <Route path={PATHS.demands} element={<Demands />} />
             )}
-            <Route path={PATHS.leaderboard} element={<Leaderboard />} />
             <Route path={PATHS.notifications} element={<Notifications />} />
             <Route path={PATHS.profile} element={<AccountDispatcher />} />
             <Route path={PATHS.profileEdit} element={<Profile />} />
-            <Route path={PATHS.settings} element={<AyarlarDispatcher />} />
+            {/* Ayarlar her rolde AYNI sayfa (kullanıcı kararı, 23 Eyl 2026):
+                öğrencinin kartlı hesap merkezi (`pages/AccountHub.tsx`) artık
+                sitede açılmıyor; kodu tasarım referansı olarak duruyor. */}
+            <Route path={PATHS.settings} element={<Settings />} />
             <Route path={PATHS.accountSettings} element={<Settings />} />
             <Route path={PATHS.questions} element={<PanelQuestions />} />
             {/* Ders talepleri — CLIENT + TUTOR ortak (rol göre içerik) */}
@@ -809,7 +794,6 @@ function App() {
             <Route path={PATHS.tutorReviews} element={<TutorReviews />} />
             <Route path={PATHS.tutorAnalytics} element={<TutorAnalytics />} />
             <Route path={PATHS.tutorStudents} element={<TutorStudents />} />
-            <Route path={PATHS.uyeProfili} element={<UyeProfili />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
 
@@ -971,7 +955,7 @@ function App() {
           />
           <Route
             path="/tutor/students/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
+            element={<Navigate to={ROUTES.tutorStudents} replace />}
           />
           <Route
             path="/panel/rezervasyonlar/:id"
@@ -979,7 +963,7 @@ function App() {
           />
           <Route
             path="/panel/ogrenciler/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
+            element={<Navigate to={ROUTES.tutorStudents} replace />}
           />
           {/* Kütüphane rezervasyon detayı `/rezervasyonlar/:tur/:id`ten
               `/rezervasyon/:tur/:id`e taşındı (8–22 Eyl arası
@@ -1011,13 +995,17 @@ function App() {
               />
             }
           />
-          {/* /ogrenciler/:id -> /uyeler/:id. `/ogrenciler` (tam) 22 Eyl
+          {/* Üye profili sayfası (`/uyeler/:id`) kaldırıldı (kullanıcı kararı,
+              23 Eyl 2026 — Preply'da ayrı bir öğrenci profili sayfası yok);
+              eski bağlantılar Öğrenciler listesine düşer. */}
+          <Route path="/uyeler/:id" element={<Navigate to={ROUTES.tutorStudents} replace />} />
+          {/* /ogrenciler/:id -> (eskiden /uyeler/:id). `/ogrenciler` (tam) 22 Eyl
               2026'dan beri öğretmenin öğrenci LİSTESİ; kişi adresi yine
               yönlenir, paylaşılmış linkler kırılmaz (aynı desen:
               `/panel/ogrenciler`). */}
           <Route
             path="/ogrenciler/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.uyeProfili(p.id!)} />}
+            element={<Navigate to={ROUTES.tutorStudents} replace />}
           />
 
           {/* ── Kök SEO adresleri (Modül 6) — EN SONDA, 404'ten hemen önce ──

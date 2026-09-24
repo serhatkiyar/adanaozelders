@@ -1,9 +1,7 @@
-import { Link } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { formatLastSeen } from "@/lib/datetime";
 import { ageFromBirthDate, gorunurCinsiyet } from "@/lib/demographics";
 import { type ClientSearchOut } from "@/types";
-import { ROUTES } from "@/lib/routes";
 
 export function ClientCard({ client }: { client: ClientSearchOut }) {
   const age = ageFromBirthDate(client.birth_date);
@@ -13,8 +11,7 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
     Date.now() - new Date(client.last_seen_at).getTime() < 120_000;
 
   return (
-    <Link
-      to={ROUTES.uyeProfili(client.id)}
+    <div
       className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-marka/20 "
     >
       <div className="flex items-start gap-3">
@@ -54,7 +51,7 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
           {isOnline ? "Çevrimiçi" : formatLastSeen(client.last_seen_at)}
         </span>
       </div>
-    </Link>
+    </div>
   );
 }
 

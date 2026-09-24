@@ -116,6 +116,7 @@ describe("R6 — gerçek DOM: öğrenci kartında el (@handle) yok", () => {
     // Patlayan ya da boş bir render, yukarıdaki "yok" iddiasını bedava geçerdi.
     bas();
     expect(screen.getByText("Ayşe Yılmaz")).toBeTruthy();
-    expect(screen.getByRole("link")).toBeTruthy();
+    // Kart artık bağlantı değil: üye profili sayfası 23 Eyl 2026'da kalktı.
+    expect(screen.getByRole("heading", { name: "Ayşe Yılmaz" })).toBeTruthy();
   });
 });

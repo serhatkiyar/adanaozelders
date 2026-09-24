@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
@@ -9,7 +8,6 @@ import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { QAStatus, type QAThreadOut } from "@/types";
-import { ROUTES } from "@/lib/routes";
 
 const statusLabel: Record<QAStatus, string> = {
   [QAStatus.OPEN]: "Yanıt bekliyor",
@@ -39,10 +37,7 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
   return (
     <div className={KART}>
       <div className="flex items-center justify-between gap-3">
-        <Link
-          to={ROUTES.uyeProfili(thread.client_id)}
-          className="flex min-w-0 items-center gap-2.5 rounded-lg transition hover:opacity-80"
-        >
+        <div className="flex min-w-0 items-center gap-2.5">
           <Avatar name={clientName} avatar_url={thread.client_avatar_url} size="sm" />
           <div className="min-w-0">
             <p className={`truncate hover:text-marka-metin ${ETIKET}`}>
@@ -52,7 +47,7 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
               {thread.subject || "Soru"} · {formatDate(thread.created_at)}
             </p>
           </div>
-        </Link>
+        </div>
         <span
           className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusStyle[thread.status]}`}
         >

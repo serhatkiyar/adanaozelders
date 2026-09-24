@@ -2,6 +2,7 @@ import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 
 import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AxiosError } from "axios";
+import { Icon } from "@/components/AppIcon";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Avatar } from "@/components/Avatar";
 import { BookingActionCard } from "@/components/BookingActionCard";
@@ -277,9 +278,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
         ? ROUTES.library(activeCounterpartyId)
         : activeCounterpartyRole === "TUTOR"
           ? egitmenIlanYolu
-          : activeCounterpartyRole === "CLIENT"
-            ? ROUTES.uyeProfili(activeCounterpartyId)
-            : null;
+          : null; // Öğrenci profili sayfası yok (23 Eyl 2026).
 
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedId);
   const send = useSendMessage();
@@ -489,12 +488,13 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
   // Dıştaki `px-4` kalsaydı telefonda 36px'lik bir sol boşluk çıkardı.
   const body = (
       <div className="mx-auto flex h-full w-full max-w-screen-2xl overflow-hidden bg-white md:px-8 ">
-        {/* ── Sohbet listesi ── */}
+        {/* ── Sohbet listesi ── ~%30 daraltıldı (380/460 → 270/320px; kullanıcı
+            kararı, 23 Eyl 2026): mesajlaşma alanı genişlesin. */}
         <aside
           aria-label="Konuşma listesi"
           className={`${
             showChat ? "hidden md:flex" : "flex"
-          } w-full shrink-0 flex-col md:w-[380px] md:border-r md:border-slate-200 lg:w-[460px]`}
+          } w-full shrink-0 flex-col md:w-[270px] md:border-r md:border-slate-200 lg:w-[320px]`}
         >
           <div className="space-y-3 border-b border-slate-200 px-5 pb-3 pt-5 ">
             {/* Başlık ↔ arama (Airbnb gibi: ikona tıklayınca animasyonla açılır) */}
@@ -1088,9 +1088,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                       {send.isPending ? (
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent " />
                       ) : (
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5 19.5 12 4.5 4.5l2.4 6.4a1 1 0 0 0 .94.65H14M6.9 17.1l.94-2.5" />
-                        </svg>
+                        <Icon name="send" className="h-5 w-5" />
                       )}
                     </button>
                   </div>
@@ -1454,7 +1452,9 @@ function ConversationRow({
           </span>
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="truncate text-sm text-slate-500 ">
+          {/* `min-w-0`: flex öğesi içerik genişliğinin altına inmezse `truncate`
+              "..." basamaz, metin kenarda kesik kalır (23 Eyl 2026). */}
+          <p className="min-w-0 truncate text-sm text-slate-500 ">
             {c.last_message ?? "Yeni sohbet"}
           </p>
           {(c.unread ?? 0) > 0 && (

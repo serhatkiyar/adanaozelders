@@ -39,10 +39,9 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(PATHS.tutorListing).toBe("/profil");
     expect(PATHS.tutorReviews).toBe("/degerlendirmeler");
     expect(PATHS.balance).toBe("/bakiyem");
-    expect(PATHS.tutorEarnings).toBe("/kazanclar");
     expect(PATHS.tutorCalendar).toBe("/takvim");
     expect(PATHS.tutorAnalytics).toBe("/analizler");
-    // Öğrenciler listesi (22 Eyl 2026); kişi sayfası `/uyeler/:id` kalır.
+    // Öğrenciler listesi (22 Eyl 2026); ayrı kişi sayfası 23 Eyl 2026'da kalktı.
     expect(PATHS.tutorStudents).toBe("/ogrenciler");
     expect(ROUTES.tutorStudents).toBe(PATHS.tutorStudents);
     expect(ROUTES.dersPlanla(5)).toBe("/takvim?ogrenci=5");
@@ -70,7 +69,6 @@ describe("PATHS — düz (flat) semantik yapı", () => {
       "/pano/hesabim",
       "/pano/hesabim/profil",
       "/pano/bakiyem",
-      "/pano/kazanclar",
       "/pano/takvim",
       "/pano/analizler",
       "/pano/ilanim",
@@ -82,9 +80,6 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     ]) {
       expect(eskiYollar, `${eski} yönlendirmesi düşmüş`).toContain(eski);
     }
-    // ÜK-4: yol `/ogrenciler` değil `/uyeler`. Hesap sahibi öğrenci olmak
-    // zorunda değil; eski yol `App.tsx`te yönlendirmeye bağlandı.
-    expect(PATHS.uyeProfili).toBe("/uyeler/:id");
     // Client yüzeyi
     expect(PATHS.favorites).toBe("/favoriler");
     expect(PATHS.exams).toBe("/denemeler");
@@ -96,7 +91,6 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(PATHS.habits).toBe("/ogren/aliskanliklar");
     expect(PATHS.calendar).toBe("/takvim");
     expect(PATHS.questions).toBe("/sorular");
-    expect(PATHS.leaderboard).toBe("/liderlik");
   });
 });
 
@@ -119,14 +113,12 @@ describe("ROUTES — tek kaynak tutarlılığı", () => {
     expect(ROUTES.tutor(42)).toBe("/egitmenler/42");
     expect(ROUTES.lesson(7)).toBe("/ders-talepleri/7");
     expect(ROUTES.srsDeck(3)).toBe("/ogren/tekrar/deste/3");
-    expect(ROUTES.uyeProfili(9)).toBe("/uyeler/9");
   });
 
   it("param üreticileri, PATHS desenindeki `:param`'ı doldurur", () => {
     // Üreticinin çıktısı, deseni `:param` → değer ile değiştirmekle aynı olmalı.
     expect(ROUTES.lesson(7)).toBe(PATHS.lesson.replace(":id", "7"));
     expect(ROUTES.srsDeck(3)).toBe(PATHS.srsDeck.replace(":id", "3"));
-    expect(ROUTES.uyeProfili(9)).toBe(PATHS.uyeProfili.replace(":id", "9"));
     expect(ROUTES.tutor("x-1")).toBe(PATHS.tutor.replace(":slug", "x-1"));
   });
 
