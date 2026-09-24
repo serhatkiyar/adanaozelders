@@ -37,7 +37,7 @@ function satirGorseli(link?: string | null): string {
   if (link.startsWith("/takvim")) return "/icons/bildirim-takvim.png";
   if (link.startsWith("/siparislerim") || link.startsWith("/magaza")) return "/icons/bildirim-kargo.png";
   if (link.startsWith("/dersler") || link.startsWith("/rezervasyon")) return "/icons/bildirim-ders.png";
-  if (link.startsWith("/bakiyem") || link.startsWith("/kazanclar")) return "/icons/bildirim-para.png";
+  if (link.startsWith("/bakiyem")) return "/icons/bildirim-para.png";
   if (link.startsWith("/degerlendirmeler")) return "/icons/bildirim-yildiz.png";
   if (link.startsWith("/ayarlar") || link.startsWith("/profil")) return "/icons/bildirim-ayarlar.png";
   return "/icons/bildirim-genel.png";

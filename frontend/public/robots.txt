@@ -53,8 +53,6 @@ Disallow: /rezervasyonlar$
 Disallow: /rezervasyonlar/
 Disallow: /rezervasyon$
 Disallow: /rezervasyon/
-Disallow: /kazanclar$
-Disallow: /kazanclar/
 Disallow: /analizler$
 Disallow: /analizler/
 Disallow: /profil$
@@ -63,8 +61,6 @@ Disallow: /ilanim$
 Disallow: /ilanim/
 Disallow: /degerlendirmeler$
 Disallow: /degerlendirmeler/
-Disallow: /liderlik$
-Disallow: /liderlik/
 Disallow: /sorular$
 Disallow: /sorular/
 Disallow: /talepler$

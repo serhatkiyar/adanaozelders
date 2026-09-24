@@ -108,7 +108,12 @@ from models.packing import (
     PackageScanEvent,
 )
 from models.payment import Payment, PaymentStatus
-from models.payout import PayeeType, PayoutRecord
+from models.payout import (
+    PayeeType,
+    PayoutRecord,
+    PayoutRequest,
+    PayoutRequestStatus,
+)
 from models.qa import QAMessage, QAStatus, QAThread
 from models.refresh_token import RefreshToken
 from models.reminder import TaskReminder
@@ -298,6 +303,8 @@ __all__ = [
     "UserConsent",
     "PayeeType",
     "PayoutRecord",
+    "PayoutRequest",
+    "PayoutRequestStatus",
     "Product",
     "ProductPriceHistory",
     "ProductCategory",

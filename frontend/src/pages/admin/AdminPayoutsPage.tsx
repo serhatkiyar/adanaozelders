@@ -17,7 +17,7 @@ import {
   usePayoutHistory,
   usePendingPayouts,
 } from "@/hooks/usePayouts";
-import type { PayeeBalance } from "@/api/payouts";
+import { odemeYapilabilir, odenebilirTutar, type PayeeBalance } from "@/api/payouts";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
@@ -135,6 +135,11 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
                   <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500 ">
                     {b.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"}
                   </span>
+                  {b.requested_amount != null && (
+                    <span className="ml-2 rounded-full bg-marka-soft px-2 py-0.5 text-[11px] font-semibold text-slate-800">
+                      Çekim talebi {formatTL(b.requested_amount)}
+                    </span>
+                  )}
                 </td>
                 <td className="py-3 pr-4 font-mono text-xs text-slate-500 ">
                   {b.iban ?? (
@@ -156,7 +161,12 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
                   {formatTL(b.pending)}
                 </td>
                 <td className="py-3 text-right">
-                  <Button size="sm" onClick={() => onPay(b)}>
+                  <Button
+                    size="sm"
+                    onClick={() => onPay(b)}
+                    disabled={!odemeYapilabilir(b)}
+                    title={odemeYapilabilir(b) ? undefined : "Öğretmen henüz para çekme talebi açmadı"}
+                  >
                     Ödedim
                   </Button>
                 </td>
@@ -289,11 +299,12 @@ function PayIcerik({
   balance: PayeeBalance;
 }) {
   const create = useCreatePayout();
-  const max = parseMoney(balance.balance) ?? 0;
+  const odenebilir = odenebilirTutar(balance);
+  const max = parseMoney(odenebilir) ?? 0;
 
   const form = useForm<OdemeFormDegerleri>({
-    resolver: zodResolver(odemeSemasi(max, formatTL(balance.balance))),
-    defaultValues: { amount: balance.balance, reference: "", note: "" },
+    resolver: zodResolver(odemeSemasi(max, formatTL(odenebilir))),
+    defaultValues: { amount: odenebilir, reference: "", note: "" },
     mode: "onChange",
     shouldFocusError: false,
   });

@@ -134,6 +134,9 @@ const BAKIYE = (over: Record<string, unknown> = {}) => ({
   paid: "200.00",
   balance: "1000.00",
   pending: "150.00",
+  // Öğretmene ödeme yalnız açık para çekme talebi varken yapılır (23 Eyl 2026).
+  requested_amount: "1000.00",
+  requested_at: "2026-09-20T10:00:00Z",
   ...over,
 });
 

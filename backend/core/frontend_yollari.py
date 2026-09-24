@@ -33,3 +33,7 @@ SIPARISLERIM = "/siparislerim"
 # Ödeme bilgileri (IBAN + kimlik) Ayarlar'ın bir sekmesidir.
 AYARLAR = "/ayarlar"
 ONE_CIKAR = "/ilanimi-one-cikar"
+
+# ── Admin ──
+# Hak edişler: öğretmenin para çekme talebi bildirimi buraya götürür.
+ADMIN_HAKEDISLER = "/yonetim/hakedisler"

@@ -208,7 +208,6 @@ def build_cases(ctx: dict) -> list[Case]:
         Case("magaza.derin-sayfa", "GET", "/api/v1/store/products?limit=30&offset=900"),
         Case("magaza.urun-detay", "GET", f"/api/v1/store/products/{ctx['product_slug']}"),
         Case("magaza.teslimat-bilgisi", "GET", "/api/v1/store/delivery-info"),
-        Case("liderlik-tablosu", "GET", "/api/v1/leaderboard", role="client"),
 
         # ── Oturumlu yüzeyler ──
         Case("ogrenci.siparislerim", "GET", "/api/v1/store/orders/mine", role="client"),

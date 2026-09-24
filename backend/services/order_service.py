@@ -1197,7 +1197,8 @@ async def _finalize_paid(
                 user_id=item.tutor_id,
                 role_id=ROLE_IDS[RoleType.TUTOR],
                 message="Mağazada dijital ürünün satıldı; kazancına eklendi.",
-                link=frontend_yollari.BAKIYEM,
+                # Ayrı kazanç ekranı yok (cüzdan üst barda); Genel Bakış.
+                link=frontend_yollari.PANO,
             )
 
     await _email_order(db, order, "PAID")

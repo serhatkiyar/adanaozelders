@@ -1,5 +1,5 @@
 import { apiClient } from "@/api/axios";
-import type { EarningsSummary, EarningTransaction, Payment } from "@/types";
+import type { EarningsSummary, Payment } from "@/types";
 
 export async function getBookingPayment(
   bookingId: number
@@ -19,12 +19,5 @@ export async function payBooking(bookingId: number): Promise<Payment> {
 
 export async function fetchEarnings(): Promise<EarningsSummary> {
   const { data } = await apiClient.get<EarningsSummary>("/payments/earnings");
-  return data;
-}
-
-export async function fetchEarningsTransactions(): Promise<EarningTransaction[]> {
-  const { data } = await apiClient.get<EarningTransaction[]>(
-    "/payments/earnings/transactions"
-  );
   return data;
 }

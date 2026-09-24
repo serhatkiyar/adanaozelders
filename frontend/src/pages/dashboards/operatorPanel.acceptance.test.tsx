@@ -44,7 +44,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // üretim kodunda değil test kurulumunda. Modül burada statik alınınca maliyet
 // TOPLAMA (collect) evresine geçer.
 import "@/components/admin/ui2/duzenlemeYuzeyi";
-import Leaderboard from "@/pages/Leaderboard";
 import Learn from "@/pages/Learn";
 import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
@@ -219,7 +218,6 @@ const EKRANLAR: Record<string, ComponentType> = {
   "./OperatorLibrary.tsx": OperatorLibrary,
   "./OperatorSessions.tsx": OperatorSessions,
   "../Notifications.tsx": Notifications,
-  "../Leaderboard.tsx": Leaderboard,
   "../Settings.tsx": Settings,
   "../Learn.tsx": Learn,
 };
@@ -769,7 +767,6 @@ describe("Y · yoklama sayacı ve onay diyalogları", () => {
 describe("N · ortak sayfalarda operatör navigasyonu", () => {
   const SAYFALAR: [string, string][] = [
     ["../Notifications.tsx", "/bildirimler"],
-    ["../Leaderboard.tsx", "/liderlik"],
     ["../Settings.tsx", "/ayarlar"],
     ["../Learn.tsx", "/ogren"],
   ];
@@ -781,21 +778,11 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
       // altyapı yüzünden düşürüyordu (davranış yüzünden değil).
       operatorOturumu();
       temelUclar();
-      // `types::LeaderboardOut` — dört ayrı liste taşıyan NESNE (dizi değil;
-      // dizi verilince sayfa `.map` üzerinde patlıyor ve nav hiç basılmıyordu).
       // Ayarlar sayfası ad/kullanıcı adı değişiklik taleplerini LİSTE bekler;
       // stub'sız bırakılınca `nameRequests.find` üzerinde render PATLIYOR ve
       // nav zaten basıldığı için test yeşil kalıyordu — yakalanmamış istisna
       // suite raporunda "1 error" olarak görünüyordu.
       sunucu("/auth/me/name-change-requests", { data: [] });
-      sunucu("/leaderboard", {
-        data: {
-          tutors_by_lessons: [],
-          tutors_by_rating: [],
-          uyeler_ders_sayisi: [],
-          uyeler_net: [],
-        },
-      });
       sunucu("/bookings", { data: [] });
       sunucu("/habits", { data: [] });
 

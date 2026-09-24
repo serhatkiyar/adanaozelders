@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/datetime";
 import { formatTL, parseMoney } from "@/lib/money";
 import { BosDurumu, HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
 import { OdemePenceresi } from "@/panel/pages/finans/OdemePenceresi";
-import type { PayeeBalance } from "@/api/payouts";
+import { odemeYapilabilir, type PayeeBalance } from "@/api/payouts";
 
 /** Elle yapılan havalelerin hak ediş defterini yeni panel kabuğunda yönetir. */
 export function HakEdisler() {
@@ -86,13 +86,13 @@ function Bekleyenler({ sorgu, canManage, onPay }: {
         pagination={false}
         scroll={{ x: 760 }}
         columns={[
-          { title: "Alıcı", render: (_, kayit) => <Flex gap={8} align="center"><Typography.Text strong>{kayit.name}</Typography.Text><Tag>{kayit.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"}</Tag></Flex> },
+          { title: "Alıcı", render: (_, kayit) => <Flex gap={8} align="center" wrap><Typography.Text strong>{kayit.name}</Typography.Text><Tag>{kayit.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"}</Tag>{kayit.requested_amount != null && <Tag color="orange">Çekim talebi {formatTL(kayit.requested_amount)}</Tag>}</Flex> },
           { title: "IBAN", render: (_, kayit) => kayit.iban ? <Typography.Text style={{ fontFamily: "monospace" }}>{kayit.iban}</Typography.Text> : <Typography.Text type="warning">IBAN yok</Typography.Text> },
           { title: "Hak edilen", align: "right", render: (_, kayit) => formatTL(kayit.earned) },
           { title: "Ödenen", align: "right", render: (_, kayit) => formatTL(kayit.paid) },
           { title: "Bakiye", align: "right", render: (_, kayit) => <Typography.Text strong>{formatTL(kayit.balance)}</Typography.Text> },
           { title: "Emanette", align: "right", render: (_, kayit) => formatTL(kayit.pending) },
-          ...(canManage ? [{ title: "", align: "right" as const, render: (_: unknown, kayit: PayeeBalance) => <Button onClick={() => onPay(kayit)}>Ödedim</Button> }] : []),
+          ...(canManage ? [{ title: "", align: "right" as const, render: (_: unknown, kayit: PayeeBalance) => <Button onClick={() => onPay(kayit)} disabled={!odemeYapilabilir(kayit)} title={odemeYapilabilir(kayit) ? undefined : "Öğretmen henüz para çekme talebi açmadı"}>Ödedim</Button> }] : []),
         ]}
       />
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>

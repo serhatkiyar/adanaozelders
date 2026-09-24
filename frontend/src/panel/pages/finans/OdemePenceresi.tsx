@@ -11,7 +11,7 @@ import { useCreatePayout } from "@/hooks/usePayouts";
 import { getErrorMessage } from "@/lib/errors";
 import { formatTL, parseMoney } from "@/lib/money";
 import { toast } from "@/store/toastStore";
-import type { PayeeBalance, PayoutCreate } from "@/api/payouts";
+import { odenebilirTutar, type PayeeBalance, type PayoutCreate } from "@/api/payouts";
 
 type OdemeDegerleri = { amount: number; reference?: string; note?: string };
 
@@ -21,7 +21,9 @@ export function OdemePenceresi({ hedef, kapat }: { hedef: PayeeBalance | null; k
   const kilit = useRef(false);
   const [hata, setHata] = useState<string | null>(null);
   const mesgul = kilit.current || create.isPending;
-  const max = hedef ? (parseMoney(hedef.balance) ?? 0) : 0;
+  // Öğretmende üst sınır talep tutarıdır (bkz. `odenebilirTutar`).
+  const odenebilir = hedef ? odenebilirTutar(hedef) : "0";
+  const max = parseMoney(odenebilir) ?? 0;
 
   const gercekKapat = () => {
     setHata(null);
@@ -78,7 +80,7 @@ export function OdemePenceresi({ hedef, kapat }: { hedef: PayeeBalance | null; k
             {hedef.iban ? <Typography.Text code>{hedef.iban}</Typography.Text> : <Alert type="warning" showIcon message="Bu alıcının IBAN'ı kayıtlı değil; ödemeden önce kendisinden isteyin." />}
             {hata ? <Alert type="error" showIcon message={hata} /> : null}
           </Flex>
-          <Form.Item name="amount" label="Tutar (TL)" rules={[{ required: true, message: "Tutar gerekli." }, { type: "number", min: 0.01, message: "Tutar sıfırdan büyük olmalı." }, { validator: (_, value) => Number(value) <= max ? Promise.resolve() : Promise.reject(new Error(`Tutar en fazla ${formatTL(hedef.balance)} olabilir.`)) }]}>
+          <Form.Item name="amount" label="Tutar (TL)" rules={[{ required: true, message: "Tutar gerekli." }, { type: "number", min: 0.01, message: "Tutar sıfırdan büyük olmalı." }, { validator: (_, value) => Number(value) <= max ? Promise.resolve() : Promise.reject(new Error(`Tutar en fazla ${formatTL(odenebilir)} olabilir.`)) }]}>
             <InputNumber min={0.01} step={0.01} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="reference" label="Havale referansı" rules={[{ max: 120, message: "Referans en fazla 120 karakter olabilir." }]}><Input maxLength={120} placeholder="Dekonttaki referans no" /></Form.Item>

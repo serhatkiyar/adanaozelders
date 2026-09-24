@@ -1,4 +1,4 @@
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PaymentStatusBadge } from "@/components/PaymentBadge";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
@@ -15,71 +15,17 @@ import { ROUTES } from "@/lib/routes";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ErrorState } from "@/components/admin/ui/PageState";
 import { ISLEM_TAVANI, kesildiMi } from "@/lib/operatorAgenda";
-import { ROLE_IDS, type EarningTransaction, type PayoutStatus } from "@/types";
+import { ROLE_IDS, type EarningTransaction } from "@/types";
 import type { NavItem } from "@/lib/nav";
 import type { ReactNode } from "react";
 import {
   ACIKLAMA,
   BOLUM_BASLIGI,
-  DUGME_SATIR_IKINCIL,
   ETIKET,
   KART,
   KUCUK_ACIKLAMA,
   SAYFA_BASLIGI,
 } from "@/components/pano/stil";
-
-const PAYOUT_STATUS_META: Record<PayoutStatus, { label: string; cls: string }> = {
-  NONE: {
-    label: "Eklenmedi",
-    cls: "bg-slate-100 text-slate-700",
-  },
-  PENDING: {
-    label: "Doğrulama bekleniyor",
-    cls: "bg-amber-50 text-amber-800",
-  },
-  ACTIVE: {
-    label: "Doğrulandı ✓",
-    cls: "bg-emerald-50 text-emerald-800",
-  },
-  REJECTED: {
-    label: "Reddedildi",
-    cls: "bg-red-50 text-red-700",
-  },
-};
-
-/** Bakiyem'de ödeme hesabının yalnız özetini gösterir; düzenleme Ayarlar'da. */
-export function PayoutSummaryCard({
-  status,
-  ibanMasked,
-}: {
-  status: PayoutStatus;
-  ibanMasked?: string | null;
-}) {
-  const meta = PAYOUT_STATUS_META[status];
-  return (
-    <div className={KART}>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <p className={ETIKET}>Ödeme hesabı</p>
-          <p className={`mt-1 break-all font-mono ${ACIKLAMA}`}>
-            {ibanMasked || "Henüz IBAN eklenmedi"}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className={`rounded-full px-3 py-1 text-sm font-semibold ${meta.cls}`}>
-            {meta.label}
-          </span>
-          <Link
-            to={ROUTES.settings}
-            className={DUGME_SATIR_IKINCIL}
-          >
-            {status === "NONE" ? "Ekle" : "Ayarlar'da düzenle"}
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const SOURCE_LABEL: Record<EarningTransaction["source"], string> = {
   LESSON: "Özel ders",
@@ -92,8 +38,9 @@ const SOURCE_LABEL: Record<EarningTransaction["source"], string> = {
 export default function Balance() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
-  // Eğitmende "Bakiyem" yok; eski adres ve bildirim linkleri Kazançlar'a gider.
-  if (user.role_id === ROLE_IDS.TUTOR) return <Navigate to={ROUTES.tutorEarnings} replace />;
+  // Öğretmende ayrı kazanç ekranı yok (cüzdan üst barda, 23 Eyl 2026); eski
+  // adres ve bildirim linkleri Genel Bakış'a gider.
+  if (user.role_id === ROLE_IDS.TUTOR) return <Navigate to={ROUTES.bookings} replace />;
   if (user.role_id === ROLE_IDS.LIBRARY_OPERATOR) return <OperatorBalance />;
   return <Navigate to={ROUTES.home} replace />;
 }

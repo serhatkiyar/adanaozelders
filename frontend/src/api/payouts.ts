@@ -14,6 +14,23 @@ export interface PayeeBalance {
   balance: string;
   /** Emanetteki (henüz hak edilmemiş) tutar — borç DEĞİL. */
   pending: string;
+  /** Öğretmenin açık para çekme talebi (varsa). */
+  requested_amount?: string | null;
+  requested_at?: string | null;
+}
+
+/**
+ * Öğretmene para yalnız kendisi "Para çek" dediyse gönderilir (kullanıcı
+ * kararı, 23 Eyl 2026; sunucu da 409 ile korur). Kütüphane değişmedi.
+ */
+export function odemeYapilabilir(b: PayeeBalance): boolean {
+  return b.payee_type !== "TUTOR" || b.requested_amount != null;
+}
+
+/** Bu kayda en fazla ödenebilecek tutar: öğretmende talep ile bakiyenin küçüğü. */
+export function odenebilirTutar(b: PayeeBalance): string {
+  if (b.payee_type !== "TUTOR" || b.requested_amount == null) return b.balance;
+  return Number(b.requested_amount) < Number(b.balance) ? b.requested_amount : b.balance;
 }
 
 export interface PayoutRecord {

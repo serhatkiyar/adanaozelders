@@ -15,7 +15,6 @@ from api.routers import (
     geocode,
     habits,
     inventory,
-    leaderboard,
     libraries,
     library_bookmarks,
     library_exam_catalogs,
@@ -42,6 +41,7 @@ from api.routers import (
     subjects,
     tutor_pre_applications,
     tutors,
+    wallet,
     ws,
 )
 
@@ -78,10 +78,10 @@ api_router.include_router(support.router)
 api_router.include_router(admin.router)
 api_router.include_router(notifications.router)
 api_router.include_router(messages.router)
-api_router.include_router(leaderboard.router)
 api_router.include_router(payments.router)
 api_router.include_router(payouts.router)
 api_router.include_router(payout.router)
+api_router.include_router(wallet.router)
 api_router.include_router(reports.router)
 api_router.include_router(store.router)
 api_router.include_router(store_merchandising.public_router)

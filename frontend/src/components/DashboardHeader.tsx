@@ -4,6 +4,8 @@ import { Avatar } from "@/components/Avatar";
 import { NavbarWidget } from "@/components/NavbarWidget";
 import { MobilPanelCekmecesi } from "@/components/MobilPanelCekmecesi";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { CuzdanIcerik, CuzdanMenuSatiri, CuzdanPaneli } from "@/components/CuzdanPaneli";
+import { Modal } from "@/components/ui/Modal";
 import { MesajlarPaneli } from "@/components/mesaj/MesajlarPaneli";
 import { PersonalizeModal } from "@/components/PersonalizeModal";
 import { Icon } from "@/components/AppIcon";
@@ -70,11 +72,18 @@ interface DashboardHeaderProps {
    * aynısını buraya da verir; iki liste ayrışamaz.
    */
   panelSekmeleri?: NavItem[];
+  /**
+   * Gri (`#f4f4f4`) üst bar — YALNIZ keşfet/arama ekranları açar (ana sayfa,
+   * öğretmen listesi, kütüphane listesi). Kullanıcı kararı, 23 Eyl 2026: diğer
+   * bütün ekranlarda üst bar sayfa zeminiyle (`slate-50`) aynı renktedir,
+   * yalnız alt çizgi kalır.
+   */
+  navGri?: boolean;
 }
 
 // Oturum içi üst bar: logo + rol bazlı nav ikonları + bildirim zili + hesap
 // menüsü (profil, ayarlar, tema, çıkış). Hem DashboardShell hem Landing kullanır.
-export function DashboardHeader({ navItems, transparent = false, center, bottom, mobilUst, mobilSade = false, expanded = true, panelSekmeleri }: DashboardHeaderProps) {
+export function DashboardHeader({ navItems, transparent = false, center, bottom, mobilUst, mobilSade = false, expanded = true, panelSekmeleri, navGri = false }: DashboardHeaderProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const home = roleHome(user?.role_id);
@@ -86,6 +95,9 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   const mobilOkunmamisToplam = msgUnread + bildirimOkunmamis;
 
   const [menuOpen, setMenuOpen] = useState(false);
+  // Mobil: cüzdan içeriği çekmeceden AÇILIR ama çekmece kapanınca yaşasın
+  // diye pencere durumu burada tutulur.
+  const [cuzdanAcik, setCuzdanAcik] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [personalizeOpen, setPersonalizeOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -352,16 +364,19 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
   // px/py header elementine değil iç wrapper'a taşındı; böylece bottom slot
   // kendi max-width'ini bağımsız yönetebiliyor (çift girintileme önlenir).
   const headerClass = transparent
-    // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    ? "sticky top-0 z-40 border-b border-slate-200 bg-[#f4f4f4]/95 backdrop-blur-md "
-    // Panel üst barı BEYAZ (17 Eyl 2026 kullanıcı kararı, Preply gibi; önceki
-    // #f4f4f4 kararı yalnız ana sayfa/anonim kabukta sürüyor).
+    // Zemin: keşfet ekranlarında gri #f4f4f4 (16 Eyl 2026), diğerlerinde sayfa
+    // zemini slate-50 (23 Eyl 2026) — bkz. `navGri`.
+    ? `sticky top-0 z-40 border-b border-slate-200 ${
+        navGri ? "bg-[#f4f4f4]/95" : "bg-slate-50/95"
+      } backdrop-blur-md `
+    // Panel üst barı sayfa zemininde (slate-50) — 23 Eyl 2026 kullanıcı kararı:
+    // üst bar sayfadan ayrışmasın, yalnız alt çizgi kalsın (17 Eyl'de beyazdı).
     // TELEFONDA BAR YOK (19 Eyl 2026, kullanıcı kararı). Önce barın yalnız
     // içi boşaltılmıştı; geriye sağında tek düğme duran 48px'lik bomboş beyaz
     // bir bant kaldı ve kullanıcı haklı olarak itiraz etti. Artık zemin de
     // kenarlık da yok: satır `h-0`a iner, üç çizgi `absolute` olarak içeriğin
     // ilk satırının sağına oturur. `≥sm`de bar aynen durur.
-    : "border-b-0 bg-transparent sm:border-b sm:border-slate-200 sm:bg-white ";
+    : "border-b-0 bg-transparent sm:border-b sm:border-slate-200 sm:bg-slate-50 ";
   /* `mobilSade` iken DOLGU DA GİZLENİR (16 Eyl 2026, ölçüldü): satır
      `hidden md:flex` olsa da dolgu bu sarmalayıcıda kaldığı için telefonda
      arama hapının üstünde 28px boş bant kalıyordu — anonim kabukta
@@ -418,6 +433,9 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               bildirim ziliyle AYNI desende bir önizleme paneli açılır
               (kullanıcı kararı, 22 Eyl 2026 — Preply referansı: "mesajlar
               sayfasında değilken tam sayfa yerine panel açılsın"). */}
+          {/* Öğretmen cüzdanı (Preply deseni, 23 Eyl 2026): ayrı kazançlar
+              ekranı yok; bakiye + "Para çek" + geçmiş CSV bu kutuda. */}
+          {user?.role_id === ROLE_IDS.TUTOR && <CuzdanPaneli />}
           {location.pathname.startsWith(ROUTES.messages) ? (
             <NavLink to={ROUTES.messages} title="Mesajlar" aria-label="Mesajlar" className={navIconClass}>
               <Icon name="messages" className="h-6 w-6" />
@@ -571,11 +589,26 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
       onClose={() => setMenuOpen(false)}
       sekmeler={panelSekmeleri}
     >
+      {user?.role_id === ROLE_IDS.TUTOR && (
+        <CuzdanMenuSatiri
+          className={menuItemClass}
+          onAc={() => {
+            setMenuOpen(false);
+            setCuzdanAcik(true);
+          }}
+        />
+      )}
       {accountLinks(
         () => setMenuOpen(false),
         Boolean(panelSekmeleri && panelSekmeleri.length > 0)
       )}
     </MobilPanelCekmecesi>
+
+    {cuzdanAcik && (
+      <Modal open onClose={() => setCuzdanAcik(false)} title="Cüzdan" maxWidth="max-w-sm">
+        <CuzdanIcerik />
+      </Modal>
+    )}
 
     {personalizeOpen && (
       <PersonalizeModal

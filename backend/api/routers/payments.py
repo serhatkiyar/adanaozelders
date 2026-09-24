@@ -26,7 +26,6 @@ from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.payment import (
     EarningsSummary,
-    EarningTransaction,
     PaymentOut,
     PlatformSummary,
 )
@@ -234,16 +233,6 @@ async def my_earnings(
 ):
     data = await payment_service.earnings_summary(db, tutor_id=tutor.id)
     return EarningsSummary(**data)
-
-
-@router.get("/earnings/transactions", response_model=list[EarningTransaction])
-async def my_earnings_transactions(
-    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
-    db: AsyncSession = Depends(get_db),
-):
-    """Eğitmenin ödeme hareketleri dökümü (Bakiye sayfası)."""
-    rows = await payment_service.earnings_transactions(db, tutor_id=tutor.id)
-    return [EarningTransaction(**r) for r in rows]
 
 
 @router.get("/admin/summary", response_model=PlatformSummary)

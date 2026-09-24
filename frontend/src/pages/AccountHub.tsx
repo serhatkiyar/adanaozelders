@@ -1,3 +1,9 @@
+/*
+ * KULLANILMIYOR (kullanıcı kararı, 23 Eyl 2026): öğrencinin eski kartlı
+ * "Ayarlar" merkezi. Sitede hiçbir rotaya bağlı değil — öğrenci de eğitmen gibi
+ * `/ayarlar`'da `Settings` sayfasını görür. Tasarım geliştirici referansı olarak
+ * duruyor; geri açmak için `App.tsx`te bir rotaya bağlamak yeterli.
+ */
 import { type ReactNode } from "react";
 import { MAGAZA_ACIK } from "@/lib/ozellikBayraklari";
 import { SAYFA_BASLIGI } from "@/lib/tipografi";

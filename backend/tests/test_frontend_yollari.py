@@ -49,6 +49,7 @@ _ESLESME = {
     "ONE_CIKAR": "tutorPromotion",
     "REZERVASYON_DETAY": "libraryReservation",
     "REZERVASYONLAR": "reservations",
+    "ADMIN_HAKEDISLER": "adminPayouts",
 }
 
 # Parametreli istemci yolları (`/ders-talepleri/:id`); sunucu bunların ÖNEKİNİ

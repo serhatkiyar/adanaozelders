@@ -25,6 +25,9 @@ const bakiye = {
   paid: "250.00",
   balance: "1250.00",
   pending: "300.00",
+  // Öğretmene ödeme yalnız açık para çekme talebi varken yapılır (23 Eyl 2026).
+  requested_amount: "1250.00",
+  requested_at: "2026-09-20T10:00:00Z",
 };
 
 function izin(...izinler: string[]) {
@@ -76,6 +79,19 @@ describe("HakEdisler", () => {
     vi.mocked(usePendingPayouts).mockReturnValue({ data: [], isPending: false, isError: false, refetch: vi.fn() } as never);
     kur();
     expect(screen.getByText("Ödenmemiş hak ediş yok")).toBeInTheDocument();
+  });
+
+  it("öğretmen para çekme talebi açmadıysa Ödedim kapalı; talep etiketi yalnız talep varken", () => {
+    const talepsiz = { ...bakiye, requested_amount: null, requested_at: null };
+    vi.mocked(usePendingPayouts).mockReturnValue({ data: [talepsiz], isPending: false, isError: false, refetch: vi.fn() } as never);
+    const gorunum = kur();
+    expect(screen.getByRole("button", { name: "Ödedim" })).toBeDisabled();
+    expect(screen.queryByText(/Çekim talebi/)).not.toBeInTheDocument();
+    gorunum.unmount();
+    vi.mocked(usePendingPayouts).mockReturnValue({ data: [bakiye], isPending: false, isError: false, refetch: vi.fn() } as never);
+    kur();
+    expect(screen.getByRole("button", { name: "Ödedim" })).toBeEnabled();
+    expect(screen.getByText(/Çekim talebi/)).toBeInTheDocument();
   });
 
   it("ödeme penceresi eski alanları açar ve gerçek payloadı gönderir", async () => {

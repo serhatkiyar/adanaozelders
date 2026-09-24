@@ -13,9 +13,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_admin_permission
+from core import frontend_yollari
 from core.database import get_db
 from models.admin import Admin
-from services import audit_service, payment_gates, payout_ledger
+from models.payout import PayeeType, PayoutRequestStatus
+from models.role import ROLE_IDS, RoleType
+from services import audit_service, notification_service, payment_gates, payout_ledger
 
 router = APIRouter(prefix="/payouts", tags=["payouts"])
 
@@ -33,6 +36,10 @@ class PayeeBalanceOut(BaseModel):
     balance: str
     #: Emanetteki (henüz hak edilmemiş) tutar — borç DEĞİL, bilgi amaçlı.
     pending: str
+    #: Öğretmenin açık para çekme talebi (varsa). Öğretmene ödeme yalnız açık
+    #: talep varken kaydedilebilir (kullanıcı kararı, 23 Eyl 2026).
+    requested_amount: str | None = None
+    requested_at: datetime.datetime | None = None
 
 
 class PayoutCreate(BaseModel):
@@ -63,6 +70,13 @@ async def list_pending(
 ):
     """Ödeme günü bakılacak liste: kime ne kadar borçluyuz."""
     rows = await payout_ledger.list_balances(db, only_owed=only_owed)
+    talepler = await payout_ledger.open_requests_by_tutor(db)
+
+    def _talep(b):
+        if b.payee_type != PayeeType.TUTOR.value:
+            return None
+        return talepler.get(b.payee_id)
+
     return [
         PayeeBalanceOut(
             payee_type=b.payee_type,
@@ -73,6 +87,8 @@ async def list_pending(
             paid=str(b.paid),
             balance=str(b.balance),
             pending=str(b.pending),
+            requested_amount=str(t.amount) if (t := _talep(b)) else None,
+            requested_at=t.created_at if t else None,
         )
         for b in rows
     ]
@@ -126,6 +142,22 @@ async def record_payout(
             f"Ödenmemiş bakiye {balance.balance} {balance.payee_type == 'TUTOR' and 'TL' or 'TL'}; "
             f"bundan fazlası ({payload.amount}) kaydedilemez.",
         )
+    # Öğretmene para yalnız kendisi "Para çek" dediyse gönderilir.
+    talep = None
+    if payload.payee_type == PayeeType.TUTOR.value:
+        talep = await payout_ledger.open_request(db, payload.payee_id, kilitle=True)
+        if talep is None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Öğretmenin açık para çekme talebi yok; ödeme ancak talep "
+                "üzerine kaydedilebilir.",
+            )
+        if payload.amount > talep.amount:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Talep edilen tutar {talep.amount} TL; bundan fazlası "
+                f"({payload.amount}) kaydedilemez.",
+            )
 
     row = await payout_ledger.record_payment(
         db,
@@ -137,6 +169,17 @@ async def record_payout(
         note=payload.note,
     )
     await db.flush()
+    if talep is not None:
+        talep.status = PayoutRequestStatus.PAID.value
+        talep.payout_record_id = row.id
+        talep.paid_at = row.paid_at
+        await notification_service.notify(
+            db,
+            user_id=payload.payee_id,
+            role_id=ROLE_IDS[RoleType.TUTOR],
+            message=f"Para çekme talebin ödendi: {payload.amount} TL.",
+            link=frontend_yollari.PANO,
+        )
     await audit_service.record(
         db,
         actor=admin,

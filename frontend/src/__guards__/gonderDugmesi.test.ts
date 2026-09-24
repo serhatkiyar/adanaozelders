@@ -187,6 +187,11 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/panel/pages/paketleme/PaketListesi.tsx <Button> seciliGorunen.length === 0": "secim",
   // Paket detayı "Paketi tamamla": engel listesi ekranda yazılıdır (eksik adet / kalemsiz paket).
   "src/panel/pages/paketleme/PaketlemeDetayi.tsx <Button> engeller.length > 0": "onkosul",
+  // Hak edişler "Ödedim": öğretmene ödeme ancak açık para çekme talebi varken
+  // kaydedilir (23 Eyl 2026; sunucu 409 ile de korur). Sebep `title`da, talep
+  // varsa satırda "Çekim talebi" etiketi görünür.
+  "src/pages/admin/AdminPayoutsPage.tsx <Button> !odemeYapilabilir(b)": "onkosul",
+  "src/panel/pages/finans/HakEdisler.tsx <Button> !odemeYapilabilir(kayit)": "onkosul",
   "src/components/LibraryMapPanel.tsx <button> !week": "secim",
 
   // ── onkosul: sebebi EKRANDA yazan durum kilidi ──

@@ -22,14 +22,22 @@ import dataclasses
 import datetime
 from decimal import Decimal
 
+from fastapi import HTTPException
+from fastapi import status as http_status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.booking import Booking
 from models.library import Library
 from models.library_exam import ExamRegistration
 from models.payment import Payment, PaymentStatus
-from models.payout import PayeeType, PayoutRecord
+from models.payout import (
+    PayeeType,
+    PayoutRecord,
+    PayoutRequest,
+    PayoutRequestStatus,
+)
 from models.store import Order, OrderItem, SellerType
 from models.study_reservation import StudyReservation
 from models.tutor import Tutor
@@ -62,19 +70,27 @@ class PayeeBalance:
         return max(self.earned - self.paid, ZERO)
 
 
-async def _paid_totals(db: AsyncSession, payee_type: str) -> dict[int, Decimal]:
-    rows = (
-        await db.execute(
-            select(PayoutRecord.payee_id, func.coalesce(func.sum(PayoutRecord.amount), 0))
-            .where(PayoutRecord.payee_type == payee_type)
-            .group_by(PayoutRecord.payee_id)
-        )
-    ).all()
+async def _paid_totals(
+    db: AsyncSession, payee_type: str, *, payee_id: int | None = None
+) -> dict[int, Decimal]:
+    stmt = (
+        select(PayoutRecord.payee_id, func.coalesce(func.sum(PayoutRecord.amount), 0))
+        .where(PayoutRecord.payee_type == payee_type)
+        .group_by(PayoutRecord.payee_id)
+    )
+    if payee_id is not None:
+        stmt = stmt.where(PayoutRecord.payee_id == payee_id)
+    rows = (await db.execute(stmt)).all()
     return {pid: _q(total) for pid, total in rows}
 
 
-async def _tutor_earned(db: AsyncSession) -> tuple[dict[int, Decimal], dict[int, Decimal]]:
-    """Eğitmen kazançları: (hak edilmiş, emanetteki)."""
+async def _tutor_earned(
+    db: AsyncSession, *, yalniz_tutor_id: int | None = None
+) -> tuple[dict[int, Decimal], dict[int, Decimal]]:
+    """Eğitmen kazançları: (hak edilmiş, emanetteki).
+
+    ``yalniz_tutor_id`` verilirse yalnız o öğretmen hesaplanır (cüzdan uçları için —
+    her açılışta tüm öğretmenleri taramak gereksiz)."""
     earned: dict[int, Decimal] = {}
     pending: dict[int, Decimal] = {}
 
@@ -94,6 +110,7 @@ async def _tutor_earned(db: AsyncSession) -> tuple[dict[int, Decimal], dict[int,
                 # girmediği hâlde taranıyordu — ödeme tablosu büyüdükçe bu fark
                 # doğrusal olarak büyür.
                 Payment.status.in_([PaymentStatus.RELEASED, PaymentStatus.HELD]),
+                *([Booking.tutor_id == yalniz_tutor_id] if yalniz_tutor_id is not None else []),
             )
             .group_by(Booking.tutor_id, Payment.status)
         )
@@ -119,6 +136,11 @@ async def _tutor_earned(db: AsyncSession) -> tuple[dict[int, Decimal], dict[int,
                 OrderItem.tutor_id.isnot(None),
                 Order.payment_status == "PAID",
                 Order.deleted_at.is_(None),
+                *(
+                    [OrderItem.tutor_id == yalniz_tutor_id]
+                    if yalniz_tutor_id is not None
+                    else []
+                ),
             )
             .group_by(OrderItem.tutor_id)
         )
@@ -296,6 +318,102 @@ async def history(
                 .order_by(PayoutRecord.paid_at.desc())
                 .limit(limit)
                 .offset(offset)
+            )
+        ).scalars().all()
+    )
+
+
+# ── Öğretmen cüzdanı: bakiye + para çekme talebi ─────────────────────────────
+
+
+async def tutor_balance(db: AsyncSession, tutor: Tutor) -> PayeeBalance:
+    """Tek öğretmenin hakediş durumu (``list_balances`` ile AYNI formül)."""
+    earned, pending = await _tutor_earned(db, yalniz_tutor_id=tutor.id)
+    paid = await _paid_totals(db, PayeeType.TUTOR.value, payee_id=tutor.id)
+    return PayeeBalance(
+        payee_type=PayeeType.TUTOR.value,
+        payee_id=tutor.id,
+        name=tutor.full_name,
+        iban=tutor.iban,
+        earned=earned.get(tutor.id, ZERO),
+        paid=paid.get(tutor.id, ZERO),
+        pending=pending.get(tutor.id, ZERO),
+    )
+
+
+async def open_request(
+    db: AsyncSession, tutor_id: int, *, kilitle: bool = False
+) -> PayoutRequest | None:
+    """Öğretmenin açık talebi. ``kilitle=True`` ödeme kaydında kullanılır:
+    satır kilidi, iki adminin aynı talebi aynı anda iki kez ödemesini önler."""
+    stmt = select(PayoutRequest).where(
+        PayoutRequest.tutor_id == tutor_id,
+        PayoutRequest.status == PayoutRequestStatus.REQUESTED.value,
+    )
+    if kilitle:
+        stmt = stmt.with_for_update()
+    return await db.scalar(stmt)
+
+
+async def open_requests_by_tutor(db: AsyncSession) -> dict[int, PayoutRequest]:
+    """Admin hakediş listesi için: öğretmen → açık talep."""
+    rows = (
+        await db.execute(
+            select(PayoutRequest).where(
+                PayoutRequest.status == PayoutRequestStatus.REQUESTED.value
+            )
+        )
+    ).scalars().all()
+    return {r.tutor_id: r for r in rows}
+
+
+def talep_engeli(
+    *, payout_status: str, balance: Decimal, acik_talep_var: bool
+) -> str | None:
+    """Para çekme talebi açılamıyorsa kullanıcıya gösterilecek gerekçe (saf)."""
+    if acik_talep_var:
+        return "Zaten işlenmekte olan bir para çekme talebin var."
+    if payout_status != "ACTIVE":
+        return "Para çekmek için önce ödeme bilgilerini (IBAN) ekle."
+    if balance <= ZERO:
+        return "Çekilebilecek bakiyen yok."
+    return None
+
+
+async def create_request(db: AsyncSession, tutor: Tutor) -> PayoutRequest:
+    """Ödenebilir bakiyenin TAMAMI için talep açar (tutar sunucuda hesaplanır).
+
+    Eşzamanlı iki istekte ikincisi ``uq_payout_requests_tutor_open``a takılır.
+    """
+    bakiye = await tutor_balance(db, tutor)
+    engel = talep_engeli(
+        payout_status=tutor.payout_status,
+        balance=bakiye.balance,
+        acik_talep_var=await open_request(db, tutor.id) is not None,
+    )
+    if engel is not None:
+        raise HTTPException(http_status.HTTP_409_CONFLICT, engel)
+    talep = PayoutRequest(tutor_id=tutor.id, amount=bakiye.balance)
+    try:
+        async with db.begin_nested():
+            db.add(talep)
+            await db.flush()
+    except IntegrityError:
+        raise HTTPException(
+            http_status.HTTP_409_CONFLICT,
+            "Zaten işlenmekte olan bir para çekme talebin var.",
+        ) from None
+    return talep
+
+
+async def tutor_payout_history(db: AsyncSession, tutor_id: int) -> list[PayoutRequest]:
+    """Öğretmenin para çekme talepleri (yeniden eskiye) — CSV için."""
+    return list(
+        (
+            await db.execute(
+                select(PayoutRequest)
+                .where(PayoutRequest.tutor_id == tutor_id)
+                .order_by(PayoutRequest.created_at.desc())
             )
         ).scalars().all()
     )

@@ -6,24 +6,19 @@ import { SegmentedControl } from "@/components/SegmentedControl";
 import { ErrorState } from "@/components/admin/ui/PageState";
 import {
   ACIKLAMA,
-  BOLUM_BASLIGI,
-  ETIKET,
   KART,
   KUCUK_ACIKLAMA,
   SAYFA_BASLIGI,
 } from "@/components/pano/stil";
-import { useTutorGoals, useTutorOverview, useTutorSeries } from "@/hooks/useTutorAnalytics";
+import { useTutorOverview, useTutorSeries } from "@/hooks/useTutorAnalytics";
 import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { formatTRY } from "@/lib/money";
 import { TUTOR_NAV } from "@/lib/nav";
-import { ROUTES } from "@/lib/routes";
 import type {
   AnalyticsPeriod,
   AnalyticsSeriesPoint,
   MetricTrend,
-  SuccessGoal,
-  SuccessGoalCode,
 } from "@/types";
 
 const DONEMLER: { value: AnalyticsPeriod; label: string }[] = [
@@ -31,45 +26,6 @@ const DONEMLER: { value: AnalyticsPeriod; label: string }[] = [
   { value: "month", label: "30 gün" },
   { value: "quarter", label: "90 gün" },
 ];
-
-const yuzde = new Intl.NumberFormat("tr-TR", { style: "percent", maximumFractionDigits: 1 });
-const ondalik = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-
-/** Hedef kartlarının metni. Eşik ve hesap sunucudadır; burada yalnız dil var. */
-const HEDEF_METNI: Record<
-  SuccessGoalCode,
-  { baslik: string; aciklama: string; orneklem: string; bicim: (v: number) => string }
-> = {
-  CANCEL_RATE: {
-    baslik: "İptal oranı",
-    aciklama:
-      "Senin iptal ettiğin derslerin, tamamlanan ve iptal ettiğin derslere oranı. En az 5 ders gerekir.",
-    orneklem: "ders",
-    bicim: (v) => yuzde.format(v),
-  },
-  MISSED_LESSONS: {
-    baslik: "Kaçırılan ders",
-    aciklama:
-      "Öğrencinin “öğretmen gelmedi” bildirimi incelenip ücreti iade edilen dersler.",
-    orneklem: "geçmiş ders",
-    bicim: (v) => String(v),
-  },
-  RESPONSE_24H: {
-    baslik: "24 saatte mesaj yanıtı",
-    aciklama:
-      "Öğrencilerin başlattığı konuşmalarda ilk mesaja 24 saat içinde yanıt verdiğin konuşmaların oranı. En az 3 konuşma gerekir.",
-    orneklem: "konuşma",
-    bicim: (v) => yuzde.format(v),
-  },
-  RATING: {
-    baslik: "Ortalama puan",
-    aciklama: "Tüm değerlendirmelerinin ortalaması; seçili dönemden bağımsızdır. En az 3 değerlendirme gerekir.",
-    orneklem: "değerlendirme",
-    bicim: (v) => ondalik.format(v),
-  },
-};
-
-const KARSILASTIRMA: Record<SuccessGoal["comparator"], string> = { lte: "≤", gte: "≥", eq: "=" };
 
 function Trend({ trend }: { trend: MetricTrend }) {
   if (trend.trend_pct === null) return null;
@@ -183,49 +139,6 @@ function MetrikKarti({
   );
 }
 
-function HedefKarti({ hedef, kucuk }: { hedef: SuccessGoal; kucuk?: boolean }) {
-  const metin = HEDEF_METNI[hedef.code];
-  const durum =
-    hedef.achieved === null
-      ? { yazi: "Veri yetersiz", sinif: "text-slate-500", isaret: "" }
-      : hedef.achieved
-        ? { yazi: "Hedefte", sinif: "text-emerald-700", isaret: "✓" }
-        : { yazi: "Hedefin dışında", sinif: "text-red-700", isaret: "✗" };
-  return (
-    <article className={kucuk ? "rounded-lg border border-slate-200 bg-white p-4" : KART}>
-      <div className="flex items-start justify-between gap-3">
-        <h3 className={kucuk ? "text-sm font-semibold leading-5 text-slate-900" : ETIKET}>
-          {metin.baslik}
-        </h3>
-        {hedef.live && (
-          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold leading-5 text-emerald-700">
-            Canlı
-          </span>
-        )}
-      </div>
-      <p className={KUCUK_ACIKLAMA}>
-        Hedef: {KARSILASTIRMA[hedef.comparator]} {metin.bicim(hedef.target)}
-      </p>
-      <p
-        className={`mt-3 font-bold tabular-nums text-slate-900 ${
-          kucuk ? "text-2xl leading-8" : "text-[32px] leading-9"
-        }`}
-      >
-        {hedef.value === null ? "—" : metin.bicim(hedef.value)}
-      </p>
-      <p className={`mt-1 text-base font-semibold leading-6 ${durum.sinif}`}>
-        {durum.isaret && <span aria-hidden>{durum.isaret} </span>}
-        {durum.yazi}
-        <span className="font-normal text-slate-500">
-          {" "}
-          · {hedef.sample} {metin.orneklem}
-        </span>
-      </p>
-      <p className={`mt-3 ${KUCUK_ACIKLAMA}`}>{metin.aciklama}</p>
-    </article>
-  );
-}
-
 function Iskelet({ adet, yukseklik }: { adet: number; yukseklik: string }) {
   return (
     <>
@@ -239,7 +152,6 @@ function Iskelet({ adet, yukseklik }: { adet: number; yukseklik: string }) {
 export default function TutorAnalytics() {
   const [donem, setDonem] = useState<AnalyticsPeriod>("month");
   const genel = useTutorOverview(donem);
-  const hedefler = useTutorGoals(donem);
   const seri = useTutorSeries(donem);
   const o = genel.data;
 
@@ -279,10 +191,8 @@ export default function TutorAnalytics() {
             <>
               {/* Hero: öğretmenin gerçekten takip ettiği tek şey — kazanç trendi. */}
               <div aria-busy={genel.isFetching} className={genel.isPlaceholderData ? "opacity-60" : ""}>
-                <Link
-                  to={ROUTES.tutorEarnings}
-                  className="block rounded-lg border border-slate-200 bg-white p-6 transition hover:border-slate-900 sm:p-8"
-                >
+                {/* Bağlantı değil: ayrı kazanç ekranı yok (cüzdan üst barda). */}
+                <div className="rounded-lg border border-slate-200 bg-white p-6 sm:p-8">
                   <p className={ACIKLAMA}>Kazanç</p>
                   <p className="mt-2 text-4xl font-bold leading-10 tabular-nums text-slate-900 sm:text-5xl sm:leading-[1.1]">
                     {formatTRY(o.earnings.value, "0 TL")}
@@ -306,7 +216,7 @@ export default function TutorAnalytics() {
                     {formatDate(o.current_start)} – {formatDate(o.current_end)}, önceki dönemle
                     karşılaştırıldı.
                   </p>
-                </Link>
+                </div>
               </div>
 
               <div
@@ -341,35 +251,6 @@ export default function TutorAnalytics() {
           )}
         </section>
 
-        <section aria-labelledby="basari-hedefleri" className="space-y-4">
-          <div>
-            <h2 id="basari-hedefleri" className={BOLUM_BASLIGI}>
-              Başarı hedefleri
-            </h2>
-            <p className={`mt-1 ${ACIKLAMA}`}>
-              Öğrencilerin güvenini etkileyen dört ölçü. Yeterli veri yoksa değerlendirilmez.
-            </p>
-          </div>
-          {hedefler.isError && !hedefler.data ? (
-            <ErrorState
-              description={getErrorMessage(hedefler.error, "Başarı hedefleri yüklenemedi.")}
-              onRetry={() => void hedefler.refetch()}
-            />
-          ) : (
-            <div
-              aria-busy={hedefler.isFetching}
-              className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${
-                hedefler.isPlaceholderData ? "opacity-60" : ""
-              }`}
-            >
-              {!hedefler.data ? (
-                <Iskelet adet={4} yukseklik="h-48" />
-              ) : (
-                hedefler.data.map((h) => <HedefKarti key={h.code} hedef={h} kucuk />)
-              )}
-            </div>
-          )}
-        </section>
       </div>
     </DashboardShell>
   );
