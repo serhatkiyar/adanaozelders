@@ -89,7 +89,14 @@ const ETIKET_BICIMI = [
   /'Öğrenci'/,
   /`Öğrenci`/,
   />\s*Öğrenci\s*</,
-  /(?:title|header|label|aria-label|placeholder)=\{?"Öğrenci/,
+  // Sondaki `\b` 24 Eyl 2026'da eklendi: desen önceden `"Öğrenci` ÖNEKİNİ
+  // arıyordu ve öğretmenin kendi öğrencilerini anlatan ÇOĞUL/iyelikli metni
+  // ("Öğrencilerim hakkımda ne diyor?", "Öğrencileri veya mesajları ara")
+  // rol etiketi sanıyordu. O metinler kararın 3. maddesindeki hedef kitle
+  // metnidir (bkz. `lib/roles.ts`); `rolEtiketi()`ne bağlamak "Üyelerim…"
+  // üretirdi. `\b` yalnız kelimenin BİTTİĞİ yeri ister: `label="Öğrenci"` ve
+  // `label="Öğrenci adı"` hâlâ yakalanır (aşağıdaki iki yönlü prova).
+  /(?:title|header|label|aria-label|placeholder)=\{?"Öğrenci\b/,
 ];
 
 function etiketBicimindeGecenler(kelime: RegExp[]): string[] {
@@ -157,5 +164,26 @@ describe("rol etiketi tek kaynaktan gelir", () => {
     // diye anlar ve pazarlama metnini de bozar.
     const hedefKitle = 'İlanını gören öğrenciler sana ulaşır';
     expect(ETIKET_BICIMI.some((d) => d.test(hedefKitle))).toBe(false);
+    // Öznitelikte ÇOĞUL/iyelikli hedef kitle metni de etiket değildir
+    // (24 Eyl 2026 · öğretmen profili ve mesaj paneli).
+    for (const metin of [
+      'title="Öğrencilerim hakkımda ne diyor?"',
+      'placeholder="Öğrencileri veya mesajları ara"',
+    ]) {
+      expect(ETIKET_BICIMI.some((d) => d.test(metin)), metin).toBe(false);
+    }
+  });
+
+  it("TERS PROVA: öznitelikte rol etiketi olarak `Öğrenci` hâlâ YAKALANIR", () => {
+    // `\b` daraltması gevşetme olmasın: kelimenin kendisiyle başlayan etiket
+    // (tek başına ya da boşlukla devam eden) yine kırmızıdır.
+    for (const metin of [
+      'title="Öğrenci"',
+      'label="Öğrenci adı"',
+      'aria-label={"Öğrenci"}',
+      'header="Öğrenci"',
+    ]) {
+      expect(ETIKET_BICIMI.some((d) => d.test(metin)), metin).toBe(true);
+    }
   });
 });

@@ -188,6 +188,7 @@ export function SablonPaneli({
                 onChange={(e) => setBaslik(e.target.value)}
                 maxLength={BASLIK_UST_SINIR}
                 placeholder="Şablon başlığı"
+                aria-label="Şablon başlığı"
                 className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20"
               />
               <textarea
@@ -196,6 +197,7 @@ export function SablonPaneli({
                 maxLength={GOVDE_UST_SINIR}
                 rows={3}
                 placeholder="Mesaj metni"
+                aria-label="Mesaj metni"
                 className="w-full resize-none rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka/20"
               />
               <div className="flex justify-end gap-2">

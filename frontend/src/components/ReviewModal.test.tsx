@@ -9,6 +9,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ReviewModal } from "@/components/ReviewModal";
 import type { ReviewOut } from "@/types";
 
 const olustur = vi.fn();
@@ -19,11 +20,10 @@ vi.mock("@/hooks/useReviews", () => ({
   useCreateReview: () => ({ mutate: olustur, isPending: false }),
   useUpdateReview: () => ({ mutate: guncelle, isPending: false }),
 }));
+// `vi.mock` hoist edilir; DİNAMİK `import()` kullanılmaz (tembelModul nöbetçisi).
 vi.mock("@/store/toastStore", () => ({
   toast: { error: (m: string) => hata(m), success: vi.fn() },
 }));
-
-const { ReviewModal } = await import("@/components/ReviewModal");
 
 const EKSIK = "Değerlendirmeni göndermek için tüm puanları seç.";
 

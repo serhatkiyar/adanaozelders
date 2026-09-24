@@ -20,6 +20,7 @@
  * için öğrendiği dersin aynısı: doğrulanmamış bir URL parametresi doğrudan
  * API çağrısına geçirilmez.
  */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,13 +82,26 @@ function AdresGozcusu() {
   return null;
 }
 
+/*
+ * QueryClient sağlayıcısı 24 Eyl 2026'da eklendi: seviye filtresi (22 Eyl
+ * 2026, "feat(egitmen): seviye filtresi…") ekrana `useSeviyeSecenekleri`
+ * getirdi; o da ders kataloğunu ve seviye merdivenlerini React Query ile
+ * çeker. Sağlayıcı olmadan ekran hiç çizilmiyordu ve bu dosyanın on testi
+ * cinsiyetle ilgisiz bir nedenle düşüyordu. Katalog bu testin konusu değil;
+ * `retry: false` ile yanıt gelmez, seviye seçenekleri boş kalır.
+ */
 function ciz(adres: string) {
   sonAdres = "";
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
   return render(
-    <MemoryRouter initialEntries={[adres]}>
-      <Marketplace />
-      <AdresGozcusu />
-    </MemoryRouter>
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[adres]}>
+        <Marketplace />
+        <AdresGozcusu />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -139,6 +153,11 @@ describe("pazaryeri · cinsiyet ↔ URL", () => {
     await waitFor(() => {
       expect(sonAramaParametreleri()?.gender).toBe(Gender.FEMALE);
     });
+    // 24 Eyl 2026: histogram artık sayfanın gövdesinde değil, fiyat gövdesinde
+    // (`FiyatAraligi`, 16 Eyl 2026 "Fiyat ⌄" çipi) ve yalnız çip/pencere
+    // AÇIKKEN çizilir (maliyet deseni). İddia aynı; ölçmek için çip açılır.
+    fireEvent.click(screen.getAllByRole("button", { name: /^Fiyat/ })[0]);
+    await waitFor(() => expect(vi.mocked(useTutorPriceHistogram)).toHaveBeenCalled());
     const hist = vi.mocked(useTutorPriceHistogram).mock.calls.at(-1)?.[0];
     expect(hist?.gender, "histogram başka bir küme ölçerse fiyat aralığı yanlış olur").toBe(
       Gender.FEMALE

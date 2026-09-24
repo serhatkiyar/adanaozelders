@@ -154,6 +154,10 @@ export const OLCUM_TABANI = [
   "src/components/AmenityTagGrid.tsx",
   "src/components/AppIcon.tsx",
   "src/components/Avatar.tsx",
+  // 24 Eyl 2026 · öğretmen cüzdanı (üst bar kutusu + mobil çekmece satırı).
+  // `DashboardHeader` (zaten tabanda) import ediyor — import grafiğiyle
+  // ölçüme girdi.
+  "src/components/CuzdanPaneli.tsx",
   "src/components/DashboardHeader.tsx",
   "src/components/DashboardShell.tsx",
   "src/components/DeliveryRouteMap.tsx",
@@ -194,6 +198,13 @@ export const OLCUM_TABANI = [
   "src/components/Spinner.tsx",
   "src/components/StarRating.tsx",
   "src/components/map/MapGate.tsx",
+  // 24 Eyl 2026 · üst bardaki mesaj önizleme paneli (22 Eyl 2026 kullanıcı
+  // kararı: mesajlar sayfası dışında tam sayfa yerine panel açılır) ve onun
+  // şablon/emoji parçaları. `DashboardHeader` → `MesajlarPaneli` →
+  // `SablonPaneli`/`EmojiSecici` import grafiğiyle ölçüme girdi.
+  "src/components/mesaj/EmojiSecici.tsx",
+  "src/components/mesaj/MesajlarPaneli.tsx",
+  "src/components/mesaj/SablonPaneli.tsx",
   // Dairesel ok düğmesi (7 Eyl 2026): vitrin/şerit kaydırma ve "tümünü gör"
   // oklarının TEK kaynağı. Üç ayrı el yazımını değiştirdi; ölçüme sıfır borç
   // ekler (ham düğme değil, adı zorunlu `aria-label` ile geliyor).

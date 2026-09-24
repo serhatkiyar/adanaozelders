@@ -8,6 +8,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CuzdanIcerik } from "@/components/CuzdanPaneli";
 import type { Wallet } from "@/types";
 
 let cuzdan: Wallet;
@@ -19,9 +20,8 @@ vi.mock("@/hooks/useWallet", () => ({
   useRequestWithdrawal: () => ({ mutate: paraCek, isPending: false }),
   useDownloadWalletCsv: () => ({ mutate: indir, isPending: false }),
 }));
+// `vi.mock` hoist edilir; DİNAMİK `import()` kullanılmaz (tembelModul nöbetçisi).
 vi.mock("@/store/toastStore", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
-
-const { CuzdanIcerik } = await import("@/components/CuzdanPaneli");
 
 function goster() {
   render(

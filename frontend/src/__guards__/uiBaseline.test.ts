@@ -215,7 +215,7 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     expect(olcum.dosyalar).toEqual(OLCUM_TABANI);
   });
 
-  it("ham <button sayısı artamaz (bugünkü taban 102)", () => {
+  it("ham <button sayısı artamaz (bugünkü taban 122)", () => {
     // İP-A3c'de 126 → 160: taban altı ekran genişledi (Operator*/Courier*/
     // Delivery*), bu ekranlarda zaten duran 34 ham buton görünür oldu.
     //
@@ -292,7 +292,17 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // (admin bileşeni → rol-paylaşımlı kabuk) ve yabancı bir görsel dil
     // üretirdi; `DashboardHeader.tsx` da aynı gerekçeyle zaten ham kalmış
     // durumda (bu dosya reachability ile tabana girmeden önce de öyleydi).
-    expect(olcum.rawButton).toBeLessThanOrEqual(102);
+    // 24 Eyl 2026'da 102 → 122 (**+20**): `DashboardHeader`ın import grafiği
+    // üzerinden DÖRT dosya tabana girdi (bkz. `OLCUM_TABANI` yorumu) —
+    // `mesaj/MesajlarPaneli` 7, `mesaj/SablonPaneli` 7, `CuzdanPaneli` 4,
+    // `mesaj/EmojiSecici` 2. Regresyon DEĞİL, gizli borcun görünür olmasıdır:
+    // üçü 22–23 Eyl 2026 kullanıcı kararlarıyla (mesaj önizleme paneli,
+    // öğretmen cüzdanı) üst bara girdi ve ölçüm listesi o gün güncellenmemişti.
+    // Düğmeler `MobilPanelCekmecesi` ile AYNI aileden: rol-paylaşımlı üst bar
+    // kabuğunun ikon tetikleyicileri (hepsi `aria-label`lı) ve açılır panel
+    // içi eylemler; admin `ui2` `Button`ını oraya taşımak aynı yanlış yönlü
+    // bağımlılığı üretirdi.
+    expect(olcum.rawButton).toBeLessThanOrEqual(122);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (bugünkü taban 7)", () => {
@@ -362,6 +372,12 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // KALAN 7'nin tamamı bu dalganın kapsamı dışındaki üç dosyada:
     //   `DeliveryDriver` 4 (saha/mobil ekran, kendi dalgasını bekliyor) ·
     //   `PersonalizeModal` 2 · `ImageCropModal` 1 (paylaşılan widget'lar).
+    //
+    // 24 Eyl 2026: tabana giren mesaj paneli dosyaları DÖRT adsız kontrol
+    // getirdi (`MesajlarPaneli` 2 · `SablonPaneli` 2 — yalnız `placeholder`
+    // taşıyan yazı/arama alanları). Eşik GEVŞETİLMEDİ: dördü de placeholder
+    // ile aynı metni taşıyan `aria-label` aldı (`Messages.tsx`teki arama
+    // kutusunun deseni), görünüm değişmedi. Taban 7'de kaldı.
     expect(olcum.adsizKontrol).toBeLessThanOrEqual(7);
   });
 

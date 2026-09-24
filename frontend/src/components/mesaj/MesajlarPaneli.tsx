@@ -314,6 +314,7 @@ export function MesajlarPaneli() {
                       }
                     }}
                     placeholder="Mesajın"
+                    aria-label="Mesajın"
                     className="max-h-24 min-h-[38px] w-full resize-none border-0 bg-transparent px-3.5 pt-2.5 text-sm text-slate-900 placeholder-slate-500 outline-none focus:ring-0 "
                   />
                   <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
@@ -352,6 +353,7 @@ export function MesajlarPaneli() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Öğrencileri veya mesajları ara"
+                    aria-label="Öğrencileri veya mesajları ara"
                     className="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-slate-900 placeholder-slate-500 outline-none focus:ring-0 "
                   />
                 </div>

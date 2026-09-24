@@ -351,6 +351,7 @@ const CALISMA_ZAMANI_ADSIZ: Record<string, number> = {
 const KAPI_KAPSAMI = [
   "src/components/AmenityTagGrid.tsx",
   "src/components/AppIcon.tsx",
+  "src/components/CuzdanPaneli.tsx",
   "src/components/DashboardHeader.tsx",
   "src/components/DashboardShell.tsx",
   "src/components/ExamSessionsManager.tsx",
@@ -372,6 +373,11 @@ const KAPI_KAPSAMI = [
   "src/components/ShareModal.tsx",
   "src/components/Spinner.tsx",
   "src/components/StarRating.tsx",
+  // 24 Eyl 2026 · üst barın mesaj önizleme paneli ve parçaları
+  // (`OLCUM_TABANI`na `DashboardHeader` import grafiğiyle girdiler).
+  "src/components/mesaj/EmojiSecici.tsx",
+  "src/components/mesaj/MesajlarPaneli.tsx",
+  "src/components/mesaj/SablonPaneli.tsx",
   "src/components/ui/Modal.tsx",
   "src/components/admin/AccessState.tsx",
   "src/components/admin/CourierManager.tsx",
@@ -646,6 +652,10 @@ const KAPI_KAPSAMI = [
 const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" | "kosullu"> = {
   "src/components/AmenityTagGrid.tsx": "kosullu",
   "src/components/AppIcon.tsx": "sunum",
+  // 24 Eyl 2026 · öğretmen cüzdanı: bakiye + "Para çek" / "Geçmişi dosya
+  // olarak ver" düğmeleri ve ayarlar bağlantısı; form kontrolü HİÇ yok
+  // (tutar sunucuda hesaplanır, kullanıcı tutar girmez).
+  "src/components/CuzdanPaneli.tsx": "sunum",
   "src/components/DashboardHeader.tsx": "kabuk",
   "src/components/DashboardShell.tsx": "kabuk",
   "src/components/ExamSessionsManager.tsx": "kosullu",
@@ -672,6 +682,13 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/ShareModal.tsx": "kosullu",
   "src/components/Spinner.tsx": "sunum",
   "src/components/StarRating.tsx": "sunum",
+  // 24 Eyl 2026 · mesaj önizleme paneli. Emoji seçici yalnız tetik düğmesi
+  // + emoji ızgarası (form kontrolü yok). Panel ve şablon paneli kapalıyken
+  // yalnız tetik düğmesini çizer; yazı/arama alanları ve şablon formu açık
+  // dalda yaşar ve orada `aria-label`lıdır (`uiBaseline` adsız kontrol notu).
+  "src/components/mesaj/EmojiSecici.tsx": "sunum",
+  "src/components/mesaj/MesajlarPaneli.tsx": "kosullu",
+  "src/components/mesaj/SablonPaneli.tsx": "kosullu",
   "src/components/admin/AccessState.tsx": "sunum",
   // ── İP-B2 · liste ailesi ──
   // `aracCubugu`: propsuz hâlde ne arama ne filtre bildirilir; arama girdisi

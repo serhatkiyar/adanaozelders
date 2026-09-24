@@ -193,6 +193,16 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/admin/AdminPayoutsPage.tsx <Button> !odemeYapilabilir(b)": "onkosul",
   "src/panel/pages/finans/HakEdisler.tsx <Button> !odemeYapilabilir(kayit)": "onkosul",
   "src/components/LibraryMapPanel.tsx <button> !week": "secim",
+  // 24 Eyl 2026 · mesaj önizleme panelinin gönder düğmesi (`uiBaseline`
+  // tabanına `DashboardHeader` import grafiğiyle girdi): boş mesajda
+  // gönderilecek ÖZNE yok — `VariantMatrixPanel` "Tümüne fiyat uygula"
+  // (`!topluFiyat.trim()`) emsaliyle aynı sınıf; `isPending` kısmı `islem`.
+  "src/components/mesaj/MesajlarPaneli.tsx <button> send.isPending || !text.trim()": "secim",
+  // 24 Eyl 2026 · öğretmen cüzdanı "Para çek": sunucunun verdiği engel
+  // gerekçesi (`withdraw_block_reason`) düğmenin hemen altında yazılı,
+  // açık talep varsa talebin durumu görünür; `isPending` kısmı `islem`.
+  "src/components/CuzdanPaneli.tsx <button> engel !== null || paraCek.isPending": "onkosul",
+  "src/components/CuzdanPaneli.tsx <button> indir.isPending": "islem",
 
   // ── onkosul: sebebi EKRANDA yazan durum kilidi ──
   //   • `engeller.length > 0` — engeller listeleniyor (CountSessionDetail:498-505,
@@ -232,9 +242,10 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
 
   // ── gecerlilik-borc: KİLİTLİ KARARIN İHLALİ (İP-A8'de kayda geçti) ──
   //
-  // Sekizi de göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
+  // Dokuzu da göç eden 21 ekranın DIŞINDA. Bu paket B-10'u (DeliveryOrdersPage
   // "Kargola") kapattı; bunlar kapsam dışı ve ayrı bir pakete bırakıldı.
-  // Kayıtta durmalarının işlevi: dokuzuncusu doğduğu gün CI kırılır.
+  // Kayıtta durmalarının işlevi: onuncusu doğduğu gün CI kırılır.
+  // (8 → 9, 24 Eyl 2026: `SablonPaneli` "Kaydet", aşağıdaki son kayıt.)
   //
   // (İ9 · Boşluk 1'de eklenen `UrunFormu.tsx` "Grubu Oluştur" ve
   // `VaryantPenceresi.tsx` "Önizle" kayıtları commit `2287611`de KAPANDI —
@@ -249,6 +260,14 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> busy || note.trim().length < 3": "gecerlilik-borc",
   "src/pages/DeliveryRunHandover.tsx <button> !kod.trim() || scan.isPending": "gecerlilik-borc",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> !kod.trim()": "gecerlilik-borc",
+  // DOKUZUNCU üye (24 Eyl 2026): mesaj şablonu "Kaydet" düğmesi başlık ya da
+  // metin boşken kapanıyor, sebep alanda yazmıyor. Düğme 22 Eyl 2026'da
+  // ("feat(mesajlar): mesaj sablonlari…") doğdu ama dosya ölçüm tabanına
+  // 24 Eyl'e kadar girmediği için nöbetçi görmüyordu. Kilitli kararın ihlali
+  // olarak İSİMLE kayda geçti; kapatılması (düğme açık kalır, eksik alan
+  // alanda yazılır) kullanıcıya görünen bir değişiklik olduğu için ayrı iştir.
+  "src/components/mesaj/SablonPaneli.tsx <button> olustur.isPending || !baslik.trim() || !govde.trim()":
+    "gecerlilik-borc",
 };
 
 /**

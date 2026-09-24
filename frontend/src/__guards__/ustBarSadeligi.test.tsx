@@ -83,7 +83,12 @@ afterEach(() => cleanup());
  * duyarlı düzenin ayrıntısı, "nereye gidiliyor" ise kararın kendisi.
  */
 function ustBardakiHedefler(): string[] {
+  // Logo bağlantısı KİMLİĞİYLE (`aria-label="Ana sayfa"`) dışarıda tutulur,
+  // adresiyle değil (24 Eyl 2026): öğretmenin logosu artık kendi panosuna
+  // (`/genel-bakis`) gider (`roleHome`, kullanıcı kararı 22 Eyl 2026). Adresi
+  // süzgece yazmak, aynı adrese giden GERÇEK bir kısayolu da gizlerdi.
   const hepsi = Array.from(document.body.querySelectorAll("a[href]"))
+    .filter((a) => a.getAttribute("aria-label") !== "Ana sayfa")
     .map((a) => a.getAttribute("href") ?? "")
     .filter((h) => h !== "/" && h !== ROUTES.home);
   return [...new Set(hepsi)].sort();
@@ -103,17 +108,37 @@ function ustBardakiHedefler(): string[] {
  * `screen.getByRole("button", { name: "Bildirimler" })` ile ölçülür. Panelin
  * kendi içindeki "Tüm bildirimleri gör" bağlantısı tam sayfayı KAPATMAZ,
  * üstüne bir hızlı-bakış ekler (bkz. aşağıdaki üçüncü `describe`).
+ *
+ * 24 Eylül 2026'da GÜNCELLENDİ (iki kullanıcı kararı bu nöbetçiye
+ * yansıtılmamıştı):
+ *  - Mesajlar da artık `<a href>` DEĞİL (22 Eyl 2026, Preply referansı:
+ *    "mesajlar sayfasında değilken tam sayfa yerine panel açılsın") —
+ *    `MesajlarPaneli` düğmesi. Yalnız `/mesajlar` sayfasındayken düz
+ *    bağlantıdır. `UST_BAR_SABIT` bu yüzden BOŞ; mesaj ve bildirim
+ *    `UST_BAR_DUGMELERI` ile, düğme olarak ölçülür.
+ *  - Öğretmende üst bara CÜZDAN düğmesi girdi (23 Eyl 2026, "feat(cuzdan)":
+ *    ayrı kazançlar ekranı kalktı, bakiye + "Para çek" bu kutuda). Yalnız
+ *    öğretmende vardır; öğrencide OLMADIĞI da ölçülür.
  */
-const UST_BAR_SABIT = [ROUTES.messages];
+const UST_BAR_SABIT: string[] = [];
+const UST_BAR_DUGMELERI = ["Mesajlar", "Bildirimler"];
+
+function dugmelerVar(adlar: string[]) {
+  for (const ad of adlar) {
+    expect(screen.getAllByRole("button", { name: ad }).length, `üst barda "${ad}" düğmesi yok`)
+      .toBeGreaterThan(0);
+  }
+}
 
 describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
-  it("öğrencide mesaj (bağlantı) + bildirim (panel düğmesi) + Favorilerim", () => {
+  it("öğrencide mesaj + bildirim (panel düğmeleri) + Favorilerim — cüzdan YOK", () => {
     sar(UYE_NAV);
     expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT, ROUTES.favorites].sort());
-    expect(screen.getByRole("button", { name: "Bildirimler" })).toBeTruthy();
+    dugmelerVar(UST_BAR_DUGMELERI);
+    expect(screen.queryByRole("button", { name: "Cüzdan" })).toBeNull();
   });
 
-  it("öğretmende yalnız mesaj (bağlantı) + bildirim (panel düğmesi) — kalp YOK, favoriler hesap menüsünde", () => {
+  it("öğretmende mesaj + bildirim + cüzdan (panel düğmeleri) — bağlantı YOK, kalp YOK, favoriler hesap menüsünde", () => {
     // 18 Eyl 2026'da DEĞİŞTİ (kullanıcı kararı): Preply'da favori yalnız
     // "favori öğretmen"dir ve eğitmenin üst barında kalp yoktur. Eğitmenin
     // favorileri menüde kalır (`ustBarda: false`), üst bara çıkmaz.
@@ -128,19 +153,20 @@ describe("üst bar · mesaj + bildirim + favori (ÜK-2)", () => {
     } as never);
     sar(TUTOR_NAV);
     expect(ustBardakiHedefler()).toEqual([...UST_BAR_SABIT].sort());
-    expect(screen.getByRole("button", { name: "Bildirimler" })).toBeTruthy();
+    dugmelerVar([...UST_BAR_DUGMELERI, "Cüzdan"]);
     // Menüden düşmedi: favoriler hesap menüsünden hâlâ açılır.
     expect(TUTOR_NAV.some((i) => i.to === ROUTES.favorites)).toBe(true);
   });
 
   it("üst bara menüden BAŞKA kısayol sızmaz — üçüncü bağlantı eklenirse kırılır", () => {
-    // ÜK-2'nin sayısal çıpası: sabit tek bağlantı (Mesajlar; bildirim artık
-    // bağlantı değil düğme) + en fazla favori.
+    // ÜK-2'nin sayısal çıpası: sabit bağlantılar + en fazla favori.
+    // 24 Eyl 2026: sabit bağlantı kalmadı (Mesajlar da düğme oldu), tavan
+    // 2'den 1'e indi — gevşek kalsaydı ikinci bir kısayol sessizce sığardı.
     for (const nav of [UYE_NAV, TUTOR_NAV, OPERATOR_NAV]) {
       cleanup();
       sar(nav);
       const hedefler = ustBardakiHedefler();
-      expect(hedefler.length).toBeLessThanOrEqual(2);
+      expect(hedefler.length).toBeLessThanOrEqual(UST_BAR_SABIT.length + 1);
       for (const h of hedefler) {
         expect([...UST_BAR_SABIT, ROUTES.favorites]).toContain(h);
       }
