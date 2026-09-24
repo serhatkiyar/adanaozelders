@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { Icon, type IconName } from "@/components/AppIcon";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { degerlendirmeTarihi, toDistributionRows } from "@/lib/reviewStats";
@@ -37,6 +38,13 @@ interface ReviewsSectionProps {
   onShowAll?: () => void;
   /** Her kartın altına ek aksiyon (ör. şikayet et). */
   renderItemAction?: (review: ReviewItem) => ReactNode;
+  /** Verilirse ve hiç değerlendirme yoksa Preply deseni: görünür başlık
+   *  (`title`) + çerçeveli kutuda bu metin (ör. "Dilan için değerlendirme yok"). */
+  bosMetin?: string;
+  /** Preply öğretmen profili düzeni: görünür başlık (`title`), büyük puan +
+   *  rozet ve "N öğrenci değerlendirmesine göre". Dağılım çubukları burada
+   *  değil "tümünü göster" penceresindedir (distribution verilmez). */
+  baslikGoster?: boolean;
 }
 
 // Airbnb-tarzı gömük değerlendirme bölümü: özet + 5→1 dağılım + yorum ızgarası.
@@ -52,14 +60,40 @@ export function ReviewsSection({
   form,
   onShowAll,
   renderItemAction,
+  bosMetin,
+  baslikGoster = false,
 }: ReviewsSectionProps) {
+  if (count === 0 && bosMetin) {
+    return (
+      <section>
+        <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+        <div className="mt-4 rounded-lg border border-slate-200 px-6 py-7 text-center text-base text-slate-900">
+          {bosMetin}
+        </div>
+      </section>
+    );
+  }
+
   const rows = toDistributionRows(distribution);
   const preview = reviews.slice(0, previewCount);
   const hasMore = count > preview.length;
 
   return (
     <section>
-      {/* Özet başlık */}
+      {baslikGoster ? (
+        <>
+          <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+          {count > 0 && average != null && (
+            <>
+              <BuyukPuan puan={average} className="mt-4" />
+              <p className="mt-1 text-sm text-slate-500">
+                {count} öğrenci değerlendirmesine göre
+              </p>
+            </>
+          )}
+        </>
+      ) : (
+      /* Özet başlık (kütüphane, öğretmen paneli) */
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-900 ">
           <svg viewBox="0 0 20 20" className="h-6 w-6 text-amber-400" fill="currentColor" aria-hidden>
@@ -73,6 +107,7 @@ export function ReviewsSection({
             : "· Henüz değerlendirme yok"}
         </span>
       </div>
+      )}
       {count > 0 && criteria.length > 0 && (
         <p className="mt-2 text-sm text-slate-600 ">
           {criteria.map((k, i) => (
@@ -88,9 +123,9 @@ export function ReviewsSection({
       )}
 
       {/* Dağılım + yorum formu */}
-      {(count > 0 || form) && (
+      {((count > 0 && distribution) || form) && (
         <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,18rem)_1fr] md:gap-12">
-          {count > 0 && (
+          {count > 0 && distribution && (
             <div>
               <p className="mb-2 text-sm font-semibold text-slate-700 ">
                 Genel puan
@@ -118,7 +153,9 @@ export function ReviewsSection({
 
       {/* Yorum kartları */}
       {preview.length > 0 && (
-        <div className="mt-10 grid gap-x-12 gap-y-8 sm:grid-cols-2">
+        <div
+          className={`${baslikGoster ? "mt-6" : "mt-10"} grid gap-x-12 gap-y-8 sm:grid-cols-2`}
+        >
           {preview.map((r) => (
             <ReviewCard key={r.id} review={r} action={renderItemAction?.(r)} />
           ))}
@@ -235,5 +272,68 @@ export function YorumYazari({
         </p>
       </div>
     </div>
+  );
+}
+
+/** Büyük ortalama puan + yıldız rozeti (Preply "5 ⭐" düzeni). Profil
+ *  bölümü ve "tümünü göster" penceresi aynı görünümü kullanır. */
+export function BuyukPuan({ puan, className = "" }: { puan: number; className?: string }) {
+  return (
+    <div className={`flex items-center gap-3 ${className}`.trim()}>
+      <span className="text-5xl font-bold leading-none tracking-tight text-slate-900 tabular-nums">
+        {puan.toFixed(1)}
+      </span>
+      <span
+        aria-hidden
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 ring-1 ring-amber-300"
+      >
+        <svg viewBox="0 0 20 20" className="h-5 w-5 text-amber-500" fill="currentColor">
+          <path d="M10 1.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L10 14.9 4.7 17.6l1-5.8L1.5 7.7l5.9-.9L10 1.5z" />
+        </svg>
+      </span>
+    </div>
+  );
+}
+
+/** Kriter ikonları — uygulama ikon seti (Fluent, AppIcon). */
+const KRITER_IKONU: Record<string, IconName> = {
+  Netlik: "commentQuote",
+  Motivasyon: "emoji",
+  Hazırlık: "edit",
+};
+
+/** Alt kriter kutucukları (Preply "Ders puanı"): puan + ad + ikon. Yalnız
+ *  puan almış kriterler gelir (bkz. `kriterOrtalamalari`). */
+export function KriterKutulari({ kriterler }: { kriterler: { ad: string; ortalama: number }[] }) {
+  return (
+    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {kriterler.map((k) => {
+        const ikon = KRITER_IKONU[k.ad];
+        return (
+          <li key={k.ad} className="rounded-lg bg-slate-100 p-4">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-lg font-bold leading-6 text-slate-900 tabular-nums">
+                {k.ortalama.toFixed(1)}
+              </span>
+              {ikon && <Icon name={ikon} className="h-6 w-6 text-slate-800" />}
+            </div>
+            <p className="mt-2 text-base text-slate-900">{k.ad}</p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** "Ders puanı" bölümü — öğretmen profilinde değerlendirmelerin üstünde. */
+export function DersPuani({ kriterler }: { kriterler: { ad: string; ortalama: number }[] }) {
+  if (kriterler.length === 0) return null;
+  return (
+    <section>
+      <h2 className="text-xl font-bold text-slate-900">Ders puanı</h2>
+      <div className="mt-4">
+        <KriterKutulari kriterler={kriterler} />
+      </div>
+    </section>
   );
 }

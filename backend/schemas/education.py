@@ -83,6 +83,24 @@ class EducationOut(BaseModel):
     verified_at: datetime.datetime | None = None
 
 
+class PublicEducationOut(BaseModel):
+    """Herkese açık öğretmen detayı (Özgeçmiş bölümü). Diploma DOSYASININ
+    adresi/adı YOK: hassas belge `private/` altında kalır ve yalnız sahibine /
+    admine imzalı adresle sunulur. Rozet için doğrulama durumu yeterli."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    school_name: str
+    degree: str | None = None
+    field_of_study: str | None = None
+    start_year: int | None = None
+    end_year: int | None = None
+    document_type: DocumentType | None = None
+    verification_status: VerificationStatus = "NONE"
+    verified_at: datetime.datetime | None = None
+
+
 class OwnEducationOut(EducationOut):
     """Sahibine (eğitmen /me) ve admin'e özel — barkod + TCKN + red notu dahil.
     Public EducationOut'ta YOK (TCKN asla public dönmez)."""

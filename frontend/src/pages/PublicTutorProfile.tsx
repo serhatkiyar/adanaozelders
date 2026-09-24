@@ -1,11 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { Icon } from "@/components/AppIcon";
 import { useGirisKapisi } from "@/hooks/useGirisKapisi";
 import { PublicShell } from "@/components/PublicShell";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
-import { ReviewsSection } from "@/components/ReviewsSection";
+import { DersPuani, ReviewsSection } from "@/components/ReviewsSection";
 import { kriterOrtalamalari, reviewOutToItem } from "@/lib/reviewStats";
 import { useEffect, useState } from "react";
 import { useReviewsByTutor, useTutorRatingDistribution } from "@/hooks/useReviews";
@@ -15,6 +16,7 @@ import { WEEKDAYS_SHORT, weeklySchedule } from "@/lib/availability";
 import { formatRateSymbol, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { MesajDugmesi } from "@/components/egitmen/MesajDugmesi";
 import { useNavSearch } from "@/hooks/useNavSearch";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
@@ -223,8 +225,13 @@ export default function PublicTutorProfile({
                   iter ve kartı uzatırlardı; kart zaten ekrana sığması için
                   kompaktlanmıştı (7 Eyl, 632 -> 516 px). */}
               <div className="absolute right-4 top-4 z-10 flex flex-col items-center gap-3">
-                <BookmarkButton tutorId={tutor.id} size="sm" onSolid />
-                <ShareButton size="sm" />
+                {/* Anonim ziyaretçi: mesaj için önce giriş (kullanıcı kararı,
+                    23 Eyl 2026 — ders talep etmeden de yazılabilsin). Giriş
+                    sonrası profil girişli kabukla açılır, düğme oradan sohbete
+                    götürür. */}
+                <MesajDugmesi onClick={() => girisGerekli()} />
+                <BookmarkButton tutorId={tutor.id} size="md" onSolid />
+                <ShareButton size="md" />
               </div>
               <div className="flex flex-col items-center text-center">
                 {/* Fotoğraf 64px'ten 128px'e çıktı. Kartın tek görseli o ve
@@ -256,7 +263,9 @@ export default function PublicTutorProfile({
                     yanıltıcıydı — tek gerçek eylem yorumlara gitmek, o da
                     yalnız "(N yorum)" metninde. */}
                 <div className="mt-2 flex items-center gap-2">
-                  <StarRating value={tutor.rating_average} single={true} />
+                  {hasRatings && (
+                    <StarRating value={tutor.rating_average} single={true} />
+                  )}
                   {/* Puan SAYISI kalın/siyah, yorum adedi küçük/gri (kullanıcı
                       kararı, 21 Eyl 2026 — referans: "36 reviews"in daha küçük
                       olması). Tek span'da eşit ağırlıktaydı, ayrıştı. */}
@@ -274,13 +283,12 @@ export default function PublicTutorProfile({
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowReviews(true)}
-                      className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
-                    >
-                      Değerlendirme yok
-                    </button>
+                    // Preply deseni: yorum yoksa açılacak liste de yok —
+                    // tıklanmayan "Yeni öğretmen" etiketi.
+                    <span className="text-sm text-slate-600">
+                      <span className="font-bold text-slate-900">Yeni</span>{" "}
+                      öğretmen
+                    </span>
                   )}
                 </div>
 
@@ -314,8 +322,12 @@ export default function PublicTutorProfile({
               <button
                 type="button"
                 onClick={() => girisGerekli({ tip: "dersTalebi", egitmenId: tutor.id })}
-                className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+                className="mx-auto mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-marka px-10 text-center text-base font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
+                {/* Mobil şeritle (DersTalepSeridi) AYNI ikon: aynı eylem. Düğme tam
+                    genişlik değil; 48px yükseklik, 16px yazı, ortalı (kullanıcı kararı,
+                    23 Eyl 2026). */}
+                <Icon name="commentLightning" className="h-5 w-5" />
                 Ders Talep Et
               </button>
               {tutor.first_lesson_free !== false && (
@@ -445,14 +457,23 @@ export default function PublicTutorProfile({
               </section>
             )}
 
-            {/* Değerlendirmeler (Airbnb-tarzı: özet + dağılım + yorum ızgarası) */}
+            {/* Ders puanı (alt kriter kutucukları) + değerlendirmeler — Preply
+                öğretmen profili düzeni. Dağılım çubukları "tümünü göster"
+                penceresinde (ReviewListModal). */}
+            {tutor.rating_count > 0 && kriterOrtalamalari(ratingDist).length > 0 && (
+              <>
+                <hr className="my-8 border-slate-200 " />
+                <DersPuani kriterler={kriterOrtalamalari(ratingDist)} />
+              </>
+            )}
             <hr className="my-8 border-slate-200 " />
             <section>
               <ReviewsSection
+                baslikGoster
                 average={tutor.rating_average}
                 count={tutor.rating_count}
-                distribution={ratingDist}
-                criteria={kriterOrtalamalari(ratingDist)}
+                title="Öğrencilerim hakkımda ne diyor?"
+                bosMetin={`${tutor.display_name} için değerlendirme yok`}
                 reviews={(reviews ?? []).map(reviewOutToItem)}
                 onShowAll={() => setShowReviews(true)}
               />

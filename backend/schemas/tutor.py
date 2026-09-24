@@ -16,7 +16,7 @@ from pydantic import (
 
 from core.slug import tutor_slug
 from models.tutor import Gender, TutorStatus
-from schemas.education import EducationOut
+from schemas.education import PublicEducationOut
 from schemas.user import UserOut
 
 
@@ -212,7 +212,7 @@ class TutorSearchOut(BaseModel):
     distance_km: float | None = None
     subjects: list[str] = []
     availability: list[AvailabilityOut] = []
-    educations: list[EducationOut] = []
+    educations: list[PublicEducationOut] = []
     # Ödeme hesabı (alt üye) onaylı → "Kimliği Doğrulanmış" rozeti.
     identity_verified: bool = False
     #: Kök ilan adresi — site içi bütün eğitmen linkleri buna gider. Eski

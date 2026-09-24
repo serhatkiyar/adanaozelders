@@ -111,6 +111,20 @@ export function formatResponseTime(seconds?: number | null): string {
   return `~${Math.round(seconds / 86_400)} gün`;
 }
 
+/**
+ * Profil kartındaki "Cevaplama" değeri — tam saat (kullanıcı kararı, 23 Eyl
+ * 2026): veri yoksa varsayılan "1 saat", varsa ortalama ilk yanıt süresi
+ * YUKARI yuvarlanır ("2 saat", "3 saat"…). Yukarı yuvarlama, gösterilen sürenin
+ * gerçek ortalamadan kısa olmamasını sağlar.
+ */
+export function formatCevaplamaSuresi(seconds?: number | null): string {
+  const saat =
+    seconds == null || !Number.isFinite(seconds) || seconds <= 0
+      ? 1
+      : Math.max(1, Math.ceil(seconds / 3600));
+  return `${saat} saat`;
+}
+
 // Son görülme: ISO -> "az önce", "5 dk önce", "2 saat önce", "3 gün önce", sonra tarih.
 export function formatLastSeen(iso?: string | null): string {
   if (!iso) return "Hiç görülmedi";

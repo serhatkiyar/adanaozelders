@@ -1,8 +1,17 @@
-import { YorumYazari } from "@/components/ReviewsSection";
+import { Icon } from "@/components/AppIcon";
+import { Modal } from "@/components/ui/Modal";
+import {
+  BuyukPuan,
+  KriterKutulari,
+  YorumYazari,
+} from "@/components/ReviewsSection";
 import { StarRating } from "@/components/StarRating";
-import { useReviewsByTutor } from "@/hooks/useReviews";
-import { useModalPanel } from "@/hooks/useModalA11y";
-import { reviewOutToItem } from "@/lib/reviewStats";
+import { useReviewsByTutor, useTutorRatingDistribution } from "@/hooks/useReviews";
+import {
+  kriterOrtalamalari,
+  reviewOutToItem,
+  toDistributionRows,
+} from "@/lib/reviewStats";
 
 interface ReviewListModalProps {
   tutorId: number;
@@ -10,71 +19,95 @@ interface ReviewListModalProps {
   onClose: () => void;
 }
 
+const BASLIK = "Öğrencilerim hakkımda ne diyor?";
+
+/**
+ * "Tümünü göster" penceresi (Preply düzeni): büyük puan + 5→1 dağılım (adetli),
+ * alt kriter kutucukları, ardından çizgiyle ayrılmış tam yorum listesi.
+ * Profil ve pencere aynı sorguları paylaşır (React Query önbelleği).
+ */
 export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModalProps) {
   const { data: reviews, isLoading } = useReviewsByTutor(tutorId);
-  // Esc + arka plan kaydırma kilidi + ODAK TUZAĞI (eskiden yalnız ilk ikisi vardı).
-  const panelRef = useModalPanel({ onClose });
+  const { data: ozet } = useTutorRatingDistribution(tutorId);
+  const adet = ozet?.count ?? reviews?.length ?? 0;
+  const satirlar = toDistributionRows(ozet);
+  const kriterler = kriterOrtalamalari(ozet);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:p-6">
-      <div
-        ref={panelRef}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 "
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4 ">
-          <h2 className="text-lg font-bold text-slate-900 ">
-            {tutorName} - Değerlendirmeler
-          </h2>
-          <button
-            onClick={onClose}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 "
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5">
-          {isLoading ? (
-            <div className="space-y-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-100 " />
-              ))}
-            </div>
-          ) : !reviews || reviews.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-slate-500 ">
-                Henüz değerlendirme bulunmuyor.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {reviews.map((review) => {
-                const item = reviewOutToItem(review);
-                return (
-                  <div
-                    key={review.id}
-                    className="rounded-xl border border-slate-200 bg-white p-4 "
-                  >
-                    <YorumYazari review={item} size="sm" />
-                    <div className="mt-2">
-                      <StarRating value={review.rating} />
-                    </div>
-                    {review.comment_text && (
-                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600 ">
-                        {review.comment_text}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel={`${tutorName} için değerlendirmeler`}
+      hideCloseButton
+      panelClassName="max-h-[92vh] w-full max-w-[840px] overflow-y-auto rounded-t-2xl bg-white p-6 shadow-2xl sm:rounded-lg sm:p-8"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">{BASLIK}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus"
+        >
+          <span className="sr-only">Kapat</span>
+          <Icon name="dismiss" className="h-5 w-5" />
+        </button>
       </div>
-    </div>
+
+      {adet > 0 && ozet?.average != null && (
+        <div className="mt-5 grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-10">
+          <div>
+            <BuyukPuan puan={ozet.average} />
+            <p className="mt-2 text-sm text-slate-500">{adet} değerlendirme</p>
+          </div>
+          <ul className="space-y-1.5" aria-label="Puan dağılımı">
+            {satirlar.map((s) => (
+              <li key={s.star} className="flex items-center gap-3 text-sm text-slate-900">
+                <span className="w-3 shrink-0 text-right tabular-nums">{s.star}</span>
+                <span className="h-2 flex-1 overflow-hidden rounded-full border border-slate-900 bg-white">
+                  <span className="block h-full bg-slate-900" style={{ width: `${s.pct}%` }} />
+                </span>
+                <span className="w-10 shrink-0 text-right tabular-nums text-slate-500">
+                  ({s.count})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {kriterler.length > 0 && (
+        <div className="mt-6">
+          <KriterKutulari kriterler={kriterler} />
+        </div>
+      )}
+
+      <h3 className="mt-8 text-xl font-bold text-slate-900">{adet} değerlendirme</h3>
+
+      {isLoading ? (
+        <div className="mt-4 space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-lg bg-slate-100" />
+          ))}
+        </div>
+      ) : !reviews || reviews.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-500">Henüz değerlendirme yok.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-slate-200">
+          {reviews.map((review) => (
+            <li key={review.id} className="py-5">
+              <YorumYazari review={reviewOutToItem(review)} size="md" />
+              <div className="mt-3">
+                <StarRating value={review.rating} size={18} />
+              </div>
+              {review.comment_text && (
+                <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-slate-800">
+                  {review.comment_text}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
   );
 }

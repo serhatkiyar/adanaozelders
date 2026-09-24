@@ -29,7 +29,7 @@ from models.tutor import (
 )
 from services import subject_service
 from models.tutor_promotion import TutorPromotion
-from schemas.education import EducationOut
+from schemas.education import PublicEducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
 from services import education_service, seo_slug_service, tutor_promotion_service
 from services.ranking import bayesian_average, bayesian_score_expr, compute_global_mean
@@ -91,7 +91,7 @@ def _to_search_out(
         availability=[
             AvailabilityOut.model_validate(a) for a in (availability or [])
         ],
-        educations=[EducationOut.model_validate(e) for e in (educations or [])],
+        educations=[PublicEducationOut.model_validate(e) for e in (educations or [])],
     )
 
 

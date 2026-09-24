@@ -69,7 +69,7 @@ export function DersTalepSeridi({
         >
           {/* İkon hapın İÇİNDE: tek dokunma hedefi kalsın. Ayrı bir daire
               ikinci bir eylem gibi okunur ve ne yaptığı belirsizdir. */}
-          <Icon name="messages" className="h-5 w-5" />
+          <Icon name="commentLightning" className="h-5 w-5" />
           {etiket}
         </PlainButton>
       </div>

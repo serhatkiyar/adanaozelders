@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { formatResponseTime } from "@/lib/datetime";
+import { formatCevaplamaSuresi, formatResponseTime } from "@/lib/datetime";
 import type { TutorSearchOut } from "@/types";
 
 // Eğitmen güven sinyalleri: hem public (PublicTutorProfile) hem panel
@@ -226,20 +226,22 @@ export function ozetSatirlari(
     satirlar.push({ anahtar: "ucret", etiket: "Ücret", kisaEtiket: "Ücret", deger: ucret });
   }
 
-  if (tutor.avg_response_seconds != null) {
-    satirlar.push({
-      anahtar: "yanit",
-      etiket: "Yanıt süresi",
-      kisaEtiket: "Yanıt",
-      deger: formatResponseTime(tutor.avg_response_seconds),
-    });
-  }
+  // Cevaplama HER ZAMAN basılır (kullanıcı kararı, 23 Eyl 2026): mesaj verisi
+  // yoksa varsayılan "1 saat", varsa tam saate yukarı yuvarlanır.
+  const cevaplama = formatCevaplamaSuresi(tutor.avg_response_seconds);
+  satirlar.push({
+    anahtar: "yanit",
+    etiket: "Cevaplama",
+    kisaEtiket: "Cevaplama",
+    deger: cevaplama,
+  });
 
+  // Hiç ders yapılmadıysa satır yok.
   const tamamlanan = tutor.completed_lessons ?? 0;
   if (tamamlanan > 0) {
     satirlar.push({
       anahtar: "ders",
-      etiket: "Tamamlanan ders",
+      etiket: "Ders",
       kisaEtiket: "Ders",
       deger: String(tamamlanan),
     });
@@ -265,8 +267,11 @@ export function TutorOzetTablosu({
   // asıl sorun renk değil ağırlıktı, `text-sm font-semibold` etiketle neredeyse
   // aynı görsel ağırlıktaydı. Değer artık `text-base font-bold`, satırlar
   // çizgi yerine boşlukla (`space-y-3`) ayrılıyor — referans kart da öyle.
+  // Etiket–değer arası daraltıldı (kullanıcı kararı, 23 Eyl 2026): satırlar
+  // kartın tüm genişliğine yayılınca "Ücret ....... ₺800" kopuk okunuyordu.
+  // Genişlik alttaki "Ders Talep Et" düğmesiyle aynı (~210px), ortalı.
   return (
-    <dl className="mt-5 space-y-3">
+    <dl className="mx-auto mt-5 w-full max-w-[210px] space-y-3">
       {satirlar.map((s) => (
         <div key={s.anahtar} className="flex items-center justify-between gap-3">
           <dt className="text-sm font-semibold text-slate-900 ">{s.etiket}</dt>

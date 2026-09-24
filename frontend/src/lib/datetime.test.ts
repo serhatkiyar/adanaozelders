@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   formatLastSeen,
+  formatCevaplamaSuresi,
   formatResponseTime,
   istanbulInputToIso,
   localInputToIso,
@@ -55,6 +56,23 @@ describe("formatResponseTime", () => {
   });
   it("gün aralığı", () => {
     expect(formatResponseTime(3 * 86_400)).toBe("~3 gün");
+  });
+});
+
+describe("formatCevaplamaSuresi", () => {
+  it("veri yoksa varsayılan 1 saat", () => {
+    expect(formatCevaplamaSuresi(null)).toBe("1 saat");
+    expect(formatCevaplamaSuresi(undefined)).toBe("1 saat");
+    expect(formatCevaplamaSuresi(0)).toBe("1 saat");
+    expect(formatCevaplamaSuresi(-5)).toBe("1 saat");
+    expect(formatCevaplamaSuresi(Number.NaN)).toBe("1 saat");
+  });
+  it("tam saate yukarı yuvarlanır", () => {
+    expect(formatCevaplamaSuresi(20 * 60)).toBe("1 saat");
+    expect(formatCevaplamaSuresi(3600)).toBe("1 saat");
+    expect(formatCevaplamaSuresi(3600 + 60)).toBe("2 saat");
+    expect(formatCevaplamaSuresi(2.5 * 3600)).toBe("3 saat");
+    expect(formatCevaplamaSuresi(30 * 3600)).toBe("30 saat");
   });
 });
 

@@ -183,20 +183,25 @@ export function EgitmenMobilUst({
             {rozet}
           </div>
 
-          <PlainButton
-            onClick={onYorumlar}
-            /* `min-h-[44px]`: gerçek Chrome turu bu satırı 183x28 ölçtü ve
-               `dokunmaHedefi` kapısı kırmızı düştü. Görsel ağırlık artmasın
-               diye büyüyen yalnız vuruş alanı. */
-            className="mt-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 transition active:scale-95"
-          >
-            <StarRating value={tutor.rating_average} single={true} />
-            <span className="text-sm font-medium text-marka-metin">
-              {puanVar
-                ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count} değerlendirme)`
-                : "Değerlendirme yok"}
-            </span>
-          </PlainButton>
+          {puanVar ? (
+            <PlainButton
+              onClick={onYorumlar}
+              /* `min-h-[44px]`: gerçek Chrome turu bu satırı 183x28 ölçtü ve
+                 `dokunmaHedefi` kapısı kırmızı düştü. Görsel ağırlık artmasın
+                 diye büyüyen yalnız vuruş alanı. */
+              className="mt-1 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-2 transition active:scale-95"
+            >
+              <StarRating value={tutor.rating_average} single={true} />
+              <span className="text-sm font-medium text-marka-metin">
+                {`${tutor.rating_average?.toFixed(1)} (${tutor.rating_count} değerlendirme)`}
+              </span>
+            </PlainButton>
+          ) : (
+            // Preply deseni: yorum yoksa açılacak liste de yok.
+            <p className="mt-1 inline-flex min-h-[44px] items-center text-sm text-slate-600">
+              <span className="font-bold text-slate-900">Yeni</span>&nbsp;öğretmen
+            </p>
+          )}
         </div>
 
         {/* Aynı üç ölçü, masaüstündeki `TutorOzetTablosu` ile AYNI veri — yalnız

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/AppIcon";
 import { useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
-import { ReviewsSection } from "@/components/ReviewsSection";
+import { DersPuani, ReviewsSection } from "@/components/ReviewsSection";
 import { kriterOrtalamalari, reviewOutToItem } from "@/lib/reviewStats";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { MesajDugmesi } from "@/components/egitmen/MesajDugmesi";
 import { ShareButton } from "@/components/ShareButton";
 import {
   DocumentedBadge,
@@ -227,15 +229,20 @@ export default function TutorProfile({
                   21 Eyl 2026: bu kabuk yatay bir satıra SAPMIŞTI, anonim
                   kabuk zaten dikeydi. `absolute` bilinçli: normal akışta
                   kalsalardı fotoğrafı aşağı iter, kartı uzatırdı. */}
-              {/* Mesaj gönderme düğmesi buradan KALKTI (kullanıcı kararı, 21 Eyl
-                  2026): favori/paylaşla aynı ağırlıkta üçüncü bir ikincil eylem
-                  köşeyi kalabalıklaştırıyordu. Mesajlaşma hâlâ mobil üst bardan
-                  (`EgitmenMobilUst`) erişilebilir — o ayrı bir yüzey, dokunulmadı. */}
+              {/* Mesaj gönder GERİ GELDİ, sütunun en üstünde (kullanıcı kararı,
+                  23 Eyl 2026 — 21 Eyl'de kalabalık diye kaldırılmıştı): ders
+                  talep etmeden de yazılabilsin. Görünürlük mobil üst barla
+                  (`EgitmenMobilUst`) aynı kural: `mesajGonderebilir`. */}
               <div className="absolute right-4 top-4 z-10 flex flex-col items-center gap-3">
-                {!isOwnerTutor && (
-                  <BookmarkButton tutorId={tutor.id} size="sm" onSolid />
+                {mesajGonderebilir && (
+                  <MesajDugmesi
+                    onClick={() => navigate(ROUTES.messageWith(tutor.id, tutor.display_name))}
+                  />
                 )}
-                <ShareButton size="sm" />
+                {!isOwnerTutor && (
+                  <BookmarkButton tutorId={tutor.id} size="md" onSolid />
+                )}
+                <ShareButton size="md" />
               </div>
 
               <div className="flex flex-col items-center text-center">
@@ -259,7 +266,9 @@ export default function TutorProfile({
                     yanıltıcıydı — tek gerçek eylem yorumlara gitmek, o da
                     yalnız "(N yorum)" metninde. */}
                 <div className="mt-2 inline-flex items-center gap-1.5">
-                  <StarRating value={tutor.rating_average} single={true} />
+                  {tutor.rating_count > 0 && (
+                    <StarRating value={tutor.rating_average} single={true} />
+                  )}
                   {/* Puan SAYISI kalın/siyah, yorum adedi küçük/gri (kullanıcı
                       kararı, 21 Eyl 2026): tek span'da eşit ağırlıktaydı. */}
                   {tutor.rating_count > 0 ? (
@@ -276,13 +285,12 @@ export default function TutorProfile({
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowReviews(true)}
-                      className="text-sm font-medium text-marka-metin hover:text-marka-metin-hover "
-                    >
-                      Değerlendirme yok
-                    </button>
+                    // Preply deseni: yorum yoksa açılacak liste de yok —
+                    // tıklanmayan "Yeni öğretmen" etiketi.
+                    <span className="text-sm text-slate-600">
+                      <span className="font-bold text-slate-900">Yeni</span>{" "}
+                      öğretmen
+                    </span>
                   )}
                 </div>
 
@@ -302,8 +310,12 @@ export default function TutorProfile({
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="mt-4 block w-full rounded-full bg-marka px-5 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+                  className="mx-auto mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-marka px-10 text-center text-base font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
+                  {/* Mobil şeritle (DersTalepSeridi) AYNI ikon: aynı eylem. Düğme tam
+                    genişlik değil; 48px yükseklik, 16px yazı, ortalı (kullanıcı kararı,
+                    23 Eyl 2026). */}
+                  <Icon name="commentLightning" className="h-5 w-5" />
                   Ders Talep Et
                 </button>
               )}
@@ -423,14 +435,23 @@ export default function TutorProfile({
               </section>
             )}
 
-            {/* Değerlendirmeler (Airbnb-tarzı: özet + dağılım + yorum ızgarası) */}
+            {/* Ders puanı (alt kriter kutucukları) + değerlendirmeler — Preply
+                öğretmen profili düzeni. Dağılım çubukları "tümünü göster"
+                penceresinde (ReviewListModal). */}
+            {tutor.rating_count > 0 && kriterOrtalamalari(ratingDist).length > 0 && (
+              <>
+                <hr className="my-8 border-slate-200 " />
+                <DersPuani kriterler={kriterOrtalamalari(ratingDist)} />
+              </>
+            )}
             <hr className="my-8 border-slate-200 " />
             <section>
               <ReviewsSection
+                baslikGoster
                 average={tutor.rating_average}
                 count={tutor.rating_count}
-                distribution={ratingDist}
-                criteria={kriterOrtalamalari(ratingDist)}
+                title="Öğrencilerim hakkımda ne diyor?"
+                bosMetin={`${tutor.display_name} için değerlendirme yok`}
                 reviews={(reviews ?? []).map(reviewOutToItem)}
                 onShowAll={() => setShowReviews(true)}
               />
