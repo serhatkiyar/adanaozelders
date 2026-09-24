@@ -133,16 +133,16 @@ export function dersKanaliAc(
     });
     s.on("publication", (ctx) => {
       const veri = ctx.data as unknown;
-      // Sunucu yayını: istemci bilgisi yok.
-      if (!ctx.info) {
-        const v = veri as { t?: unknown; acik?: unknown };
-        if (v?.t === "tahta" && typeof v.acik === "boolean") olaylar.onTahta(v.acik);
+      const v = veri as { t?: unknown; acik?: unknown };
+      // Aç/kapa YALNIZ sunucu yayınından (istemci bilgisi taşımayan).
+      if (v?.t === "tahta") {
+        if (!ctx.info && typeof v.acik === "boolean") olaylar.onTahta(v.acik);
         return;
       }
-      if (ctx.info.client === benimIstemci) return;
+      if (ctx.info?.client && ctx.info.client === benimIstemci) return;
       const g: Gonderen = {
-        istemci: ctx.info.client,
-        ogretmen: (ctx.info.chanInfo as { rol?: unknown } | undefined)?.rol === "ogretmen",
+        istemci: ctx.info?.client ?? "",
+        ogretmen: (ctx.info?.chanInfo as { rol?: unknown } | undefined)?.rol === "ogretmen",
       };
       if (parcaMi(veri)) {
         const metin = toplayici.ekle(g.istemci, veri);
