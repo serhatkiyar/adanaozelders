@@ -47,6 +47,11 @@ interface AddressFormProps {
   requireLocation?: boolean;
   /** Varsayılan adres kutusunu gösterme (örn. ilk adres zaten varsayılan olacaksa). */
   hideDefaultToggle?: boolean;
+  /**
+   * `true`: form kendi gri kutusunu çizmez — modalın içinde açılırken
+   * (Ayarlar > Adreslerim) kutu içinde kutu görünmesin diye.
+   */
+  duz?: boolean;
   onSubmit: (payload: SavedAddressCreate) => void;
   onCancel: () => void;
 }
@@ -62,6 +67,7 @@ export function AddressForm({
   submitLabel = "Kaydet",
   requireLocation = false,
   hideDefaultToggle = false,
+  duz = false,
   onSubmit,
   onCancel,
 }: AddressFormProps) {
@@ -122,7 +128,10 @@ export function AddressForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-xl bg-slate-50 p-4 ">
+    <form
+      onSubmit={handleSubmit}
+      className={duz ? "space-y-4" : "space-y-3 rounded-xl bg-slate-50 p-4 "}
+    >
       <div>
         <label htmlFor={`${uid}-adres-basligi`} className={fieldLabelCls}>Adres Başlığı *</label>
         <input id={`${uid}-adres-basligi`}
@@ -140,7 +149,7 @@ export function AddressForm({
       {/* Alıcı — boş bırakılırsa siparişte hesap sahibinin adı/telefonu kullanılır */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor={`${uid}-alici-adi-soyadi`} className={fieldLabelCls}>Alıcı Adı Soyadı</label>
+          <label htmlFor={`${uid}-alici-adi-soyadi`} className={fieldLabelCls}>Adı Soyadı</label>
           <input id={`${uid}-alici-adi-soyadi`}
             type="text"
             maxLength={150}
