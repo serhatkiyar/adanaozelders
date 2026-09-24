@@ -59,6 +59,17 @@ export interface DersBilgisi {
   saat: string;
 }
 
+/** Kabın içine taze bir önizleme canvas'ı koyar (eskisi varsa söker). */
+function yeniTuval(kap: HTMLElement): HTMLCanvasElement {
+  kap.replaceChildren();
+  const tuval = document.createElement("canvas");
+  tuval.width = 1280;
+  tuval.height = 720;
+  tuval.className = "h-full w-full object-cover";
+  kap.appendChild(tuval);
+  return tuval;
+}
+
 /** Cihaz listesini okuyup depoya yazar; okunan listeyi döndürür. */
 async function listeyiYenile(): Promise<CihazListeleri> {
   const cihazlar = listeleriKur(await cihazlariGetir());
@@ -103,7 +114,10 @@ export function OnIzleme({
 }) {
   const { t } = useTranslation();
   const video = useRef<HTMLVideoElement>(null);
-  const tuval = useRef<HTMLCanvasElement>(null);
+  // Arka planlı önizleme her başlatmada YENİ bir canvas'a çizilir: SDK
+  // canvas'ı `transferControlToOffscreen` ile devralır, bir canvas yalnız bir
+  // kez devredilebilir (StrictMode'un kur-sök-kur döngüsü ve kamera aç/kapa).
+  const tuvalKabi = useRef<HTMLDivElement>(null);
   // Telefon tarayıcılarında Zoom sanal arka planı yok; bir kez okunur.
   const [arkaPlanVar] = useState(() => !telefon && arkaPlanDestekli());
   const [arkaPlan, setArkaPlan] = useState<ArkaPlan>(() => tercihleriOku().arkaPlan);
@@ -143,8 +157,10 @@ export function OnIzleme({
 
   // Kamera önizlemesi.
   useEffect(() => {
-    const el = tuvalde ? tuval.current : video.current;
+    const kap = tuvalKabi.current;
+    const el = tuvalde ? (kap ? yeniTuval(kap) : null) : video.current;
     if (!kameraAcik || !el || katiliyor) {
+      if (el instanceof HTMLCanvasElement) el.remove();
       setKamera("kapali");
       return;
     }
@@ -170,7 +186,9 @@ export function OnIzleme({
     })();
     return () => {
       gecerli = false;
-      void kameraOnizlemeDurdur();
+      void kameraOnizlemeDurdur().then(() => {
+        if (el instanceof HTMLCanvasElement) el.remove();
+      });
     };
   }, [kameraAcik, katiliyor, deneme, yerelDeneme, kameraDeneme, tuvalde]);
 
@@ -302,11 +320,9 @@ export function OnIzleme({
                     className="absolute inset-0"
                   >
                     {tuvalde ? (
-                      <canvas
-                        ref={tuval}
-                        width={1280}
-                        height={720}
-                        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+                      <div
+                        ref={tuvalKabi}
+                        className={`absolute inset-0 transition-opacity duration-300 ${
                           tercihleriOku().ayna ? "-scale-x-100" : ""
                         } ${kamera === "acik" ? "opacity-100" : "opacity-0"}`}
                       />

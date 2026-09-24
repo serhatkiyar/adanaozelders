@@ -702,7 +702,7 @@ function tepkiGoster(emoji: TepkiEmojisi, ad: string, ben: boolean): void {
   window.setTimeout(() => depoyaUygula((d) => tepkiSil(d, id)), TEPKI_SURESI_MS);
 }
 
-/** Oturumdaki herkese gönderir; başarısızsa düğmeler gizlenir. */
+/** Oturumdaki herkese gönderir; başarısızsa `false`. */
 async function komutGonder(mesaj: KomutMesaji): Promise<boolean> {
   const kanal = komutIstemcisi();
   if (!kanal) {
@@ -715,8 +715,9 @@ async function komutGonder(mesaj: KomutMesaji): Promise<boolean> {
     if (basarisizMi(sonuc)) throw sonuc;
     return true;
   } catch (e) {
+    // Tek bir gönderim hatası (ör. odada tek kişiyken) kanalı kapatmaz;
+    // düğmeleri yalnız kanal durumu (Closed/Fail) ya da istemci yokluğu gizler.
     console.warn("Zoom command channel", e);
-    komutKanaliKapandi();
     return false;
   }
 }

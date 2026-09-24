@@ -51,26 +51,36 @@ export function onizlemeBaslat(
   let uygulandi = true;
   return videoSirasi(async () => {
     if (iz) return;
-    const baslat = async (vb?: string) => {
+    const baslat = async (hedef: HTMLVideoElement | HTMLCanvasElement, vb?: string) => {
       const yeni = ZoomVideo.createLocalVideoTrack(kameraId);
       iz = yeni;
       try {
-        await dene(yeni.start(oge, vb ? { imageUrl: vb } : undefined));
+        await dene(yeni.start(hedef, vb ? { imageUrl: vb } : undefined));
       } catch (hata) {
         iz = null;
         await yeni.stop().catch(() => undefined);
         throw hata;
       }
     };
-    if (!arkaPlan) return baslat();
+    if (!arkaPlan) return baslat(oge);
     try {
-      await baslat(arkaPlan);
+      await baslat(oge, arkaPlan);
     } catch (hata) {
       console.warn("Zoom önizleme (arka plan)", hata);
       uygulandi = false;
-      await baslat();
+      // Devredilmiş olabilecek canvas yeniden kullanılmaz: yerine taze kopya.
+      await baslat(oge instanceof HTMLCanvasElement ? tuvaliYenile(oge) : oge);
     }
   }).then(() => uygulandi);
+}
+
+function tuvaliYenile(eski: HTMLCanvasElement): HTMLCanvasElement {
+  const yeni = document.createElement("canvas");
+  yeni.width = eski.width;
+  yeni.height = eski.height;
+  yeni.className = eski.className;
+  eski.replaceWith(yeni);
+  return yeni;
 }
 
 /** Açık önizlemenin arka planını değiştirir (`undefined`: kaldırır). */
