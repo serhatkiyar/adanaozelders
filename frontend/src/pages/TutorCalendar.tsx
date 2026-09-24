@@ -29,7 +29,7 @@ import { toBusinessHours } from "@/lib/availability";
 import { getErrorDetail, getErrorMessage } from "@/lib/errors";
 import { TUTOR_NAV } from "@/lib/nav";
 import { ADSIZ_UYE } from "@/lib/roles";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, profilimBolumu } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import { BookingStatus, type TimeOff } from "@/types";
 
@@ -567,7 +567,7 @@ export default function TutorCalendar() {
                   </button>
                   <div className="my-1 border-t border-slate-200" />
                   <Link
-                    to={ROUTES.tutorListing}
+                    to={profilimBolumu("musaitlik")}
                     className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
                     onClick={() => setOlusturAcik(false)}
                   >

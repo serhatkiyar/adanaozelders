@@ -1,5 +1,5 @@
 import { isLessonJoinable, JOIN_OPENS_BEFORE_MIN } from "@/lib/lesson";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, profilimBolumu } from "@/lib/routes";
 import type { VisibilityIssueCode } from "@/types";
 
 /** Günün saatine göre selamlama (cihaz saati). */
@@ -92,19 +92,13 @@ const EYLEMLER: Record<VisibilityIssueCode, GorunurlukEylemi> = {
     baslik: "Ders seçmedin",
     aciklama: "Verdiğin dersleri eklemeden aramada çıkmazsın.",
     dugme: "Ders ekle",
-    to: ROUTES.tutorListing,
+    to: profilimBolumu("dersler"),
   },
   NO_AVAILABILITY: {
     baslik: "Müsait saatlerin boş",
     aciklama: "Öğrenciler ders talebi için uygun saatini göremiyor.",
     dugme: "Saat ekle",
-    to: ROUTES.tutorListing,
-  },
-  PAYOUT_NOT_ACTIVE: {
-    baslik: "Ödeme bilgilerin eksik",
-    aciklama: "Ücretli ders kabul edebilmek için IBAN ve kimlik bilgini ekle.",
-    dugme: "Bilgileri ekle",
-    to: `${ROUTES.settings}?bolum=odeme`,
+    to: profilimBolumu("musaitlik"),
   },
 };
 

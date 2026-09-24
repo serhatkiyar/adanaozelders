@@ -123,11 +123,9 @@ export const PATHS = {
   orderDetail: "/siparislerim/:id",
   /** Eğitmenin dijital ürünleri (TUTOR). */
   sellerProducts: "/dijital-urunlerim",
-  /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
+  /** Kütüphane operatörünün kazanç & ödeme bakiyesi. Öğretmenin ayrı kazanç
+   *  ekranı yok; cüzdanı üst bardadır (23 Eyl 2026). */
   balance: "/bakiyem",
-  // Eğitmen kazanç dökümü. "Bakiyem" yalnız kütüphane operatöründe kaldı;
-  // eğitmen eski adresten buraya yönlendirilir (Balance.tsx).
-  tutorEarnings: "/kazanclar",
   /**
    * Eğitmen takvimi — saat ızgarası, izin ekleme (Modül 7). `calendar` ile
    * AYNI adres: `/takvim` rol dağıtıcısıdır (`App.tsx::TakvimDispatcher`).
@@ -136,12 +134,11 @@ export const PATHS = {
   /** Eğitmen analizleri — genel bakış ve başarı hedefleri (Modül 7). */
   tutorAnalytics: "/analizler",
   /**
-   * Eğitmenin öğrenci listesi (şerit sekmesi, 22 Eyl 2026). Kişi sayfası
-   * `uyeProfili`dir (`/uyeler/:id`); eski `/ogrenciler/:id` yönlendirmesi
-   * `App.tsx`te AYRI yaşar.
+   * Eğitmenin öğrenci listesi (şerit sekmesi, 22 Eyl 2026). Ayrı kişi sayfası
+   * (`/uyeler/:id`) 23 Eyl 2026'da kaldırıldı; eski `/uyeler/:id` ve
+   * `/ogrenciler/:id` adresleri `App.tsx`te bu listeye yönlenir.
    */
   tutorStudents: "/ogrenciler",
-  leaderboard: "/liderlik",
   // Öğren bölümü (aralıklı tekrar / odak / grafik / alışkanlıklar)
   learn: "/ogren",
   deepwork: "/ogren/zamanlayici",
@@ -162,9 +159,8 @@ export const PATHS = {
   /** Teslimat adresleri (CLIENT) — mağaza + ders ortak. */
   addresses: "/adreslerim",
   /**
-   * Ayarlar — rol dağıtıcısı (`App.tsx::AyarlarDispatcher`): öğrenciye kartlı
-   * hesap merkezi (`AccountHub`, 22 Eyl 2026'ya kadar `/hesabim`), diğer
-   * rollere doğrudan hesap ayarları (`Settings`).
+   * Ayarlar — her rolde hesap ayarları (`Settings`). 23 Eyl 2026'ya kadar
+   * öğrenciye kartlı hesap merkezi (`AccountHub`) açılıyordu.
    */
   settings: "/ayarlar",
   /** Hesap ayarları sayfasının (`Settings`) her rolde açılan adresi. */
@@ -190,7 +186,6 @@ export const PATHS = {
   deliveryRun: "/dagitim/:id",
   /** Zimmet ekranı — paketleri araca alma (ADMIN + KURYE, F30 §3.4). */
   deliveryRunHandover: "/dagitim/:id/zimmet",
-  uyeProfili: "/uyeler/:id",
   /** Operatörün kendi kütüphane profili (gör + bölüm bölüm düzenle). */
   operatorLibrary: "/kutuphanem",
   /** Operatör operasyon ekranı: QR doğrula + deneme oturumları + çalışma rez. */
@@ -399,13 +394,11 @@ export const ROUTES = {
   orderDetail: (id: string | number) => `/siparislerim/${id}`,
   sellerProducts: PATHS.sellerProducts,
   balance: PATHS.balance,
-  tutorEarnings: PATHS.tutorEarnings,
   tutorCalendar: PATHS.tutorCalendar,
   tutorAnalytics: PATHS.tutorAnalytics,
   tutorStudents: PATHS.tutorStudents,
   /** Takvimi, ders teklif penceresi bu öğrenci seçili açılacak şekilde açar. */
   dersPlanla: (clientId: number) => `${PATHS.tutorCalendar}?ogrenci=${clientId}`,
-  leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,
   deepwork: PATHS.deepwork,
   grapher: PATHS.grapher,
@@ -426,7 +419,6 @@ export const ROUTES = {
   tutorReviews: PATHS.tutorReviews,
   deliveryRun: (id: string | number) => `/dagitim/${id}`,
   deliveryRunHandover: (id: string | number) => `/dagitim/${id}/zimmet`,
-  uyeProfili: (id: string | number) => `/uyeler/${id}`,
   operatorLibrary: PATHS.operatorLibrary,
   operatorSessions: PATHS.operatorSessions,
   admin: PATHS.admin,
@@ -551,6 +543,27 @@ export const LEGAL_ROUTES = {
   "ranking-criteria": PATHS.rankingCriteria,
   about: PATHS.about,
 } as const;
+
+/**
+ * "Profilim" sayfasının bölümleri (24 Eyl 2026, Preply "My profile" düzeni):
+ * her bölüm ayrı sekmede açılır ve kendi Kaydet'iyle yalnız kendi alanlarını
+ * yazar. Adres `?bolum=` ile taşınır; tanınmayan değer ilk bölüme düşer.
+ */
+export const PROFILIM_BOLUMLERI = [
+  "hakkinda",
+  "fotograf",
+  "aciklama",
+  "video",
+  "dersler",
+  "ucret",
+  "musaitlik",
+  "egitim",
+] as const;
+export type ProfilimBolumu = (typeof PROFILIM_BOLUMLERI)[number];
+
+export function profilimBolumu(bolum: ProfilimBolumu): string {
+  return `${ROUTES.tutorListing}?bolum=${bolum}`;
+}
 
 /**
  * Eğitmenin site içi adresi — TEK kapı (Modül 6).

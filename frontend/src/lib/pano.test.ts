@@ -68,7 +68,9 @@ describe("panoAltSatir", () => {
 
 describe("gorunurlukEylemi", () => {
   it("bilinen kod eylem döner, bilinmeyen kod çökmez", () => {
-    expect(gorunurlukEylemi("PAYOUT_NOT_ACTIVE")?.to).toContain("bolum=odeme");
+    expect(gorunurlukEylemi("NO_AVAILABILITY")?.to).toBeTruthy();
+    // IBAN eksikliği panoda uyarı değil (23 Eyl 2026).
+    expect(gorunurlukEylemi("PAYOUT_NOT_ACTIVE")).toBeNull();
     expect(gorunurlukEylemi("PENDING_APPROVAL")?.dugme).toBeNull();
     expect(gorunurlukEylemi("YENI_BIR_KOD")).toBeNull();
   });
