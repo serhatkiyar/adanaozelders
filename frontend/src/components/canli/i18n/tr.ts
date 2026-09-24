@@ -130,10 +130,6 @@ export const tr = {
         participants: "Katılımcılar",
         chat: "Sohbet",
         settings: "Ayarlar",
-        fullscreen: {
-          enter: "Tam ekran",
-          exit: "Tam ekrandan çık",
-        },
       },
     },
     participantTile: {

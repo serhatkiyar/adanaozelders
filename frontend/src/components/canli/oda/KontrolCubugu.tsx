@@ -1,8 +1,9 @@
 /**
  * Masaüstü kontrol çubuğu — Meet `DesktopControlBar` + `ControlBarRegion`
  * (La Suite Meet, MIT — DINUM/Etalab): 80px yükseklik, üç sütun, ortada
- * Mikrofon▴ · Kamera▴ · Ekran paylaş · ⋯ · kırmızı Ayrıl. Oklar cihaz menüsünü, ⋯ Tam ekran
- * ve Ayarlar'ı açar. Ayrıl, sayfanın ONAYLI çıkış penceresini açar; ders
+ * Mikrofon▴ · Kamera▴ · Ekran paylaş · ⋯ · kırmızı Ayrıl. Oklar cihaz menüsünü, ⋯
+ * Ayarlar'ı açar. (Tam ekran kaldırıldı: canlı denemede çalışmadı, kök neden
+ * tarayıcısız doğrulanamadı; oda zaten pencereyi dolduruyor.) Ayrıl, sayfanın ONAYLI çıkış penceresini açar; ders
  * karşı taraf için sürer. Sağ sütun Meet `MoreOptions`: Katılımcılar ve
  * Sohbet yan panel düğmeleri (`YanPanelDugmeleri`).
  */
@@ -20,7 +21,6 @@ import type { AyarSekmesi } from "./AyarlarPenceresi";
 import { CihazMenusu } from "./CihazMenusu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
 import { PaylasimDugmesi } from "./PaylasimDugmesi";
-import { useTamEkran } from "./useTamEkran";
 import type { PanelTuru } from "./YanPanel";
 
 /** Yan panel düğmelerinin ortak girdisi (masaüstü ve telefon çubuğu). */
@@ -158,12 +158,11 @@ function YanPanelDugmeleri({ panel, onPanel, sohbetVar, okunmamis }: PanelDeneti
   );
 }
 
-/** Meet `OptionsButton` → yalnız Tam ekran ve Ayarlar. */
+/** Meet `OptionsButton` → yalnız Ayarlar. */
 function SecenekMenusu({ onAyarlar }: { onAyarlar: () => void }) {
   const { t } = useTranslation();
   const [acik, setAcik] = useState(false);
   const dugme = useRef<HTMLButtonElement>(null);
-  const tamEkran = useTamEkran();
   const kapat = () => setAcik(false);
   const oge = `${DUGME_TABANI} h-11 w-full justify-start rounded-ders px-3 text-sm ${ODA_DUGMESI.metin}`;
 
@@ -182,21 +181,6 @@ function SecenekMenusu({ onAyarlar }: { onAyarlar: () => void }) {
       </PlainButton>
       <Acilir acik={acik} onKapat={kapat} tetikleyici={dugme} etiket={t("options.buttonLabel")}>
         <div className="flex w-56 flex-col">
-          {tamEkran.destekli && (
-            <PlainButton
-              onClick={() => {
-                kapat();
-                void tamEkran.degistir();
-              }}
-              className={oge}
-            >
-              <Icon
-                name={tamEkran.acik ? "fullScreenMinimize" : "fullScreenMaximize"}
-                className="h-5 w-5"
-              />
-              {t(`options.items.fullscreen.${tamEkran.acik ? "exit" : "enter"}`)}
-            </PlainButton>
-          )}
           <PlainButton
             onClick={() => {
               kapat();

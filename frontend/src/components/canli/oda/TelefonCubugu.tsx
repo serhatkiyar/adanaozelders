@@ -1,7 +1,7 @@
 /**
  * Telefon kontrol çubuğu — Meet `MobileControlBar` (La Suite Meet, MIT —
  * DINUM/Etalab) sadeleştirilmiş: etiketli tek satır
- * Mikrofon · Kamera · Daha fazla (Kamerayı çevir, Tam ekran, Ayarlar,
+ * Mikrofon · Kamera · Daha fazla (Kamerayı çevir, Ayarlar,
  * Katılımcılar, Sohbet) · Çık. Telefonda cihaz okları yok; cihaz seçimi
  * Ayarlar'da. Okunmamış mesaj varsa "Daha fazla" üstünde nokta, çekmecedeki
  * Sohbet'te sayı görünür; yan panel telefonda tam ekran açılır.
@@ -18,7 +18,6 @@ import { AltCekmece } from "./AltCekmece";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
 import type { PanelDenetimi } from "./KontrolCubugu";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
-import { useTamEkran } from "./useTamEkran";
 
 const CEKMECE_OGESI =
   "flex flex-col items-center gap-2 rounded-ders p-3 text-sm text-white hover:bg-ders-dugme disabled:opacity-40";
@@ -34,7 +33,6 @@ export function TelefonCubugu({
 }) {
   const { t } = useTranslation();
   const m = useMedyaKontrolleri();
-  const tamEkran = useTamEkran();
   const [menuAcik, setMenuAcik] = useState(false);
   const menuyuKapat = useCallback(() => setMenuAcik(false), []);
 
@@ -107,21 +105,6 @@ export function TelefonCubugu({
           <Icon name="cameraSwitch" className="h-6 w-6" />
           {t("options.items.switchCamera")}
         </PlainButton>
-        {tamEkran.destekli && (
-          <PlainButton
-            onClick={() => {
-              menuyuKapat();
-              void tamEkran.degistir();
-            }}
-            className={CEKMECE_OGESI}
-          >
-            <Icon
-              name={tamEkran.acik ? "fullScreenMinimize" : "fullScreenMaximize"}
-              className="h-6 w-6"
-            />
-            {t(`options.items.fullscreen.${tamEkran.acik ? "exit" : "enter"}`)}
-          </PlainButton>
-        )}
         <PlainButton
           onClick={() => {
             menuyuKapat();
