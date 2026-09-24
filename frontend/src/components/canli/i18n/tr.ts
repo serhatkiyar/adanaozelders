@@ -59,6 +59,8 @@ export const tr = {
       startAudio: "Sesi aç",
       startAudioHint: "Tarayıcı sesi engelledi. Karşı tarafı duymak için dokun.",
       deviceError: "Cihaz başlatılamadı. İzinleri kontrol edip yeniden dene.",
+      micNotGranted:
+        "Mikrofon izni verilmedi; karşı tarafı duyabilirsin ama o seni duyamaz. Tarayıcı ayarlarından izin verebilirsin.",
     },
     connection: {
       reconnecting: "Bağlantı koptu, yeniden bağlanılıyor…",

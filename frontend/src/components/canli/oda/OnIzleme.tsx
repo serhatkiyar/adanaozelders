@@ -95,11 +95,19 @@ export function OnIzleme({
               <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-20 bg-gradient-to-b from-black/60 via-black/20 to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-20 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
               <div className="absolute bottom-4 left-1/2 z-[2] flex -translate-x-1/2 gap-4">
-                <MedyaDugmesi tur="mik" gorunum="onizleme" acik={mikAcik} onDegistir={onMik} />
+                {/* Katılma sürerken tercih kilitli: görünen durum = derse girilen durum. */}
+                <MedyaDugmesi
+                  tur="mik"
+                  gorunum="onizleme"
+                  acik={mikAcik}
+                  mesgul={katiliyor}
+                  onDegistir={onMik}
+                />
                 <MedyaDugmesi
                   tur="kamera"
                   gorunum="onizleme"
                   acik={kameraAcik}
+                  mesgul={katiliyor}
                   onDegistir={onKamera}
                 />
               </div>

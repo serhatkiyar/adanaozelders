@@ -81,6 +81,9 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   const asama = useAsama();
   const [mikTercihi, setMikTercihi] = useState(true);
   const [kameraTercihi, setKameraTercihi] = useState(true);
+  // `derseKatil` await'lerden SONRA okur: tıklama anının kapanımı değil, güncel tercih.
+  const tercih = useRef({ mik: mikTercihi, kamera: kameraTercihi });
+  tercih.current = { mik: mikTercihi, kamera: kameraTercihi };
   const [girisHatasi, setGirisHatasi] = useState<string | null>(null);
 
   useImperativeHandle(ref, () => ({ ayril: () => odadanAyril() }), []);
@@ -145,13 +148,16 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     }
     useOdaDeposu.setState({ asama: "odada" });
     try {
-      await sesiBaslat(!mikTercihi);
+      // İzin reddinde yalnız hoparlörle bağlanır: karşı taraf yine duyulur.
+      if ((await sesiBaslat(!tercih.current.mik)) === "yalnizHoparlor") {
+        useOdaDeposu.setState({ hata: "media.micNotGranted" });
+      }
     } catch (e) {
       // iOS/Safari: `await join()` sonrası kullanıcı etkinleşmesi kaybolur.
       console.warn("Zoom startAudio", e);
       useOdaDeposu.setState({ sesEngellendi: true });
     }
-    if (kameraTercihi) {
+    if (tercih.current.kamera) {
       try {
         await kamerayiDegistir(true);
       } catch (e) {
@@ -196,8 +202,13 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   );
 });
 
+/**
+ * Önizleme kapanışı BEKLENMEZ: kamera izni sorusu açıkken önizleme sırası
+ * (`onizleme.ts` `sirala`) soru yanıtlanana dek çözülmez; beklersek "Ayrıl"
+ * takılır. İz, sıra açılınca yine durur. Oturumdaysak süre sınırı `ayril`da.
+ */
 async function odadanAyril(): Promise<void> {
-  await onizlemeDurdur();
+  void onizlemeDurdur();
   await istemcidenAyril();
 }
 

@@ -181,3 +181,19 @@ export function kameraHataAnahtari(hata: unknown): string {
   if (/NotReadable|IS_TAKEN|TrackStart|in use/i.test(ad)) return "join.cameraInUse";
   return "media.deviceError";
 }
+
+/**
+ * `startAudio` hatası mikrofon izninin reddi mi? Zoom bunu
+ * `INSUFFICIENT_PRIVILEGES` / `AUDIO_CAPTURE_FAILED` ile bildirir; bazı
+ * tarayıcılar getUserMedia'nın `NotAllowedError`ını olduğu gibi geçirir.
+ * Otomatik oynatma engeli (kullanıcı etkinleşmesi kaybı) bu değildir.
+ */
+export function mikIzniReddedildiMi(hata: unknown): boolean {
+  let metin: string;
+  if (hata instanceof Error) metin = `${hata.name} ${hata.message}`;
+  else if (typeof hata === "object" && hata !== null) {
+    const { type, reason } = hata as { type?: unknown; reason?: unknown };
+    metin = `${String(type ?? "")} ${String(reason ?? "")}`;
+  } else metin = String(hata ?? "");
+  return /AUDIO_CAPTURE_FAILED|INSUFFICIENT_PRIVILEGES|NotAllowed|Permission denied/i.test(metin);
+}

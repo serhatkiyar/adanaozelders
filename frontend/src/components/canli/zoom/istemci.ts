@@ -31,6 +31,7 @@ import {
   aktifKonusanlar,
   baglantiDegisti,
   katilimcilariEsitle,
+  mikIzniReddedildiMi,
   sesEngellendi,
   videoDurumuDegisti,
   type ZoomKullanici,
@@ -169,11 +170,31 @@ export function olaylariBagla(): () => void {
 
 /* ── Medya ───────────────────────────────────────────────────────────── */
 
-/** Bilgisayar sesine bağlanır; `mute` ile mikrofon kapalı başlar. */
-export async function sesiBaslat(mute: boolean): Promise<void> {
-  const sonuc = await akis().startAudio({ mute });
+/**
+ * Bilgisayar sesine bağlanır; `mute` ile mikrofon kapalı başlar.
+ *
+ * Mikrofon izni reddedildiyse (`AUDIO_CAPTURE_FAILED`) yalnız hoparlörle
+ * bağlanır — karşı taraf yine duyulur — ve `"yalnizHoparlor"` döner. Diğer
+ * hatalar (ör. kullanıcı etkinleşmesi kaybı) fırlatılır; "Sesi aç" onlar için.
+ */
+export async function sesiBaslat(mute: boolean): Promise<"tam" | "yalnizHoparlor"> {
+  let hata: unknown;
+  try {
+    const sonuc = await akis().startAudio({ mute });
+    if (basarisizMi(sonuc)) hata = sonuc;
+  } catch (e) {
+    hata = e ?? new Error("startAudio");
+  }
+  if (hata === undefined) {
+    depoyaUygula((d) => sesEngellendi(d, false));
+    return "tam";
+  }
+  if (!mikIzniReddedildiMi(hata)) throw hata;
+  console.warn("Zoom startAudio (mikrofon izni yok)", hata);
+  const sonuc = await akis().startAudio({ speakerOnly: true });
   if (basarisizMi(sonuc)) throw sonuc;
   depoyaUygula((d) => sesEngellendi(d, false));
+  return "yalnizHoparlor";
 }
 
 /**
@@ -183,7 +204,9 @@ export async function sesiBaslat(mute: boolean): Promise<void> {
 export async function sesiAc(mikAcik: boolean): Promise<void> {
   const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
   if (!ben?.audio) {
-    await sesiBaslat(!mikAcik);
+    if ((await sesiBaslat(!mikAcik)) === "yalnizHoparlor") {
+      useOdaDeposu.setState({ hata: "media.micNotGranted" });
+    }
   } else {
     depoyaUygula((d) => sesEngellendi(d, false));
   }
@@ -193,7 +216,7 @@ export async function sesiAc(mikAcik: boolean): Promise<void> {
 export async function mikrofonuDegistir(ac: boolean): Promise<void> {
   const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
   if (!ben?.audio) {
-    await sesiBaslat(!ac);
+    if ((await sesiBaslat(!ac)) === "yalnizHoparlor" && ac) throw new Error("mikrofon izni yok");
   } else {
     const sonuc = ac ? await akis().unmuteAudio() : await akis().muteAudio();
     if (basarisizMi(sonuc)) throw sonuc;
