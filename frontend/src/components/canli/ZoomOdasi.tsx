@@ -45,6 +45,7 @@ import { ZoomVideoSahnesi } from "./oda/ZoomVideoSahnesi";
 import {
   beklenmedikKapanis,
   kameraHataAnahtari,
+  digerAdlari,
   karsiTarafDurumu,
   katilimciFarki,
   type Katilimci,
@@ -160,7 +161,8 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     let onceki: KarsiTarafDurumu | null = null;
     let kapandiBildirildi = false;
     // İlk görülen liste taban: odadakiler için "katıldı" denmez.
-    let taban: readonly Katilimci[] | null = null;
+    // Karşı tarafların adları, alındığı andaki `benId` ile.
+    let taban: Set<string> | null = null;
     let sonListe: readonly Katilimci[] | null = null;
     const bekleyenAyrilma = new Map<string, number>();
     const coz = useOdaDeposu.subscribe((d) => {
@@ -169,11 +171,12 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
       // korunur; bağlantı gelince aynı tabana göre karşılaştırılır.
       if (d.baglanti === "bagli" && !d.ayriliyor && d.katilimcilar !== sonListe) {
         sonListe = d.katilimcilar;
+        const yeni = digerAdlari(d.katilimcilar, d.benId);
         if (taban === null) {
-          taban = d.katilimcilar;
+          taban = yeni;
         } else {
-          const { katilanlar, ayrilanlar } = katilimciFarki(taban, d.katilimcilar, d.benId);
-          taban = d.katilimcilar;
+          const { katilanlar, ayrilanlar } = katilimciFarki(taban, yeni);
+          taban = yeni;
           for (const ad of katilanlar) {
             const bekleyen = bekleyenAyrilma.get(ad);
             if (bekleyen !== undefined) {

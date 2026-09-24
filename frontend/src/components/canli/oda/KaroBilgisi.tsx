@@ -128,7 +128,7 @@ export function KaroKatmani({
       onFocus={(e) => setKlavye(e.target.matches(":focus-visible"))}
       onBlur={() => setKlavye(false)}
       data-konusuyor={konusuyor || undefined}
-      className={`absolute overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marka ${
+      className={`absolute overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marka-focus ${
         telefon ? "pointer-events-none" : ""
       } ${className}`}
     >

@@ -220,15 +220,18 @@ export const MEDYA_HATASI = "media.activeMediaFailed";
  * AD karşılaştırılır: Zoom `userId`si yeniden bağlanınca değişebilir, birebir
  * derste ad kararlıdır. Kendimiz hiçbir zaman bildirilmeyiz.
  */
+export function digerAdlari(liste: readonly Katilimci[], benId: number | null): Set<string> {
+  return new Set(liste.filter((k) => k.userId !== benId).map((k) => k.ad));
+}
+
+/**
+ * `eski` o anki `benId` ile ALINMIŞ olmalı (`digerAdlari`): kendi kimliğimiz
+ * yeniden bağlanınca değişirse eski kaydımız "ayrıldı" sayılmasın.
+ */
 export function katilimciFarki(
-  onceki: readonly Katilimci[],
-  sonraki: readonly Katilimci[],
-  benId: number | null,
+  eski: ReadonlySet<string>,
+  yeni: ReadonlySet<string>,
 ): { katilanlar: string[]; ayrilanlar: string[] } {
-  const adlar = (liste: readonly Katilimci[]) =>
-    new Set(liste.filter((k) => k.userId !== benId).map((k) => k.ad));
-  const eski = adlar(onceki);
-  const yeni = adlar(sonraki);
   return {
     katilanlar: [...yeni].filter((ad) => !eski.has(ad)),
     ayrilanlar: [...eski].filter((ad) => !yeni.has(ad)),
@@ -265,13 +268,10 @@ export function baglantiDurumu(state: string): Baglanti | null {
 
 export function baglantiDegisti(durum: OdaDurumu, olay: { state: string }): OdaDurumu {
   const baglanti = baglantiDurumu(olay.state);
-  if (!baglanti) return durum;
-  // Yeniden bağlanınca kimlikler değişebilir: eski ölçümler bırakılır,
-  // yenileri gelene dek gösterge "bilinmiyor".
-  if (baglanti === "bagli" && durum.baglanti === "yenidenBaglaniyor") {
-    return { ...durum, baglanti, agKaliteleri: {} };
-  }
-  return { ...durum, baglanti };
+  // Ölçümler burada SİLİNMEZ: olay yalnız değişimde gelir, aynı seviyede
+  // dönen bağlantı yeniden bildirmeyebilir. Kimliği değişen ya da kamerası
+  // kapananın ölçümünü yeniden okunan liste (`agKaliteleriniBuda`) atar.
+  return baglanti ? { ...durum, baglanti } : durum;
 }
 
 /** Kopan bağlantı yeniden kuruldu mu (Reconnecting → Connected)? */
