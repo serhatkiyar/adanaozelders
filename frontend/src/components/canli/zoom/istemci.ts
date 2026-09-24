@@ -110,10 +110,14 @@ function kullanicilariOku() {
   const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
   depoyaUygula((d) => katilimcilariEsitle(d, liste ?? [], ben));
   agKaliteleriniOku();
-  paylasimiOku();
 }
 
-/** Olay kaçtıysa (katılmadan önce başlamış paylaşım) SDK'nın o anki paylaşımı. */
+/**
+ * Olay kaçtıysa (katılmadan önce başlamış paylaşım) SDK'nın o anki paylaşımı.
+ * YALNIZ katılınca ve yeniden bağlanınca: her kullanıcı olayında okunursa
+ * `sharerOn` `active-share-change`ten önce gelip paylaşım erken (çizilemezken)
+ * bağlanır, asıl olay aynı kimlikle gelince de yeniden denenmez.
+ */
 function paylasimiOku() {
   let aktifId = 0;
   try {
@@ -176,6 +180,7 @@ export async function katil(bilet: ZoomDersTokenOut, bostaKalmaDk: number): Prom
   }
   depoyaUygula((d) => ({ ...d, cokluVideo: coklu, baglanti: "bagli" }));
   kullanicilariOku();
+  paylasimiOku();
   cihazlariOku();
 }
 
@@ -320,7 +325,10 @@ export function olaylariBagla(
     const onceki = useOdaDeposu.getState().baglanti;
     depoyaUygula((d) => baglantiDegisti(d, olay));
     // Yeniden bağlanınca kimlikler/durumlar değişmiş olabilir: listeyi tazele.
-    if (yenidenBaglandi(onceki, useOdaDeposu.getState().baglanti)) kullaniciDegisti();
+    if (yenidenBaglandi(onceki, useOdaDeposu.getState().baglanti)) {
+      kullaniciDegisti();
+      window.setTimeout(paylasimiOku, 0);
+    }
   };
   const agKalitesi = (olay: { userId: number; type: string; level: number }) =>
     depoyaUygula((d) => agKalitesiDegisti(d, olay));
@@ -564,7 +572,7 @@ function tumEkranOku() {
 export async function paylasimiBaslat(): Promise<void> {
   const oge = paylasimOgesi;
   if (!oge) throw new Error("paylasim ogesi yok");
-  const sonuc = await akis().startShareScreen(oge, { hideShareAudioOption: true });
+  const sonuc = await akis().startShareScreen(oge);
   if (basarisizMi(sonuc)) throw sonuc;
   depoyaUygula((d) => benimPaylasimim(d, true));
   tumEkranOku();
