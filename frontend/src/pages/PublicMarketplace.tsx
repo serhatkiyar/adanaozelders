@@ -470,6 +470,8 @@ export default function PublicMarketplace() {
 
   return (
     <PublicShell
+      navGri
+      basaDon
       center={mobil ? undefined : navCenter}
       bottom={mobil ? undefined : navBottom}
       mobilUst={mobilUst}

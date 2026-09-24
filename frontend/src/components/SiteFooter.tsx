@@ -73,7 +73,13 @@ const SOSYAL_HESAPLAR: { ad: string; url: string; ikon: React.ReactNode }[] = [
   },
 ];
 
-export function SiteFooter() {
+/**
+ * `basaDon`: footer'ın üstündeki "Başa dön" şeridi. YALNIZ uzun arama/listeleme
+ * ekranları açar (ana sayfa, öğretmen ve kütüphane listeleri, mağaza) —
+ * kullanıcı kararı, 23 Eyl 2026: diğer sayfalar kısa, şerit yalnız kalabalık
+ * ediyordu.
+ */
+export function SiteFooter({ basaDon = false }: { basaDon?: boolean } = {}) {
   // Ders sayfalarına iç bağlantı sütunu (Modül 6) — yalnız veri varsa.
   const { data: populerDersler } = usePopulerDersler(6);
   const dersSutunu = !!populerDersler?.length;
@@ -116,6 +122,7 @@ export function SiteFooter() {
           yüzüp mobilde parmak alanı çalar; şerit ise tam kullanıcının "sayfa
           bitti, şimdi ne yapacağım" anına yerleşir, layout'la yarışmaz ve tüm
           sayfalarda (ortak footer) kendiliğinden var olur. */}
+      {basaDon && (
       <PlainButton
         onClick={() => {
           const az = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -149,6 +156,7 @@ export function SiteFooter() {
         </svg>
         Başa dön
       </PlainButton>
+      )}
       <div className="mx-auto max-w-[1216px] px-6 py-5 md:py-12">
         <nav
           aria-label="Site bağlantıları"

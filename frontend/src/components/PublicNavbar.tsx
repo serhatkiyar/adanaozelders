@@ -14,6 +14,7 @@ export function PublicNavbar({
   mobilUst,
   mobilSade = false,
   expanded = true,
+  navGri = false,
 }: {
   center?: ReactNode;
   bottom?: ReactNode;
@@ -38,6 +39,13 @@ export function PublicNavbar({
   mobilSade?: boolean;
   /** false iken alt arama satırı yumuşakça katlanır (Landing scroll daralması). */
   expanded?: boolean;
+  /**
+   * Gri (`#f4f4f4`) üst bar — YALNIZ keşfet/arama ekranları açar (ana sayfa,
+   * öğretmen listesi, kütüphane listesi). Kullanıcı kararı, 23 Eyl 2026: diğer
+   * bütün ekranlarda üst bar sayfa zeminiyle (`slate-50`) aynı renktedir,
+   * yalnız alt çizgi kalır.
+   */
+  navGri?: boolean;
 }) {
   const kayitAcik = useKayitAcik();
   // Gercek gezinme (niyet YOK) -> `<Link>` mesru. Adres mevcut sorguyu
@@ -46,8 +54,13 @@ export function PublicNavbar({
   const girisAdresiDegeri = useGirisAdresi();
   const egitmenKayitAdresi = useGirisAdresi("register", "tutor");
   return (
-    // Zemin saf beyaz DEĞİL (#f4f4f4; 16 Eyl 2026: bir ton koyu, navbar ve footer aynı): akıştaki beyaz içerikten ayrışsın (29 Ağu).
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-[#f4f4f4]/95 backdrop-blur-md ">
+    // Zemin: keşfet ekranlarında gri #f4f4f4 (16 Eyl 2026), diğerlerinde sayfa
+    // zemini slate-50 (23 Eyl 2026) — bkz. `navGri`.
+    <header
+      className={`sticky top-0 z-40 border-b border-slate-200 ${
+        navGri ? "bg-[#f4f4f4]/95" : "bg-slate-50/95"
+      } backdrop-blur-md`}
+    >
       <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
         <div
           className={`w-full items-start justify-between gap-4 pt-5 pb-2 ${

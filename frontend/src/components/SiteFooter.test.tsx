@@ -31,6 +31,14 @@ function sar(ui: React.ReactNode) {
 }
 
 describe("SiteFooter", () => {
+  it("\"Başa dön\" varsayılanda yok, yalnız arama ekranları açar (23 Eyl 2026)", () => {
+    const { unmount } = sar(<SiteFooter />);
+    expect(screen.queryByRole("button", { name: /Başa dön/ })).toBeNull();
+    unmount();
+    sar(<SiteFooter basaDon />);
+    expect(screen.getByRole("button", { name: /Başa dön/ })).toBeTruthy();
+  });
+
   it("yasal linkler ÜÇE indirildi (29 Ağu kullanıcı kararı): koşullar/gizlilik/çerez", () => {
     // Sekiz sözleşmeyi footer'a dizmek kaldırıldı — Amazon paritesi. Diğer
     // belgeler ödeme/kayıt akışlarında ve kendi sayfalarında erişilebilir.

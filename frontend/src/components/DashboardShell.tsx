@@ -124,6 +124,10 @@ interface DashboardShellProps {
    * Sayı TEK yerde: iki yüzey de bu bayrağı geçtiği için ayrışamazlar.
    */
   icerikSiki?: boolean;
+  /** Gri üst bar — yalnız keşfet/arama ekranları (bkz. `DashboardHeader`). */
+  navGri?: boolean;
+  /** Footer'da "Başa dön" — yalnız uzun arama ekranları (bkz. `SiteFooter`). */
+  basaDon?: boolean;
 }
 
 export type PanelGenisligi = "dar" | "orta" | "genis";
@@ -157,6 +161,8 @@ export function DashboardShell({
   altBilgiGizli = false,
   expanded = true,
   icerikSiki = false,
+  navGri = false,
+  basaDon = false,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
   const panelSekmeleri =
@@ -263,6 +269,7 @@ export function DashboardShell({
           // Şerit telefonda çizilmediği için bölümler üst barın çekmecesine
           // geçer. Şeritle AYNI liste — ikisi ayrışamaz.
           panelSekmeleri={panelSekmeleri ?? undefined}
+          navGri={navGri}
         />
 
         {/* Şerit yapışkan yığının İÇİNDE: akışta kalsaydı kaydırınca gider,
@@ -354,7 +361,13 @@ export function DashboardShell({
           children
         )}
       </main>
-      {!flush && !altBilgiGizli && <SiteFooter />}
+      {/* Footer YALNIZ herkese açık yüzeylerde (kullanıcı kararı, 23 Eyl
+          2026 — Preply de panelde footer göstermez). Giriş yapmış kabukta
+          herkese açık sayfalar şeridi bilerek kapatır (`sekmeler={null}`:
+          keşif/arama, öğretmen listesi ve profili, kütüphane detayı); öğretmen
+          ve öğrenci paneli şeritle, operatör/kurye panelleri şeritsiz açılır
+          ve ikisinde de footer yoktur. */}
+      {!flush && !altBilgiGizli && sekmeler === null && <SiteFooter basaDon={basaDon} />}
       {/* Çubuk HER rolde çizilir (ea4724c): panel rolleri de telefonda
           gezinmesiz kalıyordu. Tek istisna `mobilDetayEkrani` — bkz. propun
           açıklaması ve `PublicShell`deki eşi. */}

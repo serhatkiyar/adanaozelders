@@ -108,7 +108,8 @@ export function StoreLayout({
       {/* Footer — ortak bileşen (bkz. components/SiteFooter.tsx). Mağazanın
           eski footer'ındaki "Gizlilik Şartları" ve "Kullanıcı Sözleşmesi"
           linkleri aynı hedeflere legalNav başlıklarıyla taşındı. */}
-      <SiteFooter />
+      {/* Mağaza uzun ürün listeleri gösterir: "Başa dön" kalır. */}
+      <SiteFooter basaDon />
     </div>
   );
 }

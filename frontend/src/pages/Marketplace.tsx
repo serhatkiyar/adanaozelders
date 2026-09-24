@@ -561,6 +561,8 @@ export default function Marketplace() {
 
   return (
     <DashboardShell
+      navGri
+      basaDon
       title="Öğretmen Bul"
       navItems={navItems}
       center={mobil ? undefined : navCenter}

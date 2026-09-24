@@ -28,6 +28,8 @@ export function PublicShell({
   mobilUstGizle = false,
   expanded = true,
   icerikSiki = false,
+  navGri = false,
+  basaDon = false,
 }: {
   children: ReactNode;
   /** Navbar ortasına yerleşen içerik (ör. arama pill'i). */
@@ -36,6 +38,10 @@ export function PublicShell({
   bottom?: ReactNode;
   /** Telefonda (yalnız `<md`) en üstte duran içerik — bkz. `PublicNavbar`. */
   mobilUst?: ReactNode;
+  /** Gri üst bar — yalnız keşfet/arama ekranları (bkz. `PublicNavbar`). */
+  navGri?: boolean;
+  /** Footer'da "Başa dön" — yalnız uzun arama ekranları (bkz. `SiteFooter`). */
+  basaDon?: boolean;
   /**
    * Telefonda logo ve giriş/kayıt düğmelerini üst bardan kaldırır
    * (bkz. `PublicNavbar`daki aynı adlı prop).
@@ -157,6 +163,7 @@ export function PublicShell({
           mobilUst={mobilUst}
           mobilSade={mobilSade}
           expanded={expanded}
+          navGri={navGri}
         />
       </div>
       <main
@@ -170,7 +177,7 @@ export function PublicShell({
       >
         {children}
       </main>
-      {!altBilgiGizli && <SiteFooter />}
+      {!altBilgiGizli && <SiteFooter basaDon={basaDon} />}
       {/* Alt sekme çubuğu mobil sayfaların VARSAYILANIDIR (kullanıcı kararı,
           9 Eyl 2026): sayfaların tasarımına dokunmaz ve kendi spacer'ını
           çizdiği için içerik çubuğun altında kalmaz.

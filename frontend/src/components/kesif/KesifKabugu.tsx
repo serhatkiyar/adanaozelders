@@ -78,6 +78,11 @@ import { ROLE_IDS, TeachingMode } from "@/types";
    `/egitmenler` bu yüzden kendi kabuğunu basmaya devam ediyor.
    ──────────────────────────────────────────────────────────────────────── */
 
+/** Üst bar bu kadar kaydırınca daralır… */
+const UST_BAR_DARALMA_ESIGI = 120;
+/** …ve ancak bunun altına dönünce yeniden açılır (bkz. histerezis notu). */
+const UST_BAR_ACILMA_ESIGI = 20;
+
 export function KesifKabugu() {
   const token = useAuthStore((s) => s.token);
   const { data: currentUser } = useCurrentUser();
@@ -191,7 +196,14 @@ export function KesifKabugu() {
       bekleyen = true;
       requestAnimationFrame(() => {
         bekleyen = false;
-        setScrolled(window.scrollY > 56);
+        // İKİ EŞİK (histerezis, 23 Eyl 2026): tek eşikte (56px) bar
+        // daralınca sayfa ~74px kısalıyor, tarayıcı kaydırmayı eşiğin altına
+        // çekiyor, bar yeniden açılıyordu — üst bar sürekli açılıp kapanıyordu.
+        // Aradaki boşluk (100px) barın boy değişiminden büyük olmalı.
+        const y = window.scrollY;
+        setScrolled((onceki) =>
+          onceki ? y > UST_BAR_ACILMA_ESIGI : y > UST_BAR_DARALMA_ESIGI
+        );
         setSearchOpen(false);
       });
     };
@@ -420,6 +432,8 @@ export function KesifKabugu() {
       mobilUstGizle={sonucEkrani}
       expanded={expanded}
       icerikSiki
+      navGri
+      basaDon
     >
       {govde}
     </DashboardShell>
@@ -435,6 +449,8 @@ export function KesifKabugu() {
       mobilUstGizle={sonucEkrani}
       expanded={expanded}
       icerikSiki
+      navGri
+      basaDon
     >
       {govde}
     </PublicShell>
