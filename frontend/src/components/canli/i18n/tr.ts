@@ -182,7 +182,6 @@ export const tr = {
         orta: "orta",
         zayif: "zayıf",
         bilinmiyor: "bilinmiyor",
-        unknownHint: "Bağlantı kalitesi yalnız kamera açıkken ölçülür.",
         weakHint: "Görüntü ve ses kesilebilir.",
       },
     },

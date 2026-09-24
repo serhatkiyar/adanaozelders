@@ -12,6 +12,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "@/components/AppIcon";
+import { agKalitesi } from "@/lib/canliDers";
 
 import { BaglantiCubugu, useBaglantiMetni } from "./BaglantiCubugu";
 
@@ -60,9 +61,11 @@ export function KaroBilgisi({
           )}
           <span className="truncate px-0.5 font-medium">{ad}</span>
         </div>
-        <div className={`inline-flex shrink-0 rounded bg-black/50 ${kucuk ? "p-0.5" : "p-1"}`}>
-          <BaglantiCubugu seviye={agSeviyesi} kucuk={kucuk} />
-        </div>
+        {agKalitesi(agSeviyesi) !== "bilinmiyor" && (
+          <div className={`inline-flex shrink-0 rounded bg-black/50 ${kucuk ? "p-0.5" : "p-1"}`}>
+            <BaglantiCubugu seviye={agSeviyesi} kucuk={kucuk} />
+          </div>
+        )}
       </div>
     </>
   );
@@ -91,8 +94,10 @@ export function KaroKatmani({
   const katman = useRef<HTMLDivElement>(null);
   const [etkin, setEtkin] = useState(false);
   const [klavye, setKlavye] = useState(false);
-  const { etiket, ipucu } = useBaglantiMetni(agSeviyesi);
-  const kutuAcik = !telefon && ad !== undefined && (etkin || klavye);
+  const { kalite, etiket, ipucu } = useBaglantiMetni(agSeviyesi);
+  // Gerçek ölçüm yoksa bağlantı kutusu da yok ("bilinmiyor" yazılmaz).
+  const kutuAcik =
+    !telefon && ad !== undefined && kalite !== "bilinmiyor" && (etkin || klavye);
 
   useEffect(() => {
     const el = katman.current;

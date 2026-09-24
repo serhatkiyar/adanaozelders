@@ -38,7 +38,10 @@ export interface Katilimci {
   yenidenBaglaniyor: boolean;
 }
 
-/** `network-quality-change` son değerleri (0–5); yalnız kamerası açık olanlar. */
+/**
+ * `network-quality-change` son değerleri (0–5). Kamera kapanınca eski değer
+ * atılır; sonrasında gelen (SDK'nın ses yolundan da yayınladığı) değerler tutulur.
+ */
 export interface AgOlcumu {
   uplink?: number;
   downlink?: number;
@@ -77,12 +80,23 @@ export interface OdaDurumu {
   izinPenceresi: boolean;
   /** Kullanıcı kimliğine göre son ağ kalitesi ölçümleri. */
   agKaliteleri: Record<number, AgOlcumu>;
+  /**
+   * KENDİ ses bağlantımın kalitesi (`audio-statistic-data-change`, 0–5):
+   * `encode` gönderdiğim, `decode` aldığım ses. Kamera kapalıyken kendi
+   * kartımın göstergesi buradan; veri kesilince (susunca) `istemci.ts` siler.
+   */
+  sesKalitesi: SesKalitesi;
   /** Karşı tarafın izlenen ekran paylaşımı (`active-share-change`); yoksa `null`. */
   aktifPaylasim: number | null;
   /** Kendi ekranımı paylaşıyorum (`startShareScreen` başarılı → durdurulana dek). */
   benPaylasiyorum: boolean;
   /** Kendi paylaşımım tüm ekran (sonsuz yansıma uyarısı). */
   benTumEkran: boolean;
+}
+
+export interface SesKalitesi {
+  encode?: number;
+  decode?: number;
 }
 
 export interface Cihaz {
@@ -124,6 +138,7 @@ export const BASLANGIC: OdaDurumu = {
   izinler: { kamera: "bilinmiyor", mikrofon: "bilinmiyor" },
   izinPenceresi: false,
   agKaliteleri: {},
+  sesKalitesi: {},
   aktifPaylasim: null,
   benPaylasiyorum: false,
   benTumEkran: false,
@@ -176,8 +191,9 @@ export function katilimcilariEsitle(
 }
 
 /**
- * Ölçüm yalnız kamerası açık kullanıcı için yayınlanır: kamerası kapanan ya
- * da ayrılanın eski değeri kalırsa gösterge yanıltır ("bilinmiyor" olmalı).
+ * Ayrılanın (ya da kimliği değişenin) eski ölçümü atılır. Kamerası kapanan
+ * kalır: kapanış anındaki eski değeri `videoDurumuDegisti` zaten sildi,
+ * sonrasında gelenler (SDK ses yolundan da yayınlar) gerçek ölçümdür.
  */
 function agKaliteleriniBuda(
   olcumler: Record<number, AgOlcumu>,
@@ -187,7 +203,7 @@ function agKaliteleriniBuda(
   let degisti = false;
   for (const [anahtar, olcum] of Object.entries(olcumler)) {
     const id = Number(anahtar);
-    if (katilimcilar.some((k) => k.userId === id && k.videoAcik)) sonuc[id] = olcum;
+    if (katilimcilar.some((k) => k.userId === id)) sonuc[id] = olcum;
     else degisti = true;
   }
   return degisti ? sonuc : olcumler;
@@ -208,15 +224,64 @@ export function agKalitesiDegisti(
   };
 }
 
-/** Gösterilecek seviye: bilinen yönlerin en kötüsü; ölçüm yoksa `null`. */
+function enKotu(degerler: Array<number | undefined>): number | null {
+  const gecerli = degerler.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+  return gecerli.length ? Math.min(...gecerli) : null;
+}
+
+/**
+ * Gösterilecek seviye: bilinen yönlerin en kötüsü. Ağ ölçümü yoksa kendi
+ * kartım için ses istatistiği; o da yoksa `null` (gösterge gizlenir).
+ */
 export function agSeviyesi(durum: OdaDurumu, userId: number | undefined): number | null {
   if (userId === undefined) return null;
   const olcum = durum.agKaliteleri[userId];
-  if (!olcum) return null;
-  const degerler = [olcum.uplink, olcum.downlink].filter(
-    (v): v is number => typeof v === "number" && Number.isFinite(v),
-  );
-  return degerler.length ? Math.min(...degerler) : null;
+  const ag = olcum ? enKotu([olcum.uplink, olcum.downlink]) : null;
+  if (ag !== null) return ag;
+  if (userId !== durum.benId) return null;
+  return enKotu([durum.sesKalitesi.encode, durum.sesKalitesi.decode]);
+}
+
+/**
+ * Zoom ses istatistiği (`AudioQosData`) → 0–5 seviye (`agKalitesi` ölçeği:
+ * 4 iyi, 2 orta, 1 zayıf). Yalnız milisaniye birimli `rtt` ve `jitter`
+ * kullanılır; `avg_loss`un birimi SDK'da belgelenmemiş. Hepsi 0 ise (akış
+ * yok, SDK'nın boş başlangıç değeri) ölçüm yok: `null`.
+ */
+export function sesIstatistigiSeviyesi(veri: {
+  rtt?: number;
+  jitter?: number;
+  sample_rate?: number;
+}): number | null {
+  const rtt = Number(veri.rtt);
+  const jitter = Number(veri.jitter);
+  if (!Number.isFinite(rtt) || !Number.isFinite(jitter)) return null;
+  if (rtt <= 0 && jitter <= 0 && !veri.sample_rate) return null;
+  if (rtt >= 600 || jitter >= 80) return 1;
+  if (rtt >= 300 || jitter >= 30) return 2;
+  return 4;
+}
+
+/** Kendi kameramı kapatınca eski (görüntü dönemindeki) ağ ölçümüm atılır. */
+export function agOlcumunuSil(durum: OdaDurumu, userId: number | null): OdaDurumu {
+  if (userId === null || !(userId in durum.agKaliteleri)) return durum;
+  const agKaliteleri = { ...durum.agKaliteleri };
+  delete agKaliteleri[userId];
+  return { ...durum, agKaliteleri };
+}
+
+/** Ses istatistiği seviyesi; değişmediyse AYNI durum (her saniye gelir). */
+export function sesKalitesiDegisti(
+  durum: OdaDurumu,
+  yon: keyof SesKalitesi,
+  seviye: number | null,
+): OdaDurumu {
+  const onceki = durum.sesKalitesi[yon];
+  if ((onceki ?? null) === seviye) return durum;
+  const sesKalitesi = { ...durum.sesKalitesi };
+  if (seviye === null) delete sesKalitesi[yon];
+  else sesKalitesi[yon] = seviye;
+  return { ...durum, sesKalitesi };
 }
 
 /**

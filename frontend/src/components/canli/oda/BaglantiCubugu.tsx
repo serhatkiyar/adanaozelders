@@ -2,9 +2,10 @@
  * Bağlantı kalitesi göstergesi — Meet `ParticipantMetadata` içindeki
  * `ConnectionQualityIndicator` karşılığı (La Suite Meet, MIT — DINUM/Etalab).
  *
- * Kaynak Zoom `network-quality-change` (0–5); değer yalnız kamerası açık
- * kullanıcı için yayınlanır, yoksa soluk "bilinmiyor" çizilir. Soluk tam
- * çubukların üstüne seviyenin çubukları renkli çizilir.
+ * Kaynak Zoom `network-quality-change` (0–5); kendi kartımda ölçüm yoksa
+ * ses istatistiği (`audio-statistic-data-change`). Gerçek ölçüm yoksa
+ * gösterge HİÇ çizilmez ("bilinmiyor" yazılmaz). Soluk tam çubukların
+ * üstüne seviyenin çubukları renkli çizilir.
  */
 import { useTranslation } from "react-i18next";
 
@@ -34,12 +35,7 @@ export function useBaglantiMetni(seviye: number | null): {
   const { t } = useTranslation();
   const kalite = agKalitesi(seviye);
   const etiket = t("connection.quality.label", { durum: t(`connection.quality.${kalite}`) });
-  const ipucu =
-    kalite === "bilinmiyor"
-      ? t("connection.quality.unknownHint")
-      : kalite === "zayif"
-        ? t("connection.quality.weakHint")
-        : null;
+  const ipucu = kalite === "zayif" ? t("connection.quality.weakHint") : null;
   return { kalite, etiket, ipucu };
 }
 
@@ -53,18 +49,17 @@ export function BaglantiCubugu({
   const { kalite, etiket, ipucu } = useBaglantiMetni(seviye);
   const boyut = kucuk ? "h-3.5 w-3.5" : "h-4 w-4";
   const ikon = IKON[kalite];
+  if (!ikon) return null;
   return (
     <span
       className="relative inline-flex shrink-0"
       title={ipucu ? `${etiket}. ${ipucu}` : etiket}
       data-kalite={kalite}
     >
-      <Icon name="cellular" className={`${boyut} ${ikon ? "text-white/30" : "text-white/40"}`} />
-      {ikon && (
-        <span className={`absolute inset-0 ${RENK[kalite]}`}>
-          <Icon name={ikon} className={boyut} />
-        </span>
-      )}
+      <Icon name="cellular" className={`${boyut} text-white/30`} />
+      <span className={`absolute inset-0 ${RENK[kalite]}`}>
+        <Icon name={ikon} className={boyut} />
+      </span>
       <span className="sr-only">{etiket}</span>
     </span>
   );

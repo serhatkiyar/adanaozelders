@@ -245,8 +245,8 @@ export type AgKalitesi = "bilinmiyor" | "zayif" | "orta" | "iyi";
 
 /**
  * Zoom `network-quality-change` seviyesi (0–5) → gösterge. Zoom ölçeği:
- * 0–1 zayıf, 2 orta, 3–5 iyi. Değer yalnız kamera açıkken yayınlanır;
- * yoksa (ya da okunamazsa) "bilinmiyor".
+ * 0–1 zayıf, 2 orta, 3–5 iyi. Ölçüm yoksa (ya da okunamazsa)
+ * "bilinmiyor" — gösterge o zaman hiç çizilmez.
  */
 export function agKalitesi(seviye: number | null | undefined): AgKalitesi {
   if (seviye === null || seviye === undefined || !Number.isFinite(seviye) || seviye < 0) {

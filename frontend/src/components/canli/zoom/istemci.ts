@@ -31,6 +31,7 @@ import { tumEkranPaylasimiMi } from "@/lib/canliDers";
 
 import {
   agKalitesiDegisti,
+  agOlcumunuSil,
   aktifKonusanlar,
   aktifPaylasimDegisti,
   benimPaylasimim,
@@ -45,6 +46,8 @@ import {
   mikIzniReddedildiMi,
   paylasimiEsitle,
   sesEngellendi,
+  sesIstatistigiSeviyesi,
+  sesKalitesiDegisti,
   videoDurumuDegisti,
   yenidenBaglandi,
   type CihazTuru,
@@ -161,6 +164,24 @@ function agKaliteleriniOku() {
     }
   }
 }
+
+/**
+ * Kendi ses bağlantımın istatistiği (`audio-statistic-data-change`, saniyede
+ * bir). Kamera kapalıyken kendi kartımın bağlantı göstergesi buradan gelir.
+ * Ses bağlanınca ve yeniden bağlanınca abone olunur; hata yalnız göstergeyi
+ * gizli bırakır.
+ */
+async function sesIstatistigineAbone(): Promise<void> {
+  try {
+    const sonuc = await akis().subscribeAudioStatisticData();
+    if (basarisizMi(sonuc)) console.warn("Zoom subscribeAudioStatisticData", sonuc);
+  } catch (e) {
+    console.warn("Zoom subscribeAudioStatisticData", e);
+  }
+}
+
+/** Bu kadar süre yeni istatistik gelmezse (sustu / karşı taraf sustu) değer silinir. */
+const SES_ISTATISTIGI_ESKIME_MS = 5000;
 
 export function oturumdaMi(): boolean {
   try {
@@ -336,10 +357,25 @@ export function olaylariBagla(
     if (yenidenBaglandi(onceki, useOdaDeposu.getState().baglanti)) {
       kullaniciDegisti();
       window.setTimeout(paylasimiOku, 0);
+      void sesIstatistigineAbone();
     }
   };
   const agKalitesi = (olay: { userId: number; type: string; level: number }) =>
     depoyaUygula((d) => agKalitesiDegisti(d, olay));
+  const eskime: { encode?: number; decode?: number } = {};
+  const sesIstatistigi = (olay: {
+    data?: { encoding?: boolean; rtt?: number; jitter?: number; sample_rate?: number };
+  }) => {
+    const veri = olay?.data;
+    if (!veri) return;
+    const yon = veri.encoding ? "encode" : "decode";
+    depoyaUygula((d) => sesKalitesiDegisti(d, yon, sesIstatistigiSeviyesi(veri)));
+    window.clearTimeout(eskime[yon]);
+    eskime[yon] = window.setTimeout(
+      () => depoyaUygula((d) => sesKalitesiDegisti(d, yon, null)),
+      SES_ISTATISTIGI_ESKIME_MS,
+    );
+  };
   const medyaBozuldu = (olay: { code?: number; message?: string; type?: string }) => {
     console.warn("Zoom active-media-failed", olay);
     depoyaUygula(medyaHatasi);
@@ -373,6 +409,7 @@ export function olaylariBagla(
     ["device-permission-change", izin],
     ["speaking-while-muted", kapaliykenKonusma],
     ["network-quality-change", agKalitesi],
+    ["audio-statistic-data-change", sesIstatistigi],
     ["active-media-failed", medyaBozuldu],
     ["active-share-change", paylasimDegisti],
     ["passively-stop-share", paylasimDurduruldu],
@@ -383,6 +420,8 @@ export function olaylariBagla(
   }
   return () => {
     window.clearTimeout(zamanlayici);
+    window.clearTimeout(eskime.encode);
+    window.clearTimeout(eskime.decode);
     for (const [olay, dinleyici] of dinleyiciler) {
       try {
         istemci.off(olay, dinleyici as (yuk: unknown) => void);
@@ -417,6 +456,7 @@ export async function sesiBaslat(mute: boolean): Promise<"tam" | "yalnizHoparlor
   if (hata === undefined) {
     depoyaUygula((d) => sesEngellendi(d, false));
     cihazlariOku();
+    void sesIstatistigineAbone();
     return "tam";
   }
   if (!mikIzniReddedildiMi(hata)) throw hata;
@@ -428,6 +468,7 @@ export async function sesiBaslat(mute: boolean): Promise<"tam" | "yalnizHoparlor
   if (basarisizMi(sonuc)) throw sonuc;
   depoyaUygula((d) => sesEngellendi(d, false));
   cihazlariOku();
+  void sesIstatistigineAbone();
   return "yalnizHoparlor";
 }
 
@@ -481,6 +522,7 @@ export async function kamerayiDegistir(ac: boolean): Promise<void> {
       })
     : await akis().stopVideo();
   if (basarisizMi(sonuc)) throw sonuc;
+  if (!ac) depoyaUygula((d) => agOlcumunuSil(d, d.benId));
   kullanicilariOku();
   if (ac) cihazlariOku();
 }
