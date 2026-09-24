@@ -3,61 +3,65 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { UYE_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
-import { StarRating } from "@/components/StarRating";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { CancelModal } from "@/components/CancelModal";
 import { RescheduleModal } from "@/components/RescheduleModal";
 import { ReviewModal } from "@/components/ReviewModal";
-import { QuestionModal } from "@/components/QuestionModal";
-import { QaThreadChat } from "@/components/QaThreadChat";
-import { LessonTasksCard } from "@/components/LessonTasksCard";
 import { DersOnayKarti } from "@/components/booking/DersOnayKarti";
+import { OgretmenErtelemeModal } from "@/components/booking/OgretmenErtelemeModal";
 import { Modal } from "@/components/ui/Modal";
 import {
   ACIKLAMA,
-  BOLUM_BASLIGI,
-  DUGME_SATIR_BIRINCIL,
-  DUGME_SATIR_IKINCIL,
-  DUGME_SATIR_TEHLIKE,
+  DUGME_BIRINCIL,
+  DUGME_IKINCIL,
   ETIKET,
   KART,
   KUCUK_ACIKLAMA,
   METIN_BAGLANTI,
+  SAYFA_BASLIGI,
 } from "@/components/pano/stil";
 import { useSeri, useSeriBitir, useTeklifiGeriCek } from "@/hooks/useDersTeklifi";
 import {
+  useAcceptTutorReschedule,
   useBooking,
   useBookingAction,
-  useSetBookingLocation,
-  useAddBookingComment,
-  useDeleteBookingComment,
+  useDeclineTutorReschedule,
+  useRemindConfirm,
 } from "@/hooks/useBookings";
-import { MapPicker } from "@/components/MapPicker";
-import { BookingResourcesPanel } from "@/components/booking/BookingResourcesPanel";
-import { BookingPrivateNotesPanel } from "@/components/booking/BookingPrivateNotesPanel";
 import { useReviewByBooking } from "@/hooks/useReviews";
-import { useQaRights } from "@/hooks/useQa";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { formatRange } from "@/lib/datetime";
-import { degerlendirmeTarihi } from "@/lib/reviewStats";
+import { formatDateTime, formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
-import { isLessonJoinable } from "@/lib/lesson";
+import { isLessonJoinable, mapsUrl } from "@/lib/lesson";
 import { useMeetingStore } from "@/store/meetingStore";
 import { getErrorDetail, getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { BookingStatus, ROLE_IDS } from "@/types";
-import { rolEtiketi } from "@/lib/roles";
 import { ADSIZ_UYE } from "@/lib/roles";
+import { ROUTES } from "@/lib/routes";
 
-function durationLabel(startIso: string, endIso: string): string {
-  const min = Math.round(
-    (new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000
-  );
-  if (min < 60) return `${min} dk`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m === 0 ? `${h} saat` : `${h} sa ${m} dk`;
+/*
+ * Ders ayrıntıları — Preply'ın takvimdeki "ders bilgileri" penceresi gibi
+ * sade (kullanıcı kararı, 23 Eyl 2026; araştırma `preply-arastirma`,
+ * `tutorCalendarPage` → `LESSON_DETAILS_MODAL`): tek ders kartı + alt alta
+ * tam genişlik düğmeler. Kaldırılanlar: soru-cevap, ders kaynakları, ders
+ * mesajları, gizli notlar, görevler, buluşma yeri düzenleme, değerlendirme
+ * kutusu, haftalık seri rozeti. Düğme olarak KALANLAR yalnız bu sayfada
+ * yapılabilen işlerdir: değerlendirme yazma, öğrencinin ders onayı / sorun
+ * bildirimi, kabul-ret, teklifi geri çekme, erteleme, seriyi bitirme.
+ */
+
+const TAM = "w-full";
+const TEHLIKE =
+  "inline-flex h-12 w-full items-center justify-center rounded-lg border-2 border-red-200 bg-white px-6 text-lg font-semibold text-red-700 transition hover:border-red-700 disabled:opacity-50";
+
+function sureEtiketi(startIso: string, endIso: string): string {
+  const dk = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000);
+  if (dk < 60) return `${dk} dk`;
+  const sa = Math.floor(dk / 60);
+  const kalan = dk % 60;
+  return kalan === 0 ? `${sa} saat` : `${sa} sa ${kalan} dk`;
 }
 
 export default function LessonDetail() {
@@ -76,8 +80,6 @@ export default function LessonDetail() {
 
   const { data: booking, isLoading, isError } = useBooking(bookingId);
   const { data: review } = useReviewByBooking(bookingId);
-  const { data: qaGroups } = useQaRights();
-
   const joinMeeting = useMeetingStore((s) => s.joinMeeting);
 
   const accept = useBookingAction("accept");
@@ -88,20 +90,14 @@ export default function LessonDetail() {
   const [showCancel, setShowCancel] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [editReview, setEditReview] = useState(false);
-  const [showAsk, setShowAsk] = useState(false);
   const [reviewed, setReviewed] = useState(false);
-  const [editingLoc, setEditingLoc] = useState(false);
-  const [locDraft, setLocDraft] = useState("");
-  const [locLatDraft, setLocLatDraft] = useState<number | null>(null);
-  const [locLngDraft, setLocLngDraft] = useState<number | null>(null);
-  const setLoc = useSetBookingLocation();
+  const [showTutorReschedule, setShowTutorReschedule] = useState(false);
+  const [redOnayi, setRedOnayi] = useState(false);
+  const yeniSaatiKabul = useAcceptTutorReschedule();
+  const yeniSaatiReddet = useDeclineTutorReschedule();
+  const hatirlat = useRemindConfirm();
 
-  const [commentBody, setCommentBody] = useState("");
-  const addComment = useAddBookingComment();
-  const delComment = useDeleteBookingComment();
-
-  // Haftalık seri (varsa): durum rozet ve "Seriyi bitir" düğmesi için.
+  // Haftalık seri: rozet yok; "Seriyi bitir" seriyi durdurmanın tek yolu.
   const seri = useSeri(booking?.series_id);
   const seriBitir = useSeriBitir();
   const geriCek = useTeklifiGeriCek();
@@ -112,60 +108,71 @@ export default function LessonDetail() {
   if (isError || !booking) {
     return (
       <DashboardShell title="Ders" navItems={navItems ?? undefined} genislik="dar">
-        <div>
-          <button onClick={() => navigate(-1)} className={METIN_BAGLANTI}>
-            ← Geri dön
-          </button>
-          <div className="mt-6 flex flex-col items-center rounded-lg border border-dashed border-slate-300 py-16 text-center">
-            <p className={ACIKLAMA}>Ders bulunamadı.</p>
-          </div>
+        <button onClick={() => navigate(-1)} className={METIN_BAGLANTI}>
+          ← Geri dön
+        </button>
+        <div className="mt-6 flex flex-col items-center rounded-lg border border-dashed border-slate-300 py-16 text-center">
+          <p className={ACIKLAMA}>Ders bulunamadı.</p>
         </div>
       </DashboardShell>
     );
   }
 
   const isClient = role === "CLIENT";
-  const counterpartName = isClient
-    ? booking.tutor_name ?? "Öğretmen"
-    : booking.client_name ?? ADSIZ_UYE;
-  const counterpartLink = isClient
-    ? `/student/tutors/${booking.tutor_id}`
-    : `/tutor/students/${booking.client_id}`;
+  const kisiAdi = isClient ? booking.tutor_name ?? "Öğretmen" : booking.client_name ?? ADSIZ_UYE;
+  const kisiFoto = isClient ? booking.tutor_avatar_url : booking.client_avatar_url;
+  const mesajYolu = isClient
+    ? ROUTES.messageWith(booking.tutor_id, kisiAdi, "TUTOR")
+    : ROUTES.messageWith(booking.client_id, kisiAdi, "CLIENT");
   const price = parseMoney(booking.price);
   const isRemote = booking.mode === "ONLINE";
-  const modeLabel =
-    booking.mode === "ONLINE"
-      ? "Uzaktan"
-      : booking.mode === "IN_PERSON"
-        ? "Yüzyüze"
-        : null;
 
   const isPending = booking.status === BookingStatus.PENDING;
   const isAccepted = booking.status === BookingStatus.ACCEPTED;
-  const canMessage = isPending || isAccepted;
+  const acik = isPending || isAccepted;
   const alreadyReviewed = !!review || reviewed;
+  const katilabilir =
+    isAccepted && isRemote && !!booking.meeting_room && isLessonJoinable(booking.start_at, booking.end_at);
+  const canWithdraw =
+    role === "TUTOR" && isPending && !!booking.offered_by_tutor && !booking.payment;
+  const seriAktif = !!booking.series_id && seri.data?.status === "ACTIVE";
+  // Bekleyen derste yanıtı veren taraf "Reddet" görür; ona ayrıca "İptal"
+  // göstermek aynı işi iki düğmeye bölerdi.
+  const yanitVeren =
+    isPending &&
+    ((role === "TUTOR" && !booking.offered_by_tutor) || (isClient && !!booking.offered_by_tutor));
+  const tamamlandi = booking.status === BookingStatus.COMPLETED;
+  const simdi = Date.now();
+  const basladi = new Date(booking.start_at).getTime() <= simdi;
+  const bitti = new Date(booking.end_at).getTime() < simdi;
+  // Öğretmen dersi başka saate aldı, öğrencinin yanıtı bekleniyor.
+  const saatDegisikligi = isAccepted && !!booking.tutor_rescheduled_from && !basladi;
+  const odeme = booking.payment ?? null;
 
-  const qaGroup =
-    isClient && qaGroups
-      ? qaGroups.find((g) => g.booking_id === bookingId) ?? null
-      : null;
+  const yeniSaatUygun = () =>
+    yeniSaatiKabul.mutate(bookingId, {
+      onSuccess: () => toast.success("Yeni saati onayladın."),
+      onError: (err) => toast.error(getErrorDetail(err, "Onaylanamadı.")),
+    });
+  const yeniSaatUygunDegil = () =>
+    yeniSaatiReddet.mutate(bookingId, {
+      onSuccess: () => {
+        setRedOnayi(false);
+        toast.success("Ders iptal edildi; ücretin iade edilecek.");
+      },
+      onError: (err) => toast.error(getErrorDetail(err, "İptal edilemedi.")),
+    });
+  const onayHatirlat = () =>
+    hatirlat.mutate(bookingId, {
+      onSuccess: () => toast.success("Öğrencine onay hatırlatması gönderildi."),
+      onError: (err) => toast.error(getErrorDetail(err, "Hatırlatma gönderilemedi.")),
+    });
 
-  const saveLoc = () => {
-    if (!locDraft.trim()) {
-      toast.error("Bir adres / buluşma noktası gir.");
-      return;
-    }
-    setLoc.mutate(
-      { id: bookingId, location: locDraft.trim(), lat: locLatDraft, lng: locLngDraft },
-      {
-        onSuccess: () => {
-          toast.success("Buluşma yeri kaydedildi.");
-          setEditingLoc(false);
-        },
-        onError: (err) => toast.error(getErrorMessage(err, "Kaydedilemedi.")),
-      }
-    );
-  };
+  const run = (action: typeof accept, okMsg: string) =>
+    action.mutate(bookingId, {
+      onSuccess: () => toast.success(okMsg),
+      onError: (err) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
+    });
 
   const teklifiGeriCek = () =>
     geriCek.mutate(bookingId, {
@@ -183,92 +190,191 @@ export default function LessonDetail() {
       onError: (err) => toast.error(getErrorDetail(err, "Seri bitirilemedi.")),
     });
   };
-  const canWithdraw =
-    role === "TUTOR" && isPending && !!booking.offered_by_tutor && !booking.payment;
-  const seriAktif = !!booking.series_id && seri.data?.status === "ACTIVE";
 
-  const run = (action: typeof accept, okMsg: string) =>
-    action.mutate(bookingId, {
-      onSuccess: () => toast.success(okMsg),
-      onError: (err) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
-    });
-
-  const handleAddComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentBody.trim()) return;
-    addComment.mutate(
-      { id: bookingId, body: commentBody.trim() },
-      {
-        onSuccess: () => {
-          setCommentBody("");
-        },
-        onError: (err) => toast.error(getErrorMessage(err, "Not gönderilemedi.")),
-      }
-    );
-  };
+  const kisi = (
+    <>
+      <Avatar name={kisiAdi} avatar_url={kisiFoto} size="lg" />
+      <div className="min-w-0">
+        <p className={`truncate ${ETIKET}`}>{kisiAdi}</p>
+        {isClient && <p className={KUCUK_ACIKLAMA}>Profili gör</p>}
+      </div>
+    </>
+  );
 
   return (
-    <DashboardShell title="Ders Detayı" navItems={navItems ?? undefined} genislik="orta">
+    <DashboardShell title="Ders ayrıntıları" navItems={navItems ?? undefined} genislik="dar">
       <div className="pb-12">
         <button onClick={() => navigate(-1)} className={`${METIN_BAGLANTI} mb-6 inline-block`}>
           ← Geri dön
         </button>
+        <h1 className={`${SAYFA_BASLIGI} mb-6`}>Ders ayrıntıları</h1>
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3 lg:grid-flow-row-dense">
-
-        {/* ── Header ── */}
-        <section className={`${KART} lg:col-span-2`}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <Link
-              to={counterpartLink}
-              className="flex min-w-0 items-center gap-3 transition hover:opacity-80"
-            >
-              <Avatar name={counterpartName} avatar_url={isClient ? booking.tutor_avatar_url : booking.client_avatar_url} size="lg" />
-              <div className="min-w-0">
-                <p className={`${BOLUM_BASLIGI} truncate`}>
-                  {counterpartName}
-                </p>
-                <p className={KUCUK_ACIKLAMA}>
-                  {rolEtiketi(isClient ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)} · profili gör →
-                </p>
-              </div>
-            </Link>
+        <section className={KART}>
+          {/* ── Ders kartı ── */}
+          <div className="flex items-start justify-between gap-4">
+            {isClient ? (
+              <Link
+                to={`/student/tutors/${booking.tutor_id}`}
+                className="flex min-w-0 items-center gap-3 transition hover:opacity-80"
+              >
+                {kisi}
+              </Link>
+            ) : (
+              <div className="flex min-w-0 items-center gap-3">{kisi}</div>
+            )}
             <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${BOOKING_STATUS_STYLE[booking.status]}`}
+              className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${BOOKING_STATUS_STYLE[booking.status]}`}
             >
               {BOOKING_STATUS_LABEL[booking.status]}
             </span>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-700">
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1">
-              {formatRange(booking.start_at, booking.end_at)}
-            </span>
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1">
-              {durationLabel(booking.start_at, booking.end_at)}
-            </span>
-            {modeLabel && (
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium">
-                {modeLabel}
-              </span>
+          <dl className="mt-6 space-y-3 border-t border-slate-200 pt-5">
+            <div className="flex justify-between gap-4">
+              <dt className={ACIKLAMA}>Tarih</dt>
+              <dd className={`text-right ${ETIKET}`}>{formatRange(booking.start_at, booking.end_at)}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className={ACIKLAMA}>Süre</dt>
+              <dd className={ETIKET}>{sureEtiketi(booking.start_at, booking.end_at)}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className={ACIKLAMA}>Ders şekli</dt>
+              <dd className={ETIKET}>{isRemote ? "Online" : "Yüz yüze"}</dd>
+            </div>
+            {!isRemote && (
+              <div className="flex justify-between gap-4">
+                <dt className={ACIKLAMA}>Buluşma yeri</dt>
+                <dd className="min-w-0 text-right">
+                  {booking.location ? (
+                    <a
+                      href={mapsUrl(booking.location, booking.location_lat, booking.location_lng)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${METIN_BAGLANTI} break-words`}
+                    >
+                      {booking.location}
+                    </a>
+                  ) : (
+                    <span className={ACIKLAMA}>Henüz belirlenmedi</span>
+                  )}
+                </dd>
+              </div>
             )}
             {price !== null && (
-              <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold">
-                {formatTRY(booking.price)}
-              </span>
+              <div className="flex justify-between gap-4">
+                <dt className={ACIKLAMA}>Ücret</dt>
+                <dd className={ETIKET}>{formatTRY(booking.price)}</dd>
+              </div>
             )}
-            {booking.series_id && (
-              <span className="rounded-lg bg-marka-soft px-2.5 py-1 font-medium text-marka-soft-fg">
-                Haftalık seri
-                {seri.data?.status === "ENDED" ? " · sona erdi" : ""}
-              </span>
-            )}
-          </div>
+          </dl>
 
-          {/* Canlı katılım — yalnızca uzaktan + onaylı + oda. Gömülü pencerede açılır
-              (GlobalMeeting); ders saatinden 15 dk önce aktifleşir. */}
-          {isAccepted && isRemote && booking.meeting_room && (
-            isLessonJoinable(booking.start_at, booking.end_at) ? (
+          {booking.notes && (
+            <p className="mt-5 rounded-lg bg-slate-50 px-4 py-3 text-base italic leading-6 text-slate-600">
+              "{booking.notes}"
+            </p>
+          )}
+          {(booking.status === BookingStatus.CANCELLED || booking.status === BookingStatus.REJECTED) &&
+            booking.cancel_reason && (
+              <p className="mt-5 rounded-lg bg-slate-50 px-4 py-3 text-base leading-6 text-slate-700">
+                {booking.status === BookingStatus.CANCELLED ? "İptal nedeni: " : ""}
+                {booking.cancel_reason}
+              </p>
+            )}
+
+          {/* Geçmiş dersin durumu: öğrencide onay / sorun bildirimi, öğretmende
+              ücretin ne zaman kazanca geçeceği. */}
+          {isClient && (
+            <div className="mt-5">
+              <DersOnayKarti booking={booking} />
+            </div>
+          )}
+          {/* Öğretmen: saati değiştirdiğin ders öğrencinin yanıtını bekliyor. */}
+          {role === "TUTOR" && saatDegisikligi && (
+            <p className="mt-5 rounded-lg bg-amber-50 px-4 py-3 text-base leading-6 text-amber-800">
+              Dersi {formatDateTime(booking.tutor_rescheduled_from!)} yerine bu saate aldın;
+              öğrencinin yanıtı bekleniyor.
+            </p>
+          )}
+
+          {/* Öğrenci: öğretmen saati değiştirdi, uygun mu? */}
+          {isClient && saatDegisikligi && (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4">
+              <p className={ETIKET}>Öğretmenin dersi başka bir saate aldı</p>
+              <p className={`mt-1 ${ACIKLAMA}`}>
+                Eski saat: {formatDateTime(booking.tutor_rescheduled_from!)}. Yeni saat sana
+                uygun değilse dersi iptal edebilirsin; ücretin tamamı iade edilir.
+              </p>
+              {redOnayi ? (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    onClick={yeniSaatUygunDegil}
+                    disabled={yeniSaatiReddet.isPending}
+                    className={TEHLIKE}
+                  >
+                    {yeniSaatiReddet.isPending ? "İptal ediliyor…" : "Evet, dersi iptal et"}
+                  </button>
+                  <button onClick={() => setRedOnayi(false)} className={`${DUGME_IKINCIL} ${TAM}`}>
+                    Vazgeç
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    onClick={yeniSaatUygun}
+                    disabled={yeniSaatiKabul.isPending}
+                    className={`${DUGME_BIRINCIL} ${TAM}`}
+                  >
+                    Yeni saat uygun
+                  </button>
+                  <button onClick={() => setRedOnayi(true)} className={`${DUGME_IKINCIL} ${TAM}`}>
+                    Uygun değil
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Öğretmen: bitmiş dersin ücret durumu (Preply "durum kutusu"). */}
+          {role === "TUTOR" && bitti && (isAccepted || tamamlandi) && (
+            <div className="mt-5">
+              {booking.is_free_lesson ? (
+                tamamlandi && (
+                  <p className="rounded-lg bg-emerald-50 px-4 py-3 text-base font-semibold text-emerald-800">
+                    Ders tamamlandı (ücretsiz ilk ders)
+                  </p>
+                )
+              ) : odeme?.status === "RELEASED" ? (
+                <div className="flex items-center justify-between gap-4 rounded-lg bg-emerald-50 px-4 py-3">
+                  <span className="text-base font-semibold text-emerald-800">
+                    Onaylandı · bakiyene geçti
+                  </span>
+                  <span className="text-base font-semibold text-emerald-800">
+                    {formatTRY(odeme.tutor_earning)}
+                  </span>
+                </div>
+              ) : odeme?.status === "HELD" ? (
+                <div className="rounded-lg bg-amber-50 px-4 py-3">
+                  <p className="text-base font-semibold text-amber-800">
+                    {booking.is_disputed ? "Öğrenci sorun bildirdi" : "Öğrencinin onayı bekleniyor"}
+                  </p>
+                  <p className="mt-1 text-sm leading-5 text-amber-800">
+                    {booking.is_disputed
+                      ? "Ekibimiz inceliyor; karar çıkana kadar ücret bakiyene geçmez."
+                      : "Öğrenci onaylayınca ya da ders bitiminden 72 saat sonra ücret bakiyene geçer."}
+                  </p>
+                </div>
+              ) : odeme?.status === "REFUNDED" || odeme?.status === "REFUNDING" ? (
+                <p className="rounded-lg bg-slate-50 px-4 py-3 text-base text-slate-700">
+                  Ücret öğrenciye iade edildi.
+                </p>
+              ) : null}
+            </div>
+          )}
+
+          {/* ── Düğmeler: alt alta, tam genişlik ── */}
+          <div className="mt-6 flex flex-col gap-2">
+            {katilabilir ? (
               <button
                 onClick={() =>
                   joinMeeting(
@@ -278,512 +384,163 @@ export default function LessonDetail() {
                     booking.client_name || ADSIZ_UYE
                   )
                 }
-                className={`${DUGME_SATIR_BIRINCIL} mt-4`}
+                className={`${DUGME_BIRINCIL} ${TAM}`}
               >
-                Canlı Derse Katıl
+                Derse katıl
               </button>
             ) : (
-              <span
-                title="Canlı ders, başlangıçtan 15 dk önce açılır."
-                className="mt-4 inline-flex h-10 cursor-not-allowed items-center rounded-lg bg-slate-100 px-4 text-base font-semibold text-slate-500"
-              >
-                Ders saatinde açılır
-              </span>
-            )
-          )}
-          {/* Yüzyüze ders — buluşma yeri */}
-          {booking.mode === "IN_PERSON" && (
-            <div className="mt-4 rounded-lg border border-slate-200 px-4 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className={ETIKET}>Buluşma Yeri</p>
-                {!editingLoc && (
+              acik && (
+                <Link to={mesajYolu} className={`${DUGME_IKINCIL} ${TAM}`}>
+                  Mesaj gönder
+                </Link>
+              )
+            )}
+
+            {/* Bekleyen dersin yanıtını KİM verir: öğrencinin isteğinde
+                öğretmen, öğretmenin teklifinde öğrenci (Modül 8). */}
+            {yanitVeren && (
+                <>
                   <button
-                    onClick={() => {
-                      setLocDraft(booking.location ?? "");
-                      setLocLatDraft(booking.location_lat ?? null);
-                      setLocLngDraft(booking.location_lng ?? null);
-                      setEditingLoc(true);
-                    }}
-                    className={METIN_BAGLANTI}
+                    disabled={busy}
+                    onClick={() =>
+                      run(
+                        accept,
+                        isClient
+                          ? "Ders teklifini kabul ettin; ödeme adımına geçebilirsin."
+                          : "Ders isteğini kabul ettin."
+                      )
+                    }
+                    className={`${DUGME_BIRINCIL} ${TAM}`}
                   >
-                    {booking.location ? "Düzenle" : "Ekle"}
+                    {isClient ? "Teklifi kabul et" : "Kabul et"}
                   </button>
-                )}
-              </div>
-              {editingLoc ? (
-                <div className="mt-4 flex flex-col gap-3">
-                  <MapPicker 
-                    initialLat={locLatDraft} 
-                    initialLng={locLngDraft} 
-                    onLocationSelect={(lat, lng) => {
-                      setLocLatDraft(lat);
-                      setLocLngDraft(lng);
-                    }}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <input
-                      value={locDraft}
-                      onChange={(e) => setLocDraft(e.target.value)}
-                      maxLength={300}
-                      placeholder="Adres / bina numarası / tarif..."
-                      className="h-10 min-w-[12rem] flex-1 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka-focus"
-                    />
-                    <button
-                      onClick={saveLoc}
-                      disabled={setLoc.isPending}
-                      className={DUGME_SATIR_BIRINCIL}
-                    >
-                      Kaydet
-                    </button>
-                    <button
-                      onClick={() => setEditingLoc(false)}
-                      className={DUGME_SATIR_IKINCIL}
-                    >
-                      Vazgeç
-                    </button>
-                  </div>
-                </div>
-              ) : booking.location ? (
-                <div className="mt-3 flex flex-col gap-2">
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${
-                      booking.location_lat && booking.location_lng 
-                      ? `${booking.location_lat},${booking.location_lng}`
-                      : encodeURIComponent(booking.location)
-                    }`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`${METIN_BAGLANTI} break-words`}
+                  <button
+                    disabled={busy}
+                    onClick={() => run(reject, isClient ? "Ders teklifini reddettin." : "Ders isteğini reddettin.")}
+                    className={TEHLIKE}
                   >
-                    {booking.location}
-                  </a>
-                  {booking.location_lat && booking.location_lng && (
-                    <div className="mt-2 h-32 w-full max-w-sm overflow-hidden rounded-lg">
-                      <MapPicker initialLat={booking.location_lat} initialLng={booking.location_lng} readonly={true} />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className={`${KUCUK_ACIKLAMA} mt-1`}>
-                  Henüz buluşma yeri belirlenmedi.
-                </p>
+                    Reddet
+                  </button>
+                </>
               )}
-            </div>
-          )}
 
-          {booking.notes && (
-            <p className="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-base italic leading-6 text-slate-600">
-              "{booking.notes}"
-            </p>
-          )}
-          {booking.status === BookingStatus.CANCELLED && booking.cancel_reason && (
-            <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-base leading-6 text-red-700">
-              İptal nedeni: {booking.cancel_reason}
-            </p>
-          )}
-          {/* Reddedilen derste açıklama: geri çekilen teklif ya da biten seri. */}
-          {booking.status === BookingStatus.REJECTED && booking.cancel_reason && (
-            <p className={`${ACIKLAMA} mt-4 rounded-lg bg-slate-50 px-4 py-3`}>
-              {booking.cancel_reason}
-            </p>
-          )}
-
-          {/* Öğrenci onayı / sorun bildirimi (Modül 2) */}
-          {isClient && (
-            <div className="mt-4">
-              <DersOnayKarti booking={booking} />
-            </div>
-          )}
-          {role === "TUTOR" && booking.status === BookingStatus.COMPLETED && booking.payment?.status === "HELD" && (
-            <p className={`${ACIKLAMA} mt-4 rounded-lg bg-slate-50 px-4 py-3`}>
-              {booking.is_disputed
-                ? "Öğrenci bu ders için sorun bildirdi; ekibimiz inceliyor. Karar verilene kadar ücret aktarılmaz."
-                : "Öğrenci onayladığında ya da ders bitişinden 72 saat sonra ücret kazancına eklenir."}
-            </p>
-          )}
-
-          {/* ── Actions ── */}
-          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-6">
-            {/* {canMessage && (
-              <button
-                onClick={() =>
-                  navigate(
-                    `/messages?to=${counterpartId}&name=${encodeURIComponent(counterpartName)}`
-                  )
-                }
-                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 "
-              >
-                Mesaj Gönder
-              </button>
-            )} */}
-
-            {/* Bekleyen dersin yanıtını KİM verir: öğrencinin talebinde öğretmen,
-                öğretmenin teklifinde öğrenci (Modül 8). Sunucu da aynı kuralı
-                uygular; buradaki tek iş doğru düğmeyi doğru tarafa göstermek. */}
-            {role === "CLIENT" && isPending && booking.offered_by_tutor && (
-              <>
-                <button
-                  disabled={busy}
-                  onClick={() => run(accept, "Ders teklifini kabul ettin; ödeme adımına geçebilirsin.")}
-                  className={DUGME_SATIR_BIRINCIL}
-                >
-                  Teklifi Kabul Et
-                </button>
-                <button
-                  disabled={busy}
-                  onClick={() => run(reject, "Ders teklifini reddettin.")}
-                  className={DUGME_SATIR_TEHLIKE}
-                >
-                  Reddet
-                </button>
-              </>
-            )}
-
-            {role === "TUTOR" && isPending && !booking.offered_by_tutor && (
-              <>
-                <button
-                  disabled={busy}
-                  onClick={() => run(accept, "Rezervasyon kabul edildi.")}
-                  className={DUGME_SATIR_BIRINCIL}
-                >
-                  Kabul Et
-                </button>
-                <button
-                  disabled={busy}
-                  onClick={() => run(reject, "Rezervasyon reddedildi.")}
-                  className={DUGME_SATIR_TEHLIKE}
-                >
-                  Reddet
-                </button>
-              </>
-            )}
-            {/* Öğretmen, yanıt bekleyen kendi teklifini geri çeker: ders iptal
-                sayılmaz (sunucu REJECTED yazar); ödemesi olan derste sunucu 409 verir. */}
             {canWithdraw && (
               <button
                 disabled={geriCek.isPending}
                 onClick={teklifiGeriCek}
-                className={DUGME_SATIR_IKINCIL}
+                className={`${DUGME_IKINCIL} ${TAM}`}
               >
                 {geriCek.isPending ? "Geri çekiliyor…" : "Teklifi geri çek"}
               </button>
             )}
-            {seriAktif && role !== null && (
-              <button
-                onClick={() => setSeriBitirAcik(true)}
-                className={DUGME_SATIR_TEHLIKE}
-              >
-                Seriyi bitir
+
+            {/* Düğme sunucunun `can_review` kararına bağlı: tamamlanmış + ödenmiş
+                + bu öğretmene ilk değerlendirme. Varsa düzenleme açılır. */}
+            {isClient && booking.can_review && !alreadyReviewed && (
+              <button onClick={() => setShowReview(true)} className={`${DUGME_BIRINCIL} ${TAM}`}>
+                Değerlendir
               </button>
             )}
+            {isClient && review && tamamlandi && (
+              <button onClick={() => setShowReview(true)} className={`${DUGME_IKINCIL} ${TAM}`}>
+                Değerlendirmeni düzenle
+              </button>
+            )}
+
+            {booking.can_remind_confirm && role === "TUTOR" && (
+              <button
+                onClick={onayHatirlat}
+                disabled={hatirlat.isPending}
+                className={`${DUGME_IKINCIL} ${TAM}`}
+              >
+                {hatirlat.isPending ? "Gönderiliyor…" : "Onaylamayı hatırlat"}
+              </button>
+            )}
+
+            {role === "TUTOR" && isAccepted && !basladi && (
+              <button onClick={() => setShowTutorReschedule(true)} className={`${DUGME_IKINCIL} ${TAM}`}>
+                Başka zamana al
+              </button>
+            )}
+
             {role === "TUTOR" && isAccepted && (
               <button
                 disabled={busy}
                 onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-                className={DUGME_SATIR_BIRINCIL}
+                className={`${DUGME_IKINCIL} ${TAM}`}
               >
-                Tamamla
+                Tamamlandı olarak işaretle
               </button>
             )}
 
-            {isClient && canMessage && !booking.late_for_changes && (
-              <button
-                onClick={() => setShowReschedule(true)}
-                className={DUGME_SATIR_IKINCIL}
-              >
-                Ertele
+            {/* Öğretmenin saat değişikliği yanıt beklerken öğrenci yalnız
+                "uygun / uygun değil" der; erteleme ve iptal gizlenir. */}
+            {isClient && acik && !booking.late_for_changes && !saatDegisikligi && (
+              <button onClick={() => setShowReschedule(true)} className={`${DUGME_IKINCIL} ${TAM}`}>
+                Başka zamana al
               </button>
             )}
+
+            {seriAktif && role !== null && (
+              <button onClick={() => setSeriBitirAcik(true)} className={TEHLIKE}>
+                Haftalık seriyi bitir
+              </button>
+            )}
+
             {/* Ödemesiz bekleyen kendi teklifinde öğretmene "İptal" yerine yalnız
                 "Teklifi geri çek" gösterilir: iptal, iptal oranı metriğine yazılır. */}
-            {canMessage && !canWithdraw && (
-              <button
-                onClick={() => setShowCancel(true)}
-                className={DUGME_SATIR_TEHLIKE}
-              >
-                İptal Et
+            {/* 12 saat kala öğretmen iptal edemez (sunucu kuralı); dersi
+                başka zamana alabilir. */}
+            {acik && !canWithdraw && !yanitVeren && !(isClient && saatDegisikligi) && !(role === "TUTOR" && booking.late_for_changes) && (
+              <button onClick={() => setShowCancel(true)} className={TEHLIKE}>
+                Dersi iptal et
               </button>
             )}
-            {/* Düğme sunucunun `can_review` kararına bağlı (16 Eyl 2026):
-                tamamlanmış + kartla ödenmiş + bu öğretmene ilk yorum. Yerel
-                `alreadyReviewed`, pencere kapanır kapanmaz düğmeyi gizler. */}
-            {isClient && booking.can_review && !alreadyReviewed && (
-              <button
-                onClick={() => setShowReview(true)}
-                className={DUGME_SATIR_BIRINCIL}
-              >
-                Değerlendir
-              </button>
-            )}
-          </div>
-        </section>
-
-        {/* ── Review ── */}
-        {review && (
-          <section className={`${KART} lg:col-span-1`}>
-            <h2 className={BOLUM_BASLIGI}>Değerlendirme</h2>
-            <div className="mt-3">
-              <StarRating value={review.rating} />
-            </div>
-            {/* Alt kriterler yalnız burada (sahibine / öğretmene) listelenir;
-                public kartlarda tekrarlanmaz. */}
-            {(() => {
-              const kriterler = [
-                ["Netlik", review.clarity_rating],
-                ["Motivasyon", review.motivation_rating],
-                ["Hazırlık", review.preparation_rating],
-              ].filter(([, v]) => v != null);
-              return kriterler.length > 0 ? (
-                <p className={`${ACIKLAMA} mt-2`}>
-                  {kriterler.map(([ad, v]) => `${ad} ${v}`).join(" · ")}
-                </p>
-              ) : null;
-            })()}
-            {review.comment_text && (
-              <p className={`${ACIKLAMA} mt-2 whitespace-pre-line`}>
-                {review.comment_text}
+            {role === "TUTOR" && isAccepted && !basladi && booking.late_for_changes && (
+              <p className={`${KUCUK_ACIKLAMA} text-center`}>
+                Derse 12 saatten az kaldı; dersi iptal edemezsin ama başka zamana alabilirsin.
               </p>
             )}
-            <p className="mt-2 text-xs text-slate-400">
-              {degerlendirmeTarihi(review.created_at, review.edited_at)}
-              {isClient && review.is_anonymous && " · Anonim paylaşıldı"}
-            </p>
-            {/* Değerlendirme dersin değil öğretmenin: o öğretmenle yapılan her
-                dersin detayında aynı kayıt görünür ve buradan düzenlenir. */}
-            {isClient && (
-              <button
-                onClick={() => setEditReview(true)}
-                className={`${DUGME_SATIR_IKINCIL} mt-4`}
-              >
-                Düzenle
-              </button>
-            )}
-          </section>
-        )}
-
-        {/* ── Q&A (öğrenci) ── */}
-        {isClient && qaGroup && (
-          <section className={`${KART} lg:col-span-2`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className={BOLUM_BASLIGI}>Bu Ders İçin Sorularım</h2>
-              {qaGroup.expired ? (
-                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                  Süre doldu
-                </span>
-              ) : (
-                <span className="rounded-full bg-marka-soft px-2.5 py-1 text-xs font-semibold text-marka-metin-hover">
-                  {qaGroup.remaining}/{qaGroup.quota} hak · {qaGroup.days_left} gün
-                </span>
-              )}
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {qaGroup.threads.length === 0 ? (
-                <p className={`${ACIKLAMA} rounded-lg border border-dashed border-slate-300 py-6 text-center`}>
-                  Bu derste henüz soru sormadın.
-                </p>
-              ) : (
-                qaGroup.threads.map((t) => (
-                  <div
-                    key={t.id}
-                    className="rounded-lg bg-slate-50 p-4"
-                  >
-                    {t.subject && (
-                      <p className={`${ETIKET} mb-2`}>
-                        {t.subject}
-                      </p>
-                    )}
-                    <QaThreadChat
-                      thread={t}
-                      role="CLIENT"
-                      canReply={!qaGroup.expired}
-                    />
-                  </div>
-                ))
-              )}
-              {qaGroup.can_ask && (
-                <button
-                  onClick={() => setShowAsk(true)}
-                  className={`${DUGME_SATIR_BIRINCIL} w-full`}
-                >
-                  Yeni Soru Başlığı Aç ({qaGroup.remaining} hak)
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── Ders Kaynakları ── */}
-        <section className={`${KART} lg:col-span-1`}>
-          <h2 className={BOLUM_BASLIGI}>Ders Kaynakları</h2>
-          <div className="mt-4">
-            <BookingResourcesPanel
-              bookingId={bookingId}
-              resources={booking.resources}
-              role={role}
-              userId={user?.id}
-              canEdit={canMessage}
-              showHeading={false}
-            />
           </div>
         </section>
-
-        {/* ── Ders Notları (Yorumlar) ── */}
-        <section className={`${KART} lg:col-span-2`}>
-          <h2 className={BOLUM_BASLIGI}>Ders Mesajları</h2>
-          <div className="mt-4 space-y-4">
-            {booking.comments && booking.comments.length > 0 ? (
-              <div className="space-y-3">
-                {booking.comments.map((comment) => {
-                  const isMine = comment.sender_id === user?.id && comment.sender_role === role;
-                  return (
-                    <div
-                      key={comment.id}
-                      className={`flex w-full flex-col ${isMine ? "items-end" : "items-start"}`}
-                    >
-                      <div className="flex max-w-[85%] flex-col gap-1">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-sm font-semibold text-slate-900">
-                            {isMine ? "Sen" : rolEtiketi(comment.sender_role === "TUTOR" ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT)}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <div
-                          className={`relative rounded-lg px-4 py-2 text-base leading-6 ${
-                            isMine
-                              ? "bg-marka text-marka-fg"
-                              : "bg-slate-100 text-slate-900"
-                          }`}
-                        >
-                          <p className="whitespace-pre-wrap">{comment.body}</p>
-                        </div>
-                        {isMine && (
-                          <button
-                            onClick={() => delComment.mutate({ id: bookingId, commentId: comment.id })}
-                            disabled={delComment.isPending}
-                            className="self-end px-1 text-xs font-semibold text-slate-500 hover:text-red-700 disabled:opacity-50"
-                          >
-                            Sil
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className={ACIKLAMA}>
-                Bu ders için henüz bir mesaj yok.
-              </p>
-            )}
-
-            {/* Yeni Yorum Formu */}
-            {canMessage && (
-              <form onSubmit={handleAddComment} className="mt-2 flex items-end gap-3 pt-2">
-                <textarea
-                  rows={2}
-                  placeholder="Mesajınız"
-                  value={commentBody}
-                  onChange={(e) => setCommentBody(e.target.value)}
-                  className="min-w-0 flex-1 resize-none rounded-lg border border-slate-300 bg-white px-4 py-2 text-base text-slate-900 outline-none focus:border-marka-mid focus:ring-2 focus:ring-marka-focus"
-                />
-                <button
-                  type="submit"
-                  disabled={addComment.isPending || !commentBody.trim()}
-                  className={DUGME_SATIR_BIRINCIL}
-                >
-                  Gönder
-                </button>
-              </form>
-            )}
-          </div>
-        </section>
-
-        {/* ── Kişisel Notlarım (Gizli) ── */}
-        <section className={`${KART} lg:col-span-1`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className={BOLUM_BASLIGI}>Notlar</h2>
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-semibold text-slate-600">
-              Sadece siz görebilirsiniz
-            </span>
-          </div>
-          <div className="mt-4">
-            <BookingPrivateNotesPanel
-              bookingId={bookingId}
-              notes={booking.private_notes}
-              showHeading={false}
-            />
-          </div>
-        </section>
-
-        {/* ── Bu derse ait görevler (To-Do) ── */}
-        <LessonTasksCard bookingId={bookingId} />
-        </div>
-
       </div>
 
       {showCancel && (
         <CancelModal
           bookingId={bookingId}
-          counterpartName={counterpartName}
+          counterpartName={kisiAdi}
           onClose={() => setShowCancel(false)}
           booking={booking}
           rol={isClient ? "CLIENT" : "TUTOR"}
           onReschedule={isClient ? () => setShowReschedule(true) : undefined}
         />
       )}
-      <Modal
-        open={seriBitirAcik}
-        onClose={() => setSeriBitirAcik(false)}
-        title="Haftalık seriyi bitir"
-      >
+      <Modal open={seriBitirAcik} onClose={() => setSeriBitirAcik(false)} title="Haftalık seriyi bitir">
         <p className={ACIKLAMA}>
           Seriden yeni teklif gelmeyecek; bekleyen teklifler geri çekilir, kabul edilmiş dersler
           takviminde kalır.
         </p>
         <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => setSeriBitirAcik(false)}>
+          <button type="button" className={DUGME_IKINCIL} onClick={() => setSeriBitirAcik(false)}>
             Vazgeç
           </button>
-          <button
-            type="button"
-            className={DUGME_SATIR_TEHLIKE}
-            onClick={seriyiBitir}
-            disabled={seriBitir.isPending}
-          >
+          <button type="button" className={TEHLIKE.replace("w-full ", "")} onClick={seriyiBitir} disabled={seriBitir.isPending}>
             {seriBitir.isPending ? "Bitiriliyor…" : "Seriyi bitir"}
           </button>
         </div>
       </Modal>
+      {showTutorReschedule && (
+        <OgretmenErtelemeModal booking={booking} onClose={() => setShowTutorReschedule(false)} />
+      )}
       {showReschedule && (
-        <RescheduleModal
-          bookingId={bookingId}
-          onClose={() => setShowReschedule(false)}
-        />
+        <RescheduleModal bookingId={bookingId} onClose={() => setShowReschedule(false)} />
       )}
       {showReview && (
         <ReviewModal
           bookingId={bookingId}
+          existing={review ?? undefined}
           onClose={() => setShowReview(false)}
           onReviewed={() => setReviewed(true)}
-        />
-      )}
-      {editReview && review && (
-        <ReviewModal
-          bookingId={bookingId}
-          existing={review}
-          onClose={() => setEditReview(false)}
-          onReviewed={() => setReviewed(true)}
-        />
-      )}
-      {showAsk && qaGroup && (
-        <QuestionModal
-          bookingId={bookingId}
-          tutorName={counterpartName}
-          remaining={qaGroup.remaining}
-          onClose={() => setShowAsk(false)}
         />
       )}
     </DashboardShell>

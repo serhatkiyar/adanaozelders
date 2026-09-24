@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
 from core.config import settings
+from core import ders_onay_hatirlatma
 from models.booking import BookingStatus
 from models.payment import PaymentStatus
 from schemas.payment import PaymentOut
@@ -148,6 +149,12 @@ class BookingLocation(BaseModel):
     location: str = Field(min_length=1, max_length=300)
 
 
+class BookingTutorReschedule(BaseModel):
+    """Öğretmenin ertelemesi: yalnız yeni başlangıç; süre ve ücret aynı kalır."""
+
+    start_at: datetime.datetime
+
+
 class BookingReschedule(BaseModel):
     start_at: datetime.datetime
     end_at: datetime.datetime
@@ -206,6 +213,16 @@ class BookingOut(BaseModel):
     cancelled_at: datetime.datetime | None = None
     #: Haftalık seriden üretilen teklifse serinin id'si.
     series_id: int | None = None
+    #: Öğretmen dersi başka zamana aldı, öğrencinin yanıtı bekleniyor: eski
+    #: başlangıç (24 Eyl 2026). NULL ise bekleyen bir saat değişikliği yok.
+    tutor_rescheduled_from: datetime.datetime | None = None
+    confirm_reminded_at: datetime.datetime | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def can_remind_confirm(self) -> bool:
+        """Öğretmen "Onaylamayı hatırlat" gönderebilir mi (kural tek yerde)."""
+        return ders_onay_hatirlatma.can_remind_confirm(self)
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -112,6 +112,18 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     series_id: Mapped[int | None] = mapped_column(
         ForeignKey("lesson_series.id", ondelete="SET NULL"), nullable=True
     )
+    #: Öğretmen dersi başka zamana aldı ve öğrencinin yanıtı bekleniyor
+    #: (24 Eyl 2026, Preply deseni): dersin ESKİ başlangıcı. Öğrenci "uygun"
+    #: derse NULL olur; "uygun değil" derse ders iptal edilir ve ücret her
+    #: durumda öğrenciye iade edilir. Doluyken öğrencinin iptali geç iptal
+    #: sayılmaz.
+    tutor_rescheduled_from: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: Öğretmenin öğrenciye son "dersi onayla" hatırlatması (günde en fazla bir).
+    confirm_reminded_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     tutor: Mapped["Tutor"] = relationship(back_populates="bookings")
     client: Mapped["Client"] = relationship(back_populates="bookings")

@@ -25,6 +25,7 @@ from schemas.booking import (
     BookingIssueReport,
     BookingOut,
     BookingReschedule,
+    BookingTutorReschedule,
     BookingResourceCreate,
     BookingCommentCreate,
     BookingLocationUpdate,
@@ -353,6 +354,61 @@ async def reschedule_booking(
     return await booking_service.reschedule(
         db, booking, start_at=payload.start_at, end_at=payload.end_at
     )
+
+
+@router.post("/{booking_id}/tutor-reschedule", response_model=BookingOut)
+async def tutor_reschedule_booking(
+    booking_id: int,
+    payload: BookingTutorReschedule,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğretmen onaylı dersi başka zamana alır; öğrenciye "uygun mu" sorulur."""
+    booking = await _get_booking_or_404(db, booking_id, tutor)
+    _assert_owner_tutor(booking, tutor)
+    return await booking_service.reschedule_by_tutor(db, booking, start_at=payload.start_at)
+
+
+@router.post("/{booking_id}/tutor-reschedule/accept", response_model=BookingOut)
+async def accept_tutor_reschedule(
+    booking_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğrenci öğretmenin önerdiği yeni saati kabul eder."""
+    booking = await _get_booking_or_404(db, booking_id, client)
+    if booking.client_id != client.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
+    return await booking_service.accept_tutor_reschedule(db, booking)
+
+
+@router.post("/{booking_id}/tutor-reschedule/decline", response_model=BookingOut)
+async def decline_tutor_reschedule(
+    booking_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğrenci yeni saati kabul etmez: ders iptal, ücret her durumda iade."""
+    booking = await _get_booking_or_404(db, booking_id, client)
+    if booking.client_id != client.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
+    return await booking_service.decline_tutor_reschedule(db, booking)
+
+
+@router.post(
+    "/{booking_id}/remind-confirm",
+    response_model=BookingOut,
+    dependencies=[Depends(_create_limit)],
+)
+async def remind_confirm_booking(
+    booking_id: int,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öğretmen öğrenciye "dersi onayla" hatırlatması gönderir (günde en fazla bir)."""
+    booking = await _get_booking_or_404(db, booking_id, tutor)
+    _assert_owner_tutor(booking, tutor)
+    return await booking_service.remind_confirm(db, booking)
 
 
 @router.post("/{booking_id}/location", response_model=BookingOut)

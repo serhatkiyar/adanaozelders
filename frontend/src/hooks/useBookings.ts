@@ -10,6 +10,10 @@ import {
   listBookings,
   rejectBooking,
   rescheduleBooking,
+  tutorRescheduleBooking,
+  acceptTutorReschedule,
+  declineTutorReschedule,
+  remindConfirm,
   setBookingLocation,
   addBookingResource,
   deleteBookingResource,
@@ -179,6 +183,29 @@ export function useRescheduleBooking() {
       queryClient.invalidateQueries({ queryKey: ["bookings"] }),
   });
 }
+
+/**
+ * Öğretmen ertelemesi ve yanıtı, "Onaylamayı hatırlat" (24 Eyl 2026). Hepsi
+ * aynı dersi değiştirir: ders listeleri ve öğretmen panosu tazelenir.
+ */
+function useDersIslemi<TVars>(fn: (v: TVars) => Promise<BookingOut>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: TUTOR_DASHBOARD_KEY });
+    },
+  });
+}
+
+export const useTutorReschedule = () =>
+  useDersIslemi(({ id, startAt }: { id: number; startAt: string }) =>
+    tutorRescheduleBooking(id, startAt)
+  );
+export const useAcceptTutorReschedule = () => useDersIslemi((id: number) => acceptTutorReschedule(id));
+export const useDeclineTutorReschedule = () => useDersIslemi((id: number) => declineTutorReschedule(id));
+export const useRemindConfirm = () => useDersIslemi((id: number) => remindConfirm(id));
 
 export type BookingActionType = "accept" | "reject" | "complete";
 

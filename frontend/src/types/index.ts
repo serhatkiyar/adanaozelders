@@ -776,8 +776,7 @@ export type VisibilityIssueCode =
   | "REJECTED"
   | "SUSPENDED"
   | "NO_SUBJECTS"
-  | "NO_AVAILABILITY"
-  | "PAYOUT_NOT_ACTIVE";
+  | "NO_AVAILABILITY";
 
 export interface VisibilityIssue {
   code: VisibilityIssueCode;
@@ -844,6 +843,14 @@ export interface BookingOut {
   cancelled_at?: string | null;
   /** Ücretsiz iptalin son anı: yalnız ACCEPTED'da başlangıç − 12 sa; diğerlerinde null. */
   free_cancel_until?: string | null;
+  /**
+   * Öğretmen dersi başka zamana aldı, öğrencinin yanıtı bekleniyor: dersin
+   * ESKİ başlangıcı (24 Eyl 2026). null ise bekleyen bir değişiklik yok.
+   */
+  tutor_rescheduled_from?: string | null;
+  confirm_reminded_at?: string | null;
+  /** Öğretmen "Onaylamayı hatırlat" gönderebilir mi (kural sunucuda). */
+  can_remind_confirm?: boolean;
 }
 
 export type BookingIssueReason = "TUTOR_ABSENT" | "LESSON_NOT_HELD" | "OTHER";
@@ -1109,19 +1116,6 @@ export interface TutorOverview {
   new_students: MetricTrend;
 }
 
-export type SuccessGoalCode = "CANCEL_RATE" | "MISSED_LESSONS" | "RESPONSE_24H" | "RATING";
-
-export interface SuccessGoal {
-  code: SuccessGoalCode;
-  /** Oranlar 0–1 kesir; null → veri yetersiz. */
-  value: number | null;
-  target: number;
-  comparator: "lte" | "gte" | "eq";
-  achieved: boolean | null;
-  sample: number;
-  live: boolean;
-}
-
 export interface AnalyticsSeriesPoint {
   /** "YYYY-MM-DD" */
   date: string;
@@ -1290,6 +1284,22 @@ export interface TutorRatingSummary extends RatingDistribution {
   clarity_average?: number | null;
   motivation_average?: number | null;
   preparation_average?: number | null;
+}
+
+/* ============================ CÜZDAN ============================ */
+
+/** Öğretmen cüzdanı (üst bar kutusu). Tutarlar sunucudan string gelir. */
+export interface Wallet {
+  /** Ödenebilir bakiye (hak edilmiş − ödenmiş). */
+  balance: string;
+  /** Emanetteki, dersi henüz onaylanmamış tutar. */
+  pending: string;
+  currency: string;
+  /** IBAN hesabı: NONE | PENDING | ACTIVE | REJECTED. */
+  payout_status: string;
+  open_request: { amount: string; created_at: string } | null;
+  /** "Para çek" açılamıyorsa gerekçe. */
+  withdraw_block_reason: string | null;
 }
 
 /* ============================ QA ============================ */
@@ -1491,21 +1501,6 @@ export interface AdminStats {
   active_bookings: number;
   completed_bookings: number;
   total_reviews: number;
-}
-
-/* ============================ LEADERBOARD ============================ */
-
-export interface LeaderboardEntry {
-  id: number;
-  name: string;
-  value: number;
-}
-
-export interface LeaderboardOut {
-  tutors_by_lessons: LeaderboardEntry[];
-  tutors_by_rating: LeaderboardEntry[];
-  uyeler_ders_sayisi: LeaderboardEntry[];
-  uyeler_net: LeaderboardEntry[];
 }
 
 /* ============================ ADMIN ============================ */

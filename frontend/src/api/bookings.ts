@@ -108,6 +108,32 @@ export async function rescheduleBooking(
   return data;
 }
 
+/** Öğretmen onaylı dersi başka zamana alır; süre ve ücret aynı kalır. */
+export async function tutorRescheduleBooking(id: number, startAt: string): Promise<BookingOut> {
+  const { data } = await apiClient.post<BookingOut>(`/bookings/${id}/tutor-reschedule`, {
+    start_at: startAt,
+  });
+  return data;
+}
+
+/** Öğrenci öğretmenin önerdiği yeni saati kabul eder. */
+export async function acceptTutorReschedule(id: number): Promise<BookingOut> {
+  const { data } = await apiClient.post<BookingOut>(`/bookings/${id}/tutor-reschedule/accept`);
+  return data;
+}
+
+/** Öğrenci yeni saati kabul etmez: ders iptal edilir, ücret iade edilir. */
+export async function declineTutorReschedule(id: number): Promise<BookingOut> {
+  const { data } = await apiClient.post<BookingOut>(`/bookings/${id}/tutor-reschedule/decline`);
+  return data;
+}
+
+/** Öğretmen öğrenciye "dersi onayla" hatırlatması gönderir. */
+export async function remindConfirm(id: number): Promise<BookingOut> {
+  const { data } = await apiClient.post<BookingOut>(`/bookings/${id}/remind-confirm`);
+  return data;
+}
+
 export async function addBookingResource(
   id: number,
   title: string,

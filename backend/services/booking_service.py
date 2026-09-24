@@ -11,6 +11,7 @@ from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
+from core import ders_onay_hatirlatma
 from core.moderation import mask_contact_info
 from core import storage
 from models.booking import Booking, BookingStatus
@@ -756,7 +757,7 @@ async def create_booking(
         db,
         user_id=booking.tutor_id,
         role_id=ROLE_IDS[RoleType.TUTOR],
-        message=f"{client.full_name} yeni bir ders talebi gönderdi.",
+        message=f"{client.display_name} yeni bir ders talebi gönderdi.",
         link="/tutor",
     )
     _notify_booking_update(db, booking)
@@ -766,7 +767,7 @@ async def create_booking(
         client_id=client.id,
         tutor_id=booking.tutor_id,
         msg_type="booking_card",
-        body=f"{client.full_name} yeni bir ders talebi gönderdi.",
+        body=f"{client.display_name} yeni bir ders talebi gönderdi.",
         meta_data={
             "booking_id": booking.id,
             "status": booking.status.value,
@@ -776,7 +777,7 @@ async def create_booking(
             "is_free_lesson": booking.is_free_lesson,
             "mode": booking.mode,
             "notes": booking.notes,
-            "client_name": client.full_name,
+            "client_name": client.display_name,
         },
     )
     return await get_booking(db, booking.id, viewer=client)
@@ -911,7 +912,7 @@ async def _teklif_yaz(
             db,
             user_id=booking.client_id,
             role_id=ROLE_IDS[RoleType.CLIENT],
-            message=f"{tutor.full_name} sana ders teklif etti.",
+            message=f"{tutor.display_name} sana ders teklif etti.",
             link=f"/ders-talepleri/{booking.id}",
         )
     _notify_booking_update(db, booking)
@@ -925,7 +926,7 @@ async def _teklif_yaz(
         "mode": booking.mode,
         "notes": booking.notes,
         "offered_by_tutor": True,
-        "client_name": client.full_name,
+        "client_name": client.display_name,
     }
     if series_id is not None:
         meta["series_id"] = series_id
@@ -934,7 +935,7 @@ async def _teklif_yaz(
         client_id=client.id,
         tutor_id=tutor.id,
         msg_type="booking_card",
-        body=f"{tutor.full_name} sana ders teklif etti.",
+        body=f"{tutor.display_name} sana ders teklif etti.",
         meta_data=meta,
     )
     return booking
@@ -1009,7 +1010,7 @@ async def withdraw_offer(db: AsyncSession, booking: Booking, tutor: Tutor) -> Bo
         db,
         user_id=booking.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"{tutor.full_name} ders teklifini geri çekti.",
+        message=f"{tutor.display_name} ders teklifini geri çekti.",
         link=f"/ders-talepleri/{booking.id}",
     )
     return await get_booking(db, booking.id, viewer=tutor)
@@ -1095,7 +1096,7 @@ async def list_tutor_students(
     stmt = (
         select(
             Client.id,
-            Client.full_name,
+            Client.first_name.label("full_name"),
             Client.avatar_url,
             func.max(Booking.start_at)
             .filter(
@@ -1158,7 +1159,7 @@ async def list_tutor_students(
         )
         .join(Booking, Booking.client_id == Client.id)
         .where(Booking.tutor_id == tutor.id, Booking.deleted_at.is_(None))
-        .group_by(Client.id, Client.full_name, Client.avatar_url)
+        .group_by(Client.id, Client.first_name, Client.avatar_url)
         .order_by(func.max(Booking.start_at).desc())
         .limit(limit)
     )
@@ -1255,7 +1256,7 @@ async def list_client_tutors(
     return [
         {
             "tutor_id": r.id,
-            "full_name": " ".join(x for x in (r.first_name, r.last_name) if x) or None,
+            "full_name": r.first_name or None,
             "avatar_url": r.avatar_url,
             "hourly_rate": r.hourly_rate,
             "last_lesson_at": r.son_ders,
@@ -1312,9 +1313,9 @@ async def get_booking(
     stmt = (
         select(
             Booking,
-            Tutor.full_name,
+            Tutor.first_name,
             Tutor.avatar_url,
-            Client.full_name,
+            Client.first_name,
             Client.avatar_url,
         )
         .options(
@@ -1420,7 +1421,7 @@ def _hydrated_booking_select():
         .label("review_anonim")
     )
     return (
-        select(Booking, Tutor.full_name, Tutor.avatar_url, Client.full_name, Client.avatar_url, reviewed_col)
+        select(Booking, Tutor.first_name, Tutor.avatar_url, Client.first_name, Client.avatar_url, reviewed_col)
         .options(
             selectinload(Booking.resources),
             selectinload(Booking.comments)
@@ -1872,6 +1873,9 @@ async def reschedule(
         raise _claim_hatasi(booking, BookingStatus.PENDING)
     booking.start_at = start_at
     booking.end_at = end_at
+    # Öğrencinin yeni saat seçmesi, öğretmenin bekleyen saat değişikliğine
+    # verilmiş yanıttır: bayrak kalırsa sonraki geç iptal tam iade alırdı.
+    booking.tutor_rescheduled_from = None
     # Süre değişmiş olabilir; ücreti güncel saatlik ücretle yeniden hesapla.
     tutor = await db.get(Tutor, booking.tutor_id)
     if tutor is not None:
@@ -1889,6 +1893,157 @@ async def reschedule(
         role_id=ROLE_IDS[RoleType.TUTOR],
         message="Bir rezervasyon yeni bir saate taşındı ve onayını bekliyor.",
         link="/tutor",
+    )
+    _notify_booking_update(db, booking)
+    return booking
+
+
+# ── Öğretmenin dersi başka zamana alması (24 Eyl 2026, Preply deseni) ─────
+#
+# Öğrencinin ertelemesinden (yukarıda `reschedule`) farkı: ders BEKLEYEN
+# isteğe dönmez, hemen yeni saate taşınır ve ACCEPTED kalır; öğrenciye "yeni
+# saat uygun mu" sorulur. Süre ve ücret DEĞİŞMEZ (bitiş eski süreden
+# hesaplanır) — emanetteki tutar olduğu gibi kalır. Oda (`meeting_room`)
+# korunur: ders kabul edilmiş kalır ve oda yalnız kabulde üretilir. 12 saat
+# kuralı öğretmenin ertelemesini ENGELLEMEZ: son dakikada dersi kurtarmanın
+# yolu budur (iptal ise kapalıdır). 24 saat bildirim süresi ve müsaitlik
+# penceresi aranmaz (öğretmenin kendi takvimi); izin ve çakışma aranır.
+
+
+def _ogretmen_ertelemesi_bekliyor(booking: Booking) -> bool:
+    return booking.tutor_rescheduled_from is not None
+
+
+async def reschedule_by_tutor(
+    db: AsyncSession, booking: Booking, *, start_at: datetime.datetime
+) -> Booking:
+    start_at = _utc(start_at)
+    now = _utcnow()
+    if start_at <= now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ders geçmiş bir saate alınamaz.")
+    if start_at >= booking_window_end(now):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Ders en fazla {settings.BOOKING_WINDOW_DAYS} gün sonrasına alınabilir.",
+        )
+    await _lock_tutor(db, booking.tutor_id)
+    locked = await _lock_booking(db, booking)
+    if locked is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    if locked.status != BookingStatus.ACCEPTED:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Yalnız onaylanmış bir ders başka zamana alınabilir."
+        )
+    if _utc(locked.start_at) <= now:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Başlamış bir ders başka zamana alınamaz."
+        )
+    sure = _utc(locked.end_at) - _utc(locked.start_at)
+    end_at = start_at + sure
+    await _assert_not_on_time_off(db, locked.tutor_id, start_at, end_at)
+    if locked.tutor_rescheduled_from is None:
+        locked.tutor_rescheduled_from = locked.start_at
+    locked.start_at = start_at
+    locked.end_at = end_at
+    # Yeni saat için 1 saat önceki hatırlatma yeniden gitsin.
+    locked.reminder_sent = False
+    await db.flush()  # GiST çakışması -> 409 (global handler)
+    await notification_service.notify(
+        db,
+        user_id=locked.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=(
+            "Öğretmenin dersini başka bir saate aldı. Yeni saat sana uygun mu? "
+            "Uygun değilse dersi iptal edebilirsin; ücretin iade edilir."
+        ),
+        link=f"/ders-talepleri/{locked.id}",
+    )
+    _notify_booking_update(db, locked)
+    return locked
+
+
+async def accept_tutor_reschedule(db: AsyncSession, booking: Booking) -> Booking:
+    """Öğrenci öğretmenin önerdiği yeni saati kabul eder."""
+    locked = await _lock_booking(db, booking)
+    if locked is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    if not _ogretmen_ertelemesi_bekliyor(locked) or locked.status != BookingStatus.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Yanıt bekleyen bir saat değişikliği yok.")
+    locked.tutor_rescheduled_from = None
+    await db.flush()
+    await notification_service.notify(
+        db,
+        user_id=locked.tutor_id,
+        role_id=ROLE_IDS[RoleType.TUTOR],
+        message="Öğrencin dersin yeni saatini onayladı.",
+        link=f"/ders-talepleri/{locked.id}",
+    )
+    _notify_booking_update(db, locked)
+    return locked
+
+
+async def decline_tutor_reschedule(db: AsyncSession, booking: Booking) -> Booking:
+    """Öğrenci yeni saati kabul etmez: ders iptal edilir, ücret HER ZAMAN iade.
+
+    `cancel(cancelled_by=öğrenci)` yolu KULLANILMAZ: 12 saatten az kaldıysa o
+    yol geç iptal sayıp parayı öğretmene geçirirdi — öğretmen dersi şimdiye
+    yakın bir saate alarak bunu kendisi tetikleyebilirdi. İptal öğretmenin
+    hanesine yazılır (iptal oranı metriği), `late_cancel` yazılmaz.
+    """
+    now = _utcnow()
+    locked = await _lock_booking(db, booking)
+    if locked is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    if not _ogretmen_ertelemesi_bekliyor(locked) or locked.status != BookingStatus.ACCEPTED:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Yanıt bekleyen bir saat değişikliği yok.")
+    if _utc(locked.start_at) <= now:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Ders başladı; ders yapılmadıysa sorun bildir.",
+        )
+    if not await _claim_transition(db, locked, BookingStatus.CANCELLED):
+        raise _claim_hatasi(locked, BookingStatus.CANCELLED)
+    locked.cancel_reason = "Öğretmenin önerdiği yeni saat öğrenciye uymadı."
+    locked.cancelled_by_role = ROLE_IDS[RoleType.TUTOR]
+    locked.cancelled_at = now
+    locked.late_cancel = False
+    locked.tutor_rescheduled_from = None
+    await db.flush()
+    await notification_service.notify(
+        db,
+        user_id=locked.tutor_id,
+        role_id=ROLE_IDS[RoleType.TUTOR],
+        message="Öğrencine yeni saat uymadı; ders iptal edildi ve ücret öğrenciye iade edildi.",
+        link=f"/ders-talepleri/{locked.id}",
+    )
+    await payment_service.refund(db, locked)
+    _notify_booking_update(db, locked)
+    return locked
+
+
+# ── "Onaylamayı hatırlat" (24 Eyl 2026, Preply deseni) ───────────────────
+
+
+can_remind_confirm = ders_onay_hatirlatma.can_remind_confirm
+
+
+async def remind_confirm(db: AsyncSession, booking: Booking) -> Booking:
+    now = _utcnow()
+    if not can_remind_confirm(booking, now):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu ders için şu an hatırlatma gönderilemez."
+        )
+    booking.confirm_reminded_at = now
+    await db.flush()
+    await notification_service.notify(
+        db,
+        user_id=booking.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=(
+            "Öğretmenin dersi onaylamanı rica ediyor. Ders gerçekleştiyse onayla; "
+            "sorun varsa bildir."
+        ),
+        link=f"/ders-talepleri/{booking.id}",
     )
     _notify_booking_update(db, booking)
     return booking
@@ -2032,13 +2187,19 @@ async def cancel(
     is_client = cancelled_by.role_id == ROLE_IDS[RoleType.CLIENT]
     now = _utcnow()
     late = is_late_for_changes(booking, now)
+    # Öğretmen dersi başka saate aldı ve öğrenci henüz yanıtlamadıysa öğrencinin
+    # iptali geç iptal SAYILMAZ: saati değiştiren öğretmen, ücret iade edilir.
+    if is_client and _ogretmen_ertelemesi_bekliyor(booking) and _utc(booking.start_at) > now:
+        late = False
     if late and not is_client:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Derse {settings.LESSON_LATE_CANCEL_HOURS} saatten az kala dersi iptal "
-            "edemezsin. Öğrencinle konuş; ders yapılamayacaksa destek ekibine yaz.",
+            "edemezsin; dersi başka zamana alabilirsin.",
         )
-    if late and _utc(booking.start_at) <= now:
+    # Başlamış ders hiçbir yoldan iptal edilemez (bekleyen saat değişikliği
+    # `late`i düşürse bile) — ders yapılmadıysa sorun bildirilir.
+    if booking.status == BookingStatus.ACCEPTED and _utc(booking.start_at) <= now:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Başlamış bir ders iptal edilemez; ders yapılmadıysa sorun bildir.",
@@ -2069,7 +2230,7 @@ async def cancel(
             ROLE_IDS[RoleType.CLIENT],
             "/student/bookings",
         )
-    message = f"{cancelled_by.full_name} bir rezervasyonu iptal etti."
+    message = f"{cancelled_by.display_name} bir rezervasyonu iptal etti."
     if reason:
         message += f" Neden: {reason}"
     await notification_service.notify(
@@ -2293,7 +2454,7 @@ async def add_comment(
         db,
         user_id=recipient_id,
         role_id=recipient_role,
-        message=f"{actor.full_name} ders detayına yeni bir not bıraktı.",
+        message=f"{actor.display_name} ders detayına yeni bir not bıraktı.",
         link=link,
     )
     
