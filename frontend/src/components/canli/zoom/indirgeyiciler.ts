@@ -207,11 +207,25 @@ export function karsiTarafDurumu(durum: OdaDurumu): KarsiTarafDurumu {
 }
 
 /**
- * Önizleme kamerasının hatası → gösterilecek ipucunun i18n anahtarı.
- * Tarayıcı `DOMException` adları (getUserMedia) ve Zoom hata dizeleri.
+ * Hatanın aranabilir metni: `Error` için ad + ileti; Zoom'un çözülmüş
+ * sonuç nesnesi (`{type, reason}`) için o alanlar; diğerleri dizeye.
+ */
+export function hataMetni(hata: unknown): string {
+  if (hata instanceof Error) return `${hata.name} ${hata.message}`;
+  if (typeof hata === "object" && hata !== null) {
+    const { type, reason, name, message } = hata as Record<string, unknown>;
+    return [type, reason, name, message].map((v) => String(v ?? "")).join(" ");
+  }
+  return String(hata ?? "");
+}
+
+/**
+ * Önizleme ya da oda kamerasının hatası → gösterilecek ipucunun i18n
+ * anahtarı. Tarayıcı `DOMException` adları (getUserMedia) ve Zoom hata
+ * dizeleri (`startVideo` hatayı düz nesne olarak da döndürür).
  */
 export function kameraHataAnahtari(hata: unknown): string {
-  const ad = hata instanceof Error ? `${hata.name} ${hata.message}` : String(hata ?? "");
+  const ad = hataMetni(hata);
   if (/NotAllowed|Permission|FORBIDDEN/i.test(ad)) return "join.cameraNotGranted";
   if (/NotFound|CAN_NOT_DETECT|DevicesNotFound/i.test(ad)) return "join.cameraNotFound";
   if (/NotReadable|IS_TAKEN|TrackStart|in use/i.test(ad)) return "join.cameraInUse";
@@ -225,12 +239,7 @@ export function kameraHataAnahtari(hata: unknown): string {
  * Otomatik oynatma engeli (kullanıcı etkinleşmesi kaybı) bu değildir.
  */
 export function mikIzniReddedildiMi(hata: unknown): boolean {
-  let metin: string;
-  if (hata instanceof Error) metin = `${hata.name} ${hata.message}`;
-  else if (typeof hata === "object" && hata !== null) {
-    const { type, reason } = hata as { type?: unknown; reason?: unknown };
-    metin = `${String(type ?? "")} ${String(reason ?? "")}`;
-  } else metin = String(hata ?? "");
+  const metin = hataMetni(hata);
   return /AUDIO_CAPTURE_FAILED|INSUFFICIENT_PRIVILEGES|NotAllowed|Permission denied/i.test(metin);
 }
 

@@ -42,7 +42,7 @@ import { KontrolCubugu } from "./oda/KontrolCubugu";
 import { OnIzleme, type DersBilgisi } from "./oda/OnIzleme";
 import { TelefonCubugu } from "./oda/TelefonCubugu";
 import { ZoomVideoSahnesi } from "./oda/ZoomVideoSahnesi";
-import { beklenmedikKapanis, karsiTarafDurumu } from "./zoom/indirgeyiciler";
+import { beklenmedikKapanis, kameraHataAnahtari, karsiTarafDurumu } from "./zoom/indirgeyiciler";
 import {
   ayril as istemcidenAyril,
   hazirla,
@@ -197,12 +197,16 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
       console.warn("Zoom startAudio", e);
       useOdaDeposu.setState({ sesEngellendi: true });
     }
-    if (tercih.current.kamera) {
+    // Kamera izni reddedilmişse yalnız sesle girilir: denemek yalnız bir
+    // hata şeridi doğururdu (yönlendirme önizlemede gösterildi).
+    if (tercih.current.kamera && useOdaDeposu.getState().izinler.kamera !== "denied") {
       try {
         await kamerayiDegistir(true);
       } catch (e) {
         console.warn("Zoom startVideo", e);
-        useOdaDeposu.setState({ hata: "media.deviceError" });
+        if (kameraHataAnahtari(e) !== "join.cameraNotGranted") {
+          useOdaDeposu.setState({ hata: "media.deviceError" });
+        }
       }
     }
   };
