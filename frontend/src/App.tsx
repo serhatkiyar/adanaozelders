@@ -282,6 +282,9 @@ const Exams = lazy(() => import("@/pages/Exams"));
 const Reservations = lazy(() => import("@/pages/Reservations"));
 const OgrenciPano = lazy(() => import("@/pages/OgrenciPano"));
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
+// Canlı ders (Zoom): kabuksuz tam ekran. Toolkit bu parçada DEĞİL, sayfanın
+// kendi tembel parçasında (`components/canli/ZoomOdasi`).
+const CanliDers = lazy(() => import("@/pages/CanliDers"));
 const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));
 // FullCalendar yalnız bu chunk'a girer (Modül 7).
@@ -752,6 +755,9 @@ function App() {
             <Route path={PATHS.bookings} element={<BookingsHome />} />
             <Route path={PATHS.reservations} element={<ReservationsRoute />} />
             <Route path={PATHS.lesson} element={<LessonDetail />} />
+            {/* Canlı ders odası — site kabuğu yok, tam ekran; giriş/çıkış tam
+                sayfa yüklemesiyle (`lib/tamSayfaGezinme.ts`). */}
+            <Route path={PATHS.canliDers} element={<CanliDers />} />
             <Route
               path={PATHS.libraryReservation}
               element={<LibraryReservationDetail />}
