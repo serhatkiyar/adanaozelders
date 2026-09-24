@@ -7,6 +7,7 @@ import {
   reportBookingIssue,
   createBooking,
   fetchBooking,
+  getZoomToken,
   listBookings,
   rejectBooking,
   rescheduleBooking,
@@ -82,6 +83,31 @@ export function useBooking(id: number) {
     queryKey: ["bookings", "detail", id],
     queryFn: () => fetchBooking(id),
     enabled: Number.isFinite(id) && id > 0,
+  });
+}
+
+/**
+ * Canlı ders (Zoom) giriş bileti — sayfa açılışında BİR KEZ alınır.
+ *
+ * Anahtar bilerek `["bookings", …]` altında DEĞİL: kökteki WS dinleyicisi her
+ * `BOOKING_UPDATE`/yorumda `["bookings"]` önekini geçersiz kılar; bilet onun
+ * altında olsaydı ders ortasında yeniden istenir, pencere kapanmışsa 409'la
+ * sayfa hata ekranına düşüp görüşmeyi koparırdı. Aynı nedenle odak/yeniden
+ * bağlanma tazelemesi ve yeniden deneme kapalı; bilet tek kullanımlıktır.
+ */
+export function useZoomToken(id: number) {
+  return useQuery({
+    queryKey: ["zoom-token", id],
+    queryFn: () => getZoomToken(id),
+    enabled: Number.isFinite(id) && id > 0,
+    staleTime: Infinity,
+    gcTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    // Hata sayfanın kendi ekranında anlatılır; genel "Veriler yüklenemedi"
+    // bildirimi üstüne binmesin.
+    meta: { silentError: true },
   });
 }
 

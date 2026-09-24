@@ -33,7 +33,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { formatDateTime, formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { isLessonJoinable, mapsUrl } from "@/lib/lesson";
-import { useMeetingStore } from "@/store/meetingStore";
+import { useDerseKatil } from "@/hooks/useDerseKatil";
 import { getErrorDetail, getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
@@ -80,7 +80,7 @@ export default function LessonDetail() {
 
   const { data: booking, isLoading, isError } = useBooking(bookingId);
   const { data: review } = useReviewByBooking(bookingId);
-  const joinMeeting = useMeetingStore((s) => s.joinMeeting);
+  const derseKatil = useDerseKatil();
 
   const accept = useBookingAction("accept");
   const reject = useBookingAction("reject");
@@ -376,14 +376,7 @@ export default function LessonDetail() {
           <div className="mt-6 flex flex-col gap-2">
             {katilabilir ? (
               <button
-                onClick={() =>
-                  joinMeeting(
-                    bookingId,
-                    booking.meeting_room!,
-                    booking.tutor_name || "Öğretmen",
-                    booking.client_name || ADSIZ_UYE
-                  )
-                }
+                onClick={() => derseKatil(booking)}
                 className={`${DUGME_BIRINCIL} ${TAM}`}
               >
                 Derse katıl

@@ -105,6 +105,9 @@ export const PATHS = {
   libraryReservation: "/rezervasyon/:tur/:id",
   /** Ders/talep detayı — CLIENT + TUTOR ortak. */
   lesson: "/ders-talepleri/:id",
+  /** Canlı ders odası (Zoom Video SDK). Kabuk DIŞINDA tam ekran; giriş ve
+   *  çıkış tam sayfa yüklemesiyle yapılır (bkz. `lib/tamSayfaGezinme.ts`). */
+  canliDers: "/canli-ders/:id",
   messages: "/mesajlar",
   calendar: "/takvim",
   favorites: "/favoriler",
@@ -370,6 +373,7 @@ export const ROUTES = {
   bookings: PATHS.bookings,
   reservations: PATHS.reservations,
   lesson: (id: string | number) => `/ders-talepleri/${id}`,
+  canliDers: (id: string | number) => `/canli-ders/${id}`,
   libraryReservation: (tur: "deneme" | "calisma", id: string | number) =>
     `/rezervasyon/${tur}/${id}`,
   messages: PATHS.messages,

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMeetingStore } from "@/store/meetingStore";
+import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useBooking } from "@/hooks/useBookings";
@@ -92,6 +93,10 @@ export function GlobalMeeting() {
   const user = useAuthStore((s) => s.user);
 
   if (!roomName) return null;
+  // Zoom canlı ders sayfası kendi görüşmesini açar; ikinci bir (Jitsi) oda
+  // üstüne binmesin. Bileşen router DIŞINDA olduğundan `useLocation` yok;
+  // o sayfaya zaten tam sayfa yüklemesiyle girilir (`lib/tamSayfaGezinme.ts`).
+  if (window.location.pathname.startsWith(ROUTES.canliDers(""))) return null;
 
   const domain = "meet.jit.si";
   const userInfo = encodeURIComponent(

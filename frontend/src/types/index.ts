@@ -815,6 +815,11 @@ export interface BookingOut {
   location_lat: number | null;
   location_lng: number | null;
   meeting_room?: string | null;
+  /**
+   * "Derse katıl" hangi altyapıya gider (sunucu ayarı). Yalnız ONLINE derste
+   * ve oda adı görünürken dolu; aksi halde null.
+   */
+  canli_ders_saglayici?: CanliDersSaglayici | null;
   created_at: string;
   tutor_name?: string | null;
   tutor_avatar_url?: string | null;
@@ -854,6 +859,20 @@ export interface BookingOut {
 }
 
 export type BookingIssueReason = "TUTOR_ABSENT" | "LESSON_NOT_HELD" | "OTHER";
+
+export type CanliDersSaglayici = "zoom" | "livekit" | "jitsi";
+
+/**
+ * `GET /bookings/{id}/zoom-token` — Zoom Video SDK giriş bileti. Oturum ve
+ * görünen ad sunucudan gelir; istemci kendisi seçmez. Eğitmen `host`.
+ */
+export interface ZoomDersTokenOut {
+  token: string;
+  oturum_adi: string;
+  kullanici_adi: string;
+  rol: "host" | "katilimci";
+  expires_at: string;
+}
 
 /* ======================= ÖĞRENCİ PANOSU (Modül 4) ======================= */
 

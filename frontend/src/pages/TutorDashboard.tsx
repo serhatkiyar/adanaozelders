@@ -22,9 +22,8 @@ import { useMyTutorProfile } from "@/hooks/useTutorProfile";
 import { getErrorMessage } from "@/lib/errors";
 import { TUTOR_NAV } from "@/lib/nav";
 import { panoAltSatir, selamlama } from "@/lib/pano";
-import { ADSIZ_UYE } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
-import { useMeetingStore } from "@/store/meetingStore";
+import { useDerseKatil } from "@/hooks/useDerseKatil";
 import type { BookingOut, TutorDashboardOut as Pano } from "@/types";
 
 /*
@@ -137,7 +136,7 @@ export default function TutorDashboard() {
   const { data: pano, isLoading, isError, error, refetch } = useTutorDashboard();
   const { data: ilan } = useMyTutorProfile();
   const { data: unread } = useMessagesUnreadCount();
-  const { joinMeeting } = useMeetingStore();
+  const derseKatil = useDerseKatil();
   const location = useLocation();
 
   // Eski bağlantılar (`/genel-bakis#bekleyen-istekler`) istekler penceresini açar.
@@ -146,8 +145,6 @@ export default function TutorDashboard() {
     if (location.hash === ISTEKLER_CAPASI) setIsteklerAcik(true);
   }, [location.hash]);
 
-  const derseKatil = (bk: BookingOut) =>
-    joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Öğretmen", bk.client_name || ADSIZ_UYE);
 
   const now = new Date();
   const ad = (user as { first_name?: string } | undefined)?.first_name;

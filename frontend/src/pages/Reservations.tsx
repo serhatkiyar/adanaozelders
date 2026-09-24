@@ -40,7 +40,7 @@ import { toReservationItem } from "@/lib/reservationModel";
 import { formatDate } from "@/lib/datetime";
 import { formatTRY } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
-import { useMeetingStore } from "@/store/meetingStore";
+import { useDerseKatil } from "@/hooks/useDerseKatil";
 import { BookingStatus, PaymentStatus } from "@/types";
 import { BookingRow, PAY_CLOSED_NOTICE_ID } from "@/components/reservation/LessonRow";
 import type { ReservationItem } from "@/lib/reservationModel";
@@ -143,7 +143,7 @@ export function ReservationsList({
   const { data: kayitlar, isLoading: kayitYukleniyor } = useMyRegistrations(denemeAcik);
   const { data: calismalar, isLoading: calismaYukleniyor } =
     useMyStudyReservations(calismaAcik);
-  const { joinMeeting } = useMeetingStore();
+  const derseKatil = useDerseKatil();
   const { data: availability } = usePaymentAvailability();
   const [gecmisAcik, setGecmisAcik] = useState(false);
 
@@ -230,7 +230,7 @@ export function ReservationsList({
         <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white">
           {yaklasan.map((s) => (
             <li key={`${s.tur}-${s.item.id}`}>
-              <SatirIcerigi satir={s} joinMeeting={joinMeeting} />
+              <SatirIcerigi satir={s} derseKatil={derseKatil} />
             </li>
           ))}
         </ul>
@@ -253,7 +253,7 @@ export function ReservationsList({
             <ul className="mt-4 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white">
               {gecmis.map((s) => (
                 <li key={`${s.tur}-${s.item.id}`}>
-                  <SatirIcerigi satir={s} joinMeeting={joinMeeting} />
+                  <SatirIcerigi satir={s} derseKatil={derseKatil} />
                 </li>
               ))}
             </ul>
@@ -267,23 +267,16 @@ export function ReservationsList({
 /** Tür kendi satırını çizer; ortak iskelet `ReservationRow`'dan gelir. */
 function SatirIcerigi({
   satir,
-  joinMeeting,
+  derseKatil,
 }: {
   satir: Satir;
-  joinMeeting: (id: number, room: string, a: string, b: string) => void;
+  derseKatil: (bk: BookingOut) => void;
 }) {
   if (satir.tur === "ders") {
     return (
       <BookingRow
         booking={satir.ham}
-        onJoinMeeting={(bk) =>
-          joinMeeting(
-            bk.id,
-            bk.meeting_room!,
-            bk.tutor_name || "Öğretmen",
-            bk.client_name || ADSIZ_UYE,
-          )
-        }
+        onJoinMeeting={derseKatil}
       />
     );
   }

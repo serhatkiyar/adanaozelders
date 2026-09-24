@@ -31,9 +31,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { UYE_NAV } from "@/lib/nav";
 import { selamlama } from "@/lib/pano";
 import { isBranchOpen } from "@/lib/paymentAvailability";
-import { ADSIZ_UYE } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
-import { useMeetingStore } from "@/store/meetingStore";
+import { useDerseKatil } from "@/hooks/useDerseKatil";
 import { BookingStatus, PaymentStatus, type BookingOut } from "@/types";
 
 /** Ödeme bekleyen ders: kabul edilmiş, ödemesi alınmamış ya da başarısız. */
@@ -46,10 +45,7 @@ export default function OgrenciPano() {
   const { data: pano, isLoading, isError, error, refetch } = useClientDashboard();
   const { data: unread } = useMessagesUnreadCount();
   const { data: availability } = usePaymentAvailability();
-  const { joinMeeting } = useMeetingStore();
-
-  const derseKatil = (bk: BookingOut) =>
-    joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Öğretmen", bk.client_name || ADSIZ_UYE);
+  const derseKatil = useDerseKatil();
 
   const ad = (user as { first_name?: string } | undefined)?.first_name;
   const kind = pano?.next_action?.kind ?? null;

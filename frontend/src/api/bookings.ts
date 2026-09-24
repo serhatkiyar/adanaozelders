@@ -1,5 +1,11 @@
 import { apiClient } from "@/api/axios";
-import type { BookingCreate, BookingIssueReason, BookingOut, BookingStatus } from "@/types";
+import type {
+  BookingCreate,
+  BookingIssueReason,
+  BookingOut,
+  BookingStatus,
+  ZoomDersTokenOut,
+} from "@/types";
 
 /**
  * FormData gövdesi için Content-Type ELLE YAZILMAZ — sentinel `false` şart.
@@ -37,6 +43,12 @@ export async function listBookings(
 
 export async function fetchBooking(id: number): Promise<BookingOut> {
   const { data } = await apiClient.get<BookingOut>(`/bookings/${id}`);
+  return data;
+}
+
+/** Canlı ders (Zoom) giriş bileti; kapılar sunucuda (taraf, ödeme, saat). */
+export async function getZoomToken(id: number): Promise<ZoomDersTokenOut> {
+  const { data } = await apiClient.get<ZoomDersTokenOut>(`/bookings/${id}/zoom-token`);
   return data;
 }
 
