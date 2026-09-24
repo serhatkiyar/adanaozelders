@@ -1,3 +1,4 @@
+import { KART_IZGARASI } from "@/components/kartIzgarasi";
 import { type CSSProperties, useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -592,7 +593,7 @@ export default function Marketplace() {
         {/* ── Sonuçlar ── */}
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={KART_IZGARASI}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-52 animate-pulse rounded-2xl bg-slate-100 " />
               ))}
@@ -634,7 +635,7 @@ export default function Marketplace() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={KART_IZGARASI}>
                 {organicTutors.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}

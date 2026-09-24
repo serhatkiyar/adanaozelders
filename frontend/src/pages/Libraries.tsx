@@ -1,3 +1,4 @@
+import { KART_IZGARASI } from "@/components/kartIzgarasi";
 import { type CSSProperties, useMemo, useState } from "react";
 import { Icon } from "@/components/AppIcon";
 import { Link } from "react-router-dom";
@@ -420,7 +421,7 @@ export default function Libraries() {
             <LibrariesMap libraries={mapData ?? []} />
           )
         ) : isLoading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className={KART_IZGARASI}>
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -439,7 +440,7 @@ export default function Libraries() {
           <>
             {/* Izgara boşluğu öğretmen sonuç ekranıyla AYNI (`gap-8`);
                 `gap-6`ydı ve iki liste yan yana konunca ayrışıyordu. */}
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={KART_IZGARASI}>
               {data.map((lib) => (
                 <LibraryCard key={lib.id} library={lib} />
               ))}

@@ -41,16 +41,17 @@ export function TutorCard({
       ? "Uzaktan"
       : tutor.teaching_mode === "IN_PERSON"
         ? "Yüz yüze"
-        : "Yüzyüze & Uzaktan";
+        : "Yüz yüze & Uzaktan";
   // İlçeyle birleşince parantez içinde küçük harfle yazılır ("Çukurova
-  // (yüzyüze & uzaktan)"); ilçe yoksa tek başına eski (büyük harfli) hali
+  // (yüz yüze & uzaktan)"); ilçe yoksa tek başına eski (büyük harfli) hali
   // görünür — `tutorCardCinsiyet.test.tsx` tam bu metni (`"Uzaktan"`) çıpalıyor.
+  // "Yüz yüze" iki kelime: arama seçicileriyle (`AramaSecicileri.tsx`) aynı yazım.
   const sekilMetniKucuk =
     tutor.teaching_mode === "ONLINE"
       ? "uzaktan"
       : tutor.teaching_mode === "IN_PERSON"
         ? "yüz yüze"
-        : "yüzyüze & uzaktan";
+        : "yüz yüze & uzaktan";
   const konumSatiri = tutor.district
     ? `${tutor.district} (${sekilMetniKucuk})`
     : sekilMetni;
@@ -70,23 +71,34 @@ export function TutorCard({
   return (
     <Link
       to={ilanYolu(tutor)}
-      className="group flex h-full flex-col transition duration-300 mx-auto w-full max-w-[310px]"
+      // Genişlik ızgaranındır: kart hücresini doldurur (`KART_IZGARASI`,
+      // kullanıcı kararı 24 Eyl 2026). Eski `mx-auto max-w-[310px]` geniş
+      // hücrede kartı ortada yüzdürüp sayaç/başlıkla hizasız bırakıyordu.
+      className="group flex h-full w-full flex-col transition duration-300 outline-none"
     >
       {/* ── Picture Area ── */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 ">
+      {/* Odak halkası fotoğrafın yuvarlak kutusunda: bütün Link'e çizilse
+          altındaki metni de 24px köşeyle sarıp kartı kutuya çevirirdi. Halka
+          İÇE çizilir: vitrin şeridinin (`HScroll`) yatay taşma kırpması dışa
+          taşan halkanın ilk kartta sol ve üst kenarını kesiyordu. Halka ayrı
+          bir `after:` katmanında (z-20), çünkü kutunun kendi outline'ı/içe
+          ring'i konumlu scrim'in ALTINDA boyanıp alt kenarda kararıyordu. */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-3xl group-focus-visible:after:ring-[3px] group-focus-visible:after:ring-inset group-focus-visible:after:ring-marka-focus">
         {/* Avatarı olmayan öğretmenin adı ARTIK DIŞARI GİTMİYOR. Burada
             ui-avatars.com'a `name=<Ad Soyad>` query parametresiyle istek
             atılıyordu; yani her kart render'ında tam ad üçüncü tarafa
             veriliyordu. Ortak `Avatar` bileşeni baş harfi YERELDE üretiyor. */}
+        {/* `alt` boş: ad hemen altında metin olarak yazılı; dolu `alt` link
+            adını ekran okuyucuda "Berivan Berivan …" diye ikiletiyordu. */}
         {tutor.avatar_url ? (
           <img
             src={tutor.avatar_url}
-            alt={gorunenAd}
+            alt=""
             className="h-full w-full object-cover"
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-marka-soft text-4xl font-semibold text-marka-metin">
+          <div aria-hidden="true" className="flex h-full w-full items-center justify-center bg-marka-soft text-4xl font-semibold text-marka-metin">
             {gorunenAd.charAt(0).toLocaleUpperCase("tr")}
           </div>
         )}
@@ -128,7 +140,11 @@ export function TutorCard({
         {/* Badges: Rating & Status */}
         <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 ">
           <li className="flex shrink-0 items-center gap-1">
-            <StarRating value={tutor.rating_average ?? 0} single={true} />
+            {/* Puansız öğretmende yıldız yalnız süs; "0 / 5" okunmasın — anlamı
+                yanındaki "Yeni" metni taşıyor. */}
+            <span className="flex" aria-hidden={hasRatings ? undefined : true}>
+              <StarRating value={tutor.rating_average ?? 0} single={true} />
+            </span>
             <span className="font-semibold text-slate-900 text-xs">
               {hasRatings ? (tutor.rating_average ?? 0).toFixed(1) : "Yeni"}
             </span>
@@ -157,14 +173,20 @@ export function TutorCard({
             arasında boşluk açılıyordu. Ücret başlığın hemen altında durur;
             hizayı başlığın `min-h`i zaten sağlıyor. Aralık `mt-2`den `mt-0`a
             indi (kullanıcı kararı, 20 Eyl 2026 — "bitişik" istendi). */}
-        <div className="mt-0 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-slate-800">
+        {/* Ayırıcı her maddenin BAŞINDA ve 16px'lik sabit kutuda; iç satır
+            `-ml-4` ile sola kayar, dış kap `overflow-hidden` ile keser. Madde
+            alt satıra sarınca ayırıcısı satır başına düşer ve kırpılır —
+            157px'lik 2 sütunlu telefon kartında (ders sayfası) "·" eskiden
+            ilk satırın sonunda yetim kalıyordu. */}
+        <div className="mt-0 overflow-hidden text-slate-800">
+        <div className="-ml-4 flex flex-wrap items-center gap-y-0.5">
           {/* "/saat" eki GERİ EKLENDİ (kullanıcı kararı, 20 Eyl 2026 — 16 Eyl
               2026'daki sadelik kararını BİLEREK geri alıyor). Tutar ve "/saat"
               AYRI `<span>` ama TEK sarmalayıcı içinde: dış konteynerin
-              `gap-x-1.5`'i araya girip "600 TL   /saat" gibi kopuk bir boşluk
+              boşluğu araya girip "600 TL   /saat" gibi kopuk bir boşluk
               bırakıyordu (kullanıcı: "düzgün kontrol et"), ikisi birbirine
               bitişik tek birim olarak akmalı. */}
-          <span className="flex items-baseline">
+          <span className="flex items-baseline pl-4">
             {/* Kart ₺rakam biçimini kullanır (kullanıcı kararı, 21 Eyl 2026);
                 aynı biçim öğretmen profili kartında da geçerli —
                 `formatRate` yalnız yönetim listesinde "TL" sonekiyle kalır. */}
@@ -177,22 +199,23 @@ export function TutorCard({
           </span>
           {/* İlk ders ücretsiz etiketi — yalnız öğretmen sunuyorsa */}
           {tutor.first_lesson_free !== false && (
-            <>
-              <span className="text-base leading-none text-emerald-600">·</span>
+            <span className="flex items-center whitespace-nowrap">
+              <span aria-hidden="true" className="w-4 text-center text-base leading-none text-emerald-600">·</span>
               <span className="text-xs font-semibold text-emerald-600">
                 İlk ders ücretsiz
               </span>
-            </>
+            </span>
           )}
           {/* Mesafe — yalnız "yakınımda" aramasında dolu gelir. */}
           {mesafeMetni && (
-            <>
-              <span className="text-slate-300">·</span>
+            <span className="flex items-center whitespace-nowrap">
+              <span aria-hidden="true" className="w-4 text-center text-base leading-none text-slate-300">·</span>
               <span className="text-xs font-medium text-slate-500">
                 {mesafeMetni}
               </span>
-            </>
+            </span>
           )}
+        </div>
         </div>
       </div>
     </Link>

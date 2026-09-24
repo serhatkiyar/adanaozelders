@@ -100,7 +100,7 @@ function TumunuGorKarti({
     <Link
       to={href}
       aria-label={etiket}
-      className="group mx-auto flex h-full w-full max-w-[310px] flex-col"
+      className="group flex h-full w-full flex-col"
     >
       {/* Kare alan gerçek kartın fotoğraf alanıyla AYNI: deste ortada durur,
           satırın hizası bozulmaz. */}

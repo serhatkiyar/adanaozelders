@@ -23,7 +23,9 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
       // `h-full`: eğitmen kartında VARDI, burada YOKTU. Aynı satırdaki
       // kartlar içeriğe göre farklı yükseklikte bitiyordu; ızgarada alt
       // kenarlar hizasız kalıyordu.
-      className="group mx-auto flex h-full w-full max-w-[310px] flex-col transition duration-300"
+      // Genişlik ızgaranındır (eğitmen kartıyla aynı karar, 24 Eyl 2026):
+      // eski `mx-auto max-w-[310px]` kaldırıldı, kart hücresini doldurur.
+      className="group flex h-full w-full flex-col transition duration-300"
     >
       {/* ── Görsel alanı ── */}
       <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-gradient-to-br from-marka-soft to-marka-line ">

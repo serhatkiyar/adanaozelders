@@ -1,3 +1,4 @@
+import { KART_IZGARASI } from "@/components/kartIzgarasi";
 import { type CSSProperties, useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -515,7 +516,7 @@ export default function PublicMarketplace() {
         {/* Sonuçlar */}
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={KART_IZGARASI}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-52 animate-pulse rounded-2xl bg-slate-100 " />
               ))}
@@ -551,7 +552,7 @@ export default function PublicMarketplace() {
                 )}
               </div>
               {/* Anonim de kalbi görür — tıklayınca giriş modalı, giriş sonrası niyet uygulanır */}
-              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={KART_IZGARASI}>
                 {organicTutors.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}

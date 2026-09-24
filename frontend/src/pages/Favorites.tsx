@@ -1,3 +1,4 @@
+import { KART_IZGARASI } from "@/components/kartIzgarasi";
 import { ReactNode, useState } from "react";
 import { SAYFA_BASLIGI } from "@/lib/tipografi";
 import { Link } from "react-router-dom";
@@ -118,7 +119,7 @@ export default function Favorites() {
                 ctaLabel="Öğretmenleri keşfet"
               />
             ) : (
-              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={KART_IZGARASI}>
                 {recent.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}
@@ -266,7 +267,7 @@ function Detail({
 
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={KART_IZGARASI}>
       {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}
@@ -329,7 +330,7 @@ function TutorsTab({
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={KART_IZGARASI}>
       {data.map((tutor) => (
         <div key={tutor.id} className="relative">
           <SavedBadge />
@@ -414,7 +415,7 @@ function LibrariesTab({
           “{query}” ile eşleşen favori kütüphane yok.
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={KART_IZGARASI}>
           {filtered.map((library) => (
             <div key={library.id} className="relative">
               <SavedBadge />

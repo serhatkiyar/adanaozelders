@@ -80,7 +80,9 @@ export function BookmarkButton({
     // Telefonda `p-2`: ikon 28px, dokunma hedefi 44px olur (proje eşiği,
     // `scripts/sihirbaz_mobil_turu.mjs`). Görünüm değişmez — büyüyen yalnız
     // saydam vuruş alanı; çağıran kart konumunu `md:` ile telafi eder.
-    : "shrink-0 p-2 transition active:scale-90 hover:scale-105 disabled:opacity-50 md:p-0";
+    // Odak: tarayıcının kare varsayılan çerçevesi yerine proje halkası;
+    // fotoğraf üstünde durduğu için beyaz ofsetle (koyu zeminde kaybolmaz).
+    : "shrink-0 rounded-full p-2 outline-none transition active:scale-90 hover:scale-105 focus-visible:ring-2 focus-visible:ring-marka-focus focus-visible:ring-offset-2 disabled:opacity-50 md:p-0";
 
   // Airbnb tarzı kalp: dolgu (pasif/aktif) + okunurluk için kenar/gölge.
   //
