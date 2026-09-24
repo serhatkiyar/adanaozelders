@@ -1,6 +1,7 @@
 /**
  * Sahnenin üstündeki durum şeritleri: "yeniden bağlanılıyor", tarayıcı
- * sesi engellediğinde "Sesi aç" ve cihaz hatası. Meet
+ * sesi engellediğinde "Sesi aç" ve cihaz/medya hatası (`active-media-failed`
+ * için Zoom'un önerdiği "Sayfayı yenile" düğmesiyle). Meet
  * `ConnectionStateToast` / `StartMediaButton` karşılığı (La Suite Meet, MIT —
  * DINUM/Etalab).
  */
@@ -11,6 +12,7 @@ import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI } from "../stiller";
+import { MEDYA_HATASI } from "../zoom/indirgeyiciler";
 import { sesiAc } from "../zoom/istemci";
 import { useBaglanti, useOdaDeposu, useOdaHatasi, useSesEngellendi } from "../zoom/odaDeposu";
 
@@ -63,6 +65,16 @@ export function DurumSeritleri({ mikTercihi }: { mikTercihi: boolean }) {
           className="pointer-events-auto flex max-w-md items-center gap-2 rounded-ders bg-ders-hata px-4 py-2 text-sm text-ders-hata-fg shadow-lg"
         >
           <p className="min-w-0 flex-1">{t(hata)}</p>
+          {hata === MEDYA_HATASI && (
+            // Yeniden katılma tam sayfa yüklemesiyledir (plan §2.2);
+            // `leaveOnPageUnload` yalnız AYRILIR, dersi bitirmez.
+            <PlainButton
+              onClick={() => window.location.reload()}
+              className="h-8 shrink-0 rounded bg-ders-hata-fg px-3 font-medium text-ders-hata hover:bg-white"
+            >
+              {t("media.reload")}
+            </PlainButton>
+          )}
           <PlainButton
             onClick={() => useOdaDeposu.setState({ hata: null })}
             aria-label="Uyarıyı kapat"

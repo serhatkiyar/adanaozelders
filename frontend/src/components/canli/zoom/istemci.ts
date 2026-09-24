@@ -28,6 +28,7 @@ import ZoomVideo, {
 import type { ZoomDersTokenOut } from "@/types";
 
 import {
+  agKalitesiDegisti,
   aktifKonusanlar,
   baglantiDegisti,
   cihazlarDegisti,
@@ -36,9 +37,11 @@ import {
   izinDegisti,
   katilimcilariEsitle,
   listeleriKur,
+  medyaHatasi,
   mikIzniReddedildiMi,
   sesEngellendi,
   videoDurumuDegisti,
+  yenidenBaglandi,
   type CihazTuru,
   type ZoomKullanici,
 } from "./indirgeyiciler";
@@ -269,7 +272,18 @@ export function olaylariBagla(
     depoyaUygula((d) => videoDurumuDegisti(d, olay));
     kullaniciDegisti();
   };
-  const baglanti = (olay: { state: string }) => depoyaUygula((d) => baglantiDegisti(d, olay));
+  const baglanti = (olay: { state: string }) => {
+    const onceki = useOdaDeposu.getState().baglanti;
+    depoyaUygula((d) => baglantiDegisti(d, olay));
+    // Yeniden bağlanınca kimlikler/durumlar değişmiş olabilir: listeyi tazele.
+    if (yenidenBaglandi(onceki, useOdaDeposu.getState().baglanti)) kullaniciDegisti();
+  };
+  const agKalitesi = (olay: { userId: number; type: string; level: number }) =>
+    depoyaUygula((d) => agKalitesiDegisti(d, olay));
+  const medyaBozuldu = (olay: { code?: number; message?: string; type?: string }) => {
+    console.warn("Zoom active-media-failed", olay);
+    depoyaUygula(medyaHatasi);
+  };
   const konusan = (olay: Array<{ userId: number }>) =>
     depoyaUygula((d) => aktifKonusanlar(d, olay ?? []));
   const sesOtomatikBaslamadi = () => depoyaUygula((d) => sesEngellendi(d, true));
@@ -291,6 +305,8 @@ export function olaylariBagla(
     ["current-audio-level-change", sesSeviyesi],
     ["device-permission-change", izin],
     ["speaking-while-muted", kapaliykenKonusma],
+    ["network-quality-change", agKalitesi],
+    ["active-media-failed", medyaBozuldu],
   ];
   for (const [olay, dinleyici] of dinleyiciler) {
     istemci.on(olay, dinleyici as (yuk: unknown) => void);

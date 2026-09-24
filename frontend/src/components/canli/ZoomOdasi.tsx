@@ -42,7 +42,13 @@ import { KontrolCubugu } from "./oda/KontrolCubugu";
 import { OnIzleme, type DersBilgisi } from "./oda/OnIzleme";
 import { TelefonCubugu } from "./oda/TelefonCubugu";
 import { ZoomVideoSahnesi } from "./oda/ZoomVideoSahnesi";
-import { beklenmedikKapanis, kameraHataAnahtari, karsiTarafDurumu } from "./zoom/indirgeyiciler";
+import {
+  beklenmedikKapanis,
+  kameraHataAnahtari,
+  karsiTarafDurumu,
+  katilimciFarki,
+  type Katilimci,
+} from "./zoom/indirgeyiciler";
 import {
   ayril as istemcidenAyril,
   hazirla,
@@ -61,6 +67,12 @@ export type { DersBilgisi };
 
 /** "Mikrofonun kapalı" uyarısı en sık bu aralıkla (olay sürekli yinelenir). */
 const KAPALI_KONUSMA_ARALIGI_MS = 30_000;
+
+/**
+ * "Ayrıldı" bildirimi bu kadar ertelenir: karşı tarafın kısa kopması
+ * (failover, yeni `userId` ile dönüş) ayrılma gibi bildirilmesin.
+ */
+const AYRILDI_BEKLEME_MS = 5_000;
 
 export interface ZoomOdasiTutamak {
   /** Yalnız KENDİNİ oturumdan çıkarır (host için de). En çok ~3 sn bekler. */
@@ -142,12 +154,47 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     };
   }, []);
 
-  // Karşı taraf ve beklenmedik kapanış — yalnız katıldıktan sonra.
+  // Karşı taraf, katıldı/ayrıldı bildirimleri ve beklenmedik kapanış —
+  // yalnız katıldıktan sonra.
   useEffect(() => {
     let onceki: KarsiTarafDurumu | null = null;
     let kapandiBildirildi = false;
-    return useOdaDeposu.subscribe((d) => {
+    // İlk görülen liste taban: odadakiler için "katıldı" denmez.
+    let taban: readonly Katilimci[] | null = null;
+    let sonListe: readonly Katilimci[] | null = null;
+    const bekleyenAyrilma = new Map<string, number>();
+    const coz = useOdaDeposu.subscribe((d) => {
       if (d.asama !== "odada") return;
+      // Kendi bağlantımız kopukken liste boşalabilir: fark alınmaz, taban
+      // korunur; bağlantı gelince aynı tabana göre karşılaştırılır.
+      if (d.baglanti === "bagli" && !d.ayriliyor && d.katilimcilar !== sonListe) {
+        sonListe = d.katilimcilar;
+        if (taban === null) {
+          taban = d.katilimcilar;
+        } else {
+          const { katilanlar, ayrilanlar } = katilimciFarki(taban, d.katilimcilar, d.benId);
+          taban = d.katilimcilar;
+          for (const ad of katilanlar) {
+            const bekleyen = bekleyenAyrilma.get(ad);
+            if (bekleyen !== undefined) {
+              // Kısa kopma: ne ayrıldı ne katıldı.
+              window.clearTimeout(bekleyen);
+              bekleyenAyrilma.delete(ad);
+            } else {
+              toast.info(dersI18n.t("notifications.joined", { name: ad }));
+            }
+          }
+          for (const ad of ayrilanlar) {
+            bekleyenAyrilma.set(
+              ad,
+              window.setTimeout(() => {
+                bekleyenAyrilma.delete(ad);
+                toast.info(dersI18n.t("notifications.left", { name: ad }));
+              }, AYRILDI_BEKLEME_MS),
+            );
+          }
+        }
+      }
       const durum = karsiTarafDurumu(d);
       if (durum !== onceki) {
         onceki = durum;
@@ -158,6 +205,10 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
         guncel.current.onKapandi();
       }
     });
+    return () => {
+      coz();
+      for (const z of bekleyenAyrilma.values()) window.clearTimeout(z);
+    };
   }, []);
 
   const derseKatil = async () => {

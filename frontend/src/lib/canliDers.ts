@@ -237,3 +237,21 @@ export function sistemAyarlariAdresi(
   }
   return null;
 }
+
+/* ── Paket 3: bağlantı kalitesi ───────────────────────────────────────── */
+
+export type AgKalitesi = "bilinmiyor" | "zayif" | "orta" | "iyi";
+
+/**
+ * Zoom `network-quality-change` seviyesi (0–5) → gösterge. Zoom ölçeği:
+ * 0–1 zayıf, 2 orta, 3–5 iyi. Değer yalnız kamera açıkken yayınlanır;
+ * yoksa (ya da okunamazsa) "bilinmiyor".
+ */
+export function agKalitesi(seviye: number | null | undefined): AgKalitesi {
+  if (seviye === null || seviye === undefined || !Number.isFinite(seviye) || seviye < 0) {
+    return "bilinmiyor";
+  }
+  if (seviye <= 1) return "zayif";
+  if (seviye < 3) return "orta";
+  return "iyi";
+}

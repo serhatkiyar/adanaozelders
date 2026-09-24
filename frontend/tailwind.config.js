@@ -65,6 +65,8 @@ export default {
           "hata-fg": "#FAD2D1",
           tehlike: "#CA3632",
           "tehlike-hover": "#EE6A66",
+          // Bağlantı kalitesi "orta" (Paket 3); "zayıf" tehlike-hover'ı kullanır.
+          uyari: "#F2B84B",
         },
         panel: {
           bg: "rgb(var(--panel-bg) / <alpha-value>)",
@@ -149,6 +151,11 @@ export default {
           "0%, 100%": { boxShadow: "inset 0 0 0 2px rgb(255 153 0 / 0.9)" },
           "50%": { boxShadow: "inset 0 0 0 3px rgb(255 153 0 / 0.6)" },
         },
+        // Meet `overlayIn`: kart üzerine gelme kutusu gecikmeli belirir.
+        "ders-belir": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
         snow: {
           "0%": { transform: "translateY(-10vh) translateX(0)" },
           "100%": { transform: "translateY(110vh) translateX(20px)" },
@@ -157,6 +164,7 @@ export default {
       animation: {
         "ders-nabiz": "ders-nabiz 1s ease-in-out infinite",
         "ders-konusma": "ders-konusma 1.2s ease-in-out infinite",
+        "ders-belir": "ders-belir 200ms linear 300ms backwards",
         snow: "snow 10s linear infinite",
       },
     },

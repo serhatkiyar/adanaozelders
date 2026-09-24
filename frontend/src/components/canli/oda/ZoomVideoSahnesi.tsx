@@ -23,9 +23,16 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import { sahneDuzeni, type SahneDuzeni } from "@/lib/canliDers";
 
 import { videoBagla, videoCoz } from "../zoom/istemci";
-import { useBen, useCokluVideo, useKarsiTaraf, useKonusuyor } from "../zoom/odaDeposu";
+import {
+  useAgSeviyesi,
+  useBaglanti,
+  useBen,
+  useCokluVideo,
+  useKarsiTaraf,
+  useKonusuyor,
+} from "../zoom/odaDeposu";
 import { KatilimciZemini } from "./Avatar";
-import { KaroBilgisi } from "./KaroBilgisi";
+import { KaroBilgisi, KaroKatmani } from "./KaroBilgisi";
 
 const KAP: CSSProperties = { display: "block", position: "absolute", inset: 0 };
 const OYUNCU: CSSProperties = { display: "block", width: "100%", height: "100%" };
@@ -48,6 +55,10 @@ export function ZoomVideoSahnesi({ telefon }: { telefon: boolean }) {
   const coklu = useCokluVideo();
   const uzakKonusuyor = useKonusuyor(uzak?.userId);
   const benKonusuyor = useKonusuyor(ben?.userId);
+  const uzakAg = useAgSeviyesi(uzak?.userId);
+  const benAg = useAgSeviyesi(ben?.userId);
+  // Kendi bağlantımız koptuysa kendi kartımız da "yeniden bağlanıyor" der.
+  const benKoptu = useBaglanti() === "yenidenBaglaniyor";
 
   const uzakOyuncu = useRef<HTMLElement>(null);
   const benOyuncuCoklu = useRef<HTMLElement>(null);
@@ -102,14 +113,41 @@ export function ZoomVideoSahnesi({ telefon }: { telefon: boolean }) {
       </div>
 
       {/* Kart katmanları: oyuncuların KARDEŞİ, üstte */}
-      <div className={`pointer-events-none absolute z-10 overflow-hidden ${uzakK}`}>
+      <KaroKatmani
+        className={`z-10 ${uzakK}`}
+        ad={uzak?.ad}
+        konusuyor={Boolean(uzak) && uzakKonusuyor}
+        agSeviyesi={uzakAg}
+        telefon={telefon}
+      >
         {uzak && !uzakVideo && <KatilimciZemini ad={uzak.ad} konusuyor={uzakKonusuyor} />}
-        {uzak && <KaroBilgisi ad={uzak.ad} mikKapali={uzak.mikKapali} />}
-      </div>
-      <div className={`pointer-events-none absolute overflow-hidden ${benK}`}>
+        {uzak && (
+          <KaroBilgisi
+            ad={uzak.ad}
+            mikKapali={uzak.mikKapali}
+            agSeviyesi={uzakAg}
+            yenidenBaglaniyor={uzak.yenidenBaglaniyor}
+          />
+        )}
+      </KaroKatmani>
+      <KaroKatmani
+        className={benK}
+        ad={ben?.ad}
+        konusuyor={Boolean(ben) && benKonusuyor}
+        agSeviyesi={benAg}
+        telefon={telefon}
+      >
         {ben && !benVideo && <KatilimciZemini ad={ben.ad} konusuyor={benKonusuyor} />}
-        {ben && <KaroBilgisi ad={ben.ad} mikKapali={ben.mikKapali} kucuk={kucukBen} />}
-      </div>
+        {ben && (
+          <KaroBilgisi
+            ad={ben.ad}
+            mikKapali={ben.mikKapali}
+            agSeviyesi={benAg}
+            yenidenBaglaniyor={ben.yenidenBaglaniyor || benKoptu}
+            kucuk={kucukBen}
+          />
+        )}
+      </KaroKatmani>
     </div>
   );
 }

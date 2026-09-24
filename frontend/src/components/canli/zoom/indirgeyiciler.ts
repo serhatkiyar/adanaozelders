@@ -22,6 +22,8 @@ export interface ZoomKullanici {
   /** Mikrofon izni yokken yalnız hoparlörle bağlı (`startAudio({ speakerOnly })`). */
   isSpeakerOnly?: boolean;
   sharerOn?: boolean;
+  /** Katılımcının bağlantısı yeniden kuruluyor (Zoom failover). */
+  isInFailover?: boolean;
 }
 
 export interface Katilimci {
@@ -32,6 +34,14 @@ export interface Katilimci {
   mikKapali: boolean;
   sesBagli: boolean;
   paylasiyor: boolean;
+  /** Zoom `isInFailover`: bağlantısı kopmuş, yeniden kuruluyor. */
+  yenidenBaglaniyor: boolean;
+}
+
+/** `network-quality-change` son değerleri (0–5); yalnız kamerası açık olanlar. */
+export interface AgOlcumu {
+  uplink?: number;
+  downlink?: number;
 }
 
 /** `onizleme` → `katiliyor` → `odada`; hata olursa önizlemeye döner. */
@@ -65,6 +75,8 @@ export interface OdaDurumu {
   izinler: { kamera: IzinDurumu; mikrofon: IzinDurumu };
   /** İzin yönlendirme penceresi açık mı. */
   izinPenceresi: boolean;
+  /** Kullanıcı kimliğine göre son ağ kalitesi ölçümleri. */
+  agKaliteleri: Record<number, AgOlcumu>;
 }
 
 export interface Cihaz {
@@ -105,6 +117,7 @@ export const BASLANGIC: OdaDurumu = {
   sesSeviyesi: 0,
   izinler: { kamera: "bilinmiyor", mikrofon: "bilinmiyor" },
   izinPenceresi: false,
+  agKaliteleri: {},
 };
 
 export function katilimciyaCevir(k: ZoomKullanici): Katilimci {
@@ -116,6 +129,7 @@ export function katilimciyaCevir(k: ZoomKullanici): Katilimci {
     mikKapali: !sesBagli || Boolean(k.isSpeakerOnly) || k.muted !== false,
     sesBagli,
     paylasiyor: Boolean(k.sharerOn),
+    yenidenBaglaniyor: Boolean(k.isInFailover),
   };
 }
 
@@ -143,6 +157,81 @@ export function katilimcilariEsitle(
     karsiTarafGoruldu: durum.karsiTarafGoruldu || digerVar,
     // Ayrılan kişi konuşanlar listesinde kalmasın.
     konusanlar: durum.konusanlar.filter((id) => katilimcilar.some((k) => k.userId === id)),
+    agKaliteleri: agKaliteleriniBuda(durum.agKaliteleri, katilimcilar),
+  };
+}
+
+/**
+ * Ölçüm yalnız kamerası açık kullanıcı için yayınlanır: kamerası kapanan ya
+ * da ayrılanın eski değeri kalırsa gösterge yanıltır ("bilinmiyor" olmalı).
+ */
+function agKaliteleriniBuda(
+  olcumler: Record<number, AgOlcumu>,
+  katilimcilar: readonly Katilimci[],
+): Record<number, AgOlcumu> {
+  const sonuc: Record<number, AgOlcumu> = {};
+  let degisti = false;
+  for (const [anahtar, olcum] of Object.entries(olcumler)) {
+    const id = Number(anahtar);
+    if (katilimcilar.some((k) => k.userId === id && k.videoAcik)) sonuc[id] = olcum;
+    else degisti = true;
+  }
+  return degisti ? sonuc : olcumler;
+}
+
+/** `network-quality-change`: bir yönün (uplink/downlink) yeni seviyesi. */
+export function agKalitesiDegisti(
+  durum: OdaDurumu,
+  olay: { userId: number; type: string; level: number },
+): OdaDurumu {
+  if (olay.type !== "uplink" && olay.type !== "downlink") return durum;
+  if (!Number.isFinite(olay.level)) return durum;
+  const onceki = durum.agKaliteleri[olay.userId] ?? {};
+  if (onceki[olay.type] === olay.level) return durum;
+  return {
+    ...durum,
+    agKaliteleri: { ...durum.agKaliteleri, [olay.userId]: { ...onceki, [olay.type]: olay.level } },
+  };
+}
+
+/** Gösterilecek seviye: bilinen yönlerin en kötüsü; ölçüm yoksa `null`. */
+export function agSeviyesi(durum: OdaDurumu, userId: number | undefined): number | null {
+  if (userId === undefined) return null;
+  const olcum = durum.agKaliteleri[userId];
+  if (!olcum) return null;
+  const degerler = [olcum.uplink, olcum.downlink].filter(
+    (v): v is number => typeof v === "number" && Number.isFinite(v),
+  );
+  return degerler.length ? Math.min(...degerler) : null;
+}
+
+/**
+ * `active-media-failed`: medya yakalama/çözme beklenmedik biçimde durdu.
+ * Zoom'un önerisi sayfayı yenilemek; şerit "Sayfayı yenile" düğmesiyle çıkar.
+ */
+export function medyaHatasi(durum: OdaDurumu): OdaDurumu {
+  return { ...durum, hata: MEDYA_HATASI };
+}
+
+export const MEDYA_HATASI = "media.activeMediaFailed";
+
+/**
+ * Katıldı/ayrıldı bildirimleri için iki liste arasındaki fark. Kimlik değil
+ * AD karşılaştırılır: Zoom `userId`si yeniden bağlanınca değişebilir, birebir
+ * derste ad kararlıdır. Kendimiz hiçbir zaman bildirilmeyiz.
+ */
+export function katilimciFarki(
+  onceki: readonly Katilimci[],
+  sonraki: readonly Katilimci[],
+  benId: number | null,
+): { katilanlar: string[]; ayrilanlar: string[] } {
+  const adlar = (liste: readonly Katilimci[]) =>
+    new Set(liste.filter((k) => k.userId !== benId).map((k) => k.ad));
+  const eski = adlar(onceki);
+  const yeni = adlar(sonraki);
+  return {
+    katilanlar: [...yeni].filter((ad) => !eski.has(ad)),
+    ayrilanlar: [...eski].filter((ad) => !yeni.has(ad)),
   };
 }
 
@@ -152,8 +241,14 @@ export function videoDurumuDegisti(
   olay: { action: "Start" | "Stop"; userId: number },
 ): OdaDurumu {
   const videoAcik = olay.action === "Start";
+  let agKaliteleri = durum.agKaliteleri;
+  if (!videoAcik && olay.userId in agKaliteleri) {
+    agKaliteleri = { ...agKaliteleri };
+    delete agKaliteleri[olay.userId];
+  }
   return {
     ...durum,
+    agKaliteleri,
     katilimcilar: durum.katilimcilar.map((k) =>
       k.userId === olay.userId ? { ...k, videoAcik } : k,
     ),
@@ -170,7 +265,18 @@ export function baglantiDurumu(state: string): Baglanti | null {
 
 export function baglantiDegisti(durum: OdaDurumu, olay: { state: string }): OdaDurumu {
   const baglanti = baglantiDurumu(olay.state);
-  return baglanti ? { ...durum, baglanti } : durum;
+  if (!baglanti) return durum;
+  // Yeniden bağlanınca kimlikler değişebilir: eski ölçümler bırakılır,
+  // yenileri gelene dek gösterge "bilinmiyor".
+  if (baglanti === "bagli" && durum.baglanti === "yenidenBaglaniyor") {
+    return { ...durum, baglanti, agKaliteleri: {} };
+  }
+  return { ...durum, baglanti };
+}
+
+/** Kopan bağlantı yeniden kuruldu mu (Reconnecting → Connected)? */
+export function yenidenBaglandi(onceki: Baglanti | null, sonraki: Baglanti | null): boolean {
+  return onceki === "yenidenBaglaniyor" && sonraki === "bagli";
 }
 
 /**

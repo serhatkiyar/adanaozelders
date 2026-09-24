@@ -8,6 +8,7 @@
 import { create } from "zustand";
 
 import {
+  agSeviyesi,
   BASLANGIC,
   benKimim,
   karsiTaraf,
@@ -41,6 +42,10 @@ export const useSeciliCihazlar = () => useOdaDeposu((d) => d.secili);
 export const useSesSeviyesi = () => useOdaDeposu((d) => d.sesSeviyesi);
 export const useIzinler = () => useOdaDeposu((d) => d.izinler);
 export const useIzinPenceresi = () => useOdaDeposu((d) => d.izinPenceresi);
+
+/** Kartın ağ seviyesi (0–5) ya da ölçüm yoksa `null` (bkz. `agKalitesi`). */
+export const useAgSeviyesi = (userId: number | undefined) =>
+  useOdaDeposu((d) => agSeviyesi(d, userId));
 
 export function izinPenceresiniAc(acik: boolean): void {
   useOdaDeposu.setState({ izinPenceresi: acik });

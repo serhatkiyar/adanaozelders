@@ -97,9 +97,27 @@ export const tr = {
       micNotGranted:
         "Mikrofon izni verilmedi; karşı tarafı duyabilirsin ama o seni duyamaz. Tarayıcı ayarlarından izin verebilirsin.",
       speakingWhileMuted: "Mikrofonun kapalı. Konuşmak için aç.",
+      activeMediaFailed:
+        "Ses ya da görüntü beklenmedik biçimde durdu. Düzeltmek için sayfayı yenile.",
+      reload: "Sayfayı yenile",
     },
     connection: {
       reconnecting: "Bağlantı koptu, yeniden bağlanılıyor…",
+      participantReconnecting: "Yeniden bağlanıyor…",
+      quality: {
+        label: "Bağlantı: {{durum}}",
+        iyi: "iyi",
+        orta: "orta",
+        zayif: "zayıf",
+        bilinmiyor: "bilinmiyor",
+        unknownHint: "Bağlantı kalitesi yalnız kamera açıkken ölçülür.",
+        weakHint: "Görüntü ve ses kesilebilir.",
+      },
+    },
+    /** Meet `notifications` ad alanı: katıldı / ayrıldı. */
+    notifications: {
+      joined: "{{name}} derse katıldı",
+      left: "{{name}} dersten ayrıldı",
     },
     /** Meet `Permissions` — tarayıcı izin yönlendirmesi. */
     permissionErrorDialog: {
