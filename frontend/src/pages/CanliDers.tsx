@@ -5,6 +5,7 @@ import { Icon } from "@/components/AppIcon";
 import type {
   DersBilgisi,
   DersSohbetBilgisi,
+  SohbetDurumu,
   ZoomOdasiTutamak,
 } from "@/components/canli/ZoomOdasi";
 import { Modal } from "@/components/ui/Modal";
@@ -186,16 +187,12 @@ function DersOdasi({
   const [kapandi, setKapandi] = useState(false);
   const [cikisAcik, setCikisAcik] = useState(false);
   const [ayriliyor, setAyriliyor] = useState(false);
+  const [sohbetDurumu, setSohbetDurumu] = useState<SohbetDurumu | null>(null);
   const simdi = useSimdi();
 
   const rol = oda.bilet.rol;
   const karsiAd =
     rol === "host" ? ders?.client_name || ADSIZ_UYE : ders?.tutor_name || "Öğretmen";
-  const mesajAdresi = ders
-    ? rol === "host"
-      ? ROUTES.messageWith(ders.client_id, karsiAd, "CLIENT")
-      : ROUTES.messageWith(ders.tutor_id, karsiAd, "TUTOR")
-    : null;
   const sayac = ders ? sayacMetni(dersSayaci(ders.end_at, simdi)) : null;
   const not = karsiTaraf && !kapandi ? karsiTarafNotu(karsiTaraf, rol) : null;
   const dersBilgisi = useMemo<DersBilgisi | undefined>(
@@ -205,7 +202,7 @@ function DersOdasi({
         : undefined,
     [ders, karsiAd],
   );
-  // Ders içi sohbetin karşı tarafı: `mesajAdresi` ile AYNI kişi ve tür.
+  // Ders içi sohbetin karşı tarafı (sitenin mesajlaşmasındaki konuşma).
   const sohbet = useMemo<DersSohbetBilgisi | undefined>(
     () =>
       ders
@@ -279,21 +276,33 @@ function DersOdasi({
             {sayac}
           </span>
         )}
-        {/* Tam Mesajlar sayfası yeni sekmede (görüşme bu sekmede sürer);
-            ders içi sohbet odanın yan panelinde. */}
-        {mesajAdresi && (
-          <a
-            href={mesajAdresi}
-            target="_blank"
-            rel="noopener"
-            aria-label={telefon ? "Mesajlar (yeni sekmede)" : undefined}
-            className={`${DUGME} h-10 shrink-0 bg-ders-dugme text-white hover:bg-ders-hover ${
-              telefon ? "w-10" : "px-4 text-base"
-            }`}
+        {/* Ders içi sohbet: odanın yan panelini açıp kapatır (yeni sekme
+            açmaz, görüşme sürer). Yalnız odadayken ve sohbet varken. */}
+        {sohbetDurumu?.kullanilabilir && (
+          <button
+            type="button"
+            onClick={() => odaRef.current?.sohbetiDegistir()}
+            aria-pressed={sohbetDurumu.acik}
+            aria-label={
+              sohbetDurumu.okunmamis > 0 && !sohbetDurumu.acik
+                ? `Mesajlar, ${sohbetDurumu.okunmamis} okunmamış`
+                : "Mesajlar"
+            }
+            className={`${DUGME} relative h-10 shrink-0 text-white ${
+              sohbetDurumu.acik ? "bg-ders-hover" : "bg-ders-dugme hover:bg-ders-hover"
+            } ${telefon ? "w-10" : "px-4 text-base"}`}
           >
             <Icon name="messages" className="h-5 w-5" />
             {!telefon && "Mesajlar"}
-          </a>
+            {sohbetDurumu.okunmamis > 0 && !sohbetDurumu.acik && (
+              <span
+                aria-hidden
+                className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-marka px-1 text-xs font-semibold text-marka-fg"
+              >
+                {sohbetDurumu.okunmamis > 9 ? "9+" : sohbetDurumu.okunmamis}
+              </span>
+            )}
+          </button>
         )}
         {/* Telefonda çıkış alt çubuktaki "Çık"tadır. */}
         {!telefon && (
@@ -331,6 +340,7 @@ function DersOdasi({
               biletTazele={biletTazele}
               dersBilgisi={dersBilgisi}
               sohbet={sohbet}
+              onSohbetDurumu={setSohbetDurumu}
             />
           </Suspense>
           {/* Bölümün İÇİNDE: telefonda tam ekran yan panel (odanın z-40'ı)

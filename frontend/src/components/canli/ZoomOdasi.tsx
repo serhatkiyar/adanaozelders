@@ -13,7 +13,8 @@
  *
  * Props ve `ZoomOdasiTutamak.ayril()` toolkit sürümüyle aynı; yalnız isteğe
  * bağlı props eklendi (`onAyrilIstegi`, `biletTazele`, `dersBilgisi`,
- * `sohbet`).
+ * `sohbet`, `onSohbetDurumu`); tutamağa `sohbetiDegistir()` (üst şeritteki
+ * "Mesajlar" yan paneli açar, yeni sekme açmaz).
  *
  * ## Yan panel (Katılımcılar, ders içi sohbet)
  *
@@ -89,6 +90,16 @@ const AYRILDI_BEKLEME_MS = 5_000;
 export interface ZoomOdasiTutamak {
   /** Yalnız KENDİNİ oturumdan çıkarır (host için de). En çok ~3 sn bekler. */
   ayril: () => Promise<void>;
+  /** Üst şeritteki "Mesajlar": yan paneli sohbet sekmesiyle açar/kapatır. */
+  sohbetiDegistir: () => void;
+}
+
+/** Üst şeritteki "Mesajlar" düğmesinin durumu. */
+export interface SohbetDurumu {
+  /** Odadayız ve ders içi sohbet var (önizlemede yan panel yok). */
+  kullanilabilir: boolean;
+  acik: boolean;
+  okunmamis: number;
 }
 
 export interface ZoomOdasiProps {
@@ -108,6 +119,8 @@ export interface ZoomOdasiProps {
   dersBilgisi?: DersBilgisi;
   /** Ders içi sohbetin karşı tarafı; yoksa sohbet düğmesi görünmez. */
   sohbet?: DersSohbetBilgisi;
+  /** Sohbet paneli durumu değişince (üst şeritteki "Mesajlar" için). */
+  onSohbetDurumu?: (durum: SohbetDurumu) => void;
 }
 
 const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdasi(
@@ -155,7 +168,22 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     okunmamis: konusma.okunmamis,
   };
 
-  useImperativeHandle(ref, () => ({ ayril: () => odadanAyril() }), []);
+  useImperativeHandle(
+    ref,
+    () => ({ ayril: () => odadanAyril(), sohbetiDegistir: () => panelDegistir("sohbet") }),
+    [panelDegistir],
+  );
+
+  const sohbetKullanilabilir = asama === "odada" && Boolean(sohbet);
+  const sohbetAcik = sohbetKullanilabilir && panel === "sohbet";
+  const okunmamis = konusma.okunmamis;
+  useEffect(() => {
+    guncel.current.onSohbetDurumu?.({
+      kullanilabilir: sohbetKullanilabilir,
+      acik: sohbetAcik,
+      okunmamis,
+    });
+  }, [sohbetKullanilabilir, sohbetAcik, okunmamis]);
 
   // Kurulum: depo sıfır, init (WASM ön yükleme) önizleme sırasında başlar,
   // olay köprüsü bağlanır. StrictMode'un kur-sök-kur döngüsü: söküm yalnız

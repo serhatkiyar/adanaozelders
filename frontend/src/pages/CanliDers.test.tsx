@@ -20,13 +20,18 @@ import type { BookingOut, ZoomDersTokenOut } from "@/types";
 const oda = vi.hoisted(() => ({
   props: null as ZoomOdasiProps | null,
   ayril: vi.fn(async () => {}),
+  sohbetiDegistir: vi.fn(),
   kurulum: 0,
 }));
 
 vi.mock("@/components/canli/ZoomOdasi", () => ({
   default: forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function SahteOda(props, ref) {
     oda.props = props;
-    useImperativeHandle(ref, () => ({ ayril: oda.ayril }), []);
+    useImperativeHandle(
+      ref,
+      () => ({ ayril: oda.ayril, sohbetiDegistir: oda.sohbetiDegistir }),
+      [],
+    );
     return <div data-testid="zoom-kabi" />;
   }),
 }));
@@ -129,10 +134,26 @@ describe("CanliDers — oda", () => {
     expect(await screen.findByTestId("zoom-kabi")).toBeInTheDocument();
     expect(oda.props?.bilet).toEqual(BILET);
     expect(screen.getByText("Canlı ders · Mehmet")).toBeInTheDocument();
-    // Paket 4'e kadar sohbet: Mesajlar yeni sekmede, karşı tarafla.
-    const mesajlar = screen.getByRole("link", { name: /Mesajlar/ });
-    expect(mesajlar).toHaveAttribute("target", "_blank");
-    expect(mesajlar.getAttribute("href")).toContain("to=20");
+    // Mesajlar yeni sekme/bağlantı değil; oda sohbete hazır olana dek yok.
+    expect(screen.queryByRole("link", { name: /Mesajlar/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Mesajlar/ })).toBeNull();
+  });
+
+  it("Mesajlar yan paneldeki ders içi sohbeti açıp kapatır", async () => {
+    ciz();
+    await screen.findByTestId("zoom-kabi");
+    act(() => oda.props!.onSohbetDurumu?.({ kullanilabilir: true, acik: false, okunmamis: 2 }));
+
+    const dugme = screen.getByRole("button", { name: "Mesajlar, 2 okunmamış" });
+    expect(dugme).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(dugme);
+    expect(oda.sohbetiDegistir).toHaveBeenCalledTimes(1);
+
+    act(() => oda.props!.onSohbetDurumu?.({ kullanilabilir: true, acik: true, okunmamis: 0 }));
+    expect(screen.getByRole("button", { name: "Mesajlar" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("karşı taraf ayrılınca bekleme notu, dönünce kalkar", async () => {
