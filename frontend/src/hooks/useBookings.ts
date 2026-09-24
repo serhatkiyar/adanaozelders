@@ -8,6 +8,7 @@ import {
   createBooking,
   fetchBooking,
   getZoomToken,
+  setTahtaDurumu,
   listBookings,
   rejectBooking,
   rescheduleBooking,
@@ -75,6 +76,13 @@ export function useSetBookingLocation() {
     mutationFn: ({ id, location, lat, lng }: { id: number; location: string; lat: number | null; lng: number | null }) =>
       setBookingLocation(id, location, lat, lng),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
+  });
+}
+
+/** Tahtayı aç/kapa (yalnız eğitmen). Durum kanal üzerinden iki tarafa yayılır. */
+export function useTahtaDurumu(id: number) {
+  return useMutation({
+    mutationFn: (acik: boolean) => setTahtaDurumu(id, acik),
   });
 }
 

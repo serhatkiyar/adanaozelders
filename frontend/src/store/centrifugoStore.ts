@@ -30,7 +30,7 @@ const BILDIRIM_ARALIGI_MS = 2000;
  */
 const YOL = "/gercekzaman/connection/websocket";
 
-function centrifugoUrl(): string {
+export function centrifugoUrl(): string {
   const base = import.meta.env.VITE_API_BASE_URL;
   // Base yok ya da göreli (Vite proxy) → sayfanın kendi origin'i.
   if (!base || base.startsWith("/")) {

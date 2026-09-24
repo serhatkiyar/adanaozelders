@@ -877,6 +877,16 @@ export interface ZoomDersTokenOut {
   expires_at: string;
 }
 
+/** GET /bookings/{id}/tahta-token — ders tahtası kanalına abonelik (Centrifugo). */
+export interface TahtaTokenOut {
+  token: string;
+  kanal: string;
+  ttl: number;
+  rol: "ogretmen" | "ogrenci";
+  /** Geç katılan / yeniden bağlanan için tahtanın son durumu. */
+  tahta_acik: boolean;
+}
+
 /* ======================= ÖĞRENCİ PANOSU (Modül 4) ======================= */
 
 /**

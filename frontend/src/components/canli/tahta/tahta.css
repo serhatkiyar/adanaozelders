@@ -1,0 +1,22 @@
+/*
+ * Ders tahtası — Excalidraw'ın kendi arayüzü gizlenir; yerine Preply tahta
+ * yüzeyi (sol dikey araç çubuğu, alt solda geri al/yinele + yakınlaştırma,
+ * alt sağda sayfa denetimi) `TahtaPaneli`nde çizilir. Sınıf adları kurulu
+ * @excalidraw/excalidraw 0.18.1 `dist/prod/index.css`ten; masaüstü ve
+ * telefon (dar kap) arayüzünün ikisi de kapsanır.
+ */
+.ders-tahta .excalidraw .App-menu_top,
+.ders-tahta .excalidraw .layer-ui__wrapper__footer,
+.ders-tahta .excalidraw .App-bottom-bar,
+.ders-tahta .excalidraw .App-toolbar,
+.ders-tahta .excalidraw .App-mobile-menu,
+.ders-tahta .excalidraw .main-menu-trigger,
+.ders-tahta .excalidraw .default-sidebar-trigger,
+.ders-tahta .excalidraw .sidebar-trigger,
+.ders-tahta .excalidraw .help-icon,
+.ders-tahta .excalidraw .layer-ui__wrapper__top-right,
+.ders-tahta .excalidraw .welcome-screen-center,
+.ders-tahta .excalidraw .welcome-screen-decor,
+.ders-tahta .excalidraw .scroll-back-to-content {
+  display: none !important;
+}

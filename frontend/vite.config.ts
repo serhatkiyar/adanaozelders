@@ -1,9 +1,47 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import fs from "node:fs";
 import path from "node:path";
 
+/**
+ * Excalidraw yazı tipleri KENDİ sunucumuzdan (canlı ders beyaz tahtası).
+ *
+ * Paket, `window.EXCALIDRAW_ASSET_PATH` yoksa yazı tiplerini dış CDN'den
+ * çeker (her çizimde ziyaretçinin IP'si üçüncü tarafa gider — KVKK, bkz.
+ * `src/__guards__/disFont.test.ts`). `components/canli/tahta/excalidrawVarlik.ts`
+ * yolu `/assets/excalidraw/` yapar; bu eklenti `fonts/` klasörünü build'de
+ * `dist/assets/excalidraw/fonts/` altına kopyalar, geliştirme sunucusunda
+ * aynı yoldan `node_modules`tan sunar. `/assets` altında olduğu için
+ * nginx'in mevcut önbellek/SEO kuralları aynen geçerli.
+ */
+function excalidrawVarliklari(): Plugin {
+  const kaynak = path.resolve(__dirname, "node_modules/@excalidraw/excalidraw/dist/prod/fonts");
+  const onek = "/assets/excalidraw/fonts/";
+  let cikti = "dist";
+  return {
+    name: "excalidraw-varliklari",
+    configResolved(c) {
+      cikti = path.resolve(c.root, c.build.outDir);
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const adres = req.url?.split("?")[0] ?? "";
+        if (!adres.startsWith(onek)) return next();
+        const dosya = path.join(kaynak, decodeURIComponent(adres.slice(onek.length)));
+        if (!dosya.startsWith(kaynak) || !fs.existsSync(dosya)) return next();
+        res.setHeader("Content-Type", "font/woff2");
+        fs.createReadStream(dosya).pipe(res);
+      });
+    },
+    closeBundle() {
+      if (!fs.existsSync(kaynak)) return;
+      fs.cpSync(kaynak, path.join(cikti, "assets/excalidraw/fonts"), { recursive: true });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), excalidrawVarliklari()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -1,5 +1,6 @@
 import { apiClient } from "@/api/axios";
 import type {
+  TahtaTokenOut,
   BookingCreate,
   BookingIssueReason,
   BookingOut,
@@ -49,6 +50,18 @@ export async function fetchBooking(id: number): Promise<BookingOut> {
 /** Canlı ders (Zoom) giriş bileti; kapılar sunucuda (taraf, ödeme, saat). */
 export async function getZoomToken(id: number): Promise<ZoomDersTokenOut> {
   const { data } = await apiClient.get<ZoomDersTokenOut>(`/bookings/${id}/zoom-token`);
+  return data;
+}
+
+/** Ders tahtası kanalının abonelik token'ı (ortak canlı ders kapıları). */
+export async function getTahtaToken(id: number): Promise<TahtaTokenOut> {
+  const { data } = await apiClient.get<TahtaTokenOut>(`/bookings/${id}/tahta-token`);
+  return data;
+}
+
+/** Tahtayı açar/kapatır — yalnız dersin eğitmeni (sunucu 403 döner). */
+export async function setTahtaDurumu(id: number, acik: boolean): Promise<{ acik: boolean }> {
+  const { data } = await apiClient.put<{ acik: boolean }>(`/bookings/${id}/tahta`, { acik });
   return data;
 }
 
