@@ -1,7 +1,8 @@
 /**
  * Telefon kontrol çubuğu — Meet `MobileControlBar` (La Suite Meet, MIT —
  * DINUM/Etalab) sadeleştirilmiş: etiketli tek satır
- * Mikrofon · Kamera · Daha fazla (Kamerayı çevir) · Çık.
+ * Mikrofon · Kamera · Daha fazla (Kamerayı çevir, Tam ekran, Ayarlar) · Çık.
+ * Telefonda cihaz okları yok; cihaz seçimi Ayarlar'da.
  */
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,11 +13,23 @@ import { PlainButton } from "@/components/ui/PlainButton";
 import { ODA_DUGMESI, TELEFON_DUGMESI } from "../stiller";
 import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
 import { AltCekmece } from "./AltCekmece";
+import type { AyarSekmesi } from "./AyarlarPenceresi";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
+import { useTamEkran } from "./useTamEkran";
 
-export function TelefonCubugu({ onAyril }: { onAyril?: () => void }) {
+const CEKMECE_OGESI =
+  "flex flex-col items-center gap-2 rounded-ders p-3 text-sm text-white hover:bg-ders-dugme disabled:opacity-40";
+
+export function TelefonCubugu({
+  onAyril,
+  onAyarlar,
+}: {
+  onAyril?: () => void;
+  onAyarlar: (sekme: AyarSekmesi) => void;
+}) {
   const { t } = useTranslation();
   const m = useMedyaKontrolleri();
+  const tamEkran = useTamEkran();
   const [menuAcik, setMenuAcik] = useState(false);
   const menuyuKapat = useCallback(() => setMenuAcik(false), []);
 
@@ -78,10 +91,35 @@ export function TelefonCubugu({ onAyril }: { onAyril?: () => void }) {
             void m.kameraCevir();
           }}
           disabled={!m.kameraAcik || m.mesgul !== null}
-          className="flex flex-col items-center gap-2 rounded-ders p-3 text-sm text-white hover:bg-ders-dugme disabled:opacity-40"
+          className={CEKMECE_OGESI}
         >
           <Icon name="cameraSwitch" className="h-6 w-6" />
           {t("options.items.switchCamera")}
+        </PlainButton>
+        {tamEkran.destekli && (
+          <PlainButton
+            onClick={() => {
+              menuyuKapat();
+              void tamEkran.degistir();
+            }}
+            className={CEKMECE_OGESI}
+          >
+            <Icon
+              name={tamEkran.acik ? "fullScreenMinimize" : "fullScreenMaximize"}
+              className="h-6 w-6"
+            />
+            {t(`options.items.fullscreen.${tamEkran.acik ? "exit" : "enter"}`)}
+          </PlainButton>
+        )}
+        <PlainButton
+          onClick={() => {
+            menuyuKapat();
+            onAyarlar("ses");
+          }}
+          className={CEKMECE_OGESI}
+        >
+          <Icon name="settings" className="h-6 w-6" />
+          {t("options.items.settings")}
         </PlainButton>
       </AltCekmece>
     </>

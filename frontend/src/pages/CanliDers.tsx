@@ -2,12 +2,13 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { Icon } from "@/components/AppIcon";
-import type { ZoomOdasiTutamak } from "@/components/canli/ZoomOdasi";
+import type { DersBilgisi, ZoomOdasiTutamak } from "@/components/canli/ZoomOdasi";
 import { Modal } from "@/components/ui/Modal";
 import { useBooking, useZoomToken } from "@/hooks/useBookings";
 import {
   biletHataMetni,
   bostaKalmaSuresiDk,
+  dersSaatAraligi,
   dersSayaci,
   firefoxMu,
   karsiTarafNotu,
@@ -196,6 +197,13 @@ function DersOdasi({
     : null;
   const sayac = ders ? sayacMetni(dersSayaci(ders.end_at, simdi)) : null;
   const not = karsiTaraf && !kapandi ? karsiTarafNotu(karsiTaraf, rol) : null;
+  const dersBilgisi = useMemo<DersBilgisi | undefined>(
+    () =>
+      ders
+        ? { baslik: `Canlı ders · ${karsiAd}`, saat: dersSaatAraligi(ders.start_at, ders.end_at) }
+        : undefined,
+    [ders, karsiAd],
+  );
   const dersSayfasi = ROUTES.lesson(dersId);
 
   const ayril = async () => {
@@ -209,17 +217,25 @@ function DersOdasi({
 
   return (
     <div className="fixed inset-0 flex flex-col bg-ders-zemin font-sans text-white">
+      {/* Tarayıcı uyarısı — Meet bildirim görünümü: koyu yüzeyde yuvarlak
+          kutu, oda token'larıyla (açık sarı şerit koyu odada sırıtıyordu). */}
       {firefoxSeridi && (
-        <div className="flex shrink-0 items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-          <p className="min-w-0 flex-1">En iyi deneyim için Chrome önerilir.</p>
-          <button
-            type="button"
-            onClick={() => setFirefoxSeridi(false)}
-            aria-label="Uyarıyı kapat"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-amber-100"
+        <div className="flex shrink-0 justify-center px-4 pt-2">
+          <div
+            role="status"
+            className="flex w-full max-w-xl items-center gap-3 rounded-ders bg-ders-yuzey py-2 pl-4 pr-2 text-sm text-white shadow-lg"
           >
-            <Icon name="dismiss" className="h-4 w-4" />
-          </button>
+            <Icon name="help" className="h-5 w-5 shrink-0 text-white/70" />
+            <p className="min-w-0 flex-1">En iyi deneyim için Chrome önerilir.</p>
+            <button
+              type="button"
+              onClick={() => setFirefoxSeridi(false)}
+              aria-label="Uyarıyı kapat"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-ders-dugme"
+            >
+              <Icon name="dismiss" className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -293,6 +309,7 @@ function DersOdasi({
               onKapandi={() => setKapandi(true)}
               onAyrilIstegi={() => setCikisAcik(true)}
               biletTazele={biletTazele}
+              dersBilgisi={dersBilgisi}
             />
           </Suspense>
         </section>

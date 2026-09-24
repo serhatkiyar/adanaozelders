@@ -178,3 +178,62 @@ export function sahneDuzeni(karsiTarafOdada: boolean, paylasimVar: boolean): Sah
   if (paylasimVar) return "paylasim";
   return karsiTarafOdada ? "birebir" : "yalniz";
 }
+
+/* ── Paket 2: önizleme, izin penceresi, cihazlar ──────────────────────── */
+
+const saatDf = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** Önizlemenin sağ sütunundaki ders saati: "14:00–15:00" (Türkiye saati). */
+export function dersSaatAraligi(baslangicIso: string, bitisIso: string): string {
+  return `${saatDf.format(new Date(baslangicIso))}–${saatDf.format(new Date(bitisIso))}`;
+}
+
+export type IsletimSistemi = "ios" | "android" | "macos" | "windows" | "diger";
+
+/** İzin penceresinin yönlendirmesi için işletim sistemi (UA'dan). */
+export function isletimSistemi(ua: string, dokunmatik = false): IsletimSistemi {
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  // iPadOS 13+ masaüstü Safari UA'sı taşır; dokunmatik Mac yok.
+  if (/Macintosh/i.test(ua) && dokunmatik) return "ios";
+  if (/Android/i.test(ua)) return "android";
+  if (/Macintosh|Mac OS X/i.test(ua)) return "macos";
+  if (/Windows/i.test(ua)) return "windows";
+  return "diger";
+}
+
+export type TarayiciTuru = "safari" | "firefox" | "chromium";
+
+/**
+ * İzin adımlarının dili için tarayıcı ailesi. iOS'ta her tarayıcı WebKit'tir
+ * ve izin menüsü Safari'ninkine benzer; Chrome/Edge/Opera/Samsung "chromium".
+ */
+export function tarayiciTuru(ua: string, os: IsletimSistemi): TarayiciTuru {
+  if (firefoxMu(ua)) return "firefox";
+  if (os === "ios") return "safari";
+  if (/Safari\//.test(ua) && !/Chrome\/|Chromium\/|CriOS\/|Edg\/|OPR\//.test(ua)) return "safari";
+  return "chromium";
+}
+
+/** Sistem ayarları derin bağlantısı (yalnız masaüstü; telefonda yok). */
+export function sistemAyarlariAdresi(
+  os: IsletimSistemi,
+  cihaz: "kamera" | "mikrofon" | "ikisi",
+): string | null {
+  if (os === "macos") {
+    if (cihaz === "kamera")
+      return "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera";
+    if (cihaz === "mikrofon")
+      return "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone";
+    return "x-apple.systempreferences:com.apple.preference.security?Privacy";
+  }
+  if (os === "windows") {
+    if (cihaz === "kamera") return "ms-settings:privacy-webcam";
+    if (cihaz === "mikrofon") return "ms-settings:privacy-microphone";
+    return "ms-settings:privacy";
+  }
+  return null;
+}

@@ -29,12 +29,15 @@ export function MedyaDugmesi({
   acik,
   gorunum,
   mesgul = false,
+  grup = false,
   onDegistir,
 }: {
   tur: MedyaTuru;
   acik: boolean;
   gorunum: MedyaGorunumu;
   mesgul?: boolean;
+  /** Yanında cihaz oku var (Meet `groupPosition="left"`): sağ köşeler düz. */
+  grup?: boolean;
   onDegistir: (ac: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -65,7 +68,9 @@ export function MedyaDugmesi({
   const stil =
     gorunum === "onizleme"
       ? `${ONIZLEME_DUGMESI.boyut} ${acik ? ONIZLEME_DUGMESI.acik : ONIZLEME_DUGMESI.kapali}`
-      : `${ODA_DUGMESI.boyut} ${acik ? ODA_DUGMESI.acik : ODA_DUGMESI.kapali}`;
+      : `${ODA_DUGMESI.boyut} ${grup ? "rounded-r-none" : ""} ${
+          acik ? ODA_DUGMESI.acik : ODA_DUGMESI.kapali
+        }`;
 
   return (
     <PlainButton

@@ -36,3 +36,12 @@ export const useSesEngellendi = () => useOdaDeposu((d) => d.sesEngellendi);
 export const useOdaHatasi = () => useOdaDeposu((d) => d.hata);
 export const useKonusuyor = (userId: number | undefined) =>
   useOdaDeposu((d) => userId !== undefined && d.konusanlar.includes(userId));
+export const useCihazlar = () => useOdaDeposu((d) => d.cihazlar);
+export const useSeciliCihazlar = () => useOdaDeposu((d) => d.secili);
+export const useSesSeviyesi = () => useOdaDeposu((d) => d.sesSeviyesi);
+export const useIzinler = () => useOdaDeposu((d) => d.izinler);
+export const useIzinPenceresi = () => useOdaDeposu((d) => d.izinPenceresi);
+
+export function izinPenceresiniAc(acik: boolean): void {
+  useOdaDeposu.setState({ izinPenceresi: acik });
+}

@@ -54,7 +54,38 @@ export interface OdaDurumu {
   ayriliyor: boolean;
   /** Kullanıcıya gösterilecek son hata (i18n anahtarı). */
   hata: string | null;
+  /** Önizlemede `getDevices`, odada `get*List` ile okunan cihazlar. */
+  cihazlar: CihazListeleri;
+  /** Kullanılan (odada) ya da kullanılacak (önizlemede) cihaz kimlikleri. */
+  secili: SeciliCihazlar;
+  /** Odada kendi mikrofon seviyem (`current-audio-level-change`, 0–9). */
+  sesSeviyesi: number;
+  izinler: { kamera: IzinDurumu; mikrofon: IzinDurumu };
+  /** İzin yönlendirme penceresi açık mı. */
+  izinPenceresi: boolean;
 }
+
+export interface Cihaz {
+  id: string;
+  ad: string;
+}
+
+export interface CihazListeleri {
+  mikrofon: Cihaz[];
+  hoparlor: Cihaz[];
+  kamera: Cihaz[];
+}
+
+export type CihazTuru = keyof CihazListeleri;
+
+export interface SeciliCihazlar {
+  mikrofon?: string;
+  hoparlor?: string;
+  kamera?: string;
+}
+
+/** `navigator.permissions` / `device-permission-change` durumu. */
+export type IzinDurumu = "granted" | "denied" | "prompt" | "bilinmiyor";
 
 export const BASLANGIC: OdaDurumu = {
   asama: "onizleme",
@@ -67,6 +98,11 @@ export const BASLANGIC: OdaDurumu = {
   cokluVideo: true,
   ayriliyor: false,
   hata: null,
+  cihazlar: { mikrofon: [], hoparlor: [], kamera: [] },
+  secili: {},
+  sesSeviyesi: 0,
+  izinler: { kamera: "bilinmiyor", mikrofon: "bilinmiyor" },
+  izinPenceresi: false,
 };
 
 export function katilimciyaCevir(k: ZoomKullanici): Katilimci {
@@ -196,4 +232,131 @@ export function mikIzniReddedildiMi(hata: unknown): boolean {
     metin = `${String(type ?? "")} ${String(reason ?? "")}`;
   } else metin = String(hata ?? "");
   return /AUDIO_CAPTURE_FAILED|INSUFFICIENT_PRIVILEGES|NotAllowed|Permission denied/i.test(metin);
+}
+
+/* ── Cihazlar ve izinler (Paket 2) ──────────────────────────────────── */
+
+/** SDK/tarayıcı cihaz kaydının kullandığımız alt kümesi. */
+export interface HamCihaz {
+  deviceId: string;
+  label: string;
+  kind?: string;
+}
+
+const TUR_KIND: Record<CihazTuru, string> = {
+  mikrofon: "audioinput",
+  hoparlor: "audiooutput",
+  kamera: "videoinput",
+};
+
+/**
+ * Ham listeyi seçiciye hazırlar: kimliksiz kayıtlar (izin yokken tarayıcı
+ * boş kimlik verir) ve yinelenenler atılır; adsız cihaz sırayla adlanır.
+ * `kind` taşıyan liste (ör. `getDevices`) türe göre süzülür.
+ */
+export function cihazListesi(
+  ham: readonly HamCihaz[],
+  tur: CihazTuru,
+  yedekAd: string,
+): Cihaz[] {
+  const gorulen = new Set<string>();
+  const sonuc: Cihaz[] = [];
+  for (const c of ham) {
+    if (c.kind !== undefined && c.kind !== TUR_KIND[tur]) continue;
+    if (!c.deviceId || gorulen.has(c.deviceId)) continue;
+    gorulen.add(c.deviceId);
+    sonuc.push({ id: c.deviceId, ad: c.label?.trim() || `${yedekAd} ${sonuc.length + 1}` });
+  }
+  return sonuc;
+}
+
+/** Kayıtlı kimlik listede hâlâ var mı? Yoksa `undefined` (sistem varsayılanı). */
+export function gecerliCihazId(id: string | undefined, liste: readonly Cihaz[]): string | undefined {
+  return id && liste.some((c) => c.id === id) ? id : undefined;
+}
+
+/**
+ * Yeni listeler ve etkin kimlikler. Boş gelen liste öncekini SİLMEZ: oda
+ * SDK'sı listeyi ses/kamera başlayana dek boş verebilir; önizlemenin
+ * (`getDevices`) okuduğu aynı tarayıcı kimlikleri o arada geçerli kalır.
+ * Tanımsız etkin kimlik de önceki seçimi ezmez.
+ */
+export function cihazlarDegisti(
+  durum: OdaDurumu,
+  cihazlar: CihazListeleri,
+  secili: SeciliCihazlar,
+): OdaDurumu {
+  const birlesik: CihazListeleri = {
+    mikrofon: cihazlar.mikrofon.length ? cihazlar.mikrofon : durum.cihazlar.mikrofon,
+    hoparlor: cihazlar.hoparlor.length ? cihazlar.hoparlor : durum.cihazlar.hoparlor,
+    kamera: cihazlar.kamera.length ? cihazlar.kamera : durum.cihazlar.kamera,
+  };
+  const yeniSecili: SeciliCihazlar = { ...durum.secili };
+  for (const tur of ["mikrofon", "hoparlor", "kamera"] as const) {
+    if (secili[tur]) yeniSecili[tur] = secili[tur];
+  }
+  return { ...durum, cihazlar: birlesik, secili: yeniSecili };
+}
+
+export function cihazSecildi(durum: OdaDurumu, tur: CihazTuru, id: string): OdaDurumu {
+  return { ...durum, secili: { ...durum.secili, [tur]: id } };
+}
+
+/** `navigator.permissions` ya da Zoom `device-permission-change`. */
+export function izinDegisti(
+  durum: OdaDurumu,
+  olay: { name: "camera" | "microphone"; state: string },
+): OdaDurumu {
+  const state: IzinDurumu =
+    olay.state === "granted" || olay.state === "denied" || olay.state === "prompt"
+      ? olay.state
+      : "bilinmiyor";
+  const anahtar = olay.name === "camera" ? "kamera" : "mikrofon";
+  if (durum.izinler[anahtar] === state) return durum;
+  const izinler = { ...durum.izinler, [anahtar]: state };
+  // Meet: istenen izin verilince yönlendirme penceresi kendiliğinden kapanır.
+  const izinPenceresi =
+    durum.izinPenceresi && !(izinler.kamera !== "denied" && izinler.mikrofon !== "denied");
+  return { ...durum, izinler, izinPenceresi };
+}
+
+/**
+ * Önizleme mikrofon seviyesi: Zoom `getCurrentVolume()` ham RMS (0–1,
+ * konuşma çoğunlukla 0,02–0,2) döndürür; çubuk için algısal ölçek.
+ */
+export function seviyeOrani(rms: number): number {
+  if (!Number.isFinite(rms) || rms <= 0) return 0;
+  return Math.min(1, Math.sqrt(rms) * 1.6);
+}
+
+/** Odada `current-audio-level-change` seviyesi (0–9) → çubuk oranı. */
+export function odaSeviyeOrani(seviye: number): number {
+  if (!Number.isFinite(seviye) || seviye <= 0) return 0;
+  return Math.min(1, seviye / 9);
+}
+
+const YEDEK_AD: Record<CihazTuru, string> = {
+  mikrofon: "Mikrofon",
+  hoparlor: "Hoparlör",
+  kamera: "Kamera",
+};
+
+/** Üç tür için ham listeler (odada `get*List`) ya da tek karışık liste (`getDevices`). */
+export function listeleriKur(
+  ham: readonly HamCihaz[] | { [T in CihazTuru]: readonly HamCihaz[] },
+): CihazListeleri {
+  const kaynak = (tur: CihazTuru) => ("length" in ham ? ham : ham[tur]);
+  return {
+    mikrofon: cihazListesi(kaynak("mikrofon"), "mikrofon", YEDEK_AD.mikrofon),
+    hoparlor: cihazListesi(kaynak("hoparlor"), "hoparlor", YEDEK_AD.hoparlor),
+    kamera: cihazListesi(kaynak("kamera"), "kamera", YEDEK_AD.kamera),
+  };
+}
+
+/** Seçicide görünen kimlik: geçerli tercih, yoksa listenin ilki (sistem varsayılanı). */
+export function gorunenCihazId(
+  tercih: string | undefined,
+  liste: readonly Cihaz[],
+): string | undefined {
+  return gecerliCihazId(tercih, liste) ?? liste[0]?.id;
 }

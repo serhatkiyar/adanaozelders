@@ -30,13 +30,20 @@ import type { ZoomDersTokenOut } from "@/types";
 import {
   aktifKonusanlar,
   baglantiDegisti,
+  cihazlarDegisti,
+  cihazSecildi,
+  gecerliCihazId,
+  izinDegisti,
   katilimcilariEsitle,
+  listeleriKur,
   mikIzniReddedildiMi,
   sesEngellendi,
   videoDurumuDegisti,
+  type CihazTuru,
   type ZoomKullanici,
 } from "./indirgeyiciler";
 import { depoyaUygula, useOdaDeposu } from "./odaDeposu";
+import { tercihleriOku, tercihleriYaz } from "./tercihler";
 
 const istemci = ZoomVideo.createClient();
 
@@ -122,13 +129,134 @@ export async function katil(bilet: ZoomDersTokenOut, bostaKalmaDk: number): Prom
   }
   depoyaUygula((d) => ({ ...d, cokluVideo: coklu, baglanti: "bagli" }));
   kullanicilariOku();
+  cihazlariOku();
+}
+
+/* ── Cihazlar ────────────────────────────────────────────────────────── */
+
+function kimlikOku(oku: () => string): string | undefined {
+  try {
+    return oku() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Oturumdaki cihaz listeleri ve etkin cihazlar → depo. Katılınca, ses ya da
+ * kamera başlayınca (izin yeni verilmiş olabilir) ve `device-change`te.
+ */
+export function cihazlariOku(): void {
+  let cihazlar;
+  try {
+    const a = akis();
+    cihazlar = listeleriKur({
+      mikrofon: a.getMicList() ?? [],
+      hoparlor: a.getSpeakerList() ?? [],
+      kamera: a.getCameraList() ?? [],
+    });
+  } catch {
+    return;
+  }
+  const secili = {
+    mikrofon: kimlikOku(() => akis().getActiveMicrophone()),
+    hoparlor: kimlikOku(() => akis().getActiveSpeaker()),
+    kamera: kimlikOku(() => akis().getActiveCamera()),
+  };
+  depoyaUygula((d) => cihazlarDegisti(d, cihazlar, secili));
+}
+
+/**
+ * Tercihteki cihaz oturumun listesinde hâlâ varsa onun kimliği, yoksa
+ * `undefined` (sistem varsayılanı): bayat kimlik katılma anında medyayı düşürür.
+ */
+function tercihEdilen(tur: CihazTuru): string | undefined {
+  const t = tercihleriOku();
+  const id = tur === "mikrofon" ? t.mikrofonId : tur === "hoparlor" ? t.hoparlorId : t.kameraId;
+  return gecerliCihazId(id, useOdaDeposu.getState().cihazlar[tur]);
+}
+
+/** Hoparlör seçimi (`setSinkId`) yoksa (Safari/iOS) seçici gizlenir. */
+export function hoparlorSecilebilir(): boolean {
+  return typeof HTMLMediaElement !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
+}
+
+function benimKaydim(): ZoomKullanici | undefined {
+  return istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
+}
+
+/** Ders içinde mikrofon değişimi: ses bağlantısı KOPMADAN `switchMicrophone`. */
+export async function mikrofonSec(id: string): Promise<void> {
+  if (benimKaydim()?.audio) {
+    const sonuc = await akis().switchMicrophone(id);
+    if (basarisizMi(sonuc)) throw sonuc;
+  }
+  tercihleriYaz({ mikrofonId: id });
+  depoyaUygula((d) => cihazSecildi(d, "mikrofon", id));
+}
+
+export async function hoparlorSec(id: string): Promise<void> {
+  if (benimKaydim()?.audio) {
+    const sonuc = await akis().switchSpeaker(id);
+    if (basarisizMi(sonuc)) throw sonuc;
+  }
+  tercihleriYaz({ hoparlorId: id });
+  depoyaUygula((d) => cihazSecildi(d, "hoparlor", id));
+}
+
+/** Kamera açıksa hemen değişir; kapalıysa bir sonraki `startVideo`da kullanılır. */
+export async function kameraSec(id: string): Promise<void> {
+  if (benimKaydim()?.bVideoOn) {
+    const sonuc = await akis().switchCamera(id);
+    if (basarisizMi(sonuc)) throw sonuc;
+  }
+  tercihleriYaz({ kameraId: id });
+  depoyaUygula((d) => cihazSecildi(d, "kamera", id));
+}
+
+/** Kendi görüntümü aynala (yalnız bende görünür). Arka kamera aynalanmaz. */
+export async function aynala(ayna: boolean): Promise<void> {
+  tercihleriYaz({ ayna });
+  if (benimKaydim()?.bVideoOn && onKamera) {
+    const sonuc = await akis().mirrorVideo(ayna);
+    if (basarisizMi(sonuc)) throw sonuc;
+  }
+}
+
+/**
+ * Tarayıcı izin durumu (`navigator.permissions`) → depo. Desteği düzensiz
+ * (Firefox/Safari ad tanımayabilir): hata durumu "bilinmiyor" bırakır.
+ */
+export function izinleriIzle(): () => void {
+  const sokumler: Array<() => void> = [];
+  let gecerli = true;
+  const izle = async (ad: "camera" | "microphone") => {
+    try {
+      const durum = await navigator.permissions.query({ name: ad as PermissionName });
+      if (!gecerli) return;
+      const yaz = () => depoyaUygula((d) => izinDegisti(d, { name: ad, state: durum.state }));
+      yaz();
+      durum.addEventListener("change", yaz);
+      sokumler.push(() => durum.removeEventListener("change", yaz));
+    } catch {
+      // desteklenmiyor
+    }
+  };
+  void izle("camera");
+  void izle("microphone");
+  return () => {
+    gecerli = false;
+    for (const sok of sokumler) sok();
+  };
 }
 
 /**
  * Olay köprüsü: Zoom olayları → saf indirgeyici → depo. Dönen fonksiyon
  * dinleyicileri söker (StrictMode'un kur-sök-kur döngüsü için).
  */
-export function olaylariBagla(): () => void {
+export function olaylariBagla(
+  secenekler: { kapaliykenKonusma?: () => void } = {},
+): () => void {
   let zamanlayici: number | undefined;
   // Olay anında kullanıcı listesi henüz güncellenmemiş olabilir; bir tur ertele.
   const kullaniciDegisti = () => {
@@ -143,6 +271,11 @@ export function olaylariBagla(): () => void {
   const konusan = (olay: Array<{ userId: number }>) =>
     depoyaUygula((d) => aktifKonusanlar(d, olay ?? []));
   const sesOtomatikBaslamadi = () => depoyaUygula((d) => sesEngellendi(d, true));
+  const sesSeviyesi = (olay: { level: number }) =>
+    useOdaDeposu.setState({ sesSeviyesi: olay?.level ?? 0 });
+  const izin = (olay: { name: "camera" | "microphone"; state: string }) =>
+    depoyaUygula((d) => izinDegisti(d, olay));
+  const kapaliykenKonusma = () => secenekler.kapaliykenKonusma?.();
 
   const dinleyiciler: Array<[string, (yuk: never) => void]> = [
     ["user-added", kullaniciDegisti],
@@ -152,6 +285,10 @@ export function olaylariBagla(): () => void {
     ["connection-change", baglanti],
     ["active-speaker", konusan],
     ["auto-play-audio-failed", sesOtomatikBaslamadi],
+    ["device-change", cihazlariOku],
+    ["current-audio-level-change", sesSeviyesi],
+    ["device-permission-change", izin],
+    ["speaking-while-muted", kapaliykenKonusma],
   ];
   for (const [olay, dinleyici] of dinleyiciler) {
     istemci.on(olay, dinleyici as (yuk: unknown) => void);
@@ -180,20 +317,29 @@ export function olaylariBagla(): () => void {
 export async function sesiBaslat(mute: boolean): Promise<"tam" | "yalnizHoparlor"> {
   let hata: unknown;
   try {
-    const sonuc = await akis().startAudio({ mute });
+    const sonuc = await akis().startAudio({
+      mute,
+      microphoneId: tercihEdilen("mikrofon"),
+      speakerId: tercihEdilen("hoparlor"),
+    });
     if (basarisizMi(sonuc)) hata = sonuc;
   } catch (e) {
     hata = e ?? new Error("startAudio");
   }
   if (hata === undefined) {
     depoyaUygula((d) => sesEngellendi(d, false));
+    cihazlariOku();
     return "tam";
   }
   if (!mikIzniReddedildiMi(hata)) throw hata;
   console.warn("Zoom startAudio (mikrofon izni yok)", hata);
-  const sonuc = await akis().startAudio({ speakerOnly: true });
+  const sonuc = await akis().startAudio({
+    speakerOnly: true,
+    speakerId: tercihEdilen("hoparlor"),
+  });
   if (basarisizMi(sonuc)) throw sonuc;
   depoyaUygula((d) => sesEngellendi(d, false));
+  cihazlariOku();
   return "yalnizHoparlor";
 }
 
@@ -226,10 +372,14 @@ export async function mikrofonuDegistir(ac: boolean): Promise<void> {
 
 export async function kamerayiDegistir(ac: boolean): Promise<void> {
   const sonuc = ac
-    ? await akis().startVideo({ mirrored: true })
+    ? await akis().startVideo({
+        cameraId: tercihEdilen("kamera"),
+        mirrored: onKamera && tercihleriOku().ayna,
+      })
     : await akis().stopVideo();
   if (basarisizMi(sonuc)) throw sonuc;
   kullanicilariOku();
+  if (ac) cihazlariOku();
 }
 
 let onKamera = true;
@@ -243,9 +393,9 @@ export async function kamerayiCevir(): Promise<void> {
     onKamera = !onKamera;
     throw sonuc;
   }
-  // Arka kamera aynalanmaz.
+  // Arka kamera aynalanmaz; ön kamera tercihe göre.
   try {
-    await akis().mirrorVideo(onKamera);
+    await akis().mirrorVideo(onKamera && tercihleriOku().ayna);
   } catch {
     // aynalama desteklenmiyorsa görüntü yine gelir
   }

@@ -12,7 +12,7 @@
  * ## Dış sözleşme değişmedi
  *
  * Props ve `ZoomOdasiTutamak.ayril()` toolkit sürümüyle aynı; yalnız isteğe
- * bağlı iki prop eklendi (`onAyrilIstegi`, `biletTazele`).
+ * bağlı props eklendi (`onAyrilIstegi`, `biletTazele`, `dersBilgisi`).
  *
  * ## Ayrılma = argümansız `leave()`
  *
@@ -21,25 +21,32 @@
  *
  * ## Akış
  *
- * önizleme → "Derse katıl" → bilet tazeliği → önizleme izi durur → `join`
+ * önizleme → "Derse katıl" → bilet tazeliği → önizleme izleri durur → `join`
  * → ses (tercihe göre sessiz) → kamera (tercih açıksa) → oda.
+ *
+ * Mikrofon/kamera açık tercihi ve seçilen cihazlar tarayıcıda saklanır
+ * (`zoom/tercihler.ts`); önizlemede seçilen cihazla derse girilir.
  */
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 
 import { biletTazeMi, type KarsiTarafDurumu } from "@/lib/canliDers";
+import { toast } from "@/store/toastStore";
 import type { ZoomDersTokenOut } from "@/types";
 
 import { dersI18n } from "./i18n";
+import { AyarlarPenceresi, type AyarSekmesi } from "./oda/AyarlarPenceresi";
 import { DurumSeritleri } from "./oda/DurumSeritleri";
+import { IzinPenceresi } from "./oda/IzinPenceresi";
 import { KontrolCubugu } from "./oda/KontrolCubugu";
-import { OnIzleme } from "./oda/OnIzleme";
+import { OnIzleme, type DersBilgisi } from "./oda/OnIzleme";
 import { TelefonCubugu } from "./oda/TelefonCubugu";
 import { ZoomVideoSahnesi } from "./oda/ZoomVideoSahnesi";
 import { beklenmedikKapanis, karsiTarafDurumu } from "./zoom/indirgeyiciler";
 import {
   ayril as istemcidenAyril,
   hazirla,
+  izinleriIzle,
   kamerayiDegistir,
   katil,
   olaylariBagla,
@@ -48,6 +55,12 @@ import {
 } from "./zoom/istemci";
 import { depoyuSifirla, useAsama, useOdaDeposu } from "./zoom/odaDeposu";
 import { onizlemeDurdur } from "./zoom/onizleme";
+import { tercihleriOku, tercihleriYaz } from "./zoom/tercihler";
+
+export type { DersBilgisi };
+
+/** "Mikrofonun kapalı" uyarısı en sık bu aralıkla (olay sürekli yinelenir). */
+const KAPALI_KONUSMA_ARALIGI_MS = 30_000;
 
 export interface ZoomOdasiTutamak {
   /** Yalnız KENDİNİ oturumdan çıkarır (host için de). En çok ~3 sn bekler. */
@@ -67,6 +80,8 @@ export interface ZoomOdasiProps {
   onAyrilIstegi?: () => void;
   /** Bilet bayatsa (5 dk'dan az kaldıysa) katılmadan önce yenisini getirir. */
   biletTazele?: () => Promise<ZoomDersTokenOut | undefined>;
+  /** Önizlemenin sağ sütunu: ders adı ve saati. */
+  dersBilgisi?: DersBilgisi;
 }
 
 const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdasi(
@@ -76,11 +91,25 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   // Geri çağrılar her çizimde güncel; bilet/süre ise İLK değerleriyle donar.
   const guncel = useRef(props);
   guncel.current = props;
-  const { telefon, onAyrilIstegi } = props;
+  const { telefon, onAyrilIstegi, dersBilgisi, bilet } = props;
 
   const asama = useAsama();
-  const [mikTercihi, setMikTercihi] = useState(true);
-  const [kameraTercihi, setKameraTercihi] = useState(true);
+  const [mikTercihi, setMikTercihiDurumu] = useState(() => tercihleriOku().mikAcik);
+  const [kameraTercihi, setKameraTercihiDurumu] = useState(() => tercihleriOku().kameraAcik);
+  const setMikTercihi = useCallback((mikAcik: boolean) => {
+    setMikTercihiDurumu(mikAcik);
+    tercihleriYaz({ mikAcik });
+  }, []);
+  const setKameraTercihi = useCallback((kameraAcik: boolean) => {
+    setKameraTercihiDurumu(kameraAcik);
+    tercihleriYaz({ kameraAcik });
+  }, []);
+  const [deneme, setDeneme] = useState(0);
+  const [ayarlar, setAyarlar] = useState<{ acik: boolean; sekme: AyarSekmesi }>({
+    acik: false,
+    sekme: "ses",
+  });
+  const ayarlariAc = useCallback((sekme: AyarSekmesi) => setAyarlar({ acik: true, sekme }), []);
   // `derseKatil` await'lerden SONRA okur: tıklama anının kapanımı değil, güncel tercih.
   const tercih = useRef({ mik: mikTercihi, kamera: kameraTercihi });
   tercih.current = { mik: mikTercihi, kamera: kameraTercihi };
@@ -94,9 +123,20 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   useEffect(() => {
     depoyuSifirla();
     void hazirla().catch((e) => console.warn("Zoom init", e));
-    const coz = olaylariBagla();
+    let sonUyari = 0;
+    const coz = olaylariBagla({
+      // `speaking-while-muted` konuştukça yinelenir; seyrek uyar.
+      kapaliykenKonusma: () => {
+        const simdi = Date.now();
+        if (simdi - sonUyari < KAPALI_KONUSMA_ARALIGI_MS) return;
+        sonUyari = simdi;
+        toast.info(dersI18n.t("media.speakingWhileMuted"));
+      },
+    });
+    const izinIzleme = izinleriIzle();
     return () => {
       coz();
+      izinIzleme();
       if (oturumdaMi()) void istemcidenAyril();
       else void onizlemeDurdur();
     };
@@ -167,6 +207,8 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     }
   };
 
+  const izinPenceresi = <IzinPenceresi onYenidenDene={() => setDeneme((n) => n + 1)} />;
+
   if (asama !== "odada") {
     return (
       <I18nextProvider i18n={dersI18n}>
@@ -180,7 +222,11 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
           onAyril={onAyrilIstegi}
           katiliyor={asama === "katiliyor"}
           hata={girisHatasi}
+          ad={bilet.kullanici_adi}
+          dersBilgisi={dersBilgisi}
+          deneme={deneme}
         />
+        {izinPenceresi}
       </I18nextProvider>
     );
   }
@@ -193,11 +239,18 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
           <DurumSeritleri mikTercihi={mikTercihi} />
         </div>
         {telefon ? (
-          <TelefonCubugu onAyril={onAyrilIstegi} />
+          <TelefonCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} />
         ) : (
-          <KontrolCubugu onAyril={onAyrilIstegi} />
+          <KontrolCubugu onAyril={onAyrilIstegi} onAyarlar={ayarlariAc} />
         )}
       </div>
+      <AyarlarPenceresi
+        acik={ayarlar.acik}
+        sekme={ayarlar.sekme}
+        onSekme={(sekme) => setAyarlar({ acik: true, sekme })}
+        onKapat={() => setAyarlar((a) => ({ ...a, acik: false }))}
+      />
+      {izinPenceresi}
     </I18nextProvider>
   );
 });

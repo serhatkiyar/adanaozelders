@@ -5,8 +5,38 @@
  */
 import { useState } from "react";
 
-import { kamerayiCevir, kamerayiDegistir, mikrofonuDegistir } from "./istemci";
-import { useBen, useOdaDeposu } from "./odaDeposu";
+import { kameraHataAnahtari, mikIzniReddedildiMi, type CihazTuru } from "./indirgeyiciler";
+import {
+  hoparlorSec,
+  kameraSec,
+  kamerayiCevir,
+  kamerayiDegistir,
+  mikrofonSec,
+  mikrofonuDegistir,
+} from "./istemci";
+import { izinPenceresiniAc, useBen, useOdaDeposu } from "./odaDeposu";
+
+/** İzin reddi → yönlendirme penceresi; diğer hatalar → şerit. */
+function hatayiGoster(tur: "mik" | "kamera", hata: unknown): void {
+  const izinYok =
+    tur === "kamera"
+      ? kameraHataAnahtari(hata) === "join.cameraNotGranted"
+      : mikIzniReddedildiMi(hata);
+  if (izinYok) izinPenceresiniAc(true);
+  useOdaDeposu.setState({ hata: izinYok ? null : "media.deviceError" });
+}
+
+/** Ders içinde cihaz değişimi (menü ve Ayarlar ortak). */
+export async function cihazDegistir(tur: CihazTuru, id: string): Promise<void> {
+  try {
+    if (tur === "mikrofon") await mikrofonSec(id);
+    else if (tur === "hoparlor") await hoparlorSec(id);
+    else await kameraSec(id);
+  } catch (hata) {
+    console.warn("Zoom cihaz değişimi", hata);
+    useOdaDeposu.setState({ hata: "media.deviceError" });
+  }
+}
 
 export function useMedyaKontrolleri() {
   const ben = useBen();
@@ -19,7 +49,7 @@ export function useMedyaKontrolleri() {
       useOdaDeposu.setState({ hata: null });
     } catch (hata) {
       console.warn("Zoom medya", hata);
-      useOdaDeposu.setState({ hata: "media.deviceError" });
+      hatayiGoster(tur, hata);
     } finally {
       setMesgul(null);
     }
