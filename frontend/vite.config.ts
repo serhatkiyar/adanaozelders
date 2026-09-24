@@ -98,6 +98,14 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      // Centrifugo (tahta eşitlemesi, "yazıyor…"): üretimde ters proxy'nin
+      // `/gercekzaman` yolu. Yerelde Docker'daki Centrifugo 8001'de; önek düşer.
+      "/gercekzaman": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (yol) => yol.replace(/^\/gercekzaman/, ""),
+      },
     },
   },
 });
