@@ -122,3 +122,59 @@ export function bostaKalmaSuresiDk(bitisIso: string, simdi: number = Date.now())
   if (!Number.isFinite(kalanDk)) return 40;
   return Math.max(40, kalanDk + 30);
 }
+
+/** Giriş biletinin katılma anında en az bu kadar geçerli kalması istenir. */
+export const BILET_TAZELIK_PAYI_MS = 5 * 60_000;
+
+/**
+ * Bilet katılmak için yeterince taze mi? React Query bileti bir kez çeker
+ * (staleTime Infinity) ama JWT 1 saatte biter; önizlemede uzun bekleyen
+ * kullanıcı katılmadan önce yenisini almalı. Okunamayan bitiş → taze değil.
+ */
+export function biletTazeMi(bitisIso: string, simdi: number = Date.now()): boolean {
+  const bitis = new Date(bitisIso).getTime();
+  if (!Number.isFinite(bitis)) return false;
+  return bitis - simdi > BILET_TAZELIK_PAYI_MS;
+}
+
+/**
+ * Katılımcının kart/avatar rengi — addan türetilen kararlı bir ton (Meet'te
+ * sunucu `hsl(h, 50–75%, 20–60%)` atar; bizde sunucu alanı yok). Aynı ad her
+ * zaman aynı rengi alır; beyaz baş harfler okunaklı kalsın diye doygunluk ve
+ * açıklık sabit.
+ */
+export function katilimciRengi(ad: string): string {
+  let h = 0;
+  for (const harf of ad.trim().toLocaleLowerCase("tr")) {
+    h = (h * 31 + (harf.codePointAt(0) ?? 0)) % 360;
+  }
+  return `hsl(${h}, 55%, 38%)`;
+}
+
+/**
+ * Avatarın baş harfleri (en çok iki). Meet `getInitials`: ilk iki kelimenin
+ * ilk grafemi; Türkçe büyük harf kuralıyla (i → İ).
+ */
+export function basHarfler(ad: string): string {
+  const kelimeler = ad.trim().split(/\s+/).filter(Boolean);
+  const ilk = (k: string) => Array.from(k)[0] ?? "";
+  return kelimeler
+    .slice(0, 2)
+    .map(ilk)
+    .join("")
+    .toLocaleUpperCase("tr");
+}
+
+/**
+ * Sahne düzeni:
+ *   - `yalniz`   karşı taraf odada değil → kendi görüntün büyük
+ *   - `birebir`  karşı taraf büyük, kendi görüntün köşede küçük
+ *   - `paylasim` biri ekran paylaşıyor → paylaşım büyük (Paket 4)
+ * Düzen yalnız sınıfları değiştirir; video kapları yeniden kurulmaz.
+ */
+export type SahneDuzeni = "yalniz" | "birebir" | "paylasim";
+
+export function sahneDuzeni(karsiTarafOdada: boolean, paylasimVar: boolean): SahneDuzeni {
+  if (paylasimVar) return "paylasim";
+  return karsiTarafOdada ? "birebir" : "yalniz";
+}

@@ -21,7 +21,7 @@ import { ROUTES } from "@/lib/routes";
 import { tamSayfaGit } from "@/lib/tamSayfaGezinme";
 import type { BookingOut, ZoomDersTokenOut } from "@/types";
 
-// Toolkit (~9 MB, kendi CSS'iyle) YALNIZ bu parçada — ana paket büyümez.
+// Zoom Video SDK ve odanın i18next örneği YALNIZ bu parçada — ana paket büyümez.
 const ZoomOdasi = lazy(() => import("@/components/canli/ZoomOdasi"));
 
 const DUGME =
@@ -30,11 +30,13 @@ const DUGME =
 /**
  * Canlı ders (Zoom Video SDK) — site kabuğunun DIŞINDA tam ekran sayfa.
  *
- * Giriş ve çıkış TAM SAYFA yüklemesiyle (`lib/tamSayfaGezinme.ts`): toolkit'in
- * kapsamsız CSS'i ve küresel durumu sitenin geri kalanına sızmasın.
+ * Giriş ve çıkış TAM SAYFA yüklemesiyle (`lib/tamSayfaGezinme.ts`): canlı
+ * ders yolunun ayrı içerik politikası (CSP kolu) ve SDK'nın küresel durumu
+ * sitenin geri kalanına sızmasın.
  *
- * Yerleşim bugün: üst şerit + geniş video alanı (toolkit kendi kontrol
- * çubuğunu videonun altına çizer). Sonraki paketlerin yuvaları:
+ * Yerleşim: koyu oda yüzeyi (La Suite Meet görünümü; `ders-*` token'ları,
+ * `dark:` yok) — sade üst şerit (karşı taraf adı, sayaç) + sahne + Meet
+ * kontrol çubuğu (`ZoomOdasi` içinde). Sonraki paketlerin yuvaları:
  *   - Paket 5 (tahta): masaüstünde ORTAYA gelir, video sağ sütuna geçer;
  *     telefonda tahta tam ekran olur, video yüzen küçük kutuya iner.
  *   - Paket 4 (ders içi sohbet): masaüstünde sağ sütunun altı, telefonda
@@ -75,7 +77,18 @@ export default function CanliDers() {
   }
 
   if (oda) {
-    return <DersOdasi dersId={dersId} oda={oda} ders={ders.data} />;
+    return (
+      <DersOdasi
+        dersId={dersId}
+        oda={oda}
+        ders={ders.data}
+        biletTazele={async () => {
+          const sonuc = await bilet.refetch();
+          if (sonuc.isError) throw sonuc.error;
+          return sonuc.data;
+        }}
+      />
+    );
   }
 
   if (bilet.isError) {
@@ -155,10 +168,12 @@ function DersOdasi({
   dersId,
   oda,
   ders,
+  biletTazele,
 }: {
   dersId: number;
   oda: { bilet: ZoomDersTokenOut; bostaKalmaDk: number };
   ders: BookingOut | undefined;
+  biletTazele: () => Promise<ZoomDersTokenOut | undefined>;
 }) {
   const odaRef = useRef<ZoomOdasiTutamak>(null);
   // Cihaz bir kez okunur: düzen genişliğe değil cihaza bağlı (plan §8).
@@ -193,7 +208,7 @@ function DersOdasi({
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-white font-sans text-slate-900">
+    <div className="fixed inset-0 flex flex-col bg-ders-zemin font-sans text-white">
       {firefoxSeridi && (
         <div className="flex shrink-0 items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
           <p className="min-w-0 flex-1">En iyi deneyim için Chrome önerilir.</p>
@@ -209,7 +224,7 @@ function DersOdasi({
       )}
 
       <header
-        className={`flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 ${
+        className={`flex shrink-0 items-center gap-3 bg-ders-zemin px-4 ${
           telefon ? "h-12" : "h-14"
         }`}
       >
@@ -221,21 +236,21 @@ function DersOdasi({
         {sayac && (
           <span
             role="status"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-ders-dugme px-3 py-1 text-sm font-semibold text-white"
           >
             <Icon name="clock" className="h-4 w-4" />
             {sayac}
           </span>
         )}
-        {/* Paket 4 gelene kadar sohbet, sitenin Mesajlar sayfasında (yeni
-            sekmede; görüşme bu sekmede sürer). */}
+        {/* Paket 5 (ders içi sohbet) gelene kadar sohbet, sitenin Mesajlar
+            sayfasında (yeni sekmede; görüşme bu sekmede sürer). */}
         {mesajAdresi && (
           <a
             href={mesajAdresi}
             target="_blank"
             rel="noopener"
             aria-label={telefon ? "Mesajlar (yeni sekmede)" : undefined}
-            className={`${DUGME} h-10 shrink-0 border-2 border-slate-200 bg-white text-slate-900 hover:border-slate-900 ${
+            className={`${DUGME} h-10 shrink-0 bg-ders-dugme text-white hover:bg-ders-hover ${
               telefon ? "w-10" : "px-4 text-base"
             }`}
           >
@@ -243,25 +258,28 @@ function DersOdasi({
             {!telefon && "Mesajlar"}
           </a>
         )}
-        <button
-          type="button"
-          onClick={() => setCikisAcik(true)}
-          className={`${DUGME} h-10 shrink-0 bg-red-600 px-4 text-base text-white hover:bg-red-700`}
-        >
-          <Icon name="logout" className="h-5 w-5" />
-          {telefon ? "Çık" : "Dersten ayrıl"}
-        </button>
+        {/* Telefonda çıkış alt çubuktaki "Çık"tadır. */}
+        {!telefon && (
+          <button
+            type="button"
+            onClick={() => setCikisAcik(true)}
+            className={`${DUGME} h-10 shrink-0 bg-ders-tehlike px-4 text-base text-white hover:bg-ders-tehlike-hover`}
+          >
+            <Icon name="logout" className="h-5 w-5" />
+            Dersten ayrıl
+          </button>
+        )}
       </header>
 
       <main className="relative flex min-h-0 flex-1">
         {/* Paket 5: tahta masaüstünde buraya (ortaya) gelir. */}
-        {/* `isolate`: toolkit'in iç z-index'leri bu kutuda kalsın; sayfanın
+        {/* `isolate`: odanın iç z-index'leri bu kutuda kalsın; sayfanın
             pencereleri (portal, z-100) her zaman üstte. */}
-        <section className="relative isolate min-w-0 flex-1 bg-slate-100" aria-label="Görüntülü ders">
+        <section className="relative isolate min-w-0 flex-1 bg-ders-zemin" aria-label="Görüntülü ders">
           <Suspense
             fallback={
               <div className="absolute inset-0 flex items-center justify-center" role="status">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-marka" />
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-ders-cizgi border-t-marka" />
                 <span className="sr-only">Görüntülü ders yükleniyor…</span>
               </div>
             }
@@ -273,6 +291,8 @@ function DersOdasi({
               bostaKalmaDk={oda.bostaKalmaDk}
               onKarsiTaraf={setKarsiTaraf}
               onKapandi={() => setKapandi(true)}
+              onAyrilIstegi={() => setCikisAcik(true)}
+              biletTazele={biletTazele}
             />
           </Suspense>
         </section>
@@ -281,17 +301,17 @@ function DersOdasi({
         {not && (
           <p
             role="status"
-            className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-slate-900/85 px-4 py-2 text-center text-sm font-medium text-white"
+            className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-ders-yuzey/95 px-4 py-2 text-center text-sm font-medium text-white shadow-lg"
           >
             {not}
           </p>
         )}
 
         {kapandi && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 px-4">
-            <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-ders-zemin/95 px-4">
+            <div className="w-full max-w-md rounded-lg bg-ders-yuzey p-6 text-center">
               <h2 className="text-xl font-semibold">Canlı dersle bağlantın kesildi</h2>
-              <p className="mt-2 text-base text-slate-600">
+              <p className="mt-2 text-base text-white/70">
                 Ders saati içindeysen yeniden katılabilirsin.
               </p>
               <div className="mt-6 flex flex-col gap-2">
@@ -305,7 +325,7 @@ function DersOdasi({
                 <button
                   type="button"
                   onClick={() => tamSayfaGit(dersSayfasi)}
-                  className={`${DUGME} h-12 border-2 border-slate-200 bg-white px-6 text-lg text-slate-900 hover:border-slate-900`}
+                  className={`${DUGME} h-12 bg-ders-dugme px-6 text-lg text-white hover:bg-ders-hover`}
                 >
                   Ders sayfasına dön
                 </button>

@@ -46,6 +46,26 @@ export default {
           soft: "rgb(var(--dikkat-soft) / <alpha-value>)",
           fg: "rgb(var(--dikkat-fg) / <alpha-value>)",
         },
+        // ── Canlı ders odası (La Suite Meet görünümü, 24 Eyl 2026) ──
+        //
+        // Oda yüzeyi KOYU; sitenin geri kalanı açık kalır. Bu bir tema değil,
+        // tek bir ekranın kendi yüzeyi: `dark:` varyantı KULLANILMAZ, oda bu
+        // token'larla doğrudan boyanır. Değerler Meet'in `primaryDark` ve
+        // `error` paletinden (panda.config.ts).
+        ders: {
+          zemin: "#161622",
+          yuzey: "#222234",
+          dugme: "#2D2D46",
+          cizgi: "#43436A",
+          hover: "#5A5A8F",
+          secili: "#B3B3E7",
+          "secili-fg": "#2D2D46",
+          hata: "#6C302E",
+          "hata-hover": "#983533",
+          "hata-fg": "#FAD2D1",
+          tehlike: "#CA3632",
+          "tehlike-hover": "#EE6A66",
+        },
         panel: {
           bg: "rgb(var(--panel-bg) / <alpha-value>)",
           surface: "rgb(var(--panel-surface) / <alpha-value>)",
@@ -109,13 +129,34 @@ export default {
           "monospace",
         ],
       },
+      spacing: {
+        // Canlı ders odası ölçüleri (Meet): yan panel, kontrol çubuğu, tepki
+        // çubuğu.
+        "ders-panel": "360px",
+        "ders-cubuk": "80px",
+        "ders-tepki": "42px",
+      },
+      borderRadius: {
+        ders: "8px",
+      },
       keyframes: {
+        // Meet `pulse` (konuşan katılımcının avatarı) ve konuşma halkası.
+        "ders-nabiz": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.06)" },
+        },
+        "ders-konusma": {
+          "0%, 100%": { boxShadow: "inset 0 0 0 2px rgb(255 153 0 / 0.9)" },
+          "50%": { boxShadow: "inset 0 0 0 3px rgb(255 153 0 / 0.6)" },
+        },
         snow: {
           "0%": { transform: "translateY(-10vh) translateX(0)" },
           "100%": { transform: "translateY(110vh) translateX(20px)" },
         },
       },
       animation: {
+        "ders-nabiz": "ders-nabiz 1s ease-in-out infinite",
+        "ders-konusma": "ders-konusma 1.2s ease-in-out infinite",
         snow: "snow 10s linear infinite",
       },
     },
