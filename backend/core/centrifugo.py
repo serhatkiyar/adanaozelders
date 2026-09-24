@@ -92,6 +92,45 @@ def make_connection_token(*, user_id: int, role_id: int) -> str:
     )
 
 
+#: Canlı ders tahtası kanallarının ad alanı (devops/centrifugo/config.json `ders`).
+DERS_NAMESPACE = "ders"
+
+
+def ders_kanali(booking_id: int) -> str:
+    """Bir dersin tahta kanalı. Adı yalnız sunucu üretir; istemci kendi
+    başına abone OLAMAZ (`allow_subscribe_for_client` kapalı) — abonelik
+    ancak :func:`make_subscription_token` ile verilen token'la açılır."""
+    return f"{DERS_NAMESPACE}:{booking_id}"
+
+
+def make_subscription_token(
+    *, user_id: int, role_id: int, channel: str, info: dict
+) -> str:
+    """Kısa ömürlü kanal abonelik JWT'si (Centrifugo v6 `channel_token_auth`).
+
+    ``sub`` bağlantı token'ındakiyle AYNI olmalı; aksi hâlde Centrifugo
+    aboneliği reddeder. İmza bağlantı token'ının HMAC sırrıyla atılır
+    (`client.subscription_token` ayrı yapılandırılmadıkça Centrifugo aynı
+    anahtarı kullanır). ``info`` abonenin kanal bilgisidir: istemcinin
+    yayınladığı her mesaja Centrifugo ``info.chan_info`` olarak ekler, yani
+    alıcı gönderenin rolünü istemcinin beyanına değil sunucunun imzasına
+    dayanarak okur.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    verilis = int(now.timestamp())
+    return jwt.encode(
+        {
+            "sub": subject(user_id, role_id),
+            "channel": channel,
+            "info": info,
+            "iat": verilis,
+            "exp": verilis + settings.CENTRIFUGO_TOKEN_TTL_SECONDS,
+        },
+        settings.CENTRIFUGO_TOKEN_HMAC_SECRET,
+        algorithm="HS256",
+    )
+
+
 async def broadcast(channels: list[str], data: dict) -> bool:
     """Kanallara veri gönderir. **Fail-open**: asla istek akışını bozmaz.
 

@@ -11,7 +11,7 @@ from api.deps import (
     require_roles,
     user_rate_limit,
 )
-from core import canli_ders, storage
+from core import canli_ders, centrifugo, ders_tahta, storage
 from core.config import settings
 from core.database import get_db
 from models.booking import PAYMENT_CHANNEL_ESCROW, Booking, BookingStatus
@@ -20,6 +20,9 @@ from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.booking import (
     LiveLessonTokenOut,
+    TahtaDurumIn,
+    TahtaDurumOut,
+    TahtaTokenOut,
     ZoomDersTokenOut,
     BookingCancel,
     BookingCreate,
@@ -69,6 +72,14 @@ _comment_limit = user_rate_limit(
 # ama döngüye girmiş bir istemci SFU'yu boğmasın.
 _live_token_limit = user_rate_limit(
     key="live_token",
+    limit=settings.RATE_LIMIT_LIVE_TOKEN,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+
+# Tahta abonelik token'ı: Centrifugo token'ı her tazelemede (TTL
+# `CENTRIFUGO_TOKEN_TTL_SECONDS`) ve her yeniden bağlanmada yeniden ister.
+_tahta_token_limit = user_rate_limit(
+    key="tahta_token",
     limit=settings.RATE_LIMIT_LIVE_TOKEN,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
@@ -401,6 +412,79 @@ async def get_zoom_lesson_token(
         rol="host" if egitmen_mi else "katilimci",
         expires_at=expires_at,
     )
+
+
+def _tahta_servisi_acik() -> None:
+    """Tahta eşitlemesi Centrifugo'ya bağlı; kapalıysa sessiz başarı yok."""
+    if not settings.CENTRIFUGO_ENABLED:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "Gerçek-zamanlı servis kapalı"
+        )
+
+
+@router.get(
+    "/{booking_id}/tahta-token",
+    response_model=TahtaTokenOut,
+    dependencies=[Depends(_tahta_token_limit)],
+)
+async def get_tahta_token(
+    booking_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ders tahtası kanalı (`ders:{id}`) için kısa ömürlü abonelik JWT'si.
+
+    Kapılar canlı ders token uçlarıyla AYNI (`_canli_ders_kapilari`): ders
+    penceresi kapanınca tazeleme 409 alır ve abonelik biter. Token'ın `info`
+    alanındaki rol, istemcinin kanala yayınladığı her mesaja Centrifugo
+    tarafından eklenir; karşı taraf sayfa işlemlerini yalnız öğretmenden kabul
+    eder. `tahta_acik` geç katılanın son durumu okumasıdır.
+    """
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _canli_ders_kapilari(booking, user)
+    _tahta_servisi_acik()
+    ogretmen = user.role_id == ROLE_IDS[RoleType.TUTOR]
+    kanal = centrifugo.ders_kanali(booking.id)
+    rol = "ogretmen" if ogretmen else "ogrenci"
+    return TahtaTokenOut(
+        token=centrifugo.make_subscription_token(
+            user_id=user.id, role_id=user.role_id, channel=kanal, info={"rol": rol}
+        ),
+        kanal=kanal,
+        ttl=settings.CENTRIFUGO_TOKEN_TTL_SECONDS,
+        rol=rol,
+        tahta_acik=await ders_tahta.acik_mi(booking.id),
+    )
+
+
+@router.put(
+    "/{booking_id}/tahta",
+    response_model=TahtaDurumOut,
+    dependencies=[Depends(_tahta_token_limit)],
+)
+async def set_tahta_durumu(
+    booking_id: int,
+    payload: TahtaDurumIn,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Tahtayı açar/kapatır — YALNIZ dersin eğitmeni (Preply: öğrenci açamaz,
+    kapatamaz). Durum saklanır ve kanala SUNUCUDAN yayınlanır; istemciler
+    aç/kapa mesajını yalnız sunucu yayınından (istemci bilgisi taşımayan)
+    kabul eder, böylece öğrenci kanala sahte "kapat" yazamaz.
+    """
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _canli_ders_kapilari(booking, user)
+    if user.role_id != ROLE_IDS[RoleType.TUTOR]:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Tahtayı yalnız eğitmen açıp kapatabilir."
+        )
+    _tahta_servisi_acik()
+    await ders_tahta.yaz(booking.id, payload.acik)
+    await centrifugo.broadcast(
+        [centrifugo.ders_kanali(booking.id)], {"t": "tahta", "acik": payload.acik}
+    )
+    return TahtaDurumOut(acik=payload.acik)
 
 
 def _assert_yanit_verecek_taraf(booking: Booking, user: CurrentUser) -> None:

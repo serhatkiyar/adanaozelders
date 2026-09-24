@@ -19,6 +19,14 @@
         "presence": false,
         "history_size": 0,
         "history_ttl": "0s"
+      },
+      {
+        "name": "ders",
+        "allow_subscribe_for_client": false,
+        "allow_publish_for_subscriber": true,
+        "presence": false,
+        "history_size": 0,
+        "history_ttl": "0s"
       }
     ]
   },

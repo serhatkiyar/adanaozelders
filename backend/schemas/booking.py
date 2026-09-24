@@ -459,3 +459,25 @@ class LessonSeriesCreatedOut(BaseModel):
     series: LessonSeriesOut
     offered: list[BookingOut]
     skipped: list[SeriesOccurrenceOut]
+
+
+class TahtaTokenOut(BaseModel):
+    """GET /bookings/{id}/tahta-token yanıtı (ders tahtası, Centrifugo).
+
+    `token` YALNIZ `kanal` için abonelik JWT'sidir; kanal adı sunucudan gelir.
+    `tahta_acik` geç katılan / yeniden bağlanan tarafın son durumu okumasıdır.
+    """
+
+    token: str
+    kanal: str
+    ttl: int
+    rol: Literal["ogretmen", "ogrenci"]
+    tahta_acik: bool
+
+
+class TahtaDurumIn(BaseModel):
+    acik: bool
+
+
+class TahtaDurumOut(BaseModel):
+    acik: bool
