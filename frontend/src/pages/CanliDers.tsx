@@ -333,15 +333,17 @@ function DersOdasi({
               sohbet={sohbet}
             />
           </Suspense>
+          {/* Bölümün İÇİNDE: telefonda tam ekran yan panel (odanın z-40'ı)
+              notun üstüne çıkabilsin. */}
+          {not && (
+            <p
+              role="status"
+              className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-ders-yuzey/95 px-4 py-2 text-center text-sm font-medium text-white shadow-lg"
+            >
+              {not}
+            </p>
+          )}
         </section>
-        {not && (
-          <p
-            role="status"
-            className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-ders-yuzey/95 px-4 py-2 text-center text-sm font-medium text-white shadow-lg"
-          >
-            {not}
-          </p>
-        )}
 
         {kapandi && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-ders-zemin/95 px-4">

@@ -123,7 +123,7 @@ function YanPanelDugmeleri({ panel, onPanel, sohbetVar, okunmamis }: PanelDeneti
           {t("controls.participants.count", { count: sayi })}
         </span>
         {sayi > 0 && (
-          <span aria-hidden className={`${rozet} bg-gray-500 text-white`}>
+          <span aria-hidden className={`${rozet} bg-slate-500 text-white`}>
             {sayi}
           </span>
         )}

@@ -120,7 +120,7 @@ export function YanPanel({
 
   const yerlesim = telefon
     ? `fixed inset-x-0 top-0 z-40 h-[100dvh] ${acik ? "" : "hidden"}`
-    : `absolute bottom-0 right-3 top-3 z-30 w-ders-panel rounded-ders border border-slate-200 transition-transform duration-500 ease-[cubic-bezier(.4,0,.2,1)] ${
+    : `absolute bottom-0 right-3 top-3 z-30 w-ders-panel rounded-ders border border-slate-200 transition-transform duration-500 ease-in-out ${
         acik ? "" : "translate-x-[calc(100%+0.75rem)]"
       }`;
 

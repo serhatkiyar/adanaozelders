@@ -346,7 +346,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
           {/* Sahne HEP aynı düğüm: panel açılınca yalnız sağ boşluğu değişir
               (Meet `RoomContentArea`); kaplar yeniden kurulmaz. */}
           <div
-            className="absolute inset-y-0 left-0 transition-[right] duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
+            className="absolute inset-y-0 left-0 transition-[right] duration-500 ease-in-out"
             style={{ right: panel !== null && !telefon ? "calc(360px + 0.75rem)" : 0 }}
           >
             <ZoomVideoSahnesi telefon={telefon} />
