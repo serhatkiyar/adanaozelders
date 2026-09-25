@@ -5,11 +5,11 @@
  * @excalidraw/excalidraw 0.18.1 `dist/prod/index.css`ten; masaüstü ve
  * telefon (dar kap) arayüzünün ikisi de kapsanır.
  */
-.ders-tahta .excalidraw .App-menu_top,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .App-menu_top,
 .ders-tahta .excalidraw .layer-ui__wrapper__footer,
-.ders-tahta .excalidraw .App-bottom-bar,
-.ders-tahta .excalidraw .App-toolbar,
-.ders-tahta .excalidraw .App-mobile-menu,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .App-bottom-bar,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .App-toolbar,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .App-mobile-menu,
 .ders-tahta .excalidraw .main-menu-trigger,
 .ders-tahta .excalidraw .default-sidebar-trigger,
 .ders-tahta .excalidraw .sidebar-trigger,

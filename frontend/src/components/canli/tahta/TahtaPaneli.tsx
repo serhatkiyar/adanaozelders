@@ -752,7 +752,7 @@ export default function TahtaPaneli({ kanal, dersId, ogretmen }: Props) {
   return (
     <div
       ref={kap}
-      className="ders-tahta relative h-full w-full bg-white"
+      className={`ders-tahta relative h-full w-full bg-white ${EXCALIDRAW_TAM ? "ders-tahta--tam" : ""}`}
       onDropCapture={(e) => {
         if (e.dataTransfer.files.length > 0) {
           e.preventDefault();
@@ -799,6 +799,7 @@ export default function TahtaPaneli({ kanal, dersId, ogretmen }: Props) {
       />
 
       <AracCubugu
+        yalnizUygulamalar={EXCALIDRAW_TAM}
         ogretmen={ogretmen}
         aktif={aktifArac}
         sekil={sekil}
@@ -942,7 +943,16 @@ function KucukDugme({
 
 type AltMenu = "kalem" | "metin" | "sekil" | "uygulamalar" | null;
 
+/**
+ * Deneme (25 Eyl 2026, kullanıcı isteği): Excalidraw'ın KENDİ araç çubuğu ve
+ * özellikler paneli (renk, kalınlık, ok/çizgi, dolgu…) açık; Preply tarzı
+ * sol çubuktan yalnız "Uygulamalar" (PDF yükle/kaydet) kalır. Beğenilmezse
+ * `false` yapmak Preply'daki kısıtlı araç setine döner.
+ */
+const EXCALIDRAW_TAM = true;
+
 function AracCubugu({
+  yalnizUygulamalar = false,
   ogretmen,
   aktif,
   sekil,
@@ -954,6 +964,7 @@ function AracCubugu({
   onResim,
   onPdf,
 }: {
+  yalnizUygulamalar?: boolean;
   ogretmen: boolean;
   aktif: string;
   sekil: SekilTuru;
@@ -1023,6 +1034,8 @@ function AracCubugu({
       aria-label={t("tahta.araclar.cubuk")}
       className="absolute left-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white p-[5px] shadow-sm"
     >
+      {!yalnizUygulamalar && (
+        <>
       {dugme("selection", "cursor", t("tahta.araclar.secim"), aktif === "selection", () => {
         setMenu(null);
         onArac("selection");
@@ -1078,6 +1091,8 @@ function AracCubugu({
         setMenu(null);
         onArac("hand");
       })}
+        </>
+      )}
       {ogretmen &&
         dugme(
           "uygulamalar",
