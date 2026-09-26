@@ -37,7 +37,7 @@ import { useDerseKatil } from "@/hooks/useDerseKatil";
 import { getErrorDetail, getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
-import { BookingStatus, ROLE_IDS } from "@/types";
+import { BookingStatus, ROLE_IDS, type BookingOut } from "@/types";
 import { ADSIZ_UYE } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 
@@ -168,9 +168,13 @@ export default function LessonDetail() {
       onError: (err) => toast.error(getErrorDetail(err, "Hatırlatma gönderilemedi.")),
     });
 
-  const run = (action: typeof accept, okMsg: string) =>
+  const run = (
+    action: typeof accept,
+    okMsg: string | ((sonuc: BookingOut) => string)
+  ) =>
     action.mutate(bookingId, {
-      onSuccess: () => toast.success(okMsg),
+      onSuccess: (sonuc) =>
+        toast.success(typeof okMsg === "function" ? okMsg(sonuc) : okMsg),
       onError: (err) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
     });
 
@@ -399,7 +403,10 @@ export default function LessonDetail() {
                       run(
                         accept,
                         isClient
-                          ? "Ders teklifini kabul ettin; ödeme adımına geçebilirsin."
+                          ? (sonuc) =>
+                              sonuc.payment_channel === "DIRECT"
+                                ? "Ders teklifini kabul ettin; ders takvimine eklendi."
+                                : "Ders teklifini kabul ettin; ödeme adımına geçebilirsin."
                           : "Ders isteğini kabul ettin."
                       )
                     }

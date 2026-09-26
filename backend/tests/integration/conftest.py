@@ -104,6 +104,22 @@ _BAGLANTI_HATALARI = (
 )
 
 
+@pytest.fixture(autouse=True)
+def _ders_kabulu_emanetli(monkeypatch):
+    """Bu suite ders parası için EMANETLİ (ESCROW) akışı sınar: kabul → ödeme
+    kaydı → pay → release/refund. Pazaryeri kolu test DB'sinde kapalı olduğu
+    için ilk kabul aksi hâlde doğrudan ödemeye (DIRECT, takvim randevusu)
+    düşerdi. Doğrudan kanalın kendisi `tests/test_takvim_randevusu.py`'de
+    sınanır; kanalı açıkça isteyen bir test bu fixture'ı ezebilir."""
+    from models.booking import PAYMENT_CHANNEL_ESCROW
+    from services import booking_service
+
+    async def _escrow(db):
+        return PAYMENT_CHANNEL_ESCROW
+
+    monkeypatch.setattr(booking_service, "_ilk_kabul_kanali", _escrow)
+
+
 @pytest.fixture
 async def pg():
     """Gerçek Postgres erişilebilir mi? Değilse skip. Test sonunda engine havuzunu

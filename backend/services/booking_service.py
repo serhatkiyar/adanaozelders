@@ -14,7 +14,12 @@ from core.config import settings
 from core import ders_onay_hatirlatma
 from core.moderation import mask_contact_info
 from core import storage
-from models.booking import Booking, BookingStatus
+from models.booking import (
+    PAYMENT_CHANNEL_DIRECT,
+    PAYMENT_CHANNEL_ESCROW,
+    Booking,
+    BookingStatus,
+)
 from models.client import Client
 from models.payment import PaymentStatus
 from models.review import Review
@@ -30,6 +35,7 @@ from schemas.booking import BookingCreate, BookingResourceCreate, BookingComment
 from services import (
     messaging_service,
     notification_service,
+    payment_gates,
     payment_service,
     review_service,
 )
@@ -1495,6 +1501,15 @@ async def list_bookings(
     return await _hydrate_booking_rows(db, rows, role_id=role_id, user_id=user_id)
 
 
+async def _ilk_kabul_kanali(db: AsyncSession) -> str:
+    """İlk kabulde derse yazılacak ödeme kanalı: pazaryeri kolu açıksa emanetli
+    (ESCROW), kapalıysa eğitmene doğrudan ödeme (DIRECT, "takvim randevusu")."""
+    kol_acik = await payment_gates.branch_open(
+        db, payment_gates.PaymentBranch.TUTOR_MARKETPLACE
+    )
+    return PAYMENT_CHANNEL_ESCROW if kol_acik else PAYMENT_CHANNEL_DIRECT
+
+
 async def accept(db: AsyncSession, booking: Booking) -> Booking:
     # Atomik claim: eşzamanlı bir iptal/red ile yarışırsa yalnız biri kazanır.
     # Bellek içi `_transition` burada YETMEZ — kabul, `create_for_booking` ile
@@ -1509,6 +1524,11 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
     await _assert_not_on_time_off(db, booking.tutor_id, booking.start_at, booking.end_at)
     if not await _claim_transition(db, booking, BookingStatus.ACCEPTED):
         raise _claim_hatasi(booking, BookingStatus.ACCEPTED)
+    # Ödeme kanalı claim KAZANILDIKTAN sonra ve yalnız İLK kabulde yazılır;
+    # ertelemeden dönen yeniden kabul kanalı değiştirmez (bkz. model yorumu).
+    if booking.payment_channel is None:
+        booking.payment_channel = await _ilk_kabul_kanali(db)
+    dogrudan = booking.payment_channel == PAYMENT_CHANNEL_DIRECT
     # Canlı ders odası yalnızca uzaktan (ONLINE) derslerde üretilir.
     if booking.mode != "IN_PERSON" and not booking.meeting_room:
         booking.meeting_room = f"adana-{booking.id}-{secrets.token_urlsafe(6)}"
@@ -1518,7 +1538,11 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
             db,
             user_id=booking.tutor_id,
             role_id=ROLE_IDS[RoleType.TUTOR],
-            message="Ders teklifin kabul edildi; öğrenci ödeme adımında.",
+            message=(
+                "Ders teklifin kabul edildi; ders takvimine eklendi."
+                if dogrudan
+                else "Ders teklifin kabul edildi; öğrenci ödeme adımında."
+            ),
             link=f"/ders-talepleri/{booking.id}",
         )
     else:
@@ -1526,11 +1550,19 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
             db,
             user_id=booking.client_id,
             role_id=ROLE_IDS[RoleType.CLIENT],
-            message="Rezervasyon talebin kabul edildi.",
+            message=(
+                "Rezervasyon talebin kabul edildi; ders takvimine eklendi. "
+                "Ders ücretini öğretmenine doğrudan ödersin."
+                if dogrudan
+                else "Rezervasyon talebin kabul edildi."
+            ),
             link="/student/bookings",
         )
-    # Escrow ödeme kaydını oluştur (PENDING); öğrenci ödemeye yönlendirilir.
-    await payment_service.create_for_booking(db, booking)
+    # Emanetli kanalda ödeme kaydı (PENDING) açılır, öğrenci ödemeye
+    # yönlendirilir. Doğrudan kanalda platform para tutmaz: kayıt açılmaz;
+    # release/refund/reconciler ödeme kaydı yokken zaten dokunmaz.
+    if not dogrudan:
+        await payment_service.create_for_booking(db, booking)
     _notify_booking_update(db, booking)
     return booking
 
@@ -2164,7 +2196,14 @@ async def auto_complete_past_bookings(db: AsyncSession) -> int:
                 db,
                 user_id=locked.client_id,
                 role_id=ROLE_IDS[RoleType.CLIENT],
-                message="Dersin tamamlandı. Değerlendirme yapabilir ve eğitmene soru sorabilirsin.",
+                # Doğrudan ödemeli derste yorum hakkı yok (yalnız kartla
+                # ödenmiş ders değerlendirilir); o hâlde bu vaat verilmez.
+                message=(
+                    "Dersin tamamlandı. Eğitmene soru sorabilirsin."
+                    if locked.payment_channel == PAYMENT_CHANNEL_DIRECT
+                    else "Dersin tamamlandı. Değerlendirme yapabilir ve "
+                    "eğitmene soru sorabilirsin."
+                ),
                 link=f"/ders-talepleri/{locked.id}",
             )
         elif locked.status != BookingStatus.COMPLETED:

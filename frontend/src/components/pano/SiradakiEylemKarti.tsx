@@ -178,9 +178,16 @@ function TeklifKarti({ booking }: { booking: BookingOut }) {
   const reject = useBookingAction("reject");
   const mesgul = accept.isPending || reject.isPending;
 
-  const yanitla = (m: typeof accept, basari: string) =>
+  const { data: availability } = usePaymentAvailability();
+  // Kanal ilk kabulde yazılır; henüz yazılmadıysa sunucu kolun açıklığına
+  // bakacağı için aynı bilgiyle önceden söylenir.
+  const odemeli = booking.payment_channel
+    ? booking.payment_channel === "ESCROW"
+    : isBranchOpen(availability, "tutor_marketplace");
+  const yanitla = (m: typeof accept, basari: string | ((sonuc: BookingOut) => string)) =>
     m.mutate(booking.id, {
-      onSuccess: () => toast.success(basari),
+      onSuccess: (sonuc) =>
+        toast.success(typeof basari === "function" ? basari(sonuc) : basari),
       onError: (err) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
     });
 
@@ -189,7 +196,7 @@ function TeklifKarti({ booking }: { booking: BookingOut }) {
       kind="RESPOND_OFFER"
       booking={booking}
       aciklama={
-        ucretsiz(booking)
+        ucretsiz(booking) || !odemeli
           ? "Kabul edersen ders kesinleşir ve takvimine eklenir."
           : "Kabul edersen ödeme adımına geçersin; ders ödemeyle kesinleşir."
       }
@@ -200,9 +207,10 @@ function TeklifKarti({ booking }: { booking: BookingOut }) {
         onClick={() =>
           yanitla(
             accept,
-            ucretsiz(booking)
-              ? "Ders teklifini kabul ettin; ders kesinleşti."
-              : "Ders teklifini kabul ettin; ödeme adımına geçebilirsin."
+            (sonuc) =>
+              ucretsiz(booking) || sonuc.payment_channel === "DIRECT"
+                ? "Ders teklifini kabul ettin; ders kesinleşti."
+                : "Ders teklifini kabul ettin; ödeme adımına geçebilirsin."
           )
         }
         className={`sm:flex-1 ${DUGME_BIRINCIL}`}

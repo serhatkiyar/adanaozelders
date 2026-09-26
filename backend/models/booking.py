@@ -14,6 +14,10 @@ from core.database import Base
 from models.mixins import SoftDeleteMixin, TimestampMixin
 
 
+PAYMENT_CHANNEL_ESCROW = "ESCROW"
+PAYMENT_CHANNEL_DIRECT = "DIRECT"
+
+
 class BookingStatus(str, enum.Enum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
@@ -60,6 +64,12 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Ders biçimi: 'ONLINE' (uzaktan) | 'IN_PERSON' (yüzyüze). Canlı link yalnız ONLINE'da.
     mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Ücret nereden ödenir — İLK kabulde sabitlenir, sonra değişmez (erteleme
+    # dahil). ESCROW: platformda kartla, emanetli. DIRECT: eğitmene doğrudan,
+    # platform dışında ("takvim randevusu"; pazaryeri kolu kapalıyken). NULL:
+    # henüz kabul edilmedi. Global bayrağa her seferinde bakılsaydı pazaryeri
+    # açıldığı gün eski doğrudan ödemeli dersler sessizce ödeme borcuna dönerdi.
+    payment_channel: Mapped[str | None] = mapped_column(String(10), nullable=True)
     # Yüzyüze ders için buluşma yeri (serbest metin adres).
     location: Mapped[str | None] = mapped_column(Text, nullable=True)
     location_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)

@@ -814,6 +814,9 @@ export interface BookingOut {
   location?: string | null;
   location_lat: number | null;
   location_lng: number | null;
+  /** Ücret nereden ödenir: ESCROW = sitede kartla, DIRECT = eğitmene doğrudan
+   *  (pazaryeri kapalıyken "takvim randevusu"). İlk kabulde sunucu yazar. */
+  payment_channel?: "ESCROW" | "DIRECT" | null;
   meeting_room?: string | null;
   /**
    * "Derse katıl" hangi altyapıya gider (sunucu ayarı). Yalnız ONLINE derste

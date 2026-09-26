@@ -178,6 +178,9 @@ class BookingOut(BaseModel):
     notes: str | None = None
     cancel_reason: str | None = None
     mode: str | None = None
+    # "ESCROW" (platformda kartla) | "DIRECT" (eğitmene doğrudan) | None
+    # (henüz kabul edilmedi). İlk kabulde sunucuda yazılır.
+    payment_channel: str | None = None
     location: str | None = None
     location_lat: float | None = None
     location_lng: float | None = None
@@ -277,7 +280,9 @@ class BookingOut(BaseModel):
         if not self.meeting_room:
             return self
         payment_status = self.payment.status if self.payment is not None else None
-        if not canli_ders.ders_odasi_acik_mi(payment_status, self.price):
+        if not canli_ders.ders_odasi_acik_mi(
+            payment_status, self.price, payment_channel=self.payment_channel
+        ):
             self.meeting_room = None
         return self
 

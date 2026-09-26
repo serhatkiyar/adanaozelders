@@ -14,7 +14,7 @@ from api.deps import (
 from core import canli_ders, storage
 from core.config import settings
 from core.database import get_db
-from models.booking import Booking, BookingStatus
+from models.booking import PAYMENT_CHANNEL_ESCROW, Booking, BookingStatus
 from models.client import Client
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
@@ -277,7 +277,9 @@ def _canli_ders_kapilari(booking: Booking, user: CurrentUser) -> datetime.dateti
     #    engeller. Token uçları ORM'den okuduğu için şema kapısından GEÇMEZ;
     #    bu kapı atlanırsa öğrenci ödeme yapmadan canlı derse girer.
     payment_status = booking.payment.status if booking.payment is not None else None
-    if not canli_ders.ders_odasi_acik_mi(payment_status, booking.price):
+    if not canli_ders.ders_odasi_acik_mi(
+        payment_status, booking.price, payment_channel=booking.payment_channel
+    ):
         raise HTTPException(
             status.HTTP_402_PAYMENT_REQUIRED,
             "Ders ücreti emanete alınmadan canlı derse katılınamaz.",
@@ -427,13 +429,17 @@ async def accept_booking(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Kabul, ogrenciye odenecek bir yukumluluk dogurur (PENDING escrow).
-    # Kol kapaliyken kabul etmek, odenemeyecek bir ders sozu vermek olur.
-    await payment_gates.assert_branch_open(
-        db, payment_gates.PaymentBranch.TUTOR_MARKETPLACE
-    )
     booking = await _get_booking_or_404(db, booking_id, user)
     _assert_yanit_verecek_taraf(booking, user)
+    # Emanetli kabul öğrenciye ödeme yükümlülüğü doğurur; kol kapalıyken bu söz
+    # verilemez. Kanal ilk kabulde sabitlenir (booking_service.accept): kol
+    # kapalıyken ilk kez kabul edilen ders DIRECT olur ve ödeme kaydı açmaz.
+    # Önceden ESCROW sabitlenmiş bir ders (ör. ertelendikten sonra yeniden
+    # kabul) kol kapandıysa yine reddedilir.
+    if booking.payment_channel == PAYMENT_CHANNEL_ESCROW:
+        await payment_gates.assert_branch_open(
+            db, payment_gates.PaymentBranch.TUTOR_MARKETPLACE
+        )
     return await booking_service.accept(db, booking)
 
 

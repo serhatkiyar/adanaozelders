@@ -4,6 +4,8 @@ import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { isSlotConflictError, useCreateBooking } from "@/hooks/useBookings";
 import { useTutorSlots } from "@/hooks/useTutorSlots";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { canPromiseEscrow } from "@/lib/paymentAvailability";
 import { toast } from "@/store/toastStore";
 import { getErrorDetail, getErrorMessage } from "@/lib/errors";
 import { formatIstanbulDay, formatIstanbulTime, istanbulNow } from "@/lib/datetime";
@@ -813,6 +815,10 @@ function OzetKarti({
   ucret: string | null;
   gecIptalSaati: number;
 }) {
+  // Kapalı kolda emanet vaadi verilmez (lib/paymentAvailability): o dönemde
+  // ders "takvim randevusu"dur, ücret eğitmene doğrudan ödenir.
+  const { data: availability } = usePaymentAvailability();
+  const emanetli = canPromiseEscrow(availability, "tutor_marketplace");
   const iptalSonu = new Date(
     Date.parse(slot.start_at) - gecIptalSaati * 60 * 60 * 1000
   ).toISOString();
@@ -830,8 +836,9 @@ function OzetKarti({
         <>
           {ucret !== null && <p className={ETIKET}>{formatTRY(ucret)}</p>}
           <p className={KUCUK_ACIKLAMA}>
-            Şimdi ödeme alınmaz. Öğretmen kabul edince ödersin; para ders onaylanana kadar
-            bekletilir.
+            {emanetli
+              ? "Şimdi ödeme alınmaz. Öğretmen kabul edince ödersin; para ders onaylanana kadar bekletilir."
+              : "Şimdi ödeme alınmaz. Öğretmen kabul edince ders takvimine eklenir; ücreti öğretmenine doğrudan ödersin."}
           </p>
         </>
       )}

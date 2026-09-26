@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime
 from decimal import Decimal
 
+from models.booking import PAYMENT_CHANNEL_DIRECT
 from models.payment import PaymentStatus
 
 # Katılım penceresi. Bu iki değer `frontend/src/lib/lesson.ts` içindeki
@@ -20,13 +21,22 @@ KATILIM_KAPANIS = datetime.timedelta(minutes=30)
 
 
 def ders_odasi_acik_mi(
-    payment_status: PaymentStatus | str | None, price: Decimal | float | int | None
+    payment_status: PaymentStatus | str | None,
+    price: Decimal | float | int | None,
+    *,
+    payment_channel: str | None = None,
 ) -> bool:
     """Canlı ders odası (adı ve token'ı) bu ders için açılabilir mi?
 
     Ödeme emanete alınmışsa (HELD/RELEASED) ya da ders ücretsizse (price==0).
     Aksi halde öğrenci ödeme yapmadan canlı derse girebilirdi.
+
+    Doğrudan ödemeli (DIRECT) derste platform para tutmaz; ücret eğitmene
+    platform dışında ödenir, bu yüzden oda kabulle birlikte açıktır. Kanal
+    sunucuda, ilk kabulde yazılır; istemciden gelmez.
     """
+    if payment_channel == PAYMENT_CHANNEL_DIRECT:
+        return True
     odendi = payment_status in (PaymentStatus.HELD, PaymentStatus.RELEASED)
     ucretsiz = price is not None and price == 0
     return odendi or ucretsiz
