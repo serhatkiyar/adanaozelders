@@ -47,6 +47,7 @@ import { useTranslation } from "react-i18next";
 import {
   CaptureUpdateAction,
   Excalidraw,
+  MainMenu,
   convertToExcalidrawElements,
   exportToBlob,
   exportToCanvas,
@@ -251,6 +252,7 @@ export default function TahtaPaneli({ kanal, dersId, ogretmen }: Props) {
   const { t } = useTranslation();
   const o = onbellek(dersId);
   const kap = useRef<HTMLDivElement>(null);
+  const pdfGirdisi = useRef<HTMLInputElement>(null);
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [durum, setDurum] = useState<string | null>(null);
   const [mesgul, setMesgul] = useState<string | null>(null);
@@ -773,18 +775,22 @@ export default function TahtaPaneli({ kanal, dersId, ogretmen }: Props) {
         }
         isCollaborating
         langCode="tr-TR"
-        UIOptions={{
-          canvasActions: {
-            changeViewBackgroundColor: false,
-            clearCanvas: false,
-            export: false,
-            loadScene: false,
-            saveToActiveFile: false,
-            saveAsImage: false,
-            toggleTheme: null,
-          },
-          tools: { image: false },
-        }}
+        UIOptions={
+          EXCALIDRAW_TAM
+            ? { tools: { image: false } }
+            : {
+                canvasActions: {
+                  changeViewBackgroundColor: false,
+                  clearCanvas: false,
+                  export: false,
+                  loadScene: false,
+                  saveToActiveFile: false,
+                  saveAsImage: false,
+                  toggleTheme: null,
+                },
+                tools: { image: false },
+              }
+        }
         initialData={{
           appState: {
             viewBackgroundColor: "#ffffff",
@@ -796,24 +802,76 @@ export default function TahtaPaneli({ kanal, dersId, ogretmen }: Props) {
             },
           },
         }}
-      />
+      >
+        {/* Tam Excalidraw denemesi: ☰ menü LiveKit tahtasındaki gibi ELLE
+            kurulur (94a3fa7a) — Excalidraw'ın kendi öğeleri varsayılan
+            sırasıyla, `Socials` hariç; PDF olarak indirme ve PDF yükleme
+            eklenir. Sahneyi değiştiren "Aç" ve "Tuvali sıfırla" yalnız
+            öğretmende (silgi/temizle kararı). */}
+        {EXCALIDRAW_TAM && (
+          <MainMenu>
+            {ogretmen && <MainMenu.DefaultItems.LoadScene />}
+            <MainMenu.DefaultItems.SaveToActiveFile />
+            <MainMenu.DefaultItems.Export />
+            <MainMenu.DefaultItems.SaveAsImage />
+            <MainMenu.Item
+              icon={<Icon name="arrowDownload" className="h-4 w-4" />}
+              onSelect={() => void pdfKaydet()}
+            >
+              {t("tahta.uygulama.pdfKaydet")}
+            </MainMenu.Item>
+            {ogretmen && (
+              <MainMenu.Item
+                icon={<Icon name="arrowUpload" className="h-4 w-4" />}
+                onSelect={() => pdfGirdisi.current?.click()}
+              >
+                {t("tahta.uygulama.dosyaYukle")}
+              </MainMenu.Item>
+            )}
+            <MainMenu.Separator />
+            <MainMenu.DefaultItems.CommandPalette />
+            <MainMenu.DefaultItems.SearchMenu />
+            <MainMenu.DefaultItems.Help />
+            {ogretmen && <MainMenu.DefaultItems.ClearCanvas />}
+            <MainMenu.Separator />
+            <MainMenu.DefaultItems.ToggleTheme />
+            <MainMenu.DefaultItems.ChangeCanvasBackground />
+          </MainMenu>
+        )}
+      </Excalidraw>
+      {EXCALIDRAW_TAM && (
+        <input
+          ref={pdfGirdisi}
+          type="file"
+          accept="application/pdf"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(e) => {
+            const secilen = e.target.files?.[0];
+            e.target.value = "";
+            if (secilen) void dosyaYukle(secilen);
+          }}
+        />
+      )}
 
-      <AracCubugu
-        yalnizUygulamalar={EXCALIDRAW_TAM}
-        ogretmen={ogretmen}
-        aktif={aktifArac}
-        sekil={sekil}
-        onArac={aracSec}
-        onSekil={(s) => {
-          setSekil(s);
-          aracSec(s);
-        }}
-        onStil={stilAyarla}
-        onTemizle={temizle}
-        onDosya={(f) => void dosyaYukle(f)}
-        onResim={() => void resimKaydet()}
-        onPdf={() => void pdfKaydet()}
-      />
+      {!EXCALIDRAW_TAM && (
+        <AracCubugu
+          ogretmen={ogretmen}
+          aktif={aktifArac}
+          sekil={sekil}
+          onArac={aracSec}
+          onSekil={(s) => {
+            setSekil(s);
+            aracSec(s);
+          }}
+          onStil={stilAyarla}
+          onTemizle={temizle}
+          onDosya={(f) => void dosyaYukle(f)}
+          onResim={() => void resimKaydet()}
+          onPdf={() => void pdfKaydet()}
+        />
+      )}
 
       {/* Alt sol: geri al / yinele + yakınlaştırma (Preply 62×34 + 131×34). */}
       <div className="absolute bottom-4 left-4 z-10 flex gap-2">
@@ -946,13 +1004,13 @@ type AltMenu = "kalem" | "metin" | "sekil" | "uygulamalar" | null;
 /**
  * Deneme (25 Eyl 2026, kullanıcı isteği): Excalidraw'ın KENDİ araç çubuğu ve
  * özellikler paneli (renk, kalınlık, ok/çizgi, dolgu…) açık; Preply tarzı
- * sol çubuktan yalnız "Uygulamalar" (PDF yükle/kaydet) kalır. Beğenilmezse
+ * sol çubuk gizli, ☰ menü LiveKit tahtasındaki gibi Excalidraw'ın kendi
+ * öğeleriyle (+ PDF yükle/indir). Beğenilmezse
  * `false` yapmak Preply'daki kısıtlı araç setine döner.
  */
 const EXCALIDRAW_TAM = true;
 
 function AracCubugu({
-  yalnizUygulamalar = false,
   ogretmen,
   aktif,
   sekil,
@@ -964,7 +1022,6 @@ function AracCubugu({
   onResim,
   onPdf,
 }: {
-  yalnizUygulamalar?: boolean;
   ogretmen: boolean;
   aktif: string;
   sekil: SekilTuru;
@@ -1034,8 +1091,6 @@ function AracCubugu({
       aria-label={t("tahta.araclar.cubuk")}
       className="absolute left-4 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1 rounded-lg border border-slate-200 bg-white p-[5px] shadow-sm"
     >
-      {!yalnizUygulamalar && (
-        <>
       {dugme("selection", "cursor", t("tahta.araclar.secim"), aktif === "selection", () => {
         setMenu(null);
         onArac("selection");
@@ -1091,8 +1146,6 @@ function AracCubugu({
         setMenu(null);
         onArac("hand");
       })}
-        </>
-      )}
       {ogretmen &&
         dugme(
           "uygulamalar",
