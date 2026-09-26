@@ -93,6 +93,8 @@ describe("Google Analytics 4 ve Meta Pixel", () => {
     delete w.dataLayer;
     delete w.fbq;
     delete w._fbq;
+    delete w.clarity;
+    localStorage.clear();
     setEnv();
   });
 
@@ -103,17 +105,34 @@ describe("Google Analytics 4 ve Meta Pixel", () => {
     expect(document.querySelectorAll("script").length).toBe(0);
   });
 
-  it("ID verilince yüklenir; sayfa görüntülemesi sorgu dizesiz gider", () => {
+  it("çerez onayı yoksa ID olsa bile yüklenmez", () => {
     vi.stubEnv("VITE_GA_ID", "G-TEST123");
     vi.stubEnv("VITE_META_PIXEL_ID", "1234567890");
+    localStorage.removeItem("cerez-tercihi-v1");
+    initAnalytics();
+    expect(document.querySelectorAll("script").length).toBe(0);
+    localStorage.setItem("cerez-tercihi-v1", "red");
+    initAnalytics();
+    expect(document.querySelectorAll("script").length).toBe(0);
+  });
+
+  it("onaydan sonra yüklenir; sayfa görüntülemesi sorgu dizesiz gider", () => {
+    vi.stubEnv("VITE_GA_ID", "G-TEST123");
+    vi.stubEnv("VITE_META_PIXEL_ID", "1234567890");
+    vi.stubEnv("VITE_CLARITY_ID", "abc123xyz0");
+    localStorage.setItem("cerez-tercihi-v1", "kabul");
     initAnalytics();
     const kaynaklar = Array.from(document.querySelectorAll("script")).map((s) => s.src);
     expect(kaynaklar.some((s) => s.includes("googletagmanager.com/gtag/js?id=G-TEST123"))).toBe(true);
     expect(kaynaklar.some((s) => s.includes("connect.facebook.net"))).toBe(true);
+    expect(kaynaklar.some((s) => s.includes("clarity.ms/tag/abc123xyz0"))).toBe(true);
 
     const w = window as unknown as { dataLayer: IArguments[]; fbq: { queue: unknown[][] } };
     trackPageview("/sifre-sifirla?token=gizli");
-    const olay = w.dataLayer.map((a) => Array.from(a)).find((a) => a[1] === "page_view");
+    const olay = w.dataLayer
+      .map((a) => Array.from(a))
+      .filter((a) => a[1] === "page_view")
+      .pop();
     expect(olay?.[2]).toMatchObject({ page_path: "/sifre-sifirla" });
     expect(JSON.stringify(w.dataLayer.map((a) => Array.from(a)))).not.toContain("gizli");
     expect(w.fbq.queue).toContainEqual(["track", "PageView"]);

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { cerezBandiniAc } from "@/lib/cerezOnayi";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { LEGAL_ROUTES, ROUTES } from "@/lib/routes";
 import { LEGAL_NAV } from "@/lib/legalNav";
@@ -263,6 +264,12 @@ export function SiteFooter({ basaDon = false }: { basaDon?: boolean } = {}) {
                   {doc.kisaAd}
                 </Link>
               ))}
+              <PlainButton
+                onClick={cerezBandiniAc}
+                className="inline-flex min-h-[44px] items-center py-2.5 transition hover:text-slate-600 md:min-h-0 md:py-0"
+              >
+                Çerez tercihleri
+              </PlainButton>
             </p>
           </div>
         </div>

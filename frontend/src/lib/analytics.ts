@@ -24,6 +24,8 @@
  *    yolumuz engellenmez (ölçüm yanlılığı azalır).
  */
 
+import { cerezTercihi } from "@/lib/cerezOnayi";
+
 const SCRIPT_ID = "site-analytics";
 
 function config() {
@@ -54,6 +56,7 @@ function reklamConfig() {
   return {
     gaId: import.meta.env.VITE_GA_ID as string | undefined,
     pixelId: import.meta.env.VITE_META_PIXEL_ID as string | undefined,
+    clarityId: import.meta.env.VITE_CLARITY_ID as string | undefined,
   };
 }
 
@@ -68,6 +71,7 @@ function scriptEkle(id: string, src: string): void {
 
 function initGoogleAnalytics(gaId: string): void {
   const w = window as Pencere;
+  if (w.gtag) return;
   w.dataLayer = w.dataLayer || [];
   w.gtag = function gtag() {
     // gtag.js `arguments` nesnesini bekler; dizi göndermek yok sayılır.
@@ -99,11 +103,31 @@ function initMetaPixel(pixelId: string): void {
   scriptEkle("meta-pixel", "https://connect.facebook.net/en_US/fbevents.js");
 }
 
-/** Analitik script'ini bir kez yükler. Ayar yoksa hiçbir şey yapmaz. */
-export function initAnalytics(): void {
-  const { gaId, pixelId } = reklamConfig();
+function initClarity(clarityId: string): void {
+  const w = window as Pencere & { clarity?: Kuyruk };
+  if (w.clarity) return;
+  const clarity = function (...args: unknown[]) {
+    (clarity.q = clarity.q || []).push(args);
+  } as Kuyruk;
+  w.clarity = clarity;
+  scriptEkle("ms-clarity", `https://www.clarity.ms/tag/${encodeURIComponent(clarityId)}`);
+}
+
+/** GA4, Meta Pixel ve Clarity'yi yükler — yalnız çerez onayından sonra
+ *  (`components/CerezBandi.tsx`, `lib/cerezOnayi.ts`). Her etiket yalnız bir kez kurulur. */
+export function reklamEtiketleriniBaslat(): void {
+  const { gaId, pixelId, clarityId } = reklamConfig();
   if (gaId) initGoogleAnalytics(gaId);
   if (pixelId) initMetaPixel(pixelId);
+  if (clarityId) initClarity(clarityId);
+  // Onay sayfa açıldıktan sonra verildiyse bulunulan sayfa da sayılsın.
+  trackPageview(window.location.pathname);
+}
+
+/** Analitik script'ini bir kez yükler. Ayar yoksa hiçbir şey yapmaz.
+ *  Çerezli etiketler (GA4/Pixel/Clarity) yalnız daha önce onay verilmişse. */
+export function initAnalytics(): void {
+  if (cerezTercihi() === "kabul") reklamEtiketleriniBaslat();
 
   const { src, websiteId } = config();
   if (!src || document.getElementById(SCRIPT_ID)) return;

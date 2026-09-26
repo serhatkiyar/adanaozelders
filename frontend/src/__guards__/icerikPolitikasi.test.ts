@@ -27,13 +27,14 @@ const nginx = oku("nginx.conf");
 const basliklar = oku("nginx-security-headers.conf");
 
 /** Varsayılan CSP dizesinin SHA-256'sı. 26 Eyl 2026: script-src'ye Google
- *  Analytics ve Meta Pixel eklendi (kurucu kararı); değişiklik bilinçli olsun
+ *  Analytics, Meta Pixel ve Microsoft Clarity eklendi (kurucu kararı); değişiklik bilinçli olsun
  *  diye özet sabitlenir. */
 const ESKI_DIZE_SHA256 =
-  "0e67352beb447f7c485e96b9b1b15ad9710077d8c0131f0c0788957f611883d1";
+  "1ba1504a0a514d3d8344b8c5bbc733b2007d925dc4caea8d87de9e0187e0cb2b";
 
 const VARSAYILAN_SCRIPT_SRC =
-  "script-src 'self' https://www.googletagmanager.com https://connect.facebook.net;";
+  "script-src 'self' https://www.googletagmanager.com https://connect.facebook.net " +
+  "https://www.clarity.ms https://scripts.clarity.ms;";
 
 const CANLI_SCRIPT_SRC =
   "script-src 'self' 'wasm-unsafe-eval' https://source.zoom.us https://zoom.us " +
@@ -71,7 +72,7 @@ describe("içerik güvenlik politikası · canlı ders kolu", () => {
     expect(sha, "varsayılan CSP değişti — bütün site etkilenir").toBe(ESKI_DIZE_SHA256);
   });
 
-  it("varsayılan kolda script-src katı: 'self' + yalnız GA ve Meta Pixel", () => {
+  it("varsayılan kolda script-src katı: 'self' + yalnız GA, Meta Pixel ve Clarity", () => {
     const d = kollar().default;
     expect(scriptSrc(d)).toBe(VARSAYILAN_SCRIPT_SRC);
     expect(d).not.toMatch(/zoom|wasm-unsafe-eval|unsafe-eval/);

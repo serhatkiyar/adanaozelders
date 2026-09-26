@@ -5,6 +5,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { trackPageview } from "@/lib/analytics";
 import { Toaster } from "@/components/Toaster";
+import { CerezBandi } from "@/components/CerezBandi";
 import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { KesifKabugu } from "@/components/kesif/KesifKabugu";
@@ -1046,6 +1047,7 @@ function App() {
             <DeepWorkTimer />
           </Suspense>
         )}
+        <CerezBandi />
       </BrowserRouter>
       <Suspense fallback={null}>
         <GlobalMeeting />
