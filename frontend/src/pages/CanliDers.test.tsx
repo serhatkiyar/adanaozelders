@@ -3,8 +3,9 @@
  * Üst şerit yok (Meet): Ayrıl ve Sohbet odanın kontrol çubuğunda; sayfa
  * yalnız onaylı çıkış penceresini ve sahne üstü haplarını verir.
  *
- * jsdom Zoom toolkit'ini yükleyemez: `ZoomOdasi` taklit edilir; taklit aldığı
- * geri çağrıları dışarı verir ki karşı taraf/kopma olayları sürülebilsin.
+ * jsdom Zoom SDK'sını yükleyemez: sürücü yükleyicisi (`video/yukle`) ve
+ * `CanliOda` taklit edilir; taklit aldığı geri çağrıları dışarı verir ki
+ * karşı taraf/kopma olayları sürülebilsin.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -12,21 +13,27 @@ import { forwardRef, useImperativeHandle } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { fetchBooking, getZoomToken } from "@/api/bookings";
-import type { ZoomOdasiProps, ZoomOdasiTutamak } from "@/components/canli/ZoomOdasi";
+import { fetchBooking, getCanliDersBileti } from "@/api/bookings";
+import type { CanliOdaProps, CanliOdaTutamak } from "@/components/canli/CanliOda";
 import { tamSayfaGit } from "@/lib/tamSayfaGezinme";
 import { PATHS } from "@/lib/routes";
 import CanliDers from "@/pages/CanliDers";
-import type { BookingOut, ZoomDersTokenOut } from "@/types";
+import type { BookingOut, CanliDersBiletiOut, ZoomDersTokenOut } from "@/types";
 
 const oda = vi.hoisted(() => ({
-  props: null as ZoomOdasiProps | null,
+  props: null as CanliOdaProps | null,
   ayril: vi.fn(async () => {}),
   kurulum: 0,
 }));
 
-vi.mock("@/components/canli/ZoomOdasi", () => ({
-  default: forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function SahteOda(props, ref) {
+vi.mock("@/components/canli/video/yukle", () => ({
+  yukle: vi.fn(async () => ({
+    oturumdaMi: () => false,
+    destekler: { arkaPlan: async () => false },
+  })),
+}));
+vi.mock("@/components/canli/CanliOda", () => ({
+  default: forwardRef<CanliOdaTutamak, CanliOdaProps>(function SahteOda(props, ref) {
     oda.props = props;
     useImperativeHandle(ref, () => ({ ayril: oda.ayril }), []);
     return (
@@ -39,7 +46,7 @@ vi.mock("@/components/canli/ZoomOdasi", () => ({
 vi.mock("@/api/bookings", async (asil) => ({
   ...((await asil()) as object),
   fetchBooking: vi.fn(),
-  getZoomToken: vi.fn(),
+  getCanliDersBileti: vi.fn(),
 }));
 vi.mock("@/lib/tamSayfaGezinme", () => ({ tamSayfaGit: vi.fn() }));
 
@@ -50,6 +57,13 @@ const BILET: ZoomDersTokenOut = {
   rol: "host",
   expires_at: "2026-09-24T16:00:00Z",
 };
+
+/** `/canli-ders-bileti` yanıtı: sağlayıcı Zoom, yalnız `zoom` dolu. */
+const zoomBileti = (zoom: ZoomDersTokenOut): CanliDersBiletiOut => ({
+  saglayici: "zoom",
+  zoom,
+  agora: null,
+});
 
 const DERS = {
   id: 5,
@@ -85,7 +99,7 @@ beforeEach(() => {
   oda.props = null;
   vi.clearAllMocks();
   vi.mocked(fetchBooking).mockResolvedValue(DERS);
-  vi.mocked(getZoomToken).mockResolvedValue(BILET);
+  vi.mocked(getCanliDersBileti).mockResolvedValue(zoomBileti(BILET));
 });
 
 afterEach(() => {
@@ -94,7 +108,7 @@ afterEach(() => {
 
 describe("CanliDers — giriş kapıları", () => {
   it("402: ödeme metni, dönüş ders sayfasına TAM SAYFA", async () => {
-    vi.mocked(getZoomToken).mockRejectedValue(hataYaniti(402, "Ders ücreti…"));
+    vi.mocked(getCanliDersBileti).mockRejectedValue(hataYaniti(402, "Ders ücreti…"));
     ciz();
 
     expect(await screen.findByText("Canlı derse girilemedi")).toBeInTheDocument();
@@ -106,7 +120,7 @@ describe("CanliDers — giriş kapıları", () => {
   });
 
   it("409: sunucunun nedeni gösterilir", async () => {
-    vi.mocked(getZoomToken).mockRejectedValue(
+    vi.mocked(getCanliDersBileti).mockRejectedValue(
       hataYaniti(409, "Canlı ders yalnız ders saatinde açıktır."),
     );
     ciz();
@@ -116,7 +130,7 @@ describe("CanliDers — giriş kapıları", () => {
   });
 
   it("503: altyapı metni ve yeniden deneme", async () => {
-    vi.mocked(getZoomToken).mockRejectedValue(hataYaniti(503));
+    vi.mocked(getCanliDersBileti).mockRejectedValue(hataYaniti(503));
     ciz();
     expect(await screen.findByText(/altyapısı şu an kullanılamıyor/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Yeniden dene" })).toBeInTheDocument();
@@ -125,15 +139,22 @@ describe("CanliDers — giriş kapıları", () => {
   it("geçersiz adres sunucuya sorulmadan reddedilir", () => {
     ciz("/canli-ders/abc");
     expect(screen.getByText("Ders bulunamadı.")).toBeInTheDocument();
-    expect(getZoomToken).not.toHaveBeenCalled();
+    expect(getCanliDersBileti).not.toHaveBeenCalled();
   });
 });
 
 describe("CanliDers — oda", () => {
-  it("bilet gelince oda sunucunun verdiği biletle kurulur; üst şerit yok", async () => {
+  it("bilet gelince oda sunucunun verdiği biletle (nötr biçimde) kurulur; üst şerit yok", async () => {
     ciz();
     expect(await screen.findByTestId("zoom-kabi")).toBeInTheDocument();
-    expect(oda.props?.bilet).toEqual(BILET);
+    expect(oda.props?.bilet).toEqual({
+      saglayici: "zoom",
+      rol: "ogretmen",
+      ad: "Ayşe",
+      bitis: BILET.expires_at,
+      karsi: null,
+      ham: BILET,
+    });
     // Ayrıl ve Sohbet yalnız odanın kontrol çubuğunda (Meet): sayfada ikinci
     // bir ayrıl/mesajlar düğmesi ya da başlık yok.
     expect(screen.queryByText("Canlı ders · Mehmet")).toBeNull();
@@ -170,7 +191,7 @@ describe("CanliDers — oda", () => {
   });
 
   it("öğrenci için not öğretmenden söz eder", async () => {
-    vi.mocked(getZoomToken).mockResolvedValue({ ...BILET, rol: "katilimci" });
+    vi.mocked(getCanliDersBileti).mockResolvedValue(zoomBileti({ ...BILET, rol: "katilimci" }));
     ciz();
     await screen.findByTestId("zoom-kabi");
     act(() => oda.props!.onKarsiTaraf("bekleniyor"));

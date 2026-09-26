@@ -14,17 +14,17 @@ import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { katilimciRengi } from "@/lib/canliDers";
 import { rolEtiketi } from "@/lib/roles";
-import { ROLE_IDS, type ZoomDersTokenOut } from "@/types";
+import { ROLE_IDS } from "@/types";
 
-import type { Katilimci } from "../zoom/indirgeyiciler";
-import { useEliKalkik, useKonusuyor, useOdaDeposu } from "../zoom/odaDeposu";
-import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
+import type { DersRolu, KatilimciId } from "../video/tipler";
+import type { Katilimci } from "./durum/indirgeyiciler";
+import { useEliKalkik, useKonusuyor, useOdaDeposu } from "./durum/odaDeposu";
+import { useMedyaKontrolleri } from "./durum/useMedyaKontrolleri";
 import { Avatar } from "./Avatar";
 
-const rolKimligi = (rol: ZoomDersTokenOut["rol"]) =>
-  rol === "host" ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT;
+const rolKimligi = (rol: DersRolu) => (rol === "ogretmen" ? ROLE_IDS.TUTOR : ROLE_IDS.CLIENT);
 
-export function KatilimciListesi({ benimRolum }: { benimRolum: ZoomDersTokenOut["rol"] }) {
+export function KatilimciListesi({ benimRolum }: { benimRolum: DersRolu }) {
   const { t } = useTranslation();
   // Ham alanlar seçilir, liste dışarıda türetilir: seçicide yeni dizi
   // üretmek her depo değişiminde yeniden çizim döngüsü doğururdu.
@@ -35,14 +35,14 @@ export function KatilimciListesi({ benimRolum }: { benimRolum: ZoomDersTokenOut[
 
   // Meet: önce kendin, sonra diğerleri ada göre.
   const liste = useMemo(() => {
-    const ben = katilimcilar.filter((k) => k.userId === benId);
+    const ben = katilimcilar.filter((k) => k.id === benId);
     const digerleri = katilimcilar
-      .filter((k) => k.userId !== benId)
+      .filter((k) => k.id !== benId)
       .sort((a, b) => a.ad.localeCompare(b.ad, "tr"));
     return [...ben, ...digerleri];
   }, [katilimcilar, benId]);
 
-  const karsiRol = benimRolum === "host" ? "katilimci" : "host";
+  const karsiRol: DersRolu = benimRolum === "ogretmen" ? "ogrenci" : "ogretmen";
   const baslik = t("participants.contributors");
 
   return (
@@ -69,10 +69,10 @@ export function KatilimciListesi({ benimRolum }: { benimRolum: ZoomDersTokenOut[
         <ul id={bolumId} role="list" className={acik ? "mt-1" : "hidden"}>
           {liste.map((k) => (
             <KatilimciSatiri
-              key={k.userId}
+              key={k.id}
               k={k}
-              ben={k.userId === benId}
-              rol={rolEtiketi(rolKimligi(k.userId === benId ? benimRolum : karsiRol))}
+              ben={k.id === benId}
+              rol={rolEtiketi(rolKimligi(k.id === benId ? benimRolum : karsiRol))}
             />
           ))}
         </ul>
@@ -98,16 +98,16 @@ function KatilimciSatiri({ k, ben, rol }: { k: Katilimci; ben: boolean; rol: str
           {rol && <span className="text-xs text-slate-500">{rol}</span>}
         </div>
       </div>
-      <ElGostergesi userId={k.userId} />
+      <ElGostergesi id={k.id} />
       <MikGostergesi k={k} ben={ben} />
     </li>
   );
 }
 
 /** Meet `RaisedHandRow` yerine satırda el simgesi (birebir derste iki kişi). */
-function ElGostergesi({ userId }: { userId: number }) {
+function ElGostergesi({ id }: { id: KatilimciId }) {
   const { t } = useTranslation();
-  if (!useEliKalkik(userId)) return null;
+  if (!useEliKalkik(id)) return null;
   return (
     <span
       className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded bg-marka/15 text-marka-metin"
@@ -122,7 +122,7 @@ function ElGostergesi({ userId }: { userId: number }) {
 /** Meet `MicIndicator`: yalnız kendi açık mikrofonun kapatılabilir. */
 function MikGostergesi({ k, ben }: { k: Katilimci; ben: boolean }) {
   const { t } = useTranslation();
-  const konusuyor = useKonusuyor(k.userId);
+  const konusuyor = useKonusuyor(k.id);
   const m = useMedyaKontrolleri();
   const kutu = "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded";
 

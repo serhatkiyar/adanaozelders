@@ -27,15 +27,18 @@ describe("useDerseKatil", () => {
     useMeetingStore.getState().leaveMeeting();
   });
 
-  it("zoom → /canli-ders/:id tam sayfa; açık Jitsi odası kapanır", () => {
-    useMeetingStore.getState().joinMeeting(7, "eski-oda", "A", "B");
-    const { result } = renderHook(() => useDerseKatil());
+  it.each(["zoom", "agora"] as const)(
+    "%s → /canli-ders/:id tam sayfa; açık Jitsi odası kapanır",
+    (saglayici) => {
+      useMeetingStore.getState().joinMeeting(7, "eski-oda", "A", "B");
+      const { result } = renderHook(() => useDerseKatil());
 
-    result.current(ders({ canli_ders_saglayici: "zoom" }));
+      result.current(ders({ canli_ders_saglayici: saglayici }));
 
-    expect(tamSayfaGit).toHaveBeenCalledWith("/canli-ders/42");
-    expect(useMeetingStore.getState().roomName).toBeNull();
-  });
+      expect(tamSayfaGit).toHaveBeenCalledWith("/canli-ders/42");
+      expect(useMeetingStore.getState().roomName).toBeNull();
+    },
+  );
 
   it.each(["jitsi", "livekit", null, undefined] as const)(
     "%s → bugünkü Jitsi akışı, sayfa değişmez",

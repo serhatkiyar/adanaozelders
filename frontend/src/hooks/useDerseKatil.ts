@@ -10,7 +10,7 @@ import type { BookingOut } from "@/types";
  * "Derse katıl" — dört çağrı yerinin (ders ayrıntısı, iki pano, Derslerim)
  * TEK kapısı. Altyapıyı sunucu söyler (`canli_ders_saglayici`):
  *
- *  - `zoom`  → Zoom sayfası, TAM SAYFA yüklemesiyle (gerekçe:
+ *  - `zoom` / `agora` → canlı ders sayfası, TAM SAYFA yüklemesiyle (gerekçe:
  *    `lib/tamSayfaGezinme.ts`). Açık kalmış bir Jitsi odası (kalıcı
  *    `meetingStore`) önce kapatılır; aksi halde dönüşte yeniden açılırdı.
  *  - diğerleri (jitsi/livekit/null) → bugünkü Jitsi akışı, değişmeden.
@@ -21,7 +21,7 @@ export function useDerseKatil() {
 
   return useCallback(
     (bk: BookingOut) => {
-      if (bk.canli_ders_saglayici === "zoom") {
+      if (bk.canli_ders_saglayici === "zoom" || bk.canli_ders_saglayici === "agora") {
         leaveMeeting();
         tamSayfaGit(ROUTES.canliDers(bk.id));
         return;

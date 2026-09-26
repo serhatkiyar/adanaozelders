@@ -1,18 +1,19 @@
 /**
- * Canlı ders odası — ham Zoom Video SDK, La Suite Meet görünümüyle.
+ * Canlı ders odası — sağlayıcıdan bağımsız, La Suite Meet görünümüyle.
  *
  * Görsel katman Meet'ten uyarlandı (La Suite Meet, MIT — DINUM/Etalab; bkz.
- * frontend/THIRD_PARTY_NOTICES.md); medya katmanı `zoom/istemci.ts` üzerinden
- * doğrudan `@zoom/videosdk`. LiveKit/Panda/valtio/react-aria taşınmadı.
+ * frontend/THIRD_PARTY_NOTICES.md); medya sürücü cephesinden geçer
+ * (`video/tipler.ts` `VideoSurucusu`, etkin sürücü `video/etkin.ts`). SDK
+ * yalnız sürücüde (`video/zoom/*`). LiveKit/Panda/valtio/react-aria taşınmadı.
  *
- * `pages/CanliDers.tsx` bu dosyayı `lazy()` ile yükler: SDK ve i18next
- * YALNIZ bu parçaya girer. Sayfaya giriş/çıkış tam sayfa yüklemesiyledir
- * (`lib/tamSayfaGezinme.ts`).
+ * `pages/CanliDers.tsx` bu dosyayı sürücüyü kurduktan SONRA `lazy()` ile
+ * yükler: SDK ve i18next YALNIZ bu parçaya girer. Sayfaya giriş/çıkış tam
+ * sayfa yüklemesiyledir (`lib/tamSayfaGezinme.ts`).
  *
- * ## Dış sözleşme değişmedi
+ * ## Dış sözleşme
  *
- * Props ve `ZoomOdasiTutamak.ayril()` toolkit sürümüyle aynı; yalnız isteğe
- * bağlı props eklendi (`onAyrilIstegi`, `biletTazele`, `dersBilgisi`,
+ * `CanliOdaTutamak.ayril()` toolkit sürümüyle aynı; bilet nötrdür
+ * (`NotrBilet`). İsteğe bağlı props (`onAyrilIstegi`, `biletTazele`, `dersBilgisi`,
  * `sohbet`, `sahneUstu`). Sayfanın üst şeridi yok (Meet): Ayrıl ve Sohbet
  * yalnız kontrol çubuğunda.
  *
@@ -39,11 +40,24 @@
  *
  * ## Akış
  *
- * önizleme → "Derse katıl" → bilet tazeliği → önizleme izleri durur → `join`
+ * önizleme → "Derse katıl" → (karşı taraf sayfada değilse bekleme) → bilet tazeliği → önizleme izleri durur → `join`
  * → ses (tercihe göre sessiz) → kamera (tercih açıksa) → oda.
  *
  * Mikrofon/kamera açık tercihi ve seçilen cihazlar tarayıcıda saklanır
- * (`zoom/tercihler.ts`); önizlemede seçilen cihazla derse girilir.
+ * (`oda/durum/tercihler.ts`); önizlemede seçilen cihazla derse girilir.
+ *
+ * ## Karşı tarafı bekleme (kullanıcı kararı, 25 Eyl 2026)
+ *
+ * İlk gelen "Derse katıl"a basınca sağlayıcıya BAĞLANMAZ (kredi harcanmaz):
+ * önizlemede "{ad} bekleniyor…" der; karşı taraf ders sayfasına gelince
+ * (Centrifugo `ders:{id}` varlığı) kendiliğinden bağlanır. Karşı taraf zaten
+ * sayfadaysa doğrudan bağlanır. Kanal/varlık yoksa beklenmez (geri dönüş).
+ * Karar `oda/durum/bekleme.ts`; bu yüzden ders kanalı önizlemede de açıktır.
+ *
+ * ## Tepkiler ve el kaldırma
+ *
+ * Taşıyıcı tahtayla aynı Centrifugo `ders:{id}` kanalı (`oda/durum/tepkiler.ts`);
+ * kanal hazır değilse düğmeler gizlenir.
  */
 import {
   forwardRef,
@@ -58,7 +72,6 @@ import { I18nextProvider } from "react-i18next";
 
 import { biletTazeMi, type KarsiTarafDurumu } from "@/lib/canliDers";
 import { toast } from "@/store/toastStore";
-import type { ZoomDersTokenOut } from "@/types";
 
 import { dersI18n } from "./i18n";
 import { Modal } from "@/components/ui/Modal";
@@ -78,28 +91,27 @@ import { UcanTepkiler } from "./oda/Tepkiler";
 import { YanPanel, type PanelTuru } from "./oda/YanPanel";
 import { SinifSahnesi } from "./oda/SinifSahnesi";
 import { TahtaAlani } from "./oda/TahtaAlani";
-import { dersKanaliAc, type DersKanali } from "./tahta/dersKanali";
+import { beklemeSuresi, katilimKarari, type KanalVarligi } from "./oda/durum/bekleme";
+import { bostaKalmayiIzle } from "./oda/durum/bostaKalma";
 import {
   beklenmedikKapanis,
   kameraHataAnahtari,
   digerAdlari,
   karsiTarafDurumu,
   katilimciFarki,
+  katilimcilariEsitle,
   type Katilimci,
-} from "./zoom/indirgeyiciler";
-import {
-  ayril as istemcidenAyril,
-  hazirla,
-  izinleriIzle,
-  kamerayiDegistir,
-  katil,
-  olaylariBagla,
-  oturumdaMi,
-  sesiBaslat,
-} from "./zoom/istemci";
-import { depoyuSifirla, useAsama, useOdaDeposu } from "./zoom/odaDeposu";
-import { onizlemeDurdur } from "./zoom/onizleme";
-import { tercihleriOku, tercihleriYaz } from "./zoom/tercihler";
+} from "./oda/durum/indirgeyiciler";
+import { izinleriIzle } from "./oda/durum/izinler";
+import { ayril as oturumdanAyril, kamerayiDegistir, sesiBaslat } from "./oda/durum/medya";
+import { olaylariBagla } from "./oda/durum/olayBagla";
+import { depoyaUygula, depoyuSifirla, useAsama, useOdaDeposu } from "./oda/durum/odaDeposu";
+import { tercihleriOku, tercihleriYaz } from "./oda/durum/tercihler";
+import { arkaPlanDesteginiOnbellegeAl } from "./oda/durum/useMedyaKontrolleri";
+import { elleriEsitle, tepkileriBagla } from "./oda/durum/tepkiler";
+import { dersKanaliAc, type DersKanali } from "./tahta/dersKanali";
+import { surucu } from "./video/etkin";
+import type { NotrBilet } from "./video/tipler";
 
 export type { DersBilgisi, DersSohbetBilgisi };
 
@@ -112,7 +124,7 @@ const KAPALI_KONUSMA_ARALIGI_MS = 30_000;
  */
 const AYRILDI_BEKLEME_MS = 5_000;
 
-export interface ZoomOdasiTutamak {
+export interface CanliOdaTutamak {
   /** Yalnız KENDİNİ oturumdan çıkarır (host için de). En çok ~3 sn bekler. */
   ayril: () => Promise<void>;
 }
@@ -146,13 +158,14 @@ function kapatmaOnayiGizliMi(): boolean {
   }
 }
 
-export interface ZoomOdasiProps {
-  bilet: ZoomDersTokenOut;
+export interface CanliOdaProps {
+  /** Sunucunun bileti, nötr biçimde (sağlayıcı adı dahil). */
+  bilet: NotrBilet;
   /** Ders kimliği — tahta kanalı ve ders kaynağı yüklemesi için. */
   dersId?: number;
   /** Telefon düzeni: etiketli alt çubuk, kamerayı çevir. */
   telefon: boolean;
-  /** Tek kişi kalınca oturumun kapanma süresi (dk; yalnız host'unki geçer). */
+  /** Karşı taraf bu kadar dk yoksa oturumdan çıkılır (Zoom'a da verilir). */
   bostaKalmaDk: number;
   onKarsiTaraf: (durum: KarsiTarafDurumu) => void;
   /** Oturum BİZİM ayrılmamız dışında kapandı (bağlantı koptu, atıldı…). */
@@ -160,7 +173,7 @@ export interface ZoomOdasiProps {
   /** Kontrol çubuğundaki Ayrıl → sayfanın onaylı çıkış penceresi. */
   onAyrilIstegi?: () => void;
   /** Bilet bayatsa (5 dk'dan az kaldıysa) katılmadan önce yenisini getirir. */
-  biletTazele?: () => Promise<ZoomDersTokenOut | undefined>;
+  biletTazele?: () => Promise<NotrBilet | undefined>;
   /** Önizlemenin sağ sütunu: ders adı ve saati. */
   dersBilgisi?: DersBilgisi;
   /** Ders içi sohbetin karşı tarafı; yoksa sohbet düğmesi görünmez. */
@@ -172,7 +185,7 @@ export interface ZoomOdasiProps {
   sahneUstu?: ReactNode;
 }
 
-const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdasi(
+const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
   props,
   ref,
 ) {
@@ -181,7 +194,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   guncel.current = props;
   const { telefon, onAyrilIstegi, dersBilgisi, bilet, sohbet, sahneUstu, dersId } = props;
   const darPencere = useDarPencere();
-  const ogretmen = bilet.rol === "host";
+  const ogretmen = bilet.rol === "ogretmen";
 
   const asama = useAsama();
   const [mikTercihi, setMikTercihiDurumu] = useState(() => tercihleriOku().mikAcik);
@@ -230,16 +243,53 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
   const [kapatmaOnayi, setKapatmaOnayi] = useState(false);
   const [birDahaGosterme, setBirDahaGosterme] = useState(false);
   const tahtaDurumu = useTahtaDurumu(dersId ?? 0);
+  // Kanal önizlemeden itibaren açık: karşı tarafın varlığı (bekleme) buradan.
+  const [varlik, setVarlik] = useState<KanalVarligi>(() => ({
+    durum: dersId ? "aciliyor" : "yok",
+    karsiVar: false,
+  }));
   useEffect(() => {
-    if (!odada || !dersId) return;
+    if (!dersId) {
+      setVarlik({ durum: "yok", karsiVar: false });
+      return;
+    }
     const k = dersKanaliAc(dersId, { onTahta: setTahtaAcik, onHazir: setTahtaHazir });
+    setVarlik(k.varlik());
+    const varlikSokumu = k.varlikDinle(setVarlik);
     setKanal(k);
     return () => {
+      varlikSokumu();
       k.kapat();
       setKanal(null);
       setTahtaHazir(false);
+      setVarlik({ durum: "aciliyor", karsiVar: false });
     };
-  }, [odada, dersId]);
+  }, [dersId]);
+  // Aynı kanal tepki ve el kaldırmanın da taşıyıcısı — yalnız odada: hazır
+  // olunca düğmeler görünür.
+  const benimRolum = bilet.rol;
+  const tepkiKanali = odada && tahtaHazir;
+  useEffect(() => {
+    useOdaDeposu.setState({ tepkiKanali });
+  }, [tepkiKanali]);
+  useEffect(() => {
+    if (!odada || !kanal) return;
+    const tepkiSokumu = tepkileriBagla(
+      { gonder: kanal.odaYayinla, dinle: kanal.odaDinle },
+      benimRolum,
+      {
+        elKaldirildi: (ad) => toast.info(dersI18n.t("notifications.handRaised", { name: ad })),
+      },
+    );
+    // (Yeniden) abonelik: kanalda geçmiş yok, kalkık eller yeniden eşitlenir.
+    // Kanal önizlemede abone olduğu için odaya girişte de bir kez.
+    const aboneSokumu = kanal.aboneOlununca(elleriEsitle);
+    elleriEsitle();
+    return () => {
+      aboneSokumu();
+      tepkiSokumu();
+    };
+  }, [odada, kanal, benimRolum]);
   const tahtaMutasyonu = tahtaDurumu.mutate;
   const tahtayiDegistir = useCallback(
     (acik: boolean) => {
@@ -268,37 +318,52 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
 
   useImperativeHandle(ref, () => ({ ayril: () => odadanAyril() }), []);
 
+  // "Bağlantın kesildi" penceresi bir kez: beklenmedik kapanış ve boşta kalma ortak.
+  const kapandiBildirildi = useRef(false);
+  const kapandiBildir = useCallback(() => {
+    if (kapandiBildirildi.current) return;
+    kapandiBildirildi.current = true;
+    guncel.current.onKapandi();
+  }, []);
+
   // Kurulum: depo sıfır, init (WASM ön yükleme) önizleme sırasında başlar,
   // olay köprüsü bağlanır. StrictMode'un kur-sök-kur döngüsü: söküm yalnız
   // dinleyicileri çözer; oturumdaysa (gerçek söküm) ayrılır.
   useEffect(() => {
     depoyuSifirla();
-    void hazirla().catch((e) => console.warn("Zoom init", e));
+    const s = surucu();
+    void s.hazirla().catch((e) => console.warn("Görüntülü ders hazırlığı", e));
     let sonUyari = 0;
     const coz = olaylariBagla({
-      // `speaking-while-muted` konuştukça yinelenir; seyrek uyar.
+      // Kapalı mikrofonla konuşma uyarısı konuştukça yinelenir; seyrek uyar.
       kapaliykenKonusma: () => {
         const simdi = Date.now();
         if (simdi - sonUyari < KAPALI_KONUSMA_ARALIGI_MS) return;
         sonUyari = simdi;
         toast.info(dersI18n.t("media.speakingWhileMuted"));
       },
-      elKaldirildi: (ad) => toast.info(dersI18n.t("notifications.handRaised", { name: ad })),
+      biletTazele: () => guncel.current.biletTazele?.() ?? Promise.resolve(undefined),
     });
     const izinIzleme = izinleriIzle();
+    // Karşı taraf uzun süre yoksa kendini çıkarır (Zoom'un tek kişi kalınca
+    // kapatmasıyla aynı sonuç); sayfa kapanırken yalnız kendimiz ayrılırız.
+    const bostaKalma = bostaKalmayiIzle(guncel.current.bostaKalmaDk, () => {
+      void oturumdanAyril();
+      kapandiBildir();
+    });
     return () => {
       coz();
       izinIzleme();
-      if (oturumdaMi()) void istemcidenAyril();
-      else void onizlemeDurdur();
+      bostaKalma();
+      if (s.oturumdaMi()) void oturumdanAyril();
+      else void s.onizleme.durdur();
     };
-  }, []);
+  }, [kapandiBildir]);
 
   // Karşı taraf, katıldı/ayrıldı bildirimleri ve beklenmedik kapanış —
   // yalnız katıldıktan sonra.
   useEffect(() => {
     let onceki: KarsiTarafDurumu | null = null;
-    let kapandiBildirildi = false;
     // İlk görülen liste taban: odadakiler için "katıldı" denmez.
     // Karşı tarafların adları, alındığı andaki `benId` ile.
     let taban: Set<string> | null = null;
@@ -345,7 +410,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
       }
       // Karşı taraf notu da bildirimle aynı kurala uyar: kendi bağlantımız
       // kopukken durum yayınlanmaz; "odada" → "ayrildi" geçişi kısa kopmaya
-      // (yeni `userId` ile dönüş) karşı ertelenir, dönerse iptal edilir.
+      // (yeni kimlikle dönüş) karşı ertelenir, dönerse iptal edilir.
       if (d.baglanti === "bagli" && !d.ayriliyor) {
         const durum = karsiTarafDurumu(d);
         if (durum === "ayrildi" && onceki === "odada") {
@@ -364,24 +429,23 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
           yayinla(durum);
         }
       }
-      if (!kapandiBildirildi && beklenmedikKapanis(d)) {
-        kapandiBildirildi = true;
-        guncel.current.onKapandi();
-      }
+      if (beklenmedikKapanis(d)) kapandiBildir();
     });
     return () => {
       coz();
       for (const z of bekleyenAyrilma.values()) window.clearTimeout(z);
       window.clearTimeout(ayrildiZamanlayici);
     };
-  }, []);
+  }, [kapandiBildir]);
 
   const derseKatil = async () => {
+    // Otomatik katılma (karşı taraf geldi) ile tıklama çakışırsa tek giriş.
+    if (useOdaDeposu.getState().asama !== "onizleme") return;
     setGirisHatasi(null);
     useOdaDeposu.setState({ asama: "katiliyor", hata: null });
     let bilet = guncel.current.bilet;
     try {
-      if (!biletTazeMi(bilet.expires_at) && guncel.current.biletTazele) {
+      if (!biletTazeMi(bilet.bitis) && guncel.current.biletTazele) {
         const yeni = await guncel.current.biletTazele();
         if (!yeni) throw new Error("bilet");
         bilet = yeni;
@@ -394,10 +458,21 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
     try {
       // Önizleme izi kamerayı bırakmadan startVideo çağrılırsa mobilde
       // VIDEO_CAMERA_IS_TAKEN.
-      await onizlemeDurdur();
-      await katil(bilet, guncel.current.bostaKalmaDk);
+      await surucu().onizleme.durdur();
+      const { ilk } = await surucu().katil(bilet, {
+        biletTazele: async () => {
+          const yeni = await guncel.current.biletTazele?.();
+          if (!yeni) throw new Error("bilet");
+          return yeni;
+        },
+        bostaKalmaDk: guncel.current.bostaKalmaDk,
+      });
+      depoyaUygula((d) => katilimcilariEsitle(d, ilk));
+      // Odadaki arka plan desteği önizlemedekinden farklı okunur: Ayarlar
+      // açılmadan önbellekte olsun (seçici "desteklenmiyor"la başlamasın).
+      void arkaPlanDesteginiOnbellegeAl();
     } catch (e) {
-      console.warn("Zoom join", e);
+      console.warn("Derse katılma", e);
       setGirisHatasi("join.errors.join");
       useOdaDeposu.setState({ asama: "onizleme" });
       return;
@@ -410,7 +485,7 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
       }
     } catch (e) {
       // iOS/Safari: `await join()` sonrası kullanıcı etkinleşmesi kaybolur.
-      console.warn("Zoom startAudio", e);
+      console.warn("Ses başlatma", e);
       useOdaDeposu.setState({ sesEngellendi: true });
     }
     // Kamera izni reddedilmişse yalnız sesle girilir: denemek yalnız bir
@@ -419,13 +494,51 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
       try {
         await kamerayiDegistir(true);
       } catch (e) {
-        console.warn("Zoom startVideo", e);
+        console.warn("Kamera başlatma", e);
         if (kameraHataAnahtari(e) !== "join.cameraNotGranted") {
           useOdaDeposu.setState({ hata: "media.deviceError" });
         }
       }
     }
   };
+
+  // ── Karşı tarafı bekleme ──
+  const [katilmaIstegi, setKatilmaIstegi] = useState(false);
+  const [beklemeBasladi, setBeklemeBasladi] = useState(false);
+  const [sureDoldu, setSureDoldu] = useState(false);
+  const katilimiIste = () => {
+    if (useOdaDeposu.getState().asama !== "onizleme") return;
+    // Beklemek gerekmiyorsa tıklamanın içinde katıl (kullanıcı etkinleşmesi).
+    if (katilimKarari(varlik, { beklemeBasladi: false, sureDoldu: false }) === "katil") {
+      void derseKatil();
+      return;
+    }
+    setGirisHatasi(null);
+    setBeklemeBasladi(false);
+    setSureDoldu(false);
+    setKatilmaIstegi(true);
+  };
+  const karar = katilmaIstegi ? katilimKarari(varlik, { beklemeBasladi, sureDoldu }) : null;
+  // Kanal hazır görülünce bekleme başlamıştır; kopukluk süresi baştan sayılır.
+  const kanalHazir = katilmaIstegi && varlik.durum === "hazir";
+  useEffect(() => {
+    if (!kanalHazir) return;
+    setBeklemeBasladi(true);
+    setSureDoldu(false);
+  }, [kanalHazir]);
+  const katil = useRef(derseKatil);
+  katil.current = derseKatil;
+  const sure = karar ? beklemeSuresi(karar, varlik.durum) : null;
+  useEffect(() => {
+    if (karar === "katil") {
+      setKatilmaIstegi(false);
+      void katil.current();
+      return;
+    }
+    if (sure === null) return;
+    const z = window.setTimeout(() => setSureDoldu(true), sure);
+    return () => window.clearTimeout(z);
+  }, [karar, sure]);
 
   const izinPenceresi = <IzinPenceresi onYenidenDene={() => setDeneme((n) => n + 1)} />;
 
@@ -439,13 +552,18 @@ const ZoomOdasi = forwardRef<ZoomOdasiTutamak, ZoomOdasiProps>(function ZoomOdas
           kameraAcik={kameraTercihi}
           onMik={setMikTercihi}
           onKamera={setKameraTercihi}
-          onKatil={() => void derseKatil()}
+          onKatil={katilimiIste}
           onAyril={onAyrilIstegi}
           katiliyor={asama === "katiliyor"}
           hata={girisHatasi}
-          ad={bilet.kullanici_adi}
+          ad={bilet.ad}
           dersBilgisi={dersBilgisi}
           deneme={deneme}
+          bekleme={
+            karar === "bekle" ? "karsiTaraf" : karar === "hazirlaniyor" ? "hazirlaniyor" : null
+          }
+          karsiAd={sohbet?.karsiTarafAd}
+          onBeklemeIptal={() => setKatilmaIstegi(false)}
         />
         {izinPenceresi}
       </I18nextProvider>
@@ -583,12 +701,13 @@ function SahneUstu({ children }: { children: ReactNode }) {
 
 /**
  * Önizleme kapanışı BEKLENMEZ: kamera izni sorusu açıkken önizleme sırası
- * (`onizleme.ts` `sirala`) soru yanıtlanana dek çözülmez; beklersek "Ayrıl"
- * takılır. İz, sıra açılınca yine durur. Oturumdaysak süre sınırı `ayril`da.
+ * (Zoom `onizleme.ts` `siraKur`) soru yanıtlanana dek çözülmez; beklersek
+ * "Ayrıl" takılır. İz, sıra açılınca yine durur. Oturumdaysak süre sınırı
+ * sürücünün `ayril`ında.
  */
 async function odadanAyril(): Promise<void> {
-  void onizlemeDurdur();
-  await istemcidenAyril();
+  void surucu().onizleme.durdur();
+  await oturumdanAyril();
 }
 
-export default ZoomOdasi;
+export default CanliOda;

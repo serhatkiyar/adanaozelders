@@ -3,12 +3,15 @@ import { useParams } from "react-router-dom";
 
 import { Icon } from "@/components/AppIcon";
 import type {
+  CanliOdaTutamak,
   DersBilgisi,
   DersSohbetBilgisi,
-  ZoomOdasiTutamak,
-} from "@/components/canli/ZoomOdasi";
+} from "@/components/canli/CanliOda";
+import { surucuyuKur } from "@/components/canli/video/etkin";
+import type { NotrBilet, SaglayiciAdi } from "@/components/canli/video/tipler";
+import { yukle } from "@/components/canli/video/yukle";
 import { Modal } from "@/components/ui/Modal";
-import { useBooking, useZoomToken } from "@/hooks/useBookings";
+import { useBooking, useCanliDersBileti } from "@/hooks/useBookings";
 import {
   biletHataMetni,
   bostaKalmaSuresiDk,
@@ -24,16 +27,31 @@ import {
 import { ADSIZ_UYE } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 import { tamSayfaGit } from "@/lib/tamSayfaGezinme";
-import type { BookingOut, ZoomDersTokenOut } from "@/types";
+import type { BookingOut } from "@/types";
 
-// Zoom Video SDK ve odanın i18next örneği YALNIZ bu parçada — ana paket büyümez.
-const ZoomOdasi = lazy(() => import("@/components/canli/ZoomOdasi"));
+/**
+ * Sağlayıcının sürücüsü ve oda tembel yüklenir: SDK ve odanın i18next örneği
+ * YALNIZ bu parçada — ana paket büyümez. Sürücü odadan ÖNCE kurulur, böylece
+ * oda `surucu()`yü hiçbir zaman boş okumaz. Sağlayıcı başına bir kez kurulur.
+ */
+function odaYukleyici(saglayici: SaglayiciAdi) {
+  return lazy(async () => {
+    surucuyuKur(await yukle(saglayici));
+    const [oda, { arkaPlanDesteginiOnbellegeAl }] = await Promise.all([
+      import("@/components/canli/CanliOda"),
+      import("@/components/canli/oda/durum/useMedyaKontrolleri"),
+    ]);
+    await arkaPlanDesteginiOnbellegeAl();
+    return oda;
+  });
+}
 
 const DUGME =
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
- * Canlı ders (Zoom Video SDK) — site kabuğunun DIŞINDA tam ekran sayfa.
+ * Canlı ders — site kabuğunun DIŞINDA tam ekran sayfa. Görüntü sağlayıcısı
+ * sunucunun biletinden (`NotrBilet.saglayici`); bugün Zoom Video SDK.
  *
  * Giriş ve çıkış TAM SAYFA yüklemesiyle (`lib/tamSayfaGezinme.ts`): canlı
  * ders yolunun ayrı içerik politikası (CSP kolu) ve SDK'nın küresel durumu
@@ -41,11 +59,11 @@ const DUGME =
  *
  * Yerleşim: koyu oda yüzeyi (La Suite Meet görünümü; `ders-*` token'ları,
  * `dark:` yok) — üst şerit YOK (Meet): sahne + Meet kontrol çubuğu
- * (`ZoomOdasi` içinde). Ayrıl ve Sohbet yalnız kontrol çubuğunda; ayrıl
+ * (`CanliOda` içinde). Ayrıl ve Sohbet yalnız kontrol çubuğunda; ayrıl
  * onay penceresi burada. Tarayıcı uyarısı, karşı taraf notu ve ders sayacı
  * sahnenin üst ortasında hap (`sahneUstu`). Katılımcılar ve ders içi sohbet
- * `ZoomOdasi`'nın yan panelindedir (Preply yerleşimi).
- * Beyaz tahta `ZoomOdasi` içinde (Preply düzeni, `SinifSahnesi`); video
+ * `CanliOda`'nın yan panelindedir (Preply yerleşimi).
+ * Beyaz tahta `CanliOda` içinde (Preply düzeni, `SinifSahnesi`); video
  * kapları AYNI DOM düğümünde kalır, yalnız yerleşimi değişir.
  */
 export default function CanliDers() {
@@ -54,13 +72,11 @@ export default function CanliDers() {
   const gecerliId = Number.isInteger(dersId) && dersId > 0;
 
   const ders = useBooking(dersId);
-  const bilet = useZoomToken(dersId);
+  const bilet = useCanliDersBileti(dersId);
 
   // Oda BİR KEZ kurulur ve bir daha sökülmez: sonraki bir sorgu hatası ya da
   // yeniden çekim (ör. WS'nin tetiklediği ders tazelemesi) görüşmeyi koparmaz.
-  const [oda, setOda] = useState<{ bilet: ZoomDersTokenOut; bostaKalmaDk: number } | null>(
-    null,
-  );
+  const [oda, setOda] = useState<{ bilet: NotrBilet; bostaKalmaDk: number } | null>(null);
   const dersHazir = ders.data !== undefined || ders.isError;
   useEffect(() => {
     if (oda || !bilet.data || !dersHazir) return;
@@ -175,11 +191,13 @@ function DersOdasi({
   biletTazele,
 }: {
   dersId: number;
-  oda: { bilet: ZoomDersTokenOut; bostaKalmaDk: number };
+  oda: { bilet: NotrBilet; bostaKalmaDk: number };
   ders: BookingOut | undefined;
-  biletTazele: () => Promise<ZoomDersTokenOut | undefined>;
+  biletTazele: () => Promise<NotrBilet | undefined>;
 }) {
-  const odaRef = useRef<ZoomOdasiTutamak>(null);
+  const odaRef = useRef<CanliOdaTutamak>(null);
+  const saglayici = oda.bilet.saglayici;
+  const CanliOda = useMemo(() => odaYukleyici(saglayici), [saglayici]);
   // Cihaz bir kez okunur: düzen genişliğe değil cihaza bağlı (plan §8).
   const ortam = useMemo(() => tarayiciOrtami(), []);
   const telefon = telefonMu(ortam);
@@ -192,7 +210,7 @@ function DersOdasi({
 
   const rol = oda.bilet.rol;
   const karsiAd =
-    rol === "host" ? ders?.client_name || ADSIZ_UYE : ders?.tutor_name || "Öğretmen";
+    rol === "ogretmen" ? ders?.client_name || ADSIZ_UYE : ders?.tutor_name || "Öğretmen";
   const sayac = ders ? sayacMetni(dersSayaci(ders.end_at, simdi)) : null;
   const not = karsiTaraf && !kapandi ? karsiTarafNotu(karsiTaraf, rol) : null;
   const dersBilgisi = useMemo<DersBilgisi | undefined>(
@@ -206,7 +224,7 @@ function DersOdasi({
   const sohbet = useMemo<DersSohbetBilgisi | undefined>(
     () =>
       ders
-        ? rol === "host"
+        ? rol === "ogretmen"
           ? {
               karsiTarafId: ders.client_id,
               karsiTarafRol: "CLIENT",
@@ -249,7 +267,7 @@ function DersOdasi({
               </div>
             }
           >
-            <ZoomOdasi
+            <CanliOda
               ref={odaRef}
               bilet={oda.bilet}
               dersId={dersId}

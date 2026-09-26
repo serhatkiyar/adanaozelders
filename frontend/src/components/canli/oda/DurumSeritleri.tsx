@@ -12,9 +12,9 @@ import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI } from "../stiller";
-import { MEDYA_HATASI } from "../zoom/indirgeyiciler";
-import { sesiAc } from "../zoom/istemci";
-import { useBaglanti, useOdaDeposu, useOdaHatasi, useSesEngellendi } from "../zoom/odaDeposu";
+import { MEDYA_HATASI } from "./durum/indirgeyiciler";
+import { sesiAc } from "./durum/medya";
+import { useBaglanti, useOdaDeposu, useOdaHatasi, useSesEngellendi } from "./durum/odaDeposu";
 
 export function DurumSeritleri({ mikTercihi }: { mikTercihi: boolean }) {
   const { t } = useTranslation();

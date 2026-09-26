@@ -18,7 +18,7 @@ import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
-import { useMedyaKontrolleri } from "../zoom/useMedyaKontrolleri";
+import { useMedyaKontrolleri } from "./durum/useMedyaKontrolleri";
 import { AltCekmece } from "./AltCekmece";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
 import {

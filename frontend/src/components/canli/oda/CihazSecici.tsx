@@ -13,8 +13,8 @@ import { Icon, type IconName } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI } from "../stiller";
-import type { Cihaz, CihazTuru } from "../zoom/indirgeyiciler";
-import { hoparloruDene } from "../zoom/onizleme";
+import { surucu } from "../video/etkin";
+import type { Cihaz, CihazTuru } from "./durum/indirgeyiciler";
 
 export type SeciciGorunumu = "koyu" | "acik";
 
@@ -128,7 +128,7 @@ export function HoparlorTesti({
   );
 
   const baslat = () => {
-    const dur = hoparloruDene(hoparlorId);
+    const dur = surucu().onizleme.hoparloruDene(hoparlorId);
     if (!dur) return;
     durdur.current = dur;
     setCaliyor(true);

@@ -1,10 +1,10 @@
 /**
  * Ekran paylaşımı düğmesi — Meet `ScreenShareToggle` (La Suite Meet, MIT —
  * DINUM/Etalab): kare 46px, paylaşırken seçili görünüm. YALNIZ masaüstü
- * çubuğunda ve tarayıcı destekliyorsa (`paylasimDestekli`) çizilir; telefonda
+ * çubuğunda ve tarayıcı destekliyorsa (`destekler.ekranPaylasimi`) çizilir; telefonda
  * paylaşım yok.
  *
- * Karşı taraf paylaşırken host olmayanın düğmesi kapalıdır (SDK `HostGrab`).
+ * Karşı taraf paylaşırken devralamayanın düğmesi kapalıdır (Zoom `HostGrab`).
  * Seçiciden vazgeçmek sessizdir; izin/sistem reddi `PaylasimHatasi`
  * penceresini, diğer hatalar kısa bildirimi açar (`paylasimHatasiTuru`).
  */
@@ -16,19 +16,15 @@ import { PlainButton } from "@/components/ui/PlainButton";
 import { toast } from "@/store/toastStore";
 
 import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
-import { paylasimHatasiTuru } from "../zoom/indirgeyiciler";
-import {
-  paylasimDestekli,
-  paylasimDevralabilir,
-  paylasimiBaslat,
-  paylasimiDurdur,
-} from "../zoom/istemci";
-import { useAktifPaylasim, useBenPaylasiyorum } from "../zoom/odaDeposu";
+import { surucu } from "../video/etkin";
+import { paylasimHatasiTuru } from "./durum/indirgeyiciler";
+import { paylasimiBaslat, paylasimiDurdur } from "./durum/medya";
+import { useAktifPaylasim, useBenPaylasiyorum } from "./durum/odaDeposu";
 import { PaylasimHatasi } from "./paylasim/PaylasimHatasi";
 
 export function PaylasimDugmesi() {
   const { t } = useTranslation();
-  const destekli = useMemo(paylasimDestekli, []);
+  const destekli = useMemo(() => surucu().destekler.ekranPaylasimi(), []);
   const paylasiyor = useBenPaylasiyorum();
   const aktifPaylasim = useAktifPaylasim();
   const [mesgul, setMesgul] = useState(false);
@@ -36,8 +32,8 @@ export function PaylasimDugmesi() {
 
   if (!destekli) return null;
 
-  // Karşı taraf paylaşırken yalnız host devralabilir (SDK `HostGrab`).
-  const engelli = !paylasiyor && aktifPaylasim !== null && !paylasimDevralabilir();
+  // Karşı taraf paylaşırken yalnız devralabilen (Zoom'da host) başlatabilir.
+  const engelli = !paylasiyor && aktifPaylasim !== null && !surucu().paylasimDevralabilir();
 
   const degistir = async () => {
     setMesgul(true);
@@ -49,7 +45,7 @@ export function PaylasimDugmesi() {
       }
     } catch (hata) {
       const tur = paylasimHatasiTuru(hata);
-      if (tur !== "iptal") console.warn("Zoom ekran paylaşımı", hata);
+      if (tur !== "iptal") console.warn("Ekran paylaşımı", hata);
       if (tur === "izin") setHataAcik(true);
       else if (tur === "mesgul") toast.error(t("error.screenShare.busy"));
       else if (tur === "diger") toast.error(t("error.screenShare.generic"));

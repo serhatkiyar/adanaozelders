@@ -6,7 +6,7 @@
  * yazma try/catch içinde: gizli pencerede ya da depolama kapalıyken
  * `localStorage` erişimi fırlatabilir.
  */
-import { arkaPlanMi, type ArkaPlan } from "./arkaPlan";
+import { arkaPlanMi, type ArkaPlan } from "../../video/arkaPlan";
 
 export interface DersTercihleri {
   mikAcik: boolean;

@@ -71,23 +71,23 @@ export function tarayiciOrtami(): CihazOrtami {
 export type KarsiTarafDurumu = "bekleniyor" | "odada" | "ayrildi";
 
 /**
- * Kalan tarafa gösterilecek not. `rol` KENDİ rolümüzdür: host öğretmendir,
- * karşı taraf öğrencidir (ve tersi). Odadayken not yok.
+ * Kalan tarafa gösterilecek not. `rol` KENDİ rolümüzdür: öğretmenin karşı
+ * tarafı öğrencidir (ve tersi). Odadayken not yok.
  */
 export function karsiTarafNotu(
   durum: KarsiTarafDurumu,
-  rol: "host" | "katilimci"
+  rol: "ogretmen" | "ogrenci"
 ): string | null {
-  const kim = rol === "host" ? "Öğrencin" : "Öğretmenin";
+  const kim = rol === "ogretmen" ? "Öğrencin" : "Öğretmenin";
   if (durum === "ayrildi") return `${kim} dersten ayrıldı, geri dönmesi bekleniyor.`;
   if (durum === "bekleniyor") return `${kim} henüz derse katılmadı.`;
   return null;
 }
 
 /**
- * Giriş bileti (`/zoom-token`) hatasının kullanıcıya söylenecek hâli.
+ * Giriş bileti (`/canli-ders-bileti`) hatasının kullanıcıya söylenecek hâli.
  * 409'ların nedeni birden fazladır (onaysız ders, oda yok, ders saati dışı,
- * sunucu Zoom kullanmıyor) ve sunucu metni zaten sade Türkçe: o korunur.
+ * sağlayıcı yapılandırılmamış) ve sunucu metni zaten sade Türkçe: o korunur.
  */
 export function biletHataMetni(durum: number | undefined, detay: unknown): string {
   const sunucuMetni = typeof detay === "string" && detay.trim() ? detay : null;

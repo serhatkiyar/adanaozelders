@@ -78,15 +78,15 @@ describe("Firefox şeridi", () => {
 });
 
 describe("karşı taraf notu", () => {
-  it("öğretmen (host) öğrencisini, öğrenci öğretmenini bekler", () => {
-    expect(karsiTarafNotu("ayrildi", "host")).toBe(
+  it("öğretmen öğrencisini, öğrenci öğretmenini bekler", () => {
+    expect(karsiTarafNotu("ayrildi", "ogretmen")).toBe(
       "Öğrencin dersten ayrıldı, geri dönmesi bekleniyor.",
     );
-    expect(karsiTarafNotu("ayrildi", "katilimci")).toBe(
+    expect(karsiTarafNotu("ayrildi", "ogrenci")).toBe(
       "Öğretmenin dersten ayrıldı, geri dönmesi bekleniyor.",
     );
-    expect(karsiTarafNotu("bekleniyor", "katilimci")).toBe("Öğretmenin henüz derse katılmadı.");
-    expect(karsiTarafNotu("odada", "host")).toBeNull();
+    expect(karsiTarafNotu("bekleniyor", "ogrenci")).toBe("Öğretmenin henüz derse katılmadı.");
+    expect(karsiTarafNotu("odada", "ogretmen")).toBeNull();
   });
 });
 

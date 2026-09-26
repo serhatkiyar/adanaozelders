@@ -5,6 +5,7 @@ import type {
   BookingIssueReason,
   BookingOut,
   BookingStatus,
+  CanliDersBiletiOut,
   ZoomDersTokenOut,
 } from "@/types";
 
@@ -50,6 +51,15 @@ export async function fetchBooking(id: number): Promise<BookingOut> {
 /** Canlı ders (Zoom) giriş bileti; kapılar sunucuda (taraf, ödeme, saat). */
 export async function getZoomToken(id: number): Promise<ZoomDersTokenOut> {
   const { data } = await apiClient.get<ZoomDersTokenOut>(`/bookings/${id}/zoom-token`);
+  return data;
+}
+
+/**
+ * Canlı ders giriş bileti (Zoom ya da Agora; sağlayıcıyı sunucu söyler).
+ * Kapılar sunucuda (taraf, ödeme, saat); pencere dışı 409. Yenileme de bu uçtan.
+ */
+export async function getCanliDersBileti(id: number): Promise<CanliDersBiletiOut> {
+  const { data } = await apiClient.get<CanliDersBiletiOut>(`/bookings/${id}/canli-ders-bileti`);
   return data;
 }
 

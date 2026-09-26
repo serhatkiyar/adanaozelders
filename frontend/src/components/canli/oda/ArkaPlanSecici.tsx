@@ -1,7 +1,7 @@
 /**
  * Arka plan seçimi — Meet `EffectsConfiguration` (La Suite Meet, MIT —
  * DINUM/Etalab) sadeleştirilmiş: Yok · Bulanıklaştır · düz renkler. Görsel
- * yok (bkz. `zoom/arkaPlan.ts`). Önizlemede koyu, Ayarlar'da açık görünüm.
+ * yok (bkz. `video/arkaPlan.ts`). Önizlemede koyu, Ayarlar'da açık görünüm.
  *
  * Desteklenmeyen cihazda (telefon tarayıcıları, eski tarayıcı) seçenekler
  * gösterilmez; yalnız kısa not.
@@ -15,7 +15,7 @@ import {
   ARKA_PLANLAR,
   arkaPlanRengi,
   type ArkaPlan,
-} from "../zoom/arkaPlan";
+} from "../video/arkaPlan";
 
 export function ArkaPlanSecici({
   secili,

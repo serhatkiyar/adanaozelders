@@ -1,6 +1,10 @@
 /**
- * Zoom Video SDK istemci servisi — ham `@zoom/videosdk` YALNIZ burada ve
- * `onizleme.ts`te import edilir (CanliDers tembel parçası).
+ * Zoom Video SDK sürücüsü — `VideoSurucusu` (`../tipler.ts`) uygulaması.
+ * Ham `@zoom/videosdk` YALNIZ `video/zoom/*` içinde import edilir
+ * (CanliDers tembel parçası, `../yukle.ts`).
+ *
+ * KURAL: bu dosya depo, tercih ve i18n import ETMEZ; olay yayar ve sonuç
+ * döndürür. Depoya yazan nötr katmandır (`oda/durum/olayBagla.ts`, `medya.ts`).
  *
  * ## Sözleşme (plan §2.2; eski toolkit odasının yedi maddesi korunur)
  *
@@ -16,73 +20,61 @@
  * 5. Ayrılmada en çok 3 sn beklenir; `destroyClient` ayrılma sözü
  *    SONUÇLANINCA zincirlenir (zaman aşımında değil).
  * 6. Bizim ayrılmamız dışındaki kapanış (`connection-change` Closed/Fail)
- *    depoda `beklenmedikKapanis` olarak görünür.
+ *    `baglanti: kapandi` olarak bildirilir; "biz ayrılıyoruz" bayrağını nötr
+ *    katman `ayril()`dan ÖNCE yazar.
  * 7. Kullanıcı olayları sinyaldir; liste her olayda yeniden okunur.
+ *
+ * Tepki ve el kaldırma burada YOK: taşıyıcı Centrifugo (`oda/durum/tepkiler.ts`).
  */
-import ZoomVideo, {
-  MobileVideoFacingMode,
-  VideoQuality,
-  type VideoPlayer,
-} from "@zoom/videosdk";
+import ZoomVideo, { MobileVideoFacingMode } from "@zoom/videosdk";
 
 import type { ZoomDersTokenOut } from "@/types";
 
 import { tumEkranPaylasimiMi } from "@/lib/canliDers";
 
-import { arkaPlanAdresi, type ArkaPlan } from "./arkaPlan";
-
+import type { ArkaPlan } from "../arkaPlan";
+import type {
+  Cihazlar,
+  DersRolu,
+  HamKatilimci,
+  KameraSecenekleri,
+  SesSecenekleri,
+  VideoOlayi,
+  VideoSurucusu,
+} from "../tipler";
+import { arkaPlanAdresi } from "./arkaPlanAdresi";
 import {
-  agKalitesiDegisti,
-  agOlcumunuSil,
-  aktifKonusanlar,
-  aktifPaylasimDegisti,
-  benimPaylasimim,
-  baglantiDegisti,
-  cihazlarDegisti,
-  cihazSecildi,
-  eliDegisti,
-  gecerliCihazId,
-  izinDegisti,
-  katilimcilariEsitle,
-  komutMesajiCoz,
-  komutMesajiYaz,
-  listeleriKur,
-  medyaHatasi,
-  mikIzniReddedildiMi,
-  paylasimiEsitle,
-  sesEngellendi,
+  baglantiDurumu,
+  kimlik,
+  listeyiCevir,
   sesIstatistigiSeviyesi,
-  sesKalitesiDegisti,
-  tepkiEkle,
-  tepkiSil,
-  videoDurumuDegisti,
-  yenidenBaglandi,
-  type CihazTuru,
-  type KomutMesaji,
-  type TepkiEmojisi,
   type ZoomKullanici,
-} from "./indirgeyiciler";
-import { depoyaUygula, useOdaDeposu } from "./odaDeposu";
-import { tercihleriOku, tercihleriYaz } from "./tercihler";
-
-const istemci = ZoomVideo.createClient();
+} from "./cevir";
+import {
+  akis,
+  basarisizMi,
+  cokluVideoyuOku,
+  istemci,
+  kayitliPaylasimOgesi,
+  oturumdaMi,
+} from "./istemci";
+import { MedyaKatmani } from "./MedyaKatmani";
+import { ozellikDestekli, zoomOnizleme } from "./onizleme";
 
 const AYRILMA_BEKLEME_MS = 3000;
 
 let hazirlik: Promise<void> | null = null;
 
-/** SDK "başarısız" sonucu reddetmeden, çözülmüş bir nesneyle de bildirebilir. */
-/**
- * Zoom'un hata nesnesi (`ExecutedFailure`: `type` + `reason`). Tip tanımı
- * başarıda `''` der ama gerçekte `join` başarıda oturum bilgisi NESNESİ döner
- * (`bAICompanionMgr`, `bCanPinMultiVideo`…; canlı denemede görüldü, 24 Eyl
- * 2026) — "nesne = hata" varsayımı başarılı katılımı hata sayıyordu.
- */
-function basarisizMi(sonuc: unknown): boolean {
-  if (typeof sonuc !== "object" || sonuc === null) return false;
-  const s = sonuc as { type?: unknown; reason?: unknown };
-  return typeof s.type === "string" && "reason" in s;
+/* ── Olay yayını ─────────────────────────────────────────────────────── */
+
+const dinleyiciler = new Set<(o: VideoOlayi) => void>();
+
+function yay(o: VideoOlayi): void {
+  for (const f of dinleyiciler) f(o);
 }
+
+/** Biletteki kendi rolüm (katılımcıların `rol` alanı buradan türer). */
+let benimRolum: DersRolu | null = null;
 
 async function initDene(dil: string): Promise<boolean> {
   try {
@@ -103,7 +95,7 @@ async function initDene(dil: string): Promise<boolean> {
 }
 
 /** `init` — bir kez; önizleme ekranı açılır açılmaz çağrılır (WASM ön yükleme). */
-export function hazirla(): Promise<void> {
+function hazirla(): Promise<void> {
   if (!hazirlik) {
     hazirlik = (async () => {
       const tamam = (await initDene("tr-TR")) || (await initDene("en-US"));
@@ -121,15 +113,20 @@ export function hazirla(): Promise<void> {
   return hazirlik;
 }
 
-function akis() {
-  return istemci.getMediaStream();
+function benimKaydim(): ZoomKullanici | undefined {
+  return istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
 }
 
-function kullanicilariOku() {
-  const liste = istemci.getAllUser() as unknown as ZoomKullanici[];
-  const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
-  depoyaUygula((d) => katilimcilariEsitle(d, liste ?? [], ben));
-  agKaliteleriniOku();
+function listeyiOku(): HamKatilimci[] {
+  const liste = (istemci.getAllUser() as unknown as ZoomKullanici[]) ?? [];
+  return listeyiCevir(liste, benimKaydim(), benimRolum);
+}
+
+function kullanicilariOku(): HamKatilimci[] {
+  const liste = listeyiOku();
+  yay({ t: "katilimcilar", liste });
+  agKaliteleriniOku(liste);
+  return liste;
 }
 
 /**
@@ -145,7 +142,7 @@ function paylasimiOku() {
   } catch {
     return;
   }
-  depoyaUygula((d) => paylasimiEsitle(d, aktifId));
+  yay({ t: "paylasim", id: aktifId ? kimlik(aktifId) : null, esitle: true });
 }
 
 /**
@@ -153,24 +150,18 @@ function paylasimiOku() {
  * açılınca ya da yeni `userId` ile dönünce seviye aynıysa olay gelmez. Liste
  * her okunduğunda kamerası açık herkesin güncel değeri SDK'dan okunur.
  */
-function agKaliteleriniOku() {
-  const kameraAcik = useOdaDeposu
-    .getState()
-    .katilimcilar.filter((k) => k.videoAcik)
-    .map((k) => k.userId);
-  for (const userId of kameraAcik) {
+function agKaliteleriniOku(liste: readonly HamKatilimci[]) {
+  for (const k of liste) {
+    if (!k.videoAcik) continue;
     let olcum;
     try {
-      olcum = akis().getNetworkQuality(userId);
+      olcum = akis().getNetworkQuality(Number(k.id));
     } catch {
       continue;
     }
-    for (const type of ["uplink", "downlink"] as const) {
-      const level = olcum?.[type];
-      if (typeof level === "number") {
-        depoyaUygula((d) => agKalitesiDegisti(d, { userId, type, level }));
-      }
-    }
+    const yukari = typeof olcum?.uplink === "number" ? olcum.uplink : undefined;
+    const asagi = typeof olcum?.downlink === "number" ? olcum.downlink : undefined;
+    if (yukari !== undefined || asagi !== undefined) yay({ t: "ag", id: k.id, yukari, asagi });
   }
 }
 
@@ -192,39 +183,29 @@ async function sesIstatistigineAbone(): Promise<void> {
 /** Bu kadar süre yeni istatistik gelmezse (sustu / karşı taraf sustu) değer silinir. */
 const SES_ISTATISTIGI_ESKIME_MS = 5000;
 
-export function oturumdaMi(): boolean {
-  try {
-    return Boolean(istemci.getSessionInfo()?.isInMeeting);
-  } catch {
-    return false;
-  }
-}
-
-export async function katil(bilet: ZoomDersTokenOut, bostaKalmaDk: number): Promise<void> {
+async function katil(
+  bilet: Parameters<VideoSurucusu["katil"]>[0],
+  s: Parameters<VideoSurucusu["katil"]>[1],
+): Promise<{ benId: string; ilk: HamKatilimci[] }> {
   await hazirla();
+  const zb = bilet.ham as ZoomDersTokenOut;
+  benimRolum = bilet.rol;
   const sonuc = await istemci.join(
-    bilet.oturum_adi,
-    bilet.token,
-    bilet.kullanici_adi,
+    zb.oturum_adi,
+    zb.token,
+    zb.kullanici_adi,
     undefined,
-    bostaKalmaDk,
+    s.bostaKalmaDk,
   );
   if (basarisizMi(sonuc)) throw sonuc;
-  let coklu = true;
-  try {
-    coklu = akis().isSupportMultipleVideos();
-  } catch {
-    // okunamazsa varsayılan: aynı kap
-  }
-  depoyaUygula((d) => ({
-    ...d,
-    cokluVideo: coklu,
-    baglanti: "bagli",
-    komutKanali: komutKanaliDestekli(),
-  }));
-  kullanicilariOku();
+  cokluVideoyuOku();
+  sonBaglanti = "bagli";
+  yay({ t: "baglanti", durum: "bagli" });
+  const ilk = kullanicilariOku();
   paylasimiOku();
-  cihazlariOku();
+  yay({ t: "cihazlarDegisti" });
+  const ben = benimKaydim();
+  return { benId: ben ? kimlik(ben.userId) : (ilk.find((k) => k.ben)?.id ?? ""), ilk };
 }
 
 /* ── Cihazlar ────────────────────────────────────────────────────────── */
@@ -237,183 +218,116 @@ function kimlikOku(oku: () => string): string | undefined {
   }
 }
 
-/**
- * Oturumdaki cihaz listeleri ve etkin cihazlar → depo. Katılınca, ses ya da
- * kamera başlayınca (izin yeni verilmiş olabilir) ve `device-change`te.
- */
-export function cihazlariOku(): void {
-  let cihazlar;
+/** Oturumdaki ham cihaz listeleri ve etkin cihazlar; okunamazsa `null`. */
+function cihazlar(): Cihazlar | null {
+  let listeler: Cihazlar["listeler"];
   try {
     const a = akis();
-    cihazlar = listeleriKur({
+    listeler = {
       mikrofon: a.getMicList() ?? [],
       hoparlor: a.getSpeakerList() ?? [],
       kamera: a.getCameraList() ?? [],
-    });
+    };
   } catch {
-    return;
+    return null;
   }
-  const secili = {
-    mikrofon: kimlikOku(() => akis().getActiveMicrophone()),
-    hoparlor: kimlikOku(() => akis().getActiveSpeaker()),
-    kamera: kimlikOku(() => akis().getActiveCamera()),
+  return {
+    listeler,
+    secili: {
+      mikrofon: kimlikOku(() => akis().getActiveMicrophone()),
+      hoparlor: kimlikOku(() => akis().getActiveSpeaker()),
+      kamera: kimlikOku(() => akis().getActiveCamera()),
+    },
   };
-  depoyaUygula((d) => cihazlarDegisti(d, cihazlar, secili));
-}
-
-/**
- * Tercihteki cihaz oturumun listesinde hâlâ varsa onun kimliği, yoksa
- * `undefined` (sistem varsayılanı): bayat kimlik katılma anında medyayı düşürür.
- */
-function tercihEdilen(tur: CihazTuru): string | undefined {
-  const t = tercihleriOku();
-  const id = tur === "mikrofon" ? t.mikrofonId : tur === "hoparlor" ? t.hoparlorId : t.kameraId;
-  return gecerliCihazId(id, useOdaDeposu.getState().cihazlar[tur]);
 }
 
 /** Hoparlör seçimi (`setSinkId`) yoksa (Safari/iOS) seçici gizlenir. */
-export function hoparlorSecilebilir(): boolean {
+function hoparlorSecilebilir(): boolean {
   return typeof HTMLMediaElement !== "undefined" && "setSinkId" in HTMLMediaElement.prototype;
 }
 
-function benimKaydim(): ZoomKullanici | undefined {
-  return istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
-}
-
-/** Ders içinde mikrofon değişimi: ses bağlantısı KOPMADAN `switchMicrophone`. */
-export async function mikrofonSec(id: string): Promise<void> {
+/**
+ * Ders içinde cihaz değişimi. Mikrofon ses bağlantısı KOPMADAN
+ * `switchMicrophone`; kapalı olan cihaz bir sonraki başlatmada kullanılır.
+ */
+async function cihazSec(tur: "mikrofon" | "hoparlor" | "kamera", id: string): Promise<void> {
   const ben = benimKaydim();
-  // Yalnız hoparlörde değiştirilecek mikrofon yok; tercih sonraki `startAudio`da kullanılır.
-  if (ben?.audio && !ben.isSpeakerOnly) {
-    const sonuc = await akis().switchMicrophone(id);
-    if (basarisizMi(sonuc)) throw sonuc;
+  let sonuc: unknown;
+  if (tur === "mikrofon") {
+    // Yalnız hoparlörde değiştirilecek mikrofon yok; seçim sonraki `startAudio`da.
+    if (ben?.audio && !ben.isSpeakerOnly) sonuc = await akis().switchMicrophone(id);
+  } else if (tur === "hoparlor") {
+    if (ben?.audio) sonuc = await akis().switchSpeaker(id);
+  } else {
+    sonKamera = { ...sonKamera, kameraId: id };
+    if (ben?.bVideoOn) sonuc = await akis().switchCamera(id);
   }
-  tercihleriYaz({ mikrofonId: id });
-  depoyaUygula((d) => cihazSecildi(d, "mikrofon", id));
-}
-
-export async function hoparlorSec(id: string): Promise<void> {
-  if (benimKaydim()?.audio) {
-    const sonuc = await akis().switchSpeaker(id);
-    if (basarisizMi(sonuc)) throw sonuc;
-  }
-  tercihleriYaz({ hoparlorId: id });
-  depoyaUygula((d) => cihazSecildi(d, "hoparlor", id));
-}
-
-/** Kamera açıksa hemen değişir; kapalıysa bir sonraki `startVideo`da kullanılır. */
-export async function kameraSec(id: string): Promise<void> {
-  if (benimKaydim()?.bVideoOn) {
-    const sonuc = await akis().switchCamera(id);
-    if (basarisizMi(sonuc)) throw sonuc;
-  }
-  tercihleriYaz({ kameraId: id });
-  depoyaUygula((d) => cihazSecildi(d, "kamera", id));
+  if (basarisizMi(sonuc)) throw sonuc;
 }
 
 /** Kendi görüntümü aynala (yalnız bende görünür). Arka kamera aynalanmaz. */
-export async function aynala(ayna: boolean): Promise<void> {
-  tercihleriYaz({ ayna });
+async function aynala(ayna: boolean): Promise<void> {
+  sonKamera = { ...sonKamera, ayna };
   if (benimKaydim()?.bVideoOn && onKamera) {
     const sonuc = await akis().mirrorVideo(ayna);
     if (basarisizMi(sonuc)) throw sonuc;
   }
 }
 
-/**
- * Tarayıcı izin durumu (`navigator.permissions`) → depo. Desteği düzensiz
- * (Firefox/Safari ad tanımayabilir): hata durumu "bilinmiyor" bırakır.
- */
-export function izinleriIzle(): () => void {
-  const sokumler: Array<() => void> = [];
-  let gecerli = true;
-  const izle = async (ad: "camera" | "microphone") => {
-    try {
-      const durum = await navigator.permissions.query({ name: ad as PermissionName });
-      if (!gecerli) return;
-      const yaz = () => depoyaUygula((d) => izinDegisti(d, { name: ad, state: durum.state }));
-      yaz();
-      durum.addEventListener("change", yaz);
-      sokumler.push(() => durum.removeEventListener("change", yaz));
-    } catch {
-      // desteklenmiyor
-    }
-  };
-  void izle("camera");
-  void izle("microphone");
-  return () => {
-    gecerli = false;
-    for (const sok of sokumler) sok();
-  };
-}
+/* ── Olay köprüsü ────────────────────────────────────────────────────── */
+
+let sonBaglanti: "bagli" | "yenidenBaglaniyor" | "kapandi" | null = null;
 
 /**
- * Olay köprüsü: Zoom olayları → saf indirgeyici → depo. Dönen fonksiyon
- * dinleyicileri söker (StrictMode'un kur-sök-kur döngüsü için).
+ * Zoom olayları → nötr olaylar. İlk dinleyici gelince SDK'ya bağlanır, son
+ * dinleyici gidince söker (StrictMode'un kur-sök-kur döngüsü için).
  */
-export function olaylariBagla(
-  secenekler: {
-    kapaliykenKonusma?: () => void;
-    /** Karşı taraf elini kaldırdı (bildirim için). */
-    elKaldirildi?: (ad: string) => void;
-  } = {},
-): () => void {
+function sdkyaBaglan(): () => void {
   let zamanlayici: number | undefined;
   // Olay anında kullanıcı listesi henüz güncellenmemiş olabilir; bir tur ertele.
   const kullaniciDegisti = () => {
     window.clearTimeout(zamanlayici);
     zamanlayici = window.setTimeout(kullanicilariOku, 0);
   };
+  // Liste yeniden okunana dek iyimser güncelleme; kapanan kameranın eski
+  // ağ ölçümü atılır.
   const videoDegisti = (olay: { action: "Start" | "Stop"; userId: number }) => {
-    depoyaUygula((d) => videoDurumuDegisti(d, olay));
+    const id = kimlik(olay.userId);
+    const videoAcik = olay.action === "Start";
+    if (!videoAcik) yay({ t: "ag", id, yukari: null, asagi: null });
+    try {
+      yay({
+        t: "katilimcilar",
+        liste: listeyiOku().map((k) => (k.id === id ? { ...k, videoAcik } : k)),
+      });
+    } catch {
+      // liste okunamadı: ertelenen okuma düzeltir
+    }
     kullaniciDegisti();
   };
   const baglanti = (olay: { state: string }) => {
-    const onceki = useOdaDeposu.getState().baglanti;
-    depoyaUygula((d) => baglantiDegisti(d, olay));
+    const durum = baglantiDurumu(olay.state);
+    if (!durum) return;
+    const onceki = sonBaglanti;
+    sonBaglanti = durum;
+    yay({ t: "baglanti", durum });
     // Yeniden bağlanınca kimlikler/durumlar değişmiş olabilir: listeyi tazele.
-    if (yenidenBaglandi(onceki, useOdaDeposu.getState().baglanti)) {
+    if (onceki === "yenidenBaglaniyor" && durum === "bagli") {
       kullaniciDegisti();
       window.setTimeout(paylasimiOku, 0);
       void sesIstatistigineAbone();
-      // Kimliğim değişmiş olabilir: karşı taraf kalkık elimi yeniden öğrensin.
-      if (useOdaDeposu.getState().elimKalkik) elDurumunuGonder();
     }
   };
-  // Sonradan katılan kalkık elimi bilmez: yeniden bildirilir.
-  const kullaniciEklendi = () => {
-    kullaniciDegisti();
-    if (useOdaDeposu.getState().elimKalkik) elDurumunuGonder();
+  const agKalitesi = (olay: { userId: number; type: string; level: number }) => {
+    if (!Number.isFinite(olay.level)) return;
+    const id = kimlik(olay.userId);
+    if (olay.type === "uplink") yay({ t: "ag", id, yukari: olay.level });
+    else if (olay.type === "downlink") yay({ t: "ag", id, asagi: olay.level });
   };
-  const komutKanaliDurumu = (olay: unknown) => {
-    const durum =
-      typeof olay === "string" ? olay : (olay as { state?: unknown } | null)?.state;
-    if (durum === "Connected") {
-      depoyaUygula((d) => ({ ...d, komutKanali: komutKanaliDestekli() }));
-    } else if (durum === "Closed" || durum === "Fail") {
-      komutKanaliKapandi();
-    }
+  const sesKalitesi: { encode: number | null; decode: number | null } = {
+    encode: null,
+    decode: null,
   };
-  const komutGeldi = (olay: { senderId?: unknown; senderName?: unknown; text?: unknown }) => {
-    const d = useOdaDeposu.getState();
-    // Tip tanımı `senderId`yi metin der; diğer her yerde kimlik sayıdır.
-    const gonderen = Number(olay?.senderId);
-    if (!Number.isFinite(gonderen) || gonderen === d.benId) return;
-    const mesaj = komutMesajiCoz(olay?.text);
-    if (!mesaj) return;
-    const ad =
-      d.katilimcilar.find((k) => k.userId === gonderen)?.ad ??
-      (typeof olay.senderName === "string" ? olay.senderName : "");
-    if (mesaj.tur === "tepki") {
-      tepkiGoster(mesaj.emoji, ad, false);
-      return;
-    }
-    const onceden = d.kalkikEller.includes(gonderen);
-    depoyaUygula((x) => eliDegisti(x, gonderen, mesaj.kalkik));
-    if (mesaj.kalkik && !onceden) secenekler.elKaldirildi?.(ad);
-  };
-  const agKalitesi = (olay: { userId: number; type: string; level: number }) =>
-    depoyaUygula((d) => agKalitesiDegisti(d, olay));
   const eskime: { encode?: number; decode?: number } = {};
   const sesIstatistigi = (olay: {
     data?: { encoding?: boolean; rtt?: number; jitter?: number; sample_rate?: number };
@@ -421,68 +335,80 @@ export function olaylariBagla(
     const veri = olay?.data;
     if (!veri) return;
     const yon = veri.encoding ? "encode" : "decode";
-    depoyaUygula((d) => sesKalitesiDegisti(d, yon, sesIstatistigiSeviyesi(veri)));
+    sesKalitesi[yon] = sesIstatistigiSeviyesi(veri);
+    yay({ t: "sesKalitesi", ...sesKalitesi });
     window.clearTimeout(eskime[yon]);
-    eskime[yon] = window.setTimeout(
-      () => depoyaUygula((d) => sesKalitesiDegisti(d, yon, null)),
-      SES_ISTATISTIGI_ESKIME_MS,
-    );
+    eskime[yon] = window.setTimeout(() => {
+      sesKalitesi[yon] = null;
+      yay({ t: "sesKalitesi", ...sesKalitesi });
+    }, SES_ISTATISTIGI_ESKIME_MS);
   };
   const medyaBozuldu = (olay: { code?: number; message?: string; type?: string }) => {
     console.warn("Zoom active-media-failed", olay);
-    depoyaUygula(medyaHatasi);
+    yay({ t: "medyaHatasi" });
   };
   const konusan = (olay: Array<{ userId: number }>) =>
-    depoyaUygula((d) => aktifKonusanlar(d, olay ?? []));
-  const sesOtomatikBaslamadi = () => depoyaUygula((d) => sesEngellendi(d, true));
+    yay({ t: "konusanlar", idler: (olay ?? []).map((k) => kimlik(k.userId)) });
+  const sesOtomatikBaslamadi = () => yay({ t: "sesEngellendi", engellendi: true });
   const sesSeviyesi = (olay: { level: number }) =>
-    useOdaDeposu.setState({ sesSeviyesi: olay?.level ?? 0 });
-  const izin = (olay: { name: "camera" | "microphone"; state: string }) =>
-    depoyaUygula((d) => izinDegisti(d, olay));
-  const kapaliykenKonusma = () => secenekler.kapaliykenKonusma?.();
-  const paylasimDegisti = (olay: { state: string; userId: number }) =>
-    depoyaUygula((d) => aktifPaylasimDegisti(d, olay));
+    yay({ t: "sesSeviyem", seviye: olay?.level ?? 0 });
+  const kapaliykenKonusma = () => yay({ t: "kapaliykenKonusma" });
+  const cihazDegisti = () => yay({ t: "cihazlarDegisti" });
+  const paylasimDegisti = (olay: { state: string; userId: number }) => {
+    if (olay.state === "Active") yay({ t: "paylasim", id: kimlik(olay.userId) });
+    else if (olay.state === "Inactive") yay({ t: "paylasim", id: null });
+  };
   // Tarayıcının "Paylaşımı durdur" düğmesi ya da başka birinin paylaşımı.
-  const paylasimDurduruldu = () => depoyaUygula((d) => benimPaylasimim(d, false));
+  const paylasimDurduruldu = () => yay({ t: "paylasimBitti" });
   const paylasimBoyutu = (olay: { type?: string }) => {
     if (olay?.type === "sended") tumEkranOku();
   };
 
-  const dinleyiciler: Array<[string, (yuk: never) => void]> = [
-    ["user-added", kullaniciEklendi],
+  const sdkDinleyicileri: Array<[string, (yuk: never) => void]> = [
+    ["user-added", kullaniciDegisti],
     ["user-removed", kullaniciDegisti],
     ["user-updated", kullaniciDegisti],
     ["peer-video-state-change", videoDegisti],
     ["connection-change", baglanti],
     ["active-speaker", konusan],
     ["auto-play-audio-failed", sesOtomatikBaslamadi],
-    ["device-change", cihazlariOku],
+    ["device-change", cihazDegisti],
     ["current-audio-level-change", sesSeviyesi],
-    ["device-permission-change", izin],
     ["speaking-while-muted", kapaliykenKonusma],
     ["network-quality-change", agKalitesi],
     ["audio-statistic-data-change", sesIstatistigi],
-    ["command-channel-status", komutKanaliDurumu],
-    ["command-channel-message", komutGeldi],
     ["active-media-failed", medyaBozuldu],
     ["active-share-change", paylasimDegisti],
     ["passively-stop-share", paylasimDurduruldu],
     ["share-content-dimension-change", paylasimBoyutu],
   ];
-  for (const [olay, dinleyici] of dinleyiciler) {
+  for (const [olay, dinleyici] of sdkDinleyicileri) {
     istemci.on(olay, dinleyici as (yuk: unknown) => void);
   }
   return () => {
     window.clearTimeout(zamanlayici);
     window.clearTimeout(eskime.encode);
     window.clearTimeout(eskime.decode);
-    window.clearTimeout(bekleyenEl);
-    for (const [olay, dinleyici] of dinleyiciler) {
+    for (const [olay, dinleyici] of sdkDinleyicileri) {
       try {
         istemci.off(olay, dinleyici as (yuk: unknown) => void);
       } catch {
         // istemci zaten yok
       }
+    }
+  };
+}
+
+let sdkSokumu: (() => void) | null = null;
+
+function olaylar(dinle: (o: VideoOlayi) => void): () => void {
+  dinleyiciler.add(dinle);
+  sdkSokumu ??= sdkyaBaglan();
+  return () => {
+    dinleyiciler.delete(dinle);
+    if (dinleyiciler.size === 0 && sdkSokumu) {
+      sdkSokumu();
+      sdkSokumu = null;
     }
   };
 }
@@ -496,71 +422,91 @@ export function olaylariBagla(
  * bağlanır — karşı taraf yine duyulur — ve `"yalnizHoparlor"` döner. Diğer
  * hatalar (ör. kullanıcı etkinleşmesi kaybı) fırlatılır; "Sesi aç" onlar için.
  */
-export async function sesiBaslat(mute: boolean): Promise<"tam" | "yalnizHoparlor"> {
+async function sesiBaslat(
+  o: { mute: boolean } & SesSecenekleri,
+): Promise<"tam" | "yalnizHoparlor"> {
   let hata: unknown;
   try {
     const sonuc = await akis().startAudio({
-      mute,
-      microphoneId: tercihEdilen("mikrofon"),
-      speakerId: tercihEdilen("hoparlor"),
+      mute: o.mute,
+      microphoneId: o.mikId,
+      speakerId: o.hoparlorId,
     });
     if (basarisizMi(sonuc)) hata = sonuc;
   } catch (e) {
     hata = e ?? new Error("startAudio");
   }
   if (hata === undefined) {
-    depoyaUygula((d) => sesEngellendi(d, false));
-    cihazlariOku();
+    yay({ t: "sesEngellendi", engellendi: false });
+    yay({ t: "cihazlarDegisti" });
     void sesIstatistigineAbone();
     return "tam";
   }
-  if (!mikIzniReddedildiMi(hata)) throw hata;
+  if (!mikIzniReddiMi(hata)) throw hata;
   console.warn("Zoom startAudio (mikrofon izni yok)", hata);
-  const sonuc = await akis().startAudio({
-    speakerOnly: true,
-    speakerId: tercihEdilen("hoparlor"),
-  });
+  const sonuc = await akis().startAudio({ speakerOnly: true, speakerId: o.hoparlorId });
   if (basarisizMi(sonuc)) throw sonuc;
-  depoyaUygula((d) => sesEngellendi(d, false));
-  cihazlariOku();
+  yay({ t: "sesEngellendi", engellendi: false });
+  yay({ t: "cihazlarDegisti" });
   void sesIstatistigineAbone();
   return "yalnizHoparlor";
+}
+
+/**
+ * `startAudio` hatası mikrofon izninin reddi mi? Zoom bunu
+ * `INSUFFICIENT_PRIVILEGES` / `AUDIO_CAPTURE_FAILED` ile bildirir; bazı
+ * tarayıcılar getUserMedia'nın `NotAllowedError`ını olduğu gibi geçirir.
+ * (Nötr `mikIzniReddedildiMi` ile aynı kural; sürücü depo katmanını import etmez.)
+ */
+function mikIzniReddiMi(hata: unknown): boolean {
+  let metin: string;
+  if (hata instanceof Error) metin = `${hata.name} ${hata.message}`;
+  else if (typeof hata === "object" && hata !== null) {
+    const { type, reason, name, message } = hata as Record<string, unknown>;
+    metin = [type, reason, name, message].map((v) => String(v ?? "")).join(" ");
+  } else metin = String(hata ?? "");
+  return /AUDIO_CAPTURE_FAILED|INSUFFICIENT_PRIVILEGES|NotAllowed|Permission denied/i.test(metin);
 }
 
 /**
  * "Sesi aç": tarayıcı sesi engellediyse kullanıcı hareketiyle yeniden dener.
  * Ses zaten bağlıysa (yalnız çalma engellendiyse) hareketin kendisi yeter.
  */
-export async function sesiAc(mikAcik: boolean): Promise<void> {
-  const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
-  if (!ben?.audio) {
-    if ((await sesiBaslat(!mikAcik)) === "yalnizHoparlor") {
-      useOdaDeposu.setState({ hata: "media.micNotGranted" });
-    }
+async function sesiAc(
+  o: { mikAcik: boolean } & SesSecenekleri,
+): Promise<"tam" | "yalnizHoparlor"> {
+  let sonuc: "tam" | "yalnizHoparlor" = "tam";
+  if (!benimKaydim()?.audio) {
+    sonuc = await sesiBaslat({ mute: !o.mikAcik, mikId: o.mikId, hoparlorId: o.hoparlorId });
   } else {
-    depoyaUygula((d) => sesEngellendi(d, false));
+    yay({ t: "sesEngellendi", engellendi: false });
   }
   kullanicilariOku();
+  return sonuc;
 }
 
-/** `mikIzniReddedildiMi`nin tanıdığı ad: arayan izin penceresini açar. */
+/** Nötr `mikIzniReddedildiMi`nin tanıdığı ad: arayan izin penceresini açar. */
 function mikIzniYokHatasi(): Error {
   const hata = new Error("mikrofon izni yok");
   hata.name = "NotAllowedError";
   return hata;
 }
 
-export async function mikrofonuDegistir(ac: boolean): Promise<void> {
-  const ben = istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
+async function mikrofon(ac: boolean, o: SesSecenekleri = {}): Promise<void> {
+  const ben = benimKaydim();
   if (!ben?.audio) {
-    if ((await sesiBaslat(!ac)) === "yalnizHoparlor" && ac) throw mikIzniYokHatasi();
+    if ((await sesiBaslat({ mute: !ac, ...o })) === "yalnizHoparlor" && ac) {
+      throw mikIzniYokHatasi();
+    }
   } else if (ben.isSpeakerOnly) {
     // Yalnız hoparlörle bağlı: mikrofon zaten yok, kapatmak işsiz. Açmak için
     // ses mikrofonla yeniden kurulur; izin hâlâ yoksa yine yalnız hoparlör.
     if (ac) {
       const durdur = await akis().stopAudio();
       if (basarisizMi(durdur)) throw durdur;
-      if ((await sesiBaslat(false)) === "yalnizHoparlor") throw mikIzniYokHatasi();
+      if ((await sesiBaslat({ mute: false, ...o })) === "yalnizHoparlor") {
+        throw mikIzniYokHatasi();
+      }
     }
   } else {
     const sonuc = ac ? await akis().unmuteAudio() : await akis().muteAudio();
@@ -569,58 +515,55 @@ export async function mikrofonuDegistir(ac: boolean): Promise<void> {
   kullanicilariOku();
 }
 
-export async function kamerayiDegistir(ac: boolean): Promise<void> {
+/** Son kamera seçenekleri: arka plan değişiminde kamera bunlarla yeniden açılır. */
+let sonKamera: KameraSecenekleri = { ayna: true, arkaPlan: "yok" };
+
+async function kamera(
+  ac: boolean,
+  o?: KameraSecenekleri,
+): Promise<{ arkaPlanUygulandi: boolean }> {
+  let arkaPlanUygulandi = true;
   if (ac) {
-    await videoyuBaslat();
+    if (o) sonKamera = o;
+    arkaPlanUygulandi = await videoyuBaslat(sonKamera);
   } else {
     const sonuc = await akis().stopVideo();
     if (basarisizMi(sonuc)) throw sonuc;
-    depoyaUygula((d) => agOlcumunuSil(d, d.benId));
   }
   kullanicilariOku();
-  if (ac) cihazlariOku();
+  if (ac) yay({ t: "cihazlarDegisti" });
+  return { arkaPlanUygulandi };
 }
 
 /**
- * Kamerayı tercih edilen arka planla açar. Arka plan yüzünden açılamazsa
- * kamera arka plansız açılır (görüntü kapalı kalmasın) ve kullanıcı uyarılır.
+ * Kamerayı seçilen arka planla açar. Arka plan yüzünden açılamazsa kamera
+ * arka plansız açılır (görüntü kapalı kalmasın) ve `false` döner.
  */
-async function videoyuBaslat(): Promise<void> {
-  const secenek = {
-    cameraId: tercihEdilen("kamera"),
-    mirrored: onKamera && tercihleriOku().ayna,
-  };
-  const arkaPlan = arkaPlanSecenegi();
+async function videoyuBaslat(o: KameraSecenekleri): Promise<boolean> {
+  const secenek = { cameraId: o.kameraId, mirrored: onKamera && o.ayna };
+  const arkaPlan = arkaPlanSecenegi(o.arkaPlan);
   if (arkaPlan) {
     try {
       const sonuc = await akis().startVideo({ ...secenek, virtualBackground: arkaPlan });
-      if (!basarisizMi(sonuc)) return;
+      if (!basarisizMi(sonuc)) return true;
       console.warn("Zoom startVideo (arka plan)", sonuc);
     } catch (e) {
       console.warn("Zoom startVideo (arka plan)", e);
     }
-    if (benimKaydim()?.bVideoOn) return;
+    if (benimKaydim()?.bVideoOn) return true;
   }
   const sonuc = await akis().startVideo(secenek);
   if (basarisizMi(sonuc)) throw sonuc;
-  if (arkaPlan) useOdaDeposu.setState({ hata: "media.backgroundFailed" });
+  return !arkaPlan;
 }
 
 /* ── Sanal arka plan (bulanıklaştırma / düz renk) ───────────────────── */
-
-function ozellikDestekli(ad: string): boolean {
-  try {
-    return Boolean(ZoomVideo.checkFeatureRequirements()?.supportFeatures?.includes(ad));
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Bu cihaz sanal arka planı destekliyor mu? Odada `isSupportVirtualBackground`,
  * önizlemede `checkFeatureRequirements` (telefon tarayıcılarında ikisi de hayır).
  */
-export function arkaPlanDestekli(): boolean {
+function arkaPlanDestekli(): boolean {
   if (oturumdaMi()) {
     try {
       return akis().isSupportVirtualBackground();
@@ -631,20 +574,20 @@ export function arkaPlanDestekli(): boolean {
   return ozellikDestekli("Virtual Background");
 }
 
-function arkaPlanSecenegi(): { imageUrl: string } | undefined {
+function arkaPlanSecenegi(ap: ArkaPlan): { imageUrl: string } | undefined {
   if (!arkaPlanDestekli()) return undefined;
-  const adres = arkaPlanAdresi(tercihleriOku().arkaPlan);
+  const adres = arkaPlanAdresi(ap);
   return adres ? { imageUrl: adres } : undefined;
 }
 
 /**
- * Ders içinde arka planı değiştirir (tercih her durumda saklanır). Görüntü
- * arka planla başlatıldıysa `updateVirtualBackgroundImage`; arka plansız
- * başlatıldıysa arka plan ancak kamerayı yeniden başlatmakla gelir.
+ * Ders içinde arka planı değiştirir. Görüntü arka planla başlatıldıysa
+ * `updateVirtualBackgroundImage`; arka plansız başlatıldıysa arka plan ancak
+ * kamerayı yeniden başlatmakla gelir.
  */
-export async function arkaPlaniDegistir(ap: ArkaPlan): Promise<void> {
-  tercihleriYaz({ arkaPlan: ap });
-  if (!benimKaydim()?.bVideoOn || !arkaPlanDestekli()) return;
+async function arkaPlan(ap: ArkaPlan): Promise<{ uygulandi: boolean }> {
+  sonKamera = { ...sonKamera, arkaPlan: ap };
+  if (!benimKaydim()?.bVideoOn || !arkaPlanDestekli()) return { uygulandi: true };
   const adres = arkaPlanAdresi(ap);
   let yapilandirildi = false;
   try {
@@ -655,102 +598,19 @@ export async function arkaPlaniDegistir(ap: ArkaPlan): Promise<void> {
   if (yapilandirildi) {
     const sonuc = await akis().updateVirtualBackgroundImage(adres);
     if (basarisizMi(sonuc)) throw sonuc;
-    return;
+    return { uygulandi: true };
   }
-  if (!adres) return;
+  if (!adres) return { uygulandi: true };
   const dur = await akis().stopVideo();
   if (basarisizMi(dur)) throw dur;
-  await kamerayiDegistir(true);
-}
-
-/* ── Tepkiler ve el kaldırma (Zoom command channel) ─────────────────── */
-
-/**
- * Zoom command channel'ın hız sınırı .d.ts'te yazmıyor; istemci tarafında
- * bu aralıkla sınırlanır: tepki aralık dolmadan gelirse düşer, el durumu
- * aralık dolunca gönderilir.
- */
-const KOMUT_ARALIGI_MS = 600;
-/** Tepki ekranda bu kadar kalır (animasyon süresiyle aynı; Meet 3 sn). */
-export const TEPKI_SURESI_MS = 3000;
-
-let sonKomut = 0;
-let bekleyenEl: number | undefined;
-let tepkiSayaci = 0;
-
-function komutIstemcisi() {
-  try {
-    return istemci.getCommandClient() ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function komutKanaliDestekli(): boolean {
-  return ozellikDestekli("Command Channel") && komutIstemcisi() !== null;
-}
-
-function komutKanaliKapandi(): void {
-  depoyaUygula((d) => (d.komutKanali ? { ...d, komutKanali: false } : d));
-}
-
-function tepkiGoster(emoji: TepkiEmojisi, ad: string, ben: boolean): void {
-  const id = ++tepkiSayaci;
-  const sol = 0.04 + Math.random() * 0.22;
-  depoyaUygula((d) => tepkiEkle(d, { id, emoji, ad, ben, sol }));
-  // `animationend`e bağlanmaz: hareket azaltıldığında animasyon yoktur.
-  window.setTimeout(() => depoyaUygula((d) => tepkiSil(d, id)), TEPKI_SURESI_MS);
-}
-
-/** Oturumdaki herkese gönderir; başarısızsa `false`. */
-async function komutGonder(mesaj: KomutMesaji): Promise<boolean> {
-  const kanal = komutIstemcisi();
-  if (!kanal) {
-    komutKanaliKapandi();
-    return false;
-  }
-  sonKomut = Date.now();
-  try {
-    const sonuc = await kanal.send(komutMesajiYaz(mesaj));
-    if (basarisizMi(sonuc)) throw sonuc;
-    return true;
-  } catch (e) {
-    // Tek bir gönderim hatası (ör. odada tek kişiyken) kanalı kapatmaz;
-    // düğmeleri yalnız kanal durumu (Closed/Fail) ya da istemci yokluğu gizler.
-    console.warn("Zoom command channel", e);
-    return false;
-  }
-}
-
-/** Tepki gönderir ve kendi ekranımda da gösterir (kendi mesajım bana dönmez). */
-export function tepkiGonder(emoji: TepkiEmojisi): void {
-  if (Date.now() - sonKomut < KOMUT_ARALIGI_MS) return;
-  tepkiGoster(emoji, benimKaydim()?.displayName ?? "", true);
-  void komutGonder({ tur: "tepki", emoji });
-}
-
-function elDurumunuGonder(): void {
-  window.clearTimeout(bekleyenEl);
-  const bekle = Math.max(0, sonKomut + KOMUT_ARALIGI_MS - Date.now());
-  bekleyenEl = window.setTimeout(() => {
-    bekleyenEl = undefined;
-    const kalkik = useOdaDeposu.getState().elimKalkik;
-    void komutGonder({ tur: "el", kalkik }).then((tamam) => {
-      if (!tamam && kalkik) depoyaUygula((d) => ({ ...d, elimKalkik: false }));
-    });
-  }, bekle);
-}
-
-/** Elimi kaldırır / indirir. */
-export function elimiDegistir(kalkik: boolean): void {
-  depoyaUygula((d) => (d.elimKalkik === kalkik ? d : { ...d, elimKalkik: kalkik }));
-  elDurumunuGonder();
+  const { arkaPlanUygulandi } = await kamera(true);
+  return { uygulandi: arkaPlanUygulandi };
 }
 
 let onKamera = true;
 
 /** Telefonda ön/arka kamera. */
-export async function kamerayiCevir(): Promise<void> {
+async function kamerayiCevir(): Promise<void> {
   onKamera = !onKamera;
   const yon = onKamera ? MobileVideoFacingMode.User : MobileVideoFacingMode.Environment;
   const sonuc = await akis().switchCamera(yon);
@@ -760,28 +620,9 @@ export async function kamerayiCevir(): Promise<void> {
   }
   // Arka kamera aynalanmaz; ön kamera tercihe göre.
   try {
-    await akis().mirrorVideo(onKamera && tercihleriOku().ayna);
+    await akis().mirrorVideo(onKamera && sonKamera.ayna);
   } catch {
     // aynalama desteklenmiyorsa görüntü yine gelir
-  }
-}
-
-/** Kalıcı `<video-player>`a çizim — ZoomVideoSahnesi'nin tek SDK kapısı. */
-export async function videoBagla(userId: number, oyuncu: HTMLElement): Promise<void> {
-  if (!oturumdaMi()) return;
-  try {
-    await akis().attachVideo(userId, VideoQuality.Video_720P, oyuncu as VideoPlayer);
-  } catch (hata) {
-    console.warn("Zoom attachVideo", hata);
-  }
-}
-
-export async function videoCoz(userId: number, oyuncu: HTMLElement): Promise<void> {
-  if (!oturumdaMi()) return;
-  try {
-    await akis().detachVideo(userId, oyuncu as VideoPlayer);
-  } catch {
-    // oyuncu zaten boş
   }
 }
 
@@ -791,7 +632,7 @@ export async function videoCoz(userId: number, oyuncu: HTMLElement): Promise<voi
  * Tarayıcı ekran paylaşabilir mi? Zoom'un denetimi + `getDisplayMedia`.
  * Telefonda düğme zaten yok (plan §5 P4).
  */
-export function paylasimDestekli(): boolean {
+function paylasimDestekli(): boolean {
   try {
     return (
       Boolean(ZoomVideo.checkSystemRequirements()?.screen) &&
@@ -803,32 +644,16 @@ export function paylasimDestekli(): boolean {
   }
 }
 
-/** Kendi paylaşımım `<video>` mu `<canvas>` mı ister (`isStartShareScreenWithVideoElement`). */
-export function paylasimVideoOgesiIster(): boolean {
-  try {
-    return akis().isStartShareScreenWithVideoElement();
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Host (öğretmen) mıyım? SDK varsayılanı `HostGrab`: biri paylaşırken yalnız
  * host/yönetici paylaşımı devralabilir; diğerinin düğmesi kapatılır.
  */
-export function paylasimDevralabilir(): boolean {
+function paylasimDevralabilir(): boolean {
   try {
     return istemci.isHost() || istemci.isManager();
   } catch {
     return false;
   }
-}
-
-/** Sahnedeki kalıcı kendi-paylaşım öğesi (ZoomVideoSahnesi kaydeder). */
-let paylasimOgesi: HTMLVideoElement | HTMLCanvasElement | null = null;
-
-export function paylasimOgesiniKaydet(oge: HTMLVideoElement | HTMLCanvasElement | null): void {
-  paylasimOgesi = oge;
 }
 
 /**
@@ -844,63 +669,38 @@ function tumEkranOku() {
     yuzey = undefined;
   }
   if (yuzey) {
-    const tumEkran = tumEkranPaylasimiMi({ displaySurface: yuzey });
-    depoyaUygula((d) => (d.benPaylasiyorum ? benimPaylasimim(d, true, tumEkran) : d));
+    yay({ t: "paylasimYuzeyi", tumEkran: tumEkranPaylasimiMi({ displaySurface: yuzey }) });
     return;
   }
-  const oge = paylasimOgesi;
+  const oge = kayitliPaylasimOgesi();
   if (!(oge instanceof HTMLVideoElement)) return;
   const akisNesnesi = oge.srcObject;
   if (typeof MediaStream === "undefined" || !(akisNesnesi instanceof MediaStream)) return;
   const iz = akisNesnesi.getVideoTracks()[0];
   if (!iz) return;
-  const tumEkran = tumEkranPaylasimiMi({
-    displaySurface: (iz.getSettings() as { displaySurface?: string }).displaySurface,
-    kisitYuzeyi: (iz.getConstraints() as { displaySurface?: string }).displaySurface,
-    etiket: iz.label,
+  yay({
+    t: "paylasimYuzeyi",
+    tumEkran: tumEkranPaylasimiMi({
+      displaySurface: (iz.getSettings() as { displaySurface?: string }).displaySurface,
+      kisitYuzeyi: (iz.getConstraints() as { displaySurface?: string }).displaySurface,
+      etiket: iz.label,
+    }),
   });
-  depoyaUygula((d) => (d.benPaylasiyorum ? benimPaylasimim(d, true, tumEkran) : d));
 }
 
 /** Ekranımı paylaş. Hata fırlatılır; tepkisi `paylasimHatasiTuru`. */
-export async function paylasimiBaslat(): Promise<void> {
-  const oge = paylasimOgesi;
+async function paylasimiBaslat(): Promise<void> {
+  const oge = kayitliPaylasimOgesi();
   if (!oge) throw new Error("paylasim ogesi yok");
   const sonuc = await akis().startShareScreen(oge);
   if (basarisizMi(sonuc)) throw sonuc;
-  depoyaUygula((d) => benimPaylasimim(d, true));
-  tumEkranOku();
+  // Yüzey, nötr katman "paylaşıyorum"u yazdıktan SONRA bildirilir (bir tur).
+  window.setTimeout(tumEkranOku, 0);
 }
 
-export async function paylasimiDurdur(): Promise<void> {
-  try {
-    const sonuc = await akis().stopShareScreen();
-    if (basarisizMi(sonuc)) console.warn("Zoom stopShareScreen", sonuc);
-  } finally {
-    depoyaUygula((d) => benimPaylasimim(d, false));
-  }
-}
-
-/** Karşı tarafın paylaşımını kalıcı `paylasim` kabındaki oyuncuya çizer. */
-export async function paylasimBagla(userId: number, oyuncu: HTMLElement): Promise<void> {
-  if (!oturumdaMi()) return;
-  try {
-    const sonuc = await akis().attachShareView(userId, oyuncu as VideoPlayer);
-    if (basarisizMi(sonuc) && !(sonuc instanceof HTMLElement)) {
-      console.warn("Zoom attachShareView", sonuc);
-    }
-  } catch (hata) {
-    console.warn("Zoom attachShareView", hata);
-  }
-}
-
-export async function paylasimCoz(userId: number, oyuncu: HTMLElement): Promise<void> {
-  if (!oturumdaMi()) return;
-  try {
-    await akis().detachShareView(userId, oyuncu as VideoPlayer);
-  } catch {
-    // oyuncu zaten boş
-  }
+async function paylasimiDurdur(): Promise<void> {
+  const sonuc = await akis().stopShareScreen();
+  if (basarisizMi(sonuc)) console.warn("Zoom stopShareScreen", sonuc);
 }
 
 /* ── Ayrılma ─────────────────────────────────────────────────────────── */
@@ -909,12 +709,10 @@ let ayrilma: Promise<void> | null = null;
 
 /**
  * YALNIZ kendini oturumdan çıkarır (host için de). En çok ~3 sn bekler;
- * `destroyClient` ayrılma sözü sonuçlanınca çalışır.
+ * `destroyClient` ayrılma sözü sonuçlanınca çalışır. "Biz ayrılıyoruz"
+ * bayrağını nötr katman bundan ÖNCE yazar (`oda/durum/medya.ts` `ayril`).
  */
-export function ayril(): Promise<void> {
-  // "Biz ayrılıyoruz" bayrağı leave'den ÖNCE: kendi Closed olayımız
-  // "bağlantı koptu" sayılmasın.
-  useOdaDeposu.setState({ ayriliyor: true });
+function ayril(): Promise<void> {
   if (!oturumdaMi()) return Promise.resolve();
   if (!ayrilma) {
     // ARGÜMANSIZ — bkz. dosya başı madde 3.
@@ -933,3 +731,36 @@ export function ayril(): Promise<void> {
   }
   return ayrilma;
 }
+
+export const zoomSurucusu: VideoSurucusu = {
+  ad: "zoom",
+  kararliKimlik: false,
+  hazirla,
+  katil,
+  ayril,
+  oturumdaMi,
+  olaylar,
+  // Zoom bileti oturum boyunca geçerli; tazeleme yalnız katılmadan önce.
+  bileTazele: async () => {},
+  sesiBaslat,
+  sesiAc,
+  mikrofon,
+  kamera,
+  kamerayiCevir,
+  aynala,
+  arkaPlan,
+  cihazSec,
+  cihazlar,
+  paylasimiBaslat,
+  paylasimiDurdur,
+  paylasimDevralabilir,
+  destekler: {
+    arkaPlan: async () => arkaPlanDestekli(),
+    hoparlorSecimi: hoparlorSecilebilir,
+    ekranPaylasimi: paylasimDestekli,
+    kameraCevirme: () => true,
+    kapaliykenKonusma: true,
+  },
+  onizleme: zoomOnizleme,
+  MedyaKatmani,
+};

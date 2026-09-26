@@ -1,56 +1,31 @@
 /**
- * Görüntü sahnesi — üç KALICI `<video-player-container>`:
+ * Görüntü sahnesi — sağlayıcıdan bağımsız GENEL sahne: sürücünün medya
+ * katmanı (`surucu().MedyaKatmani`: video kapları ve paylaşım oyuncuları,
+ * z-10) ve üstünde karo katmanları (`KaroKatmani`, `KapaliKamera`, z-20),
+ * paylaşım panelinin 40px başlığı ve `AynaUyarisi`.
  *
- *   - `uzak`     tüm sahne; karşı tarafın oyuncusu (ve platform çoklu videoyu
- *                destekliyorsa kendi görüntünün oyuncusu da) burada
- *   - `paylasim` karşı tarafın ekran paylaşımı ayrı kap ister
- *                (media.d.ts `attachShareView`: `attachVideo` kabıyla karışmaz)
- *   - `ben`      çoklu video desteklenmiyorsa (Firefox/WASM) kendi görüntün
- *                ayrı kapta çizilir (media.d.ts `isSupportMultipleVideos`)
- *
- * Kendi paylaşımım ayrıca kalıcı bir `<video>` ya da `<canvas>`a çizilir
- * (`isStartShareScreenWithVideoElement`); öğe `paylasimOgesiniKaydet` ile
- * servise verilir, düğme onu `startShareScreen`e geçirir.
+ * Başlık ve ayna uyarısı z-index'siz, medya katmanından SONRA çizilir:
+ * paylaşım panelinin üstünde, yüzen video kutusunun (z-10) altında kalır
+ * (bölünmeden önceki sıra).
  *
  * Düzen Preply sınıfınınkidir (`lib/sinifDuzeni.ts`: Odaklanma, Kareler,
- * Kenar çubuğu, Köşe/yüzen kutu, paylaşım + tahta bölmesi). Kaplar ve
- * oyuncular koşullu çizilmez, yeniden kurulmaz: yalnız hesaplanan
- * dikdörtgenlerle (`style`) yer değiştirir. Telefonu döndürmek, tahtayı
- * açmak ya da düzen değişmek yeni `attachVideo` doğurmaz: bağlama efektleri
- * yalnız `(userId, video açık mı)` değişince çalışır.
- *
- * Özel öğelere `className` verilmez (React 18'de `class` eşlemesine
- * güvenilmez); boyut `style` ve sarmalayıcı `div`lerden gelir.
+ * Kenar çubuğu, Köşe/yüzen kutu, paylaşım + tahta bölmesi). Medya katmanı
+ * kararlı bir bileşendir; düzen değişmek kapları yeniden kurmaz.
  *
  * Görünüm: Meet `ParticipantTile` / `.lk-participant-tile` (La Suite Meet,
  * MIT — DINUM/Etalab).
  */
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from "react";
+import { useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { katilimciRengi } from "@/lib/canliDers";
-import type { Kutu, Yerlesim } from "@/lib/sinifDuzeni";
+import type { Yerlesim } from "@/lib/sinifDuzeni";
 
-import {
-  paylasimBagla,
-  paylasimCoz,
-  paylasimiDurdur,
-  paylasimOgesiniKaydet,
-  paylasimVideoOgesiIster,
-  videoBagla,
-  videoCoz,
-} from "../zoom/istemci";
+import { surucu } from "../video/etkin";
+import { yer } from "../video/yer";
+import { paylasimiDurdur } from "./durum/medya";
 import {
   useAgSeviyesi,
   useAktifPaylasim,
@@ -58,42 +33,20 @@ import {
   useBenTumEkran,
   useBaglanti,
   useBen,
-  useCokluVideo,
   useEliKalkik,
   useKarsiTaraf,
   useKonusuyor,
   usePaylasimVar,
-} from "../zoom/odaDeposu";
+} from "./durum/odaDeposu";
+import { tercihleriOku } from "./durum/tercihler";
 import { Avatar } from "./Avatar";
 import { KaroBilgisi, KaroKatmani } from "./KaroBilgisi";
 import { AynaUyarisi } from "./paylasim/AynaUyarisi";
 
-const KAP: CSSProperties = { display: "block", position: "absolute", inset: 0 };
-const OYUNCU: CSSProperties = { display: "block", width: "100%", height: "100%" };
-const PAYLASIM_OGESI: CSSProperties = {
-  display: "block",
-  width: "100%",
-  height: "100%",
-  objectFit: "contain",
-};
-
-/** Kutuyu sahne koordinatında mutlak yerleştirir (animasyon YOK — Preply §6). */
-function yer(k: Kutu | null, goreli?: Kutu): CSSProperties {
-  if (!k || k.w <= 0 || k.h <= 0) {
-    return { visibility: "hidden", left: 0, top: 0, width: 0, height: 0 };
-  }
-  return {
-    left: k.x - (goreli?.x ?? 0),
-    top: k.y - (goreli?.y ?? 0),
-    width: k.w,
-    height: k.h,
-  };
-}
-
 /** Preply paylaşım paneli başlığı: 40px. */
 const PAYLASIM_BASLIGI = 40;
 
-export function ZoomVideoSahnesi({
+export function VideoSahnesi({
   telefon,
   yerlesim: y,
   karoUstu,
@@ -108,15 +61,16 @@ export function ZoomVideoSahnesi({
   onSurukleBasla?: (e: ReactPointerEvent<HTMLElement>) => void;
 }) {
   const { t } = useTranslation();
+  // Kararlı referans: sürücü tekildir, bileşeni modül düzeyindedir.
+  const MedyaKatmani = surucu().MedyaKatmani;
   const uzak = useKarsiTaraf();
   const ben = useBen();
-  const coklu = useCokluVideo();
-  const uzakKonusuyor = useKonusuyor(uzak?.userId);
-  const benKonusuyor = useKonusuyor(ben?.userId);
-  const uzakAg = useAgSeviyesi(uzak?.userId);
-  const benAg = useAgSeviyesi(ben?.userId);
-  const uzakEl = useEliKalkik(uzak?.userId);
-  const benEl = useEliKalkik(ben?.userId);
+  const uzakKonusuyor = useKonusuyor(uzak?.id);
+  const benKonusuyor = useKonusuyor(ben?.id);
+  const uzakAg = useAgSeviyesi(uzak?.id);
+  const benAg = useAgSeviyesi(ben?.id);
+  const uzakEl = useEliKalkik(uzak?.id);
+  const benEl = useEliKalkik(ben?.id);
   // Kendi bağlantımız koptuysa kendi kartımız da "yeniden bağlanıyor" der.
   const benKoptu = useBaglanti() === "yenidenBaglaniyor";
   const paylasimVar = usePaylasimVar();
@@ -125,133 +79,71 @@ export function ZoomVideoSahnesi({
   const benTumEkran = useBenTumEkran();
   // Meet: "Yoksay" bu ders boyunca geçerli.
   const [aynaUyarisiKapali, setAynaUyarisiKapali] = useState(false);
-  // Katıldıktan sonra çizilir: SDK'nın istediği öğe türü artık bilinir, sabittir.
-  const [paylasimVideo] = useState(paylasimVideoOgesiIster);
-  const paylasimOgesiRef = useCallback((oge: HTMLVideoElement | HTMLCanvasElement | null) => {
-    paylasimOgesiniKaydet(oge);
-  }, []);
 
-  const uzakOyuncu = useRef<HTMLElement>(null);
-  const benOyuncuCoklu = useRef<HTMLElement>(null);
-  const benOyuncuTekli = useRef<HTMLElement>(null);
-  const paylasimOyuncu = useRef<HTMLElement>(null);
-
-  const uzakId = uzak?.userId;
   const uzakVideo = uzak?.videoAcik ?? false;
-  const benId = ben?.userId;
   const benVideo = ben?.videoAcik ?? false;
 
-  useEffect(() => {
-    const oyuncu = uzakOyuncu.current;
-    if (uzakId === undefined || !uzakVideo || !oyuncu) return;
-    void videoBagla(uzakId, oyuncu);
-    return () => void videoCoz(uzakId, oyuncu);
-  }, [uzakId, uzakVideo]);
-
-  useEffect(() => {
-    const oyuncu = coklu ? benOyuncuCoklu.current : benOyuncuTekli.current;
-    if (benId === undefined || !benVideo || !oyuncu) return;
-    void videoBagla(benId, oyuncu);
-    return () => void videoCoz(benId, oyuncu);
-  }, [benId, benVideo, coklu]);
-
-  // Karşı tarafın paylaşımı: yalnız paylaşan değişince bağlanır/çözülür.
-  useEffect(() => {
-    const oyuncu = paylasimOyuncu.current;
-    if (aktifPaylasim === null || !oyuncu) return;
-    void paylasimBagla(aktifPaylasim, oyuncu);
-    return () => void paylasimCoz(aktifPaylasim, oyuncu);
-  }, [aktifPaylasim]);
-
   const paylasimGorunur = paylasimVar && y.paylasim !== null;
-  // Kendi paylaşımım varken onu gösteririm (SDK o sırada başkasınınkini vermez).
-  const uzakPaylasimGorunur = paylasimGorunur && !benPaylasiyorum;
   const uzakK = uzak ? y.karsiKaro : null;
-  const yuzenSinif = y.yuzen ? "rounded-ders shadow-[0_8px_32px_rgba(18,17,23,0.15)]" : "";
   // İki karolu yüzen kutu: kendi karo sol köşeler, karşı taraf sağ köşeler.
   const benKose = y.yuzen && uzakK ? "rounded-l-ders" : "rounded-ders";
   const karsiKose = y.yuzen ? "rounded-r-ders" : "rounded-ders";
   const benSurukle = y.suruklenebilir !== null ? onSurukleBasla : undefined;
   const karsiSurukle = y.suruklenebilir === "yuzen" ? onSurukleBasla : undefined;
+  // Paylaşım panelinin başlık şeridi ve altındaki görüntü alanı (sahneye göre).
+  const panel = paylasimGorunur ? y.paylasim : null;
+  const baslikKutusu = panel ? { ...panel, h: Math.min(PAYLASIM_BASLIGI, panel.h) } : null;
+  const icerikKutusu =
+    panel && panel.h > PAYLASIM_BASLIGI
+      ? { ...panel, y: panel.y + PAYLASIM_BASLIGI, h: panel.h - PAYLASIM_BASLIGI }
+      : null;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* 1) video kabı — karoların alanı (araçsızda sahne, Kenar çubuğunda
-          yan panel, yüzen görünümde 200×133/200×100 kutu). Kap AYNI
-          düğümdür; yalnız boyutu/konumu değişir, oyuncular yeniden kurulmaz. */}
-      <div className={`absolute z-10 ${yuzenSinif}`} style={yer(y.video)}>
-        <video-player-container style={KAP}>
-          <div className={`absolute overflow-hidden ${karsiKose}`} style={yer(uzakK, y.video)}>
-            <video-player ref={uzakOyuncu} style={OYUNCU} />
-          </div>
-          <div
-            className={`absolute overflow-hidden ${benKose} ${coklu ? "" : "invisible"}`}
-            style={yer(y.benKaro, y.video)}
-          >
-            <video-player ref={benOyuncuCoklu} style={OYUNCU} />
-          </div>
-        </video-player-container>
-      </div>
+      <MedyaKatmani
+        yerlesim={y}
+        paylasimBaslikPx={PAYLASIM_BASLIGI}
+        benId={ben?.id ?? null}
+        benVideo={benVideo}
+        ayna={tercihleriOku().ayna}
+        karsiId={uzak?.id ?? null}
+        karsiVideo={uzakVideo}
+        aktifPaylasim={aktifPaylasim}
+        benPaylasiyorum={benPaylasiyorum}
+      />
 
-      {/* 2) paylaşım paneli — kalıcı; paylaşım yokken gizli. Preply: 40px
-          başlık ("Ekranını paylaşıyorsun" + X) + görüntü. */}
+      {/* Paylaşım paneli başlığı — Preply: 40px ("Ekranını paylaşıyorsun" + X). */}
       <div
-        className="absolute overflow-hidden rounded-t-ders bg-black"
-        style={yer(paylasimGorunur ? y.paylasim : null)}
+        className="pointer-events-auto absolute flex items-center gap-2 overflow-hidden rounded-t-ders bg-ders-yuzey pl-3 pr-1 text-sm font-semibold text-white"
+        style={yer(baslikKutusu)}
         aria-hidden={!paylasimGorunur}
       >
-        <div className="pointer-events-auto flex h-10 items-center gap-2 bg-ders-yuzey pl-3 pr-1 text-sm font-semibold text-white">
-          <span className="min-w-0 flex-1 truncate">
-            {benPaylasiyorum
-              ? t("paylasimBasligi.ben")
-              : t("paylasimBasligi.karsi", { ad: uzak?.ad ?? "" })}
-          </span>
-          {benPaylasiyorum && (
-            <PlainButton
-              onClick={() => void paylasimiDurdur()}
-              aria-label={t("paylasimBasligi.durdur")}
-              title={t("paylasimBasligi.durdur")}
-              className="inline-flex h-10 w-10 items-center justify-center rounded hover:bg-ders-dugme focus-visible:outline focus-visible:outline-2 focus-visible:outline-marka-focus"
-            >
-              <Icon name="dismiss" className="h-5 w-5" />
-            </PlainButton>
-          )}
-        </div>
-        <div className="absolute inset-x-0 bottom-0" style={{ top: PAYLASIM_BASLIGI }}>
-          {/* 2a) karşı tarafın paylaşımı — `attachShareView` kabı */}
-          <div className={`absolute inset-0 ${uzakPaylasimGorunur ? "" : "invisible"}`}>
-            <video-player-container style={KAP}>
-              <video-player ref={paylasimOyuncu} style={OYUNCU} />
-            </video-player-container>
-          </div>
-          {/* 2b) kendi paylaşımım — `startShareScreen` öğesi */}
-          <div className={`absolute inset-0 ${benPaylasiyorum ? "" : "invisible"}`}>
-            {paylasimVideo ? (
-              <video ref={paylasimOgesiRef} style={PAYLASIM_OGESI} muted playsInline />
-            ) : (
-              <canvas ref={paylasimOgesiRef} style={PAYLASIM_OGESI} />
-            )}
-            {benPaylasiyorum && benTumEkran && !aynaUyarisiKapali && (
-              <div className="pointer-events-auto absolute inset-0">
-                <AynaUyarisi
-                  onDurdur={() => void paylasimiDurdur()}
-                  onYoksay={() => setAynaUyarisiKapali(true)}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        <span className="min-w-0 flex-1 truncate">
+          {benPaylasiyorum
+            ? t("paylasimBasligi.ben")
+            : t("paylasimBasligi.karsi", { ad: uzak?.ad ?? "" })}
+        </span>
+        {benPaylasiyorum && (
+          <PlainButton
+            onClick={() => void paylasimiDurdur()}
+            aria-label={t("paylasimBasligi.durdur")}
+            title={t("paylasimBasligi.durdur")}
+            className="inline-flex h-10 w-10 items-center justify-center rounded hover:bg-ders-dugme focus-visible:outline focus-visible:outline-2 focus-visible:outline-marka-focus"
+          >
+            <Icon name="dismiss" className="h-5 w-5" />
+          </PlainButton>
+        )}
       </div>
 
-      {/* 3) ayrı kendi-görüntü kabı — yalnız çoklu video yoksa */}
-      <div
-        className={`absolute z-10 overflow-hidden ${benKose} ${coklu ? "invisible" : ""}`}
-        style={yer(y.benKaro)}
-      >
-        <video-player-container style={KAP}>
-          <video-player ref={benOyuncuTekli} style={OYUNCU} />
-        </video-player-container>
-      </div>
+      {/* Kendi tüm ekranımı paylaşırken sonsuz yansıma uyarısı. */}
+      {icerikKutusu && benPaylasiyorum && benTumEkran && !aynaUyarisiKapali && (
+        <div className="pointer-events-auto absolute" style={yer(icerikKutusu)}>
+          <AynaUyarisi
+            onDurdur={() => void paylasimiDurdur()}
+            onYoksay={() => setAynaUyarisiKapali(true)}
+          />
+        </div>
+      )}
 
       {/* Kart katmanları: oyuncuların KARDEŞİ, üstte; işaretçiyi yalnız
           bunlar alır (tahtanın üstündeki yüzen kutu çizimi yutmasın). */}

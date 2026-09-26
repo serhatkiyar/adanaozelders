@@ -8,7 +8,7 @@
  *   sürüklenen kutunun konumu ve bölme oranları hatırlanMAZ: düzen
  *   değişince varsayılana döner (Preply §6).
  * - Hiçbir geçişte animasyon yok.
- * - Video kapları (`ZoomVideoSahnesi`) ve tahta (`TahtaAlani`) aynı
+ * - Video kapları (`VideoSahnesi`) ve tahta (`TahtaAlani`) aynı
  *   ebeveynde kalır; tahta açılıp kapanınca görüşme yeniden bağlanmaz.
  */
 import {
@@ -41,8 +41,8 @@ import {
   type VideoGorunumu,
 } from "@/lib/sinifDuzeni";
 
-import { useKarsiTaraf, usePaylasimVar } from "../zoom/odaDeposu";
-import { ZoomVideoSahnesi } from "./ZoomVideoSahnesi";
+import { useKarsiTaraf, usePaylasimVar } from "./durum/odaDeposu";
+import { VideoSahnesi } from "./VideoSahnesi";
 
 const GORUNUM_IKONU: Record<Gorunum, IconName> = {
   SPOTLIGHT: "rectangleLandscape",
@@ -277,7 +277,7 @@ export function SinifSahnesi({
         </div>
       )}
 
-      <ZoomVideoSahnesi
+      <VideoSahnesi
         telefon={telefon}
         yerlesim={y}
         karoUstu={karoUstu}

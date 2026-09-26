@@ -1,45 +1,39 @@
 /**
- * Zoom olay → oda durumu dönüşümleri. SAF: SDK import edilmez, yalnız
- * olayların taşıdığı alanların küçük bir alt kümesiyle çalışır; böylece
- * jsdom'da SDK yüklenmeden sınanabilir.
+ * Sürücü olayı → oda durumu dönüşümleri. SAF ve sağlayıcıdan bağımsız: SDK
+ * import edilmez; sürücünün nötr olaylarıyla (`video/tipler.ts`
+ * `VideoOlayi`) çalışır, böylece jsdom'da SDK yüklenmeden sınanabilir.
  *
- * Olaylar SİNYALDİR: kullanıcı olaylarında gerçek durum `getAllUser()` /
- * `getCurrentUserInfo()` ile yeniden okunur ve `katilimcilariEsitle`ye
- * verilir (plan §2.2). Veri modeli Zoom'un kendisidir (`userId`, `bVideoOn`,
- * `muted`), LiveKit taklidi yoktur.
+ * Katılımcı olaylarında sürücü TAM listeyi verir (`katilimcilariEsitle`).
+ * Kimlikler metindir (Zoom: `String(userId)`).
  */
 import type { KarsiTarafDurumu } from "@/lib/canliDers";
 
-/** Zoom `Participant`ın kullandığımız alt kümesi. */
-export interface ZoomKullanici {
-  userId: number;
-  displayName: string;
-  bVideoOn: boolean;
-  /** Sese bağlı değilse `undefined`. */
-  muted?: boolean;
-  /** `''` sese bağlı değil, `computer` bilgisayar sesi. */
-  audio?: string;
-  /** Mikrofon izni yokken yalnız hoparlörle bağlı (`startAudio({ speakerOnly })`). */
-  isSpeakerOnly?: boolean;
-  sharerOn?: boolean;
-  /** Katılımcının bağlantısı yeniden kuruluyor (Zoom failover). */
-  isInFailover?: boolean;
-}
+import {
+  SurucuHatasi,
+  type CihazTuru,
+  type DersRolu,
+  type HamCihaz,
+  type HamKatilimci,
+  type KatilimciId,
+} from "../../video/tipler";
+
+export type { CihazTuru, HamCihaz };
 
 export interface Katilimci {
-  userId: number;
+  id: KatilimciId;
   ad: string;
+  rol: DersRolu | null;
   videoAcik: boolean;
   /** Sese bağlı ve susturulmuş. Sese hiç bağlı değilken de kapalı sayılır. */
   mikKapali: boolean;
   sesBagli: boolean;
   paylasiyor: boolean;
-  /** Zoom `isInFailover`: bağlantısı kopmuş, yeniden kuruluyor. */
+  /** Bağlantısı kopmuş, yeniden kuruluyor (Zoom `isInFailover`). */
   yenidenBaglaniyor: boolean;
 }
 
 /**
- * `network-quality-change` son değerleri (0–5). Kamera kapanınca eski değer
+ * Ağ kalitesi son değerleri (0–5). Kamera kapanınca eski değer
  * atılır; sonrasında gelen (SDK'nın ses yolundan da yayınladığı) değerler tutulur.
  */
 export interface AgOlcumu {
@@ -55,16 +49,14 @@ export type Baglanti = "bagli" | "yenidenBaglaniyor" | "kapandi";
 export interface OdaDurumu {
   asama: Asama;
   baglanti: Baglanti | null;
-  benId: number | null;
+  benId: KatilimciId | null;
   katilimcilar: Katilimci[];
-  /** Şu an konuşanların `userId`leri (`active-speaker`). */
-  konusanlar: number[];
+  /** Şu an konuşanların kimlikleri. */
+  konusanlar: KatilimciId[];
   /** Tarayıcı sesi başlatmayı engelledi → "Sesi aç" düğmesi. */
   sesEngellendi: boolean;
   /** Karşı taraf bu oturumda en az bir kez görüldü mü (bekleniyor / ayrıldı ayrımı). */
   karsiTarafGoruldu: boolean;
-  /** Platform aynı kapta birden çok video çizebiliyor mu (`isSupportMultipleVideos`). */
-  cokluVideo: boolean;
   /** Ayrılmayı biz başlattık: gelen Closed olayı "bağlantı koptu" sayılmaz. */
   ayriliyor: boolean;
   /** Kullanıcıya gösterilecek son hata (i18n anahtarı). */
@@ -73,30 +65,30 @@ export interface OdaDurumu {
   cihazlar: CihazListeleri;
   /** Kullanılan (odada) ya da kullanılacak (önizlemede) cihaz kimlikleri. */
   secili: SeciliCihazlar;
-  /** Odada kendi mikrofon seviyem (`current-audio-level-change`, 0–9). */
+  /** Odada kendi mikrofon seviyem (0–9). */
   sesSeviyesi: number;
   izinler: { kamera: IzinDurumu; mikrofon: IzinDurumu };
   /** İzin yönlendirme penceresi açık mı. */
   izinPenceresi: boolean;
   /** Kullanıcı kimliğine göre son ağ kalitesi ölçümleri. */
-  agKaliteleri: Record<number, AgOlcumu>;
+  agKaliteleri: Record<KatilimciId, AgOlcumu>;
   /**
-   * KENDİ ses bağlantımın kalitesi (`audio-statistic-data-change`, 0–5):
-   * `encode` gönderdiğim, `decode` aldığım ses. Kamera kapalıyken kendi
-   * kartımın göstergesi buradan; veri kesilince (susunca) `istemci.ts` siler.
+   * KENDİ ses bağlantımın kalitesi (0–5): `encode` gönderdiğim, `decode`
+   * aldığım ses. Kamera kapalıyken kendi kartımın göstergesi buradan; veri
+   * kesilince (susunca) sürücü `null` bildirir.
    */
   sesKalitesi: SesKalitesi;
-  /** Zoom command channel kullanılabilir mi (tepkiler ve el kaldırma). */
-  komutKanali: boolean;
+  /** Tepki taşıyıcısı (Centrifugo `ders:{id}`) kullanılabilir mi. */
+  tepkiKanali: boolean;
   /** Kendi elim kalkık mı. */
   elimKalkik: boolean;
-  /** Elini kaldıran diğer katılımcıların `userId`leri. */
-  kalkikEller: number[];
+  /** Elini kaldıran diğer katılımcıların kimlikleri. */
+  kalkikEller: KatilimciId[];
   /** Ekranda yükselen tepkiler (en çok `EN_COK_TEPKI`). */
   tepkiler: UcanTepki[];
-  /** Karşı tarafın izlenen ekran paylaşımı (`active-share-change`); yoksa `null`. */
-  aktifPaylasim: number | null;
-  /** Kendi ekranımı paylaşıyorum (`startShareScreen` başarılı → durdurulana dek). */
+  /** Karşı tarafın izlenen ekran paylaşımı (sahibinin kimliği); yoksa `null`. */
+  aktifPaylasim: KatilimciId | null;
+  /** Kendi ekranımı paylaşıyorum (başlatma başarılı → durdurulana dek). */
   benPaylasiyorum: boolean;
   /** Kendi paylaşımım tüm ekran (sonsuz yansıma uyarısı). */
   benTumEkran: boolean;
@@ -127,7 +119,6 @@ export interface CihazListeleri {
   kamera: Cihaz[];
 }
 
-export type CihazTuru = keyof CihazListeleri;
 
 export interface SeciliCihazlar {
   mikrofon?: string;
@@ -135,7 +126,7 @@ export interface SeciliCihazlar {
   kamera?: string;
 }
 
-/** `navigator.permissions` / `device-permission-change` durumu. */
+/** `navigator.permissions` durumu. */
 export type IzinDurumu = "granted" | "denied" | "prompt" | "bilinmiyor";
 
 export const BASLANGIC: OdaDurumu = {
@@ -146,7 +137,6 @@ export const BASLANGIC: OdaDurumu = {
   konusanlar: [],
   sesEngellendi: false,
   karsiTarafGoruldu: false,
-  cokluVideo: true,
   ayriliyor: false,
   hata: null,
   cihazlar: { mikrofon: [], hoparlor: [], kamera: [] },
@@ -156,7 +146,7 @@ export const BASLANGIC: OdaDurumu = {
   izinPenceresi: false,
   agKaliteleri: {},
   sesKalitesi: {},
-  komutKanali: false,
+  tepkiKanali: false,
   elimKalkik: false,
   kalkikEller: [],
   tepkiler: [],
@@ -165,52 +155,44 @@ export const BASLANGIC: OdaDurumu = {
   benTumEkran: false,
 };
 
-export function katilimciyaCevir(k: ZoomKullanici): Katilimci {
-  const sesBagli = Boolean(k.audio);
+/** Sürücünün ham kaydı → depodaki katılımcı (`ben` bayrağı `benId`de). */
+function katilimciya(k: HamKatilimci): Katilimci {
   return {
-    userId: k.userId,
-    ad: k.displayName,
-    videoAcik: Boolean(k.bVideoOn),
-    mikKapali: !sesBagli || Boolean(k.isSpeakerOnly) || k.muted !== false,
-    sesBagli,
-    paylasiyor: Boolean(k.sharerOn),
-    yenidenBaglaniyor: Boolean(k.isInFailover),
+    id: k.id,
+    ad: k.ad,
+    rol: k.rol,
+    videoAcik: k.videoAcik,
+    mikKapali: k.mikKapali,
+    sesBagli: k.sesBagli,
+    paylasiyor: k.paylasiyor,
+    yenidenBaglaniyor: k.yenidenBaglaniyor,
   };
 }
 
 /**
- * `user-added` / `user-removed` / `user-updated` / `peer-video-state-change`
- * sonrasında SDK'dan okunan tam listeyle durumu eşitler. `ben` okunamazsa
+ * Sürücünün bildirdiği TAM listeyle durumu eşitler. Listede `ben` yoksa
  * (henüz katılmadan) önceki kimlik korunur.
  */
-export function katilimcilariEsitle(
-  durum: OdaDurumu,
-  liste: readonly ZoomKullanici[],
-  ben: ZoomKullanici | null | undefined,
-): OdaDurumu {
-  const benId = ben?.userId ?? durum.benId;
-  const katilimcilar = liste.map(katilimciyaCevir);
-  // Kendi kaydımız listede yoksa (bazı sürümlerde katılım anında) eklenir.
-  if (ben && !katilimcilar.some((k) => k.userId === ben.userId)) {
-    katilimcilar.unshift(katilimciyaCevir(ben));
-  }
-  const digerVar = katilimcilar.some((k) => k.userId !== benId);
+export function katilimcilariEsitle(durum: OdaDurumu, liste: readonly HamKatilimci[]): OdaDurumu {
+  const benId = liste.find((k) => k.ben)?.id ?? durum.benId;
+  const katilimcilar = liste.map(katilimciya);
+  const digerVar = katilimcilar.some((k) => k.id !== benId);
   return {
     ...durum,
     benId,
     katilimcilar,
     karsiTarafGoruldu: durum.karsiTarafGoruldu || digerVar,
     // Ayrılan kişi konuşanlar listesinde kalmasın.
-    konusanlar: durum.konusanlar.filter((id) => katilimcilar.some((k) => k.userId === id)),
+    konusanlar: durum.konusanlar.filter((id) => katilimcilar.some((k) => k.id === id)),
     agKaliteleri: agKaliteleriniBuda(durum.agKaliteleri, katilimcilar),
     // Ayrılanın kalkık eli kalmasın.
     kalkikEller: ayniysaKoru(
       durum.kalkikEller,
-      durum.kalkikEller.filter((id) => katilimcilar.some((k) => k.userId === id)),
+      durum.kalkikEller.filter((id) => katilimcilar.some((k) => k.id === id)),
     ),
-    // Paylaşan ayrıldıysa paylaşımı da gitmiştir (Inactive gelmeyebilir).
+    // Paylaşan ayrıldıysa paylaşımı da gitmiştir (bitiş olayı gelmeyebilir).
     aktifPaylasim:
-      durum.aktifPaylasim !== null && katilimcilar.some((k) => k.userId === durum.aktifPaylasim)
+      durum.aktifPaylasim !== null && katilimcilar.some((k) => k.id === durum.aktifPaylasim)
         ? durum.aktifPaylasim
         : null,
   };
@@ -222,32 +204,45 @@ export function katilimcilariEsitle(
  * sonrasında gelenler (SDK ses yolundan da yayınlar) gerçek ölçümdür.
  */
 function agKaliteleriniBuda(
-  olcumler: Record<number, AgOlcumu>,
+  olcumler: Record<KatilimciId, AgOlcumu>,
   katilimcilar: readonly Katilimci[],
-): Record<number, AgOlcumu> {
-  const sonuc: Record<number, AgOlcumu> = {};
+): Record<KatilimciId, AgOlcumu> {
+  const sonuc: Record<KatilimciId, AgOlcumu> = {};
   let degisti = false;
-  for (const [anahtar, olcum] of Object.entries(olcumler)) {
-    const id = Number(anahtar);
-    if (katilimcilar.some((k) => k.userId === id)) sonuc[id] = olcum;
+  for (const [id, olcum] of Object.entries(olcumler)) {
+    if (katilimcilar.some((k) => k.id === id)) sonuc[id] = olcum;
     else degisti = true;
   }
   return degisti ? sonuc : olcumler;
 }
 
-/** `network-quality-change`: bir yönün (uplink/downlink) yeni seviyesi. */
+/**
+ * Ağ kalitesi olayı: alanı olmayan yön değişmez, `null` o yönü siler; iki
+ * yön de boşalırsa ölçüm atılır. Değişmediyse AYNI durum.
+ */
 export function agKalitesiDegisti(
   durum: OdaDurumu,
-  olay: { userId: number; type: string; level: number },
+  olay: { id: KatilimciId; yukari?: number | null; asagi?: number | null },
 ): OdaDurumu {
-  if (olay.type !== "uplink" && olay.type !== "downlink") return durum;
-  if (!Number.isFinite(olay.level)) return durum;
-  const onceki = durum.agKaliteleri[olay.userId] ?? {};
-  if (onceki[olay.type] === olay.level) return durum;
-  return {
-    ...durum,
-    agKaliteleri: { ...durum.agKaliteleri, [olay.userId]: { ...onceki, [olay.type]: olay.level } },
+  const onceki = durum.agKaliteleri[olay.id];
+  const yeni: AgOlcumu = { ...onceki };
+  const yaz = (alan: keyof AgOlcumu, deger: number | null | undefined) => {
+    if (deger === undefined) return;
+    if (deger === null || !Number.isFinite(deger)) delete yeni[alan];
+    else yeni[alan] = deger;
   };
+  yaz("uplink", olay.yukari);
+  yaz("downlink", olay.asagi);
+  if (
+    (onceki?.uplink ?? null) === (yeni.uplink ?? null) &&
+    (onceki?.downlink ?? null) === (yeni.downlink ?? null)
+  ) {
+    return durum;
+  }
+  const agKaliteleri = { ...durum.agKaliteleri };
+  if (yeni.uplink === undefined && yeni.downlink === undefined) delete agKaliteleri[olay.id];
+  else agKaliteleri[olay.id] = yeni;
+  return { ...durum, agKaliteleri };
 }
 
 function enKotu(degerler: Array<number | undefined>): number | null {
@@ -259,40 +254,20 @@ function enKotu(degerler: Array<number | undefined>): number | null {
  * Gösterilecek seviye: bilinen yönlerin en kötüsü. Ağ ölçümü yoksa kendi
  * kartım için ses istatistiği; o da yoksa `null` (gösterge gizlenir).
  */
-export function agSeviyesi(durum: OdaDurumu, userId: number | undefined): number | null {
-  if (userId === undefined) return null;
-  const olcum = durum.agKaliteleri[userId];
+export function agSeviyesi(durum: OdaDurumu, id: KatilimciId | undefined): number | null {
+  if (id === undefined) return null;
+  const olcum = durum.agKaliteleri[id];
   const ag = olcum ? enKotu([olcum.uplink, olcum.downlink]) : null;
   if (ag !== null) return ag;
-  if (userId !== durum.benId) return null;
+  if (id !== durum.benId) return null;
   return enKotu([durum.sesKalitesi.encode, durum.sesKalitesi.decode]);
 }
 
-/**
- * Zoom ses istatistiği (`AudioQosData`) → 0–5 seviye (`agKalitesi` ölçeği:
- * 4 iyi, 2 orta, 1 zayıf). Yalnız milisaniye birimli `rtt` ve `jitter`
- * kullanılır; `avg_loss`un birimi SDK'da belgelenmemiş. Hepsi 0 ise (akış
- * yok, SDK'nın boş başlangıç değeri) ölçüm yok: `null`.
- */
-export function sesIstatistigiSeviyesi(veri: {
-  rtt?: number;
-  jitter?: number;
-  sample_rate?: number;
-}): number | null {
-  const rtt = Number(veri.rtt);
-  const jitter = Number(veri.jitter);
-  if (!Number.isFinite(rtt) || !Number.isFinite(jitter)) return null;
-  if (rtt <= 0 && jitter <= 0 && !veri.sample_rate) return null;
-  if (rtt >= 600 || jitter >= 80) return 1;
-  if (rtt >= 300 || jitter >= 30) return 2;
-  return 4;
-}
-
 /** Kendi kameramı kapatınca eski (görüntü dönemindeki) ağ ölçümüm atılır. */
-export function agOlcumunuSil(durum: OdaDurumu, userId: number | null): OdaDurumu {
-  if (userId === null || !(userId in durum.agKaliteleri)) return durum;
+export function agOlcumunuSil(durum: OdaDurumu, id: KatilimciId | null): OdaDurumu {
+  if (id === null || !(id in durum.agKaliteleri)) return durum;
   const agKaliteleri = { ...durum.agKaliteleri };
-  delete agKaliteleri[userId];
+  delete agKaliteleri[id];
   return { ...durum, agKaliteleri };
 }
 
@@ -311,8 +286,8 @@ export function sesKalitesiDegisti(
 }
 
 /**
- * `active-media-failed`: medya yakalama/çözme beklenmedik biçimde durdu.
- * Zoom'un önerisi sayfayı yenilemek; şerit "Sayfayı yenile" düğmesiyle çıkar.
+ * Medya yakalama/çözme beklenmedik biçimde durdu (Zoom `active-media-failed`).
+ * Önerilen çözüm sayfayı yenilemek; şerit "Sayfayı yenile" düğmesiyle çıkar.
  */
 export function medyaHatasi(durum: OdaDurumu): OdaDurumu {
   return { ...durum, hata: MEDYA_HATASI };
@@ -322,11 +297,11 @@ export const MEDYA_HATASI = "media.activeMediaFailed";
 
 /**
  * Katıldı/ayrıldı bildirimleri için iki liste arasındaki fark. Kimlik değil
- * AD karşılaştırılır: Zoom `userId`si yeniden bağlanınca değişebilir, birebir
+ * AD karşılaştırılır: Zoom kimliği yeniden bağlanınca değişebilir, birebir
  * derste ad kararlıdır. Kendimiz hiçbir zaman bildirilmeyiz.
  */
-export function digerAdlari(liste: readonly Katilimci[], benId: number | null): Set<string> {
-  return new Set(liste.filter((k) => k.userId !== benId).map((k) => k.ad));
+export function digerAdlari(liste: readonly Katilimci[], benId: KatilimciId | null): Set<string> {
+  return new Set(liste.filter((k) => k.id !== benId).map((k) => k.ad));
 }
 
 /**
@@ -343,40 +318,11 @@ export function katilimciFarki(
   };
 }
 
-/** `peer-video-state-change`: liste yeniden okunana dek iyimser güncelleme. */
-export function videoDurumuDegisti(
-  durum: OdaDurumu,
-  olay: { action: "Start" | "Stop"; userId: number },
-): OdaDurumu {
-  const videoAcik = olay.action === "Start";
-  let agKaliteleri = durum.agKaliteleri;
-  if (!videoAcik && olay.userId in agKaliteleri) {
-    agKaliteleri = { ...agKaliteleri };
-    delete agKaliteleri[olay.userId];
-  }
-  return {
-    ...durum,
-    agKaliteleri,
-    katilimcilar: durum.katilimcilar.map((k) =>
-      k.userId === olay.userId ? { ...k, videoAcik } : k,
-    ),
-  };
-}
-
-/** Zoom `ConnectionState` dizesi → bizim bağlantı durumumuz. */
-export function baglantiDurumu(state: string): Baglanti | null {
-  if (state === "Connected") return "bagli";
-  if (state === "Reconnecting") return "yenidenBaglaniyor";
-  if (state === "Closed" || state === "Fail") return "kapandi";
-  return null;
-}
-
-export function baglantiDegisti(durum: OdaDurumu, olay: { state: string }): OdaDurumu {
-  const baglanti = baglantiDurumu(olay.state);
+export function baglantiDegisti(durum: OdaDurumu, baglanti: Baglanti): OdaDurumu {
   // Ölçümler burada SİLİNMEZ: olay yalnız değişimde gelir, aynı seviyede
-  // dönen bağlantı yeniden bildirmeyebilir. Kimliği değişen ya da kamerası
-  // kapananın ölçümünü yeniden okunan liste (`agKaliteleriniBuda`) atar.
-  return baglanti ? { ...durum, baglanti } : durum;
+  // dönen bağlantı yeniden bildirmeyebilir. Kimliği değişenin ölçümünü
+  // yeniden okunan liste (`agKaliteleriniBuda`) atar.
+  return durum.baglanti === baglanti ? durum : { ...durum, baglanti };
 }
 
 /** Kopan bağlantı yeniden kuruldu mu (Reconnecting → Connected)? */
@@ -392,12 +338,9 @@ export function beklenmedikKapanis(durum: OdaDurumu): boolean {
   return durum.asama === "odada" && durum.baglanti === "kapandi" && !durum.ayriliyor;
 }
 
-/** `active-speaker`: yükte şu an konuşanlar gelir. */
-export function aktifKonusanlar(
-  durum: OdaDurumu,
-  olay: readonly { userId: number }[],
-): OdaDurumu {
-  return { ...durum, konusanlar: olay.map((k) => k.userId) };
+/** Şu an konuşanlar. */
+export function aktifKonusanlar(durum: OdaDurumu, idler: readonly KatilimciId[]): OdaDurumu {
+  return { ...durum, konusanlar: [...idler] };
 }
 
 export function sesEngellendi(durum: OdaDurumu, engellendi: boolean): OdaDurumu {
@@ -405,13 +348,13 @@ export function sesEngellendi(durum: OdaDurumu, engellendi: boolean): OdaDurumu 
 }
 
 export function benKimim(durum: OdaDurumu): Katilimci | null {
-  return durum.katilimcilar.find((k) => k.userId === durum.benId) ?? null;
+  return durum.katilimcilar.find((k) => k.id === durum.benId) ?? null;
 }
 
 /** Birebir derste karşı taraf: kendimiz dışındaki ilk katılımcı. */
 export function karsiTaraf(durum: OdaDurumu): Katilimci | null {
   if (durum.benId === null) return null;
-  return durum.katilimcilar.find((k) => k.userId !== durum.benId) ?? null;
+  return durum.katilimcilar.find((k) => k.id !== durum.benId) ?? null;
 }
 
 export function karsiTarafDurumu(durum: OdaDurumu): KarsiTarafDurumu {
@@ -424,6 +367,7 @@ export function karsiTarafDurumu(durum: OdaDurumu): KarsiTarafDurumu {
  * sonuç nesnesi (`{type, reason}`) için o alanlar; diğerleri dizeye.
  */
 export function hataMetni(hata: unknown): string {
+  if (hata instanceof SurucuHatasi) return `${hata.kod} ${hataMetni(hata.ham)}`;
   if (hata instanceof Error) return `${hata.name} ${hata.message}`;
   if (typeof hata === "object" && hata !== null) {
     const { type, reason, name, message } = hata as Record<string, unknown>;
@@ -438,6 +382,11 @@ export function hataMetni(hata: unknown): string {
  * dizeleri (`startVideo` hatayı düz nesne olarak da döndürür).
  */
 export function kameraHataAnahtari(hata: unknown): string {
+  if (hata instanceof SurucuHatasi) {
+    if (hata.kod === "kameraIzniYok") return "join.cameraNotGranted";
+    if (hata.kod === "kameraYok") return "join.cameraNotFound";
+    if (hata.kod === "kameraMesgul") return "join.cameraInUse";
+  }
   const ad = hataMetni(hata);
   if (/NotAllowed|Permission|FORBIDDEN/i.test(ad)) return "join.cameraNotGranted";
   if (/NotFound|CAN_NOT_DETECT|DevicesNotFound/i.test(ad)) return "join.cameraNotFound";
@@ -452,18 +401,12 @@ export function kameraHataAnahtari(hata: unknown): string {
  * Otomatik oynatma engeli (kullanıcı etkinleşmesi kaybı) bu değildir.
  */
 export function mikIzniReddedildiMi(hata: unknown): boolean {
+  if (hata instanceof SurucuHatasi && hata.kod === "mikIzniYok") return true;
   const metin = hataMetni(hata);
   return /AUDIO_CAPTURE_FAILED|INSUFFICIENT_PRIVILEGES|NotAllowed|Permission denied/i.test(metin);
 }
 
 /* ── Cihazlar ve izinler (Paket 2) ──────────────────────────────────── */
-
-/** SDK/tarayıcı cihaz kaydının kullandığımız alt kümesi. */
-export interface HamCihaz {
-  deviceId: string;
-  label: string;
-  kind?: string;
-}
 
 const TUR_KIND: Record<CihazTuru, string> = {
   mikrofon: "audioinput",
@@ -524,7 +467,7 @@ export function cihazSecildi(durum: OdaDurumu, tur: CihazTuru, id: string): OdaD
   return { ...durum, secili: { ...durum.secili, [tur]: id } };
 }
 
-/** `navigator.permissions` ya da Zoom `device-permission-change`. */
+/** `navigator.permissions` izin değişimi. */
 export function izinDegisti(
   durum: OdaDurumu,
   olay: { name: "camera" | "microphone"; state: string },
@@ -542,16 +485,7 @@ export function izinDegisti(
   return { ...durum, izinler, izinPenceresi };
 }
 
-/**
- * Önizleme mikrofon seviyesi: Zoom `getCurrentVolume()` ham RMS (0–1,
- * konuşma çoğunlukla 0,02–0,2) döndürür; çubuk için algısal ölçek.
- */
-export function seviyeOrani(rms: number): number {
-  if (!Number.isFinite(rms) || rms <= 0) return 0;
-  return Math.min(1, Math.sqrt(rms) * 1.6);
-}
-
-/** Odada `current-audio-level-change` seviyesi (0–9) → çubuk oranı. */
+/** Odada kendi mikrofon seviyem (0–9) → çubuk oranı. */
 export function odaSeviyeOrani(seviye: number): number {
   if (!Number.isFinite(seviye) || seviye <= 0) return 0;
   return Math.min(1, seviye / 9);
@@ -563,7 +497,7 @@ const YEDEK_AD: Record<CihazTuru, string> = {
   kamera: "Kamera",
 };
 
-/** Üç tür için ham listeler (odada `get*List`) ya da tek karışık liste (`getDevices`). */
+/** Üç tür için ham listeler (odada) ya da tek karışık liste (önizlemede). */
 export function listeleriKur(
   ham: readonly HamCihaz[] | { [T in CihazTuru]: readonly HamCihaz[] },
 ): CihazListeleri {
@@ -586,19 +520,16 @@ export function gorunenCihazId(
 /* ── Ekran paylaşımı (Paket 4) ──────────────────────────────────────── */
 
 /**
- * `active-share-change`: karşı tarafın paylaşımı başladı/bitti. Kendi
+ * Karşı tarafın paylaşımı başladı (`id`) / bitti (`null`). Kendi
  * paylaşımımız burada izlenmez (`benPaylasiyorum`); kendi kimliğimizle gelen
  * olay yok sayılır.
  */
-export function aktifPaylasimDegisti(
-  durum: OdaDurumu,
-  olay: { state: string; userId: number },
-): OdaDurumu {
-  if (olay.state === "Active") {
-    if (olay.userId === durum.benId || durum.aktifPaylasim === olay.userId) return durum;
-    return { ...durum, aktifPaylasim: olay.userId };
+export function aktifPaylasimDegisti(durum: OdaDurumu, id: KatilimciId | null): OdaDurumu {
+  if (id !== null) {
+    if (id === durum.benId || durum.aktifPaylasim === id) return durum;
+    return { ...durum, aktifPaylasim: id };
   }
-  if (olay.state === "Inactive" && durum.aktifPaylasim !== null) {
+  if (durum.aktifPaylasim !== null) {
     // Kimlik eşleşmese de temizlenir: birebir derste tek paylaşım izlenir.
     return { ...durum, aktifPaylasim: null };
   }
@@ -606,18 +537,17 @@ export function aktifPaylasimDegisti(
 }
 
 /**
- * Katılınca / yeniden bağlanınca SDK'nın o anki paylaşımı
- * (`getActiveShareUserId`, yoksa 0). Olay kaçtıysa boşluğu doldurur; yalnız
- * listede paylaşıyor görünen karşı taraf kabul edilir (bayat kimlik düzeni
- * geri getirmesin).
+ * Katılınca / yeniden bağlanınca sürücünün okuduğu o anki paylaşım (yoksa
+ * `null`). Olay kaçtıysa boşluğu doldurur; yalnız listede paylaşıyor görünen
+ * karşı taraf kabul edilir (bayat kimlik düzeni geri getirmesin).
  */
-export function paylasimiEsitle(durum: OdaDurumu, aktifId: number): OdaDurumu {
+export function paylasimiEsitle(durum: OdaDurumu, aktifId: KatilimciId | null): OdaDurumu {
   if (durum.aktifPaylasim !== null || !aktifId || aktifId === durum.benId) return durum;
-  const paylasan = durum.katilimcilar.find((k) => k.userId === aktifId);
+  const paylasan = durum.katilimcilar.find((k) => k.id === aktifId);
   return paylasan?.paylasiyor ? { ...durum, aktifPaylasim: aktifId } : durum;
 }
 
-/** Kendi paylaşımım başladı / durdu (düğme ya da `passively-stop-share`). */
+/** Kendi paylaşımım başladı / durdu (düğme ya da tarayıcının "Paylaşımı durdur"u). */
 export function benimPaylasimim(durum: OdaDurumu, acik: boolean, tumEkran = false): OdaDurumu {
   return { ...durum, benPaylasiyorum: acik, benTumEkran: acik && tumEkran };
 }
@@ -645,6 +575,11 @@ export type PaylasimHatasiTuru = "iptal" | "izin" | "mesgul" | "diger";
  * ayrımı ("by system") kullanılır.
  */
 export function paylasimHatasiTuru(hata: unknown): PaylasimHatasiTuru {
+  if (hata instanceof SurucuHatasi) {
+    if (hata.kod === "paylasimIptal") return "iptal";
+    if (hata.kod === "paylasimReddedildi") return "izin";
+    if (hata.kod === "paylasimYetkiYok") return "mesgul";
+  }
   if (typeof hata === "object" && hata !== null) {
     const kod = (hata as { errorCode?: unknown }).errorCode;
     if (kod === PAYLASIM_SISTEM_REDDI) return "izin";
@@ -657,7 +592,7 @@ export function paylasimHatasiTuru(hata: unknown): PaylasimHatasiTuru {
   return "diger";
 }
 
-/* ── Tepkiler ve el kaldırma (Paket 6, Zoom command channel) ─────────── */
+/* ── Tepkiler ve el kaldırma (Paket 6, Centrifugo `ders:{id}`) ──────── */
 
 /** Meet `Emoji` kümesinin karşılığı; gelen mesajlar bu listeyle süzülür. */
 export const TEPKI_EMOJILERI = ["👍", "👏", "❤️", "😂", "😮", "🎉"] as const;
@@ -666,44 +601,61 @@ export type TepkiEmojisi = (typeof TEPKI_EMOJILERI)[number];
 /** Aynı anda ekranda en çok bu kadar tepki (eskisi düşer). */
 export const EN_COK_TEPKI = 12;
 
-export type KomutMesaji = { tur: "tepki"; emoji: TepkiEmojisi } | { tur: "el"; kalkik: boolean };
+/**
+ * Ders kanalındaki tepki mesajları. `elSor`: (yeniden) abone olan ya da yeni
+ * katılımcı gören taraf sorar, eli kalkık olan yeniden bildirir — kanalda
+ * geçmiş yok, geç katılan kalkık eli başka türlü öğrenemez.
+ */
+export type TepkiMesaji =
+  | { tur: "tepki"; emoji: TepkiEmojisi }
+  | { tur: "el"; kalkik: boolean }
+  | { tur: "elSor" };
 
-/** Command channel'a giden metin (kısa JSON; Zoom sınırının çok altında). */
-export function komutMesajiYaz(m: KomutMesaji): string {
-  return JSON.stringify(m.tur === "tepki" ? { t: "tepki", e: m.emoji } : { t: "el", k: m.kalkik });
+/** Kanala giden kısa JSON gövdesi (`t` alanıyla `dersKanali.ts` yönlendirir). */
+export function tepkiMesajiYaz(m: TepkiMesaji): { t: string; e?: string; k?: boolean } {
+  if (m.tur === "tepki") return { t: "tepki", e: m.emoji };
+  if (m.tur === "el") return { t: "el", k: m.kalkik };
+  return { t: "elSor" };
 }
 
-/** Gelen metni doğrular; tanınmayan/bozuk mesaj `null`. SAF. */
-export function komutMesajiCoz(metin: unknown): KomutMesaji | null {
-  if (typeof metin !== "string" || metin.length > 200) return null;
-  let veri: unknown;
-  try {
-    veri = JSON.parse(metin);
-  } catch {
-    return null;
-  }
+/** Gelen gövdeyi doğrular; tanınmayan/bozuk mesaj `null`. SAF. */
+export function tepkiMesajiCoz(veri: unknown): TepkiMesaji | null {
   if (typeof veri !== "object" || veri === null) return null;
   const v = veri as { t?: unknown; e?: unknown; k?: unknown };
   if (v.t === "tepki" && (TEPKI_EMOJILERI as readonly unknown[]).includes(v.e)) {
     return { tur: "tepki", emoji: v.e as TepkiEmojisi };
   }
   if (v.t === "el" && typeof v.k === "boolean") return { tur: "el", kalkik: v.k };
+  if (v.t === "elSor") return { tur: "elSor" };
   return null;
 }
 
-function ayniysaKoru(eski: number[], yeni: number[]): number[] {
+/**
+ * Kanal yayınının göndereni. Centrifugo yayını sağlayıcının katılımcı
+ * kimliğini taşımaz, yalnız token'daki rolü (`chanInfo.rol`). Birebir derste
+ * bir öğretmen bir öğrenci var: gönderen, o rolü taşıyan (kendimiz olmayan)
+ * katılımcıdır. Rol bilinmiyor ya da kendi rolümüzse `null`. SAF.
+ */
+export function tepkiGondereni(
+  durum: OdaDurumu,
+  gonderenRol: DersRolu | null,
+  benimRolum: DersRolu | null,
+): Katilimci | null {
+  if (gonderenRol === null || gonderenRol === benimRolum) return null;
+  return durum.katilimcilar.find((k) => k.id !== durum.benId && k.rol === gonderenRol) ?? null;
+}
+
+function ayniysaKoru(eski: KatilimciId[], yeni: KatilimciId[]): KatilimciId[] {
   return eski.length === yeni.length ? eski : yeni;
 }
 
 /** Başka bir katılımcının eli kalktı / indi. */
-export function eliDegisti(durum: OdaDurumu, userId: number, kalkik: boolean): OdaDurumu {
-  const simdiKalkik = durum.kalkikEller.includes(userId);
+export function eliDegisti(durum: OdaDurumu, id: KatilimciId, kalkik: boolean): OdaDurumu {
+  const simdiKalkik = durum.kalkikEller.includes(id);
   if (simdiKalkik === kalkik) return durum;
   return {
     ...durum,
-    kalkikEller: kalkik
-      ? [...durum.kalkikEller, userId]
-      : durum.kalkikEller.filter((id) => id !== userId),
+    kalkikEller: kalkik ? [...durum.kalkikEller, id] : durum.kalkikEller.filter((x) => x !== id),
   };
 }
 

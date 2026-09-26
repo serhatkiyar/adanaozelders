@@ -1,7 +1,8 @@
 /**
  * Emoji tepkileri ve el kaldırma — Meet `reactions` + `HandToggle` (La Suite
- * Meet, MIT — DINUM/Etalab). Taşıyıcı Zoom command channel (`istemci.ts`);
- * kanal kullanılamıyorsa (`komutKanali` false) düğmeler hiç çizilmez.
+ * Meet, MIT — DINUM/Etalab). Taşıyıcı Centrifugo ders kanalı
+ * (`durum/tepkiler.ts`); kanal kullanılamıyorsa (`tepkiKanali` false)
+ * düğmeler hiç çizilmez.
  *
  * Tepkiler görsel değil metin emojisidir. Ekranda sol altta belirip 3 sn'de
  * yükselerek söner (Meet `FloatingReaction`); hareket azaltıldığında
@@ -14,15 +15,15 @@ import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
-import { TEPKI_EMOJILERI } from "../zoom/indirgeyiciler";
-import { elimiDegistir, tepkiGonder } from "../zoom/istemci";
-import { useElimKalkik, useKomutKanali, useTepkiler } from "../zoom/odaDeposu";
+import { TEPKI_EMOJILERI } from "./durum/indirgeyiciler";
+import { useElimKalkik, useTepkiKanali, useTepkiler } from "./durum/odaDeposu";
+import { elimiDegistir, tepkiGonder } from "./durum/tepkiler";
 import { Acilir } from "./Acilir";
 
 /** Kontrol çubuğu: Tepki gönder (açılır emoji satırı). */
 export function TepkiDugmesi() {
   const { t } = useTranslation();
-  const kanal = useKomutKanali();
+  const kanal = useTepkiKanali();
   const [acik, setAcik] = useState(false);
   const dugme = useRef<HTMLButtonElement>(null);
   if (!kanal) return null;
@@ -79,7 +80,7 @@ function EmojiSatiri({ onGonderildi }: { onGonderildi?: () => void }) {
 /** Kontrol çubuğu: El kaldır / indir (Meet `HandToggle`). */
 export function ElDugmesi() {
   const { t } = useTranslation();
-  const kanal = useKomutKanali();
+  const kanal = useTepkiKanali();
   const kalkik = useElimKalkik();
   if (!kanal) return null;
   const etiket = t(kalkik ? "controls.hand.lower" : "controls.hand.raise");
@@ -115,7 +116,7 @@ export function TelefonTepkileri({
   el: boolean;
 }) {
   const { t } = useTranslation();
-  const kanal = useKomutKanali();
+  const kanal = useTepkiKanali();
   const kalkik = useElimKalkik();
   if (!kanal) return null;
   return (

@@ -7,7 +7,7 @@ import {
   reportBookingIssue,
   createBooking,
   fetchBooking,
-  getZoomToken,
+  getCanliDersBileti,
   setTahtaDurumu,
   listBookings,
   rejectBooking,
@@ -26,11 +26,15 @@ import {
   deleteBookingPrivateNote,
   type ListBookingsParams,
 } from "@/api/bookings";
+import { agoraBiletiniCevir } from "@/components/canli/video/agora/bilet";
+import type { NotrBilet } from "@/components/canli/video/tipler";
+import { zoomBiletiniCevir } from "@/components/canli/video/zoom/bilet";
 import {
   BookingStatus,
   type BookingCreate,
   type BookingIssueReason,
   type BookingOut,
+  type CanliDersBiletiOut,
 } from "@/types";
 import { TUTOR_DASHBOARD_KEY } from "@/hooks/useTutorDashboard";
 import { tutorSlotsKey } from "@/hooks/useTutorSlots";
@@ -94,8 +98,21 @@ export function useBooking(id: number) {
   });
 }
 
+/** Sunucu bileti → nötr bilet; sağlayıcının alanı boşsa hata (sorgu hatası olur). */
+function notrBilet(b: CanliDersBiletiOut): NotrBilet {
+  if (b.saglayici === "agora") {
+    if (!b.agora) throw new Error("Agora bileti boş");
+    return agoraBiletiniCevir(b.agora);
+  }
+  if (!b.zoom) throw new Error("Zoom bileti boş");
+  return zoomBiletiniCevir(b.zoom);
+}
+
 /**
- * Canlı ders (Zoom) giriş bileti — sayfa açılışında BİR KEZ alınır.
+ * Canlı dersin giriş bileti — sayfa açılışında BİR KEZ alınır; sağlayıcıdan
+ * bağımsız biçimde (`NotrBilet`) döner. Sağlayıcı adı sunucunun biletinden
+ * gelir (`/canli-ders-bileti` → `saglayici`), URL'den değil. Yenileme
+ * (`refetch`) aynı uçtan; pencere dışı 409 = ders bitti.
  *
  * Anahtar bilerek `["bookings", …]` altında DEĞİL: kökteki WS dinleyicisi her
  * `BOOKING_UPDATE`/yorumda `["bookings"]` önekini geçersiz kılar; bilet onun
@@ -103,10 +120,11 @@ export function useBooking(id: number) {
  * sayfa hata ekranına düşüp görüşmeyi koparırdı. Aynı nedenle odak/yeniden
  * bağlanma tazelemesi ve yeniden deneme kapalı; bilet tek kullanımlıktır.
  */
-export function useZoomToken(id: number) {
+export function useCanliDersBileti(id: number) {
   return useQuery({
-    queryKey: ["zoom-token", id],
-    queryFn: () => getZoomToken(id),
+    queryKey: ["canli-ders-bileti", id],
+    queryFn: () => getCanliDersBileti(id),
+    select: notrBilet,
     enabled: Number.isFinite(id) && id > 0,
     staleTime: Infinity,
     gcTime: 0,

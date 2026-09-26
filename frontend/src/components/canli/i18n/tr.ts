@@ -34,6 +34,13 @@ export const tr = {
       micHint: "Mikrofonun derse {{durum}} girer.",
       micOn: "açık",
       micOff: "kapalı",
+      /** Karşı taraf sayfaya gelene dek video sağlayıcısına bağlanılmaz. */
+      waiting: {
+        title: "{{name}} bekleniyor…",
+        titleAnon: "Karşı taraf bekleniyor…",
+        hint: "Derse gelince kendiliğinden bağlanacaksın.",
+        cancel: "Beklemeyi bırak",
+      },
       errors: {
         join: "Derse katılınamadı. Biraz bekleyip yeniden dene.",
         ticket: "Giriş bileti yenilenemedi. Sayfayı yenileyip yeniden dene.",

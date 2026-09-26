@@ -12,10 +12,10 @@ import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
-import { gorunenCihazId, odaSeviyeOrani } from "../zoom/indirgeyiciler";
-import { hoparlorSecilebilir } from "../zoom/istemci";
-import { useCihazlar, useSeciliCihazlar, useSesSeviyesi } from "../zoom/odaDeposu";
-import { cihazDegistir } from "../zoom/useMedyaKontrolleri";
+import { surucu } from "../video/etkin";
+import { gorunenCihazId, odaSeviyeOrani } from "./durum/indirgeyiciler";
+import { useCihazlar, useSeciliCihazlar, useSesSeviyesi } from "./durum/odaDeposu";
+import { cihazDegistir } from "./durum/useMedyaKontrolleri";
 import { Acilir } from "./Acilir";
 import { CihazSecici, HoparlorTesti } from "./CihazSecici";
 import { SesSeviyesi } from "./SesSeviyesi";
@@ -66,7 +66,7 @@ export function CihazMenusu({
                 />
                 <SesSeviyesi oran={cihazAcik ? odaSeviyeOrani(seviye) : null} />
               </div>
-              {hoparlorSecilebilir() && (
+              {surucu().destekler.hoparlorSecimi() && (
                 <div className="min-w-0 flex-1">
                   <CihazSecici
                     tur="hoparlor"

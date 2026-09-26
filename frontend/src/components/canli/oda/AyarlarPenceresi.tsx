@@ -14,23 +14,19 @@ import { Icon, type IconName } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { Modal } from "@/components/ui/Modal";
 
-import { gorunenCihazId, odaSeviyeOrani } from "../zoom/indirgeyiciler";
-import type { ArkaPlan } from "../zoom/arkaPlan";
-import {
-  arkaPlanDestekli,
-  arkaPlaniDegistir,
-  aynala,
-  hoparlorSecilebilir,
-} from "../zoom/istemci";
+import { surucu } from "../video/etkin";
+import type { ArkaPlan } from "../video/arkaPlan";
+import { gorunenCihazId, odaSeviyeOrani } from "./durum/indirgeyiciler";
+import { arkaPlaniDegistir, aynala } from "./durum/medya";
 import {
   useBen,
   useCihazlar,
   useOdaDeposu,
   useSeciliCihazlar,
   useSesSeviyesi,
-} from "../zoom/odaDeposu";
-import { tercihleriOku } from "../zoom/tercihler";
-import { cihazDegistir } from "../zoom/useMedyaKontrolleri";
+} from "./durum/odaDeposu";
+import { tercihleriOku } from "./durum/tercihler";
+import { cihazDegistir, useArkaPlanDestegi } from "./durum/useMedyaKontrolleri";
 import { ArkaPlanSecici } from "./ArkaPlanSecici";
 import { CihazSecici, HoparlorTesti } from "./CihazSecici";
 import { SesSeviyesi } from "./SesSeviyesi";
@@ -172,7 +168,7 @@ function SesSekmesi() {
           bosMetin={t("settings.audio.permissionsRequired")}
         />
       </Satir>
-      {hoparlorSecilebilir() ? (
+      {surucu().destekler.hoparlorSecimi() ? (
         <Satir
           baslik={t("settings.audio.speakers.heading")}
           yan={
@@ -212,7 +208,7 @@ function GoruntuSekmesi() {
   const [ayna, setAyna] = useState(() => tercihleriOku().ayna);
   const ipucuId = useId();
   const [arkaPlan, setArkaPlan] = useState<ArkaPlan>(() => tercihleriOku().arkaPlan);
-  const [arkaPlanVar] = useState(arkaPlanDestekli);
+  const arkaPlanVar = useArkaPlanDestegi();
   const [arkaPlanMesgul, setArkaPlanMesgul] = useState(false);
 
   const arkaPlanSec = async (ap: ArkaPlan) => {
@@ -221,7 +217,7 @@ function GoruntuSekmesi() {
     try {
       await arkaPlaniDegistir(ap);
     } catch (e) {
-      console.warn("Zoom arka plan", e);
+      console.warn("Arka plan", e);
       useOdaDeposu.setState({ hata: "media.backgroundFailed" });
     } finally {
       setArkaPlanMesgul(false);
@@ -234,7 +230,7 @@ function GoruntuSekmesi() {
     try {
       await aynala(yeni);
     } catch (e) {
-      console.warn("Zoom mirrorVideo", e);
+      console.warn("Aynalama", e);
       useOdaDeposu.setState({ hata: "media.deviceError" });
     }
   };

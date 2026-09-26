@@ -4,11 +4,14 @@
  * katmanı (kamera yok / izin yok / kullanımda / kapalı / açılıyor), altta
  * yuvarlak Mikrofon/Kamera düğmeleri; altında cihaz seçiciler, mikrofon
  * seviyesi, hoparlör testi ve arka plan seçimi (Meet `EffectsConfiguration`;
- * arka plan seçilince önizleme `<canvas>`a çizilir); sağda (telefonda altta) 360px sütun: ad
+ * önizlemenin iç öğesini ve aynasını sürücü kurar); sağda (telefonda altta) 360px sütun: ad
  * (biletten, salt okunur), ders ve saati, "Derse katıl". Lobi ve isim
  * alanı yok.
  *
- * Seçimler tarayıcıda saklanır (`zoom/tercihler.ts`) ve derse taşınır.
+ * Karşı taraf beklenirken (`bekleme`, `oda/durum/bekleme.ts`) önizleme
+ * sürer; "Derse katıl"ın yerinde "{ad} bekleniyor…" ve iptal düğmesi durur.
+ *
+ * Seçimler tarayıcıda saklanır (`durum/tercihler.ts`) ve derse taşınır.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +19,8 @@ import { useTranslation } from "react-i18next";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI } from "../stiller";
+import type { ArkaPlan } from "../video/arkaPlan";
+import { surucu } from "../video/etkin";
 import {
   cihazlarDegisti,
   gecerliCihazId,
@@ -25,27 +30,17 @@ import {
   mikIzniReddedildiMi,
   type CihazListeleri,
   type CihazTuru,
-} from "../zoom/indirgeyiciler";
-import { arkaPlanAdresi, type ArkaPlan } from "../zoom/arkaPlan";
-import { arkaPlanDestekli, hoparlorSecilebilir } from "../zoom/istemci";
+} from "./durum/indirgeyiciler";
 import {
   depoyaUygula,
   izinPenceresiniAc,
   useCihazlar,
   useIzinler,
   useOdaDeposu,
-} from "../zoom/odaDeposu";
-import {
-  cihazlariGetir,
-  kameraOnizlemeDurdur,
-  onizlemeArkaPlan,
-  onizlemeBaslat,
-  onizlemeKameraSec,
-  sesOnizlemeBaslat,
-  sesOnizlemeDurdur,
-} from "../zoom/onizleme";
-import { tercihleriOku, tercihleriYaz } from "../zoom/tercihler";
-import { useOnizlemeSeviyesi } from "../zoom/useOnizlemeSeviyesi";
+} from "./durum/odaDeposu";
+import { tercihleriOku, tercihleriYaz } from "./durum/tercihler";
+import { useArkaPlanDestegi } from "./durum/useMedyaKontrolleri";
+import { useOnizlemeSeviyesi } from "./durum/useOnizlemeSeviyesi";
 import { ArkaPlanSecici } from "./ArkaPlanSecici";
 import { CihazSecici, HoparlorTesti } from "./CihazSecici";
 import { MedyaDugmesi } from "./MedyaDugmeleri";
@@ -59,20 +54,9 @@ export interface DersBilgisi {
   saat: string;
 }
 
-/** Kabın içine taze bir önizleme canvas'ı koyar (eskisi varsa söker). */
-function yeniTuval(kap: HTMLElement): HTMLCanvasElement {
-  kap.replaceChildren();
-  const tuval = document.createElement("canvas");
-  tuval.width = 1280;
-  tuval.height = 720;
-  tuval.className = "h-full w-full object-cover";
-  kap.appendChild(tuval);
-  return tuval;
-}
-
 /** Cihaz listesini okuyup depoya yazar; okunan listeyi döndürür. */
 async function listeyiYenile(): Promise<CihazListeleri> {
-  const cihazlar = listeleriKur(await cihazlariGetir());
+  const cihazlar = listeleriKur(await surucu().onizleme.cihazlariGetir());
   depoyaUygula((d) => cihazlarDegisti(d, cihazlar, {}));
   return useOdaDeposu.getState().cihazlar;
 }
@@ -95,6 +79,9 @@ export function OnIzleme({
   ad,
   dersBilgisi,
   deneme,
+  bekleme = null,
+  karsiAd,
+  onBeklemeIptal,
 }: {
   telefon: boolean;
   mikAcik: boolean;
@@ -111,20 +98,26 @@ export function OnIzleme({
   dersBilgisi?: DersBilgisi;
   /** İzin penceresindeki "Yeniden dene" her basışta artırır. */
   deneme: number;
+  /**
+   * "Derse katıl"dan sonra bağlanmadan önceki bekleme: ders kanalı açılıyor
+   * (`hazirlaniyor`) ya da karşı taraf sayfada değil (`karsiTaraf`).
+   * Önizleme (kamera/mikrofon) bu sürede açık kalır.
+   */
+  bekleme?: "hazirlaniyor" | "karsiTaraf" | null;
+  /** Beklenen karşı tarafın adı; yoksa adsız metin. */
+  karsiAd?: string;
+  onBeklemeIptal?: () => void;
 }) {
   const { t } = useTranslation();
-  const video = useRef<HTMLVideoElement>(null);
-  // Arka planlı önizleme her başlatmada YENİ bir canvas'a çizilir: SDK
-  // canvas'ı `transferControlToOffscreen` ile devralır, bir canvas yalnız bir
-  // kez devredilebilir (StrictMode'un kur-sök-kur döngüsü ve kamera aç/kapa).
-  const tuvalKabi = useRef<HTMLDivElement>(null);
-  // Telefon tarayıcılarında Zoom sanal arka planı yok; bir kez okunur.
-  const [arkaPlanVar] = useState(() => !telefon && arkaPlanDestekli());
+  // Önizlemenin kabı: iç öğeyi (`<video>`/`<canvas>`) ve aynayı sürücü kurar.
+  const kap = useRef<HTMLDivElement>(null);
+  // Telefon tarayıcılarında sanal arka plan yok.
+  const arkaPlanVar = useArkaPlanDestegi(!telefon);
   const [arkaPlan, setArkaPlan] = useState<ArkaPlan>(() => tercihleriOku().arkaPlan);
-  // Arka plan seçiliyken önizleme canvas'a çizilir (SDK `<video>`a arka plan koymaz).
-  const tuvalde = arkaPlanVar && arkaPlan !== "yok";
-  const arkaPlanSecimi = useRef(arkaPlan);
-  arkaPlanSecimi.current = arkaPlan;
+  // Kameraya verilen arka plan: telefonda hiç yok (sürücü desteği ayrıca sınar).
+  const etkinArkaPlan: ArkaPlan = telefon ? "yok" : arkaPlan;
+  const arkaPlanSecimi = useRef(etkinArkaPlan);
+  arkaPlanSecimi.current = etkinArkaPlan;
   const [arkaPlanHatasi, setArkaPlanHatasi] = useState(false);
   const cihazlar = useCihazlar();
   const izinler = useIzinler();
@@ -136,14 +129,21 @@ export function OnIzleme({
     kamera: seciliKimlik("kamera"),
   }));
   // Kamera sırasında okunan güncel seçim (efekt kamerayı seçim değişince
-  // yeniden kurmasın; açıkken değişim `onizlemeKameraSec` ile yapılır).
+  // yeniden kurmasın; açıkken değişim `onizleme.kameraSec` ile yapılır).
   const kameraSecimi = useRef(secili.kamera);
   kameraSecimi.current = secili.kamera;
   const [yerelDeneme, setYerelDeneme] = useState(0);
   // Hatalı kamerada yeni seçim: iz yok, `switchCamera` işsiz; efekt yeniden kurar.
   const [kameraDeneme, setKameraDeneme] = useState(0);
-  const hoparlorVar = hoparlorSecilebilir();
+  const hoparlorVar = surucu().destekler.hoparlorSecimi();
   const pencereAcildi = useRef(false);
+  // "Derse katıl" bekleme kutusuna dönüşünce odak kaybolmasın: iptale taşınır.
+  const iptalDugmesi = useRef<HTMLButtonElement>(null);
+  const karsiBekleniyor = bekleme === "karsiTaraf";
+  useEffect(() => {
+    if (karsiBekleniyor) iptalDugmesi.current?.focus();
+  }, [karsiBekleniyor]);
+  const katilDugmesiMesgul = katiliyor || bekleme === "hazirlaniyor";
 
   // Cihaz listesi: açılışta (daha önce izin verildiyse kimlikler hemen
   // gelir) ve cihaz takılıp çıkarıldıkça.
@@ -157,10 +157,8 @@ export function OnIzleme({
 
   // Kamera önizlemesi.
   useEffect(() => {
-    const kap = tuvalKabi.current;
-    const el = tuvalde ? (kap ? yeniTuval(kap) : null) : video.current;
+    const el = kap.current;
     if (!kameraAcik || !el || katiliyor) {
-      if (el instanceof HTMLCanvasElement) el.remove();
       setKamera("kapali");
       return;
     }
@@ -170,14 +168,14 @@ export function OnIzleme({
       try {
         const liste = await listeyiYenile();
         if (!gecerli) return;
-        const uygulandi = await onizlemeBaslat(
-          el,
-          gecerliCihazId(kameraSecimi.current, liste.kamera),
-          tuvalde ? arkaPlanAdresi(arkaPlanSecimi.current) : undefined,
-        );
+        const { arkaPlanUygulandi } = await surucu().onizleme.kameraBaslat(el, {
+          kameraId: gecerliCihazId(kameraSecimi.current, liste.kamera),
+          ayna: tercihleriOku().ayna,
+          arkaPlan: arkaPlanSecimi.current,
+        });
         if (!gecerli) return;
         setKamera("acik");
-        if (!uygulandi) setArkaPlanHatasi(true);
+        if (!arkaPlanUygulandi) setArkaPlanHatasi(true);
         // İzin şimdi verildiyse cihaz adları artık okunabilir.
         void listeyiYenile();
       } catch (e) {
@@ -186,21 +184,25 @@ export function OnIzleme({
     })();
     return () => {
       gecerli = false;
-      void kameraOnizlemeDurdur().then(() => {
-        if (el instanceof HTMLCanvasElement) el.remove();
-      });
+      void surucu().onizleme.kameraDurdur();
     };
-  }, [kameraAcik, katiliyor, deneme, yerelDeneme, kameraDeneme, tuvalde]);
+  }, [kameraAcik, katiliyor, deneme, yerelDeneme, kameraDeneme]);
 
-  // Arka planlar arasında geçiş (ikisi de canvas'ta): iz yeniden kurulmaz.
+  // Arka plan değişimi: sürücü iz yeniden kurulmadan günceller ya da
+  // (`<video>` ↔ canvas) izi yeni öğede kurar.
   const kameraHazir = kamera === "acik";
   useEffect(() => {
-    if (!tuvalde || !kameraHazir) return;
-    onizlemeArkaPlan(arkaPlanAdresi(arkaPlan)).catch((e: unknown) => {
-      console.warn("Zoom önizleme arka planı", e);
-      setArkaPlanHatasi(true);
-    });
-  }, [arkaPlan, tuvalde, kameraHazir]);
+    if (!kameraHazir) return;
+    surucu()
+      .onizleme.arkaPlan(etkinArkaPlan)
+      .then(({ uygulandi }) => {
+        if (!uygulandi) setArkaPlanHatasi(true);
+      })
+      .catch((e: unknown) => {
+        console.warn("Önizleme arka planı", e);
+        setArkaPlanHatasi(true);
+      });
+  }, [etkinArkaPlan, kameraHazir]);
 
   const arkaPlanSec = useCallback((ap: ArkaPlan) => {
     setArkaPlanHatasi(false);
@@ -213,7 +215,7 @@ export function OnIzleme({
   useEffect(() => {
     if (!mikAcik || katiliyor) {
       setMik("kapali");
-      void sesOnizlemeDurdur();
+      void surucu().onizleme.sesDurdur();
       return;
     }
     let gecerli = true;
@@ -222,7 +224,7 @@ export function OnIzleme({
       try {
         const liste = await listeyiYenile();
         if (!gecerli) return;
-        await sesOnizlemeBaslat(gecerliCihazId(mikId, liste.mikrofon));
+        await surucu().onizleme.sesBaslat(gecerliCihazId(mikId, liste.mikrofon));
         if (!gecerli) return;
         setMik("acik");
         void listeyiYenile();
@@ -274,7 +276,9 @@ export function OnIzleme({
         if (kameraAcik && kameraHatali) {
           setKameraDeneme((n) => n + 1);
         } else if (kameraAcik) {
-          onizlemeKameraSec(id).catch((e: unknown) => setKamera({ hata: kameraHataAnahtari(e) }));
+          surucu()
+            .onizleme.kameraSec(id)
+            .catch((e: unknown) => setKamera({ hata: kameraHataAnahtari(e) }));
         }
       }
     },
@@ -319,25 +323,12 @@ export function OnIzleme({
                     aria-label={t(`join.videoPreview.${kamera === "acik" ? "enabled" : "disabled"}`)}
                     className="absolute inset-0"
                   >
-                    {tuvalde ? (
-                      <div
-                        ref={tuvalKabi}
-                        className={`absolute inset-0 transition-opacity duration-300 ${
-                          tercihleriOku().ayna ? "-scale-x-100" : ""
-                        } ${kamera === "acik" ? "opacity-100" : "opacity-0"}`}
-                      />
-                    ) : (
-                      <video
-                        ref={video}
-                        autoPlay
-                        playsInline
-                        muted
-                        disablePictureInPicture
-                        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
-                          tercihleriOku().ayna ? "-scale-x-100" : ""
-                        } ${kamera === "acik" ? "opacity-100" : "opacity-0"}`}
-                      />
-                    )}
+                    <div
+                      ref={kap}
+                      className={`absolute inset-0 transition-opacity duration-300 ${
+                        kamera === "acik" ? "opacity-100" : "opacity-0"
+                      }`}
+                    />
                   </div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-4 text-center">
                     <p
@@ -466,19 +457,46 @@ export function OnIzleme({
           <p className="text-sm text-white/70">
             {t("join.micHint", { durum: t(mikAcik ? "join.micOn" : "join.micOff") })}
           </p>
-          <PlainButton
-            onClick={onKatil}
-            disabled={katiliyor}
-            className={`${DUGME_TABANI} h-12 w-full max-w-xs rounded-ders bg-marka px-6 text-lg font-semibold text-marka-fg hover:bg-marka-hover`}
-          >
-            {katiliyor && (
-              <span
-                className="h-4 w-4 animate-spin rounded-full border-2 border-marka-fg/30 border-t-marka-fg"
-                aria-hidden
-              />
-            )}
-            {t(katiliyor ? "join.joining" : "join.joinLabel")}
-          </PlainButton>
+          {karsiBekleniyor ? (
+            <>
+              <div
+                role="status"
+                className="flex w-full max-w-xs flex-col items-center gap-1 rounded-ders bg-ders-yuzey px-4 py-3"
+              >
+                <span className="flex items-center gap-2 text-base font-semibold">
+                  <span
+                    className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-white/30 border-t-white"
+                    aria-hidden
+                  />
+                  {karsiAd
+                    ? t("join.waiting.title", { name: karsiAd })
+                    : t("join.waiting.titleAnon")}
+                </span>
+                <span className="text-xs text-white/60">{t("join.waiting.hint")}</span>
+              </div>
+              <PlainButton
+                ref={iptalDugmesi}
+                onClick={onBeklemeIptal}
+                className={`${DUGME_TABANI} h-11 w-full max-w-xs rounded-ders bg-ders-dugme px-6 text-base text-white hover:bg-ders-hover`}
+              >
+                {t("join.waiting.cancel")}
+              </PlainButton>
+            </>
+          ) : (
+            <PlainButton
+              onClick={onKatil}
+              disabled={katilDugmesiMesgul}
+              className={`${DUGME_TABANI} h-12 w-full max-w-xs rounded-ders bg-marka px-6 text-lg font-semibold text-marka-fg hover:bg-marka-hover`}
+            >
+              {katilDugmesiMesgul && (
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-marka-fg/30 border-t-marka-fg"
+                  aria-hidden
+                />
+              )}
+              {t(katilDugmesiMesgul ? "join.joining" : "join.joinLabel")}
+            </PlainButton>
+          )}
           {onAyril && (
             <PlainButton
               onClick={onAyril}

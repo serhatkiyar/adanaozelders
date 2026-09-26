@@ -20,7 +20,7 @@ import {
 } from "@/lib/canliDers";
 
 import { DUGME_TABANI } from "../stiller";
-import { izinPenceresiniAc, useIzinler, useIzinPenceresi } from "../zoom/odaDeposu";
+import { izinPenceresiniAc, useIzinler, useIzinPenceresi } from "./durum/odaDeposu";
 
 type IzinEtiketi = "camera" | "microphone" | "cameraAndMicrophone";
 

@@ -863,7 +863,7 @@ export interface BookingOut {
 
 export type BookingIssueReason = "TUTOR_ABSENT" | "LESSON_NOT_HELD" | "OTHER";
 
-export type CanliDersSaglayici = "zoom" | "livekit" | "jitsi";
+export type CanliDersSaglayici = "zoom" | "agora" | "livekit" | "jitsi";
 
 /**
  * `GET /bookings/{id}/zoom-token` — Zoom Video SDK giriş bileti. Oturum ve
@@ -875,6 +875,34 @@ export interface ZoomDersTokenOut {
   kullanici_adi: string;
   rol: "host" | "katilimci";
   expires_at: string;
+}
+
+/**
+ * `/canli-ders-bileti` içindeki Agora RTC bileti. `token` YALNIZ `kanal` +
+ * `uid` için geçerlidir; uid sunucuda üretilir (öğretmen `t{id}`, öğrenci
+ * `c{id}`). Ekran paylaşımı ikinci istemciyle `ekran.uid` (`{uid}-ekran`).
+ * `expires_at` ders penceresini aşmaz.
+ */
+export interface AgoraDersTokenOut {
+  app_id: string;
+  kanal: string;
+  uid: string;
+  token: string;
+  rol: "ogretmen" | "ogrenci";
+  ad: string;
+  karsi: { uid: string; ad: string; rol: "ogretmen" | "ogrenci" } | null;
+  ekran: { uid: string; token: string };
+  expires_at: string;
+}
+
+/**
+ * `GET /bookings/{id}/canli-ders-bileti` — sağlayıcıdan bağımsız giriş
+ * bileti. `saglayici` dersin atanmış sağlayıcısıdır; yalnız onun alanı dolu.
+ */
+export interface CanliDersBiletiOut {
+  saglayici: "zoom" | "agora";
+  zoom: ZoomDersTokenOut | null;
+  agora: AgoraDersTokenOut | null;
 }
 
 /** GET /bookings/{id}/tahta-token — ders tahtası kanalına abonelik (Centrifugo). */

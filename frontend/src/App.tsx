@@ -284,7 +284,7 @@ const Reservations = lazy(() => import("@/pages/Reservations"));
 const OgrenciPano = lazy(() => import("@/pages/OgrenciPano"));
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
 // Canlı ders (Zoom): kabuksuz tam ekran. Toolkit bu parçada DEĞİL, sayfanın
-// kendi tembel parçasında (`components/canli/ZoomOdasi`).
+// kendi tembel parçasında (`components/canli/CanliOda`).
 const CanliDers = lazy(() => import("@/pages/CanliDers"));
 const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));

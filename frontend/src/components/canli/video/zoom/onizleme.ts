@@ -9,10 +9,16 @@
  * Görüntü ve ses AYRI sıralarda: izin sorusu açıkken bir sıra soru
  * yanıtlanana dek çözülmez; mikrofon sorusu kamerayı (ya da tersi)
  * kilitlemesin.
+ *
+ * Kamera önizlemesinin iç öğesini (`<video>` ya da arka planlıysa
+ * `<canvas>`) ve aynasını burası kurar; önizleme ekranı yalnız kabı verir.
  */
 import ZoomVideo, { type LocalAudioTrack, type LocalVideoTrack } from "@zoom/videosdk";
 
-import type { HamCihaz } from "./indirgeyiciler";
+import type { ArkaPlan } from "../arkaPlan";
+import type { HamCihaz, KameraSecenekleri, VideoSurucusu } from "../tipler";
+import { arkaPlanAdresi } from "./arkaPlanAdresi";
+import { seviyeOrani } from "./cevir";
 
 /** İşlemler sıraya girer: hızlı aç/kapa ve StrictMode kur-sök-kur yarışmaz. */
 function siraKur() {
@@ -33,76 +39,147 @@ async function dene(is: Promise<void | Error>): Promise<void> {
   if (sonuc instanceof Error) throw sonuc;
 }
 
+export function ozellikDestekli(ad: string): boolean {
+  try {
+    return Boolean(ZoomVideo.checkFeatureRequirements()?.supportFeatures?.includes(ad));
+  } catch {
+    return false;
+  }
+}
+
 /* ── Görüntü ─────────────────────────────────────────────────────────── */
 
 let iz: LocalVideoTrack | null = null;
+/** Önizlemenin kabı ve son seçenekleri (`<video>` ↔ canvas geçişinde iz yeniden kurulur). */
+let kap: HTMLElement | null = null;
+let secenek: KameraSecenekleri | null = null;
+/** İz canvas'a mı çiziliyor (arka planlı)? SDK `<video>`a arka plan koymaz. */
+let tuvalde = false;
+
+/** Seçim canvas ister mi? Sanal arka plan yoksa (telefon) hep `<video>`. */
+function tuvalGerekir(ap: ArkaPlan): boolean {
+  return ap !== "yok" && ozellikDestekli("Virtual Background");
+}
 
 /**
- * Kamera önizlemesi. `arkaPlan` (Zoom `imageUrl`: `'blur'` ya da görsel
- * adresi) verildiyse öğe `<canvas>` olmalı: SDK sanal arka planı yalnız
- * canvas/`video-player`a çizer. Arka planla açılamazsa arka plansız açılır
- * ve `false` döner (kamera kapalı kalmasın).
+ * Kabın içine taze öğe koyar (eskisi varsa söker). Arka planlı önizleme her
+ * başlatmada YENİ bir canvas'a çizilir: SDK canvas'ı
+ * `transferControlToOffscreen` ile devralır, bir canvas yalnız bir kez
+ * devredilebilir (StrictMode'un kur-sök-kur döngüsü ve kamera aç/kapa).
+ * Ayna CSS ile: yalnız bende görünür.
  */
-export function onizlemeBaslat(
-  oge: HTMLVideoElement | HTMLCanvasElement,
-  kameraId?: string,
-  arkaPlan?: string,
-): Promise<boolean> {
+function yeniOge(
+  hedef: HTMLElement,
+  tuval: boolean,
+  ayna: boolean,
+): HTMLVideoElement | HTMLCanvasElement {
+  hedef.replaceChildren();
+  const sinif = `h-full w-full object-cover${ayna ? " -scale-x-100" : ""}`;
+  if (tuval) {
+    const t = document.createElement("canvas");
+    t.width = 1280;
+    t.height = 720;
+    t.className = sinif;
+    hedef.appendChild(t);
+    return t;
+  }
+  const v = document.createElement("video");
+  v.autoplay = true;
+  v.playsInline = true;
+  v.muted = true;
+  v.disablePictureInPicture = true;
+  v.className = sinif;
+  hedef.appendChild(v);
+  return v;
+}
+
+/**
+ * İzi kurar (sıra İÇİNDE çağrılır). Arka planla açılamazsa arka plansız
+ * (taze canvas'ta) açılır ve `false` döner: kamera kapalı kalmasın.
+ */
+async function izKur(hedef: HTMLElement, o: KameraSecenekleri): Promise<boolean> {
+  const baslat = async (tuval: boolean, imageUrl?: string) => {
+    const oge = yeniOge(hedef, tuval, o.ayna);
+    const yeni = ZoomVideo.createLocalVideoTrack(o.kameraId);
+    iz = yeni;
+    tuvalde = tuval;
+    try {
+      await dene(yeni.start(oge, imageUrl ? { imageUrl } : undefined));
+    } catch (hata) {
+      iz = null;
+      await yeni.stop().catch(() => undefined);
+      throw hata;
+    }
+  };
+  if (!tuvalGerekir(o.arkaPlan)) {
+    await baslat(false);
+    return true;
+  }
+  try {
+    await baslat(true, arkaPlanAdresi(o.arkaPlan));
+    return true;
+  } catch (hata) {
+    console.warn("Zoom önizleme (arka plan)", hata);
+    // Devredilmiş olabilecek canvas yeniden kullanılmaz: yerine taze kopya.
+    await baslat(true);
+    return false;
+  }
+}
+
+async function izDurdur(): Promise<void> {
+  const eski = iz;
+  iz = null;
+  if (eski) await eski.stop().catch(() => undefined);
+}
+
+function kameraBaslat(
+  hedef: HTMLElement,
+  o: KameraSecenekleri,
+): Promise<{ arkaPlanUygulandi: boolean }> {
   let uygulandi = true;
   return videoSirasi(async () => {
+    kap = hedef;
+    secenek = o;
     if (iz) return;
-    const baslat = async (hedef: HTMLVideoElement | HTMLCanvasElement, vb?: string) => {
-      const yeni = ZoomVideo.createLocalVideoTrack(kameraId);
-      iz = yeni;
-      try {
-        await dene(yeni.start(hedef, vb ? { imageUrl: vb } : undefined));
-      } catch (hata) {
-        iz = null;
-        await yeni.stop().catch(() => undefined);
-        throw hata;
-      }
-    };
-    if (!arkaPlan) return baslat(oge);
-    try {
-      await baslat(oge, arkaPlan);
-    } catch (hata) {
-      console.warn("Zoom önizleme (arka plan)", hata);
-      uygulandi = false;
-      // Devredilmiş olabilecek canvas yeniden kullanılmaz: yerine taze kopya.
-      await baslat(oge instanceof HTMLCanvasElement ? tuvaliYenile(oge) : oge);
-    }
-  }).then(() => uygulandi);
+    uygulandi = await izKur(hedef, o);
+  }).then(() => ({ arkaPlanUygulandi: uygulandi }));
 }
 
-function tuvaliYenile(eski: HTMLCanvasElement): HTMLCanvasElement {
-  const yeni = document.createElement("canvas");
-  yeni.width = eski.width;
-  yeni.height = eski.height;
-  yeni.className = eski.className;
-  eski.replaceWith(yeni);
-  return yeni;
-}
-
-/** Açık önizlemenin arka planını değiştirir (`undefined`: kaldırır). */
-export function onizlemeArkaPlan(arkaPlan: string | undefined): Promise<void> {
+/**
+ * Açık önizlemenin arka planı. İki arka plan arasında (ikisi de canvas'ta)
+ * iz yeniden kurulmaz; `<video>` ↔ canvas geçişinde iz durdurulup yeni
+ * öğede kurulur. Kamera kapalıysa seçim bir sonraki açılışta kullanılır.
+ */
+function arkaPlanDegistir(ap: ArkaPlan): Promise<{ uygulandi: boolean }> {
+  let uygulandi = true;
   return videoSirasi(async () => {
-    if (iz) await dene(iz.updateVirtualBackground(arkaPlan));
-  });
+    if (!secenek) return;
+    const onceki = secenek.arkaPlan;
+    secenek = { ...secenek, arkaPlan: ap };
+    if (!iz || !kap || ap === onceki) return;
+    if (tuvalGerekir(ap) === tuvalde) {
+      if (tuvalde) await dene(iz.updateVirtualBackground(arkaPlanAdresi(ap)));
+      return;
+    }
+    await izDurdur();
+    uygulandi = await izKur(kap, secenek);
+  }).then(() => ({ uygulandi }));
 }
 
 /** Önizleme açıkken kamerayı değiştirir (kapalıysa bir sonraki açılışta). */
-export function onizlemeKameraSec(kameraId: string): Promise<void> {
+function kameraSec(kameraId: string): Promise<void> {
   return videoSirasi(async () => {
+    if (secenek) secenek = { ...secenek, kameraId };
     if (iz) await dene(iz.switchCamera(kameraId));
   });
 }
 
-/** Yalnız kamera önizlemesini durdurur (mikrofon seviyesi sürer). */
-export function kameraOnizlemeDurdur(): Promise<void> {
+/** Yalnız kamera önizlemesini durdurur (mikrofon seviyesi sürer); öğeyi söker. */
+function kameraDurdur(): Promise<void> {
   return videoSirasi(async () => {
-    const eski = iz;
-    iz = null;
-    if (eski) await eski.stop().catch(() => undefined);
+    await izDurdur();
+    kap?.replaceChildren();
+    kap = null;
   });
 }
 
@@ -117,7 +194,7 @@ let sesIzMikrofonu: string | undefined;
  * `LocalAudioTrack` yinelenen `start`/`unmute`ta fırlatır; durum burada
  * tutulur ve seviye ölçer yalnız `unmute` sonrası vardır.
  */
-export function sesOnizlemeBaslat(mikrofonId?: string): Promise<void> {
+function sesBaslat(mikrofonId?: string): Promise<void> {
   return sesSirasi(async () => {
     if (sesIz && sesIzMikrofonu === mikrofonId) return;
     if (sesIz) {
@@ -138,7 +215,7 @@ export function sesOnizlemeBaslat(mikrofonId?: string): Promise<void> {
   });
 }
 
-export function sesOnizlemeDurdur(): Promise<void> {
+function sesDurdur(): Promise<void> {
   return sesSirasi(async () => {
     const eski = sesIz;
     sesIz = null;
@@ -147,10 +224,10 @@ export function sesOnizlemeDurdur(): Promise<void> {
   });
 }
 
-/** Anlık ham seviye (RMS, 0–1); iz yoksa 0. */
-export function onizlemeSeviyesi(): number {
+/** Gösterime hazır seviye (0–1; ham RMS algısal ölçekle); iz yoksa 0. */
+function seviye(): number {
   try {
-    return sesIz?.getCurrentVolume() ?? 0;
+    return seviyeOrani(sesIz?.getCurrentVolume() ?? 0);
   } catch {
     return 0;
   }
@@ -166,7 +243,7 @@ let testIzi: LocalAudioTrack | null = null;
  * desteklemiyorsa ya da bir test zaten sürüyorsa `null`. Dönen
  * fonksiyon testi durdurur.
  */
-export function hoparloruDene(hoparlorId?: string): (() => void) | null {
+function hoparloruDene(hoparlorId?: string): (() => void) | null {
   try {
     testIzi ??= ZoomVideo.createLocalAudioTrack();
     const test = testIzi.testSpeaker(hoparlorId ? { speakerId: hoparlorId } : undefined);
@@ -192,7 +269,7 @@ export function hoparloruDene(hoparlorId?: string): (() => void) | null {
  * telefonda VIDEO_CAMERA_IS_TAKEN'a yol açar. Adlar izin verildikten
  * sonra dolar; liste izler başladıktan sonra yeniden okunur.
  */
-export async function cihazlariGetir(): Promise<HamCihaz[]> {
+async function cihazlariGetir(): Promise<HamCihaz[]> {
   try {
     return await ZoomVideo.getDevices(true);
   } catch {
@@ -207,6 +284,19 @@ export async function cihazlariGetir(): Promise<HamCihaz[]> {
 /* ── Kapanış ─────────────────────────────────────────────────────────── */
 
 /** İki izi de durdurur; katılmadan önce BEKLENİR. */
-export async function onizlemeDurdur(): Promise<void> {
-  await Promise.all([kameraOnizlemeDurdur(), sesOnizlemeDurdur()]);
+async function durdur(): Promise<void> {
+  await Promise.all([kameraDurdur(), sesDurdur()]);
 }
+
+export const zoomOnizleme: VideoSurucusu["onizleme"] = {
+  kameraBaslat,
+  kameraSec,
+  arkaPlan: arkaPlanDegistir,
+  kameraDurdur,
+  sesBaslat,
+  sesDurdur,
+  seviye,
+  hoparloruDene,
+  cihazlariGetir,
+  durdur,
+};
