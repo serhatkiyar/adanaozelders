@@ -47,6 +47,13 @@ import App from "@/App";
 import "@/pages/Libraries";
 import { ROUTES } from "@/lib/routes";
 
+// Kabuk sözleşmesi iki keşif kategorisi arasında ölçülür; 26 Eyl 2026'dan beri
+// Kütüphaneler lansman için gizli. Mimari iddia bayraktan bağımsız olduğu için
+// burada yalnız o bayrak açık sayılır, geri kalanı gerçek değerini korur.
+vi.mock("@/lib/ozellikBayraklari", async (gercek) => ({
+  ...(await gercek<typeof import("@/lib/ozellikBayraklari")>()),
+  KUTUPHANELER_ACIK: true,
+}));
 vi.mock("@/hooks/useCurrentUser", () => ({
   useCurrentUser: () => ({ data: null, isLoading: false, isError: false }),
 }));
@@ -130,7 +137,7 @@ describe("keşif kabuğu · kategori değişiminde remount YOK", () => {
 
   it("kategori şeridinin KENDİ düğümü de korunur", async () => {
     await uygulamayiBas("/");
-    // Mağaza sekmesi bayrakla gizli (16 Eyl 2026); tıklanmayan sekme Eğitmenler.
+    // Tıklanmayan sekme Eğitmenler.
     const bagOnce = kategoriBagi("Öğretmenler");
     expect(bagOnce).toBeTruthy();
 

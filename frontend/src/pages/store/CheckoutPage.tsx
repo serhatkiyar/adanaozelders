@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
-import { ModalShell } from "@/components/store/ModalShell";
 import { formatTL } from "@/lib/money";
 import { isSelected } from "@/lib/cart";
 import { estimateDelivery } from "@/lib/delivery";
@@ -28,7 +27,6 @@ export default function CheckoutPage() {
   const setCoupon = useCartStore((s) => s.setCoupon);
   const [couponInput, setCouponInput] = useState(couponCode ?? "");
   const [consent, setConsent] = useState(false);
-  const [pickupInfo, setPickupInfo] = useState(false);
 
   const selectedItems = useMemo(() => items.filter(isSelected), [items]);
   const cartLines = useMemo(
@@ -200,23 +198,6 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Gel Al Noktası — yakında */}
-                  <div className="flex items-center justify-between rounded-xl border border-slate-200 p-3 opacity-70 ">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 ">
-                      <span className="h-4 w-4 rounded-full border border-slate-300 " />
-                      <span className="font-medium">Gel Al Noktası</span>
-                      <button
-                        type="button"
-                        onClick={() => setPickupInfo(true)}
-                        className="text-xs text-marka-metin underline-offset-2 hover:underline "
-                      >
-                        Nedir?
-                      </button>
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 ">
-                      Yakında
-                    </span>
-                  </div>
                 </div>
               </Section>
             )}
@@ -363,30 +344,6 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {pickupInfo && (
-        <ModalShell title="Gel Al Noktası" onClose={() => setPickupInfo(false)}>
-          <div className="space-y-3 text-sm leading-relaxed text-slate-600 ">
-            <p>
-              Gel al noktası, siparişini kargo yerine sana yakın bir
-              <span className="font-medium text-slate-900 "> kütüphane / etüt merkezinden</span>{" "}
-              teslim alabildiğin noktadır.
-            </p>
-            <p className="rounded-lg bg-slate-50 px-3 py-2 text-slate-500 ">
-              Bu seçenek <span className="font-medium">yakında</span> aktif olacak. Şimdilik siparişler
-              adrese kargoyla teslim edilir.
-            </p>
-          </div>
-          <div className="mt-5 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setPickupInfo(false)}
-              className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
-            >
-              Anladım
-            </button>
-          </div>
-        </ModalShell>
-      )}
     </StoreLayout>
   );
 }

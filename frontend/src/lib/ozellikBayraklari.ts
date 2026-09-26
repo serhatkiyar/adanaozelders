@@ -23,18 +23,25 @@
  */
 
 /** Kütüphane/etüt merkezi kataloğu, profili ve self-servis kaydı.
- *  29 Ağu 2026: kullanıcı kararıyla AÇILDI. */
-export const KUTUPHANELER_ACIK = true;
+ *  29 Ağu 2026: kullanıcı kararıyla AÇILDI.
+ *  26 Eyl 2026: kullanıcı kararıyla lansman için yeniden KAPATILDI —
+ *  getirisi düşük, ödeme kolu (library_marketplace) zaten kapalı. Kapalıyken
+ *  kategori şeridinde GİZLİ, Favoriler'de kütüphane koleksiyonu çizilmez,
+ *  adresler "Yakında" açar. */
+export const KUTUPHANELER_ACIK = false;
 
 /**
  * Mağaza (D&R tarzı katalog, ürün detayı, sepet, kampanya sayfaları).
  * 16 Eyl 2026: kullanıcı kararıyla KAPATILDI — "şu anlık localde
  * geliştirelim, public olmasın". Kapalıyken kategori şeridinde GİZLİ
  * (donuk değil), mağaza adresleri "Yakında" açar, Hesabım'daki mağaza
- * kartları çizilmez. Geliştirirken yerelde `true` yapılır; sipariş, adres
- * ve yönetim panelinin mağaza modülü bayraktan bağımsız çalışmaya devam eder.
+ * kartları çizilmez. Sipariş, adres ve yönetim panelinin mağaza modülü
+ * bayraktan bağımsız çalışmaya devam eder.
+ * 26 Eyl 2026: kullanıcı kararıyla AÇILDI — lansmanın iki gelir kaynağından
+ * biri. Satışın gerçekten açılması ayrıca `store_payments_live` DB bayrağına
+ * ve gerçek ödeme sağlayıcısına bağlıdır (services/payment_gates.py).
  */
-export const MAGAZA_ACIK = false;
+export const MAGAZA_ACIK = true;
 
 /**
  * "Denemeler" — İKİ yüzeyi birden kapsar:

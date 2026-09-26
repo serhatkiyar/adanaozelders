@@ -45,9 +45,9 @@ type Category = {
  */
 const CATEGORIES: Category[] = [
   { key: "egitmenler", label: "Öğretmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.home },
-  { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries, donuk: !KUTUPHANELER_ACIK },
-  // Deneme oturumları kütüphane profillerinde yer alır. Kütüphaneler'den farklı
-  // olarak donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
+  { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries, gizli: !KUTUPHANELER_ACIK },
+  // Deneme oturumları kütüphane profillerinde yer alır. Kütüphaneler gibi
+  // donuk-görünür DEĞİL, kapalıyken tamamen gizli; bayrak açılınca döner.
   { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries, gizli: !DENEMELER_ACIK },
   // Mağaza: kategori sekmesi değil, mağazaya geçiş kapısı (kullanıcı isteği, 29 Ağu).
   // Kapalıyken tamamen gizli (bkz. lib/ozellikBayraklari.ts · MAGAZA_ACIK).

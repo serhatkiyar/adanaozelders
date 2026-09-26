@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
@@ -25,7 +24,6 @@ export default function CartPage() {
   const remove = useCartStore((s) => s.remove);
   const toggleSelected = useCartStore((s) => s.toggleSelected);
   const user = useAuthStore((s) => s.user);
-  const [pickupOpen, setPickupOpen] = useState(false);
 
   const subtotal = selectedSubtotal(items);
   const hasPhysicalSelected = items.some(
@@ -139,29 +137,6 @@ export default function CartPage() {
                 Sepeti Onayla
               </button>
 
-              {/* Gel Al Noktası bilgi kartı */}
-              <button
-                type="button"
-                onClick={() => setPickupOpen(true)}
-                className="mt-3 flex w-full items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition-colors hover:border-marka-mid "
-              >
-                <svg className="shrink-0 text-marka-metin " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                <span className="flex-1">
-                  <span className="block text-sm font-medium text-slate-800 ">
-                    Gel Al Noktası Nedir?
-                  </span>
-                  <span className="block text-xs text-slate-500 ">
-                    Kütüphaneden ücretsiz teslim al
-                  </span>
-                </span>
-                <svg className="shrink-0 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
-              </button>
-
               <p className="mt-3 text-center text-xs text-slate-400">
                 Nihai tutar ödeme adımında sunucuda onaylanır.
               </p>
@@ -185,7 +160,6 @@ export default function CartPage() {
         )}
       </div>
 
-      {pickupOpen && <PickupModal onClose={() => setPickupOpen(false)} />}
     </StoreLayout>
   );
 }
@@ -313,76 +287,5 @@ function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => voi
         </svg>
       )}
     </button>
-  );
-}
-
-/* ── "Gel Al Noktası" bilgi modalı ── */
-function PickupModal({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl "
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between">
-          <h3 className="text-lg font-semibold text-slate-900 ">
-            Gel Al Noktası
-          </h3>
-          <button
-            type="button"
-            aria-label="Kapat"
-            onClick={onClose}
-            className="text-slate-400 transition-colors hover:text-slate-700 "
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="mt-4 space-y-3 text-sm leading-relaxed text-slate-600 ">
-          <p>
-            Gel al noktası, siparişini kargoyla beklemek yerine sana yakın bir
-            <span className="font-medium text-slate-900 "> kütüphane / etüt merkezinden</span>{" "}
-            teslim alabildiğin noktadır.
-          </p>
-          <p>
-            Anlaşmalı noktadan teslim almak{" "}
-            <span className="font-medium text-emerald-600 ">kargo ücreti ödemeden</span>{" "}
-            ürününe ulaşmanı sağlar; siparişin hazır olduğunda haber verilir.
-          </p>
-          <p className="rounded-lg bg-slate-50 px-3 py-2 text-slate-500 ">
-            Gel al noktası seçimi <span className="font-medium">ödeme adımında</span> yapılır.
-            İstersen klasik kargo teslimatıyla da devam edebilirsin.
-          </p>
-        </div>
-
-        <div className="mt-5 flex items-center justify-between">
-          <Link
-            to={ROUTES.libraries}
-            className="text-sm font-medium text-marka-metin hover:underline "
-          >
-            Noktaları gör →
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition-colors hover:bg-marka-hover"
-          >
-            Anladım
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
   );
 }

@@ -1,7 +1,9 @@
 /**
- * BÖLÜM BAYRAKLARI — güncel sözleşme (29 Ağu 2026, kullanıcı kararları):
+ * BÖLÜM BAYRAKLARI — güncel sözleşme (26 Eyl 2026, kullanıcı kararları):
  *
- *   • KUTUPHANELER_ACIK = true  → Kütüphaneler HER YERDE gerçek bağlantı.
+ *   • KUTUPHANELER_ACIK = false → Kütüphaneler lansman için KAPALI: kategori
+ *     şeridinde GİZLİ, doğrudan URL "Yakında" açar (29 Ağu–26 Eyl arası açıktı).
+ *   • MAGAZA_ACIK      = true  → Mağaza şeritte gerçek bağlantı.
  *   • DENEMELER_ACIK   = false → Denemeler donuk-görünür DEĞİL, tamamen
  *     GİZLİ (menülerde hiç render edilmez); doğrudan URL "Yakında" açar.
  *   • "Hepsi" sekmesi KALDIRILDI — varsayılan yüzey Eğitmenler.
@@ -71,12 +73,13 @@ const SRC_KOK = resolve(
 );
 
 describe("ÖN KOŞUL — bayrak değerleri", () => {
-  it("KUTUPHANELER_ACIK=true, DENEMELER_ACIK=false", () => {
+  it("KUTUPHANELER_ACIK=false, DENEMELER_ACIK=false, MAGAZA_ACIK=true", () => {
     // Bu dosyadaki her iddia bu ikiliye dayanır. Biri sessizce değişirse
     // aşağıdaki düğümler kırılır ama sebebi anlaşılmaz olurdu; burada
     // açıkça söylenir.
-    expect(KUTUPHANELER_ACIK).toBe(true);
+    expect(KUTUPHANELER_ACIK).toBe(false);
     expect(DENEMELER_ACIK).toBe(false);
+    expect(MAGAZA_ACIK).toBe(true);
   });
 
   it("OGREN_ACIK=false, KISISELLESTIRME_ACIK=false", () => {
@@ -86,7 +89,7 @@ describe("ÖN KOŞUL — bayrak değerleri", () => {
 });
 
 describe("A — kategori çubuğu (gerçek DOM)", () => {
-  it("NÖBETÇİ: çubuk render oluyor; Öğretmenler ve Kütüphaneler GERÇEK bağlantı", () => {
+  it("NÖBETÇİ: çubuk render oluyor; Öğretmenler ve Mağaza GERÇEK bağlantı, Kütüphaneler GİZLİ", () => {
     sar(<CategoryBar />);
     // Eğitmenler hedefi 10 Eyl 2026'da `/egitmenler`den `/`e çekildi:
     // kategori değiştirmek arama yapmak değildir, hedef o kategorinin KEŞİF
@@ -95,8 +98,9 @@ describe("A — kategori çubuğu (gerçek DOM)", () => {
       screen.getByRole("link", { name: /Öğretmenler/ }).getAttribute("href")
     ).toBe("/");
     expect(
-      screen.getByRole("link", { name: /Kütüphaneler/ }).getAttribute("href")
-    ).toBe("/kutuphaneler");
+      screen.getByRole("link", { name: /Mağaza/ }).getAttribute("href")
+    ).toBe("/magaza");
+    expect(screen.queryByText("Kütüphaneler")).toBeNull();
   });
 
   it("'Hepsi' sekmesi KALDIRILDI", () => {
@@ -129,10 +133,10 @@ describe("A — kategori çubuğu (gerçek DOM)", () => {
       "sekme kipi geri gelmiş: tıklanınca adres değişmez"
     ).toEqual([]);
 
-    // Mağaza yalnız bayrak açıkken çubukta (16 Eyl 2026: kapalı, gizli).
+    // Mağaza ve Kütüphaneler yalnız bayrakları açıkken çubukta.
     for (const [etiket, hedef] of [
       ["Öğretmenler", "/"],
-      ["Kütüphaneler", "/kutuphaneler"],
+      ...(KUTUPHANELER_ACIK ? ([["Kütüphaneler", "/kutuphaneler"]] as const) : []),
       ...(MAGAZA_ACIK ? ([["Mağaza", "/magaza"]] as const) : []),
     ] as const) {
       expect(
@@ -167,9 +171,9 @@ describe("B — rota kapısı (gerçek App + gerçek router)", () => {
     expect(screen.getByRole("heading", { name: /Yakında/i })).toBeTruthy();
   });
 
-  it("/kutuphaneler artık 'Yakında' DEĞİL (bölüm açık)", async () => {
+  it("/kutuphaneler → 'Yakında' (bölüm lansman için kapalı)", async () => {
     await yoluBas("/kutuphaneler");
-    expect(screen.queryByRole("heading", { name: /^Yakında$/i })).toBeNull();
+    expect(screen.getByRole("heading", { name: /Yakında/i })).toBeTruthy();
   });
 
   it("NÖBETÇİ: /egitmenler 'Yakında' göstermiyor", async () => {
