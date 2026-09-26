@@ -1,0 +1,42 @@
+# WhatsApp doğrulama kodu için WAHA (https://waha.devlike.pro) — İSTEĞE BAĞLI katman.
+#
+# 27 Eyl 2026. Yerel deneme (POC) geçti: gönderim, yeniden başlatmada QR'sız
+# dönüş, durum okuma, olmayan numara, telefondan çıkış. GOWS motoru tarayıcı
+# çalıştırmaz (~200 MB). Telefondaki WhatsApp'a "bağlı cihaz" olarak bağlanır;
+# telefon uygulaması kullanılmaya devam eder.
+#
+# Açmak (deploy.sh'teki compose komutuna bu dosya da eklenir):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.staging.yml \
+#     -f docker-compose.waha.yml --env-file .env.prod up -d waha
+# .env.prod'da ZORUNLU: WAHA_API_KEY, WAHA_DASHBOARD_PASSWORD. Backend için
+# ayrıca: WHATSAPP_PROVIDER=waha, WAHA_URL=http://waha:3000 (aynı WAHA_API_KEY).
+#
+# Port DIŞARIYA AÇILMAZ; backend iç ağdan erişir. QR'ı okutmak için panel SSH
+# tüneliyle açılır:  ssh -p 35342 -L 3000:127.0.0.1:3000 root@<sunucu>
+# (tünel için aşağıdaki 127.0.0.1 bağlaması yeterlidir; dış arayüze değil).
+#
+# Bu yol WhatsApp'ın resmî API'si değildir: numara engellenebilir. Bu yüzden
+# kişisel/işletme numarası DEĞİL, bu işe ayrılmış hat bağlanır; her hata
+# durumunda kodlar SMS'e düşer (backend/core/whatsapp.py).
+services:
+  waha:
+    image: devlikeapro/waha:gows-2026.9.1
+    restart: unless-stopped
+    environment:
+      WAHA_DEFAULT_ENGINE: GOWS
+      WAHA_API_KEY: ${WAHA_API_KEY:?WAHA_API_KEY gerekli (openssl rand -hex 24)}
+      WAHA_DASHBOARD_USERNAME: admin
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:?WAHA_DASHBOARD_PASSWORD gerekli}
+      WHATSAPP_SWAGGER_USERNAME: admin
+      WHATSAPP_SWAGGER_PASSWORD: ${WAHA_DASHBOARD_PASSWORD:?WAHA_DASHBOARD_PASSWORD gerekli}
+      WAHA_PRINT_QR: "false"
+      WAHA_LOG_LEVEL: warn
+    volumes:
+      - waha_sessions:/app/.sessions
+    ports:
+      - "127.0.0.1:3000:3000"
+    mem_limit: 512m
+    cpus: "0.5"
+
+volumes:
+  waha_sessions:

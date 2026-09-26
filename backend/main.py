@@ -85,6 +85,7 @@ _LOCK_DELIVERY = 918_301_003
 _LOCK_OUTBOX = 918_301_004
 _LOCK_SUPPLIER_SYNC = 918_301_005
 _LOCK_SERIES = 918_301_006
+_LOCK_WHATSAPP = 918_301_007
 
 
 async def _reminder_tick() -> None:
@@ -129,6 +130,16 @@ async def _reminder_tick() -> None:
     await _leader_job("escrow mutabakatı", _LOCK_ESCROW, _escrow)
     await _leader_job("teslimat watchdog", _LOCK_DELIVERY, _delivery)
     await _leader_job("haftalık seri", _LOCK_SERIES, _series)
+
+    async def _whatsapp(session) -> None:
+        # WAHA oturumu koparsa yöneticiye bir kez haber ver (kodlar o sırada
+        # SMS'e düşer). WAHA kapalıyken no-op.
+        from services import whatsapp_izleme
+
+        await whatsapp_izleme.oturum_kontrol(session)
+        await session.commit()
+
+    await _leader_job("whatsapp izleme", _LOCK_WHATSAPP, _whatsapp)
 
 
 async def _reminder_loop() -> None:

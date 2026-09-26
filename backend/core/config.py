@@ -264,9 +264,19 @@ class Settings(BaseSettings):
     NETGSM_PASSWORD: str | None = None
     NETGSM_MSGHEADER: str | None = None
 
-    # WhatsApp doğrulama kodu (Meta WhatsApp Cloud API). Üçü birden doluysa
-    # telefon OTP'si önce WhatsApp'tan gider; gönderilemezse ya da kullanıcı
-    # "SMS olarak al" derse SMS'e düşer. Boşsa her şey SMS'le çalışır.
+    # WhatsApp doğrulama kodu. WHATSAPP_PROVIDER: "off" (varsayılan; her şey
+    # SMS) | "waha" (kendi sunucumuzdaki WAHA, bağlı cihaz) | "meta" (WhatsApp
+    # Cloud API). Açıkken telefon OTP'si önce WhatsApp'tan gider; gönderilemezse
+    # ya da kullanıcı "SMS olarak al" derse SMS'e düşer.
+    WHATSAPP_PROVIDER: str = "off"
+    #: WAHA (yalnız WHATSAPP_PROVIDER=waha). İç ağ adresi; dışarıya açılmaz.
+    WAHA_URL: str | None = None
+    WAHA_API_KEY: str | None = None
+    WAHA_SESSION: str = "default"
+    #: Aynı numaraya saatte en çok kaç WhatsApp kodu (aşılırsa SMS'e düşer).
+    #: WhatsApp'ın yeni kişilere toplu mesaj kısıtına karşı tampon.
+    WHATSAPP_OTP_SAATLIK_SINIR: int = 3
+    # Meta WhatsApp Cloud API (yalnız WHATSAPP_PROVIDER=meta).
     WHATSAPP_PHONE_NUMBER_ID: str | None = None
     WHATSAPP_ACCESS_TOKEN: str | None = None
     #: Meta'da onaylı "authentication" şablonunun adı (kopyala-kodu düğmeli).
