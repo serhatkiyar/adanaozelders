@@ -27,7 +27,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/ozellikBayraklari", () => ({
-  KUTUPHANELER_ACIK: false, // gizli kalır
+  KUTUPHANELER_ACIK: false, // donuk kalır
   DENEMELER_ACIK: true, // açılır
   // Bu dosyanın konusu Kütüphaneler↔Denemeler bağımsızlığı; yeni iki bayrak
   // üretim değeriyle (kapalı) bırakılır ki karışık durum bozulmasın.
@@ -56,12 +56,15 @@ function sar(ui: React.ReactNode) {
 afterEach(cleanup);
 
 describe("bayraklar BAĞIMSIZ — yalnız DENEMELER açık", () => {
-  it("kategori çubuğunda 'Denemeler' bağlantı, 'Kütüphaneler' hâlâ gizli", () => {
+  it("kategori çubuğunda 'Denemeler' bağlantı, 'Kütüphaneler' hâlâ donuk", () => {
     sar(<CategoryBar />);
     // Açılan bayrak: gerçek bağlantı.
     expect(screen.getByRole("link", { name: /Denemeler/ })).toBeTruthy();
-    // Kapalı kalan bayrak: 26 Eyl 2026'dan beri donuk-görünür değil, GİZLİ.
-    expect(screen.queryByText("Kütüphaneler")).toBeNull();
+    // Kapalı kalan bayrak: hâlâ bağlantı değil ("Yakında" rozeti 29 Ağu'da
+    // kalktı; donukluk aria-disabled + soluklukla anlatılır).
+    expect(screen.queryByRole("link", { name: /Kütüphaneler/ })).toBeNull();
+    const donuk = screen.getByText("Kütüphaneler").closest("[aria-disabled]");
+    expect(donuk).not.toBeNull();
   });
 
   it("Öğren hub'ında 'Denemelerim' açıldı (DENEMELER bayrağı okunuyor)", () => {

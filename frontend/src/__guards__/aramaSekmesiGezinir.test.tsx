@@ -55,7 +55,7 @@ describe("kategori sekmesi · gerçek gezinme", () => {
     sar();
     // Liste boşalırsa ya da render kırılırsa aşağıdaki iddialar hiçbir şey
     // ölçmeden yeşil kalırdı.
-    // Eğitmenler + Mağaza; Kütüphaneler bayrakla gizli (26 Eyl 2026).
+    // Eğitmenler + Kütüphaneler; Mağaza bayrakla gizli (16 Eyl 2026).
     expect(screen.getAllByRole("link").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Öğretmenler")).toBeTruthy();
   });
@@ -66,10 +66,10 @@ describe("kategori sekmesi · gerçek gezinme", () => {
     expect(screen.queryAllByRole("button")).toEqual([]);
   });
 
-  it("Mağaza'ya tıklamak adresi `/magaza` yapar", () => {
+  it("Kütüphaneler'e tıklamak adresi `/kutuphaneler` yapar", () => {
     sar("egitmenler");
-    fireEvent.click(screen.getByText("Mağaza"));
-    expect(adres()).toBe(ROUTES.store);
+    fireEvent.click(screen.getByText("Kütüphaneler"));
+    expect(adres()).toBe(ROUTES.libraries);
   });
 
   it("Öğretmenler'e tıklamak KEŞİF yüzeyine (`/`) götürür, arama sonucuna DEĞİL", () => {
@@ -82,7 +82,7 @@ describe("kategori sekmesi · gerçek gezinme", () => {
      * hedef artık kökteki eğitmen vitrini. `/egitmenler` aramanın kendi
      * adresi olarak durur ve oraya arama hapından gidilir.
      */
-    sar("magaza");
+    sar("kutuphaneler");
     fireEvent.click(screen.getByText("Öğretmenler"));
     expect(adres()).toBe(ROUTES.home);
     expect(adres(), "kategori hâlâ arama sonucuna götürüyor").not.toBe(
@@ -92,8 +92,8 @@ describe("kategori sekmesi · gerçek gezinme", () => {
 
   it("aktif sekme `aria-current=page` taşır (görsel değil anlamsal)", () => {
     // Aktiflik yalnız alt çizgiyle anlatılsaydı ekran okuyucu için görünmezdi.
-    sar("egitmenler");
-    const aktif = screen.getByText("Öğretmenler").closest("a");
+    sar("kutuphaneler");
+    const aktif = screen.getByText("Kütüphaneler").closest("a");
     expect(aktif?.getAttribute("aria-current")).toBe("page");
   });
 });

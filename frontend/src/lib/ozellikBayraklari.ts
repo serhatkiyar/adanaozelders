@@ -23,12 +23,8 @@
  */
 
 /** Kütüphane/etüt merkezi kataloğu, profili ve self-servis kaydı.
- *  29 Ağu 2026: kullanıcı kararıyla AÇILDI.
- *  26 Eyl 2026: kullanıcı kararıyla lansman için yeniden KAPATILDI —
- *  getirisi düşük, ödeme kolu (library_marketplace) zaten kapalı. Kapalıyken
- *  kategori şeridinde GİZLİ, Favoriler'de kütüphane koleksiyonu çizilmez,
- *  adresler "Yakında" açar. */
-export const KUTUPHANELER_ACIK = false;
+ *  29 Ağu 2026: kullanıcı kararıyla AÇILDI (26 Eyl 2026'da teyit edildi). */
+export const KUTUPHANELER_ACIK = true;
 
 /**
  * Mağaza (D&R tarzı katalog, ürün detayı, sepet, kampanya sayfaları).

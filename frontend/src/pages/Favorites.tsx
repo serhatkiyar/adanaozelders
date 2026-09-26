@@ -13,7 +13,6 @@ import { useLibraryBookmarks } from "@/hooks/useLibraryBookmarks";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { useUiPrefsStore } from "@/store/uiPrefsStore";
 import { ROUTES } from "@/lib/routes";
-import { KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 
 type View = "index" | "tutors" | "libraries" | "recent";
 
@@ -65,15 +64,13 @@ export default function Favorites() {
                 icon={<BookmarkIcon />}
                 onClick={() => setView("tutors")}
               />
-              {KUTUPHANELER_ACIK && (
-                <CollectionCard
-                  title="Kütüphaneler"
-                  subtitle={countLabel(libraries?.length, "kayıtlı kütüphane")}
-                  tiles={libraryTiles}
-                  icon={<HeartIcon />}
-                  onClick={() => setView("libraries")}
-                />
-              )}
+              <CollectionCard
+                title="Kütüphaneler"
+                subtitle={countLabel(libraries?.length, "kayıtlı kütüphane")}
+                tiles={libraryTiles}
+                icon={<HeartIcon />}
+                onClick={() => setView("libraries")}
+              />
               {showRecent && recent.length > 0 && (
                 <CollectionCard
                   title="Son görüntülenenler"
@@ -97,7 +94,7 @@ export default function Favorites() {
           </Detail>
         )}
 
-        {KUTUPHANELER_ACIK && view === "libraries" && (
+        {view === "libraries" && (
           <Detail
             title="Kütüphaneler"
             count={countLabel(libraries?.length, "kayıtlı kütüphane")}
