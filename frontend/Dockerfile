@@ -13,6 +13,11 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 # Kanonik URL / OG etiketleri (lib/seo.ts). Verilmezse runtime origin kullanılır.
 ARG VITE_SITE_URL=""
 ENV VITE_SITE_URL=$VITE_SITE_URL
+# Google Analytics 4 ve Meta Pixel — boşsa yüklenmez (src/lib/analytics.ts).
+ARG VITE_GA_ID=""
+ENV VITE_GA_ID=$VITE_GA_ID
+ARG VITE_META_PIXEL_ID=""
+ENV VITE_META_PIXEL_ID=$VITE_META_PIXEL_ID
 RUN npm run build
 
 # ── Serve stage ───────────────────────────────────────────────

@@ -26,9 +26,14 @@ const oku = (ad: string) =>
 const nginx = oku("nginx.conf");
 const basliklar = oku("nginx-security-headers.conf");
 
-/** Paket 2 öncesi (24 Eyl 2026) tek CSP dizesinin SHA-256'sı. */
+/** Varsayılan CSP dizesinin SHA-256'sı. 26 Eyl 2026: script-src'ye Google
+ *  Analytics ve Meta Pixel eklendi (kurucu kararı); değişiklik bilinçli olsun
+ *  diye özet sabitlenir. */
 const ESKI_DIZE_SHA256 =
-  "a77d6fb58955b90cb7b68d984dca77910f5e7691a4dd9e2cfa82cf5b1048461b";
+  "0e67352beb447f7c485e96b9b1b15ad9710077d8c0131f0c0788957f611883d1";
+
+const VARSAYILAN_SCRIPT_SRC =
+  "script-src 'self' https://www.googletagmanager.com https://connect.facebook.net;";
 
 const CANLI_SCRIPT_SRC =
   "script-src 'self' 'wasm-unsafe-eval' https://source.zoom.us https://zoom.us " +
@@ -61,20 +66,20 @@ describe("içerik güvenlik politikası · canlı ders kolu", () => {
     expect(Object.keys(kollar()).sort()).toEqual(["default", "~^/canli-ders/"]);
   });
 
-  it("varsayılan kol Paket 2 öncesi dizeyle birebir aynı", () => {
+  it("varsayılan kol sabitlenmiş dizeyle birebir aynı", () => {
     const sha = createHash("sha256").update(kollar().default).digest("hex");
     expect(sha, "varsayılan CSP değişti — bütün site etkilenir").toBe(ESKI_DIZE_SHA256);
   });
 
-  it("varsayılan kolda script-src katı: yalnız 'self'", () => {
+  it("varsayılan kolda script-src katı: 'self' + yalnız GA ve Meta Pixel", () => {
     const d = kollar().default;
-    expect(scriptSrc(d)).toBe("script-src 'self';");
+    expect(scriptSrc(d)).toBe(VARSAYILAN_SCRIPT_SRC);
     expect(d).not.toMatch(/zoom|wasm-unsafe-eval|unsafe-eval/);
   });
 
   it("canlı ders kolu = varsayılan kol, YALNIZ script-src genişletilmiş", () => {
     const { default: varsayilan, "~^/canli-ders/": canli } = kollar();
-    expect(canli).toBe(varsayilan.replace("script-src 'self';", CANLI_SCRIPT_SRC));
+    expect(canli).toBe(varsayilan.replace(VARSAYILAN_SCRIPT_SRC, CANLI_SCRIPT_SRC));
   });
 
   it("hiçbir kolda script için 'unsafe-eval' / 'unsafe-inline' yok", () => {

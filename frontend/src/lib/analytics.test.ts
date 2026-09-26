@@ -84,3 +84,38 @@ describe("trackPageview", () => {
     expect(() => trackPageview("/egitmenler")).not.toThrow();
   });
 });
+
+describe("Google Analytics 4 ve Meta Pixel", () => {
+  beforeEach(() => {
+    document.head.innerHTML = "";
+    const w = window as unknown as Record<string, unknown>;
+    delete w.gtag;
+    delete w.dataLayer;
+    delete w.fbq;
+    delete w._fbq;
+    setEnv();
+  });
+
+  it("ID verilmezse hiçbir script yüklenmez", () => {
+    vi.stubEnv("VITE_GA_ID", "");
+    vi.stubEnv("VITE_META_PIXEL_ID", "");
+    initAnalytics();
+    expect(document.querySelectorAll("script").length).toBe(0);
+  });
+
+  it("ID verilince yüklenir; sayfa görüntülemesi sorgu dizesiz gider", () => {
+    vi.stubEnv("VITE_GA_ID", "G-TEST123");
+    vi.stubEnv("VITE_META_PIXEL_ID", "1234567890");
+    initAnalytics();
+    const kaynaklar = Array.from(document.querySelectorAll("script")).map((s) => s.src);
+    expect(kaynaklar.some((s) => s.includes("googletagmanager.com/gtag/js?id=G-TEST123"))).toBe(true);
+    expect(kaynaklar.some((s) => s.includes("connect.facebook.net"))).toBe(true);
+
+    const w = window as unknown as { dataLayer: IArguments[]; fbq: { queue: unknown[][] } };
+    trackPageview("/sifre-sifirla?token=gizli");
+    const olay = w.dataLayer.map((a) => Array.from(a)).find((a) => a[1] === "page_view");
+    expect(olay?.[2]).toMatchObject({ page_path: "/sifre-sifirla" });
+    expect(JSON.stringify(w.dataLayer.map((a) => Array.from(a)))).not.toContain("gizli");
+    expect(w.fbq.queue).toContainEqual(["track", "PageView"]);
+  });
+});

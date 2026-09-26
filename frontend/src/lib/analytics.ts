@@ -33,8 +33,78 @@ function config() {
   };
 }
 
+/* ── Google Analytics 4 ve Meta Pixel (26 Eyl 2026, kurucu kararı) ──
+ *
+ * İkisi de yalnız ID verilince yüklenir (`VITE_GA_ID`, `VITE_META_PIXEL_ID`);
+ * verilmezse no-op. Satır içi script yoktur (CSP `script-src` yalnız iki
+ * sağlayıcının alan adına izin verir): `gtag`/`fbq` kuyrukları burada, kendi
+ * paketimizde kurulur, sağlayıcı script'i sonra yüklenip kuyruğu işler.
+ * Sayfa görüntülemesi SPA'da `trackPageview` ile, sorgu dizesi olmadan
+ * gönderilir (URL'de token taşınabiliyor). */
+
+type Kuyruk = ((...args: unknown[]) => void) & { queue?: unknown[]; q?: unknown[] };
+type Pencere = Window & {
+  dataLayer?: unknown[];
+  gtag?: (...args: unknown[]) => void;
+  fbq?: Kuyruk & { callMethod?: (...a: unknown[]) => void; loaded?: boolean; version?: string; push?: unknown };
+  _fbq?: unknown;
+};
+
+function reklamConfig() {
+  return {
+    gaId: import.meta.env.VITE_GA_ID as string | undefined,
+    pixelId: import.meta.env.VITE_META_PIXEL_ID as string | undefined,
+  };
+}
+
+function scriptEkle(id: string, src: string): void {
+  if (document.getElementById(id)) return;
+  const el = document.createElement("script");
+  el.id = id;
+  el.async = true;
+  el.src = src;
+  document.head.appendChild(el);
+}
+
+function initGoogleAnalytics(gaId: string): void {
+  const w = window as Pencere;
+  w.dataLayer = w.dataLayer || [];
+  w.gtag = function gtag() {
+    // gtag.js `arguments` nesnesini bekler; dizi göndermek yok sayılır.
+    // eslint-disable-next-line prefer-rest-params
+    w.dataLayer!.push(arguments);
+  };
+  w.gtag("js", new Date());
+  // Sayfa görüntülemesini `trackPageview` gönderir (SPA).
+  w.gtag("config", gaId, { send_page_view: false });
+  scriptEkle("ga4", `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`);
+}
+
+function initMetaPixel(pixelId: string): void {
+  const w = window as Pencere;
+  if (w.fbq) return;
+  // eslint-disable-next-line prefer-const
+  let fbq: NonNullable<Pencere["fbq"]>;
+  fbq = function (...args: unknown[]) {
+    if (fbq.callMethod) fbq.callMethod(...args);
+    else fbq.queue!.push(args);
+  } as NonNullable<Pencere["fbq"]>;
+  fbq.push = fbq;
+  fbq.loaded = true;
+  fbq.version = "2.0";
+  fbq.queue = [];
+  w.fbq = fbq;
+  w._fbq = fbq;
+  fbq("init", pixelId);
+  scriptEkle("meta-pixel", "https://connect.facebook.net/en_US/fbevents.js");
+}
+
 /** Analitik script'ini bir kez yükler. Ayar yoksa hiçbir şey yapmaz. */
 export function initAnalytics(): void {
+  const { gaId, pixelId } = reklamConfig();
+  if (gaId) initGoogleAnalytics(gaId);
+  if (pixelId) initMetaPixel(pixelId);
+
   const { src, websiteId } = config();
   if (!src || document.getElementById(SCRIPT_ID)) return;
 
@@ -60,11 +130,22 @@ export function initAnalytics(): void {
  * gerekçe `monitoring.ts::stripSensitiveParams` içinde de var.
  */
 export function trackPageview(path: string): void {
+  const clean = path.split("?")[0].split("#")[0];
+  const w = window as Pencere;
+  const { gaId, pixelId } = reklamConfig();
+  if (gaId && w.gtag) {
+    w.gtag("event", "page_view", {
+      page_path: clean,
+      page_location: window.location.origin + clean,
+      page_title: document.title,
+    });
+  }
+  if (pixelId && w.fbq) w.fbq("track", "PageView");
+
   const { src } = config();
   if (!src) return;
   const umami = (window as unknown as { umami?: { track: (payload: unknown) => void } })
     .umami;
   if (!umami?.track) return;
-  const clean = path.split("?")[0].split("#")[0];
   umami.track({ url: clean, title: document.title });
 }

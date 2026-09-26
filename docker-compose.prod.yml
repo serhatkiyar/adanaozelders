@@ -234,6 +234,8 @@ services:
         # Aynı origin: Caddy /api/* yolunu backend'e proxy'ler.
         VITE_API_BASE_URL: /api/v1
         VITE_SITE_URL: https://${DOMAIN}
+        VITE_GA_ID: ${VITE_GA_ID:-}
+        VITE_META_PIXEL_ID: ${VITE_META_PIXEL_ID:-}
     restart: unless-stopped
 
 volumes:
