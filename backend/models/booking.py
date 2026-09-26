@@ -135,6 +135,11 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    #: Canlı dersin sağlayıcısı ('zoom' | 'agora'). İlk giriş biletinde
+    #: atomik olarak BİR KEZ atanır, sonra değişmez (iki taraf aynı odaya
+    #: düşsün). NULL = henüz atanmadı; eski dersler varsayılana düşer.
+    canli_ders_saglayici: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
     tutor: Mapped["Tutor"] = relationship(back_populates="bookings")
     client: Mapped["Client"] = relationship(back_populates="bookings")
     review: Mapped["Review | None"] = relationship(
@@ -155,6 +160,10 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (
         CheckConstraint("end_at > start_at", name="ck_bookings_time_order"),
         CheckConstraint("qa_used >= 0 AND qa_used <= 3", name="ck_bookings_qa_quota"),
+        CheckConstraint(
+            "canli_ders_saglayici IS NULL OR canli_ders_saglayici IN ('zoom', 'agora')",
+            name="ck_bookings_canli_ders_saglayici",
+        ),
         ExcludeConstraint(
             ("tutor_id", "="),
             ("time_slot", "&&"),
@@ -164,6 +173,13 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
         ),
         Index("ix_bookings_tutor_status", "tutor_id", "status"),
         Index("ix_bookings_client", "client_id"),
+        # Sağlayıcı ataması: bu ay o sağlayıcıya atanmış derslerin süre toplamı.
+        Index(
+            "ix_bookings_canli_ders_saglayici_start",
+            "canli_ders_saglayici",
+            "start_at",
+            postgresql_where=text("canli_ders_saglayici IS NOT NULL"),
+        ),
         # Admin ders listesi (created_at DESC LIMIT 50). Bu index olmadan
         # Postgres 60.000 satırın tamamını okuyup eğitmen/öğrenci ile join
         # ediyor, sonra 50 tanesini alıyordu (ölçüm: 250 ms).

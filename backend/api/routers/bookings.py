@@ -4,6 +4,7 @@ import datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import set_committed_value
 
 from api.deps import (
     CurrentUser,
@@ -19,6 +20,10 @@ from models.client import Client
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.booking import (
+    AgoraDersTokenOut,
+    AgoraEkranBileti,
+    AgoraKarsiTaraf,
+    CanliDersBiletiOut,
     LiveLessonTokenOut,
     TahtaDurumIn,
     TahtaDurumOut,
@@ -41,7 +46,9 @@ from schemas.booking import (
     LessonSeriesPreviewOut,
 )
 from services import (
+    agora_service,
     booking_service,
+    canli_ders_saglayici,
     lesson_series_service,
     livekit_service,
     payment_gates,
@@ -358,6 +365,156 @@ async def get_live_lesson_token(
     )
 
 
+def _canli_ders_kimligi(booking: Booking, user: CurrentUser) -> tuple[bool, str]:
+    """(öğretmen mi, sağlayıcıdaki kimlik). Kimlik sunucuda üretilir:
+    öğretmen `t{tutor_id}`, öğrenci `c{client_id}` — istemci seçmez."""
+    ogretmen = user.role_id == ROLE_IDS[RoleType.TUTOR]
+    return ogretmen, f"{'t' if ogretmen else 'c'}{user.id}"
+
+
+def _gorunen_ad(user: CurrentUser, yedek: str) -> str:
+    # Ad üçüncü tarafa gider: soyadsız görünen ad yeterli (ÜK-9).
+    return (
+        getattr(user, "display_name", None)
+        or getattr(user, "full_name", None)
+        or yedek
+    )
+
+
+async def _saglayici_ata(booking: Booking, now: datetime.datetime) -> str:
+    """Dersin sağlayıcısı; atanmamışsa ŞİMDİ atomik olarak atanır.
+
+    Atama kendi transaction'ında commit'lenir (bkz. `services/
+    canli_ders_saglayici.py`): bu istek sonradan hata ile düşse bile kalıcıdır.
+    """
+    if booking.canli_ders_saglayici is not None:
+        return booking.canli_ders_saglayici
+    saglayici = await canli_ders_saglayici.ata(booking.id, now)
+    if saglayici is None:
+        # Hiçbir sağlayıcının anahtarı yok: atama YAPILMADI.
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Canlı ders altyapısı yapılandırılmamış.",
+        )
+    # İstek oturumundaki nesne eski (NULL) değeri tutmasın; değer zaten
+    # yazıldı, ikinci bir UPDATE flush'lanmasın.
+    set_committed_value(booking, "canli_ders_saglayici", saglayici)
+    return saglayici
+
+
+def _zoom_bileti(
+    booking: Booking, user: CurrentUser, now: datetime.datetime
+) -> ZoomDersTokenOut:
+    if not (settings.ZOOM_VIDEO_SDK_KEY and settings.ZOOM_VIDEO_SDK_SECRET):
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Canlı ders altyapısı yapılandırılmamış.",
+        )
+    egitmen_mi, identity = _canli_ders_kimligi(booking, user)
+    token, expires_at = zoom_service.ders_token_uret(
+        oturum=booking.meeting_room,
+        egitmen_mi=egitmen_mi,
+        ttl_seconds=_LIVE_TOKEN_TTL_SECONDS,
+        now=now,
+    )
+    return ZoomDersTokenOut(
+        token=token,
+        oturum_adi=booking.meeting_room,
+        kullanici_adi=_gorunen_ad(user, identity),
+        rol="host" if egitmen_mi else "katilimci",
+        expires_at=expires_at,
+    )
+
+
+def _agora_bileti(
+    booking: Booking, user: CurrentUser, now: datetime.datetime
+) -> AgoraDersTokenOut:
+    if not (settings.AGORA_APP_ID and settings.AGORA_APP_CERTIFICATE):
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Canlı ders altyapısı yapılandırılmamış.",
+        )
+    ogretmen, uid = _canli_ders_kimligi(booking, user)
+    # Ömür: en fazla 1 saat ve ASLA ders penceresinin (bitiş + kapanış)
+    # ötesi değil — sızan token ders bitince işe yaramasın. Pencere
+    # kapandıktan sonra yenileme `_canli_ders_kapilari`nda 409 alır.
+    end = booking.end_at
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=datetime.timezone.utc)
+    bitis = min(
+        now + datetime.timedelta(seconds=_LIVE_TOKEN_TTL_SECONDS),
+        end + canli_ders.KATILIM_KAPANIS,
+    )
+    ekran_uid = f"{uid}-ekran"
+    try:
+        token, expires_at = agora_service.ders_token_uret(
+            kanal=booking.meeting_room, uid=uid, bitis=bitis
+        )
+        ekran_token, _ = agora_service.ders_token_uret(
+            kanal=booking.meeting_room, uid=ekran_uid, bitis=bitis
+        )
+    except ValueError:
+        # Pencerenin son saniyesi: verilecek geçerli süre kalmadı.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Canlı ders yalnız ders saatinde açıktır."
+        ) from None
+
+    if ogretmen:
+        karsi = AgoraKarsiTaraf(
+            uid=f"c{booking.client_id}",
+            ad=getattr(booking, "client_name", None) or "Öğrenci",
+            rol="ogrenci",
+        )
+    else:
+        karsi = AgoraKarsiTaraf(
+            uid=f"t{booking.tutor_id}",
+            ad=getattr(booking, "tutor_name", None) or "Öğretmen",
+            rol="ogretmen",
+        )
+    return AgoraDersTokenOut(
+        app_id=settings.AGORA_APP_ID,
+        kanal=booking.meeting_room,
+        uid=uid,
+        token=token,
+        rol="ogretmen" if ogretmen else "ogrenci",
+        ad=_gorunen_ad(user, uid),
+        karsi=karsi,
+        ekran=AgoraEkranBileti(uid=ekran_uid, token=ekran_token),
+        expires_at=expires_at,
+    )
+
+
+def _paralel_saglayici_kapisi(detay: str) -> None:
+    """Sunucu livekit/jitsi'ye ayarlıysa zoom/agora oturumu açılmaz."""
+    if not canli_ders_saglayici.paralel_atama_acik():
+        raise HTTPException(status.HTTP_409_CONFLICT, detay)
+
+
+@router.get(
+    "/{booking_id}/canli-ders-bileti",
+    response_model=CanliDersBiletiOut,
+    dependencies=[Depends(_live_token_limit)],
+)
+async def get_canli_ders_bileti(
+    booking_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sağlayıcıdan bağımsız canlı ders giriş bileti (zoom | agora).
+
+    Kapı 1–5 ortak (`_canli_ders_kapilari`). Ardından ders ilk kez bilet
+    istiyorsa sağlayıcısı ATOMİK olarak atanır (iki taraf aynı sağlayıcıya
+    düşer; atama sonra değişmez) ve o sağlayıcının bileti döner.
+    """
+    booking = await _get_booking_or_404(db, booking_id, user)
+    now = _canli_ders_kapilari(booking, user)
+    _paralel_saglayici_kapisi("Canlı ders şu an açılamıyor.")
+    saglayici = await _saglayici_ata(booking, now)
+    if saglayici == "agora":
+        return CanliDersBiletiOut(saglayici="agora", agora=_agora_bileti(booking, user, now))
+    return CanliDersBiletiOut(saglayici="zoom", zoom=_zoom_bileti(booking, user, now))
+
+
 @router.get(
     "/{booking_id}/zoom-token",
     response_model=ZoomDersTokenOut,
@@ -370,19 +527,17 @@ async def get_zoom_lesson_token(
 ):
     """Canlı ders (Zoom Video SDK) için kısa ömürlü giriş JWT'si üretir.
 
-    Kapı 1–5 ortak (`_canli_ders_kapilari`). Eğitmen host (role_type=1),
-    öğrenci katılımcı (0). Oturum adı dersin `meeting_room`'udur; istemci
-    oturum ya da kullanıcı adını kendisi seçmez.
+    Eski uç — yeni istemci `/canli-ders-bileti` kullanır. Kapı 1–5 ortak
+    (`_canli_ders_kapilari`). Eğitmen host (role_type=1), öğrenci katılımcı
+    (0). Oturum adı dersin `meeting_room`'udur; istemci oturum ya da
+    kullanıcı adını kendisi seçmez. Derse `agora` atanmışsa (ya da atama
+    agora'yı seçerse) 409: iki taraf farklı sağlayıcıya düşmesin.
     """
     booking = await _get_booking_or_404(db, booking_id, user)
     now = _canli_ders_kapilari(booking, user)
 
-    # 6. Sunucu başka bir sağlayıcıya ayarlıysa Zoom oturumu açılmaz.
-    if settings.CANLI_DERS_SAGLAYICI != "zoom":
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Canlı ders bu sunucuda Zoom ile yapılmıyor.",
-        )
+    # 6. Sunucu livekit/jitsi'ye ayarlıysa Zoom oturumu açılmaz.
+    _paralel_saglayici_kapisi("Canlı ders şu an açılamıyor.")
 
     # 7. Özellik yapılandırılmamışsa sessizce bozuk bir token üretme.
     if not (settings.ZOOM_VIDEO_SDK_KEY and settings.ZOOM_VIDEO_SDK_SECRET):
@@ -391,27 +546,13 @@ async def get_zoom_lesson_token(
             "Canlı ders altyapısı yapılandırılmamış.",
         )
 
-    egitmen_mi = user.role_id == ROLE_IDS[RoleType.TUTOR]
-    identity = f"{'t' if egitmen_mi else 'c'}{user.id}"
-    # Ad üçüncü tarafa (Zoom) gider: soyadsız görünen ad yeterli (ÜK-9).
-    kullanici_adi = (
-        getattr(user, "display_name", None)
-        or getattr(user, "full_name", None)
-        or identity
-    )
-    token, expires_at = zoom_service.ders_token_uret(
-        oturum=booking.meeting_room,
-        egitmen_mi=egitmen_mi,
-        ttl_seconds=_LIVE_TOKEN_TTL_SECONDS,
-        now=now,
-    )
-    return ZoomDersTokenOut(
-        token=token,
-        oturum_adi=booking.meeting_room,
-        kullanici_adi=kullanici_adi,
-        rol="host" if egitmen_mi else "katilimci",
-        expires_at=expires_at,
-    )
+    # 8. Dersin atanmış sağlayıcısı Zoom olmalı.
+    if await _saglayici_ata(booking, now) != "zoom":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Canlı ders şu an açılamıyor. Sayfayı yenileyip yeniden dene.",
+        )
+    return _zoom_bileti(booking, user, now)
 
 
 def _tahta_servisi_acik() -> None:

@@ -242,6 +242,11 @@ class BookingOut(BaseModel):
     #: başlangıç (24 Eyl 2026). NULL ise bekleyen bir saat değişikliği yok.
     tutor_rescheduled_from: datetime.datetime | None = None
     confirm_reminded_at: datetime.datetime | None = None
+    #: ORM'deki atanmış sağlayıcı (kolon `canli_ders_saglayici`). Yanıta
+    #: çıkmaz; dışarıya aynı adlı hesaplanan alan (varsayılana düşerek) çıkar.
+    atanan_saglayici: str | None = Field(
+        default=None, validation_alias="canli_ders_saglayici", exclude=True
+    )
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -282,13 +287,22 @@ class BookingOut(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def canli_ders_saglayici(self) -> Literal["zoom", "livekit", "jitsi"] | None:
+    def canli_ders_saglayici(self) -> Literal["zoom", "agora", "livekit", "jitsi"] | None:
         """"Derse katıl" hangi altyapıya gider? Yalnız ONLINE derste ve oda adı
         görünürken (ödeme kapısı `_gate_meeting_room` sonrası) dolu; aksi halde
-        null — istemci düğmeyi göstermez."""
+        null — istemci düğmeyi göstermez.
+
+        zoom/agora paralel çalışırken derse atanmış sağlayıcı döner; henüz
+        atanmamışsa (ilk giriş biletinden önce) varsayılan. Kesin değer
+        `/canli-ders-bileti` yanıtındaki `saglayici`dır."""
         if self.mode != "ONLINE" or not self.meeting_room:
             return None
-        return settings.CANLI_DERS_SAGLAYICI
+        varsayilan = settings.CANLI_DERS_SAGLAYICI
+        if varsayilan in canli_ders.PARALEL_SAGLAYICILAR and self.atanan_saglayici in (
+            canli_ders.PARALEL_SAGLAYICILAR
+        ):
+            return self.atanan_saglayici  # type: ignore[return-value]
+        return varsayilan
 
     @model_validator(mode="after")
     def _gate_meeting_room(self) -> "BookingOut":
@@ -340,6 +354,52 @@ class ZoomDersTokenOut(BaseModel):
     kullanici_adi: str
     rol: Literal["host", "katilimci"]
     expires_at: datetime.datetime
+
+
+class AgoraKarsiTaraf(BaseModel):
+    """Dersin öteki tarafı: istemci uzak kullanıcıyı uid'inden tanır."""
+
+    uid: str
+    ad: str
+    rol: Literal["ogretmen", "ogrenci"]
+
+
+class AgoraEkranBileti(BaseModel):
+    """Ekran paylaşımı için ikinci istemcinin uid'i (`{uid}-ekran`) ve token'ı."""
+
+    uid: str
+    token: str
+
+
+class AgoraDersTokenOut(BaseModel):
+    """Agora RTC giriş bileti (`/canli-ders-bileti` içinde `agora`).
+
+    `token` AccessToken2'dir; YALNIZ `kanal` + `uid` için geçerlidir. uid
+    sunucuda üretilir: öğretmen `t{tutor_id}`, öğrenci `c{client_id}`.
+    `expires_at` ders penceresini (bitiş + katılım kapanışı) asla aşmaz.
+    """
+
+    app_id: str
+    kanal: str
+    uid: str
+    token: str
+    rol: Literal["ogretmen", "ogrenci"]
+    ad: str
+    karsi: AgoraKarsiTaraf | None = None
+    ekran: AgoraEkranBileti
+    expires_at: datetime.datetime
+
+
+class CanliDersBiletiOut(BaseModel):
+    """GET /bookings/{id}/canli-ders-bileti — sağlayıcıdan bağımsız bilet.
+
+    `saglayici` dersin KALICI atanmış sağlayıcısıdır; yalnız ona ait alan
+    doludur (öteki null).
+    """
+
+    saglayici: Literal["zoom", "agora"]
+    zoom: ZoomDersTokenOut | None = None
+    agora: AgoraDersTokenOut | None = None
 
 
 # ── Ders talep ızgarası (Modül 3): GET /tutors/{id}/slots ────────────────────

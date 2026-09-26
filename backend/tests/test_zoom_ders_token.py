@@ -23,7 +23,7 @@ from models.client import Client
 from models.payment import Payment, PaymentStatus
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
-from services import booking_service
+from services import booking_service, canli_ders_saglayici
 
 UTC = datetime.timezone.utc
 
@@ -67,6 +67,12 @@ def ayarli(monkeypatch):
     monkeypatch.setattr(settings, "CANLI_DERS_SAGLAYICI", "zoom")
     monkeypatch.setattr(settings, "ZOOM_VIDEO_SDK_KEY", _KEY)
     monkeypatch.setattr(settings, "ZOOM_VIDEO_SDK_SECRET", _SECRET)
+
+    # Atama DB ister; burada DB yok. Atanmamış ders zoom'a düşsün.
+    async def sahte_ata(booking_id, now):
+        return "zoom"
+
+    monkeypatch.setattr(canli_ders_saglayici, "ata", sahte_ata)
 
 
 @pytest.fixture
@@ -130,7 +136,7 @@ async def test_saglayici_zoom_degilse_409(ayarli, ders_ver, monkeypatch, saglayi
     with pytest.raises(HTTPException) as exc:
         await _cagir(OGRENCI)
     assert exc.value.status_code == 409
-    assert "Zoom" in exc.value.detail
+    assert "Zoom" not in exc.value.detail and "Agora" not in exc.value.detail
 
 
 @pytest.mark.parametrize("anahtar", ["ZOOM_VIDEO_SDK_KEY", "ZOOM_VIDEO_SDK_SECRET"])
@@ -175,3 +181,21 @@ async def test_ogrenci_katilimci(ayarli, ders_ver):
     assert yanit.kullanici_adi == "Öğrenci"
     claims = jwt.decode(yanit.token, _SECRET, algorithms=["HS256"])
     assert claims["role_type"] == 0
+
+
+async def test_agora_atanmis_derste_409(ayarli, ders_ver):
+    # Ders agora'ya atanmışsa eski Zoom ucu token vermez (taraflar ayrışmasın).
+    ders_ver(_ders(canli_ders_saglayici="agora"))
+    with pytest.raises(HTTPException) as exc:
+        await _cagir(OGRENCI)
+    assert exc.value.status_code == 409
+    assert "Zoom" not in exc.value.detail and "Agora" not in exc.value.detail
+
+
+async def test_atama_agorayi_secerse_409(ayarli, ders_ver, monkeypatch):
+    async def agora_ata(booking_id, now):
+        return "agora"
+
+    monkeypatch.setattr(canli_ders_saglayici, "ata", agora_ata)
+    ders_ver(_ders())
+    assert await _kod(EGITMEN) == 409

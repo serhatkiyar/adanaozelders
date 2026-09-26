@@ -203,12 +203,15 @@ async def _presence_flusher() -> None:
 async def lifespan(app: FastAPI):
     # Canlı ders sağlayıcısı: eksik anahtar açılışı ENGELLEMEZ (yalnız token
     # ucu 503 döner), ama sessiz kalmasın — "Derse katıl" çalışmayacaktır.
-    if settings.CANLI_DERS_SAGLAYICI == "zoom" and not (
-        settings.ZOOM_VIDEO_SDK_KEY and settings.ZOOM_VIDEO_SDK_SECRET
+    from services import canli_ders_saglayici
+
+    if (
+        canli_ders_saglayici.paralel_atama_acik()
+        and not canli_ders_saglayici.anahtarli_saglayicilar()
     ):
         logger.warning(
-            "Canlı ders KAPALI: sağlayıcı zoom ama ZOOM_VIDEO_SDK_KEY/SECRET boş "
-            "— /bookings/{id}/zoom-token 503 dönecek"
+            "Canlı ders KAPALI: ZOOM_VIDEO_SDK_KEY/SECRET ve AGORA_APP_ID/"
+            "CERTIFICATE boş — /bookings/{id}/canli-ders-bileti 503 dönecek"
         )
     if settings.AUTO_CREATE_DB:
         # Şemayı garanti et (alembic upgrade head — migration tek kaynak). Bkz. core/migrations.py.

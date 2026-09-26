@@ -162,13 +162,26 @@ class Settings(BaseSettings):
     # "Derse katıl" hangi altyapıya gider (`BookingOut.canli_ders_saglayici`).
     # Açılış guard'ına EKLENMEZ: anahtar eksikse yalnız ilgili token ucu 503
     # döner, açılışta tek bir uyarı loglanır (bkz. main.py::lifespan).
-    CANLI_DERS_SAGLAYICI: Literal["zoom", "livekit", "jitsi"] = "zoom"
+    # zoom ve agora PARALEL: her ders ilk giriş biletinde bu ikisinden birine
+    # kalıcı atanır (`core/canli_ders.py::saglayici_sec`); bu değer hepsi
+    # tükenince seçilen varsayılandır. livekit/jitsi paralel atamayı kapatır.
+    CANLI_DERS_SAGLAYICI: Literal["zoom", "agora", "livekit", "jitsi"] = "zoom"
     # Zoom Video SDK (Zoom Marketplace → Video SDK uygulaması). İkisi de BOŞKEN
     # `/bookings/{id}/zoom-token` 503 döner.
     #   ZOOM_VIDEO_SDK_KEY    → JWT'nin `app_key` claim'i
     #   ZOOM_VIDEO_SDK_SECRET → JWT'yi imzalayan HS256 sırrı
     ZOOM_VIDEO_SDK_KEY: str = ""
     ZOOM_VIDEO_SDK_SECRET: str = ""
+    # Agora RTC (console.agora.io). İkisi de BOŞKEN Agora hiç atanmaz.
+    #   AGORA_APP_ID          → token'daki uygulama kimliği (istemciye de gider)
+    #   AGORA_APP_CERTIFICATE → AccessToken2'yi imzalayan sır (yalnız sunucuda)
+    AGORA_APP_ID: str = ""
+    AGORA_APP_CERTIFICATE: str = ""
+    # Aylık ücretsiz kişi-dakikası kotaları (takvim ayı, UTC). Atama, kalan
+    # kotası en çok olan sağlayıcıyı seçer; kullanım tahmini atanmış derslerin
+    # süresi × 2'dir. Varsayılanlar yer tutucu — gerçek rakam .env'den gelir.
+    ZOOM_UCRETSIZ_KISI_DK: int = 10000
+    AGORA_UCRETSIZ_KISI_DK: int = 10000
     # Token ucu kullanıcı bazlı sınırlanır: ders penceresinde yeniden bağlanma
     # birkaç token ister, ama döngüye girmiş bir istemci SFU'yu boğmasın.
     RATE_LIMIT_LIVE_TOKEN: int = 20

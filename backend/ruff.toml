@@ -13,6 +13,9 @@ target-version = "py311"
 
 exclude = [
     "migrations/versions",  # autogenerate çıktısı — biçimi Alembic belirler
+    # AgoraIO/Tools'tan DEĞİŞTİRİLMEDEN vendorlanan token kodu (bkz.
+    # services/agora_token/__init__.py) — biçimi upstream belirler.
+    "services/agora_token",
     ".venv",
     "__pycache__",
 ]
