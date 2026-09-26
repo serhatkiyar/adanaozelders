@@ -281,6 +281,40 @@ def test_sahte_saglayici_GELISTIRME_DISINDA_kapiyi_ACMAZ(monkeypatch):
         )
 
 
+async def test_sahte_saglayici_GELISTIRME_DISINDA_kendi_ciro_kollarini_da_ACMAZ(
+    monkeypatch, acik_kollar
+):
+    """Mağaza ve öne çıkarma alt üye işyeri istemediği için yukarıdaki
+    pazaryeri kapısına hiç takılmıyordu: staging'de bayrak açılınca sahte
+    sağlayıcı para almadan siparişi "ödendi" sayıyordu (21 Eyl 2026, order#1)."""
+    from core import flags
+    from core.config import settings
+    from core.payments.fake import FakePaymentProvider
+    from services import payment_gates
+    from services.payment_gates import PaymentBranch
+
+    monkeypatch.setattr(
+        payment_gates, "get_payment_provider", lambda: FakePaymentProvider()
+    )
+    acik_kollar[flags.FLAG_STORE_PAYMENTS_LIVE] = True
+    acik_kollar[flags.FLAG_TUTOR_PROMOTION_PAYMENTS_LIVE] = True
+    kollar = (PaymentBranch.STORE, PaymentBranch.TUTOR_PROMOTION)
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    for branch in kollar:
+        await payment_gates.assert_branch_open(None, branch)  # patlamamalı
+
+    for ortam in ("staging", "production"):
+        monkeypatch.setattr(settings, "ENVIRONMENT", ortam)
+        for branch in kollar:
+            assert payment_gates.BLOCKER_PROVIDER_FAKE in (
+                await payment_gates.branch_blockers(None, branch)
+            ), f"{ortam} ortamında sahte sağlayıcı {branch.value} kolunu açmamalı"
+            with pytest.raises(HTTPException) as exc:
+                await payment_gates.assert_branch_open(None, branch)
+            assert exc.value.status_code == 503
+
+
 def test_fake_saglayici_pazaryeri_destekler_iyzico_HENUZ_desteklemez():
     """`supports_marketplace` gerçeği söylemek zorundadır: iyzico alt üye
     metotları şu an stub (`core/payments/iyzico.py`) — True dönmesi kapıyı

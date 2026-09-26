@@ -109,6 +109,29 @@ BRANCH_CLOSED_MESSAGE: dict[PaymentBranch, str] = {
 
 BLOCKER_FLAG_DISABLED = "flag_disabled"
 BLOCKER_PROVIDER_MARKETPLACE = "provider_marketplace_support"
+BLOCKER_PROVIDER_FAKE = "provider_fake_outside_development"
+
+
+def real_money_provider_ok() -> bool:
+    """Yapılandırılmış sağlayıcı gerçek para tahsil ediyor mu?
+
+    `FakePaymentProvider` her ödemeyi başarılı sayar. Geliştirme dışında
+    (`staging` dahil) yapılandırılmışsa HİÇBİR kol açık sayılmaz: aksi hâlde
+    mağaza ya da öne çıkarma bayrağı açıldığında para alınmadan sipariş/paket
+    "ödendi" olur (21 Eyl 2026'da prod-staging'de `order#1` böyle ödendi
+    sayıldı). Pazaryeri kolları bunu zaten `marketplace_capability_ok` ile
+    yakalıyordu; kendi cirosu olan kollarda (store, tutor_promotion) boşluk
+    buydu.
+    """
+    provider = get_payment_provider()
+    if provider.name == "fake" and settings.ENVIRONMENT != "development":
+        logger.error(
+            "Sahte ödeme sağlayıcısı ENVIRONMENT=%s ortamında yapılandırılmış — "
+            "bütün ödeme kolları kapalı tutuluyor",
+            settings.ENVIRONMENT,
+        )
+        return False
+    return True
 
 
 def marketplace_capability_ok() -> bool:
@@ -141,6 +164,8 @@ async def branch_blockers(db: AsyncSession | None, branch: PaymentBranch) -> lis
     blockers: list[str] = []
     if not await flags.is_enabled(db, BRANCH_FLAG[branch]):
         blockers.append(BLOCKER_FLAG_DISABLED)
+    if not real_money_provider_ok():
+        blockers.append(BLOCKER_PROVIDER_FAKE)
     if BRANCH_NEEDS_MARKETPLACE[branch] and not marketplace_capability_ok():
         blockers.append(BLOCKER_PROVIDER_MARKETPLACE)
     return blockers
