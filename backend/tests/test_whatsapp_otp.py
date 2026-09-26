@@ -200,9 +200,8 @@ async def test_saatlik_sinir_sayaci(monkeypatch):
     assert sonuc == [False, False, True]
 
 
-def test_otp_metni_turkce_ve_sureli():
-    metin = whatsapp.otp_metni("482913")
-    assert "Adana Özel Ders" in metin and "482913" in metin and "dk geçerli" in metin
+def test_otp_metni_sade():
+    assert whatsapp.otp_metni("482913") == "Doğrulama kodunuz: 482913."
 
 
 # ── Oturum izleme ────────────────────────────────────────────────────────────

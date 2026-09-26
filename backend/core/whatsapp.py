@@ -50,10 +50,7 @@ def whatsapp_otp_etkin() -> bool:
 
 def otp_metni(code: str) -> str:
     """Saf (pytest'li): WAHA ile giden serbest metin."""
-    return (
-        f"Adana Özel Ders doğrulama kodun: {code}\n"
-        f"Kodu kimseyle paylaşma. {settings.PHONE_OTP_TTL_MINUTES} dk geçerli."
-    )
+    return f"Doğrulama kodunuz: {code}."
 
 
 async def _saatlik_sinir_asildi(to: str) -> bool:

@@ -32,10 +32,10 @@ async def _safe_send(message: SmsMessage) -> bool:
 
 
 async def send_otp_sms(*, to: str, code: str) -> bool:
-    text = (
-        f"Adana Ozel Ders dogrulama kodun: {code}\n"
-        f"Kodu kimseyle paylasma. {settings.PHONE_OTP_TTL_MINUTES} dk gecerli."
-    )
+    # ASCII kalır: tek bir 'ğ' mesajı UCS-2'ye çevirip kredisini ikiye katlar
+    # ve Netgsm OTP paketi reddeder (tests/test_sms_sablon_boy.py). Gönderen
+    # başlığı zaten marka adını taşır.
+    text = f"Dogrulama kodunuz: {code}."
     return await _safe_send(SmsMessage(to=to, text=text))
 
 
