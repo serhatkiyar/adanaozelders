@@ -28,8 +28,11 @@ export type TahtaEleman = {
   version: number;
   versionNonce?: number;
   isDeleted?: boolean;
-  /** Excalidraw'ın uygulamaya açık alanı; sayfa etiketini burada taşıyoruz. */
-  customData?: { tahtaSayfa?: string } | null;
+  /**
+   * Excalidraw'ın uygulamaya açık alanı: sayfa etiketi, sahip (`tahtaIzin`)
+   * ve yüklenen resmin ders kaynağı kimliği (`tahtaResim`) burada taşınır.
+   */
+  customData?: { tahtaSayfa?: string; sahip?: string; kaynak?: number } | null;
 };
 
 /** Sayfa: boş tahta sayfası ya da bir PDF sayfası (ders kaynağı + no). */
@@ -53,14 +56,43 @@ export const BASLANGIC_SAYFALARI: SayfaDurumu = {
  * Bilerek TEK bir içerik mesajı var: "yalnız değişenler" ile "tam sahne"
  * arasında fark yoktur, çünkü birleştirme sürüme bakar. Bu sayede geç
  * katılan birine tam sahne göndermek ayrı bir kod yolu değildir.
- * İmleç yalnız lazer aracı için gider (Preply: karşı tarafın imleci
- * gösterilmez, lazer görünür).
+ *
+ * İmleç her hareketle (en çok 10/sn) gider; karşı tarafta adıyla görünür
+ * (lazer izi de bu mesajla, `arac: "laser"`).
+ *
+ * İzin mesajları (`lib/tahtaIzin.ts`): öğrenci öğretmenin çizimini
+ * değiştirmek ya da PDF açmak istediğinde istek gider, öğretmen yanıtlar.
+ * `yetki`, `izinYaniti` YALNIZ öğretmenden; istekler YALNIZ öğrenciden kabul
+ * edilir (gönderen rolü sunucunun koyduğu `chanInfo`dan, `dersKanali`).
+ *
+ * Takip mesajları (`lib/tahtaTakip.ts`): `gorunum` görünür alanı taşır (sayfa
+ * kimliği YOK: kaydırma sayfalarda ortaktır); öğretmenden gelen yalnız
+ * öğrencide, öğrenciden gelen yalnız onu izleyen öğretmende uygulanır.
+ * `takip` ("öğretmeni takip ediyorum / etmiyorum") YALNIZ öğrenciden;
+ * `getir` ("bana dön") ve `izle` ("seni izliyorum") YALNIZ öğretmenden.
  */
 export type TahtaMesaji =
   | { t: "durum"; elemanlar: TahtaEleman[]; sayfalar?: SayfaDurumu }
   | { t: "istek" }
-  | { t: "lazer"; x: number; y: number; dugme: "up" | "down" }
-  | { t: "lazerBitti" };
+  | { t: "imlec"; x: number; y: number; dugme: "up" | "down"; arac: "pointer" | "laser" }
+  | { t: "imlecGitti" }
+  | { t: "izinIstegi"; k: string; elemanlar: TahtaEleman[] }
+  | { t: "pdfIstegi"; k: string; dosya: string }
+  | { t: "izinYaniti"; k: string; karar: IzinKarari }
+  | { t: "yetki"; tam: boolean }
+  | { t: "pdfEkle"; k: string; kaynak: number }
+  | { t: "gorunum"; x1: number; y1: number; x2: number; y2: number }
+  | { t: "takip"; acik: boolean }
+  | { t: "getir" }
+  | { t: "izle"; acik: boolean };
+
+/** Görünür alan sınırları: koordinat en çok 1e8, kenar (0, 1e7]. */
+const KOORDINAT_SINIRI = 1e8;
+const KENAR_SINIRI = 1e7;
+
+/** Öğretmenin yanıtı: değişikliğe onay/ret; PDF'te "yeni sayfalarda"/"bu sayfada". */
+export type IzinKarari = "onay" | "ret" | "yeni" | "bu";
+const KARARLAR: ReadonlySet<unknown> = new Set(["onay", "ret", "yeni", "bu"]);
 
 /** Elemanın bağlı olduğu sayfa; henüz etiketlenmemişse `null`. */
 export function elemanSayfasi(eleman: TahtaEleman): string | null {
@@ -147,6 +179,48 @@ export function sayfaEkle(d: SayfaDurumu, yeni: TahtaSayfasi[]): SayfaDurumu {
   return { liste, aktif: yeni[0].id, surum: d.surum + 1 };
 }
 
+/** PDF açma yeri: yeni sayfalarda (listenin sonuna) ya da açık sayfada. */
+export type PdfYeri = "yeni" | "bu";
+
+/** PDF sayfasının tahta sayfa kimliği (iki tarafta aynı). */
+export function pdfSayfaKimligi(kaynak: number, no: number): string {
+  return `k${kaynak}-${no}`;
+}
+
+/**
+ * PDF'in sayfalarını sayfa listesine yerleştirir.
+ *
+ * - `yeni`: bütün sayfalar listenin SONUNA eklenir, ilkine geçilir.
+ * - `bu`: PDF'in 1. sayfası açık sayfanın zemini olur (sayfa kimliği ve
+ *   üstündeki çizimler korunur), kalanlar hemen ardına eklenir; açık sayfa
+ *   değişmez. Açık sayfanın ESKİ PDF zeminini silmek çağıranın işidir.
+ */
+export function pdfSayfalariniYerlestir(
+  d: SayfaDurumu,
+  kaynak: number,
+  sayfaSayisi: number,
+  yer: PdfYeri,
+): SayfaDurumu {
+  if (!Number.isInteger(sayfaSayisi) || sayfaSayisi < 1) return d;
+  const sayfa = (no: number): TahtaSayfasi => ({
+    id: pdfSayfaKimligi(kaynak, no),
+    pdf: { kaynak, no },
+  });
+  if (yer === "yeni") {
+    const yeni = Array.from({ length: sayfaSayisi }, (_, i) => sayfa(i + 1));
+    return { liste: [...d.liste, ...yeni], aktif: yeni[0].id, surum: d.surum + 1 };
+  }
+  const i = d.liste.findIndex((s) => s.id === d.aktif);
+  const kalan = Array.from({ length: sayfaSayisi - 1 }, (_, j) => sayfa(j + 2));
+  const liste = [
+    ...d.liste.slice(0, i),
+    { id: d.aktif, pdf: { kaynak, no: 1 } },
+    ...kalan,
+    ...d.liste.slice(i + 1),
+  ];
+  return { liste, aktif: d.aktif, surum: d.surum + 1 };
+}
+
 /** Aktif sayfayı siler; tek sayfa kaldıysa silinmez. Önceki sayfaya geçer. */
 export function sayfaSil(d: SayfaDurumu): SayfaDurumu {
   if (d.liste.length <= 1) return d;
@@ -186,26 +260,74 @@ export function mesajCoz(ham: unknown): TahtaMesaji | null {
   }
   if (!ham || typeof ham !== "object") return null;
   const t = (ham as { t?: unknown }).t;
-  if (t === "istek" || t === "lazerBitti") return { t };
-  if (t === "lazer") {
-    const { x, y, dugme } = ham as { x?: unknown; y?: unknown; dugme?: unknown };
+  if (t === "istek" || t === "imlecGitti" || t === "getir") return { t };
+  const v = ham as Record<string, unknown>;
+  if (t === "takip" || t === "izle") {
+    return typeof v.acik === "boolean" ? { t, acik: v.acik } : null;
+  }
+  if (t === "gorunum") return gorunumCoz(v);
+  if (t === "imlec") {
+    const { x, y, dugme, arac } = v;
     if (typeof x !== "number" || typeof y !== "number") return null;
-    return { t, x, y, dugme: dugme === "down" ? "down" : "up" };
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    return {
+      t,
+      x,
+      y,
+      dugme: dugme === "down" ? "down" : "up",
+      arac: arac === "laser" ? "laser" : "pointer",
+    };
+  }
+  if (t === "yetki") {
+    return typeof v.tam === "boolean" ? { t, tam: v.tam } : null;
+  }
+  const k = v.k;
+  const kimlikGecerli = typeof k === "string" && k.length > 0 && k.length <= 64;
+  if (t === "izinYaniti") {
+    if (!kimlikGecerli || !KARARLAR.has(v.karar)) return null;
+    return { t, k: k as string, karar: v.karar as IzinKarari };
+  }
+  if (t === "pdfIstegi") {
+    if (!kimlikGecerli || typeof v.dosya !== "string") return null;
+    return { t, k: k as string, dosya: v.dosya.slice(0, 200) };
+  }
+  if (t === "pdfEkle") {
+    if (!kimlikGecerli || !Number.isInteger(v.kaynak) || (v.kaynak as number) <= 0) return null;
+    return { t, k: k as string, kaynak: v.kaynak as number };
+  }
+  if (t === "izinIstegi") {
+    if (!kimlikGecerli || !Array.isArray(v.elemanlar)) return null;
+    const temiz = elemanlariAyikla(v.elemanlar);
+    return temiz.length > 0 ? { t, k: k as string, elemanlar: temiz } : null;
   }
   if (t !== "durum") return null;
-  const elemanlar = (ham as { elemanlar?: unknown }).elemanlar;
+  const elemanlar = v.elemanlar;
   if (!Array.isArray(elemanlar)) return null;
-  const temiz = elemanlar.filter(
+  const mesaj: TahtaMesaji = { t: "durum", elemanlar: elemanlariAyikla(elemanlar) };
+  const sayfalar = sayfaDurumuCoz(v.sayfalar);
+  if (sayfalar) mesaj.sayfalar = sayfalar;
+  return mesaj;
+}
+
+function gorunumCoz(v: Record<string, unknown>): TahtaMesaji | null {
+  const d = [v.x1, v.y1, v.x2, v.y2];
+  if (!d.every((n) => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= KOORDINAT_SINIRI)) {
+    return null;
+  }
+  const [x1, y1, x2, y2] = (d as number[]).map((n) => Math.round(n * 100) / 100);
+  const gecerli = (k: number) => k > 0 && k <= KENAR_SINIRI;
+  if (!gecerli(x2 - x1) || !gecerli(y2 - y1)) return null;
+  return { t: "gorunum", x1, y1, x2, y2 };
+}
+
+function elemanlariAyikla(elemanlar: unknown[]): TahtaEleman[] {
+  return elemanlar.filter(
     (e): e is TahtaEleman =>
       !!e &&
       typeof e === "object" &&
       typeof (e as TahtaEleman).id === "string" &&
       typeof (e as TahtaEleman).version === "number",
   );
-  const mesaj: TahtaMesaji = { t: "durum", elemanlar: temiz };
-  const sayfalar = sayfaDurumuCoz((ham as { sayfalar?: unknown }).sayfalar);
-  if (sayfalar) mesaj.sayfalar = sayfalar;
-  return mesaj;
 }
 
 /**

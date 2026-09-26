@@ -42,7 +42,7 @@ export function TahtaAlani({
   kanal: DersKanali;
   dersId: number;
   ogretmen: boolean;
-  /** "Paylaşımlı" açıklamasındaki karşı taraf adı. */
+  /** "Paylaşımlı" açıklamasındaki, imleç etiketindeki ve izin pencerelerindeki karşı taraf adı. */
   karsiAd: string;
   /** Başlıktaki X (yalnız öğretmen). */
   onKapat: () => void;
@@ -108,7 +108,7 @@ export function TahtaAlani({
             </p>
           }
         >
-          <TahtaPaneli kanal={kanal} dersId={dersId} ogretmen={ogretmen} />
+          <TahtaPaneli kanal={kanal} dersId={dersId} ogretmen={ogretmen} karsiAd={karsiAd} />
         </Suspense>
         </TahtaSiniri>
       </div>

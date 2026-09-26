@@ -135,6 +135,17 @@ export const tr = {
       charCount: "{{used}} / {{limit}} karakter",
       replyingTo: "{{name}} yanıtlanıyor",
       cancelReply: "Yanıtı kaldır",
+      /** Telefonda / ≤880px alttan açılan iki kademeli sohbet. */
+      sheet: {
+        expand: "Sohbeti genişlet",
+        shrink: "Sohbeti küçült",
+        handle: "Sohbet paneli yüksekliği",
+      },
+      /** Sohbet kapalıyken gelen mesajın önizleme balonu. */
+      preview: {
+        open: "{{name}}: {{text}}. Sohbeti aç",
+        fallback: "Yeni mesaj",
+      },
     },
     selectDevice: {
       loading: "Yükleniyor…",
@@ -409,6 +420,45 @@ export const tr = {
         yalnizPdf: "Tahtaya yalnız PDF yüklenebilir.",
         bos: "Tahta boş — kaydedilecek bir şey yok.",
         disaAktarilamadi: "Dışa aktarılamadı.",
+        resimTuru: "Yalnız PNG, JPEG, WebP ya da GIF resim eklenebilir.",
+        resimBuyuk: "Resim en fazla 10 MB olabilir.",
+        resimYuklenemedi: "Resim yüklenemedi.",
+        resimAcilamadi: "Resim açılamadı.",
+      },
+      /** Karşı tarafın imlecindeki ad bilinmiyorsa. */
+      karsiTaraf: "Karşı taraf",
+      /** PDF açarken yer seçimi. */
+      pdfAc: {
+        baslik: "PDF nasıl açılsın?",
+        yeniSayfalarda: "Yeni sayfalarda aç",
+        buSayfada: "Bu sayfada aç",
+        vazgec: "Vazgeç",
+      },
+      /** Öğrencinin öğretmen çizimini değiştirme / PDF açma isteği. */
+      izin: {
+        ogrenci: "Öğrenci",
+        degisiklikIstegi: "{{ad}} çiziminde {{n}} öğeyi silmek/değiştirmek istiyor",
+        pdfIstegi: "{{ad}} \"{{dosya}}\" PDF'ini açmak istiyor",
+        izinVer: "İzin ver",
+        reddet: "Reddet",
+        tamYetki: "Bu derste tüm değişikliklere izin ver",
+        tamYetkiKaldir: "Öğrencinin tam yetkisini kaldır",
+        onayBekleniyor: "Öğretmenin onayı bekleniyor",
+        vazgec: "Vazgeç",
+        istendi: "Öğretmenin çizimini değiştirmek için izin istendi.",
+        reddedildi: "Öğretmen değişikliğe izin vermedi.",
+        pdfReddedildi: "Öğretmen PDF'i açmaya izin vermedi.",
+        tamYetkiVerildi: "Öğretmen bu derste tüm değişikliklere izin verdi.",
+        tamYetkiKaldirildi: "Öğretmen tam yetkiyi kaldırdı.",
+      },
+      /** "Öğretmeni takip et": öğrenci öğretmenin gördüğü alanı görür. */
+      takip: {
+        serbest: "Öğretmeni takip etmiyorsun",
+        don: "Öğretmene dön",
+        getir: "Öğrenciyi bana getir",
+        takipte: "Öğrenci seni takip ediyor",
+        /** Excalidraw'ın "Following" rozeti yerine (ardından kişinin adı). */
+        rozet: "Takip ediliyor:",
       },
     },
     /** Alt çubuktaki "Araçlar" (Preply `btn-open-tools`). */
@@ -426,6 +476,8 @@ export const tr = {
       CORNER: "Köşe",
       yanPanelBoyutu: "Video paneli genişliği",
       bolmeBoyutu: "Paylaşım ve tahta oranı",
+      videolariGizle: "Videoları gizle",
+      videolariGoster: "Videoları göster",
     },
     /** Paylaşım paneli başlığı (Preply: 40px şerit + X). */
     paylasimBasligi: {

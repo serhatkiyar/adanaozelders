@@ -30,6 +30,7 @@ import {
   parcaMi,
   pdfDosyaCoz,
   pdfDosyaKimligi,
+  pdfSayfalariniYerlestir,
   sayfaEkle,
   sayfaEtiketle,
   sayfaGec,
@@ -37,6 +38,7 @@ import {
   sayfalariBirlestir,
   surumleriYaz,
   type TahtaEleman,
+  type SayfaDurumu,
 } from "./tahtaSenkron";
 
 const sayfaAnahtari = (n: number) => `s${n}`;
@@ -155,10 +157,77 @@ describe("mesajCoz", () => {
     });
   });
 
-  it("istek ve lazer geçer", () => {
+  it("istek ve imleç geçer (lazer imleçle gider)", () => {
     expect(mesajCoz({ t: "istek" })).toEqual({ t: "istek" });
-    expect(mesajCoz({ t: "lazer", x: 1, y: 2, dugme: "down" })).toEqual({ t: "lazer", x: 1, y: 2, dugme: "down" });
-    expect(mesajCoz({ t: "lazer", x: "1", y: 2 })).toBeNull();
+    expect(mesajCoz({ t: "imlec", x: 1, y: 2, dugme: "down", arac: "laser" })).toEqual({
+      t: "imlec",
+      x: 1,
+      y: 2,
+      dugme: "down",
+      arac: "laser",
+    });
+    // Tanınmayan araç/düğme güvenli varsayılana düşer.
+    expect(mesajCoz({ t: "imlec", x: 1, y: 2, arac: "kalem" })).toEqual({
+      t: "imlec",
+      x: 1,
+      y: 2,
+      dugme: "up",
+      arac: "pointer",
+    });
+    expect(mesajCoz({ t: "imlec", x: "1", y: 2 })).toBeNull();
+    expect(mesajCoz({ t: "imlec", x: Number.NaN, y: 2 })).toBeNull();
+    expect(mesajCoz({ t: "imlecGitti" })).toEqual({ t: "imlecGitti" });
+  });
+
+  it("izin mesajları doğrulanır", () => {
+    expect(mesajCoz({ t: "yetki", tam: true })).toEqual({ t: "yetki", tam: true });
+    expect(mesajCoz({ t: "yetki", tam: "evet" })).toBeNull();
+    expect(mesajCoz({ t: "izinYaniti", k: "a1", karar: "bu" })).toEqual({
+      t: "izinYaniti",
+      k: "a1",
+      karar: "bu",
+    });
+    expect(mesajCoz({ t: "izinYaniti", k: "a1", karar: "belki" })).toBeNull();
+    expect(mesajCoz({ t: "izinYaniti", k: "", karar: "ret" })).toBeNull();
+    expect(mesajCoz({ t: "pdfIstegi", k: "a1", dosya: "x".repeat(300) })).toEqual({
+      t: "pdfIstegi",
+      k: "a1",
+      dosya: "x".repeat(200),
+    });
+    expect(mesajCoz({ t: "pdfEkle", k: "a1", kaynak: 5 })).toEqual({ t: "pdfEkle", k: "a1", kaynak: 5 });
+    expect(mesajCoz({ t: "pdfEkle", k: "a1", kaynak: -1 })).toBeNull();
+    expect(
+      mesajCoz({ t: "izinIstegi", k: "a1", elemanlar: [{ id: "e", version: 2 }, { id: 3 }] }),
+    ).toEqual({ t: "izinIstegi", k: "a1", elemanlar: [{ id: "e", version: 2 }] });
+    expect(mesajCoz({ t: "izinIstegi", k: "a1", elemanlar: [] })).toBeNull();
+  });
+
+  it("görünür alan doğrulanır ve 2 ondalığa yuvarlanır", () => {
+    expect(mesajCoz({ t: "gorunum", x1: 1.234, y1: -5, x2: 100.005, y2: 50 })).toEqual({
+      t: "gorunum",
+      x1: 1.23,
+      y1: -5,
+      x2: 100.01,
+      y2: 50,
+    });
+    const gecersiz = [
+      { x1: Number.NaN, y1: 0, x2: 10, y2: 10 },
+      { x1: 0, y1: 0, x2: Number.POSITIVE_INFINITY, y2: 10 },
+      { x1: 10, y1: 0, x2: 0, y2: 10 }, // ters
+      { x1: 0, y1: 10, x2: 10, y2: 10 }, // sıfır yükseklik
+      { x1: 0, y1: 0, x2: 2e7, y2: 10 }, // aşırı geniş
+      { x1: 2e8, y1: 0, x2: 2e8 + 10, y2: 10 }, // aşırı uzak
+      { x1: "0", y1: 0, x2: 10, y2: 10 },
+    ];
+    for (const g of gecersiz) expect(mesajCoz({ t: "gorunum", ...g })).toBeNull();
+  });
+
+  it("takip/getir/izle biçimleri", () => {
+    expect(mesajCoz({ t: "takip", acik: false })).toEqual({ t: "takip", acik: false });
+    expect(mesajCoz({ t: "takip" })).toBeNull();
+    expect(mesajCoz({ t: "izle", acik: true })).toEqual({ t: "izle", acik: true });
+    expect(mesajCoz({ t: "izle", acik: 1 })).toBeNull();
+    expect(mesajCoz({ t: "getir", fazla: 1 })).toEqual({ t: "getir" });
   });
 });
 
@@ -234,5 +303,40 @@ describe("parçalama", () => {
   it("şekli bozuk parçayı tanımaz", () => {
     expect(parcaMi({ t: "parca", k: "x", i: 3, n: 2, v: "" })).toBe(false);
     expect(parcaMi({ t: "parca", k: "x", i: 0, n: 1 })).toBe(false);
+  });
+});
+
+describe("PDF açma yeri", () => {
+  const uc: SayfaDurumu = {
+    liste: [{ id: "p1" }, { id: "a" }, { id: "b" }],
+    aktif: "a",
+    surum: 4,
+  };
+
+  it("yeni sayfalarda: hepsi listenin SONUNA, ilkine geçilir", () => {
+    const d = pdfSayfalariniYerlestir(uc, 7, 3, "yeni");
+    expect(d.liste.map((s) => s.id)).toEqual(["p1", "a", "b", "k7-1", "k7-2", "k7-3"]);
+    expect(d.liste[3].pdf).toEqual({ kaynak: 7, no: 1 });
+    expect(d.aktif).toBe("k7-1");
+    expect(d.surum).toBe(5);
+  });
+
+  it("bu sayfada: 1. sayfa açık sayfanın zemini, kalanlar hemen ardında", () => {
+    const d = pdfSayfalariniYerlestir(uc, 7, 3, "bu");
+    expect(d.liste.map((s) => s.id)).toEqual(["p1", "a", "k7-2", "k7-3", "b"]);
+    // Açık sayfanın kimliği (üstündeki çizimler) korunur, zemini PDF'in 1. sayfası olur.
+    expect(d.liste[1]).toEqual({ id: "a", pdf: { kaynak: 7, no: 1 } });
+    expect(d.aktif).toBe("a");
+    expect(d.surum).toBe(5);
+  });
+
+  it("tek sayfalık PDF bu sayfada: yalnız zemin değişir", () => {
+    const d = pdfSayfalariniYerlestir(uc, 9, 1, "bu");
+    expect(d.liste.map((s) => s.id)).toEqual(["p1", "a", "b"]);
+    expect(d.liste[1].pdf).toEqual({ kaynak: 9, no: 1 });
+  });
+
+  it("sayfasız PDF listeyi değiştirmez", () => {
+    expect(pdfSayfalariniYerlestir(uc, 7, 0, "yeni")).toBe(uc);
   });
 });

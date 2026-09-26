@@ -1,22 +1,55 @@
 /*
- * Ders tahtası — Excalidraw'ın kendi arayüzü gizlenir; yerine Preply tahta
- * yüzeyi (sol dikey araç çubuğu, alt solda geri al/yinele + yakınlaştırma,
- * alt sağda sayfa denetimi) `TahtaPaneli`nde çizilir. Sınıf adları kurulu
- * @excalidraw/excalidraw 0.18.1 `dist/prod/index.css`ten; masaüstü ve
- * telefon (dar kap) arayüzünün ikisi de kapsanır.
+ * Ders tahtası.
+ *
+ * Tam mod (`.ders-tahta--tam`, varsayılan): Excalidraw'ın kendi arayüzü
+ * KISILMAZ (LiveKit tahtasındaki gibi). Yalnız sayfa denetimi yerleşir:
+ * masaüstünde Excalidraw'ın alt çubuğundaki `<Footer>` yuvasında SAĞA
+ * yaslanır (yardım düğmesinin hemen solu; alt sol yakınlaştırma + geri al ile
+ * çakışmaz); telefonda sağ kenardaki Excalidraw sütununun (kitaplık, kalem
+ * modu, kilit, el: en çok 4 × 2rem) ALTINDA durur — üst araç çubuğunu, sağ
+ * sütunu ve alt çubuğu (☰, stil, geri al) örtmez. Alçak (yatay) ekranda alt
+ * çubuğun üstüne kıstırılır.
+ *
+ * Preply modu (`EXCALIDRAW_TAM = false`): Excalidraw'ın arayüzü gizlenir;
+ * yerine Preply yüzeyi `TahtaPaneli`nde çizilir. Sınıf adları kurulu
+ * @excalidraw/excalidraw 0.18.1 `dist/prod/index.css`ten.
  */
+.ders-tahta--tam .excalidraw .footer-center {
+  justify-content: flex-end;
+}
+.ders-tahta--tam .tahta-sayfa-mobil {
+  top: min(calc(13.75rem + var(--sat, 0px)), calc(100% - 6.5rem - var(--sab, 0px)));
+}
+
+/*
+ * Takip rozeti (öğretmen öğrenciyi takip ederken tuvalin çevresindeki
+ * çerçevede): Excalidraw'ın sabit İngilizce "Following" metni gizlenir,
+ * yerine kabın `--takip-etiketi` değişkeni (Türkçe) yazılır; ad kalır.
+ */
+.ders-tahta .excalidraw .follow-mode__badge__label {
+  font-size: 0;
+}
+.ders-tahta .excalidraw .follow-mode__badge__label::before {
+  content: var(--takip-etiketi);
+  font-size: 0.75rem;
+  margin-right: 0.25rem;
+}
+.ders-tahta .excalidraw .follow-mode__badge__username {
+  font-size: 0.75rem;
+}
+
 .ders-tahta:not(.ders-tahta--tam) .excalidraw .App-menu_top,
-.ders-tahta .excalidraw .layer-ui__wrapper__footer,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .layer-ui__wrapper__footer,
 .ders-tahta:not(.ders-tahta--tam) .excalidraw .App-bottom-bar,
 .ders-tahta:not(.ders-tahta--tam) .excalidraw .App-toolbar,
 .ders-tahta:not(.ders-tahta--tam) .excalidraw .App-mobile-menu,
 .ders-tahta:not(.ders-tahta--tam) .excalidraw .main-menu-trigger,
-.ders-tahta .excalidraw .default-sidebar-trigger,
-.ders-tahta .excalidraw .sidebar-trigger,
-.ders-tahta .excalidraw .help-icon,
-.ders-tahta .excalidraw .layer-ui__wrapper__top-right,
-.ders-tahta .excalidraw .welcome-screen-center,
-.ders-tahta .excalidraw .welcome-screen-decor,
-.ders-tahta .excalidraw .scroll-back-to-content {
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .default-sidebar-trigger,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .sidebar-trigger,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .help-icon,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .layer-ui__wrapper__top-right,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .welcome-screen-center,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .welcome-screen-decor,
+.ders-tahta:not(.ders-tahta--tam) .excalidraw .scroll-back-to-content {
   display: none !important;
 }
