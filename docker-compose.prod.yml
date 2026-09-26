@@ -95,13 +95,20 @@ services:
   # ── Canlı ders SFU (LiveKit, Apache-2.0, self-hosted) ──
   # Signaling (7880) yayınlanmaz: Caddy `canli.<alan>` bloğundan iç ağ
   # üzerinden erişir. Dışarı yalnız medya portları çıkar.
+  #
+  # 26 Eyl 2026: `livekit` profiline alındı — lansmanda canlı ders Zoom Video
+  # SDK ile. Profil açılmadıkça başlamaz ve değişkenleri zorunlu değildir
+  # (eskiden `:?` zorunluluğu, LiveKit hiç kullanılmadığı hâlde bütün
+  # compose'u, dolayısıyla deploy'u durduruyordu). Açmak için:
+  # `--profile livekit` + .env.prod'da LIVEKIT_API_KEY/SECRET/NODE_IP.
   livekit:
+    profiles: ["livekit"]
     image: livekit/livekit-server:v1.13.7
     restart: unless-stopped
     command: ["--config", "/etc/livekit.yaml"]
     environment:
-      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:?LIVEKIT_API_KEY gerekli}: ${LIVEKIT_API_SECRET:?LIVEKIT_API_SECRET gerekli}"
-      NODE_IP: ${LIVEKIT_NODE_IP:?LIVEKIT_NODE_IP gerekli}
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-}: ${LIVEKIT_API_SECRET:-}"
+      NODE_IP: ${LIVEKIT_NODE_IP:-}
     volumes:
       - ./devops/livekit.yaml:/etc/livekit.yaml:ro
     ports:
