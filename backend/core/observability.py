@@ -46,6 +46,11 @@ def configure_logging() -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(level)
+    # httpx her isteği INFO'da tam URL'siyle loglar ("HTTP Request: GET ...").
+    # Netgsm kimlik bilgisini ve OTP metnini query string'de taşıdığı için bu
+    # satır parolayı loga yazıyordu; yalnız uyarı ve üstü kalsın.
+    for noisy in ("httpx", "httpcore"):
+        logging.getLogger(noisy).setLevel(max(level, logging.WARNING))
 
 
 class RequestIdMiddleware:

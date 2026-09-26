@@ -64,9 +64,18 @@ class NetgsmSmsSender(SmsSender):
             "message": message.text,
             "msgheader": settings.NETGSM_MSGHEADER or settings.NETGSM_USERCODE,
         }
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(self._URL, params=params)
-            resp.raise_for_status()
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(self._URL, params=params)
+                resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            # httpx hata metni ve zinciri istek URL'sini (parola + OTP) taşır;
+            # yukarıdaki log/outbox'a yalnız sade bir özet çıksın.
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            raise RuntimeError(
+                f"Netgsm HTTP hatası: {type(exc).__name__}"
+                + (f" (HTTP {status_code})" if status_code else "")
+            ) from None
         if not netgsm_response_ok(resp.text):
             code = parse_netgsm_code(resp.text)
             detail = NETGSM_ERROR_MESSAGES.get(code, "bilinmeyen Netgsm hata kodu")
