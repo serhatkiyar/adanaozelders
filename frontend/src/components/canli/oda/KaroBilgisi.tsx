@@ -104,6 +104,7 @@ export function KaroKatmani({
   konusuyor,
   agSeviyesi,
   telefon,
+  gizli = false,
   ust,
   onPointerDown,
   children,
@@ -114,6 +115,8 @@ export function KaroKatmani({
   konusuyor: boolean;
   agSeviyesi: number | null;
   telefon: boolean;
+  /** Karo ekran dışında (videolar gizli): `inert`, odak ve ekran okuyucu dışı. */
+  gizli?: boolean;
   /** Sağ üstte fare hareketinde 1 sn beliren denetim (Preply "Düzeni değiştir"). */
   ust?: ReactNode;
   /** Sürüklenebilir karo/kutu (Preply yüzen kutu, araçsız kendi karon). */
@@ -125,6 +128,11 @@ export function KaroKatmani({
   const [ustGorunur, setUstGorunur] = useState(false);
   const [klavye, setKlavye] = useState(false);
   const { kalite, etiket, ipucu } = useBaglantiMetni(agSeviyesi);
+
+  // React 18 `inert`i tanımıyor: öznitelik elle (YanPanel deseni).
+  useEffect(() => {
+    katman.current?.toggleAttribute("inert", gizli);
+  }, [gizli]);
   // Gerçek ölçüm yoksa bağlantı kutusu da yok ("bilinmiyor" yazılmaz).
   const kutuAcik =
     !telefon && ad !== undefined && kalite !== "bilinmiyor" && (etkin || klavye);

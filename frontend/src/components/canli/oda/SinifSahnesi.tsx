@@ -33,6 +33,8 @@ import {
   secilebilirGorunumler,
   sonAracOku,
   sonVideoOku,
+  videolarGizliHatirla,
+  videolarGizliOku,
   yerlesimHesapla,
   type AracGorunumu,
   type Gorunum,
@@ -116,6 +118,8 @@ export function SinifSahnesi({
   const [bolunmusOran, setBolunmusOran] = useState<number | null>(null);
   const [surukleme, setSurukleme] = useState<Nokta>({ x: 0, y: 0 });
   const [menu, setMenu] = useState<{ sag: number; ust: number } | null>(null);
+  // Kenar çubuğunda videolar gizli mi (sekmede hatırlanır; düzen değişince korunur).
+  const [videolarGizli, setVideolarGizli] = useState(videolarGizliOku);
 
   const kucukEkran = pencere.w < KUCUK_EKRAN_PX;
   const gorunum = gorunumSec({
@@ -154,8 +158,9 @@ export function SinifSahnesi({
         yanPanelOrani,
         bolunmusOran,
         surukleme,
+        videolarGizli,
       }),
-    [olcu, gorunum, paylasim, tahtaAcik, karsiTarafVar, telefon, pencere, ogretmen, kucukEkran, yanPanelOrani, bolunmusOran, surukleme],
+    [olcu, gorunum, paylasim, tahtaAcik, karsiTarafVar, telefon, pencere, ogretmen, kucukEkran, yanPanelOrani, bolunmusOran, surukleme, videolarGizli],
   );
   const yRef = useRef(y);
   yRef.current = y;
@@ -264,6 +269,7 @@ export function SinifSahnesi({
   }, [menu]);
 
   const bolme = y.bolme;
+  const daralt = y.daraltDugmesi;
 
   return (
     <div ref={sahne} className="relative h-full w-full overflow-hidden bg-ders-zemin">
@@ -321,6 +327,26 @@ export function SinifSahnesi({
             }`}
           />
         </div>
+      )}
+
+      {/* Kenar çubuğu + tahta: videoları gizle/göster. İki durumda AYNI öğe
+          (odak kaybolmaz); yalnız konumu ve etiketi değişir. */}
+      {daralt && (
+        <PlainButton
+          onClick={() => {
+            const gizli = !daralt.gizli;
+            videolarGizliHatirla(gizli);
+            setVideolarGizli(gizli);
+          }}
+          aria-label={t(daralt.gizli ? "duzen.videolariGoster" : "duzen.videolariGizle")}
+          title={t(daralt.gizli ? "duzen.videolariGoster" : "duzen.videolariGizle")}
+          aria-expanded={!daralt.gizli}
+          aria-controls="ders-video-alani"
+          className="absolute z-20 inline-flex items-center justify-center rounded-l-lg bg-ders-yuzey text-white shadow-md hover:bg-ders-dugme focus-visible:outline focus-visible:outline-2 focus-visible:outline-marka-focus"
+          style={kutuStili(daralt.kutu)}
+        >
+          <Icon name={daralt.gizli ? "chevronLeft" : "chevronRight"} className="h-4 w-4" />
+        </PlainButton>
       )}
 
       {menu && (

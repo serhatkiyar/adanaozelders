@@ -21,7 +21,9 @@
  *
  * Odanın en sağında tam yükseklik (`YanPanel`): >880px'te sahneyi ve
  * kontrol çubuğunu daraltır, ≤880px'te karartmalı kaplayan pencere,
- * telefonda tam ekran (sahne altta çizili kalır, ses sürer). Ağaç sabit:
+ * telefonda tam ekran (sahne altta çizili kalır, ses sürer). Sohbet ise
+ * telefonda ve ≤880px'te alttan açılan iki kademeli çekmecedir; kapalıyken
+ * gelen mesaj sahnede önizleme balonu gösterir. Ağaç sabit:
  * yalnız sınıflar değişir, video kapları yeniden kurulmaz. Sohbet bir kez
  * açılınca DOM'da kalır (kapalıyken gizli): taslak ve kaydırma korunur.
  *
@@ -71,6 +73,7 @@ import {
 import { I18nextProvider } from "react-i18next";
 
 import { biletTazeMi, type KarsiTarafDurumu } from "@/lib/canliDers";
+import { onizlemeGerekli, onizlemeMetni, type SohbetOzeti } from "@/lib/sohbetCekmecesi";
 import { toast } from "@/store/toastStore";
 
 import { dersI18n } from "./i18n";
@@ -88,7 +91,8 @@ import { KontrolCubugu, type AracDenetimi, type PanelDenetimi } from "./oda/Kont
 import { OnIzleme, type DersBilgisi } from "./oda/OnIzleme";
 import { TelefonCubugu } from "./oda/TelefonCubugu";
 import { UcanTepkiler } from "./oda/Tepkiler";
-import { YanPanel, type PanelTuru } from "./oda/YanPanel";
+import { YanPanel, type CekmeceKademesi, type PanelTuru } from "./oda/YanPanel";
+import { SohbetOnizlemesi } from "./oda/SohbetOnizlemesi";
 import { SinifSahnesi } from "./oda/SinifSahnesi";
 import { TahtaAlani } from "./oda/TahtaAlani";
 import { beklemeSuresi, katilimKarari, type KanalVarligi } from "./oda/durum/bekleme";
@@ -234,6 +238,33 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
     okunmamis: konusma.okunmamis,
     karsiAd: sohbet?.karsiTarafAd ?? "",
   };
+
+  // Telefonda / ≤880px alttan sohbet: her açılış yarım kademe; açılınca
+  // önizleme balonu kalkar.
+  const [sohbetKademe, setSohbetKademe] = useState<CekmeceKademesi>("yarim");
+  const [onizleme, setOnizleme] = useState<{ metin: string; zaman: string | null } | null>(null);
+  const [oncekiPanel, setOncekiPanel] = useState(panel);
+  if (panel !== oncekiPanel) {
+    setOncekiPanel(panel);
+    if (panel === "sohbet") {
+      setSohbetKademe("yarim");
+      setOnizleme(null);
+    }
+  }
+  const onizlemeKapat = useCallback(() => setOnizleme(null), []);
+  // Sohbet kapalıyken yeni mesaj: telefonda / dar pencerede önizleme balonu.
+  // İlk yüklemedeki okunmamışlar balon açmaz (önceki durum yüklenince tutulur).
+  const oncekiOzet = useRef<SohbetOzeti | null>(null);
+  const { yuklendi, okunmamis: sohbetOkunmamis, sonMesaj, sonMesajZamani } = konusma;
+  useEffect(() => {
+    if (!yuklendi) return;
+    const simdi: SohbetOzeti = { okunmamis: sohbetOkunmamis, zaman: sonMesajZamani };
+    const onceki = oncekiOzet.current;
+    oncekiOzet.current = simdi;
+    if ((telefon || darPencere) && onizlemeGerekli(onceki, simdi, panel === "sohbet")) {
+      setOnizleme({ metin: onizlemeMetni(sonMesaj), zaman: sonMesajZamani });
+    }
+  }, [yuklendi, sohbetOkunmamis, sonMesaj, sonMesajZamani, telefon, darPencere, panel]);
 
   // ── Beyaz tahta ──
   const odada = asama === "odada";
@@ -599,6 +630,15 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
               <UcanTepkiler />
               <DurumSeritleri mikTercihi={mikTercihi} />
               {sahneUstu && <SahneUstu>{sahneUstu}</SahneUstu>}
+              {sohbet && onizleme && panel !== "sohbet" && (
+                <SohbetOnizlemesi
+                  key={onizleme.zaman ?? ""}
+                  ad={sohbet.karsiTarafAd}
+                  metin={onizleme.metin}
+                  onAc={() => setPanel("sohbet")}
+                  onKapandi={onizlemeKapat}
+                />
+              )}
             </SinifSahnesi>
           </div>
           {telefon ? (
@@ -617,7 +657,14 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
             />
           )}
         </div>
-        <YanPanel panel={panel} telefon={telefon} dar={darPencere} onKapat={paneliKapat}>
+        <YanPanel
+          panel={panel}
+          telefon={telefon}
+          dar={darPencere}
+          kademe={sohbetKademe}
+          onKademe={setSohbetKademe}
+          onKapat={paneliKapat}
+        >
           {sohbet && sohbetKuruldu && (
             <div className={panel === "sohbet" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
               <DersSohbeti
@@ -626,6 +673,11 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
                 konusma={konusma}
                 telefon={telefon}
                 dar={telefon || darPencere}
+                alttanCekmece={
+                  telefon || darPencere
+                    ? { kademe: sohbetKademe, onKademe: setSohbetKademe }
+                    : undefined
+                }
                 onKapat={paneliKapat}
               />
             </div>

@@ -27,6 +27,11 @@ export interface DersKonusmasi {
   okunmamis: number;
   /** Karşı tarafın konuşmayı en son okuduğu an ("… tarafından görüldü"). */
   karsiOkuma: string | null;
+  /** Konuşmanın son mesajı ve zamanı (önizleme balonu). */
+  sonMesaj: string | null;
+  sonMesajZamani: string | null;
+  /** Konuşma listesi (gerekirse arşiv de) yüklendi: okunmamış sayısı gerçek. */
+  yuklendi: boolean;
   gonderildi: (mesaj: MessageOut) => void;
 }
 
@@ -46,6 +51,9 @@ export function useDersKonusmasi(sohbet: DersSohbetBilgisi | undefined): DersKon
     konusmaId: konusma?.id ?? olusanId,
     okunmamis: konusma?.unread ?? 0,
     karsiOkuma: konusma?.counterparty_last_read_at ?? null,
+    sonMesaj: konusma?.last_message ?? null,
+    sonMesajZamani: konusma?.last_message_at ?? null,
+    yuklendi: gelen.isSuccess && (Boolean(gelendeki) || arsiv.isSuccess || arsiv.isError),
     gonderildi,
   };
 }

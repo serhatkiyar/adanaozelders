@@ -39,7 +39,9 @@ export function gorunumSec(g: {
   if (bolunmus) return "SPOTLIGHT";
   if (tekArac) {
     if (g.mobilKucuk) return "SPOTLIGHT";
-    return g.sonArac ?? "SIDEBAR";
+    // Tahta açılınca varsayılan Köşe (tahta geniş kalır); yalnız paylaşımda
+    // Kenar çubuğu. Kullanıcının son seçimi her ikisinde de önce gelir.
+    return g.sonArac ?? (g.aracAcik ? "CORNER" : "SIDEBAR");
   }
   return g.sonVideo ?? "SPOTLIGHT";
 }
@@ -67,6 +69,22 @@ export const BOLUNMUS_EN_COK = 65;
 export const ARAC_BASLIGI = 48;
 export const YUZEN_UST = ARAC_BASLIGI + 8;
 export const YUZEN_KENAR = 12;
+/**
+ * Yalnız tahta açıkken Köşe kutusu SAĞ ÜSTTEN başlar: soldaki Excalidraw ☰
+ * düğmesini örtmez; üst çubuğun ve sağ üstteki takip düğmesinin altında.
+ */
+export const YUZEN_TAHTA_UST = YUZEN_UST + 64;
+/**
+ * Telefonda (küçük ekran) tahta açıkken yüzen kutu SOL ALTTAN başlar: üstteki
+ * Excalidraw araç çubuğu, sağdaki kilit/el sütunu ve sağ üstteki sayfa
+ * denetimi açıkta kalır. Kutunun altı sahnenin altından bu kadar yukarıda:
+ * Excalidraw telefon alt çubuğu (☰, stil, geri al; ~62px) ve onun üstündeki
+ * "İçeriğe dön" hapı (alttan 80px + ~42px) örtülmez.
+ */
+export const YUZEN_TELEFON_TAHTA_ALT = 132;
+/** Kenar çubuğunda videoları gizle/göster düğmesi (dikey tutamak). */
+export const DARALT_GENISLIK = 24;
+export const DARALT_YUKSEKLIK = 48;
 /** Yüzen kutu: tek karo 200×133, iki karo 200×100 (100×100 yan yana). */
 export const YUZEN_GENISLIK = 200;
 export const YUZEN_TEK_YUKSEKLIK = 133;
@@ -109,6 +127,11 @@ export interface YerlesimGirdisi {
   bolunmusOran: number | null;
   /** Yüzen kutunun / araçsız kendi karonun başlangıçtan kayması. */
   surukleme: Nokta;
+  /**
+   * Kenar çubuğunda videolar gizli mi. Yalnız `SIDEBAR` + tahta + paylaşım
+   * yokken uygulanır; diğer düzenlerde yok sayılır.
+   */
+  videolarGizli?: boolean;
 }
 
 export interface Yerlesim {
@@ -148,6 +171,12 @@ export interface Yerlesim {
   /** Karo avatar çapı (kamera kapalıyken), karo başına. */
   benAvatar: number;
   karsiAvatar: number;
+  /**
+   * Kenar çubuğunda "Videoları gizle/göster" düğmesi: açıkken bölmenin
+   * solunda, gizliyken sahnenin sağ kenarında dikey ortada. Diğer
+   * düzenlerde `null`.
+   */
+  daraltDugmesi: { kutu: Kutu; gizli: boolean } | null;
 }
 
 const sinirla = (d: number, a: number, b: number) => Math.min(b, Math.max(a, d));
@@ -290,13 +319,24 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
 
   if (yuzen) {
     const h = g.karsiTarafVar ? YUZEN_CIFT_YUKSEKLIK : YUZEN_TEK_YUKSEKLIK;
-    const baslangic: Nokta = { x: grup.x + YUZEN_KENAR, y: grup.y + YUZEN_UST };
+    // Ulaşılabilir alan her durumda aynı: sol üst (12, 56) … sağ alt.
+    const enSol = grup.x + YUZEN_KENAR;
+    const enUst = grup.y + YUZEN_UST;
+    const enSag = Math.max(enSol, grup.x + grup.w - YUZEN_KENAR - YUZEN_GENISLIK);
+    const enAlt = Math.max(enUst, grup.y + grup.h - YUZEN_KENAR - h);
+    // Yalnız tahta açıkken (Köşe) sağ üstten başlar (telefonda sol alttan);
+    // paylaşım ve bölünmüş görünümde sol üst kalır.
+    const sagUst = g.gorunum === "CORNER" && g.aracAcik && !g.paylasim;
+    // Telefonda tahta: sol alt, Excalidraw'ın alt çubuğunun üstü.
+    const telefonTahta = g.telefon && g.kucukEkran && g.aracAcik && !g.paylasim;
+    const baslangic: Nokta = telefonTahta
+      ? { x: enSol, y: Math.max(enUst, grup.y + grup.h - YUZEN_TELEFON_TAHTA_ALT - h) }
+      : sagUst
+        ? { x: enSag, y: Math.min(enAlt, grup.y + YUZEN_TAHTA_UST) }
+        : { x: enSol, y: enUst };
     const siniri = {
-      min: { x: 0, y: 0 },
-      max: {
-        x: Math.max(0, grup.x + grup.w - YUZEN_KENAR - YUZEN_GENISLIK - baslangic.x),
-        y: Math.max(0, grup.y + grup.h - YUZEN_KENAR - h - baslangic.y),
-      },
+      min: { x: enSol - baslangic.x, y: enUst - baslangic.y },
+      max: { x: enSag - baslangic.x, y: enAlt - baslangic.y },
     };
     const kayma = kaymayiSinirla(g.surukleme, siniri);
     video = { x: baslangic.x + kayma.x, y: baslangic.y + kayma.y, w: YUZEN_GENISLIK, h };
@@ -315,6 +355,37 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
       bolunmusDikey,
       benAvatar: av.ben,
       karsiAvatar: av.karsi,
+      daraltDugmesi: null,
+    };
+  }
+
+  // Kenar çubuğu + tahta: videolar gizlenebilir. Oyuncu kapları 0×0 YAPILMAZ
+  // (Zoom çizimi durdurabilir): 1×1 olarak sahnenin sağ kenarının dışında
+  // (kırpılır) tutulur; araç tam genişlik alır.
+  const gizlenebilir = g.gorunum === "SIDEBAR" && g.aracAcik && !g.paylasim;
+  const daraltKutusu = (sagKenar: number): Kutu => ({
+    x: sagKenar - DARALT_GENISLIK,
+    y: grup.y + Math.round((grup.h - DARALT_YUKSEKLIK) / 2),
+    w: DARALT_GENISLIK,
+    h: DARALT_YUKSEKLIK,
+  });
+  if (gizlenebilir && g.videolarGizli) {
+    const disari: Kutu = { x: g.genislik + 1, y: grup.y, w: 1, h: 1 };
+    return {
+      grup,
+      paylasim: null,
+      arac: grup,
+      video: disari,
+      benKaro: disari,
+      karsiKaro: g.karsiTarafVar ? disari : null,
+      yuzen: false,
+      suruklenebilir: null,
+      suruklemeSiniri: null,
+      bolme: null,
+      bolunmusDikey,
+      benAvatar: av.ben,
+      karsiAvatar: av.karsi,
+      daraltDugmesi: { kutu: daraltKutusu(grup.x + grup.w), gizli: true },
     };
   }
 
@@ -343,6 +414,8 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
     bolunmusDikey,
     benAvatar: av.ben,
     karsiAvatar: av.karsi,
+    daraltDugmesi:
+      gizlenebilir && bolme ? { kutu: daraltKutusu(bolme.kutu.x), gizli: false } : null,
   };
 
   function temel(p: { grup: Kutu; video: Kutu; karsiKaro: Kutu | null; benKaro: Kutu }): Yerlesim {
@@ -360,6 +433,7 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
       bolunmusDikey: false,
       benAvatar: av.ben,
       karsiAvatar: av.karsi,
+      daraltDugmesi: null,
     };
   }
 }
@@ -376,6 +450,7 @@ export function kaymayiSinirla(k: Nokta, s: { min: Nokta; max: Nokta }): Nokta {
 
 export const SON_VIDEO_ANAHTARI = "classroom_layout_view_video";
 export const SON_ARAC_ANAHTARI = "classroom_layout_view_video_and_tools";
+export const VIDEOLAR_GIZLI_ANAHTARI = "classroom_layout_sidebar_videos_hidden";
 
 function oku(anahtar: string): string | null {
   try {
@@ -399,6 +474,20 @@ export function gorunumuHatirla(g: Gorunum): void {
   try {
     if (g === "SPOTLIGHT" || g === "GRID") window.sessionStorage.setItem(SON_VIDEO_ANAHTARI, g);
     else window.sessionStorage.setItem(SON_ARAC_ANAHTARI, g);
+  } catch {
+    /* gizli pencere: hatırlanmaz */
+  }
+}
+
+/** Kenar çubuğunda videolar gizli mi (sekmede hatırlanır; bozuk değer = hayır). */
+export function videolarGizliOku(): boolean {
+  return oku(VIDEOLAR_GIZLI_ANAHTARI) === "1";
+}
+
+export function videolarGizliHatirla(gizli: boolean): void {
+  try {
+    if (gizli) window.sessionStorage.setItem(VIDEOLAR_GIZLI_ANAHTARI, "1");
+    else window.sessionStorage.removeItem(VIDEOLAR_GIZLI_ANAHTARI);
   } catch {
     /* gizli pencere: hatırlanmaz */
   }

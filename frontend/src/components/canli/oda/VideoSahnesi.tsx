@@ -90,6 +90,9 @@ export function VideoSahnesi({
   const karsiKose = y.yuzen ? "rounded-r-ders" : "rounded-ders";
   const benSurukle = y.suruklenebilir !== null ? onSurukleBasla : undefined;
   const karsiSurukle = y.suruklenebilir === "yuzen" ? onSurukleBasla : undefined;
+  // Kenar çubuğunda videolar gizliyken karolar ekran dışında 1×1: odak ve
+  // ekran okuyucu onlara ulaşmasın.
+  const gizli = y.daraltDugmesi?.gizli ?? false;
   // Paylaşım panelinin başlık şeridi ve altındaki görüntü alanı (sahneye göre).
   const panel = paylasimGorunur ? y.paylasim : null;
   const baslikKutusu = panel ? { ...panel, h: Math.min(PAYLASIM_BASLIGI, panel.h) } : null;
@@ -99,7 +102,7 @@ export function VideoSahnesi({
       : null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div id="ders-video-alani" className="pointer-events-none absolute inset-0 overflow-hidden">
       <MedyaKatmani
         yerlesim={y}
         paylasimBaslikPx={PAYLASIM_BASLIGI}
@@ -154,6 +157,7 @@ export function VideoSahnesi({
         konusuyor={Boolean(uzak) && uzakKonusuyor}
         agSeviyesi={uzakAg}
         telefon={telefon}
+        gizli={gizli}
         ust={uzak ? karoUstu?.("karsi") : undefined}
         onPointerDown={karsiSurukle}
       >
@@ -176,6 +180,7 @@ export function VideoSahnesi({
         konusuyor={Boolean(ben) && benKonusuyor}
         agSeviyesi={benAg}
         telefon={telefon}
+        gizli={gizli}
         ust={ben ? karoUstu?.("ben") : undefined}
         onPointerDown={benSurukle}
       >
