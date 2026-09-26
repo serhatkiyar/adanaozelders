@@ -224,7 +224,12 @@ def yetkilendirme_baslat(
             "verifier": verifier,
             "mod": mod,
             "rol": rol if mod == "kayit" else None,
-            "onay_surumu": onay_surumu if mod == "kayit" else None,
+            # Giriş modunda da taşınır: e-postası hiçbir hesapla eşleşmeyen
+            # kullanıcıya giriş akışında da hesap açılıyor (`cozumle` 3. kol)
+            # ve açılış rıza sürümü ister. Eskiden yalnız "kayit"ta saklandığı
+            # için "Google ile giriş" yeni kullanıcıda her seferinde
+            # "onay sürümü olmadan hesap açılamaz" ile düşüyordu (27 Eyl 2026).
+            "onay_surumu": onay_surumu,
             "donus": guvenli_donus_yolu(donus),
             "hatirla": bool(hatirla),
         },

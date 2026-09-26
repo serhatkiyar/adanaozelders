@@ -331,3 +331,14 @@ def test_tehlikeli_donus_cereze_YAZILMAZ(_google_acik):
     )
     ham = yanit.headers["set-cookie"].split("=", 1)[1].split(";", 1)[0]
     assert gos._state_oku(_istek({gos.STATE_COOKIE: ham}))["donus"] is None
+
+
+def test_giris_modunda_onay_surumu_STATEte_KORUNUR(_google_acik):
+    """Canlı hata (27 Eyl 2026): giriş modunda sürüm state'ten siliniyordu;
+    yeni kullanıcı `cozumle`de "onay sürümü olmadan hesap açılamaz" ile düşüyordu."""
+    yanit = Response()
+    gos.yetkilendirme_baslat(
+        yanit, mod="giris", rol=None, donus=None, onay_surumu="2026-09-17", hatirla=True
+    )
+    ham = yanit.headers["set-cookie"].split("=", 1)[1].split(";", 1)[0]
+    assert gos._state_oku(_istek({gos.STATE_COOKIE: ham}))["onay_surumu"] == "2026-09-17"
