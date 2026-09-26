@@ -135,12 +135,6 @@ export const tr = {
       charCount: "{{used}} / {{limit}} karakter",
       replyingTo: "{{name}} yanıtlanıyor",
       cancelReply: "Yanıtı kaldır",
-      /** Telefonda / ≤880px alttan açılan iki kademeli sohbet. */
-      sheet: {
-        expand: "Sohbeti genişlet",
-        shrink: "Sohbeti küçült",
-        handle: "Sohbet paneli yüksekliği",
-      },
       /** Sohbet kapalıyken gelen mesajın önizleme balonu. */
       preview: {
         open: "{{name}}: {{text}}. Sohbeti aç",

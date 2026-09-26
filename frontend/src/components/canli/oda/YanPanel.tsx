@@ -10,11 +10,6 @@
  *   solda `rgba(18,17,23,.56)` karartma; sahne daralmaz.
  * - Telefon: tam ekran; sahne altta çizili kalır, ses sürer; sayfa kaydırması
  *   kilitli. Klavye açılınca yükseklik görünür alana (`visualViewport`) iner.
- * - Sohbet telefonda ve ≤880px'te ("cekmece"): alttan açılan iki kademeli
- *   çekmece (yarım / tam, `lib/sohbetCekmecesi.ts`). Karartma yok, arkadaki
- *   sahne görünür ve etkileşimli; klavye açılınca görünür alanın altına
- *   oturur. Üstteki tutamak dokununca kademe değiştirir, sürüklenince
- *   canlı büyür/küçülür; aşağı bırakılırsa kapanır. Her açılış yarım.
  *
  * Katılımcılar Meet `SidePanel` başlığını ve Esc ile kapanmayı korur; sohbet
  * kendi Preply başlığını çizer ve Esc ile kapanmaz (Preply). Açılınca odak
@@ -26,7 +21,6 @@ import { useTranslation } from "react-i18next";
 
 import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
-import { birakincaKademe, gorunurAlan, kademeYuksekligi } from "@/lib/sohbetCekmecesi";
 
 export type PanelTuru = "katilimcilar" | "sohbet";
 
@@ -34,47 +28,22 @@ export type PanelTuru = "katilimcilar" | "sohbet";
 const EN_DAR = 375;
 const EN_GENIS = 712;
 
-/** Alttan açılan sohbetin kademesi (kapalı = panel kapalı). */
-export type CekmeceKademesi = "yarim" | "tam";
-
-/** Dokunma bu kadar px'ten az kıpırdarsa sürükleme değil, dokunmadır. */
-const DOKUNMA_ESIGI = 6;
-
-type Alan = { height: number; top: number; ic: number; vv: boolean };
-
-/**
- * Klavye açıkken görünür alan (`visualViewport`): yükseklik, üst kayma ve
- * pencere yüksekliği. iOS titremesine karşı güncellemeler kare başına bir.
- */
-function useGorunurAlan(etkin: boolean): Alan | null {
-  const [alan, setAlan] = useState<Alan | null>(null);
+/** Telefonda klavye açıkken görünür alanın yüksekliği ve üst kayması. */
+function useGorunurAlan(etkin: boolean): { height: number; top: number } | null {
+  const [alan, setAlan] = useState<{ height: number; top: number } | null>(null);
   useEffect(() => {
-    if (!etkin) {
+    const vv = window.visualViewport;
+    if (!etkin || !vv) {
       setAlan(null);
       return;
     }
-    const vv = window.visualViewport;
-    const oku = () =>
-      setAlan({
-        height: vv ? vv.height : window.innerHeight,
-        top: vv ? vv.offsetTop : 0,
-        ic: window.innerHeight,
-        vv: Boolean(vv),
-      });
-    let kare = 0;
-    const uyarla = () => {
-      cancelAnimationFrame(kare);
-      kare = requestAnimationFrame(oku);
-    };
-    oku();
-    vv?.addEventListener("resize", uyarla);
-    vv?.addEventListener("scroll", uyarla);
-    window.addEventListener("resize", uyarla);
+    const uyarla = () => setAlan({ height: vv.height, top: vv.offsetTop });
+    uyarla();
+    vv.addEventListener("resize", uyarla);
+    vv.addEventListener("scroll", uyarla);
     return () => {
-      cancelAnimationFrame(kare);
-      vv?.removeEventListener("resize", uyarla);
-      vv?.removeEventListener("scroll", uyarla);
-      window.removeEventListener("resize", uyarla);
+      vv.removeEventListener("resize", uyarla);
+      vv.removeEventListener("scroll", uyarla);
     };
   }, [etkin]);
   return alan;
@@ -101,8 +70,6 @@ export function YanPanel({
   panel,
   telefon,
   dar,
-  kademe = "yarim",
-  onKademe,
   onKapat,
   children,
 }: {
@@ -111,9 +78,6 @@ export function YanPanel({
   telefon: boolean;
   /** Masaüstünde pencere ≤880px: kaplayan pencere düzeni. */
   dar: boolean;
-  /** Alttan açılan sohbetin kademesi (yalnız telefonda / ≤880px sohbette). */
-  kademe?: CekmeceKademesi;
-  onKademe?: (k: CekmeceKademesi) => void;
   onKapat: () => void;
   children: ReactNode;
 }) {
@@ -122,12 +86,8 @@ export function YanPanel({
   const oncekiOdak = useRef<HTMLElement | null>(null);
   const acik = panel !== null;
   const [genislik, setGenislik] = useState(EN_DAR);
-  const cekmece = panel === "sohbet" && (telefon || dar);
-  const alan = useGorunurAlan((telefon || cekmece) && acik);
-  useKaydirmaKilidi((telefon || cekmece) && acik);
-  // Sürüklerken canlı yükseklik; bırakınca `null` (kademe yüksekliği).
-  const [surukYuk, setSurukYuk] = useState<number | null>(null);
-  const suruklendi = useRef(false);
+  const alan = useGorunurAlan(telefon && acik);
+  useKaydirmaKilidi(telefon && acik);
 
   // React 18 `inert`i tanımıyor: öznitelik elle.
   useEffect(() => {
@@ -188,66 +148,13 @@ export function YanPanel({
     hedef.addEventListener("pointercancel", birak);
   };
 
-  // Alttan sohbet: görünür alan (klavye hariç) ve kademe yüksekliği.
-  const gorunur = alan
-    ? gorunurAlan(alan.ic, alan.vv ? { height: alan.height, offsetTop: alan.top } : null)
-    : gorunurAlan(window.innerHeight, null);
-  const cekmeceYuk = surukYuk ?? kademeYuksekligi(kademe, gorunur.yukseklik);
-
-  // Tutamak: dokunma = kademe değiştir (onClick), sürükleme = canlı yükseklik.
-  const tutamakBasla = (e: IsaretciOlayi<HTMLButtonElement>) => {
-    if (e.button !== 0) return;
-    const hedef = e.currentTarget;
-    hedef.setPointerCapture(e.pointerId);
-    suruklendi.current = false;
-    const basY = e.clientY;
-    const alanYuk = gorunur.yukseklik;
-    const basYuk = kademeYuksekligi(kademe, alanYuk);
-    const enCok = kademeYuksekligi("tam", alanYuk);
-    let yuk = basYuk;
-    // Hız için son iki örnek (yükseklik, zaman).
-    let onceki = { yuk: basYuk, t: e.timeStamp };
-    let son = { yuk: basYuk, t: e.timeStamp };
-    const hareket = (h: PointerEvent) => {
-      const dy = h.clientY - basY;
-      if (!suruklendi.current && Math.abs(dy) < DOKUNMA_ESIGI) return;
-      suruklendi.current = true;
-      yuk = Math.min(enCok, Math.max(0, basYuk - dy));
-      onceki = son;
-      son = { yuk, t: h.timeStamp };
-      setSurukYuk(yuk);
-    };
-    const birak = (h: PointerEvent) => {
-      hedef.removeEventListener("pointermove", hareket);
-      hedef.removeEventListener("pointerup", birak);
-      hedef.removeEventListener("pointercancel", birak);
-      if (!suruklendi.current) return;
-      const sure = son.t - onceki.t;
-      const hiz =
-        h.type === "pointerup" && sure > 0 && h.timeStamp - son.t < 100
-          ? (son.yuk - onceki.yuk) / sure
-          : 0;
-      const k = birakincaKademe(yuk, hiz, alanYuk);
-      setSurukYuk(null);
-      if (k === "kapali") onKapat();
-      else onKademe?.(k);
-    };
-    hedef.addEventListener("pointermove", hareket);
-    hedef.addEventListener("pointerup", birak);
-    hedef.addEventListener("pointercancel", birak);
-  };
-
-  const duzen = cekmece ? "cekmece" : telefon ? "telefon" : dar ? "dar" : "genis";
+  const duzen = telefon ? "telefon" : dar ? "dar" : "genis";
   const yerlesim =
-    duzen === "cekmece"
-      ? `fixed inset-x-0 z-40 overflow-visible rounded-t-2xl shadow-2xl ${
-          surukYuk === null ? "motion-safe:transition-[height,bottom] motion-safe:duration-200" : ""
-        }`
-      : duzen === "telefon"
-        ? "fixed inset-x-0 top-0 z-40 h-[100dvh] overflow-hidden"
-        : duzen === "dar"
-          ? "absolute right-0 top-0 z-[5] h-full w-full max-w-[500px] overflow-hidden"
-          : "relative h-full shrink-0 overflow-hidden";
+    duzen === "telefon"
+      ? "fixed inset-x-0 top-0 z-40 h-[100dvh]"
+      : duzen === "dar"
+        ? "absolute right-0 top-0 z-[5] h-full w-full max-w-[500px]"
+        : "relative h-full shrink-0";
   const baslik = t(`sidePanel.heading.${panel === "sohbet" ? "chat" : "participants"}`);
 
   return (
@@ -260,48 +167,17 @@ export function YanPanel({
         tabIndex={-1}
         aria-hidden={!acik}
         aria-label={t("sidePanel.ariaLabel", { title: baslik })}
-        data-kademe={duzen === "cekmece" ? kademe : undefined}
-        className={`flex-col bg-white text-slate-900 outline-none ${yerlesim} ${
+        className={`flex-col overflow-hidden bg-white text-slate-900 outline-none ${yerlesim} ${
           acik ? "flex" : "hidden"
         }`}
         style={
-          duzen === "cekmece"
-            ? { bottom: gorunur.alt, height: cekmeceYuk }
-            : duzen === "telefon" && alan?.vv
-              ? { height: alan.height, top: alan.top }
-              : duzen === "genis"
-                ? { width: genislik }
-                : undefined
+          duzen === "telefon" && alan
+            ? { height: alan.height, top: alan.top }
+            : duzen === "genis"
+              ? { width: genislik }
+              : undefined
         }
       >
-        {duzen === "cekmece" && (
-          <PlainButton
-            onPointerDown={tutamakBasla}
-            onClick={() => {
-              if (suruklendi.current) {
-                suruklendi.current = false;
-                return;
-              }
-              onKademe?.(kademe === "tam" ? "yarim" : "tam");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowUp" && kademe !== "tam") {
-                e.preventDefault();
-                onKademe?.("tam");
-              } else if (e.key === "ArrowDown" && kademe === "tam") {
-                e.preventDefault();
-                onKademe?.("yarim");
-              }
-            }}
-            aria-label={t(kademe === "tam" ? "chat.sheet.shrink" : "chat.sheet.expand")}
-            title={t("chat.sheet.handle")}
-            aria-expanded={kademe === "tam"}
-            data-sohbet-tutamagi
-            className="flex h-6 w-full shrink-0 touch-none items-center justify-center rounded-t-2xl bg-white outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marka-focus"
-          >
-            <span aria-hidden className="h-1 w-10 rounded-full bg-[#DCDCE5]" />
-          </PlainButton>
-        )}
         {duzen === "genis" && (
           // Odaklanabilir `separator` ARIA'da etkileşimli bir pencere bölücüdür
           // (ok tuşlarıyla genişlik); kural bunu statik ayırıcı sanıyor.

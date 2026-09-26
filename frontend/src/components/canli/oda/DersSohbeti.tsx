@@ -57,7 +57,6 @@ import type { MessageOut } from "@/types";
 
 import { AltCekmece } from "./AltCekmece";
 import type { DersKonusmasi, DersSohbetBilgisi } from "./dersKonusmasi";
-import type { CekmeceKademesi } from "./YanPanel";
 
 /** Sunucunun mesaj gövdesi sınırı (`MessageCreate.body` max_length). */
 const KARAKTER_SINIRI = 4000;
@@ -138,7 +137,6 @@ export function DersSohbeti({
   konusma,
   telefon,
   dar,
-  alttanCekmece,
   onKapat,
 }: {
   acik: boolean;
@@ -148,8 +146,6 @@ export function DersSohbeti({
   telefon: boolean;
   /** ≤880px ya da telefon: yazma alanı yalnız üst kenarlı tam genişlik şerit. */
   dar: boolean;
-  /** Telefonda / ≤880px alttan çekmece: başlıkta genişlet/küçült düğmesi. */
-  alttanCekmece?: { kademe: CekmeceKademesi; onKademe: (k: CekmeceKademesi) => void };
   onKapat: () => void;
 }) {
   const { t } = useTranslation();
@@ -357,12 +353,7 @@ export function DersSohbeti({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white font-display text-[#121117]">
-      <Baslik
-        karsiAd={karsiAd}
-        ogretmen={sohbet.benimRolum === "TUTOR"}
-        cekmece={alttanCekmece}
-        onKapat={onKapat}
-      />
+      <Baslik karsiAd={karsiAd} ogretmen={sohbet.benimRolum === "TUTOR"} onKapat={onKapat} />
 
       <div className="relative flex min-h-0 flex-[2] flex-col">
         <div
@@ -500,10 +491,9 @@ export function DersSohbeti({
               aria-label={t("chat.send")}
               title={t("chat.send")}
               data-qa-id="send_message"
-              // Telefonda / çekmecede dokunuş odağı yazma alanından almasın:
-              // klavye kapanıp çekmece zıplamasın.
-              onPointerDown={telefon || alttanCekmece ? (e) => e.preventDefault() : undefined}
-              onMouseDown={telefon || alttanCekmece ? (e) => e.preventDefault() : undefined}
+              // Telefonda dokunuş odağı yazma alanından almasın: klavye kapanmasın.
+              onPointerDown={telefon ? (e) => e.preventDefault() : undefined}
+              onMouseDown={telefon ? (e) => e.preventDefault() : undefined}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-transparent bg-marka text-marka-fg hover:bg-marka-hover disabled:cursor-not-allowed disabled:border-[#A8A8B6] disabled:bg-[#DCDCE5] disabled:text-[#6A697C]"
             >
               <Icon name="send" className="h-5 w-5" />
@@ -569,12 +559,10 @@ export function DersSohbeti({
 function Baslik({
   karsiAd,
   ogretmen,
-  cekmece,
   onKapat,
 }: {
   karsiAd: string;
   ogretmen: boolean;
-  cekmece?: { kademe: CekmeceKademesi; onKademe: (k: CekmeceKademesi) => void };
   onKapat: () => void;
 }) {
   const { t } = useTranslation();
@@ -584,18 +572,6 @@ function Baslik({
     const z = window.setInterval(() => setSimdi(Date.now()), 10_000);
     return () => window.clearInterval(z);
   }, [ogretmen]);
-
-  const kapat = (
-    <PlainButton
-      onClick={onKapat}
-      aria-label={t("chat.close")}
-      title={t("chat.close")}
-      data-qa-id="chat-widget-header-close-button"
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#121117] hover:bg-[#F4F4F8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-marka-focus"
-    >
-      <Icon name="dismiss" className="h-6 w-6" />
-    </PlainButton>
-  );
 
   return (
     <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-[#DCDCE5] px-3">
@@ -607,22 +583,15 @@ function Baslik({
           </p>
         )}
       </div>
-      {cekmece ? (
-        <div className="flex shrink-0 items-center gap-1">
-          <PlainButton
-            onClick={() => cekmece.onKademe(cekmece.kademe === "tam" ? "yarim" : "tam")}
-            aria-label={t(cekmece.kademe === "tam" ? "chat.sheet.shrink" : "chat.sheet.expand")}
-            title={t(cekmece.kademe === "tam" ? "chat.sheet.shrink" : "chat.sheet.expand")}
-            aria-expanded={cekmece.kademe === "tam"}
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#121117] hover:bg-[#F4F4F8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-marka-focus"
-          >
-            <Icon name={cekmece.kademe === "tam" ? "chevronDown" : "chevronUp"} className="h-6 w-6" />
-          </PlainButton>
-          {kapat}
-        </div>
-      ) : (
-        kapat
-      )}
+      <PlainButton
+        onClick={onKapat}
+        aria-label={t("chat.close")}
+        title={t("chat.close")}
+        data-qa-id="chat-widget-header-close-button"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[#121117] hover:bg-[#F4F4F8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-marka-focus"
+      >
+        <Icon name="dismiss" className="h-6 w-6" />
+      </PlainButton>
     </div>
   );
 }

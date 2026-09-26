@@ -21,9 +21,9 @@
  *
  * Odanın en sağında tam yükseklik (`YanPanel`): >880px'te sahneyi ve
  * kontrol çubuğunu daraltır, ≤880px'te karartmalı kaplayan pencere,
- * telefonda tam ekran (sahne altta çizili kalır, ses sürer). Sohbet ise
- * telefonda ve ≤880px'te alttan açılan iki kademeli çekmecedir; kapalıyken
- * gelen mesaj sahnede önizleme balonu gösterir. Ağaç sabit:
+ * telefonda tam ekran (sahne altta çizili kalır, ses sürer). Sohbet
+ * telefonda ve ≤880px'te kapalıyken gelen mesaj sahnede önizleme balonu
+ * gösterir. Ağaç sabit:
  * yalnız sınıflar değişir, video kapları yeniden kurulmaz. Sohbet bir kez
  * açılınca DOM'da kalır (kapalıyken gizli): taslak ve kaydırma korunur.
  *
@@ -91,7 +91,7 @@ import { KontrolCubugu, type AracDenetimi, type PanelDenetimi } from "./oda/Kont
 import { OnIzleme, type DersBilgisi } from "./oda/OnIzleme";
 import { TelefonCubugu } from "./oda/TelefonCubugu";
 import { UcanTepkiler } from "./oda/Tepkiler";
-import { YanPanel, type CekmeceKademesi, type PanelTuru } from "./oda/YanPanel";
+import { YanPanel, type PanelTuru } from "./oda/YanPanel";
 import { SohbetOnizlemesi } from "./oda/SohbetOnizlemesi";
 import { SinifSahnesi } from "./oda/SinifSahnesi";
 import { TahtaAlani } from "./oda/TahtaAlani";
@@ -239,17 +239,12 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
     karsiAd: sohbet?.karsiTarafAd ?? "",
   };
 
-  // Telefonda / ≤880px alttan sohbet: her açılış yarım kademe; açılınca
-  // önizleme balonu kalkar.
-  const [sohbetKademe, setSohbetKademe] = useState<CekmeceKademesi>("yarim");
+  // Sohbet açılınca önizleme balonu kalkar.
   const [onizleme, setOnizleme] = useState<{ metin: string; zaman: string | null } | null>(null);
   const [oncekiPanel, setOncekiPanel] = useState(panel);
   if (panel !== oncekiPanel) {
     setOncekiPanel(panel);
-    if (panel === "sohbet") {
-      setSohbetKademe("yarim");
-      setOnizleme(null);
-    }
+    if (panel === "sohbet") setOnizleme(null);
   }
   const onizlemeKapat = useCallback(() => setOnizleme(null), []);
   // Sohbet kapalıyken yeni mesaj: telefonda / dar pencerede önizleme balonu.
@@ -657,14 +652,7 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
             />
           )}
         </div>
-        <YanPanel
-          panel={panel}
-          telefon={telefon}
-          dar={darPencere}
-          kademe={sohbetKademe}
-          onKademe={setSohbetKademe}
-          onKapat={paneliKapat}
-        >
+        <YanPanel panel={panel} telefon={telefon} dar={darPencere} onKapat={paneliKapat}>
           {sohbet && sohbetKuruldu && (
             <div className={panel === "sohbet" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
               <DersSohbeti
@@ -673,11 +661,6 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
                 konusma={konusma}
                 telefon={telefon}
                 dar={telefon || darPencere}
-                alttanCekmece={
-                  telefon || darPencere
-                    ? { kademe: sohbetKademe, onKademe: setSohbetKademe }
-                    : undefined
-                }
                 onKapat={paneliKapat}
               />
             </div>
