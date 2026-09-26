@@ -20,6 +20,8 @@ ARG VITE_META_PIXEL_ID=""
 ENV VITE_META_PIXEL_ID=$VITE_META_PIXEL_ID
 ARG VITE_CLARITY_ID=""
 ENV VITE_CLARITY_ID=$VITE_CLARITY_ID
+# Büyük modül grafiği: Node'un varsayılan yığını derlemede yetmiyor (CI'da OOM).
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build
 
 # ── Serve stage ───────────────────────────────────────────────

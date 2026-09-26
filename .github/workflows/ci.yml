@@ -282,6 +282,10 @@ jobs:
         run: npm run lint
 
       - name: Type-check & build
+        # 26 Eyl 2026: vite build Node'un varsayılan ~2 GB yığınında OOM ile
+        # düştü (6200+ modül); 4 GB izin verilir.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: npm run build
 
       # Üretim bundle'ına giren paketlerdeki açıklar.
