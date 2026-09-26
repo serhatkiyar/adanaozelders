@@ -6,11 +6,12 @@ gerçek rol satırlarıyla ölçülür (fabrika: vitrin_factory.fabv).
 """
 from __future__ import annotations
 
-import pytest
 
 from tests.integration.vitrin_factory import uniq
 
-pytestmark = pytest.mark.anyio
+# anyio işareti kaldırıldı (26 Eyl 2026): suite pytest-asyncio (asyncio_mode=auto)
+# döngüsüyle koşuyor; anyio kendi döngüsünü açınca paylaşılan asyncpg havuzu
+# "attached to a different loop" hatası veriyordu (CI).
 
 
 async def test_oznitelik_crud_ve_public_liste(fabv, http):

@@ -396,7 +396,7 @@ async def _assert_not_on_time_off(
     )
     if overlap:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY, "Eğitmen bu tarihte izinde"
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Öğretmen bu tarihte izinde"
         )
 
 

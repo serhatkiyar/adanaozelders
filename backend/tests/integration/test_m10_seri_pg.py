@@ -143,7 +143,7 @@ async def test_geri_cekme_iptal_orani_ve_gecmis_teklif(m10, provider, ip1a_http)
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "REJECTED"
     assert r.json()["cancelled_by_role"] == 2
-    assert r.json()["cancel_reason"] == "Eğitmen teklifi geri çekti."
+    assert r.json()["cancel_reason"] == "Öğretmen teklifi geri çekti."
     r = await ip1a_http.post(f"{KOK}/{bid}/withdraw", headers=ders.tutor_auth)
     assert r.status_code == 409, r.text
 

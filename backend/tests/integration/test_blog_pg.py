@@ -12,7 +12,9 @@ from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
 
-pytestmark = pytest.mark.anyio
+# anyio işareti kaldırıldı (26 Eyl 2026): suite pytest-asyncio (asyncio_mode=auto)
+# döngüsüyle koşuyor; anyio kendi döngüsünü açınca paylaşılan asyncpg havuzu
+# "attached to a different loop" hatası veriyordu (CI).
 
 YÖNET = ["content.view", "content.manage"]
 
