@@ -679,10 +679,14 @@ async def request_phone_otp(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Telefon numarasını kaydeder ve SMS ile OTP gönderir (yeniden gönderim için de
-    bu uç çağrılır). Geliştirmede kod backend loglarında görünür."""
-    masked = await phone_service.request_otp(db, user, payload.phone)
-    return PhoneRequestResult(phone_masked=masked)
+    """Telefon numarasını kaydeder ve OTP gönderir: WhatsApp ayarlıysa önce
+    WhatsApp, olmazsa SMS; `channel="sms"` ile doğrudan SMS ("SMS olarak al").
+    Yeniden gönderim için de bu uç çağrılır; sınır iki kanal için ortaktır.
+    Geliştirmede kod backend loglarında görünür."""
+    masked, kanal = await phone_service.request_otp(
+        db, user, payload.phone, kanal=payload.channel
+    )
+    return PhoneRequestResult(phone_masked=masked, channel=kanal)
 
 
 @router.post("/me/phone/verify", response_model=UserOut)

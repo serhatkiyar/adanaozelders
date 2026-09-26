@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from models.tutor import Gender
@@ -80,6 +82,9 @@ class PasswordChange(BaseModel):
 
 class PhoneUpdate(BaseModel):
     phone: str = Field(min_length=7, max_length=20)
+    #: None → varsayılan (WhatsApp ayarlıysa önce WhatsApp). "sms" → kullanıcı
+    #: "SMS olarak al" dedi.
+    channel: Literal["whatsapp", "sms"] | None = None
 
 
 class PhoneOtpVerify(BaseModel):
@@ -88,6 +93,8 @@ class PhoneOtpVerify(BaseModel):
 
 class PhoneRequestResult(BaseModel):
     phone_masked: str
+    #: Kodun fiilen gittiği kanal: "whatsapp" | "sms".
+    channel: str = "sms"
 
 
 class UserStats(BaseModel):

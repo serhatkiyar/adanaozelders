@@ -28,13 +28,18 @@ export async function changePassword(payload: PasswordChange): Promise<Token> {
   return data;
 }
 
-// Telefon doğrulama: numara kaydet + SMS OTP iste (maskeli numara döner).
+export type OtpKanali = "whatsapp" | "sms";
+
+// Telefon doğrulama: numara kaydet + OTP iste. Sunucu WhatsApp ayarlıysa önce
+// WhatsApp'tan, olmazsa SMS'le gönderir; `channel: "sms"` doğrudan SMS ister.
+// Maskeli numara ve kodun fiilen gittiği kanal döner.
 export async function requestPhoneOtp(
-  phone: string
-): Promise<{ phone_masked: string }> {
-  const { data } = await apiClient.post<{ phone_masked: string }>(
+  phone: string,
+  channel?: OtpKanali
+): Promise<{ phone_masked: string; channel: OtpKanali }> {
+  const { data } = await apiClient.post<{ phone_masked: string; channel: OtpKanali }>(
     "/auth/me/phone",
-    { phone }
+    channel ? { phone, channel } : { phone }
   );
   return data;
 }

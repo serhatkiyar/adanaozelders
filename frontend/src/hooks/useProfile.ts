@@ -6,6 +6,7 @@ import {
   downloadMyData,
   listMyNameChangeRequests,
   requestPhoneOtp,
+  type OtpKanali,
   updateMe,
   verifyPhoneOtp,
 } from "@/api/users";
@@ -60,10 +61,11 @@ export function useChangePassword() {
   });
 }
 
-// Telefon: numara kaydet + SMS OTP iste.
+// Telefon: numara kaydet + OTP iste (önce WhatsApp, olmazsa SMS).
 export function useRequestPhoneOtp() {
   return useMutation({
-    mutationFn: (phone: string) => requestPhoneOtp(phone),
+    mutationFn: ({ phone, channel }: { phone: string; channel?: OtpKanali }) =>
+      requestPhoneOtp(phone, channel),
   });
 }
 

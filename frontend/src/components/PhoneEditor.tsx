@@ -2,10 +2,13 @@ import { FormEvent, useId, useState } from "react";
 
 import { getErrorMessage } from "@/lib/errors";
 import { useRequestPhoneOtp, useVerifyPhone } from "@/hooks/useProfile";
+import type { OtpKanali } from "@/api/users";
+import { PlainButton } from "@/components/ui/PlainButton";
 import { toast } from "@/store/toastStore";
 
 /**
- * İki fazlı telefon doğrulaması: numara → SMS kodu.
+ * İki fazlı telefon doğrulaması: numara → kod (önce WhatsApp, olmazsa SMS;
+ * kullanıcı "SMS olarak al" diyebilir).
  *
  * `Settings.tsx` içinde doğmuştu; ilan sihirbazının telefon adımı aynı akışı
  * istediği için buraya taşındı. İki kopya tutulmadı — OTP akışının iki ayrı
@@ -33,14 +36,20 @@ export function PhoneEditor({
   const [phone, setPhone] = useState(initialPhone);
   const [masked, setMasked] = useState("");
   const [code, setCode] = useState("");
+  const [kanal, setKanal] = useState<OtpKanali>("sms");
 
-  const sendCode = () => {
-    requestOtp.mutate(phone.trim(), {
+  const sendCode = (istenen?: OtpKanali) => {
+    requestOtp.mutate({ phone: phone.trim(), channel: istenen }, {
       onSuccess: (res) => {
         setMasked(res.phone_masked);
+        setKanal(res.channel);
         setStep("code");
         setCode("");
-        toast.success("Doğrulama kodu SMS ile gönderildi.");
+        toast.success(
+          res.channel === "whatsapp"
+            ? "Doğrulama kodu WhatsApp'tan gönderildi."
+            : "Doğrulama kodu SMS ile gönderildi."
+        );
       },
       onError: (err) => toast.error(getErrorMessage(err, "Kod gönderilemedi.")),
     });
@@ -107,9 +116,10 @@ export function PhoneEditor({
     >
       <p className="mb-3 text-sm text-slate-500 ">
         <span className="font-medium text-slate-700 ">{masked}</span>{" "}
-        numarasına gönderilen 6 haneli kodu gir.
+        numarasına {kanal === "whatsapp" ? "WhatsApp'tan" : "SMS ile"} gönderilen 6 haneli
+        kodu gir.
       </p>
-      <label htmlFor={`${uid}-sms-kodu`} className={fieldLabelCls}>SMS kodu</label>
+      <label htmlFor={`${uid}-sms-kodu`} className={fieldLabelCls}>Doğrulama kodu</label>
       <input id={`${uid}-sms-kodu`}
         type="text"
         inputMode="numeric"
@@ -130,12 +140,21 @@ export function PhoneEditor({
         </button>
         <button
           type="button"
-          onClick={sendCode}
+          onClick={() => sendCode(kanal)}
           disabled={requestOtp.isPending}
           className="inline-flex min-h-[44px] items-center text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 disabled:opacity-60 "
         >
           Kodu tekrar gönder
         </button>
+        {kanal === "whatsapp" && (
+          <PlainButton
+            onClick={() => sendCode("sms")}
+            disabled={requestOtp.isPending}
+            className="inline-flex min-h-[44px] items-center text-sm font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 disabled:opacity-60 "
+          >
+            SMS olarak al
+          </PlainButton>
+        )}
         <button
           type="button"
           onClick={() => setStep("phone")}

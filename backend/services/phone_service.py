@@ -18,7 +18,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core import sms
+from core import sms, whatsapp
 from core.config import settings
 from models.phone_otp import PhoneOtp
 from models.role import ROLE_IDS, RoleType
@@ -61,11 +61,15 @@ def _supports_phone(user) -> bool:
     return user.role_id != _ADMIN_ROLE and hasattr(user, "phone_verified_at")
 
 
-async def request_otp(db: AsyncSession, user, raw_phone: str) -> str:
-    """Numarayı normalize edip kullanıcıya yazar, OTP üretir ve SMS'le gönderir.
+async def request_otp(
+    db: AsyncSession, user, raw_phone: str, *, kanal: str | None = None
+) -> tuple[str, str]:
+    """Numarayı normalize edip kullanıcıya yazar, OTP üretir ve gönderir.
 
-    Numara değişiyorsa önceki doğrulama düşer. Bekleyen kodlar geçersiz kılınır.
-    Maskeli numarayı döner.
+    Kanal: WhatsApp ayarlıysa ve kullanıcı açıkça "sms" istemediyse önce
+    WhatsApp denenir; gönderilemezse SMS'e düşülür. Numara değişiyorsa önceki
+    doğrulama düşer. Bekleyen kodlar geçersiz kılınır.
+    (maskeli numara, fiilen kullanılan kanal: "whatsapp" | "sms") döner.
     """
     if not _supports_phone(user):
         raise HTTPException(
@@ -105,8 +109,10 @@ async def request_otp(db: AsyncSession, user, raw_phone: str) -> str:
         )
     )
     await db.flush()
+    if kanal != "sms" and await whatsapp.send_otp_whatsapp(to=phone, code=code):
+        return mask_phone(phone), "whatsapp"
     await sms.send_otp_sms(to=phone, code=code)
-    return mask_phone(phone)
+    return mask_phone(phone), "sms"
 
 
 async def verify_otp(db: AsyncSession, user, code: str) -> None:

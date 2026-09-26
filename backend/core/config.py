@@ -264,6 +264,16 @@ class Settings(BaseSettings):
     NETGSM_PASSWORD: str | None = None
     NETGSM_MSGHEADER: str | None = None
 
+    # WhatsApp doğrulama kodu (Meta WhatsApp Cloud API). Üçü birden doluysa
+    # telefon OTP'si önce WhatsApp'tan gider; gönderilemezse ya da kullanıcı
+    # "SMS olarak al" derse SMS'e düşer. Boşsa her şey SMS'le çalışır.
+    WHATSAPP_PHONE_NUMBER_ID: str | None = None
+    WHATSAPP_ACCESS_TOKEN: str | None = None
+    #: Meta'da onaylı "authentication" şablonunun adı (kopyala-kodu düğmeli).
+    WHATSAPP_OTP_TEMPLATE: str | None = None
+    WHATSAPP_TEMPLATE_LANG: str = "tr"
+    WHATSAPP_API_VERSION: str = "v21.0"
+
     # Ödeme (escrow). PAYMENT_PROVIDER: "fake" (geliştirme; anında başarı) | "iyzico".
     # Geliştirmede dış hesap/anahtar GEREKMEZ ("fake"). Komisyon oranı 0..1 arası.
     PAYMENT_PROVIDER: str = "fake"
