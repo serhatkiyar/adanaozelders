@@ -1,7 +1,7 @@
 """canli ders saglayici (zoom | agora paralel atama)
 
 Revision ID: b8d4f0e2c6a3
-Revises: a7c3e9d1b5f2
+Revises: b3d8f1a2c4e6
 Create Date: 2026-09-25 19:00:00
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision: str = 'b8d4f0e2c6a3'
-down_revision: Union[str, Sequence[str], None] = 'a7c3e9d1b5f2'
+down_revision: Union[str, Sequence[str], None] = 'b3d8f1a2c4e6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
