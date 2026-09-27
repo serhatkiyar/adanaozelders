@@ -24,10 +24,27 @@ from core.config import settings
 _IAT_GERI = 30
 
 
+# Zoom `user_key` sınırı (SDK: participant.userKey).
+_USER_KEY_AZAMI = 36
+
+
 def ders_token_uret(
-    *, oturum: str, egitmen_mi: bool, ttl_seconds: int, now: datetime.datetime
+    *,
+    oturum: str,
+    egitmen_mi: bool,
+    kullanici_anahtari: str,
+    ttl_seconds: int,
+    now: datetime.datetime,
 ) -> tuple[str, datetime.datetime]:
-    """(token, bitiş anı) döndürür; bitiş anı JWT'deki `exp` ile AYNIDIR."""
+    """(token, bitiş anı) döndürür; bitiş anı JWT'deki `exp` ile AYNIDIR.
+
+    `kullanici_anahtari` JWT'nin `user_key` claim'idir: uygulamadaki KALICI
+    kimlik (öğretmen `t{id}`, öğrenci `c{id}`). Zoom'un oturum içi `userId`si
+    her yeniden katılımda değişir; aynı kişiyi yeniden tanımak için istemci
+    `participant.userKey` kullanır.
+    """
+    if not kullanici_anahtari or len(kullanici_anahtari) > _USER_KEY_AZAMI:
+        raise ValueError("user_key 1-36 karakter olmalı")
     iat = int(now.timestamp()) - _IAT_GERI
     exp = iat + ttl_seconds
     token = jwt.encode(
@@ -38,7 +55,8 @@ def ders_token_uret(
             "version": 1,
             "iat": iat,
             "exp": exp,
-            "video_webrtc_mode": 1,
+            "user_key": kullanici_anahtari,
+            "video_webrtc_mode": 1 if settings.ZOOM_VIDEO_WEBRTC else 0,
             "audio_webrtc_mode": 1,
         },
         settings.ZOOM_VIDEO_SDK_SECRET,

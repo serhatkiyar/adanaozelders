@@ -172,6 +172,9 @@ class Settings(BaseSettings):
     #   ZOOM_VIDEO_SDK_SECRET → JWT'yi imzalayan HS256 sırrı
     ZOOM_VIDEO_SDK_KEY: str = ""
     ZOOM_VIDEO_SDK_SECRET: str = ""
+    # JWT `video_webrtc_mode`: True → 1 = WebRTC video (varsayılan, canlı).
+    # False → 0 yalnız TEST içindir: WASM/veri kanalı video yolunu zorlar.
+    ZOOM_VIDEO_WEBRTC: bool = True
     # Agora RTC (console.agora.io). İkisi de BOŞKEN Agora hiç atanmaz.
     #   AGORA_APP_ID          → token'daki uygulama kimliği (istemciye de gider)
     #   AGORA_APP_CERTIFICATE → AccessToken2'yi imzalayan sır (yalnız sunucuda)

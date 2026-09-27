@@ -24,6 +24,11 @@
  *    öğretmen paylaşmaya başlayınca öğrencininki durur (`paylasimBitti`).
  * 5. Ağ ölçümü Zoom'daki gibi yalnız kamerası açık olan için; kendi ses
  *    bağlantım `sesKalitesi` ile.
+ * 6. Karşı kamera görünmüyorsa (küçültülmüş/gizli kutu) video aboneliği
+ *    bırakılır (ücret de düşer), görününce yeniden abone olunur
+ *    (`aboneligiEsitle`); paylaşım sürerken ya da karo küçükken düşük akış
+ *    istenir. Durumu medya katmanı verir (`katmanDinle`); ekran yayınına
+ *    dokunulmaz.
  */
 import type {
   ConnectionDisconnectedReason,
@@ -74,6 +79,8 @@ import {
   istemci,
   izCihazi,
   kameraOlustur,
+  katmanDinle,
+  katmanDurumu,
   mikrofonOlustur,
   yerel,
 } from "./istemci";
@@ -85,6 +92,8 @@ const AG_YOKLAMA_MS = 2000;
 const SES_TARAMA_MS = 250;
 const DUSUK_AKIS = 1 as RemoteStreamType;
 const YUKSEK_AKIS = 0 as RemoteStreamType;
+/** Düşük akış profili: küçük karo ve paylaşım sırasındaki kamera. */
+const DUSUK_AKIS_PROFILI = { width: 320, height: 180, framerate: 15, bitrate: 140 };
 
 /* ── Olay yayını ─────────────────────────────────────────────────────── */
 
@@ -178,14 +187,52 @@ function hoparloruUygula(): void {
   }
 }
 
-/** Paylaşım sürerken karşı kamerayı düşük akışa indirir (fiyat kademesi). */
+/**
+ * Paylaşım sürerken ya da karşı karo küçükken karşı kamerayı düşük akışa
+ * indirir (fiyat kademesi).
+ */
 function kameraAkisiniAyarla(): void {
-  const dusuk = uzakPaylasan() !== undefined;
+  const dusuk = uzakPaylasan() !== undefined || katmanDurumu().karsiKalite === "dusuk";
   for (const u of istemci.remoteUsers) {
     if (ekranMi(u.uid) || !u.hasVideo) continue;
     istemci
       .setRemoteVideoStreamType(u.uid, dusuk ? DUSUK_AKIS : YUKSEK_AKIS)
       .catch(() => undefined);
+  }
+}
+
+/** Abonelik işleri sıralı: hızlı gizle/göster üst üste binmesin. */
+let esitleme: Promise<void> = Promise.resolve();
+
+/**
+ * Kamera (ekran değil) video aboneliklerini görünürlüğe eşitler. Her adım
+ * o anki durumu okur; art arda çağrılar en son duruma yakınsar.
+ */
+function aboneligiEsitle(): Promise<void> {
+  esitleme = esitleme.catch(() => undefined).then(aboneligiEsitleAdimi);
+  return esitleme;
+}
+
+async function aboneligiEsitleAdimi(): Promise<void> {
+  // `katildi` beklenmez: kanaldakilerin yayını katılım sürerken de gelir.
+  if (!bilet) return;
+  let degisti = false;
+  for (const u of istemci.remoteUsers) {
+    if (ekranMi(u.uid) || !u.hasVideo) continue;
+    const istenen = katmanDurumu().karsiGorunur;
+    if (istenen === (u.videoTrack !== undefined)) continue;
+    try {
+      if (istenen) await istemci.subscribe(u, "video");
+      else await istemci.unsubscribe(u, "video");
+      degisti = true;
+    } catch (e) {
+      // kullanıcı ayrılmış ya da yayını bitmiş olabilir
+      console.warn(`Agora ${istenen ? "subscribe" : "unsubscribe"} (video)`, e);
+    }
+  }
+  if (degisti) {
+    kameraAkisiniAyarla();
+    ciz();
   }
 }
 
@@ -221,7 +268,8 @@ async function yayinAlindi(u: IAgoraRTCRemoteUser, tur: "audio" | "video" | "dat
       }
       iz.play();
     } else {
-      await istemci.subscribe(u, "video");
+      // Kamera: yalnız karo görünürse abone olunur (sıralı eşitleme).
+      await aboneligiEsitle();
       kameraAkisiniAyarla();
     }
   } catch (e) {
@@ -406,6 +454,11 @@ async function yayinla(iz: ILocalTrack): Promise<void> {
 async function kanalaGir(ab: AgoraDersTokenOut): Promise<void> {
   await istemci.join(ab.app_id, ab.kanal, ab.token, ab.uid);
   try {
+    istemci.setLowStreamParameter(DUSUK_AKIS_PROFILI);
+  } catch (e) {
+    console.warn("Agora setLowStreamParameter", e);
+  }
+  try {
     // Paylaşım sırasında karşı taraf kameramı düşük akıştan izleyebilsin.
     await istemci.enableDualStream();
   } catch (e) {
@@ -537,6 +590,10 @@ function sdkyaBaglan(): () => void {
   for (const [olay, f] of dinleyiciler) istemci.on(olay, f as (...a: unknown[]) => void);
 
   const cihazDegisti = () => void cihazlariYenile();
+  const katmanSokumu = katmanDinle(() => {
+    kameraAkisiniAyarla();
+    void aboneligiEsitle();
+  });
   AgoraRTC.onAutoplayFailed = () => yay({ t: "sesEngellendi", engellendi: true });
   AgoraRTC.onMicrophoneChanged = cihazDegisti;
   AgoraRTC.onCameraChanged = cihazDegisti;
@@ -544,6 +601,7 @@ function sdkyaBaglan(): () => void {
 
   return () => {
     for (const [olay, f] of dinleyiciler) istemci.off(olay, f as (...a: unknown[]) => void);
+    katmanSokumu();
     AgoraRTC.onAutoplayFailed = undefined;
     AgoraRTC.onMicrophoneChanged = undefined;
     AgoraRTC.onCameraChanged = undefined;

@@ -414,6 +414,7 @@ def _zoom_bileti(
     token, expires_at = zoom_service.ders_token_uret(
         oturum=booking.meeting_room,
         egitmen_mi=egitmen_mi,
+        kullanici_anahtari=identity,
         ttl_seconds=_LIVE_TOKEN_TTL_SECONDS,
         now=now,
     )

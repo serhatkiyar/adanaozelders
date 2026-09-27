@@ -6,7 +6,8 @@
  * kaldır, sonra Tepkiler menüye taşınır (Meet `COLLAPSIBLE_COUNT`).
  *
  * Menü (Meet `ResponsiveMenu` sırası): [taşan Tepkiler] [taşan El kaldır]
- * Sohbet · Katılımcılar · Ayarlar · Kamerayı çevir. Meet'teki Ekran paylaş
+ * Sohbet · Katılımcılar · Ayarlar · Kamerayı çevir · Tam ekran (tarayıcı
+ * destekliyorsa; iPhone'da yok). Meet'teki Ekran paylaş
  * telefonda desteklenmediği için, Araçlar/Efektler/Geri bildirim bizde
  * olmadığı için yok (arka plan efektleri Ayarlar'da). Okunmamış mesaj varsa
  * ⋮ ve menüdeki Sohbet köşesinde kırmızı nokta (sayı yok, Preply).
@@ -18,6 +19,7 @@ import { Icon } from "@/components/AppIcon";
 import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
+import { useTamEkran } from "./durum/tamEkran";
 import { useMedyaKontrolleri } from "./durum/useMedyaKontrolleri";
 import { AltCekmece } from "./AltCekmece";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
@@ -107,6 +109,7 @@ export function TelefonCubugu({
   const yatay = useYatay();
   const { t } = useTranslation();
   const m = useMedyaKontrolleri();
+  const tamEkran = useTamEkran();
   const [menuAcik, setMenuAcik] = useState(false);
   const menuyuKapat = useCallback(() => setMenuAcik(false), []);
   const { kap, satir, tasinabilir, gizli } = useTasanSayi();
@@ -244,6 +247,21 @@ export function TelefonCubugu({
           <Icon name="cameraSwitch" className="h-6 w-6" />
           {t("options.items.switchCamera")}
         </PlainButton>
+        {tamEkran.destekli && (
+          <PlainButton
+            onClick={() => {
+              tamEkran.degistir();
+              menuyuKapat();
+            }}
+            className={CEKMECE_OGESI}
+          >
+            <Icon
+              name={tamEkran.acik ? "fullScreenMinimize" : "fullScreenMaximize"}
+              className="h-6 w-6"
+            />
+            {t(tamEkran.acik ? "options.items.fullscreen.exit" : "options.items.fullscreen.enter")}
+          </PlainButton>
+        )}
       </AltCekmece>
     </>
   );

@@ -46,6 +46,7 @@ import { arkaPlanAdresi } from "./arkaPlanAdresi";
 import {
   baglantiDurumu,
   kimlik,
+  kisiAnahtari,
   listeyiCevir,
   sesIstatistigiSeviyesi,
   type ZoomKullanici,
@@ -55,6 +56,7 @@ import {
   basarisizMi,
   cokluVideoyuOku,
   istemci,
+  karsiPaylasimBoyutuAyarla,
   kayitliPaylasimOgesi,
   oturumdaMi,
 } from "./istemci";
@@ -117,9 +119,41 @@ function benimKaydim(): ZoomKullanici | undefined {
   return istemci.getCurrentUserInfo() as unknown as ZoomKullanici | undefined;
 }
 
+/**
+ * Kişi (`userKey`) → güncel Zoom `userId`. YALNIZ olayla kanıtlanır:
+ * `user-added` yeni kimliği yazar; `user-removed` yalnız KENDİ `userId`sini
+ * siler (eski kimliğin gecikmiş ayrılması yenisine dokunamaz).
+ */
+const guncelKimlik = new Map<string, number>();
+/** Bir önceki uzlaştırmada gösterilen kimlikler (kanıt yoksa süreklilik). */
+const oncekiSecim = new Map<string, number>();
+
+/** Geliştirmede katılımcı olay zaman çizelgesi (`window.__zoomOlaylari`). */
+function olayKaydet(olay: string, ayrinti: Record<string, unknown> = {}): void {
+  if (!import.meta.env.DEV) return;
+  const w = window as unknown as { __zoomOlaylari?: unknown[] };
+  const kayit = (w.__zoomOlaylari ??= []);
+  kayit.push({ t: Math.round(performance.now()), olay, ...ayrinti });
+  if (kayit.length > 400) kayit.splice(0, kayit.length - 400);
+}
+
 function listeyiOku(): HamKatilimci[] {
   const liste = (istemci.getAllUser() as unknown as ZoomKullanici[]) ?? [];
-  return listeyiCevir(liste, benimKaydim(), benimRolum);
+  const sonuc = listeyiCevir(liste, benimKaydim(), benimRolum, {
+    guncel: guncelKimlik,
+    onceki: oncekiSecim,
+    uyar: (anahtar, idler) => {
+      console.warn("Zoom: aynı userKey için birden çok canlı kayıt, kanıt yok", anahtar, idler);
+      olayKaydet("kanitsiz-cift-kayit", { userKey: anahtar, idler });
+    },
+  });
+  const gosterilen = new Set(sonuc.map((k) => k.id));
+  for (const k of liste) {
+    if (!k.isInFailover && gosterilen.has(kimlik(k.userId))) {
+      oncekiSecim.set(kisiAnahtari(k), k.userId);
+    }
+  }
+  return sonuc;
 }
 
 function kullanicilariOku(): HamKatilimci[] {
@@ -292,6 +326,7 @@ function sdkyaBaglan(): () => void {
   // Liste yeniden okunana dek iyimser güncelleme; kapanan kameranın eski
   // ağ ölçümü atılır.
   const videoDegisti = (olay: { action: "Start" | "Stop"; userId: number }) => {
+    olayKaydet("peer-video-state-change", { userId: olay.userId, action: olay.action });
     const id = kimlik(olay.userId);
     const videoAcik = olay.action === "Start";
     if (!videoAcik) yay({ t: "ag", id, yukari: null, asagi: null });
@@ -306,14 +341,16 @@ function sdkyaBaglan(): () => void {
     kullaniciDegisti();
   };
   const baglanti = (olay: { state: string }) => {
+    olayKaydet("connection-change", { state: olay.state });
     const durum = baglantiDurumu(olay.state);
     if (!durum) return;
     const onceki = sonBaglanti;
     sonBaglanti = durum;
     yay({ t: "baglanti", durum });
-    // Yeniden bağlanınca kimlikler/durumlar değişmiş olabilir: listeyi tazele.
-    if (onceki === "yenidenBaglaniyor" && durum === "bagli") {
-      kullaniciDegisti();
+    // Bağlanınca (ilk kez ya da yeniden) kimlikler/durumlar önbellekten değil
+    // Zoom'un güncel `getAllUser()` listesinden yeniden okunur.
+    if (durum === "bagli" && onceki !== "bagli") kullaniciDegisti();
+    if (durum === "bagli" && onceki === "yenidenBaglaniyor") {
       window.setTimeout(paylasimiOku, 0);
       void sesIstatistigineAbone();
     }
@@ -356,18 +393,67 @@ function sdkyaBaglan(): () => void {
   const cihazDegisti = () => yay({ t: "cihazlarDegisti" });
   const paylasimDegisti = (olay: { state: string; userId: number }) => {
     if (olay.state === "Active") yay({ t: "paylasim", id: kimlik(olay.userId) });
-    else if (olay.state === "Inactive") yay({ t: "paylasim", id: null });
+    else if (olay.state === "Inactive") {
+      karsiPaylasimBoyutuAyarla(null);
+      yay({ t: "paylasim", id: null });
+    }
   };
   // Tarayıcının "Paylaşımı durdur" düğmesi ya da başka birinin paylaşımı.
   const paylasimDurduruldu = () => yay({ t: "paylasimBitti" });
-  const paylasimBoyutu = (olay: { type?: string }) => {
+  const paylasimBoyutu = (olay: { type?: string; width?: number; height?: number }) => {
     if (olay?.type === "sended") tumEkranOku();
+    // Karşı paylaşımın boyutu: medya katmanı kabı `contain` sığdırır.
+    else if (olay?.type === "received" && olay.width && olay.height) {
+      karsiPaylasimBoyutuAyarla({ w: olay.width, h: olay.height });
+    }
+  };
+
+  type KullaniciYuku = Array<{
+    userId: number;
+    userKey?: string;
+    isInFailover?: boolean;
+    bVideoOn?: boolean;
+  }>;
+  const ozet = (yuk: KullaniciYuku) =>
+    (yuk ?? []).map((p) => {
+      const kayit = istemci.getUser(p.userId) as unknown as ZoomKullanici | undefined;
+      return {
+        userId: p.userId,
+        userKey: p.userKey ?? kayit?.userKey,
+        isInFailover: p.isInFailover ?? kayit?.isInFailover,
+        bVideoOn: p.bVideoOn ?? kayit?.bVideoOn,
+      };
+    });
+  const kullaniciEklendi = (yuk: KullaniciYuku) => {
+    const liste = ozet(yuk);
+    for (const p of liste) {
+      if (p.userKey && !p.isInFailover) guncelKimlik.set(p.userKey, p.userId);
+    }
+    olayKaydet("user-added", { kullanicilar: liste });
+    kullaniciDegisti();
+  };
+  const kullaniciAyrildi = (yuk: KullaniciYuku) => {
+    const liste = (yuk ?? []).map((p) => ({ userId: p.userId, userKey: p.userKey }));
+    for (const p of liste) {
+      for (const [anahtar, id] of guncelKimlik) {
+        if (id === p.userId) guncelKimlik.delete(anahtar);
+      }
+      for (const [anahtar, id] of oncekiSecim) {
+        if (id === p.userId) oncekiSecim.delete(anahtar);
+      }
+    }
+    olayKaydet("user-removed", { kullanicilar: liste });
+    kullaniciDegisti();
+  };
+  const kullaniciGuncellendi = (yuk: KullaniciYuku) => {
+    olayKaydet("user-updated", { kullanicilar: ozet(yuk) });
+    kullaniciDegisti();
   };
 
   const sdkDinleyicileri: Array<[string, (yuk: never) => void]> = [
-    ["user-added", kullaniciDegisti],
-    ["user-removed", kullaniciDegisti],
-    ["user-updated", kullaniciDegisti],
+    ["user-added", kullaniciEklendi],
+    ["user-removed", kullaniciAyrildi],
+    ["user-updated", kullaniciGuncellendi],
     ["peer-video-state-change", videoDegisti],
     ["connection-change", baglanti],
     ["active-speaker", konusan],
@@ -713,6 +799,9 @@ let ayrilma: Promise<void> | null = null;
  * bayrağını nötr katman bundan ÖNCE yazar (`oda/durum/medya.ts` `ayril`).
  */
 function ayril(): Promise<void> {
+  // Yeniden katılınca süren paylaşım yeni boyut olayı göndermeyebilir: eski
+  // boyut kabın oranını belirlemesin.
+  karsiPaylasimBoyutuAyarla(null);
   if (!oturumdaMi()) return Promise.resolve();
   if (!ayrilma) {
     // ARGÜMANSIZ — bkz. dosya başı madde 3.

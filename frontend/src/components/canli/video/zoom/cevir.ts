@@ -18,8 +18,10 @@ export interface ZoomKullanici {
   sharerOn?: boolean;
   /** Katılımcının bağlantısı yeniden kuruluyor (Zoom failover). */
   isInFailover?: boolean;
-  /** Belirteçteki `user_identity` (verilmişse); hesap başına sabit. */
+  /** Belirteçteki `user_identity` (eski ad; SDK'da deprecated). */
   userIdentity?: string;
+  /** Belirteçteki `user_key`: uygulamadaki KALICI kimlik (`t{id}`/`c{id}`). */
+  userKey?: string;
 }
 
 export const kimlik = (userId: number): string => String(userId);
@@ -42,7 +44,9 @@ export function katilimciyaCevir(
     ad: k.displayName,
     ben,
     rol: ben ? benimRolum : karsiRol,
-    videoAcik: Boolean(k.bVideoOn),
+    // Failover'daki kaydın son karesi donuk kalır: görüntü kapalı sayılır,
+    // karo avatar + "Yeniden bağlanıyor…" gösterir (medya katmanı çözer).
+    videoAcik: Boolean(k.bVideoOn) && !k.isInFailover,
     mikKapali: !sesBagli || Boolean(k.isSpeakerOnly) || k.muted !== false,
     sesBagli,
     paylasiyor: Boolean(k.sharerOn),
@@ -50,7 +54,24 @@ export function katilimciyaCevir(
   };
 }
 
-const kisiAnahtari = (k: ZoomKullanici): string => k.userIdentity || k.displayName;
+/** Aynı kişiyi yeniden katılımlar arasında tanır: Zoom `userId`si her
+ * katılımda değişir; `user_key` (JWT) değişmez. */
+export const kisiAnahtari = (k: ZoomKullanici): string =>
+  k.userKey || k.userIdentity || k.displayName;
+
+/**
+ * Aynı kişinin birden çok CANLI (failover olmayan) kaydı varken hangisinin
+ * seçileceğine dair KANIT. `getAllUser()` sırası belgelenmiş bir katılma
+ * sırası değildir; seçimde KULLANILMAZ.
+ * - `guncel`: `user-added` olayıyla o `userKey` için gelen son `userId`.
+ * - `onceki`: bir önceki uzlaştırmada gösterilen `userId`.
+ * - `uyar`: kanıt yoksa çağrılır; o durumda kayıtların hepsi bırakılır.
+ */
+export interface KimlikKaniti {
+  guncel?: ReadonlyMap<string, number>;
+  onceki?: ReadonlyMap<string, number>;
+  uyar?: (anahtar: string, idler: number[]) => void;
+}
 
 /**
  * `getAllUser()` + `getCurrentUserInfo()` → tam nötr liste. Kendi kaydımız
@@ -58,21 +79,52 @@ const kisiAnahtari = (k: ZoomKullanici): string => k.userIdentity || k.displayNa
  *
  * Hayalet kayıtlar atılır: sekmeyi kapatan/yenileyen kişi yeniden katılınca
  * YENİ `userId` alır; eskisi dakikalarca `isInFailover` olarak listede kalır
- * (canlı denemede görüldü, 25 Eyl 2026). Aynı kişinin (`userIdentity`, yoksa
- * ad) canlı kaydı varsa failover kaydı gösterilmez; yoksa karşı taraf ilk
- * failover kaydına bağlanıp canlı kaydın görüntüsünü hiç çizmiyordu.
- * Tek başına failover kaydı (gerçekten yeniden bağlanan) ve kendi kaydımız
- * korunur.
+ * (canlı denemede görüldü, 25 Eyl 2026). Aynı kişinin (`userKey`) canlı kaydı
+ * varsa failover kaydı gösterilmez. Tek başına failover kaydı (gerçekten
+ * yeniden bağlanan) ve kendi kaydımız korunur.
+ *
+ * Aynı kişinin birden çok canlı kaydı: tek ise o; birden çoksa önce
+ * `kanit.guncel`, sonra `kanit.onceki`; ikisi de yoksa SESSİZ SEÇİM YOK —
+ * hepsi bırakılır ve `kanit.uyar` çağrılır.
  */
 export function listeyiCevir(
   liste: readonly ZoomKullanici[],
   ben: ZoomKullanici | null | undefined,
   benimRolum: DersRolu | null,
+  kanit: KimlikKaniti = {},
 ): HamKatilimci[] {
   const tum = ben && !liste.some((k) => k.userId === ben.userId) ? [ben, ...liste] : liste;
-  const canli = new Set(tum.filter((k) => !k.isInFailover).map(kisiAnahtari));
+  const canliKayitlar = new Map<string, number[]>();
+  for (const k of tum) {
+    if (k.userId === ben?.userId || k.isInFailover) continue;
+    const a = kisiAnahtari(k);
+    canliKayitlar.set(a, [...(canliKayitlar.get(a) ?? []), k.userId]);
+  }
+  // Hayalet ayıklama için kendi (canlı) kaydımız da sayılır.
+  const canliAnahtarlar = new Set(tum.filter((k) => !k.isInFailover).map(kisiAnahtari));
+  const secilen = new Map<string, number | null>();
+  for (const [a, idler] of canliKayitlar) {
+    if (idler.length === 1) {
+      secilen.set(a, idler[0]);
+      continue;
+    }
+    const g = kanit.guncel?.get(a);
+    const o = kanit.onceki?.get(a);
+    if (g !== undefined && idler.includes(g)) secilen.set(a, g);
+    else if (o !== undefined && idler.includes(o)) secilen.set(a, o);
+    else {
+      secilen.set(a, null);
+      kanit.uyar?.(a, idler);
+    }
+  }
   return tum
-    .filter((k) => k.userId === ben?.userId || !k.isInFailover || !canli.has(kisiAnahtari(k)))
+    .filter((k) => {
+      if (k.userId === ben?.userId) return true;
+      const a = kisiAnahtari(k);
+      if (k.isInFailover) return !canliAnahtarlar.has(a);
+      const s = secilen.get(a);
+      return s === null || s === k.userId;
+    })
     .map((k) => katilimciyaCevir(k, ben?.userId, benimRolum));
 }
 

@@ -35,6 +35,7 @@ export function KaroBilgisi({
   elKalkik = false,
   yenidenBaglaniyor = false,
   kucuk = false,
+  kendiGizli = false,
 }: {
   ad: string;
   mikKapali: boolean;
@@ -43,6 +44,8 @@ export function KaroBilgisi({
   agSeviyesi: number | null;
   yenidenBaglaniyor?: boolean;
   kucuk?: boolean;
+  /** Kendi görüntüm yalnız bende gizli: karşı karoda rozet (kamera yayını sürer). */
+  kendiGizli?: boolean;
 }) {
   const { t } = useTranslation();
   const kutu = kucuk ? "p-0.5 text-xs" : "p-1 text-sm";
@@ -69,6 +72,15 @@ export function KaroBilgisi({
             >
               <Icon name="handRight" className={kucuk ? "h-3 w-3" : "h-4 w-4"} />
               <span className="sr-only">{t("participantTile.handRaised")}</span>
+            </span>
+          )}
+          {kendiGizli && (
+            <span
+              className="inline-flex shrink-0 rounded bg-white/20 p-0.5"
+              title={t("duzen.kendiGizliBilgi")}
+            >
+              <Icon name="videoOff" className={kucuk ? "h-3 w-3" : "h-4 w-4"} />
+              <span className="sr-only">{t("duzen.kendiGizliBilgi")}</span>
             </span>
           )}
           {mikKapali && (
@@ -107,6 +119,7 @@ export function KaroKatmani({
   gizli = false,
   ust,
   onPointerDown,
+  karo,
   children,
 }: {
   className: string;
@@ -121,6 +134,8 @@ export function KaroKatmani({
   ust?: ReactNode;
   /** Sürüklenebilir karo/kutu (Preply yüzen kutu, araçsız kendi karon). */
   onPointerDown?: (e: ReactPointerEvent<HTMLElement>) => void;
+  /** Odak yönetimi için karo kimliği (`data-karo`). */
+  karo?: "ben" | "karsi";
   children: ReactNode;
 }) {
   const katman = useRef<HTMLDivElement>(null);
@@ -178,6 +193,7 @@ export function KaroKatmani({
       onFocus={(e) => setKlavye(e.target.matches(":focus-visible"))}
       onBlur={() => setKlavye(false)}
       data-konusuyor={konusuyor || undefined}
+      data-karo={karo}
       onPointerDown={onPointerDown}
       style={style}
       className={`absolute overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-marka-focus ${

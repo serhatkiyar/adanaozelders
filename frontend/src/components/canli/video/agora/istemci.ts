@@ -18,6 +18,7 @@ import AgoraRTC, {
 } from "agora-rtc-sdk-ng";
 
 import { tarayiciOrtami, telefonMu } from "@/lib/canliDers";
+import type { VideoKalitesi } from "@/lib/kameraKutusu";
 
 import { SurucuHatasi, type KatilimciId } from "../tipler";
 import { EKRAN_EKI, izinReddiMi, kameraHataKodu } from "./cevir";
@@ -120,6 +121,11 @@ export interface KatmanDurumu {
   aktifPaylasim: KatilimciId | null;
   benPaylasiyorum: boolean;
   ayna: boolean;
+  /** Kendi kameram yerelde çizilsin mi (yayın her durumda sürer). */
+  benGorunur: boolean;
+  /** Karşı kamera görünür mü; false iken sürücü video aboneliğini bırakır. */
+  karsiGorunur: boolean;
+  karsiKalite: VideoKalitesi;
 }
 
 const yuvalar = new Map<Yuva, HTMLElement>();
@@ -132,7 +138,26 @@ let katman: KatmanDurumu = {
   aktifPaylasim: null,
   benPaylasiyorum: false,
   ayna: true,
+  // Katman kurulmadan gelen yayına abone olunsun (bugünkü davranış).
+  benGorunur: true,
+  karsiGorunur: true,
+  karsiKalite: "yuksek",
 };
+
+/** Abonelik/akış kararını etkileyen alanlar değişince sürücüye haber verilir. */
+const katmanDinleyicileri = new Set<() => void>();
+
+/** Sürücü abone olur (istemci sürücüyü import etmez); dönen işlev bırakır. */
+export function katmanDinle(f: () => void): () => void {
+  katmanDinleyicileri.add(f);
+  return () => {
+    katmanDinleyicileri.delete(f);
+  };
+}
+
+export function katmanDurumu(): Readonly<KatmanDurumu> {
+  return katman;
+}
 
 function uzakVideo(uid: string | null): IRemoteVideoTrack | null {
   if (uid === null) return null;
@@ -144,10 +169,12 @@ function istenen(
 ): { iz: ILocalVideoTrack | IRemoteVideoTrack; ayna: boolean; fit: "cover" | "contain" } | null {
   if (yuva === "ben") {
     const kam = yerel.kam;
-    if (!kam || !yerel.kameraAcik || !kam.enabled) return null;
+    // Gizliyken yalnız yerel oynatma durur (`stop` yayını kesmez).
+    if (!kam || !yerel.kameraAcik || !kam.enabled || !katman.benGorunur) return null;
     return { iz: kam, ayna: katman.ayna && yerel.onKamera, fit: "cover" };
   }
   if (yuva === "karsi") {
+    if (!katman.karsiGorunur) return null;
     const iz = uzakVideo(katman.karsiId);
     return iz ? { iz, ayna: false, fit: "cover" } : null;
   }
@@ -203,8 +230,17 @@ export function yuvaKaydet(yuva: Yuva, el: HTMLElement | null): void {
 }
 
 export function katmaniGuncelle(d: KatmanDurumu): void {
+  const onceki = katman;
   katman = d;
   ciz();
+  if (
+    onceki.karsiId !== d.karsiId ||
+    onceki.karsiGorunur !== d.karsiGorunur ||
+    onceki.karsiKalite !== d.karsiKalite ||
+    onceki.aktifPaylasim !== d.aktifPaylasim
+  ) {
+    for (const f of katmanDinleyicileri) f();
+  }
 }
 
 /** Ayna tercihi sürücüden değişti (sahne yeniden çizilmeden de uygulanır). */

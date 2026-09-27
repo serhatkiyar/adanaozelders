@@ -5,8 +5,10 @@
  * - 48px koyu başlık (4 + 40 + 4), üst köşeler 8px.
  * - Sol: 18px tahta ikonu + "Beyaz tahta" (14px/600) + 1×24 ayırıcı.
  * - Sağ: "Paylaşımlı" (kişiler ikonu + metin; üzerine gelince açıklama),
- *   ayırıcı + X (40×40) — X YALNIZ öğretmende.
- * - Beyaz yüzey çerçeveden 4px içeride. Tam ekran düğmesi yok.
+ *   "Tam alana genişlet" (40×40, iki tarafta; uygulama içi odak, yalnız
+ *   bakan kişide — tarayıcı tam ekranı değil), ayırıcı + X (40×40) — X
+ *   YALNIZ öğretmende.
+ * - Beyaz yüzey çerçeveden 4px içeride.
  *
  * Yüzey (Excalidraw) `lazy()` ile: Excalidraw/pdf.js/jsPDF yalnız tahta ilk
  * açıldığında iner; başlık yüklenirken de görünür.
@@ -38,6 +40,8 @@ export function TahtaAlani({
   ogretmen,
   karsiAd,
   onKapat,
+  odakta,
+  onOdak,
 }: {
   kanal: DersKanali;
   dersId: number;
@@ -46,14 +50,18 @@ export function TahtaAlani({
   karsiAd: string;
   /** Başlıktaki X (yalnız öğretmen). */
   onKapat: () => void;
+  /** Tahta odakta (tüm sahneyi alıyor) mı. */
+  odakta: boolean;
+  onOdak: () => void;
 }) {
   const { t } = useTranslation();
   return (
     <section
       aria-label={t("tahta.baslik")}
+      data-tahta-alani
       className="flex h-full w-full flex-col rounded-t-ders bg-ders-yuzey p-1 text-white"
     >
-      <header className="flex h-10 shrink-0 items-center gap-3 pl-3 pr-0">
+      <header data-tahta-basligi className="flex h-10 shrink-0 items-center gap-3 pl-3 pr-0">
         <Icon name="whiteboard" className="h-[18px] w-[18px]" />
         <h2 className="text-sm font-semibold">{t("tahta.baslik")}</h2>
         <span aria-hidden className="h-6 w-px bg-white/20" />
@@ -79,6 +87,15 @@ export function TahtaAlani({
             </p>
           </div>
         </div>
+        <PlainButton
+          onClick={onOdak}
+          aria-label={t("duzen.odak")}
+          aria-pressed={odakta}
+          title={t(odakta ? "duzen.odaktanCik" : "duzen.odak")}
+          className="inline-flex h-10 w-10 items-center justify-center rounded hover:bg-ders-dugme focus-visible:outline focus-visible:outline-2 focus-visible:outline-marka-focus"
+        >
+          <Icon name={odakta ? "fullScreenMinimize" : "fullScreenMaximize"} className="h-5 w-5" />
+        </PlainButton>
         {ogretmen && (
           <>
             <span aria-hidden className="h-6 w-px bg-white/20" />

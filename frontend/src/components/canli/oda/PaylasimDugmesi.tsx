@@ -4,11 +4,14 @@
  * çubuğunda ve tarayıcı destekliyorsa (`destekler.ekranPaylasimi`) çizilir; telefonda
  * paylaşım yok.
  *
+ * İpucu: tüm ekran yerine pencere/sekme paylaşmak yazıları büyütür (karşı
+ * tarafta paylaşım ölçeklenerek küçülür).
+ *
  * Karşı taraf paylaşırken devralamayanın düğmesi kapalıdır (Zoom `HostGrab`).
  * Seçiciden vazgeçmek sessizdir; izin/sistem reddi `PaylasimHatasi`
  * penceresini, diğer hatalar kısa bildirimi açar (`paylasimHatasiTuru`).
  */
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Icon } from "@/components/AppIcon";
@@ -29,6 +32,7 @@ export function PaylasimDugmesi() {
   const aktifPaylasim = useAktifPaylasim();
   const [mesgul, setMesgul] = useState(false);
   const [hataAcik, setHataAcik] = useState(false);
+  const ipucuId = useId();
 
   if (!destekli) return null;
 
@@ -55,7 +59,13 @@ export function PaylasimDugmesi() {
   };
 
   const etiket = t(`controls.screenShare.${paylasiyor ? "stop" : "start"}`);
-  const ipucu = engelli ? t("error.screenShare.busy") : etiket;
+  // Başlatmadan önce: pencere/sekme paylaşımı daha okunaklı.
+  const paylasimIpucu = !paylasiyor && !engelli;
+  const ipucu = engelli
+    ? t("error.screenShare.busy")
+    : paylasimIpucu
+      ? `${etiket}\n${t("controls.screenShare.hint")}`
+      : etiket;
   return (
     <>
       <PlainButton
@@ -63,6 +73,7 @@ export function PaylasimDugmesi() {
         disabled={mesgul || engelli}
         aria-label={etiket}
         aria-pressed={paylasiyor}
+        aria-describedby={paylasimIpucu ? ipucuId : undefined}
         title={ipucu}
         className={`${DUGME_TABANI} ${ODA_DUGMESI.boyut} ${
           paylasiyor ? ODA_DUGMESI.secili : ODA_DUGMESI.acik
@@ -70,6 +81,11 @@ export function PaylasimDugmesi() {
       >
         <Icon name={paylasiyor ? "shareScreenStop" : "shareScreenStart"} className="h-6 w-6" />
       </PlainButton>
+      {paylasimIpucu && (
+        <span id={ipucuId} className="sr-only">
+          {t("controls.screenShare.hint")}
+        </span>
+      )}
       <PaylasimHatasi acik={hataAcik} onKapat={() => setHataAcik(false)} />
     </>
   );

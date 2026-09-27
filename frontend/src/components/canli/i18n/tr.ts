@@ -56,6 +56,8 @@ export const tr = {
       screenShare: {
         start: "Ekranını paylaş",
         stop: "Paylaşımı durdur",
+        /** Paylaş düğmesinin ipucu: pencere/sekme paylaşımı okunaklı. */
+        hint: "Tüm ekran yerine pencere ya da sekme paylaşırsan yazılar daha büyük görünür.",
       },
       /**
        * Sohbet düğmesi — adı Preply'daki gibi "Sohbet"; ipucu Preply
@@ -175,6 +177,11 @@ export const tr = {
         participants: "Katılımcılar",
         chat: "Sohbet",
         settings: "Ayarlar",
+        /** Meet `options.items.fullscreen` — tarayıcı tam ekranı (Ctrl+Shift+F). */
+        fullscreen: {
+          enter: "Tam ekran",
+          exit: "Tam ekrandan çık",
+        },
       },
     },
     participantTile: {
@@ -316,6 +323,12 @@ export const tr = {
           heading: "Aynalama",
           label: "Kendi görüntümü aynalı göster",
           hint: "Yalnız sende değişir; karşı taraf seni her zaman düz görür.",
+        },
+        /** Kendi görüntümü yalnız kendi ekranımda gizle (cihazda kalıcı). */
+        selfView: {
+          heading: "Kendi görüntün",
+          label: "Kendi görüntümü gizle",
+          hint: "Yalnız sende gizlenir; kameran açık kalır ve karşı taraf seni görmeye devam eder.",
         },
         /** Meet `effects` — arka plan bulanıklaştırma ve düz renk. */
         background: {
@@ -472,6 +485,34 @@ export const tr = {
       bolmeBoyutu: "Paylaşım ve tahta oranı",
       videolariGizle: "Videoları gizle",
       videolariGoster: "Videoları göster",
+      /** Karo menüsü ve yüzen kamera kutusu. */
+      secenekler: "Video seçenekleri",
+      gorunum: "Görünüm",
+      kameraKutusu: "Kamera kutusu",
+      boyut: "Kutu boyutu",
+      boyutKucuk: "Küçük",
+      boyutOrta: "Orta",
+      boyutBuyuk: "Büyük",
+      kucult: "Küçült",
+      kutuyuAc: "{{ad}} kamerasını genişlet",
+      kendiGizle: "Kendi görüntümü gizle",
+      kendiGizliBilgi: "Kendi görüntün gizli; karşı taraf seni görüyor",
+      kaydirIpucu: "Köşeye taşımak için kaydır, küçültmek için dokun.",
+      /** Uygulama içi odak: tahta ya da paylaşım tüm sahneyi alır (yalnız bende). */
+      odak: "Tam alana genişlet",
+      odaktanCik: "Normal boyuta dön",
+    },
+    /** Meet `screenShareZoom` — karşı tarafın paylaşımında yakınlaştırma. */
+    yakinlastirma: {
+      arac: "Paylaşım yakınlaştırma",
+      yuzey: "Paylaşılan ekran. Yakınlaştırınca ok tuşlarıyla gezinebilirsin.",
+      yakinlastir: "Yakınlaştır",
+      uzaklastir: "Uzaklaştır",
+      sigdir: "Pencereye sığdır",
+      kisayol: "Kısayol: Ctrl ile fare tekerleği yakınlaştırır ya da uzaklaştırır.",
+      duzey: "Yakınlaştırma %{{duzey}}",
+      yanCevir: "Daha büyük görmek için telefonunu yan çevir.",
+      yanCevirKapat: "İpucunu kapat",
     },
     /** Paylaşım paneli başlığı (Preply: 40px şerit + X). */
     paylasimBasligi: {

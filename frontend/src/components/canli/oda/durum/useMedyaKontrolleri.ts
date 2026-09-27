@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { surucu } from "../../video/etkin";
 import { kameraHataAnahtari, mikIzniReddedildiMi, type CihazTuru } from "./indirgeyiciler";
 import { cihazSec, kamerayiCevir, kamerayiDegistir, mikrofonuDegistir } from "./medya";
+import { kameraTercihiniKaydet } from "./oturumKamerasi";
 import { izinPenceresiniAc, useBen, useOdaDeposu } from "./odaDeposu";
 
 /** İzin reddi → yönlendirme penceresi; diğer hatalar → şerit. */
@@ -52,7 +53,11 @@ export function useMedyaKontrolleri() {
     kameraAcik: Boolean(ben?.videoAcik),
     mesgul,
     mikDegistir: (ac: boolean) => calistir("mik", () => mikrofonuDegistir(ac)),
-    kameraDegistir: (ac: boolean) => calistir("kamera", () => kamerayiDegistir(ac)),
+    kameraDegistir: (ac: boolean) =>
+      calistir("kamera", async () => {
+        await kamerayiDegistir(ac);
+        kameraTercihiniKaydet(ac);
+      }),
     kameraCevir: () => calistir("kamera", kamerayiCevir),
   };
 }

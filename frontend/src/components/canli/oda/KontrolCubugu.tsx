@@ -16,6 +16,7 @@ import { PlainButton } from "@/components/ui/PlainButton";
 
 import { DUGME_TABANI, ODA_DUGMESI } from "../stiller";
 import { useOdaDeposu } from "./durum/odaDeposu";
+import { useTamEkran } from "./durum/tamEkran";
 import { useMedyaKontrolleri } from "./durum/useMedyaKontrolleri";
 import { Acilir } from "./Acilir";
 import type { AyarSekmesi } from "./AyarlarPenceresi";
@@ -276,9 +277,13 @@ export function OkunmamisNoktasi({ id }: { id?: string }) {
   );
 }
 
-/** Meet `OptionsButton` → yalnız Ayarlar. */
+/**
+ * Meet `OptionsButton` → Tam ekran (Meet `FullScreenMenuItem`; tarayıcı
+ * desteklemiyorsa yok, kısayol Ctrl+Shift+F) ve Ayarlar.
+ */
 function SecenekMenusu({ onAyarlar }: { onAyarlar: () => void }) {
   const { t } = useTranslation();
+  const tamEkran = useTamEkran();
   const [acik, setAcik] = useState(false);
   const dugme = useRef<HTMLButtonElement>(null);
   const kapat = () => setAcik(false);
@@ -299,6 +304,23 @@ function SecenekMenusu({ onAyarlar }: { onAyarlar: () => void }) {
       </PlainButton>
       <Acilir acik={acik} onKapat={kapat} tetikleyici={dugme} etiket={t("options.buttonLabel")}>
         <div className="flex w-56 flex-col">
+          {tamEkran.destekli && (
+            <PlainButton
+              onClick={() => {
+                // İstek tıklamanın içinde, beklemeden (kullanıcı etkinleşmesi).
+                tamEkran.degistir();
+                kapat();
+              }}
+              aria-keyshortcuts="Control+Shift+F"
+              className={oge}
+            >
+              <Icon
+                name={tamEkran.acik ? "fullScreenMinimize" : "fullScreenMaximize"}
+                className="h-5 w-5"
+              />
+              {t(tamEkran.acik ? "options.items.fullscreen.exit" : "options.items.fullscreen.enter")}
+            </PlainButton>
+          )}
           <PlainButton
             onClick={() => {
               kapat();

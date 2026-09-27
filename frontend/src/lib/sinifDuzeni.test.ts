@@ -27,11 +27,12 @@ describe("gorunumSec (Preply rT)", () => {
     expect(secim({})).toBe("SPOTLIGHT");
     expect(secim({ sonVideo: "GRID" })).toBe("GRID");
   });
-  it("tek araç: son araç görünümü, yoksa tahtada CORNER, paylaşımda SIDEBAR", () => {
+  it("tek araç: son araç görünümü, yoksa CORNER (paylaşım da sahneyi alır)", () => {
     expect(secim({ aracAcik: true })).toBe("CORNER");
     expect(secim({ aracAcik: true, sonVideo: "GRID" })).toBe("CORNER");
     expect(secim({ aracAcik: true, sonArac: "SIDEBAR" })).toBe("SIDEBAR");
-    expect(secim({ paylasim: true })).toBe("SIDEBAR");
+    expect(secim({ paylasim: true })).toBe("CORNER");
+    expect(secim({ paylasim: true, sonArac: "SIDEBAR" })).toBe("SIDEBAR");
     expect(secim({ paylasim: true, sonArac: "CORNER" })).toBe("CORNER");
   });
   it("telefon + küçük ekran + araç: zorla yüzen (SPOTLIGHT)", () => {
@@ -104,25 +105,43 @@ describe("yerlesimHesapla", () => {
   it("tahta + CORNER: yüzen kutu 200×100 (iki karo), sağ üstte üst çubuğun altında", () => {
     const y = yerlesimHesapla(girdi({ gorunum: "CORNER", aracAcik: true }));
     expect(y.arac).toEqual(y.grup);
-    expect(y.video).toEqual({ x: y.grup.x + y.grup.w - 12 - 200, y: y.grup.y + 120, w: 200, h: 100 });
+    expect(y.video).toEqual({ x: y.grup.x + y.grup.w - 16 - 200, y: y.grup.y + 120, w: 200, h: 100 });
+    expect(y.kose).toBe("sagUst");
+    expect(y.suruklenebilir).toBe("yuzen");
+    expect(y.suruklemeSiniri).toBeNull();
+    expect(y.serbestAlan).toEqual(y.grup);
     expect(y.benKaro.w).toBe(100);
     expect(y.daraltDugmesi).toBeNull();
   });
 
-  it("paylaşım + CORNER: yüzen kutu sol üstte, başlığın 8px altı", () => {
+  it("paylaşım + CORNER: yüzen kutu sol üstte, başlığın 16px altı", () => {
     const y = yerlesimHesapla(girdi({ gorunum: "CORNER", paylasim: true }));
-    expect(y.video).toEqual({ x: y.grup.x + 12, y: y.grup.y + 56, w: 200, h: 100 });
+    expect(y.video).toEqual({ x: y.grup.x + 16, y: y.grup.y + 56, w: 200, h: 100 });
+    // Paylaşım-büyük: tek paylaşım sahnenin tamamını alır, videolar yüzen kutuda.
+    expect(y.paylasim).toEqual(y.grup);
+    expect(y.yuzen).toBe(true);
+    expect(y.kose).toBe("solUst");
   });
 
-  it("telefonda tahta: yüzen kutu sol altta, Excalidraw alt çubuğunun üstünde; sürüklenebilir", () => {
+  it("telefonda tahta: yüzen kutu sol altta, Excalidraw alt çubuğunun üstünde; kaydırılır", () => {
     const tel = { telefon: true, dikey: true, kucukEkran: true, pencereDikey: true, genislik: 390, yukseklik: 757 };
     const y = yerlesimHesapla(girdi({ ...tel, gorunum: "SPOTLIGHT", aracAcik: true }));
-    expect(y.video).toEqual({ x: y.grup.x + 12, y: y.grup.y + y.grup.h - 132 - 100, w: 200, h: 100 });
-    expect(y.suruklenebilir).toBe("yuzen");
-    expect(y.suruklemeSiniri!.min.y).toBe(56 - (y.grup.h - 132 - 100));
-    // Paylaşımda (telefon) eski sol üst kalır.
+    expect(y.video).toEqual({ x: y.grup.x + 16, y: y.grup.y + y.grup.h - 132 - 100, w: 200, h: 100 });
+    expect(y.suruklenebilir).toBeNull();
+    expect(y.kaydirilabilir).toBe(true);
+    expect(y.serbestAlan).toBeNull();
+    // Sağ köşeler izinli değil: sağ üst tercihi sol üste eşlenir.
+    const s = yerlesimHesapla(girdi({ ...tel, gorunum: "SPOTLIGHT", aracAcik: true, kose: "sagUst" }));
+    expect(s.kose).toBe("solUst");
+    expect(s.video).toMatchObject({ x: s.grup.x + 16, y: s.grup.y + 64 });
+    // Telefonda serbest sürükleme yok sayılır.
+    const d = yerlesimHesapla(
+      girdi({ ...tel, gorunum: "SPOTLIGHT", aracAcik: true, suruklenen: { x: 200, y: 200 } }),
+    );
+    expect(d.video).toEqual(y.video);
+    // Paylaşımda (telefon) sol üst kalır.
     const p = yerlesimHesapla(girdi({ ...tel, gorunum: "SPOTLIGHT", paylasim: true }));
-    expect(p.video).toMatchObject({ x: p.grup.x + 12, y: p.grup.y + 56 });
+    expect(p.video).toMatchObject({ x: p.grup.x + 16, y: p.grup.y + 56 });
   });
 
   it("karşı taraf yokken yüzen kutu 200×133 tek karo", () => {
@@ -131,17 +150,136 @@ describe("yerlesimHesapla", () => {
     expect(y.karsiKaro).toBeNull();
   });
 
-  it("yüzen kutu sol üst (12, 56) ile sağ alt arasında kalır, sahne dışına taşamaz", () => {
+  it("sürüklenen yüzen kutu sahnenin her yerine gider ama dışına taşamaz", () => {
     const y = yerlesimHesapla(
-      girdi({ gorunum: "CORNER", aracAcik: true, surukleme: { x: -99999, y: 99999 } }),
+      girdi({ gorunum: "CORNER", aracAcik: true, suruklenen: { x: -99999, y: 99999 } }),
     );
-    expect(y.video.x).toBe(y.grup.x + 12);
-    expect(y.video.y + y.video.h).toBe(y.grup.y + y.grup.h - 12);
+    expect(y.video.x).toBe(y.grup.x);
+    expect(y.video.y + y.video.h).toBe(y.grup.y + y.grup.h);
     const u = yerlesimHesapla(
-      girdi({ gorunum: "CORNER", aracAcik: true, surukleme: { x: 99999, y: -99999 } }),
+      girdi({ gorunum: "CORNER", aracAcik: true, suruklenen: { x: 99999, y: -99999 } }),
     );
-    expect(u.video.x + u.video.w).toBe(u.grup.x + u.grup.w - 12);
-    expect(u.video.y).toBe(u.grup.y + 56);
+    expect(u.video.x + u.video.w).toBe(u.grup.x + u.grup.w);
+    expect(u.video.y).toBe(u.grup.y);
+    const o = yerlesimHesapla(
+      girdi({ gorunum: "CORNER", aracAcik: true, suruklenen: { x: 300, y: 250 } }),
+    );
+    expect(o.video).toMatchObject({ x: 300, y: 250 });
+    expect(o.benKaro).toMatchObject({ x: 300, y: 250, w: 100 });
+  });
+
+  it("köşe tercihi: izinli köşeye yaslanır; tahtada sol üst sağ üste eşlenir", () => {
+    const sa = yerlesimHesapla(girdi({ gorunum: "CORNER", paylasim: true, kose: "sagAlt" }));
+    expect(sa.video.x + sa.video.w).toBe(sa.grup.x + sa.grup.w - 16);
+    expect(sa.video.y + sa.video.h).toBe(sa.grup.y + sa.grup.h - 16);
+    const t = yerlesimHesapla(girdi({ gorunum: "CORNER", aracAcik: true, kose: "solUst" }));
+    expect(t.kose).toBe("sagUst");
+    expect(t.video.x + t.video.w).toBe(t.grup.x + t.grup.w - 16);
+    expect(t.video.y).toBe(t.grup.y + 120);
+    const ta = yerlesimHesapla(girdi({ gorunum: "CORNER", aracAcik: true, kose: "solAlt" }));
+    expect(ta.kose).toBe("sagAlt");
+    expect(ta.video.y + ta.video.h).toBe(ta.grup.y + ta.grup.h - 76);
+    expect(t.koseAlani!.izinli).not.toContain("solUst");
+    expect(t.koseAlani!.izinli).not.toContain("solAlt");
+  });
+
+  it("boyut: Küçük 160, Büyük 280 genişlik", () => {
+    const k = yerlesimHesapla(girdi({ gorunum: "CORNER", paylasim: true, boyut: "kucuk" }));
+    expect(k.video).toMatchObject({ w: 160, h: 80 });
+    const b = yerlesimHesapla(
+      girdi({ gorunum: "CORNER", paylasim: true, boyut: "buyuk", karsiTarafVar: false }),
+    );
+    expect(b.video).toMatchObject({ w: 280, h: 187 });
+  });
+
+  it("küçültülünce: masaüstü hap, telefon balon; karolar sahne dışında, görünmez", () => {
+    const y = yerlesimHesapla(girdi({ gorunum: "CORNER", aracAcik: true, kucuk: true }));
+    expect(y.kucukHal!.tur).toBe("hap");
+    expect(y.kucukHal!.kutu).toEqual({
+      x: y.grup.x + y.grup.w - 16 - 200,
+      y: y.grup.y + 120,
+      w: 200,
+      h: 40,
+    });
+    expect(y.benKaro).toMatchObject({ w: 1, h: 1 });
+    expect(y.karsiKaro).toMatchObject({ w: 1, h: 1 });
+    expect(y.benGorunur).toBe(false);
+    expect(y.karsiGorunur).toBe(false);
+    expect(y.suruklenebilir).toBeNull();
+    const tel = { telefon: true, dikey: true, kucukEkran: true, pencereDikey: true, genislik: 390, yukseklik: 757 };
+    const t = yerlesimHesapla(girdi({ ...tel, aracAcik: true, kucuk: true }));
+    expect(t.kucukHal).toMatchObject({ tur: "balon", kutu: { w: 48, h: 48, x: t.grup.x + 16 } });
+    expect(t.kucukHal!.kutu.y + 48).toBe(t.grup.y + t.grup.h - 132);
+    expect(t.kaydirilabilir).toBe(true);
+  });
+
+  it("kendi görüntüm gizli: yalnız karşı karo; karşı taraf yokken kendi karo kalır", () => {
+    const y = yerlesimHesapla(girdi({ gorunum: "CORNER", aracAcik: true, kendiGizli: true }));
+    expect(y.video).toMatchObject({ w: 200, h: 133 });
+    expect(y.karsiKaro).toEqual(y.video);
+    expect(y.benKaro).toMatchObject({ w: 1, h: 1 });
+    expect(y.benGorunur).toBe(false);
+    expect(y.karsiGorunur).toBe(true);
+    const yalniz = yerlesimHesapla(
+      girdi({ gorunum: "CORNER", aracAcik: true, kendiGizli: true, karsiTarafVar: false }),
+    );
+    expect(yalniz.benKaro).toEqual(yalniz.video);
+    expect(yalniz.benGorunur).toBe(true);
+    const spot = yerlesimHesapla(girdi({ kendiGizli: true }));
+    expect(spot.benGorunur).toBe(false);
+    expect(spot.suruklenebilir).toBeNull();
+    const grid = yerlesimHesapla(girdi({ gorunum: "GRID", kendiGizli: true }));
+    expect(grid.karsiKaro).toEqual(grid.grup);
+    const yan = yerlesimHesapla(girdi({ gorunum: "SIDEBAR", aracAcik: true, kendiGizli: true }));
+    expect(yan.karsiKaro!.y).toBe(yan.video.y);
+    expect(yan.benGorunur).toBe(false);
+  });
+
+  it("telefon yatay + tahta: sağda 112px şerit, tahta kalanı alır", () => {
+    const tel = { telefon: true, dikey: false, kucukEkran: true, pencereDikey: false, genislik: 844, yukseklik: 330 };
+    const y = yerlesimHesapla(girdi({ ...tel, gorunum: "SPOTLIGHT", aracAcik: true }));
+    expect(y.yuzen).toBe(false);
+    expect(y.video).toMatchObject({ w: 112, x: y.grup.x + y.grup.w - 112 });
+    expect(y.benKaro).toMatchObject({ w: 112, h: 84, y: y.grup.y });
+    expect(y.karsiKaro).toMatchObject({ w: 112, h: 84, y: y.grup.y + 92 });
+    expect(y.arac!.x + y.arac!.w + 8).toBe(y.video.x);
+    expect(y.benGorunur && y.karsiGorunur).toBe(true);
+    // Paylaşım varken şerit yok (bölünmüş, yüzen kutu).
+    expect(yerlesimHesapla(girdi({ ...tel, aracAcik: true, paylasim: true })).yuzen).toBe(true);
+  });
+
+  it("odak: araç tüm sahneyi alır, diğer araç gizlenir, kamera yüzen kutuda", () => {
+    const t = yerlesimHesapla(
+      girdi({ gorunum: "SIDEBAR", aracAcik: true, paylasim: true, odak: "tahta" }),
+    );
+    expect(t.odak).toBe("tahta");
+    expect(t.arac).toEqual({ x: 0, y: 0, w: 1440, h: 820 });
+    expect(t.paylasim).toMatchObject({ w: 1, h: 1 });
+    expect(t.paylasim!.x).toBeGreaterThanOrEqual(1440);
+    expect(t.yuzen).toBe(true);
+    expect(t.bolme).toBeNull();
+    expect(t.koseAlani!.izinli).not.toContain("solUst");
+    const p = yerlesimHesapla(
+      girdi({ gorunum: "SIDEBAR", paylasim: true, aracAcik: true, odak: "paylasim" }),
+    );
+    expect(p.paylasim).toEqual({ x: 0, y: 0, w: 1440, h: 820 });
+    expect(p.arac).toMatchObject({ w: 0, h: 0 });
+    expect(p.yuzen).toBe(true);
+    expect(p.kose).toBe("sagUst");
+    // Açık olmayan araç için odak yok sayılır.
+    const yok = yerlesimHesapla(girdi({ gorunum: "CORNER", aracAcik: true, odak: "paylasim" }));
+    expect(yok.odak).toBeNull();
+    expect(yok).toEqual(yerlesimHesapla(girdi({ gorunum: "CORNER", aracAcik: true })));
+  });
+
+  it("karo kalitesi genişlik × dpr ile", () => {
+    const y = yerlesimHesapla(girdi({ gorunum: "CORNER", paylasim: true }));
+    expect(y.karsiKalite).toBe("dusuk");
+    expect(
+      yerlesimHesapla(girdi({ gorunum: "CORNER", paylasim: true, dpr: 4 })).karsiKalite,
+    ).toBe("orta");
+    expect(yerlesimHesapla(girdi({})).karsiKalite).toBe("yuksek");
+    expect(yerlesimHesapla(girdi({})).benKalite).toBe("dusuk");
   });
 
   it("Kenar çubuğu + tahta: videolar gizlenince araç tam genişlik, kaplar 1×1 sahne dışında", () => {
@@ -157,6 +295,9 @@ describe("yerlesimHesapla", () => {
     expect(y.video).toMatchObject({ w: 1, h: 1 });
     expect(y.video.x).toBeGreaterThanOrEqual(1440);
     expect(y.benKaro).toMatchObject({ w: 1, h: 1 });
+    expect(y.benGorunur).toBe(false);
+    expect(y.karsiGorunur).toBe(false);
+    expect(acik.benGorunur && acik.karsiGorunur).toBe(true);
   });
 
   it("videolarGizli bayrağı diğer düzenlerde yok sayılır", () => {
@@ -181,6 +322,15 @@ describe("yerlesimHesapla", () => {
     expect(k.bolme).toMatchObject({ tur: "bolunmus", deger: 65 });
     const s = yerlesimHesapla(girdi({ paylasim: true, aracAcik: true, bolunmusOran: 90 }));
     expect(s.bolme).toMatchObject({ deger: 65 });
+  });
+
+  it("bölünmüşte kamera kutusu paylaşım panelinin köşesinde (tahtayı örtmez)", () => {
+    for (const kose of ["sagUst", "sagAlt"] as const) {
+      const y = yerlesimHesapla(girdi({ paylasim: true, aracAcik: true, kose }));
+      const p = y.paylasim!;
+      expect(y.video.x + y.video.w).toBe(p.x + p.w - 16);
+      expect(y.video.x + y.video.w).toBeLessThan(y.arac!.x);
+    }
   });
 
   it("dikey pencerede bölünmüş görünüm alt alta", () => {

@@ -26,21 +26,36 @@ export function MedyaKatmani({
   karsiId,
   aktifPaylasim,
   benPaylasiyorum,
+  benGorunur,
+  karsiGorunur,
+  karsiKalite,
+  paylasimDonusumKabi,
 }: MedyaKatmaniProps) {
   const benYuvasi = useCallback((el: HTMLDivElement | null) => yuvaKaydet("ben", el), []);
   const karsiYuvasi = useCallback((el: HTMLDivElement | null) => yuvaKaydet("karsi", el), []);
   const paylasimYuvasi = useCallback((el: HTMLDivElement | null) => yuvaKaydet("paylasim", el), []);
 
+  // Görünürlük ve kalite sürücüye nötr iner: gizli karşı kamerada abonelik
+  // bırakılır, düşük kalitede düşük akış istenir (`surucu.ts`).
   useEffect(() => {
-    katmaniGuncelle({ karsiId, aktifPaylasim, benPaylasiyorum, ayna });
-  }, [karsiId, aktifPaylasim, benPaylasiyorum, ayna]);
+    katmaniGuncelle({
+      karsiId,
+      aktifPaylasim,
+      benPaylasiyorum,
+      ayna,
+      benGorunur,
+      karsiGorunur,
+      karsiKalite,
+    });
+  }, [karsiId, aktifPaylasim, benPaylasiyorum, ayna, benGorunur, karsiGorunur, karsiKalite]);
 
   const paylasimGorunur = (benPaylasiyorum || aktifPaylasim !== null) && y.paylasim !== null;
   const uzakK = karsiId !== null ? y.karsiKaro : null;
   const yuzenSinif = y.yuzen ? "rounded-ders shadow-[0_8px_32px_rgba(18,17,23,0.15)]" : "";
   // İki karolu yüzen kutu: kendi karo sol köşeler, karşı taraf sağ köşeler.
+  // Kendi görüntüm gizliyken karşı karo tek başına: dört köşe yuvarlak.
   const benKose = y.yuzen && uzakK ? "rounded-l-ders" : "rounded-ders";
-  const karsiKose = y.yuzen ? "rounded-r-ders" : "rounded-ders";
+  const karsiKose = y.yuzen && y.benGorunur ? "rounded-r-ders" : "rounded-ders";
 
   return (
     <>
@@ -66,11 +81,13 @@ export function MedyaKatmani({
         style={yer(paylasimGorunur ? y.paylasim : null)}
         aria-hidden={!paylasimGorunur}
       >
-        <div
-          ref={paylasimYuvasi}
-          className="absolute inset-x-0 bottom-0"
-          style={{ top: paylasimBaslikPx }}
-        />
+        {/* Yakınlaştırma dönüşümü yuvanın sarmalayıcısında (yuva taşınmaz);
+            karşı paylaşım SDK'da `contain` oynar. */}
+        <div className="absolute inset-x-0 bottom-0 overflow-hidden" style={{ top: paylasimBaslikPx }}>
+          <div ref={paylasimDonusumKabi} className="absolute inset-0">
+            <div ref={paylasimYuvasi} className="absolute inset-0" />
+          </div>
+        </div>
       </div>
     </>
   );

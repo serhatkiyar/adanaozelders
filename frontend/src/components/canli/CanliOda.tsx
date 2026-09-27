@@ -56,6 +56,16 @@
  * sayfadaysa doğrudan bağlanır. Kanal/varlık yoksa beklenmez (geri dönüş).
  * Karar `oda/durum/bekleme.ts`; bu yüzden ders kanalı önizlemede de açıktır.
  *
+ * ## Odak ve tam ekran
+ *
+ * Tahta ya da paylaşım başlığındaki "Tam alana genişlet" o aracı tüm sahneye
+ * yayar (yalnız bakan kişide; `sinifDuzeni` `odak`). Odakta yan panel
+ * kapanır (panel açmak odaktan çıkarır), kontrol çubuğu sahnenin üstüne
+ * biner ve 3 sn sonra kendiliğinden gizlenir (`durum/cubukGizleme`). Esc
+ * odaktan çıkarır; tahta odağında yalnız odak tahtanın DIŞINDAYKEN
+ * (Excalidraw Esc'i kullanır). Tarayıcı tam ekranı ayrı: Seçenekler menüsü
+ * ve Ctrl+Shift+F (`durum/tamEkran`).
+ *
  * ## Tepkiler ve el kaldırma
  *
  * Taşıyıcı tahtayla aynı Centrifugo `ders:{id}` kanalı (`oda/durum/tepkiler.ts`);
@@ -66,14 +76,17 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { I18nextProvider } from "react-i18next";
 
 import { biletTazeMi, type KarsiTarafDurumu } from "@/lib/canliDers";
 import { onizlemeGerekli, onizlemeMetni, type SohbetOzeti } from "@/lib/sohbetCekmecesi";
+import type { Odak } from "@/lib/sinifDuzeni";
 import { toast } from "@/store/toastStore";
 
 import { dersI18n } from "./i18n";
@@ -96,6 +109,7 @@ import { SohbetOnizlemesi } from "./oda/SohbetOnizlemesi";
 import { SinifSahnesi } from "./oda/SinifSahnesi";
 import { TahtaAlani } from "./oda/TahtaAlani";
 import { beklemeSuresi, katilimKarari, type KanalVarligi } from "./oda/durum/bekleme";
+import { useCubukGizleme } from "./oda/durum/cubukGizleme";
 import { bostaKalmayiIzle } from "./oda/durum/bostaKalma";
 import {
   beklenmedikKapanis,
@@ -109,13 +123,27 @@ import {
 import { izinleriIzle } from "./oda/durum/izinler";
 import { ayril as oturumdanAyril, kamerayiDegistir, sesiBaslat } from "./oda/durum/medya";
 import { olaylariBagla } from "./oda/durum/olayBagla";
-import { depoyaUygula, depoyuSifirla, useAsama, useOdaDeposu } from "./oda/durum/odaDeposu";
+import {
+  depoyaUygula,
+  depoyuSifirla,
+  useAsama,
+  useOdaDeposu,
+  usePaylasimVar,
+} from "./oda/durum/odaDeposu";
+import { tamEkranDegistir, tamEkranDestekli, tamEkranKisayoluMu } from "./oda/durum/tamEkran";
 import { tercihleriOku, tercihleriYaz } from "./oda/durum/tercihler";
 import { arkaPlanDesteginiOnbellegeAl } from "./oda/durum/useMedyaKontrolleri";
 import { elleriEsitle, tepkileriBagla } from "./oda/durum/tepkiler";
 import { dersKanaliAc, type DersKanali } from "./tahta/dersKanali";
 import { surucu } from "./video/etkin";
 import type { NotrBilet } from "./video/tipler";
+import {
+  etkinOturumKamerasiAnahtari,
+  oturumKamerasiAnahtari,
+  oturumKamerasiOku,
+  oturumKamerasiYaz,
+} from "./oda/durum/oturumKamerasi";
+import { useAuthStore } from "@/store/authStore";
 
 export type { DersBilgisi, DersSohbetBilgisi };
 
@@ -202,15 +230,30 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
 
   const asama = useAsama();
   const [mikTercihi, setMikTercihiDurumu] = useState(() => tercihleriOku().mikAcik);
-  const [kameraTercihi, setKameraTercihiDurumu] = useState(() => tercihleriOku().kameraAcik);
+  // Ders içi kamera tercihi bu sekmenin oturumunda (ders + rol + kullanıcı):
+  // kamerayı kapatıp yenileyen kişinin kamerası kendiliğinden açılmaz. Kayıt
+  // yoksa (ilk giriş) mevcut varsayılan (`tercihler.ts`) geçerli.
+  const kullaniciId = useAuthStore((s) => s.user?.id);
+  const kameraAnahtari = oturumKamerasiAnahtari(dersId, bilet.rol, kullaniciId);
+  const [kameraTercihi, setKameraTercihiDurumu] = useState(
+    () => oturumKamerasiOku(kameraAnahtari) ?? tercihleriOku().kameraAcik,
+  );
+  useEffect(() => {
+    etkinOturumKamerasiAnahtari(kameraAnahtari);
+    return () => etkinOturumKamerasiAnahtari(null);
+  }, [kameraAnahtari]);
   const setMikTercihi = useCallback((mikAcik: boolean) => {
     setMikTercihiDurumu(mikAcik);
     tercihleriYaz({ mikAcik });
   }, []);
-  const setKameraTercihi = useCallback((kameraAcik: boolean) => {
-    setKameraTercihiDurumu(kameraAcik);
-    tercihleriYaz({ kameraAcik });
-  }, []);
+  const setKameraTercihi = useCallback(
+    (kameraAcik: boolean) => {
+      setKameraTercihiDurumu(kameraAcik);
+      tercihleriYaz({ kameraAcik });
+      oturumKamerasiYaz(kameraAnahtari, kameraAcik);
+    },
+    [kameraAnahtari],
+  );
   const [deneme, setDeneme] = useState(0);
   const [ayarlar, setAyarlar] = useState<{ acik: boolean; sekme: AyarSekmesi }>({
     acik: false,
@@ -222,10 +265,12 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
   tercih.current = { mik: mikTercihi, kamera: kameraTercihi };
   const [girisHatasi, setGirisHatasi] = useState<string | null>(null);
   const [panel, setPanel] = useState<PanelTuru | null>(null);
-  const panelDegistir = useCallback(
-    (tur: PanelTuru) => setPanel((p) => (p === tur ? null : tur)),
-    [],
-  );
+  // Uygulama içi odak (yalnız bende): panel açmak odaktan çıkarır.
+  const [odakIstegi, setOdakIstegi] = useState<Odak | null>(null);
+  const panelDegistir = useCallback((tur: PanelTuru) => {
+    setOdakIstegi(null);
+    setPanel((p) => (p === tur ? null : tur));
+  }, []);
   const paneliKapat = useCallback(() => setPanel(null), []);
   const konusma = useDersKonusmasi(sohbet);
   // Sohbet bir kez açılınca DOM'da kalır (Preply `SidebarPanelChat`).
@@ -333,6 +378,77 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
       setKapatmaOnayi(true);
     }
   }, [tahtayiDegistir]);
+  // Odak yalnız açık araç için geçerli; araç kapanınca odak düşer.
+  const paylasimVar = usePaylasimVar();
+  const tahtaGorunur = tahtaAcik && kanal !== null && dersId !== undefined;
+  const odak: Odak | null =
+    odakIstegi === "tahta" && tahtaGorunur
+      ? "tahta"
+      : odakIstegi === "paylasim" && paylasimVar
+        ? "paylasim"
+        : null;
+  if (odakIstegi !== null && odak === null) setOdakIstegi(null);
+  const odakDegistir = useCallback(
+    (hedef: Odak) => {
+      if (odak === hedef) {
+        setOdakIstegi(null);
+        return;
+      }
+      setOdakIstegi(hedef);
+      setPanel(null);
+    },
+    [odak],
+  );
+  const cubukKabi = useRef<HTMLDivElement>(null);
+  const cubukGizli = useCubukGizleme(odak !== null, cubukKabi);
+  // Odakta görünen çubuk sahnenin alt şeridini örter: yüksekliği
+  // `--cubuk-pay` olarak iner, paylaşım yakınlaştırma çubuğu onun üstüne çıkar.
+  const [cubukYuksekligi, setCubukYuksekligi] = useState(0);
+  useLayoutEffect(() => {
+    const el = cubukKabi.current;
+    if (odak === null || !el) return;
+    setCubukYuksekligi(el.offsetHeight);
+    if (typeof ResizeObserver === "undefined") return;
+    const g = new ResizeObserver(() => setCubukYuksekligi(el.offsetHeight));
+    g.observe(el);
+    return () => g.disconnect();
+  }, [odak]);
+  const cubukPayi = odak !== null && !cubukGizli ? cubukYuksekligi : 0;
+
+  // Esc odaktan çıkarır. `window` kabarcık evresi: açık menüler (Acilir,
+  // karo menüsü) olayı durdurur. Tahta odağında yalnız odak tahtanın
+  // DIŞINDA bir öğedeyken (Excalidraw Esc'i kullanır; tuval tıklamasından
+  // sonra odak gövdede de kalabilir, o da "içeride" sayılır). Tahta
+  // başlığındaki düğmeler (ör. "Tam alana genişlet") dışarıda sayılır.
+  useEffect(() => {
+    if (odak === null) return;
+    const tus = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const etkin = document.activeElement;
+      if (etkin?.closest('[role="dialog"], dialog, [role="menu"]')) return;
+      const tahtada =
+        !etkin ||
+        etkin === document.body ||
+        (etkin.closest("[data-tahta-alani]") && !etkin.closest("[data-tahta-basligi]"));
+      if (odak === "tahta" && tahtada) return;
+      setOdakIstegi(null);
+    };
+    window.addEventListener("keydown", tus);
+    return () => window.removeEventListener("keydown", tus);
+  }, [odak]);
+
+  // Tarayıcı tam ekranı: Ctrl+Shift+F (Meet kısayolu); iPhone'da yok.
+  useEffect(() => {
+    if (!odada || !tamEkranDestekli()) return;
+    const tus = (e: KeyboardEvent) => {
+      if (!tamEkranKisayoluMu(e)) return;
+      e.preventDefault();
+      tamEkranDegistir();
+    };
+    window.addEventListener("keydown", tus);
+    return () => window.removeEventListener("keydown", tus);
+  }, [odada]);
+
   const aracDenetimi: AracDenetimi | undefined =
     ogretmen && tahtaHazir
       ? {
@@ -603,12 +719,17 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
       <div className="absolute inset-0 flex bg-ders-zemin">
         {/* `isolate`: sahnenin z-index'leri (tepkiler, haplar) kendi içinde
             kalır; ≤880px'teki karartma ve panel her zaman üstte. */}
-        <div className="relative isolate flex min-w-0 flex-1 flex-col">
+        <div
+          className="relative isolate flex min-w-0 flex-1 flex-col"
+          style={{ "--cubuk-pay": `${cubukPayi}px` } as CSSProperties}
+        >
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <SinifSahnesi
               telefon={telefon}
               ogretmen={ogretmen}
-              tahtaAcik={tahtaAcik && kanal !== null && dersId !== undefined}
+              tahtaAcik={tahtaGorunur}
+              odak={odak}
+              onOdak={odakDegistir}
               tahta={
                 kanal &&
                 dersId !== undefined && (
@@ -618,6 +739,8 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
                     ogretmen={ogretmen}
                     karsiAd={sohbet?.karsiTarafAd ?? ""}
                     onKapat={tahtaKapatIstegi}
+                    odakta={odak === "tahta"}
+                    onOdak={() => odakDegistir("tahta")}
                   />
                 )
               }
@@ -630,27 +753,40 @@ const CanliOda = forwardRef<CanliOdaTutamak, CanliOdaProps>(function CanliOda(
                   key={onizleme.zaman ?? ""}
                   ad={sohbet.karsiTarafAd}
                   metin={onizleme.metin}
-                  onAc={() => setPanel("sohbet")}
+                  onAc={() => panelDegistir("sohbet")}
                   onKapandi={onizlemeKapat}
                 />
               )}
             </SinifSahnesi>
           </div>
-          {telefon ? (
-            <TelefonCubugu
-              onAyril={onAyrilIstegi}
-              onAyarlar={ayarlariAc}
-              panel={panelDenetimi}
-              arac={aracDenetimi}
-            />
-          ) : (
-            <KontrolCubugu
-              onAyril={onAyrilIstegi}
-              onAyarlar={ayarlariAc}
-              panel={panelDenetimi}
-              arac={aracDenetimi}
-            />
-          )}
+          {/* Odakta çubuk sahnenin üstüne biner ve kendiliğinden gizlenir.
+              Aynı düğüm (çubuk yeniden kurulmaz); gizliyken yalnız saydam ve
+              tıklanmaz: Tab ile ulaşılır, odak girince görünür. Transform
+              YOK: telefon çekmecesi (`fixed`) yerinden kaymasın. */}
+          <div
+            ref={cubukKabi}
+            className={
+              odak === null
+                ? "shrink-0"
+                : `absolute inset-x-0 bottom-0 z-30 ${cubukGizli ? "pointer-events-none opacity-0" : ""}`
+            }
+          >
+            {telefon ? (
+              <TelefonCubugu
+                onAyril={onAyrilIstegi}
+                onAyarlar={ayarlariAc}
+                panel={panelDenetimi}
+                arac={aracDenetimi}
+              />
+            ) : (
+              <KontrolCubugu
+                onAyril={onAyrilIstegi}
+                onAyarlar={ayarlariAc}
+                panel={panelDenetimi}
+                arac={aracDenetimi}
+              />
+            )}
+          </div>
         </div>
         <YanPanel panel={panel} telefon={telefon} dar={darPencere} onKapat={paneliKapat}>
           {sohbet && sohbetKuruldu && (

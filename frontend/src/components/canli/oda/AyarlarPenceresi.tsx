@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/Modal";
 import { surucu } from "../video/etkin";
 import type { ArkaPlan } from "../video/arkaPlan";
 import { gorunenCihazId, odaSeviyeOrani } from "./durum/indirgeyiciler";
+import { useKameraKutusu } from "./durum/kameraKutusu";
 import { arkaPlaniDegistir, aynala } from "./durum/medya";
 import {
   useBen,
@@ -207,6 +208,10 @@ function GoruntuSekmesi() {
   const kameraAcik = Boolean(ben?.videoAcik);
   const [ayna, setAyna] = useState(() => tercihleriOku().ayna);
   const ipucuId = useId();
+  const kendiIpucuId = useId();
+  // Kendi görüntümü gizle: karo menüsüyle AYNI depo (cihazda kalıcı, reaktif).
+  const kendiGizli = useKameraKutusu((s) => s.kendiGizli);
+  const kendiGizliAyarla = useKameraKutusu((s) => s.kendiGizliAyarla);
   const [arkaPlan, setArkaPlan] = useState<ArkaPlan>(() => tercihleriOku().arkaPlan);
   const arkaPlanVar = useArkaPlanDestegi();
   const [arkaPlanMesgul, setArkaPlanMesgul] = useState(false);
@@ -279,6 +284,32 @@ function GoruntuSekmesi() {
         </PlainButton>
         <p id={ipucuId} className="mt-1 text-xs text-slate-500">
           {t("settings.video.mirror.hint")}
+        </p>
+      </Satir>
+      <Satir baslik={t("settings.video.selfView.heading")}>
+        <PlainButton
+          role="switch"
+          aria-checked={kendiGizli}
+          aria-describedby={kendiIpucuId}
+          onClick={() => kendiGizliAyarla(!kendiGizli)}
+          className="inline-flex items-center gap-3 rounded-ders py-1 text-left text-sm text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marka-focus"
+        >
+          <span
+            aria-hidden
+            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+              kendiGizli ? "bg-marka" : "bg-slate-300"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                kendiGizli ? "translate-x-[1.375rem]" : "translate-x-0.5"
+              }`}
+            />
+          </span>
+          {t("settings.video.selfView.label")}
+        </PlainButton>
+        <p id={kendiIpucuId} className="mt-1 text-xs text-slate-500">
+          {t("settings.video.selfView.hint")}
         </p>
       </Satir>
       <Satir baslik={t("settings.video.background.heading")}>

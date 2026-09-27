@@ -11,7 +11,25 @@
  * Zoom oyuncuları (`video-player-container`) başka bir panelin DOM'una
  * taşınırsa yeniden kurulur ve görüşme kopar (plan §2). Bu yüzden her şey
  * aynı ebeveynde kalır, yalnız hesaplanan dikdörtgenlerle yer değiştirir.
+ *
+ * Yüzen kamera kutusunun köşe/boyut/küçültme kuralları `kameraKutusu.ts`te.
  */
+import {
+  BALON,
+  HAP,
+  koseAlani,
+  koseEsle,
+  koseKutusu,
+  kutuOlcusu,
+  serbestKonumSinirla,
+  seritYerlesimi,
+  videoKalitesi,
+  type Boyut,
+  type Kose,
+  type KoseAlani,
+  type KoseBaglami,
+  type VideoKalitesi,
+} from "./kameraKutusu";
 
 export type Gorunum = "SPOTLIGHT" | "GRID" | "SIDEBAR" | "CORNER";
 export type VideoGorunumu = Extract<Gorunum, "SPOTLIGHT" | "GRID">;
@@ -24,7 +42,7 @@ export const KUCUK_EKRAN_PX = 1023;
  * Preply `rT` — görünüm kararı.
  *
  * `mobilKucuk` = küçük ekran VE telefon/tablet (Preply: `smallScreen &&
- * (mobile||tablet)`). Masaüstü tarayıcıda dar pencere yine SIDEBAR kalır.
+ * (mobile||tablet)`). Masaüstü tarayıcıda dar pencere yine seçilebilir kalır.
  * Salt görüntü modu (öğrenci mobil uygulamada) bizde yok.
  */
 export function gorunumSec(g: {
@@ -39,9 +57,9 @@ export function gorunumSec(g: {
   if (bolunmus) return "SPOTLIGHT";
   if (tekArac) {
     if (g.mobilKucuk) return "SPOTLIGHT";
-    // Tahta açılınca varsayılan Köşe (tahta geniş kalır); yalnız paylaşımda
-    // Kenar çubuğu. Kullanıcının son seçimi her ikisinde de önce gelir.
-    return g.sonArac ?? (g.aracAcik ? "CORNER" : "SIDEBAR");
+    // Varsayılan Köşe: tahta da paylaşım da sahneyi alır, videolar yüzen
+    // kutuda (Meet/LiveKit gibi). Kullanıcının son seçimi önce gelir.
+    return g.sonArac ?? "CORNER";
   }
   return g.sonVideo ?? "SPOTLIGHT";
 }
@@ -65,30 +83,9 @@ export const YAN_PANEL_EN_COK_ORAN = 0.5;
 /** Bölünmüş görünüm %50/50, sürükleme %35–65; küçük ekranda 65/35. */
 export const BOLUNMUS_EN_AZ = 35;
 export const BOLUNMUS_EN_COK = 65;
-/** Araç başlığı 48px; yüzen kutu başlığın 8px altından başlar. */
-export const ARAC_BASLIGI = 48;
-export const YUZEN_UST = ARAC_BASLIGI + 8;
-export const YUZEN_KENAR = 12;
-/**
- * Yalnız tahta açıkken Köşe kutusu SAĞ ÜSTTEN başlar: soldaki Excalidraw ☰
- * düğmesini örtmez; üst çubuğun ve sağ üstteki takip düğmesinin altında.
- */
-export const YUZEN_TAHTA_UST = YUZEN_UST + 64;
-/**
- * Telefonda (küçük ekran) tahta açıkken yüzen kutu SOL ALTTAN başlar: üstteki
- * Excalidraw araç çubuğu, sağdaki kilit/el sütunu ve sağ üstteki sayfa
- * denetimi açıkta kalır. Kutunun altı sahnenin altından bu kadar yukarıda:
- * Excalidraw telefon alt çubuğu (☰, stil, geri al; ~62px) ve onun üstündeki
- * "İçeriğe dön" hapı (alttan 80px + ~42px) örtülmez.
- */
-export const YUZEN_TELEFON_TAHTA_ALT = 132;
 /** Kenar çubuğunda videoları gizle/göster düğmesi (dikey tutamak). */
 export const DARALT_GENISLIK = 24;
 export const DARALT_YUKSEKLIK = 48;
-/** Yüzen kutu: tek karo 200×133, iki karo 200×100 (100×100 yan yana). */
-export const YUZEN_GENISLIK = 200;
-export const YUZEN_TEK_YUKSEKLIK = 133;
-export const YUZEN_CIFT_YUKSEKLIK = 100;
 /** Araçsız SPOTLIGHT: kendi karon 160×120 (telefon dikeyde 90×120), 16px içeride. */
 export const KENDI_KARO = { genislik: 160, yukseklik: 120 } as const;
 export const KENDI_KARO_DIKEY = { genislik: 90, yukseklik: 120 } as const;
@@ -100,6 +97,8 @@ export const YAN_PANEL_DOLGU = 8;
 
 export type Kutu = { x: number; y: number; w: number; h: number };
 export type Nokta = { x: number; y: number };
+/** Uygulama içi odak: bu araç tüm sahneyi alır (yalnız bakan kişide). */
+export type Odak = "tahta" | "paylasim";
 
 export interface YerlesimGirdisi {
   /** Sahnenin (video + araç + paylaşım alanı) ölçüsü. */
@@ -125,13 +124,30 @@ export interface YerlesimGirdisi {
   yanPanelOrani: number | null;
   /** Kullanıcının sürüklediği bölünmüş oran (paylaşım %) ya da varsayılan. */
   bolunmusOran: number | null;
-  /** Yüzen kutunun / araçsız kendi karonun başlangıçtan kayması. */
+  /** Araçsız SPOTLIGHT'ta kendi karonun başlangıçtan kayması. */
   surukleme: Nokta;
   /**
    * Kenar çubuğunda videolar gizli mi. Yalnız `SIDEBAR` + tahta + paylaşım
    * yokken uygulanır; diğer düzenlerde yok sayılır.
    */
   videolarGizli?: boolean;
+  /** Yüzen kutunun saklanan köşesi (cihaz türüne göre); `null` = bağlam varsayılanı. */
+  kose?: Kose | null;
+  /** Yüzen kutunun hazır boyutu (varsayılan orta). */
+  boyut?: Boyut;
+  /** Yüzen kutu küçültüldü mü (masaüstü hap, telefon balon). */
+  kucuk?: boolean;
+  /**
+   * Kendi görüntümü YALNIZ kendi ekranımda gizle; kamera yayını sürer. Karşı
+   * taraf yokken yok sayılır (kendi karon gösterilir).
+   */
+  kendiGizli?: boolean;
+  /** Masaüstünde sürüklenen yüzen kutunun MUTLAK sol üst noktası (sahneye göre). */
+  suruklenen?: Nokta | null;
+  /** `devicePixelRatio`; video kalitesi karo genişliği × dpr ile seçilir. */
+  dpr?: number;
+  /** Uygulama içi odak; açık olmayan araç için verilirse yok sayılır. */
+  odak?: Odak | null;
 }
 
 export interface Yerlesim {
@@ -144,9 +160,12 @@ export interface Yerlesim {
   karsiKaro: Kutu | null;
   benKaro: Kutu;
   yuzen: boolean;
-  /** Sürüklenebilir öğe: yüzen kutu ya da araçsız kendi karon. */
+  /** Sürüklenebilir öğe: yüzen kutu (masaüstü) ya da araçsız kendi karon. */
   suruklenebilir: "yuzen" | "benKaro" | null;
-  /** Sürükleme sınırı: kaymanın alabileceği en küçük/en büyük değer. */
+  /**
+   * YALNIZ araçsız kendi karon için kayma sınırı (`surukleme` ile). Yüzen
+   * kutu köşe + mutlak konumla çalışır: bkz. `serbestAlan`, `koseAlani`.
+   */
   suruklemeSiniri: { min: Nokta; max: Nokta } | null;
   /** Sürüklenebilir bölme: yön ve konumu, değer aralığı. */
   bolme:
@@ -177,7 +196,43 @@ export interface Yerlesim {
    * düzenlerde `null`.
    */
   daraltDugmesi: { kutu: Kutu; gizli: boolean } | null;
+  /**
+   * Karo ekranda görünüyor mu (sahne dışındaki 1×1 değil). YALNIZ yerel
+   * çizimi belirler: `benGorunur` false iken de kamera yayını sürer.
+   */
+  benGorunur: boolean;
+  /** Karşı taraf var ve karosu görünüyor; false iken karşı video durdurulabilir. */
+  karsiGorunur: boolean;
+  /** Karo genişliği × dpr'den istenecek kalite (gecikme/histerezis çağıranda). */
+  benKalite: VideoKalitesi;
+  karsiKalite: VideoKalitesi;
+  /** Küçültülmüş yüzen kutu: masaüstü hap, telefon balon; aynı köşeye yaslı. */
+  kucukHal: { tur: "hap" | "balon"; kutu: Kutu } | null;
+  /** Yüzen kutunun uygulanan (izinliye eşlenmiş) köşesi; yüzen değilse `null`. */
+  kose: Kose | null;
+  /** Yüzen kutunun köşe alanı ve izinli köşeler (bırakınca `enYakinKose`). */
+  koseAlani: KoseAlani | null;
+  /** Masaüstü serbest sürüklemenin sınırı (`serbestKonumSinirla`). */
+  serbestAlan: Kutu | null;
+  /** Telefonda kutu köşeler arasında kaydırılır (serbest sürükleme yok). */
+  kaydirilabilir: boolean;
+  /** Uygulanan odak (araç açık değilse `null`). */
+  odak: Odak | null;
 }
+
+type Turetilen =
+  | "benGorunur"
+  | "karsiGorunur"
+  | "benKalite"
+  | "karsiKalite"
+  | "kucukHal"
+  | "kose"
+  | "koseAlani"
+  | "serbestAlan"
+  | "kaydirilabilir"
+  | "odak";
+type Taslak = Omit<Yerlesim, Turetilen> &
+  Partial<Pick<Yerlesim, "kucukHal" | "kose" | "koseAlani" | "serbestAlan" | "kaydirilabilir">>;
 
 const sinirla = (d: number, a: number, b: number) => Math.min(b, Math.max(a, d));
 
@@ -207,31 +262,76 @@ function avatarlar(gorunum: Gorunum, aracVar: boolean): { ben: number; karsi: nu
 
 export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
   const B = SAHNE_BOSLUGU;
-  const grup: Kutu = {
-    x: B,
-    y: B,
-    w: Math.max(0, g.genislik - 2 * B),
-    h: Math.max(0, g.yukseklik - B),
-  };
+  const dpr = g.dpr ?? 1;
+  const odak: Odak | null =
+    g.odak === "tahta" && g.aracAcik
+      ? "tahta"
+      : g.odak === "paylasim" && g.paylasim
+        ? "paylasim"
+        : null;
+  // Odakta araç tüm sahneyi alır: 12px kenar boşlukları kalkar.
+  const grup: Kutu = odak
+    ? { x: 0, y: 0, w: Math.max(0, g.genislik), h: Math.max(0, g.yukseklik) }
+    : { x: B, y: B, w: Math.max(0, g.genislik - 2 * B), h: Math.max(0, g.yukseklik - B) };
   const aracVar = g.aracAcik || g.paylasim;
-  const bolunmus = g.paylasim && g.aracAcik;
+  const bolunmus = g.paylasim && g.aracAcik && !odak;
   const bolunmusDikey = bolunmus && g.gorunum !== "SIDEBAR" && g.pencereDikey;
   const av = avatarlar(g.gorunum, aracVar);
+  // Kendi görüntümü gizle yalnız karşı taraf varken uygulanır.
+  const kendiGizle = Boolean(g.kendiGizli) && g.karsiTarafVar;
+  // Gizlenen kaplar 0×0 YAPILMAZ (Zoom çizimi durdurabilir): 1×1 olarak
+  // sahnenin sağ kenarının dışında (kırpılır) tutulur.
+  const disari: Kutu = { x: g.genislik + 1, y: grup.y, w: 1, h: 1 };
+  const gorunurMu = (k: Kutu | null) => k !== null && k.w > 1 && k.h > 1 && k.x < g.genislik;
+
+  /** Tüm dallar buradan döner: görünürlük ve kalite son karolardan türetilir. */
+  const bitir = (t: Taslak): Yerlesim => ({
+    kucukHal: null,
+    kose: null,
+    koseAlani: null,
+    serbestAlan: null,
+    kaydirilabilir: false,
+    ...t,
+    benGorunur: gorunurMu(t.benKaro),
+    karsiGorunur: g.karsiTarafVar && gorunurMu(t.karsiKaro),
+    benKalite: videoKalitesi(t.benKaro.w, dpr),
+    karsiKalite: videoKalitesi(t.karsiKaro?.w ?? 0, dpr),
+    odak,
+  });
+  const temel = (p: { video: Kutu; karsiKaro: Kutu | null; benKaro: Kutu }): Taslak => ({
+    grup,
+    paylasim: null,
+    arac: null,
+    video: p.video,
+    karsiKaro: p.karsiKaro,
+    benKaro: p.benKaro,
+    yuzen: false,
+    suruklenebilir: null,
+    suruklemeSiniri: null,
+    bolme: null,
+    bolunmusDikey: false,
+    benAvatar: av.ben,
+    karsiAvatar: av.karsi,
+    daraltDugmesi: null,
+  });
 
   // ── Araçsız: SPOTLIGHT / GRID ──
   if (!aracVar) {
     if (g.gorunum === "GRID") {
       if (!g.karsiTarafVar) {
-        return temel({ grup, video: grup, karsiKaro: null, benKaro: grup });
+        return bitir(temel({ video: grup, karsiKaro: null, benKaro: grup }));
       }
+      if (kendiGizle) return bitir(temel({ video: grup, karsiKaro: grup, benKaro: disari }));
       const yarim = (grup.w - KARO_ARASI) / 2;
-      return temel({
-        grup,
-        video: grup,
-        benKaro: { x: grup.x, y: grup.y, w: yarim, h: grup.h },
-        karsiKaro: { x: grup.x + yarim + KARO_ARASI, y: grup.y, w: yarim, h: grup.h },
-      });
+      return bitir(
+        temel({
+          video: grup,
+          benKaro: { x: grup.x, y: grup.y, w: yarim, h: grup.h },
+          karsiKaro: { x: grup.x + yarim + KARO_ARASI, y: grup.y, w: yarim, h: grup.h },
+        }),
+      );
     }
+    if (kendiGizle) return bitir(temel({ video: grup, karsiKaro: grup, benKaro: disari }));
     const olcu = g.telefon && g.dikey ? KENDI_KARO_DIKEY : KENDI_KARO;
     const baslangic: Nokta = {
       x: grup.x + grup.w - KENDI_KARO_BOSLUK - olcu.genislik,
@@ -245,9 +345,8 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
       },
     };
     const kayma = kaymayiSinirla(g.surukleme, siniri);
-    return {
+    return bitir({
       ...temel({
-        grup,
         video: grup,
         karsiKaro: grup,
         benKaro: {
@@ -259,7 +358,21 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
       }),
       suruklenebilir: g.telefon ? null : "benKaro",
       suruklemeSiniri: g.telefon ? null : siniri,
-    };
+    });
+  }
+
+  // ── Telefon yatay + yalnız tahta: videolar sağda dar şeritte ──
+  if (g.telefon && !g.dikey && g.aracAcik && !g.paylasim && !odak) {
+    const tekKaro = kendiGizle || !g.karsiTarafVar;
+    const s = seritYerlesimi(grup, tekKaro ? 1 : 2);
+    return bitir({
+      ...temel({
+        video: s.serit,
+        benKaro: kendiGizle ? disari : s.karolar[0],
+        karsiKaro: !g.karsiTarafVar ? null : kendiGizle ? s.karolar[0] : s.karolar[1],
+      }),
+      arac: s.arac,
+    });
   }
 
   // ── Araçlı: paylaşım / araç / video yan paneli ──
@@ -267,9 +380,17 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
   let arac: Kutu | null = null;
   let video: Kutu;
   let bolme: Yerlesim["bolme"] = null;
-  const yuzen = g.gorunum !== "SIDEBAR";
+  // Odakta kamera her zaman yüzen kutuda.
+  const yuzen = odak !== null || g.gorunum !== "SIDEBAR";
 
-  if (bolunmus) {
+  if (odak === "tahta") {
+    arac = grup;
+    // Paylaşım kabı 0×0 yapılmaz (Zoom çizimi durdurabilir): sahne dışında 1×1.
+    paylasim = g.paylasim ? disari : null;
+  } else if (odak === "paylasim") {
+    paylasim = grup;
+    arac = g.aracAcik ? { ...grup, w: 0, h: 0 } : null;
+  } else if (bolunmus) {
     if (g.ogrenciTelefon) {
       paylasim = grup;
       arac = { ...grup, w: 0, h: 0 };
@@ -318,50 +439,80 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
   }
 
   if (yuzen) {
-    const h = g.karsiTarafVar ? YUZEN_CIFT_YUKSEKLIK : YUZEN_TEK_YUKSEKLIK;
-    // Ulaşılabilir alan her durumda aynı: sol üst (12, 56) … sağ alt.
-    const enSol = grup.x + YUZEN_KENAR;
-    const enUst = grup.y + YUZEN_UST;
-    const enSag = Math.max(enSol, grup.x + grup.w - YUZEN_KENAR - YUZEN_GENISLIK);
-    const enAlt = Math.max(enUst, grup.y + grup.h - YUZEN_KENAR - h);
-    // Yalnız tahta açıkken (Köşe) sağ üstten başlar (telefonda sol alttan);
-    // paylaşım ve bölünmüş görünümde sol üst kalır.
-    const sagUst = g.gorunum === "CORNER" && g.aracAcik && !g.paylasim;
-    // Telefonda tahta: sol alt, Excalidraw'ın alt çubuğunun üstü.
-    const telefonTahta = g.telefon && g.kucukEkran && g.aracAcik && !g.paylasim;
-    const baslangic: Nokta = telefonTahta
-      ? { x: enSol, y: Math.max(enUst, grup.y + grup.h - YUZEN_TELEFON_TAHTA_ALT - h) }
-      : sagUst
-        ? { x: enSag, y: Math.min(enAlt, grup.y + YUZEN_TAHTA_UST) }
-        : { x: enSol, y: enUst };
-    const siniri = {
-      min: { x: enSol - baslangic.x, y: enUst - baslangic.y },
-      max: { x: enSag - baslangic.x, y: enAlt - baslangic.y },
-    };
-    const kayma = kaymayiSinirla(g.surukleme, siniri);
-    video = { x: baslangic.x + kayma.x, y: baslangic.y + kayma.y, w: YUZEN_GENISLIK, h };
-    const yarim = YUZEN_GENISLIK / 2;
-    return {
+    // Bağlam: yalnız tahta görünüyorsa Excalidraw denetimleri köşeleri kısıtlar.
+    // Tahta odağında da aynı denetimler durur: "odak" bağlamı yalnız paylaşımda.
+    const yalnizTahta = odak === "tahta" || (!odak && g.aracAcik && !g.paylasim);
+    const baglam: KoseBaglami = yalnizTahta
+      ? g.telefon && g.dikey
+        ? "telefonTahtaDikey"
+        : "tahta"
+      : g.telefon
+        ? "telefonDiger"
+        : odak === "paylasim"
+          ? "odak"
+          : bolunmus
+            ? "bolunmus"
+            : "paylasim";
+    // Bölünmüşte kutu paylaşım panelinde durur: tahta yarısının denetimlerini
+    // (kullanıcı listesi, alt çubuk, stil paneli) örtmez. Serbest sürükleme
+    // yine tüm sahnede; bırakınca paylaşım panelinin köşesine döner.
+    const ka = koseAlani(baglam, bolunmus && paylasim ? paylasim : grup);
+    const kose = koseEsle(g.kose ?? ka.varsayilan, ka.izinli);
+    const ortak = {
       grup,
       paylasim,
       arac,
-      video,
-      benKaro: g.karsiTarafVar ? { x: video.x, y: video.y, w: yarim, h } : video,
-      karsiKaro: g.karsiTarafVar ? { x: video.x + yarim, y: video.y, w: yarim, h } : null,
       yuzen: true,
-      suruklenebilir: "yuzen",
-      suruklemeSiniri: siniri,
+      suruklemeSiniri: null,
       bolme,
       bolunmusDikey,
       benAvatar: av.ben,
       karsiAvatar: av.karsi,
       daraltDugmesi: null,
-    };
+      kose,
+      koseAlani: ka,
+      kaydirilabilir: g.telefon,
+    } satisfies Partial<Taslak>;
+
+    if (g.kucuk) {
+      // Küçültülmüş: videolar sahne dışında (durdurulabilir), yerinde hap/balon.
+      const halOlcu = g.telefon
+        ? { w: BALON, h: BALON }
+        : { w: HAP.genislik, h: HAP.yukseklik };
+      return bitir({
+        ...ortak,
+        video: disari,
+        benKaro: disari,
+        karsiKaro: g.karsiTarafVar ? disari : null,
+        suruklenebilir: null,
+        kucukHal: { tur: g.telefon ? "balon" : "hap", kutu: koseKutusu(kose, ka.alan, halOlcu) },
+      });
+    }
+
+    const iki = g.karsiTarafVar && !kendiGizle;
+    const olcu = kutuOlcusu(g.boyut ?? "orta", iki);
+    // Masaüstünde sürüklenirken sahnenin her yerine gider; bırakınca köşeye.
+    const konum =
+      !g.telefon && g.suruklenen
+        ? serbestKonumSinirla(g.suruklenen, grup, olcu)
+        : koseKutusu(kose, ka.alan, olcu);
+    video = { x: konum.x, y: konum.y, w: olcu.w, h: olcu.h };
+    const yarim = olcu.w / 2;
+    return bitir({
+      ...ortak,
+      video,
+      benKaro: kendiGizle ? disari : iki ? { x: video.x, y: video.y, w: yarim, h: olcu.h } : video,
+      karsiKaro: !g.karsiTarafVar
+        ? null
+        : kendiGizle
+          ? video
+          : { x: video.x + yarim, y: video.y, w: yarim, h: olcu.h },
+      suruklenebilir: g.telefon ? null : "yuzen",
+      serbestAlan: g.telefon ? null : grup,
+    });
   }
 
-  // Kenar çubuğu + tahta: videolar gizlenebilir. Oyuncu kapları 0×0 YAPILMAZ
-  // (Zoom çizimi durdurabilir): 1×1 olarak sahnenin sağ kenarının dışında
-  // (kırpılır) tutulur; araç tam genişlik alır.
+  // Kenar çubuğu + tahta: videolar gizlenebilir; araç tam genişlik alır.
   const gizlenebilir = g.gorunum === "SIDEBAR" && g.aracAcik && !g.paylasim;
   const daraltKutusu = (sagKenar: number): Kutu => ({
     x: sagKenar - DARALT_GENISLIK,
@@ -370,23 +521,12 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
     h: DARALT_YUKSEKLIK,
   });
   if (gizlenebilir && g.videolarGizli) {
-    const disari: Kutu = { x: g.genislik + 1, y: grup.y, w: 1, h: 1 };
-    return {
-      grup,
-      paylasim: null,
+    return bitir({
+      ...temel({ video: disari, benKaro: disari, karsiKaro: g.karsiTarafVar ? disari : null }),
       arac: grup,
-      video: disari,
-      benKaro: disari,
-      karsiKaro: g.karsiTarafVar ? disari : null,
-      yuzen: false,
-      suruklenebilir: null,
-      suruklemeSiniri: null,
-      bolme: null,
       bolunmusDikey,
-      benAvatar: av.ben,
-      karsiAvatar: av.karsi,
       daraltDugmesi: { kutu: daraltKutusu(grup.x + grup.w), gizli: true },
-    };
+    });
   }
 
   // SIDEBAR: karolar alt alta, tam genişlik 16:9, en çok %50 − 6px.
@@ -396,17 +536,16 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
   const kh = Math.min(Math.round((kw * 9) / 16), Math.floor(grup.h / 2 - KARO_ARASI / 2));
   const kx = video.x + YAN_PANEL_DOLGU;
   // Sıra: kendi karon üstte (yüzen kutudaki "kendi solda" sırasıyla aynı).
-  const benKaro: Kutu = { x: kx, y: video.y, w: kw, h: kh };
-  const karsiKaro: Kutu | null = g.karsiTarafVar
-    ? { x: kx, y: video.y + kh + KARO_ARASI, w: kw, h: kh }
-    : null;
-  return {
+  // Kendi görüntün gizliyse karşı karo en üste çıkar.
+  const ust: Kutu = { x: kx, y: video.y, w: kw, h: kh };
+  const alt: Kutu = { x: kx, y: video.y + kh + KARO_ARASI, w: kw, h: kh };
+  return bitir({
     grup,
     paylasim,
     arac,
     video,
-    benKaro,
-    karsiKaro,
+    benKaro: kendiGizle ? disari : ust,
+    karsiKaro: !g.karsiTarafVar ? null : kendiGizle ? ust : alt,
     yuzen: false,
     suruklenebilir: null,
     suruklemeSiniri: null,
@@ -416,26 +555,7 @@ export function yerlesimHesapla(g: YerlesimGirdisi): Yerlesim {
     karsiAvatar: av.karsi,
     daraltDugmesi:
       gizlenebilir && bolme ? { kutu: daraltKutusu(bolme.kutu.x), gizli: false } : null,
-  };
-
-  function temel(p: { grup: Kutu; video: Kutu; karsiKaro: Kutu | null; benKaro: Kutu }): Yerlesim {
-    return {
-      grup: p.grup,
-      paylasim: null,
-      arac: null,
-      video: p.video,
-      karsiKaro: p.karsiKaro,
-      benKaro: p.benKaro,
-      yuzen: false,
-      suruklenebilir: null,
-      suruklemeSiniri: null,
-      bolme: null,
-      bolunmusDikey: false,
-      benAvatar: av.ben,
-      karsiAvatar: av.karsi,
-      daraltDugmesi: null,
-    };
-  }
+  });
 }
 
 /** Kaymayı sınıra iter (pencere küçülünce kutu içeri itilir, Preply `aC`). */

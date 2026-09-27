@@ -11,6 +11,7 @@
  */
 import type { ComponentType } from "react";
 
+import type { VideoKalitesi } from "@/lib/kameraKutusu";
 import type { Yerlesim } from "@/lib/sinifDuzeni";
 
 import type { ArkaPlan } from "./arkaPlan";
@@ -143,7 +144,10 @@ export interface SesSecenekleri {
 }
 
 export interface MedyaKatmaniProps {
-  yerlesim: Pick<Yerlesim, "video" | "benKaro" | "karsiKaro" | "paylasim" | "yuzen">;
+  yerlesim: Pick<
+    Yerlesim,
+    "video" | "benKaro" | "karsiKaro" | "paylasim" | "yuzen" | "benGorunur"
+  >;
   /** Paylaşım başlığı (ve `AynaUyarisi`) genel sahnede; medya altında kalır. */
   paylasimBaslikPx: number;
   benId: KatilimciId | null;
@@ -153,6 +157,24 @@ export interface MedyaKatmaniProps {
   karsiVideo: boolean;
   aktifPaylasim: KatilimciId | null;
   benPaylasiyorum: boolean;
+  /**
+   * Kendi görüntüm yerelde çizilsin mi (gecikmeli; gizleme 1 sn sonra).
+   * YALNIZ yerel çizim: false iken de kamera yayını sürer.
+   */
+  benGorunur: boolean;
+  /**
+   * Karşı tarafın görüntüsü çizilsin mi (gecikmeli). false iken sürücü
+   * karşı videoyu durdurur (Zoom: çözer; Agora: aboneliği bırakır).
+   */
+  karsiGorunur: boolean;
+  /** Karşı video için istenen kalite (500 ms gecikmeli, histerezisli). */
+  karsiKalite: VideoKalitesi;
+  /**
+   * Karşı tarafın paylaşım oyuncusunu saran dönüşüm kabı (kararlı geri
+   * çağrı). Nötr katman yakınlaştırmayı bu öğeye CSS `transform` olarak
+   * uygular; oyuncu kabı taşınmaz, sürücü dönüşüme dokunmaz.
+   */
+  paylasimDonusumKabi: (el: HTMLDivElement | null) => void;
 }
 
 export interface VideoSurucusu {

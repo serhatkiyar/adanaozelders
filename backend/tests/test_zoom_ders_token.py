@@ -165,6 +165,9 @@ async def test_egitmen_host_token_icerigi(ayarli, ders_ver):
     assert claims["role_type"] == 1
     assert claims["version"] == 1
     assert claims["video_webrtc_mode"] == 1
+    # Kalıcı kimlik: yeniden katılımda değişen Zoom userId'si yerine.
+    assert claims["user_key"] == f"t{EGITMEN.id}"
+    assert len(claims["user_key"]) <= 36
     assert claims["audio_webrtc_mode"] == 1
     # Zoom: exp, iat'tan en az 1800 sn, en fazla 48 saat sonra.
     assert 1800 <= claims["exp"] - claims["iat"] <= 48 * 3600
