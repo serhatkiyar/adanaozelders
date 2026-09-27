@@ -26,7 +26,7 @@ sayfasının performans etkisi bu betiğin sonunda ölçülüp raporlanır.
 İdempotency: `cover_url IS NOT NULL` olan ürün atlanır — tekrar çalıştırma
 güvenlidir. Bu turda kapak eklenen `product_id`'ler ayrı bir günlüğe
 (``kitapsec_cover_log.jsonl``) yazılır; ``--undo-covers <run_id>`` bu
-günlükten okuyup `cover_url`'i NULL'a geri döndürür (eski dosya MinIO'dan
+günlükten okuyup `cover_url`'i NULL'a geri döndürür (eski dosya depodan
 silinmez — geri almanın amacı veritabanı referansını geri almaktır).
 
 Kullanım (backend dizininden):
@@ -57,39 +57,25 @@ for _stream in (sys.stdout, sys.stderr):
 from sqlalchemy import select, update  # noqa: E402
 
 from core import storage  # noqa: E402
-from core.config import settings  # noqa: E402
 from core.database import AsyncSessionLocal  # noqa: E402
 from models.store import Product  # noqa: E402
 
 
 async def _upload_via_shared_client(s3, file_bytes: bytes) -> str:
-    """`storage.upload_product_photo` ile AYNI dönüşüm (pad_to_square → WebP →
-    ``library-photos/`` public önek), ama HER görsel için yeni bir aioboto3
-    Session/istemci kurmak yerine ÇAĞRI SAHİBİNİN açtığı TEK istemciyi kullanır.
+    """``storage.upload_product_photo`` (pad_to_square → WebP → ``library-photos/``
+    public önek) — çağıranın açtığı TEK istemciyle (``storage.open_client``).
 
-    Neden gerekli: ilk denemede parti başı (200 görsel) ~220 saniye sürdü —
-    görsel başına ~1,1 saniye. Suçlu Pillow ya da ağ değil: `aioboto3.Session()`
-    her çağrıda botocore'un servis modellerini diskten yeniden yüklüyor. 4.681
-    görselde bu, tüm turu ~90 dakikaya çıkarıyordu. Tek istemciyle bu maliyet
-    turda BİR KEZ ödenir.
+    Neden paylaşılan istemci: ilk denemede parti başı (200 görsel) ~220 saniye
+    sürdü — görsel başına ~1,1 saniye. Suçlu Pillow ya da ağ değil:
+    `aioboto3.Session()` her çağrıda botocore'un servis modellerini diskten
+    yeniden yüklüyor. 4.681 görselde bu, tüm turu ~90 dakikaya çıkarıyordu.
+    Tek istemciyle bu maliyet turda BİR KEZ ödenir.
 
-    Dönüşüm ``pad_to_square``'dir (``optimize_photo`` DEĞİL): mağaza ızgarasında
-    her ürün görseli aynı beyaz zeminli kare tuvalde durmalı. Bu betiğin kendi
-    kopyası olması yalnız istemci paylaşımı içindir — dönüşüm kararı tek
-    kaynakta, ``core/storage``'da yaşar."""
-    data = await storage._optimize_in_thread(storage.pad_to_square, file_bytes)  # noqa: SLF001
-    key = f"library-photos/{uuid.uuid4().hex}.webp"
-    body_kwargs = {
-        "Bucket": settings.AWS_BUCKET_NAME,
-        "Key": key,
-        "Body": data,
-        "ContentType": "image/webp",
-    }
-    try:
-        await s3.put_object(**body_kwargs, ACL="public-read")
-    except Exception:  # noqa: BLE001 — bazı MinIO kurulumları ACL parametresini reddeder
-        await s3.put_object(**body_kwargs)
-    return storage.object_url(key)
+    Dönüşüm, anahtar, bucket seçimi (fail-closed) ve dönüş değeri (nesne
+    ANAHTARI; adres yanıt şemasında üretilir) ``core/storage``'dadır — betik
+    bucket adı, ACL ya da S3 çağrısı bilmez."""
+    return await storage.upload_product_photo(file_bytes, client=s3)
+
 
 DEFAULT_SQLITE_PATH = (
     pathlib.Path.home() / "Desktop" / "universite_hazirlik" / "books.sqlite3"
@@ -139,13 +125,12 @@ def _source_image_paths(sqlite_path: pathlib.Path, source_ids: list[int]) -> dic
 
 async def _minio_available() -> bool:
     """`ensure_bucket` fail-open'dır (bkz. import_kitapsec_books.py'deki not) —
-    burada gerçek erişilebilirlik için doğrudan `head_bucket` denenir."""
+    burada gerçek erişilebilirlik `storage.check_buckets` ile denenir."""
     try:
-        async with storage._s3_client() as s3:  # noqa: SLF001
-            await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
+        await storage.check_buckets()
         return True
     except Exception as exc:  # noqa: BLE001
-        print(f"HATA: MinIO'ya erişilemedi ({exc})")
+        print(f"HATA: depoya erişilemedi ({exc})")
         return False
 
 
@@ -154,9 +139,9 @@ async def main(args: argparse.Namespace) -> int:
     images_dir = pathlib.Path(args.images_dir)
 
     if not await _minio_available():
-        print("Görsel yüklemesi yapılamaz — MinIO kapalı. Çıkılıyor.")
+        print("Görsel yüklemesi yapılamaz — depo erişilemiyor. Çıkılıyor.")
         return 1
-    print("MinIO erişilebilir (head_bucket doğrulandı).")
+    print("Depo erişilebilir (public/private bucket doğrulandı).")
 
     import_log = _load_import_log()
     if not import_log:
@@ -220,7 +205,7 @@ async def main(args: argparse.Namespace) -> int:
         total_bytes = 0
         aborted = False
 
-        async with storage._s3_client() as s3:  # noqa: SLF001 — tur boyunca TEK istemci
+        async with storage.open_client() as s3:  # tur boyunca TEK istemci
             for bi in range(n_batches):
                 lo, hi = bi * batch_size, min((bi + 1) * batch_size, len(candidates))
                 batch = candidates[lo:hi]

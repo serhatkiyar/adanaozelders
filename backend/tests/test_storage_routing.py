@@ -222,20 +222,28 @@ async def test_sinifsiz_anahtar_tahminle_silinmez(s3_kayit):
 
 
 def test_bucket_adi_yalniz_storage_katmaninda_secilir():
-    """Uygulama kodunda (api/, services/, core/) `Bucket=` ya da
-    `AWS_BUCKET_NAME` kullanan tek dosya storage.py olmalı; başka bir yer
-    bucket seçerse fail-closed yönlendirme atlanmış olur."""
+    """Uygulama kodunda ve betiklerde (api/, services/, core/, scripts/,
+    main.py) `Bucket=`, `AWS_BUCKET_NAME` ya da iç istemci `_s3_client`
+    kullanan tek dosya storage.py olmalı; başka bir yer bucket seçerse
+    fail-closed yönlendirme atlanmış olur (R2 adım 6: betikler de dahil)."""
+    dosyalar = [BACKEND / "main.py"]
+    for kok in ("api", "services", "core", "scripts"):
+        dosyalar += list((BACKEND / kok).rglob("*.py"))
     ihlaller = []
-    for kok in ("api", "services", "core"):
-        for dosya in (BACKEND / kok).rglob("*.py"):
-            if dosya.name in ("storage.py", "config.py"):
-                continue
-            agac = ast.parse(dosya.read_text(encoding="utf-8"))
-            for dugum in ast.walk(agac):
-                if isinstance(dugum, ast.keyword) and dugum.arg == "Bucket":
-                    ihlaller.append(f"{dosya.relative_to(BACKEND)}:{dugum.value.lineno} Bucket=")
-                if isinstance(dugum, ast.Attribute) and dugum.attr == "AWS_BUCKET_NAME":
-                    ihlaller.append(f"{dosya.relative_to(BACKEND)}:{dugum.lineno} AWS_BUCKET_NAME")
+    for dosya in dosyalar:
+        if dosya.name in ("storage.py", "config.py"):
+            continue
+        agac = ast.parse(dosya.read_text(encoding="utf-8"))
+        for dugum in ast.walk(agac):
+            yer = f"{dosya.relative_to(BACKEND)}:{getattr(dugum, 'lineno', '?')}"
+            if isinstance(dugum, ast.keyword) and dugum.arg == "Bucket":
+                ihlaller.append(f"{yer} Bucket=")
+            if isinstance(dugum, ast.Attribute) and dugum.attr in ("AWS_BUCKET_NAME", "_s3_client"):
+                ihlaller.append(f"{yer} {dugum.attr}")
+            if isinstance(dugum, (ast.Import, ast.ImportFrom)):
+                adlar = [a.name for a in dugum.names] + [getattr(dugum, "module", "") or ""]
+                if any(a.split(".")[0] in ("boto3", "aioboto3", "botocore", "minio") for a in adlar):
+                    ihlaller.append(f"{yer} doğrudan S3 istemci importu")
     assert ihlaller == []
 
 
@@ -671,3 +679,34 @@ def test_public_adres_private_bucketi_gostermez(depo_modu, prefix):
     url = storage.resolve_url(f"{prefix}x.webp")
     assert depo_modu["S3_PRIVATE_BUCKET"] not in url
     assert "X-Amz-Signature" not in url
+
+
+# ── R2 adım 6: paylaşılan istemci ve bucket kontrolü ortak katmanda ─────────
+
+
+class _SayanS3(_SahteS3):
+    async def head_bucket(self, **kw):
+        self.kayit.append(("head", kw))
+
+
+async def test_paylasilan_istemci_yeni_istemci_acmaz(r2, monkeypatch):
+    acilan: list = []
+    monkeypatch.setattr(storage, "_s3_client", lambda **kw: acilan.append(1) or _SahteS3([]))
+    kayit: list = []
+    paylasilan = _SahteS3(kayit)
+    anahtarlar = [await storage.upload_product_photo(_png(), client=paylasilan) for _ in range(3)]
+    assert acilan == [], "paylaşılan istemci varken yeni istemci açıldı"
+    assert [k["Bucket"] for _, k in kayit] == ["adanaozelders-public"] * 3
+    assert all(a.startswith("library-photos/") for a in anahtarlar)
+    assert all("ACL" not in k for _, k in kayit)
+
+
+async def test_check_buckets_iki_bucketi_da_sorar(r2, monkeypatch):
+    kayit: list = []
+    monkeypatch.setattr(storage, "_s3_client", lambda **kw: _SayanS3(kayit))
+    await storage.check_buckets()
+    assert [k["Bucket"] for _, k in kayit] == ["adanaozelders-public", "adanaozelders-private"]
+
+
+def test_eski_gorunurluk_gecis_betigi_kaldirildi():
+    assert not (BACKEND / "scripts" / "migrate_storage_visibility.py").exists()

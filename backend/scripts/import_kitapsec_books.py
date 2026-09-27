@@ -51,7 +51,6 @@ for _stream in (sys.stdout, sys.stderr):
 from sqlalchemy import func, select  # noqa: E402
 
 from core import storage  # noqa: E402
-from core.config import settings  # noqa: E402
 from core.database import AsyncSessionLocal  # noqa: E402
 from models.admin import Admin  # noqa: E402
 from models.store import Product  # noqa: E402
@@ -182,13 +181,12 @@ def _row_isbn(row: dict) -> tuple[str | None, str]:
 async def _minio_available() -> bool:
     """``storage.ensure_bucket`` başlangıçta best-effort'tur ve HER ZAMAN
     (hata olsa bile) sessizce döner — burada gerçek bir erişilebilirlik
-    kontrolü gerekiyor, o yüzden bucket'a doğrudan `head_bucket` denenir."""
+    kontrolü gerekiyor, o yüzden `storage.check_buckets` ile iki bucket denenir."""
     try:
-        async with storage._s3_client() as s3:  # noqa: SLF001
-            await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
+        await storage.check_buckets()
         return True
     except Exception as exc:  # noqa: BLE001
-        print(f"  MinIO'ya erişilemedi ({exc}) — görsel adımı ATLANACAK.")
+        print(f"  Depoya erişilemedi ({exc}) — görsel adımı ATLANACAK.")
         return False
 
 

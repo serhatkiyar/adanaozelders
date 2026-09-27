@@ -48,7 +48,6 @@ ignore = [
 "scripts/scale/*.py" = ["T20"]
 # Depolama taşıma aracı da CLI: taşınacak/taşınan her nesneyi rapor eder
 # (dry-run çıktısı, uygulamadan önce gözden geçirilen şeyin ta kendisidir).
-"scripts/migrate_storage_visibility.py" = ["T20"]
 # İlçe backfill aracı da CLI: hangi eğitmene hangi ilçenin YAZILACAĞINI
 # uygulamadan önce satır satır basar. Prova çıktısı, gözden geçirilen şeyin ta
 # kendisidir — `location_text` serbest metninden ilçe çıkarımı elle

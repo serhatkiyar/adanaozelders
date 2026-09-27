@@ -432,9 +432,7 @@ async def _check_redis() -> bool:
 async def _check_storage() -> bool:
     try:
         # Public ve private bucket ayrı olabilir (R2); ikisi de erişilebilir olmalı.
-        async with storage._s3_client() as s3:
-            for bucket in dict.fromkeys((storage.public_bucket(), storage.private_bucket())):
-                await s3.head_bucket(Bucket=bucket)
+        await storage.check_buckets()
         return True
     except Exception:
         logger.warning("health: storage check failed", exc_info=True)

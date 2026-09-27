@@ -136,6 +136,28 @@ def public_read_policy(bucket: str) -> str:
     )
 
 
+def open_client():
+    """Toplu işler için PAYLAŞILAN istemci (``async with storage.open_client() as c``).
+
+    ``aioboto3.Session()`` her açılışta botocore servis modellerini diskten
+    yeniden yükler (ölçüldü: görsel başına ~1,1 sn). Binlerce yüklemede tek
+    istemci açılıp ``upload_product_photo(..., client=c)`` ile paylaşılır;
+    bucket seçimi yine :func:`bucket_for_key` ile bu modülde kalır.
+    """
+    return _s3_client()
+
+
+async def check_buckets() -> None:
+    """Public ve private bucket'a erişimi doğrular; erişilemezse hata fırlatır.
+
+    Sağlık kontrolü ve toplu betikler kullanır. ``ensure_bucket`` best-effort'tur
+    ve hatayı yutar; bu fonksiyon yutmaz.
+    """
+    async with _s3_client() as s3:
+        for bucket in dict.fromkeys((public_bucket(), private_bucket())):
+            await s3.head_bucket(Bucket=bucket)
+
+
 async def ensure_bucket() -> None:
     """Açılışta bucket'ları ve public bucket'ın anonim-okuma policy'sini garanti
     eder (best-effort).
@@ -591,7 +613,7 @@ def pad_to_square(file_bytes: bytes, size: int | None = None, quality: int = 82)
     return out_io.getvalue()
 
 
-async def _put_webp(data: bytes, *, prefix: str) -> str:
+async def _put_webp(data: bytes, *, prefix: str, client=None) -> str:
     """Optimize edilmiş WebP'yi doğru bucket'a koyar ve nesne ANAHTARINI döner.
 
     DB'ye anahtar yazılır; istemciye giden adresi yanıt şeması
@@ -601,12 +623,16 @@ async def _put_webp(data: bytes, *, prefix: str) -> str:
     önek yazmadan önce ``ValueError`` alır. ACL gönderilmez: MinIO obje
     ACL'lerini yok sayar, R2 ACL desteklemez; public erişim bucket (ve yerel
     MinIO'da önek whitelist'li policy) ile sağlanır.
+
+    ``client`` verilirse (bkz. :func:`open_client`) yeni istemci açılmaz.
     """
     key = _make_key(prefix, ".webp")
+    kwargs = {"Bucket": bucket_for_key(key), "Key": key, "Body": data, "ContentType": "image/webp"}
+    if client is not None:
+        await client.put_object(**kwargs)
+        return key
     async with _s3_client() as s3:
-        await s3.put_object(
-            Bucket=bucket_for_key(key), Key=key, Body=data, ContentType="image/webp"
-        )
+        await s3.put_object(**kwargs)
     return key
 
 
@@ -648,16 +674,18 @@ async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> st
     return await _put_webp(data, prefix="library-photos")
 
 
-async def upload_product_photo(file_bytes: bytes) -> str:
+async def upload_product_photo(file_bytes: bytes, *, client=None) -> str:
     """Mağaza ürün görseli: beyaz zeminli kare tuval (bkz. :func:`pad_to_square`).
 
     Önek bilerek ``library-photos`` olarak BIRAKILDI. Mevcut ürün görsellerinin
     tamamı zaten bu önekte duruyor ve önek ``PUBLIC_PREFIXES`` içinde anonim
     okumaya açık. Yeni bir önek açmak, bucket policy'nin elle yönetildiği gerçek
     S3 kurulumunda tüm ürün görsellerini sessizce 403'e düşürürdü.
+
+    Toplu betikler ``client`` ile tek istemciyi paylaşır (bkz. :func:`open_client`).
     """
     data = await _optimize_in_thread(pad_to_square, file_bytes)
-    return await _put_webp(data, prefix="library-photos")
+    return await _put_webp(data, prefix="library-photos", client=client)
 
 
 async def upload_store_hero_photo(file_bytes: bytes) -> str:

@@ -331,7 +331,7 @@ def test_upload_product_photo_kare_webp_uretir_ve_public_onege_yazar(monkeypatch
 
     yakalanan: dict[str, object] = {}
 
-    async def _sahte_put(data: bytes, *, prefix: str) -> str:
+    async def _sahte_put(data: bytes, *, prefix: str, client=None) -> str:
         yakalanan["data"] = data
         yakalanan["prefix"] = prefix
         return "https://ornek/x.webp"
@@ -366,7 +366,7 @@ _BETIK_SOZLESMESI = [
     (
         "backfill_kitapsec_covers.py",
         "_upload_via_shared_client",
-        "pad_to_square",
+        "upload_product_photo",
         "optimize_photo",
     ),
 ]
@@ -404,13 +404,14 @@ def test_toplu_ice_aktarma_betikleri_urun_pad_yolunu_kullanir(dosya, fonksiyon, 
 
 
 def test_backfill_paylasilan_istemci_optimizasyonu_KORUNDU():
-    """Pad'e geçerken performans hilesi kaybolmamalı.
+    """Performans hilesi korunur, ama depo erişimi ortak katmandan geçer.
 
     Ölçüldü: `aioboto3.Session()` her çağrıda botocore servis modellerini
     diskten yeniden yükler → görsel başına ~1,1 sn, 4.681 görselde ~90 dk.
-    Betik bu yüzden çağıranın açtığı TEK `s3` istemcisini parametre alır ve
-    `put_object`'i kendisi çağırır. `storage.upload_product_photo`'ya
-    geçilseydi (kolay yol) her görsel için yeni Session açılırdı.
+    Betik bu yüzden çağıranın açtığı TEK istemciyi (`storage.open_client`)
+    `storage.upload_product_photo(..., client=s3)`'e geçirir. Bucket adı, ACL
+    ve `put_object` betikte YOKTUR (R2 adım 6): bucket seçimi fail-closed
+    olarak yalnız `core/storage`'da yapılır.
     """
     yol = _BETIK_KOKU / "backfill_kitapsec_covers.py"
     agac = ast.parse(yol.read_text(encoding="utf-8"))
@@ -420,11 +421,13 @@ def test_backfill_paylasilan_istemci_optimizasyonu_KORUNDU():
         if isinstance(d, (ast.AsyncFunctionDef, ast.FunctionDef))
         and d.name == "_upload_via_shared_client"
     )
-    # İlk parametre paylaşılan istemci olmalı...
     assert [a.arg for a in dugum.args.args][:1] == ["s3"], "paylaşılan istemci parametresi kayıp"
-    adlar = _betik_fonksiyon_adlari("backfill_kitapsec_covers.py", "_upload_via_shared_client")
-    # ...ve put doğrudan onun üzerinden yapılmalı.
-    assert "put_object" in adlar, "put_object doğrudan çağrılmıyor"
-    assert "upload_product_photo" not in adlar, (
-        "görsel başına yeni aioboto3 Session açan yola dönülmüş"
+    cagri = next(
+        n for n in ast.walk(dugum)
+        if isinstance(n, ast.Call) and getattr(n.func, "attr", None) == "upload_product_photo"
     )
+    assert any(k.arg == "client" for k in cagri.keywords), "istemci paylaşılmıyor"
+    kaynak = yol.read_text(encoding="utf-8")
+    for yasak in ("put_object", "AWS_BUCKET_NAME", "public-read", "_s3_client"):
+        assert yasak not in kaynak, f"betikte doğrudan depo kullanımı: {yasak}"
+    assert "storage.open_client()" in kaynak
