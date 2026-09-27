@@ -377,3 +377,11 @@ def test_depolama_alanlari_publicasset_ya_da_privateasset():
                 ):
                     tipsiz.append(f"{m.__name__}.{ad}.{alan}")
     assert tipsiz == []
+
+
+def test_og_gorseli_anahtari_cdn_adresine_private_i_varsayilana_cevirir(r2):
+    """OG/Twitter görseli yanıt şeması dışında üretilir; kırılırsa hata vermez."""
+    from services.social_meta import DEFAULT_IMAGE, _abs
+
+    assert _abs("profiles/a.webp") == f"{CDN}/profiles/a.webp"
+    assert _abs("private/x.pdf").endswith(DEFAULT_IMAGE)
