@@ -502,7 +502,10 @@ def pad_to_square(file_bytes: bytes, size: int | None = None, quality: int = 82)
 
 
 async def _put_webp(data: bytes, *, prefix: str) -> str:
-    """Optimize edilmiş WebP'yi doğru bucket'a koyar ve kalıcı URL döner.
+    """Optimize edilmiş WebP'yi doğru bucket'a koyar ve nesne ANAHTARINI döner.
+
+    DB'ye anahtar yazılır; istemciye giden adresi yanıt şeması
+    (``core.storage_types``) serileştirirken üretir.
 
     Bucket, anahtarın önekinden :func:`bucket_for_key` ile seçilir; sınıfsız
     önek yazmadan önce ``ValueError`` alır. ACL gönderilmez: MinIO obje
@@ -514,7 +517,7 @@ async def _put_webp(data: bytes, *, prefix: str) -> str:
         await s3.put_object(
             Bucket=bucket_for_key(key), Key=key, Body=data, ContentType="image/webp"
         )
-    return object_url(key)
+    return key
 
 
 async def _optimize_in_thread(fn, *args, **kwargs) -> bytes:
@@ -534,8 +537,8 @@ async def upload_pre_application_photo(file_bytes: bytes) -> str:
     ``upload_avatar`` ile aynı işi yapar ama ``profiles/`` yerine
     ``private/tutor-pre-applications/`` altına yazar. Neden: bu uç ANONİMDİR.
     Public önek'e yazan bir anonim uç, siteyi herkese açık bedava görsel
-    barındırmaya çevirirdi. Fotoğrafı yalnız panel görür; yanıttaki adresi
-    ``PresignPrivateUrls`` katmanı imzalar.
+    barındırmaya çevirirdi. Fotoğrafı yalnız panel görür; yanıttaki
+    ``PrivateAsset`` alanı imzalı adrese çevirir.
 
     Pillow dosyayı gerçekten çözer: uzantı whitelist'i (``is_allowed_resource``)
     adı kontrol eder, içeriği DEĞİL. Çözülemeyen dosya burada patlar ve çağıran
@@ -547,7 +550,7 @@ async def upload_pre_application_photo(file_bytes: bytes) -> str:
 
 async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> str:
     """Kütüphane görseli yükler. ``square=True`` → logo (512×512 kare crop);
-    aksi halde banner/galeri (en-boy korunur, max 1600px). Public URL döner."""
+    aksi halde banner/galeri (en-boy korunur, max 1600px). Public anahtar döner."""
     if square:
         data = await _optimize_in_thread(optimize_image, file_bytes, size=(512, 512))
     else:
@@ -631,7 +634,7 @@ async def upload_courier_photo(file_bytes: bytes) -> str:
 
 
 async def upload_avatar(file_bytes: bytes) -> str:
-    """Profil fotoğrafını optimize edip public bucket'a yükler, URL döner.
+    """Profil fotoğrafını optimize edip public bucket'a yükler, anahtar döner.
 
     Önek ``profiles/`` (27 Eyl 2026'ya kadar ``avatars/``); public whitelist'te.
     """
@@ -667,13 +670,13 @@ async def upload_file(
     prefix: str = "lesson-resources",
 ) -> str:
     """Genel dosyayı (ders materyali, belge, cevap anahtarı, dijital ürün…)
-    yükler ve kalıcı URL döner.
+    yükler ve nesne anahtarını döner.
 
     Avatar'dan farkı: görsel optimizasyonu YAPMAZ (PDF/doc dahil her türü olduğu
     gibi saklar). Anahtar ``private/<prefix>/<uuid><ext>`` biçimindedir:
-    **bu fonksiyonun ürettiği hiçbir dosya anonim okunamaz.** Kullanıcıya
-    gösterilmeden önce :func:`presign` ile imzalanmalıdır — çağıran uç, imzayı
-    koymadan önce sahiplik/rol kontrolünü yapan taraftır.
+    **bu fonksiyonun ürettiği hiçbir dosya anonim okunamaz.** Yanıtta
+    ``PrivateAsset`` alanı imzalı adrese çevirir — alanı yanıta koymadan önce
+    sahiplik/rol kontrolünü yapan taraf çağıran uçtur.
     """
     ext = resource_ext(original_name)
     key = _make_key(f"{PRIVATE_PREFIX}{prefix.strip('/')}", ext)
@@ -683,7 +686,7 @@ async def upload_file(
 
     async with _s3_client() as s3:
         await s3.put_object(**body_kwargs)
-    return object_url(key)
+    return key
 
 
 async def delete_file(url: str) -> None:

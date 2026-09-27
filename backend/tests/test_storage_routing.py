@@ -173,27 +173,29 @@ YUKLEYICILER = [
 
 @pytest.mark.parametrize(("fn", "kw", "onek", "bucket"), YUKLEYICILER)
 async def test_her_gorsel_yukleyici_dogru_buckete_ve_onege_yazar(s3_kayit, fn, kw, onek, bucket):
-    url = await getattr(storage, fn)(_png(), **kw)
+    key = await getattr(storage, fn)(_png(), **kw)
     [(islem, put)] = s3_kayit
     assert islem == "put"
     assert put["Bucket"] == bucket
     assert put["Key"].startswith(onek)
+    assert key == put["Key"], "DB'ye tam adres değil anahtar yazılır"
     assert "ACL" not in put, "ACL gönderilmez (R2 desteklemez, MinIO yok sayar)"
     if bucket == "adanaozelders-private":
-        assert "cdn." not in url
+        assert "cdn." not in storage.resolve_url(key)
     else:
-        assert url.startswith(CDN + "/")
+        assert storage.resolve_url(key).startswith(CDN + "/")
 
 
 async def test_upload_file_her_zaman_private_buckete(s3_kayit):
-    url = await storage.upload_file(
+    key = await storage.upload_file(
         b"%PDF", original_name="karne.pdf", content_type="application/pdf", prefix="exam-results"
     )
     [(_, put)] = s3_kayit
     assert put["Bucket"] == "adanaozelders-private"
     assert put["Key"].startswith("private/exam-results/")
+    assert key == put["Key"]
     assert "ACL" not in put
-    assert "cdn." not in url
+    assert "cdn." not in storage.resolve_url(key)
 
 
 async def test_sinifsiz_onekle_yazma_yapilmaz(s3_kayit):

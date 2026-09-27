@@ -98,14 +98,14 @@ async def test_bucket_koku_anonim_listelenemez(bucket_ready):
 
 async def test_yuklenen_hassas_dosya_private_onege_gider(bucket_ready):
     """Yükleme yolunun kendisi doğru sınıfa yazıyor mu (uçtan uca)."""
-    url = await storage.upload_file(
+    key = await storage.upload_file(
         b"%PDF-1.4 sahte", original_name="karne.pdf", content_type="application/pdf"
     )
-    key = storage.key_from_url(url)
     try:
         assert storage.is_private_key(key)
         async with httpx.AsyncClient() as c:
-            assert (await c.get(url)).status_code == 403
+            assert (await c.get(storage.object_url(key))).status_code == 403
+            assert (await c.get(storage.resolve_url(key))).status_code == 200
     finally:
         await _delete(key)
 
@@ -117,11 +117,10 @@ async def test_avatar_public_onege_gider(bucket_ready):
 
     buf = io.BytesIO()
     Image.new("RGB", (10, 10), "red").save(buf, format="PNG")
-    url = await storage.upload_avatar(buf.getvalue())
-    key = storage.key_from_url(url)
+    key = await storage.upload_avatar(buf.getvalue())
     try:
         assert key.startswith("profiles/")
         async with httpx.AsyncClient() as c:
-            assert (await c.get(url)).status_code == 200
+            assert (await c.get(storage.resolve_url(key))).status_code == 200
     finally:
         await _delete(key)
