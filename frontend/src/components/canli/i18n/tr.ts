@@ -443,7 +443,6 @@ export const tr = {
       },
       /** Öğrencinin öğretmen çizimini değiştirme / PDF açma isteği. */
       izin: {
-        ogrenci: "Öğrenci",
         degisiklikIstegi: "{{ad}} çiziminde {{n}} öğeyi silmek/değiştirmek istiyor",
         pdfIstegi: "{{ad}} \"{{dosya}}\" PDF'ini açmak istiyor",
         izinVer: "İzin ver",

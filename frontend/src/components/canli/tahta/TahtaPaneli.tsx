@@ -115,6 +115,8 @@ import { Icon, type IconName } from "@/components/AppIcon";
 import { Modal } from "@/components/ui/Modal";
 import { PlainButton } from "@/components/ui/PlainButton";
 import { pdfAc, type AcikPdf } from "@/lib/pdfSayfa";
+import { rolEtiketi } from "@/lib/roles";
+import { ROLE_IDS } from "@/types";
 import {
   anlamliFark,
   damgala,
@@ -2132,7 +2134,7 @@ export default function TahtaPaneli({ kanal, dersId, ogretmen, karsiAd }: Props)
       {ogretmen && (
         <IzinIstegiPenceresi
           istek={siradakiIstek}
-          ad={karsiAd || t("tahta.izin.ogrenci")}
+          ad={karsiAd || rolEtiketi(ROLE_IDS.CLIENT)}
           onDegisiklik={degisiklikYaniti}
           onPdf={pdfYaniti}
         />
