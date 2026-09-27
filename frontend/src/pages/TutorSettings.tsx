@@ -24,6 +24,9 @@ import {
 import { getErrorMessage } from "@/lib/errors";
 import { parseMoney } from "@/lib/money";
 import { DersSecici } from "@/components/tutor/DersSecici";
+import { MevcutVideoKarti, VideoYukleme } from "@/components/tutor/VideoYukleme";
+import { SegmentedControl } from "@/components/SegmentedControl";
+import { Modal } from "@/components/ui/Modal";
 import { useLevelScales, useSubjects } from "@/hooks/useSubjects";
 import type { Ders } from "@/api/subjects";
 import { WEEKDAYS_LONG, hhmmToMin, minToHHMM } from "@/lib/availability";
@@ -720,38 +723,91 @@ const VIDEO_YAPMA = [
   "Videoda senden başka kimse olmasın",
 ];
 
+type VideoKaynagi = "link" | "yukle";
+const VIDEO_KAYNAKLARI: { value: VideoKaynagi; label: string }[] = [
+  { value: "link", label: "YouTube bağlantısı" },
+  { value: "yukle", label: "Video yükle" },
+];
+
 function VideoBolumu({ tutor }: { tutor: TutorOut }) {
   const uid = useId();
   const { kaydet, kaydediliyor } = useBolumKaydet();
   const acik = duzenlenebilir(tutor);
   const [url, setUrl] = useState(tutor.intro_video_url ?? "");
+  // Yüklenmiş video yayındaysa yükleme sekmesi açılır; aksi halde bağlantı.
+  const [kaynak, setKaynak] = useState<VideoKaynagi>(tutor.intro_video ? "yukle" : "link");
+  const [degistirOnayi, setDegistirOnayi] = useState(false);
 
+  const linkKaydet = () => kaydet({ intro_video_url: url.trim() || null });
   const gonder = (e: FormEvent) => {
     e.preventDefault();
-    kaydet({ intro_video_url: url.trim() || null });
+    // Tek kaynak kuralı: bağlantı kaydedilince yüklenmiş aktif video kalkar —
+    // sunucu bunu sessizce yapar, o yüzden burada açıkça sorulur.
+    if (url.trim() && tutor.intro_video) {
+      setDegistirOnayi(true);
+      return;
+    }
+    linkKaydet();
   };
 
   return (
     <BolumKabugu
       baslik="Tanıtım videosu"
-      aciklama="Kısa bir video öğrencilerin seni tanımasını kolaylaştırır; profilinin en üstünde oynatılır."
+      aciklama="Kısa bir video öğrencilerin seni tanımasını kolaylaştırır; profilinin en üstünde oynatılır. YouTube bağlantısı ekleyebilir ya da videoyu doğrudan yükleyebilirsin."
     >
-      <form onSubmit={gonder} className="space-y-6">
-        <div>
-          <label htmlFor={`${uid}-video`} className={labelCls}>Video bağlantısı</label>
-          <input
-            id={`${uid}-video`}
-            type="url"
-            disabled={!acik}
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className={inputCls}
-            placeholder="https://www.youtube.com/watch?v=…"
-          />
-          <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>YouTube veya Vimeo bağlantısı yapıştır.</p>
+      <div className="space-y-6">
+        <MevcutVideoKarti tutor={tutor} acik={acik} />
+
+        <div className="max-w-md">
+          <SegmentedControl options={VIDEO_KAYNAKLARI} value={kaynak} onChange={setKaynak} />
         </div>
-        <KaydetDugmesi tutor={tutor} kaydediliyor={kaydediliyor} />
-      </form>
+
+        {kaynak === "link" ? (
+          <form onSubmit={gonder} className="space-y-6">
+            <div>
+              <label htmlFor={`${uid}-video`} className={labelCls}>Video bağlantısı</label>
+              <input
+                id={`${uid}-video`}
+                type="url"
+                disabled={!acik}
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                className={inputCls}
+                placeholder="https://www.youtube.com/watch?v=…"
+              />
+              <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
+                YouTube bağlantısı yapıştır (Vimeo bağlantıları da çalışır). Boş bırakıp kaydedersen bağlantı kaldırılır.
+              </p>
+            </div>
+            <KaydetDugmesi tutor={tutor} kaydediliyor={kaydediliyor} />
+          </form>
+        ) : (
+          <VideoYukleme tutor={tutor} acik={acik} />
+        )}
+      </div>
+
+      <Modal
+        open={degistirOnayi}
+        onClose={() => setDegistirOnayi(false)}
+        title="Yüklediğin video kaldırılacak"
+        description="Bağlantı kaydedilince profilinde yüklediğin video yerine bu bağlantı oynatılır. Devam edilsin mi?"
+      >
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => setDegistirOnayi(false)}>
+            Vazgeç
+          </button>
+          <button
+            type="button"
+            className={DUGME_SATIR_BIRINCIL}
+            onClick={() => {
+              setDegistirOnayi(false);
+              linkKaydet();
+            }}
+          >
+            Bağlantıyı kaydet
+          </button>
+        </div>
+      </Modal>
 
       <div className="mt-10 grid gap-6 sm:grid-cols-2">
         <div>

@@ -33,7 +33,7 @@ import { absoluteUrl } from "@/lib/seo";
 import { ROUTES, ilanYolu, parseTutorId } from "@/lib/routes";
 import type { IlanSayfasiVerisi } from "@/api/seo";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
-import { videoEmbedUrl } from "@/lib/video";
+import { TanitimVideosu, tanitimVideosuVar } from "@/components/egitmen/TanitimVideosu";
 import { TeachingMode } from "@/types";
 
 const MODE_LABEL: Partial<Record<TeachingMode, string>> = {
@@ -96,7 +96,7 @@ export default function PublicTutorProfile({
   }
 
   const rate = parseMoney(tutor.hourly_rate);
-  const embedUrl = videoEmbedUrl(tutor.intro_video_url);
+  const videoVar = tanitimVideosuVar(tutor.intro_video, tutor.intro_video_url);
   const hasRatings = tutor.rating_count > 0;
   const modeLabel = tutor.teaching_mode ? MODE_LABEL[tutor.teaching_mode] : null;
 
@@ -352,17 +352,13 @@ export default function PublicTutorProfile({
                 önce). Kendi max-w'si YOK: konteynerin kendisi (max-w-[64rem])
                 zaten dar, video sütunu tam doldurur. Otomatik+sessiz oynar
                 (bkz. `videoEmbedUrl`). */}
-            {embedUrl && (
+            {videoVar && (
               <section>
-                <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-sm">
-                  <iframe
-                    src={embedUrl}
-                    title={`${tutor.display_name} tanıtım videosu`}
-                    className="h-full w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
+                <TanitimVideosu
+                  video={tutor.intro_video}
+                  linkUrl={tutor.intro_video_url}
+                  ad={tutor.display_name}
+                />
               </section>
             )}
 

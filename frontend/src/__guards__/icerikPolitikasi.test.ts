@@ -28,9 +28,11 @@ const basliklar = oku("nginx-security-headers.conf");
 
 /** Varsayılan CSP dizesinin SHA-256'sı. 26 Eyl 2026: script-src'ye Google
  *  Analytics, Meta Pixel ve Microsoft Clarity eklendi (kurucu kararı); değişiklik bilinçli olsun
- *  diye özet sabitlenir. */
+ *  diye özet sabitlenir. 28 Eyl 2026: yerel depo (`localhost:9000`) `media-src`
+ *  ve `connect-src`'ye eklendi — yüklenen tanıtım videosu MinIO'dan oynar ve
+ *  tarayıcı imzalı PUT ile MinIO'ya yükler (üretimde `https:` zaten kapsıyor). */
 const ESKI_DIZE_SHA256 =
-  "1ba1504a0a514d3d8344b8c5bbc733b2007d925dc4caea8d87de9e0187e0cb2b";
+  "da5bcd1fe3e1cd29018700430426d5092a58f319b7fce676f66003504c6849c7";
 
 const VARSAYILAN_SCRIPT_SRC =
   "script-src 'self' https://www.googletagmanager.com https://connect.facebook.net " +

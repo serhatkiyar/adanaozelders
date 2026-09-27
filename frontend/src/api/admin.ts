@@ -277,6 +277,9 @@ export async function verifyEducation(
   return data;
 }
 
+// ── Eğitmen tanıtım videosu onay kuyruğu ──
+export { fetchPendingTutorVideos, reviewTutorVideo } from "@/api/tutorVideo";
+
 // ── Eğitmen ön başvuruları (lead) ──
 
 export type PreApplicationStatus =

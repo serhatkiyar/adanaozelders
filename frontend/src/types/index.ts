@@ -631,6 +631,70 @@ export interface TutorProfileUpdate {
   availability?: Availability[] | null;
 }
 
+/* ── Tanıtım videosu: doğrudan yükleme (bağlantı `intro_video_url`da kalır) ── */
+
+/** Public profil yanıtındaki işlenmiş video (yalnız ACTIVE; `intro_video_url` ile aynı anda dolu olmaz). */
+export interface IntroVideoPublic {
+  kind: "upload";
+  mp4_url: string;
+  poster_url?: string | null;
+  width?: number | null;
+  height?: number | null;
+  duration_seconds?: number | null;
+}
+
+export type TutorIntroVideoStatus =
+  | "PENDING_UPLOAD"
+  | "UPLOADED"
+  | "PROCESSING"
+  | "PENDING_REVIEW"
+  | "ACTIVE"
+  | "REJECTED"
+  | "FAILED"
+  | "REPLACED"
+  | "EXPIRED";
+
+/** Eğitmenin kendi görünümü: yolda/aktif/başarısız kaydın durumu. */
+export interface TutorIntroVideo {
+  id: number;
+  status: TutorIntroVideoStatus;
+  mp4_url?: string | null;
+  poster_url?: string | null;
+  width?: number | null;
+  height?: number | null;
+  duration_seconds?: number | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  review_note?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** `GET /tutors/me/intro-video` */
+export interface TutorIntroVideoState {
+  active: TutorIntroVideo | null;
+  pending: TutorIntroVideo | null;
+  link_url: string | null;
+  uploads_enabled: boolean;
+  max_bytes: number;
+  max_seconds: number;
+  require_review: boolean;
+}
+
+export interface IntroVideoUploadInit {
+  video_id: number;
+  upload_url: string;
+  method: "PUT";
+  /** İmzalı istekte BİREBİR gönderilecek başlıklar (Content-Type imzalıdır). */
+  headers: Record<string, string>;
+  expires_at: string;
+}
+
+export interface AdminTutorIntroVideo extends TutorIntroVideo {
+  tutor_id: number;
+  tutor_name?: string | null;
+}
+
 export interface TutorOut extends UserOut {
   status: TutorStatus;
   slug: string; // backend computed: isim-{id} (soyad yok, ÜK-9)
@@ -640,6 +704,8 @@ export interface TutorOut extends UserOut {
   bio?: string | null;
   lesson_info?: string | null;
   intro_video_url?: string | null;
+  /** Siteye yüklenen (ACTIVE) tanıtım videosu. */
+  intro_video?: IntroVideoPublic | null;
   first_lesson_free?: boolean;
   hourly_rate?: string | null; // Decimal -> string
   teaching_mode?: TeachingMode | null;
@@ -668,6 +734,8 @@ export interface TutorSearchOut {
   bio?: string | null;
   lesson_info?: string | null; // "Ders Hakkında" — yalnız detay yanıtında dolu
   intro_video_url?: string | null; // Tanıtım videosu — yalnız detay yanıtında dolu
+  /** Siteye yüklenen video — yalnız detay yanıtında; bağlantı ile aynı anda dolu olmaz. */
+  intro_video?: IntroVideoPublic | null;
   first_lesson_free?: boolean; // İlk ders ücretsiz mi (kart/profil rozeti)
   hourly_rate?: string | null; // Decimal -> string
   teaching_mode?: TeachingMode | null;

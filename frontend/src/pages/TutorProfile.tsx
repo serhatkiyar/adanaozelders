@@ -35,7 +35,7 @@ import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
-import { videoEmbedUrl } from "@/lib/video";
+import { TanitimVideosu, tanitimVideosuVar } from "@/components/egitmen/TanitimVideosu";
 import { useNavSearch } from "@/hooks/useNavSearch";
 import { useBekleyenNiyet } from "@/hooks/useBekleyenNiyet";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
@@ -141,7 +141,7 @@ export default function TutorProfile({
   );
   const canRequestFreeLesson =
     tutor.first_lesson_free !== false && !isOwnerTutor && !hadLessonWithTutor;
-  const embedUrl = videoEmbedUrl(tutor.intro_video_url);
+  const videoVar = tanitimVideosuVar(tutor.intro_video, tutor.intro_video_url);
   const modeLabel = tutor.teaching_mode === TeachingMode.ONLINE
     ? "Uzaktan" 
     : tutor.teaching_mode === TeachingMode.IN_PERSON 
@@ -362,17 +362,13 @@ export default function TutorProfile({
                 önce). Kendi max-w'si YOK: konteynerin kendisi (max-w-[64rem])
                 zaten dar, video sütunu tam doldurur. Otomatik+sessiz oynar
                 (bkz. `videoEmbedUrl`). */}
-            {embedUrl && (
+            {videoVar && (
               <section>
-                <div className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-sm">
-                  <iframe
-                    src={embedUrl}
-                    title={`${tutor.display_name} tanıtım videosu`}
-                    className="h-full w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
+                <TanitimVideosu
+                  video={tutor.intro_video}
+                  linkUrl={tutor.intro_video_url}
+                  ad={tutor.display_name}
+                />
               </section>
             )}
 

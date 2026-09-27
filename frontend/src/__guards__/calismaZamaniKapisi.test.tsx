@@ -547,6 +547,10 @@ const KAPI_KAPSAMI = [
   "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx",
   // İnceleme penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
   "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx",
+  // Video Onayı: propsuz mount olur; kontroller satır "İncele" ve pencerede (kapalı) doğar.
+  "src/panel/pages/egitmenler/EgitmenVideoOnayi.tsx",
+  // İnceleme penceresi: kapalıyken gövde mount edilmez (pencere kabuğu).
+  "src/panel/pages/egitmenler/VideoOnayPenceresi.tsx",
   // Öne Çıkarmalar: propsuz mount olur; durum filtresi ("Durum filtresi") ADLI kontrolleriyle gelir.
   "src/panel/pages/egitmenler/EgitmenOneCikarmalar.tsx",
   // Ayrıntı/iptal pencereleri: kapalıyken gövde mount edilmez (pencere kabuğu).
@@ -853,6 +857,8 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/panel/pages/dagitim/AracPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx": "pencere-kabugu",
   "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/VideoOnayPenceresi.tsx": "pencere-kabugu",
+  "src/panel/pages/egitmenler/EgitmenVideoOnayi.tsx": "kosullu",
   "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/finans/OdemePenceresi.tsx": "pencere-kabugu",
   "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx": "kosullu",

@@ -428,6 +428,8 @@ export const OLCUM_TABANI = [
   "src/panel/pages/egitmenler/EgitmenIlanPencereleri.tsx",
   "src/panel/pages/egitmenler/EgitmenDiplomaDogrulama.tsx",
   "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx",
+  "src/panel/pages/egitmenler/EgitmenVideoOnayi.tsx",
+  "src/panel/pages/egitmenler/VideoOnayPenceresi.tsx",
   "src/panel/pages/egitmenler/EgitmenOneCikarmalar.tsx",
   "src/panel/pages/egitmenler/OneCikarmaPenceresi.tsx",
   // Hak edişlerin ödeme çekmecesi. Ayrı dosya olma gerekçesi

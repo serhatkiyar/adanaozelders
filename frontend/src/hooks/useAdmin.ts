@@ -16,6 +16,8 @@ import {
   resolveDisputeAdminBooking,
   fetchPendingEducations,
   verifyEducation,
+  fetchPendingTutorVideos,
+  reviewTutorVideo,
   fetchAdminPromotions,
   cancelAdminPromotion,
   fetchAdminTutorPreApplications,
@@ -279,6 +281,29 @@ export function useVerifyEducation() {
       verifyEducation(id, action, note),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "educations", "pending"] });
+      qc.invalidateQueries({ queryKey: ["admin", "tutors"] });
+    },
+  });
+}
+
+// ── Eğitmen tanıtım videosu onay kuyruğu (diploma deseni) ──
+
+export function usePendingTutorVideos(enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "tutor-videos", "pending"],
+    queryFn: fetchPendingTutorVideos,
+    enabled,
+    refetchInterval: enabled ? 30_000 : false,
+  });
+}
+
+export function useReviewTutorVideo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action, note }: { id: number; action: "approve" | "reject"; note?: string }) =>
+      reviewTutorVideo(id, action, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "tutor-videos", "pending"] });
       qc.invalidateQueries({ queryKey: ["admin", "tutors"] });
     },
   });
