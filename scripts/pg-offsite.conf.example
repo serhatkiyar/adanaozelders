@@ -1,0 +1,17 @@
+# scripts/pg-offsite-backup.sh yapılandırması — SIR İÇERMEZ.
+# Sunucuda: /etc/adana-yedek/pg-offsite.conf (root, 644 olabilir; sır yok).
+# R2 yazma kimliği ayrı dosyada: /root/r2-yedek.env (600).
+
+# İki alıcının TAM parmak izi (40 hane, büyük harf, boşluksuz). Kısa ID kabul edilmez.
+# Private key'ler VPS'te BULUNMAZ; /etc/adana-yedek/gnupg yalnız public key içerir.
+PG_ALICI_1=BURAYA40HANELIPARMAKIZI0000000000000000
+PG_ALICI_2=BURAYA40HANELIPARMAKIZI0000000000000000
+
+# İsteğe bağlı (varsayılanlar):
+# PG_YEDEK_DIZIN=/opt/adanaozelders/backups
+# PG_GNUPGHOME=/etc/adana-yedek/gnupg
+# PG_POSTGRES_CONTAINER=adana-ozel-ders-prod-postgres-1
+# PG_MAX_YAS_DK=180      # dump en fazla bu kadar dakika eski olabilir
+# PG_MIN_BOYUT=102400    # bayt; bundan küçük dump reddedilir
+# PG_MIN_YAS_SN=180      # dump en az bu kadar saniyedir değişmemiş olmalı
+# PG_STABIL_BEKLE=15     # boyut/mtime sabitliği için bekleme (saniye)
