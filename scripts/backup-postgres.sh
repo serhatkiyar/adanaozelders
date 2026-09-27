@@ -59,13 +59,28 @@ if (( ACTUAL < MIN_BYTES )); then
 	exit 1
 fi
 
-# MinIO nesneleri (avatar, ders materyali, teslimat kanıt fotoğrafları).
-if command -v mc >/dev/null 2>&1; then
-	echo "[$(date -Is)] MinIO aynalanıyor"
-	mc mirror --overwrite --remove local/"${AWS_BUCKET_NAME:-avatars}" \
-		"$BACKUP_DIR/minio/${AWS_BUCKET_NAME:-avatars}"
+# MinIO nesneleri — varsayılan KAPALI (27 Eyl 2026, R2 geçişi).
+#
+# Dosyalar artık Cloudflare R2'de; MinIO yalnız geçiş için `eski-depo`
+# profilinde durur. Nesne yedeği ileride ayrı token'lı `adanaozelders-backups`
+# bucket'ına taşınacak. Aynalama yalnız BACKUP_MINIO_ENABLED=true iken çalışır
+# ve başarısız olsa bile PostgreSQL dump'ının uzak depoya (restic) itilmesini
+# DURDURMAZ: hata kaydedilir, betik restic'ten SONRA sıfırdan farklı kodla çıkar.
+MINIO_MIRROR_FAILED=0
+if [[ "${BACKUP_MINIO_ENABLED:-false}" == "true" ]]; then
+	if command -v mc >/dev/null 2>&1; then
+		echo "[$(date -Is)] MinIO aynalanıyor"
+		if ! mc mirror --overwrite --remove local/"${AWS_BUCKET_NAME:-avatars}" \
+			"$BACKUP_DIR/minio/${AWS_BUCKET_NAME:-avatars}"; then
+			echo "HATA: MinIO aynalama başarısız — DB yedeği yine de sürüyor" >&2
+			MINIO_MIRROR_FAILED=1
+		fi
+	else
+		echo "UYARI: mc (MinIO client) yok — nesne deposu YEDEKLENMEDİ" >&2
+		MINIO_MIRROR_FAILED=1
+	fi
 else
-	echo "UYARI: mc (MinIO client) yok — nesne deposu YEDEKLENMEDİ" >&2
+	echo "[$(date -Is)] MinIO aynalama kapalı (BACKUP_MINIO_ENABLED=false)"
 fi
 
 # Uzak depoya it (şifreli). RESTIC_REPOSITORY tanımlı değilse atlanır ama
@@ -80,4 +95,8 @@ else
 fi
 
 find "$BACKUP_DIR" -name 'adana-*.sql.gz' -mtime "+$KEEP_DAYS" -delete
+if (( MINIO_MIRROR_FAILED )); then
+	echo "[$(date -Is)] bitti — DB yedeği tamam, MinIO aynalama BAŞARISIZ" >&2
+	exit 2
+fi
 echo "[$(date -Is)] bitti"
