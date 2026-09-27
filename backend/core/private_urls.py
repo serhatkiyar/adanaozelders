@@ -23,7 +23,6 @@ import re
 from starlette.datastructures import Headers
 
 from core import storage
-from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +104,6 @@ class PresignPrivateUrls:
 
 def install(app) -> None:
     """Depolama yapılandırılmışsa katmanı kurar."""
-    if not settings.AWS_BUCKET_NAME:
+    if not storage.private_bucket():
         return
     app.add_middleware(PresignPrivateUrls)

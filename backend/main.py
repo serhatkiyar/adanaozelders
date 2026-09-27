@@ -434,17 +434,10 @@ async def _check_redis() -> bool:
 
 async def _check_storage() -> bool:
     try:
-        import aioboto3
-
-        session = aioboto3.Session()
-        async with session.client(
-            "s3",
-            endpoint_url=settings.AWS_ENDPOINT_URL,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION_NAME,
-        ) as s3:
-            await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
+        # Public ve private bucket ayrı olabilir (R2); ikisi de erişilebilir olmalı.
+        async with storage._s3_client() as s3:
+            for bucket in dict.fromkeys((storage.public_bucket(), storage.private_bucket())):
+                await s3.head_bucket(Bucket=bucket)
         return True
     except Exception:
         logger.warning("health: storage check failed", exc_info=True)

@@ -165,3 +165,4 @@ def test_fotograf_private_onekte_saklanir():
     )[0]
     assert "PRIVATE_PREFIX" in govde
     assert 'prefix="avatars"' not in govde
+    assert "PROFILE_PREFIX" not in govde

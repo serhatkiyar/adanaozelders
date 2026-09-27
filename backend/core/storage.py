@@ -20,28 +20,59 @@ logger = logging.getLogger(__name__)
 # yalnız mağaza vitrinine özeldir; avatar/ürün yüklemelerini birbirine kilitlemez.
 _STORE_HERO_PROCESS_LIMIT = asyncio.Semaphore(2)
 
-# ── Erişim sınıfları ────────────────────────────────────────────────────────────
+# ── Erişim sınıfları ve bucket seçimi ────────────────────────────────────────
 #
-# Bucket TEK, ama iki erişim sınıfı vardır ve ayrım ANAHTAR ÖNEKİYLE yapılır:
+# İki erişim sınıfı vardır ve sınıf ANAHTAR ÖNEKİNDEN belirlenir:
 #
-#   PUBLIC_PREFIXES  → anonim okumaya açık (bucket policy'de açıkça listelenir).
-#                      Yalnız zaten herkese gösterilen görseller: avatar, kütüphane
-#                      ve ürün fotoğrafları.
-#   PRIVATE_PREFIX   → hiçbir Allow kapsamında DEĞİL → anonim GET 403 alır.
-#                      Erişim yalnız kısa ömürlü presigned URL ile olur; URL'i
-#                      yanıta koyan uç, yetkiyi kendi katmanında zaten doğrular.
+#   PRIVATE_PREFIX   → private bucket. Anonim okunamaz; yalnız kısa ömürlü
+#                      presigned URL ile (S3 API adresi üzerinden) açılır.
+#   PUBLIC_PREFIXES  → public bucket. Yalnız zaten herkese gösterilen görseller:
+#                      profil, kütüphane/ürün fotoğrafı, mağaza vitrini.
 #
-# Neden whitelist-Allow, neden `private/*` üzerine Deny değil: Deny ifadesi
-# `Principal: *` ile yazıldığında imzalı (kimlikli) isteği de kapsayabilir ve
-# presigned URL'i sessizce kırar. Allow'u daraltmak aynı sonucu, sürpriz
-# etkileşim olmadan verir.
+# Seçim FAIL-CLOSED'dur (27 Eyl 2026, R2 geçişi): ne `private/` ne de whitelist
+# öneki taşıyan bir anahtar HİÇBİR bucket'a yazılmaz, `ValueError` alır. R2'de
+# önek bazlı policy yok; custom domain bağlanan public bucket'ın tamamı açık.
+# "private değilse public" kuralı, sınıflandırılmayı unutulan yeni bir hassas
+# öneki (ya da `privat/` gibi bir yazım hatasını) sessizce herkese açardı.
+# Tek güvenlik sınırı "private anahtar public bucket'a yazılmaz" olduğu için
+# bucket adı yalnız :func:`bucket_for_key` üzerinden seçilir.
+#
+# Yerel MinIO'da iki bucket aynı olabilir (S3_PUBLIC/PRIVATE_BUCKET boş); o
+# zaman ayrımı önek whitelist'li bucket policy yapar (:func:`public_read_policy`).
+PROFILE_PREFIX = "profiles"
 PUBLIC_PREFIXES: tuple[str, ...] = (
-    "avatars/",
+    f"{PROFILE_PREFIX}/",
     "library-photos/",
     "store-hero/",
     "store-showcase/",
 )
 PRIVATE_PREFIX = "private/"
+
+
+def public_bucket() -> str:
+    return settings.S3_PUBLIC_BUCKET or settings.AWS_BUCKET_NAME
+
+
+def private_bucket() -> str:
+    return settings.S3_PRIVATE_BUCKET or settings.AWS_BUCKET_NAME
+
+
+def bucket_for_key(key: str) -> str:
+    """Anahtarın yazılacağı/okunacağı bucket. Sınıfsız anahtar → ``ValueError``."""
+    if not key:
+        raise ValueError("boş depolama anahtarı")
+    if key.startswith(PRIVATE_PREFIX):
+        return private_bucket()
+    if key.startswith(PUBLIC_PREFIXES):
+        return public_bucket()
+    raise ValueError(f"sınıfsız depolama anahtarı: {key!r}")
+
+
+def _make_key(prefix: str, ext: str) -> str:
+    """Yeni nesne anahtarı üretir; sınıfsız önekte (yazmadan önce) patlar."""
+    key = f"{prefix.strip('/')}/{uuid.uuid4().hex}{ext}"
+    bucket_for_key(key)
+    return key
 
 
 def _s3_client(*, public_endpoint: bool = False):
@@ -105,26 +136,32 @@ def public_read_policy(bucket: str) -> str:
 
 
 async def ensure_bucket() -> None:
-    """Açılışta bucket'ı ve anonim-okuma policy'sini garanti eder (best-effort).
+    """Açılışta bucket'ları ve public bucket'ın anonim-okuma policy'sini garanti
+    eder (best-effort).
 
-    Yalnız self-hosted uçta (``AWS_ENDPOINT_URL`` dolu — MinIO) çalışır; gerçek
-    AWS S3'te bucket/policy konsoldan yönetilir. Hata uygulamayı durdurmaz
-    (loglanır) — compose'daki tek-seferlik ``minio-init`` konteynerine
-    bağımlılığı kaldırır (volume sıfırlanınca fotoğraflar 403 vermesin).
+    Yalnız kendi MinIO'muzda çalışır (``S3_MANAGE_BUCKETS`` ve ``AWS_ENDPOINT_URL``
+    dolu). R2/AWS'de bucket'lar konsoldan yönetilir; R2 bucket policy desteklemez.
+    Private bucket'a policy YAZILMAZ: ayrı bucket'ta anonim okuma hiç açılmaz.
+    Hata uygulamayı durdurmaz (loglanır).
     """
-    if not settings.AWS_ENDPOINT_URL:
+    if not (settings.S3_MANAGE_BUCKETS and settings.AWS_ENDPOINT_URL):
         return
     try:
         async with _s3_client() as s3:
-            try:
-                await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
-            except Exception:
-                await s3.create_bucket(Bucket=settings.AWS_BUCKET_NAME)
+            for bucket in dict.fromkeys((public_bucket(), private_bucket())):
+                try:
+                    await s3.head_bucket(Bucket=bucket)
+                except Exception:
+                    await s3.create_bucket(Bucket=bucket)
             await s3.put_bucket_policy(
-                Bucket=settings.AWS_BUCKET_NAME,
-                Policy=public_read_policy(settings.AWS_BUCKET_NAME),
+                Bucket=public_bucket(),
+                Policy=public_read_policy(public_bucket()),
             )
-            logger.info("MinIO bucket hazır: %s (anonim okuma açık)", settings.AWS_BUCKET_NAME)
+            logger.info(
+                "MinIO bucket'ları hazır: public=%s private=%s",
+                public_bucket(),
+                private_bucket(),
+            )
     except Exception:
         logger.warning(
             "MinIO bucket/policy garantilenemedi (storage kapalı olabilir)",
@@ -135,29 +172,50 @@ async def ensure_bucket() -> None:
 # ── Anahtar / URL dönüşümleri ───────────────────────────────────────────────────
 
 
+def _s3_api_endpoint() -> str:
+    """İmza ve private adreslerin üretildiği S3 API adresi (asla CDN değil)."""
+    return (_public_endpoint() or "").rstrip("/")
+
+
+def public_url(key: str) -> str:
+    """Public anahtarın tarayıcıya verilen adresi. Private anahtar → ``ValueError``."""
+    if key.startswith(PRIVATE_PREFIX):
+        raise ValueError(f"private anahtar için public URL istendi: {key!r}")
+    bucket_for_key(key)  # whitelist dışı → ValueError
+    if settings.S3_PUBLIC_BASE_URL:
+        return f"{settings.S3_PUBLIC_BASE_URL.rstrip('/')}/{key}"
+    return f"{_s3_api_endpoint()}/{public_bucket()}/{key}"
+
+
 def object_url(key: str) -> str:
     """Anahtardan kalıcı URL üretir (DB'de bu biçim saklanır).
 
-    Private anahtarlar için bu URL tek başına ÇALIŞMAZ (anonim GET 403) —
-    kullanıma sunulmadan önce :func:`presign` ile imzalanır.
+    Public anahtar → :func:`public_url` (CDN varsa CDN). Private anahtar →
+    ``{S3 API}/{private bucket}/{key}``: bu adres tek başına ÇALIŞMAZ (anonim
+    GET 403) ve CDN host'uyla ASLA üretilmez; kullanıma sunulmadan önce
+    :func:`presign` ile imzalanır.
     """
-    endpoint = _public_endpoint()
-    if endpoint:
-        return f"{endpoint.rstrip('/')}/{settings.AWS_BUCKET_NAME}/{key}"
-    return f"https://{settings.AWS_BUCKET_NAME}.s3.{settings.AWS_REGION_NAME}.amazonaws.com/{key}"
+    if key.startswith(PRIVATE_PREFIX):
+        return f"{_s3_api_endpoint()}/{private_bucket()}/{key}"
+    return public_url(key)
 
 
 def key_from_url(url: str | None) -> str | None:
     """URL'den obje anahtarını çıkarır; tanınmayan adreste ``None``.
 
-    Hem dahili (``minio:9000``) hem tarayıcı (``localhost:9000``) adresiyle
-    yazılmış eski kayıtları tanır: ayrıştırma bucket adına göre yapılır.
+    Tanınan biçimler: ``{S3_PUBLIC_BASE_URL}/{key}`` (CDN) ve
+    ``.../{bucket}/{key}`` (public ya da private bucket; hem dahili hem
+    tarayıcı adresiyle yazılmış eski kayıtlar).
     """
     if not url:
         return None
-    marker = f"/{settings.AWS_BUCKET_NAME}/"
-    if marker in url:
-        return url.split(marker, 1)[1].split("?", 1)[0]
+    base = settings.S3_PUBLIC_BASE_URL.rstrip("/")
+    if base and url.startswith(base + "/"):
+        return url[len(base) + 1 :].split("?", 1)[0] or None
+    for bucket in dict.fromkeys((private_bucket(), public_bucket())):
+        marker = f"/{bucket}/"
+        if marker in url:
+            return url.split(marker, 1)[1].split("?", 1)[0]
     if ".amazonaws.com/" in url:
         return url.split(".amazonaws.com/", 1)[1].split("?", 1)[0]
     return None
@@ -181,9 +239,11 @@ def _presign_client():
     """
     import boto3
 
+    # İmza host'u kapsar ve private dosyalar yalnız S3 API adresinden açılır:
+    # bu istemci ASLA S3_PUBLIC_BASE_URL (CDN) ile kurulmaz.
     return boto3.client(
         "s3",
-        endpoint_url=_public_endpoint() or None,
+        endpoint_url=_s3_api_endpoint() or None,
         aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         region_name=settings.AWS_REGION_NAME,
@@ -231,7 +291,7 @@ def presign_many(urls: Sequence[str | None], *, ttl: int | None = None) -> list[
         try:
             signed = _presign_client().generate_presigned_url(
                 "get_object",
-                Params={"Bucket": settings.AWS_BUCKET_NAME, "Key": key},
+                Params={"Bucket": private_bucket(), "Key": key},
                 ExpiresIn=seconds,
             )
         except Exception:
@@ -401,28 +461,18 @@ def pad_to_square(file_bytes: bytes, size: int | None = None, quality: int = 82)
 
 
 async def _put_webp(data: bytes, *, prefix: str) -> str:
-    """Optimize edilmiş WebP'yi bucket'a koyar ve kalıcı URL döner (ortak yol).
+    """Optimize edilmiş WebP'yi doğru bucket'a koyar ve kalıcı URL döner.
 
-    ``prefix`` erişim sınıfını belirler: ``PRIVATE_PREFIX`` ile başlıyorsa obje
-    anonim okumaya kapalıdır. ACL denemesi yalnız public öneklerde yapılır —
-    private objeye ``public-read`` ACL'i vermek, policy kapalı olsa bile
-    (ACL'leri onurlandıran bir kurulumda) dosyayı açığa çıkarırdı.
+    Bucket, anahtarın önekinden :func:`bucket_for_key` ile seçilir; sınıfsız
+    önek yazmadan önce ``ValueError`` alır. ACL gönderilmez: MinIO obje
+    ACL'lerini yok sayar, R2 ACL desteklemez; public erişim bucket (ve yerel
+    MinIO'da önek whitelist'li policy) ile sağlanır.
     """
-    key = f"{prefix}/{uuid.uuid4().hex}.webp"
-    body_kwargs = {
-        "Bucket": settings.AWS_BUCKET_NAME,
-        "Key": key,
-        "Body": data,
-        "ContentType": "image/webp",
-    }
+    key = _make_key(prefix, ".webp")
     async with _s3_client() as s3:
-        if is_private_key(key):
-            await s3.put_object(**body_kwargs)
-        else:
-            try:
-                await s3.put_object(**body_kwargs, ACL="public-read")
-            except Exception:
-                await s3.put_object(**body_kwargs)
+        await s3.put_object(
+            Bucket=bucket_for_key(key), Key=key, Body=data, ContentType="image/webp"
+        )
     return object_url(key)
 
 
@@ -440,7 +490,7 @@ async def _optimize_in_thread(fn, *args, **kwargs) -> bytes:
 async def upload_pre_application_photo(file_bytes: bytes) -> str:
     """Eğitmen ön başvurusunun profil fotoğrafı — PRIVATE önekte.
 
-    ``upload_avatar`` ile aynı işi yapar ama ``avatars/`` yerine
+    ``upload_avatar`` ile aynı işi yapar ama ``profiles/`` yerine
     ``private/tutor-pre-applications/`` altına yazar. Neden: bu uç ANONİMDİR.
     Public önek'e yazan bir anonim uç, siteyi herkese açık bedava görsel
     barındırmaya çevirirdi. Fotoğrafı yalnız panel görür; yanıttaki adresi
@@ -540,23 +590,29 @@ async def upload_courier_photo(file_bytes: bytes) -> str:
 
 
 async def upload_avatar(file_bytes: bytes) -> str:
-    """Profil fotoğrafını optimize edip yükler ve public URL döner.
+    """Profil fotoğrafını optimize edip public bucket'a yükler, URL döner.
 
-    Anahtar ``avatars/`` öneklidir (eskiden bucket kökündeydi): anonim okuma
-    izni artık önek listesine dayandığı için köke yazılan obje erişilemez olur.
+    Önek ``profiles/`` (27 Eyl 2026'ya kadar ``avatars/``); public whitelist'te.
     """
     optimized_bytes = await _optimize_in_thread(optimize_image, file_bytes)
-    return await _put_webp(optimized_bytes, prefix="avatars")
+    return await _put_webp(optimized_bytes, prefix=PROFILE_PREFIX)
 
 
 async def delete_avatar(avatar_url: str) -> None:
-    """Verilen URL'den S3 objesini siler."""
+    """Verilen URL'deki nesneyi kendi bucket'ından siler (best-effort)."""
     key = key_from_url(avatar_url)
     if not key:
         return
     try:
+        bucket = bucket_for_key(key)
+    except ValueError:
+        # Sınıfsız (ör. eski `avatars/` önekli) nesne: hangi bucket'ta olduğu
+        # güvenle bilinemez; tahminle silme yapılmaz.
+        logger.warning("sınıfsız anahtar silinmedi: %s", key)
+        return
+    try:
         async with _s3_client() as s3:
-            await s3.delete_object(Bucket=settings.AWS_BUCKET_NAME, Key=key)
+            await s3.delete_object(Bucket=bucket, Key=key)
     except Exception:
         # best-effort silme; başarısızlık akışı bozmaz ama iz bırakırız.
         logger.warning("avatar delete failed for %s", avatar_url, exc_info=True)
@@ -579,8 +635,8 @@ async def upload_file(
     koymadan önce sahiplik/rol kontrolünü yapan taraftır.
     """
     ext = resource_ext(original_name)
-    key = f"{PRIVATE_PREFIX}{prefix.strip('/')}/{uuid.uuid4().hex}{ext}"
-    body_kwargs = {"Bucket": settings.AWS_BUCKET_NAME, "Key": key, "Body": file_bytes}
+    key = _make_key(f"{PRIVATE_PREFIX}{prefix.strip('/')}", ext)
+    body_kwargs = {"Bucket": bucket_for_key(key), "Key": key, "Body": file_bytes}
     if content_type:
         body_kwargs["ContentType"] = content_type
 
@@ -590,5 +646,5 @@ async def upload_file(
 
 
 async def delete_file(url: str) -> None:
-    """Genel obje silme (ders materyali). delete_avatar ile aynı bucket mantığı."""
+    """Genel obje silme (ders materyali). delete_avatar ile aynı bucket seçimi."""
     await delete_avatar(url)

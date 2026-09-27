@@ -64,6 +64,22 @@ class Settings(BaseSettings):
     # kapsadığından presigned URL de bu adresle üretilmelidir. Boşsa
     # AWS_ENDPOINT_URL kullanılır (tek adresli kurulumlarda fark yoktur).
     S3_PUBLIC_ENDPOINT_URL: str = ""
+    # ── İki bucket (27 Eyl 2026, R2 geçişi) ──
+    # Public ve private dosyalar AYRI bucket'larda durur: R2'de önek bazlı
+    # bucket policy yok, custom domain bağlanan bucket'ın tamamı herkese açılır.
+    # Boş bırakılırsa ikisi de AWS_BUCKET_NAME olur (tek bucket'lı yerel MinIO;
+    # ayrımı orada önek whitelist'li policy yapar). Üretimde ikisi de zorunlu ve
+    # birbirinden farklı olmalıdır (_guard_production).
+    S3_PUBLIC_BUCKET: str = ""
+    S3_PRIVATE_BUCKET: str = ""
+    # Public dosyaların tarayıcıya verilen kök adresi (ör. https://cdn.alan.com).
+    # Yol biçimi `{S3_PUBLIC_BASE_URL}/{key}` — bucket adı yolda YOK. Boşsa
+    # `{S3_PUBLIC_ENDPOINT_URL veya AWS_ENDPOINT_URL}/{public bucket}` (MinIO).
+    # Private dosyalar bu adresle ASLA üretilmez; imza yalnız S3 API adresinde.
+    S3_PUBLIC_BASE_URL: str = ""
+    # Açılışta bucket oluşturma + policy yazma. Yalnız kendi MinIO'muzda True;
+    # R2/AWS'de bucket'lar konsoldan yönetilir (R2 PutBucketPolicy desteklemez).
+    S3_MANAGE_BUCKETS: bool = True
     # Ürün görselleri için ÜST SINIR (piksel) — sabit çıktı boyutu DEĞİL.
     # Her ürün görseli beyaz zeminli bir KAREYE pad'lenir (kırpılmaz), ama
     # tuvalin kenarı bu sayı değil, küçültme sonrası İÇERİĞİN UZUN KENARIDIR:

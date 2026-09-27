@@ -20,7 +20,6 @@ import httpx
 import pytest
 
 from core import storage
-from core.config import settings
 from tests.service_guard import servis_yok
 
 pytestmark = pytest.mark.asyncio
@@ -28,12 +27,12 @@ pytestmark = pytest.mark.asyncio
 
 async def _put(key: str, body: bytes = b"gizli-icerik") -> None:
     async with storage._s3_client() as s3:
-        await s3.put_object(Bucket=settings.AWS_BUCKET_NAME, Key=key, Body=body)
+        await s3.put_object(Bucket=storage.bucket_for_key(key), Key=key, Body=body)
 
 
 async def _delete(key: str) -> None:
     async with storage._s3_client() as s3:
-        await s3.delete_object(Bucket=settings.AWS_BUCKET_NAME, Key=key)
+        await s3.delete_object(Bucket=storage.bucket_for_key(key), Key=key)
 
 
 @pytest.fixture
@@ -42,7 +41,8 @@ async def bucket_ready():
     try:
         await storage.ensure_bucket()
         async with storage._s3_client() as s3:
-            await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
+            for bucket in {storage.public_bucket(), storage.private_bucket()}:
+                await s3.head_bucket(Bucket=bucket)
     except Exception as exc:  # noqa: BLE001
         servis_yok("MinIO/S3", exc)
     return True
@@ -58,7 +58,7 @@ async def private_object(bucket_ready):
 
 @pytest.fixture
 async def public_object(bucket_ready):
-    key = f"avatars/{uuid.uuid4().hex}.txt"
+    key = f"{storage.PROFILE_PREFIX}/{uuid.uuid4().hex}.txt"
     await _put(key)
     yield key
     await _delete(key)
@@ -91,8 +91,9 @@ async def test_public_nesne_anonim_okunur(public_object):
 async def test_bucket_koku_anonim_listelenemez(bucket_ready):
     """Anahtarlar uuid4; liste açık olsaydı tahmin gereksizleşirdi."""
     async with httpx.AsyncClient() as c:
-        r = await c.get(f"{storage._public_endpoint()}/{settings.AWS_BUCKET_NAME}/")
-    assert r.status_code in (403, 404)
+        for bucket in {storage.public_bucket(), storage.private_bucket()}:
+            r = await c.get(f"{storage._public_endpoint()}/{bucket}/")
+            assert r.status_code in (403, 404), bucket
 
 
 async def test_yuklenen_hassas_dosya_private_onege_gider(bucket_ready):
@@ -110,7 +111,7 @@ async def test_yuklenen_hassas_dosya_private_onege_gider(bucket_ready):
 
 
 async def test_avatar_public_onege_gider(bucket_ready):
-    """Avatar artık kökte değil `avatars/` altında olmalı — kökte kalırsa 403 olurdu."""
+    """Profil fotoğrafı `profiles/` altında ve public bucket'ta olmalı."""
     from PIL import Image
     import io
 
@@ -119,7 +120,7 @@ async def test_avatar_public_onege_gider(bucket_ready):
     url = await storage.upload_avatar(buf.getvalue())
     key = storage.key_from_url(url)
     try:
-        assert key.startswith("avatars/")
+        assert key.startswith("profiles/")
         async with httpx.AsyncClient() as c:
             assert (await c.get(url)).status_code == 200
     finally:

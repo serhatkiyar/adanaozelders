@@ -21,7 +21,7 @@ def _app() -> FastAPI:
 
     @app.get("/acik")
     async def acik():
-        return {"avatar_url": storage.object_url("avatars/a.webp")}
+        return {"avatar_url": storage.object_url("profiles/a.webp")}
 
     @app.get("/duz", response_class=PlainTextResponse)
     async def duz():
@@ -52,7 +52,7 @@ def test_json_yanitta_imzalanir_ve_content_length_tutar():
 def test_public_yanit_degismez():
     with TestClient(_app()) as c:
         r = c.get("/acik")
-    assert r.json()["avatar_url"] == storage.object_url("avatars/a.webp")
+    assert r.json()["avatar_url"] == storage.object_url("profiles/a.webp")
 
 
 def test_json_disi_yanita_dokunulmaz():

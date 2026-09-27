@@ -20,7 +20,7 @@ def test_policy_gecerli_json_ve_bucket_arnleri():
     assert doc["Version"] == "2012-10-17"
     resources = [r for st in doc["Statement"] for r in st["Resource"]]
     assert "arn:aws:s3:::avatars" in resources
-    assert "arn:aws:s3:::avatars/avatars/*" in resources
+    assert "arn:aws:s3:::avatars/profiles/*" in resources
 
 
 def test_policy_anonim_getobject_izni_yalniz_public_oneklerde():

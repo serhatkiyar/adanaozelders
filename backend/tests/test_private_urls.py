@@ -31,8 +31,8 @@ def test_key_from_url_bizim_bucket():
 
 def test_key_from_url_sorgu_parametresini_atar():
     """İmzalı bir adres tekrar işlenirse anahtar yine doğru çıkmalı."""
-    assert storage.key_from_url(_url("avatars/a.webp") + "?X-Amz-Signature=abc") == (
-        "avatars/a.webp"
+    assert storage.key_from_url(_url("profiles/a.webp") + "?X-Amz-Signature=abc") == (
+        "profiles/a.webp"
     )
 
 
@@ -44,7 +44,7 @@ def test_key_from_url_yabanci_adres_tanimaz():
 
 def test_is_private_url_ayrimi():
     assert storage.is_private_url(_url("private/education-docs/d.pdf"))
-    assert not storage.is_private_url(_url("avatars/a.webp"))
+    assert not storage.is_private_url(_url("profiles/a.webp"))
     assert not storage.is_private_url(_url("library-photos/l.webp"))
 
 
@@ -68,7 +68,7 @@ def test_ic_ice_yapida_da_imzalanir():
 
 
 def test_public_adrese_dokunulmaz():
-    body = json.dumps({"avatar_url": _url("avatars/a.webp")}).encode()
+    body = json.dumps({"avatar_url": _url("profiles/a.webp")}).encode()
     assert private_urls.sign_body(body) == body
 
 
