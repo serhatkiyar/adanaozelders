@@ -185,7 +185,7 @@ describe("saf kurallar", () => {
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewTutorPromotions)).toEqual({ selectedKey: "egitmenler-one-cikarmalar", openKeys: ["egitmenler"] });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewTutorDiplomas).selectedKey).toBe("egitmenler-diploma");
     const grup = PANEL_MENU.find((g) => g.key === "egitmenler");
-    expect(grup?.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, true]);
+    expect(grup?.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, true, true]);
     const modul = await import("@/panel/pages/egitmenler/EgitmenOneCikarmalar");
     expect(typeof modul.EgitmenOneCikarmalar).toBe("function");
   });

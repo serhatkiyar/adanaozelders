@@ -96,6 +96,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   // Diploma inceleme penceresinin red modundaki "Geri"si: karar uçarken moda dönmek sonucu gizlerdi.
   // Karar düğmeleri (`Doğrula`/`Belgeyi reddet`) `VarlikDugmesi`dir; önkoşul kapısı orada, kilitte tanımlı.
   "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx <Button> mesgul()": "islem",
+  // Video onay penceresi — diploma penceresinin kopyası: "Geri" ve "Kapat" karar uçarken
+  // kapanmaz; karar düğmeleri (`Onayla ve yayınla`/`Videoyu reddet`) `VarlikDugmesi`dir.
+  "src/panel/pages/egitmenler/VideoOnayPenceresi.tsx <Button> mesgul()": "islem",
   // Kısmi teslimat penceresinin "Vazgeç"i. "Sonraki teslimata ayır"
   // düğmesi geçerlilikle KAPANMAZ (kilitli karar): seçim boşsa ya da kutu
   // tamamen boşalıyorsa gönderim iş yapmaz, sebep pencerede yazılır ve
@@ -286,6 +289,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
 const ADETLER: Record<string, number> = {
   // Diploma inceleme penceresinde aynı kilit ifadesi iki düğmede: red modundaki "Geri" ve inceleme "Kapat".
   "src/panel/pages/egitmenler/DiplomaDogrulamaPenceresi.tsx <Button> mesgul()": 2,
+  // Video onay penceresi: aynı desen — red modundaki "Geri" ve inceleme "Kapat".
+  "src/panel/pages/egitmenler/VideoOnayPenceresi.tsx <Button> mesgul()": 2,
   // Tur Detayı: optimize + iptal aynı kilit ifadesi; Ekle + Tümünü ekle aynı ifade.
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> baskaIslem": 2,
   "src/panel/pages/dagitim/DagitimTurDetayi.tsx <Button> ozelYazim !== null": 2,

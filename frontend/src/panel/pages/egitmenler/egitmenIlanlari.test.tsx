@@ -346,9 +346,9 @@ describe("EgitmenIlanlari", () => {
     expect(ROUTES.adminNewTutors).toBe(PATHS.adminNewTutors);
     const grup = PANEL_MENU.find((g) => g.key === "egitmenler");
     expect(grup?.requiredPermission).toBeUndefined();
-    expect(grup?.children?.map((c) => c.label)).toEqual(["İlanlar", "Ön Başvurular", "Diploma Doğrulama", "Öne Çıkarmalar"]);
-    // Eğitmenler grubunun dört yaprağının da gerçek rotası var; yer tutucu kalmadı.
-    expect(grup?.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, true]);
+    expect(grup?.children?.map((c) => c.label)).toEqual(["İlanlar", "Ön Başvurular", "Diploma Doğrulama", "Video Onayı", "Öne Çıkarmalar"]);
+    // Eğitmenler grubunun beş yaprağının da gerçek rotası var; yer tutucu kalmadı.
+    expect(grup?.children?.map((c) => Boolean(c.path))).toEqual([true, true, true, true, true]);
     expect(rotaIzniBul(PANEL_MENU, PATHS.adminNewTutors)).toMatchObject({ label: "İlanlar", requiredPermission: "tutors" });
     expect(seciliMenuDurumu(PANEL_MENU, PATHS.adminNewTutors)).toEqual({ selectedKey: "egitmenler-ilanlar", openKeys: ["egitmenler"] });
     expect(izinBeyaniniKarsilarMi(["tutors.view"], rotaIzniBul(PANEL_MENU, PATHS.adminNewTutors)!)).toBe(true);
