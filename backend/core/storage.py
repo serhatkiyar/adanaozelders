@@ -5,8 +5,9 @@ import logging
 import os
 import time
 import uuid
-from collections.abc import Sequence
+from collections import Counter
 from functools import lru_cache
+from urllib.parse import urlsplit
 
 import aioboto3
 from botocore.config import Config as BotoConfig
@@ -193,7 +194,7 @@ def object_url(key: str) -> str:
     Public anahtar → :func:`public_url` (CDN varsa CDN). Private anahtar →
     ``{S3 API}/{private bucket}/{key}``: bu adres tek başına ÇALIŞMAZ (anonim
     GET 403) ve CDN host'uyla ASLA üretilmez; kullanıma sunulmadan önce
-    :func:`presign` ile imzalanır.
+    :func:`resolve_url` ile imzalanır.
     """
     if key.startswith(PRIVATE_PREFIX):
         return f"{_s3_api_endpoint()}/{private_bucket()}/{key}"
@@ -205,28 +206,76 @@ def _is_bare_key(value: str) -> bool:
     return not value.startswith("/") and ":" not in value.split("/", 1)[0]
 
 
-def key_from_url(url: str | None) -> str | None:
-    """URL'den obje anahtarını çıkarır; tanınmayan adreste ``None``.
+def _own_api_hosts() -> set[str]:
+    """Bucket'larımıza path-style (``/{bucket}/{key}``) erişilen S3 API host'ları."""
+    return {
+        urlsplit(u).netloc.lower()
+        for u in (settings.AWS_ENDPOINT_URL, settings.S3_PUBLIC_ENDPOINT_URL)
+        if u
+    }
 
-    Tanınan biçimler: ``{S3_PUBLIC_BASE_URL}/{key}`` (CDN) ve
-    ``.../{bucket}/{key}`` (public ya da private bucket; hem dahili hem
-    tarayıcı adresiyle yazılmış eski kayıtlar). Şemasız değer (``profiles/a.webp``)
-    zaten anahtardır ve olduğu gibi döner — yeni kayıtlar DB'de bu biçimde durur.
+
+def _legacy_roots() -> list[tuple[str, str]]:
+    """``S3_LEGACY_BASE_URLS`` → [(host, yol kökü)]."""
+    out = []
+    for raw in settings.S3_LEGACY_BASE_URLS.split(","):
+        raw = raw.strip()
+        if raw:
+            parts = urlsplit(raw)
+            out.append((parts.netloc.lower(), parts.path.rstrip("/") + "/"))
+    return out
+
+
+def _parse_url(url: str | None) -> tuple[str | None, str | None]:
+    """Değeri (anahtar, kaynak) çiftine ayırır.
+
+    Kaynak: ``"bare"`` (şemasız anahtar), ``"own"`` (güncel CDN/S3 API host'u),
+    ``"legacy"`` (``S3_LEGACY_BASE_URLS``) ya da ``None`` (bize ait değil).
     """
     if not url:
-        return None
+        return None, None
     if _is_bare_key(url):
-        return url
-    base = settings.S3_PUBLIC_BASE_URL.rstrip("/")
-    if base and url.startswith(base + "/"):
-        return url[len(base) + 1 :].split("?", 1)[0] or None
-    for bucket in dict.fromkeys((private_bucket(), public_bucket())):
-        marker = f"/{bucket}/"
-        if marker in url:
-            return url.split(marker, 1)[1].split("?", 1)[0]
-    if ".amazonaws.com/" in url:
-        return url.split(".amazonaws.com/", 1)[1].split("?", 1)[0]
-    return None
+        return url, "bare"
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        return None, None
+    host, path = parts.netloc.lower(), parts.path
+    base = urlsplit(settings.S3_PUBLIC_BASE_URL) if settings.S3_PUBLIC_BASE_URL else None
+    if base and host == base.netloc.lower():
+        root = base.path.rstrip("/") + "/"
+        if path.startswith(root):
+            return path[len(root) :] or None, "own"
+    if host in _own_api_hosts():
+        for bucket in dict.fromkeys((private_bucket(), public_bucket())):
+            root = f"/{bucket}/"
+            if path.startswith(root):
+                return path[len(root) :] or None, "own"
+    for legacy_host, root in _legacy_roots():
+        if host == legacy_host and path.startswith(root):
+            return path[len(root) :] or None, "legacy"
+    return None, None
+
+
+def key_from_url(url: str | None) -> str | None:
+    """URL'den obje anahtarını çıkarır; bize ait olmayan adreste ``None``.
+
+    Yalnız BİLİNEN host'lar kabul edilir (27 Eyl 2026, R2 adım 3):
+
+    * ``S3_PUBLIC_BASE_URL`` (CDN) host'u → ``{base}/{key}``;
+    * S3 API host'ları (``AWS_ENDPOINT_URL``, ``S3_PUBLIC_ENDPOINT_URL``) →
+      ``/{bucket}/{key}``, yalnız kendi public/private bucket'larımız;
+    * eski depolama kökleri (``S3_LEGACY_BASE_URLS``) → ``{kök}/{key}``.
+
+    Harici bir adresin yolu ``private/...`` ya da public önekle eşleşse bile
+    anahtarımız sayılmaz: aksi halde kullanıcının girdiği bir bağlantı imzalanır
+    ya da silme yolunda bizim nesnemiz sanılırdı. Şemasız değer
+    (``profiles/a.webp``) zaten anahtardır ve olduğu gibi döner.
+    """
+    return _parse_url(url)[0]
+
+
+def _has_private_segment(url: str) -> bool:
+    return f"/{PRIVATE_PREFIX}" in urlsplit(url).path
 
 
 def is_private_key(key: str | None) -> bool:
@@ -257,16 +306,6 @@ def _presign_client():
         region_name=settings.AWS_REGION_NAME,
         config=BotoConfig(signature_version="s3v4"),
     )
-
-
-def presign(url: str | None, *, ttl: int | None = None) -> str | None:
-    """Private URL'i kısa ömürlü imzalı URL'e çevirir; public URL'e dokunmaz.
-
-    Çağrı yerlerinde koşul yazılmasın diye her iki sınıfı da kabul eder: public
-    bir adres olduğu gibi geri döner. Böylece bir alan yanlışlıkla private'a
-    taşındığında da yüzey çalışmaya devam eder.
-    """
-    return presign_many([url], ttl=ttl)[0]
 
 
 # İmzalı adres önbelleği: anahtar → (adres, üretim anı).
@@ -305,17 +344,20 @@ def _sign(key: str, ttl: int | None = None) -> str | None:
     return signed
 
 
-def presign_many(urls: Sequence[str | None], *, ttl: int | None = None) -> list[str | None]:
-    """:func:`presign`'in toplu hâli (liste yanıtları için)."""
-    out: list[str | None] = list(urls)
-    for i, u in enumerate(out):
-        key = key_from_url(u)
-        if not is_private_key(key):
-            continue
-        # İmzalanamayan adres ham hâliyle kalır: anonim erişime kapalı
-        # olduğu için sızıntı olmaz, yüzeyde kırık bağlantı görünür.
-        out[i] = _sign(key, ttl) or u  # type: ignore[arg-type]
-    return out
+# Sınıflandırılamayan depolama değerlerinin sayacı (tür → adet). Metrik
+# altyapısı yok; sayaç süreç içinde tutulur, testlerde kök conftest nöbetçisi
+# okur. Her farklı değer ayrıca bir kez ERROR loglanır (Sentry varsa olay olur).
+unclassified_hits: Counter[str] = Counter()
+_unclassified_logged: set[str] = set()
+_UNCLASSIFIED_LOG_MAX = 1000
+
+
+def _note_unclassified(kind: str, value: str) -> None:
+    unclassified_hits[kind] += 1
+    if value in _unclassified_logged or len(_unclassified_logged) >= _UNCLASSIFIED_LOG_MAX:
+        return
+    _unclassified_logged.add(value)
+    logger.error("sınıfsız depolama değeri (%s): %s", kind, value)
 
 
 def resolve_url(value: str | None, *, allow_private: bool = True) -> str | None:
@@ -326,25 +368,73 @@ def resolve_url(value: str | None, *, allow_private: bool = True) -> str | None:
     * whitelist'li public anahtar → :func:`public_url` (CDN varsa CDN). Kendi
       bucket'ımıza ait eski tam adresler de böylece güncel köke taşınır;
     * sınıfsız şemasız anahtar → ``None`` (tahminle adres üretilmez);
-    * dış adres, kök-göreli yol ve sınıfsız eski adres → olduğu gibi.
+    * eski depo kökündeki (``S3_LEGACY_BASE_URLS``) sınıfsız adres → ``None``;
+    * yolunda ``private/`` olan yabancı adres → ``None`` (imzalanmaz);
+    * dış adres, kök-göreli yol ve güncel host'taki sınıfsız adres → olduğu gibi.
+
+    Sınıfsız değerler kullanıcıya anahtar olarak gösterilmez ama yutulmaz:
+    :data:`unclassified_hits` sayacı artar ve değer ERROR loglanır.
 
     İdempotenttir: çıktısını yeniden vermek aynı sonucu üretir.
     """
     if not value:
         return None
-    key = key_from_url(value)
-    bare = _is_bare_key(value)
+    key, source = _parse_url(value)
+    bare = source == "bare"
     if is_private_key(key):
         if not allow_private:
-            logger.warning("public alanda private anahtar yanıttan çıkarıldı")
+            _note_unclassified("private_in_public", key)  # type: ignore[arg-type]
             return None
         return _sign(key) or (None if bare else value)  # type: ignore[arg-type]
     if key and key.startswith(PUBLIC_PREFIXES):
         return public_url(key)
     if bare:
-        logger.warning("sınıfsız depolama anahtarı yanıttan çıkarıldı: %s", value)
+        _note_unclassified("bare_key", value)
+        return None
+    if source == "legacy":
+        # Eski depodaki sınıfsız nesne: eski host kapanmış olabilir ve anahtarın
+        # hangi sınıfa ait olduğu bilinmiyor → yanıttan çıkarılır.
+        _note_unclassified("legacy_url", value)
+        return None
+    if source == "own":
+        # Güncel host'umuzda ama sınıfsız önekte (ör. yerel MinIO'daki eski
+        # `avatars/`) duran kayıt: adres değiştirilmeden döner, ama görünür kalsın.
+        _note_unclassified("legacy_url", value)
+        return value
+    if _has_private_segment(value):
+        # Bize ait görünmeyen ama yolunda `private/` taşıyan adres (ör. tanımı
+        # unutulmuş eski depo host'u): dış adres gibi geçirilmez, imzalanmaz.
+        _note_unclassified("foreign_private_path", value)
         return None
     return value
+
+
+def normalize_public_input(value: str | None) -> str | None:
+    """İstemcinin gönderdiği görsel adresini DB'ye yazılacak değere çevirir.
+
+    * bize ait public adres ya da anahtar → anahtar (API'nin döndürdüğü CDN
+      adresi forma geri gönderildiğinde DB'ye yine anahtar yazılır);
+    * private anahtar/adres ya da yolunda ``private/`` olan yabancı adres →
+      ``ValueError`` (public alana hassas dosya bağlanmaz);
+    * sınıfsız şemasız anahtar ve eski depo kökündeki sınıfsız adres → ``ValueError``;
+    * dış adres, kök-göreli yol ve kendi host'umuzdaki eski sınıfsız adres
+      (API'nin döndürdüğü değer) → olduğu gibi.
+    """
+    if value is None:
+        return None
+    v = value.strip()
+    if not v:
+        return None
+    key, source = _parse_url(v)
+    if is_private_key(key):
+        raise ValueError("Özel (private) dosya bu alana bağlanamaz.")
+    if key and key.startswith(PUBLIC_PREFIXES):
+        return key
+    if source in ("bare", "legacy"):
+        raise ValueError("Geçersiz görsel adresi.")
+    if source is None and _has_private_segment(v):
+        raise ValueError("Özel (private) dosya bu alana bağlanamaz.")
+    return v
 
 
 # Ders materyali olarak kabul edilen uzantılar (bucket'a keyfi yürütülebilir dosya

@@ -48,8 +48,8 @@ class TutorPreApplication(Base, TimestampMixin):
     experience: Mapped[str | None] = mapped_column(String(20), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Diploma/sertifika ekleri: [{"url": "...", "name": "..."}] listesi.
-    # URL'ler `private/` anahtarındadır; admin yanıtında `PresignPrivateUrls`
-    # katmanı otomatik imzalar. En çok 3 dosya (uçta zorlanır) — lead kaydı
+    # URL'ler `private/` anahtarındadır; admin yanıtında `PrivateAsset` alanı
+    # imzalar. En çok 3 dosya (uçta zorlanır) — lead kaydı
     # için ayrı dosya tablosu YAGNI.
     documents: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     # Aydınlatma metni onayının kanıtı; onaysız gönderim uçta 422 alır.

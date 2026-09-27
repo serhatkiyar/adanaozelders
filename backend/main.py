@@ -15,7 +15,7 @@ from core.exceptions import register_exception_handlers
 from core import flags, migrations, seed
 from core import outbox
 from core import presence
-from core import observability, private_urls
+from core import observability
 from core import storage
 from services import (
     booking_service,
@@ -343,9 +343,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Total-Count"],
 )
-
-# Hassas dosya adreslerini (private/ öneki) imzalı, kısa ömürlü adreslere çevirir.
-private_urls.install(app)
 
 # Logging + Sentry (opsiyonel) + request-id middleware (en dışta, ilk çalışır).
 observability.install(app)

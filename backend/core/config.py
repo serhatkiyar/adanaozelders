@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     # Açılışta bucket oluşturma + policy yazma. Yalnız kendi MinIO'muzda True;
     # R2/AWS'de bucket'lar konsoldan yönetilir (R2 PutBucketPolicy desteklemez).
     S3_MANAGE_BUCKETS: bool = True
+    # Eski depolama kökleri (virgülle ayrılmış), ör.
+    # `https://depo.adanaozelders.com.tr/avatars`. R2 geçişinden sonra DB'de
+    # kalan eski tam adresler bu köklerle AÇIKÇA tanınır: anahtarı çıkarılıp
+    # yeni bucket'tan sunulur (private → imzalı, public → CDN), sınıfsız olan
+    # yanıttan çıkarılır. Dış adres gibi olduğu gibi GEÇİRİLMEZ.
+    S3_LEGACY_BASE_URLS: str = ""
     # Ürün görselleri için ÜST SINIR (piksel) — sabit çıktı boyutu DEĞİL.
     # Her ürün görseli beyaz zeminli bir KAREYE pad'lenir (kırpılmaz), ama
     # tuvalin kenarı bu sayı değil, küçültme sonrası İÇERİĞİN UZUN KENARIDIR:

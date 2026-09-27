@@ -5,11 +5,19 @@ import re
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
-from core import canli_ders, ders_onay_hatirlatma
+from core import canli_ders, ders_onay_hatirlatma, storage
 from core.config import settings
-from core.storage_types import PrivateAsset, PublicAsset
+from core.storage_types import PublicAsset
 from models.booking import BookingStatus
 from schemas.payment import PaymentOut
 from schemas.tutor import TeachingMode
@@ -27,6 +35,10 @@ class BookingResourceCreate(BaseModel):
         v = v.strip()
         if not re.match(r"^https?://", v, re.IGNORECASE):
             raise ValueError("URL http:// veya https:// ile başlamalıdır")
+        # Bağlantı dış adres olmalı: kendi depomuzdaki bir nesnenin adresi
+        # (başkasının private dosyası dahil) bağlantı olarak eklenemez.
+        if storage.key_from_url(v) is not None:
+            raise ValueError("Dosyalar bağlantı olarak değil, yükleme ile eklenir")
         return v
 
 class BookingResourceOut(BaseModel):
@@ -37,11 +49,20 @@ class BookingResourceOut(BaseModel):
     uploader_id: int
     title: str
     kind: str = "link"  # "link" | "file"
-    url: PrivateAsset
+    url: str
     file_name: str | None = None
     content_type: str | None = None
     size_bytes: int | None = None
     created_at: datetime.datetime
+
+    @field_serializer("url")
+    def _url(self, v: str) -> str | None:
+        # Yalnız yüklenen dosya imzalanır. Bağlantı dış adrestir; bizim
+        # nesnemizi gösteren bir "bağlantı" (eski kayıt) yanıttan çıkarılır,
+        # asla imzalanmaz.
+        if self.kind == "file":
+            return storage.resolve_url(v)
+        return None if storage.key_from_url(v) is not None else v
 
 class BookingCommentCreate(BaseModel):
     body: str

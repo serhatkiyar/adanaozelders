@@ -10,7 +10,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from core.storage_types import PrivateAsset, PublicAsset
+from core.storage_types import PrivateAsset, PublicAsset, PublicAssetInput
 
 # ── Kategori ───────────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ class ProductCategoryOut(BaseModel):
     slug: str
     name: str
     parent_id: int | None = None
-    icon_url: str | None = None
+    icon_url: PublicAsset | None = None
     sort_order: int = 0
     is_active: bool = True
     product_count: int | None = None
@@ -38,7 +38,7 @@ class ProductCategoryOut(BaseModel):
 class ProductCategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     parent_id: int | None = None
-    icon_url: str | None = Field(default=None, max_length=500)
+    icon_url: PublicAssetInput | None = Field(default=None, max_length=500)
     sort_order: int = 0
     is_active: bool = True
     #: Sınırlar ürün oranıyla aynı sözleşme (aşağıda `_TAX_RATE_FIELD_ARGS` —
@@ -51,7 +51,7 @@ class ProductCategoryCreate(BaseModel):
 class ProductCategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     parent_id: int | None = None
-    icon_url: str | None = Field(default=None, max_length=500)
+    icon_url: PublicAssetInput | None = Field(default=None, max_length=500)
     sort_order: int | None = None
     is_active: bool | None = None
     #: `None` göndermek varsayılanı TEMİZLER (exclude_unset ayrımı serviste).
@@ -327,7 +327,7 @@ class ProductCreate(_BookSpecFields, _VariantMemberFields):
     brand: str | None = Field(default=None, max_length=120)
     category_id: int | None = None
     status: str = Field(default="DRAFT", pattern="^(ACTIVE|HIDDEN|DRAFT)$")
-    cover_url: str | None = Field(default=None, max_length=500)
+    cover_url: PublicAssetInput | None = Field(default=None, max_length=500)
     #: "Kendi stoğum bitince tedarikçi stoğu vitrinde satılabilir sayılsın."
     #: Yalnız PHYSICAL'de anlamlı (servis dijitalde 400 döner).
     supplier_backed: bool | None = None
@@ -365,7 +365,7 @@ class ProductUpdate(_BookSpecFields, _VariantMemberFields):
     brand: str | None = Field(default=None, max_length=120)
     category_id: int | None = None
     status: str | None = Field(default=None, pattern="^(ACTIVE|HIDDEN|DRAFT|PENDING)$")
-    cover_url: str | None = Field(default=None, max_length=500)
+    cover_url: PublicAssetInput | None = Field(default=None, max_length=500)
     #: Tedarikçiden temin anahtarı. Gönderilmezse mevcut değer korunur.
     supplier_backed: bool | None = None
 
@@ -383,7 +383,7 @@ class SellerProductCreate(BaseModel):
     #: `ProductCreate.tax_rate`). Kolun ayrı olması muafiyet anlamına gelmez.
     tax_rate: Decimal = Field(**_TAX_RATE_FIELD_ARGS)
     category_id: int | None = None
-    cover_url: str | None = Field(default=None, max_length=500)
+    cover_url: PublicAssetInput | None = Field(default=None, max_length=500)
 
 
 # ── Eğitmen kazanç özeti ──

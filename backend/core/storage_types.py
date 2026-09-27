@@ -11,12 +11,16 @@ tam adres durur. İstemciye giden adres serileştirme anında
   ömürlü imzalı adrese çevrilir. Dış bağlantı da taşıyabilen karma alanlar
   (ders materyali: link ya da dosya) da bu tiptedir.
 
-Yalnız YANIT şemalarında kullanılır; girdi şemasında kullanılırsa dökümü
-imzalı adresi DB'ye geri yazabilir.
+* ``PublicAssetInput`` — GİRDİ şemalarındaki görsel adresi. Bize ait public
+  adres anahtara çevrilir; private anahtar/adres 422 alır
+  (:func:`core.storage.normalize_public_input`).
+
+``PublicAsset``/``PrivateAsset`` yalnız YANIT şemalarında kullanılır; girdi
+şemasında kullanılırsa dökümü imzalı adresi DB'ye geri yazabilir.
 """
 from typing import Annotated
 
-from pydantic import PlainSerializer
+from pydantic import AfterValidator, PlainSerializer
 
 from core import storage
 
@@ -31,3 +35,4 @@ def _private(value: str | None) -> str | None:
 
 PublicAsset = Annotated[str, PlainSerializer(_public, return_type=str | None)]
 PrivateAsset = Annotated[str, PlainSerializer(_private, return_type=str | None)]
+PublicAssetInput = Annotated[str, AfterValidator(storage.normalize_public_input)]

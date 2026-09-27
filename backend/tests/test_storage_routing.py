@@ -112,7 +112,7 @@ def test_key_from_url_iki_bicimi_de_cozer(r2):
 
 
 def test_imza_yalniz_s3_api_adresinde_ve_private_buckette(r2):
-    signed = storage.presign(storage.object_url("private/answer-keys/k.pdf"))
+    signed = storage.resolve_url(storage.object_url("private/answer-keys/k.pdf"))
     parsed = urlparse(signed)
     assert parsed.netloc == urlparse(R2_API).netloc
     assert "cdn." not in signed
@@ -122,7 +122,7 @@ def test_imza_yalniz_s3_api_adresinde_ve_private_buckette(r2):
 
 def test_public_adres_imzalanmaz(r2):
     url = storage.object_url("profiles/a.webp")
-    assert storage.presign(url) == url
+    assert storage.resolve_url(url) == url
 
 
 # ── Yükleme ve silme: doğru bucket, ACL yok ─────────────────────────────────
@@ -259,12 +259,14 @@ def test_resolve_private_anahtar_s3_api_de_imzalanir(r2):
     assert "X-Amz-Signature=" in signed
 
 
+@pytest.mark.sinifsiz_depo_degeri
 def test_resolve_public_alanda_private_anahtar_cikmaz(r2):
     assert storage.resolve_url("private/answer-keys/k.pdf", allow_private=False) is None
     eski = f"{R2_API}/adanaozelders-private/private/answer-keys/k.pdf"
     assert storage.resolve_url(eski, allow_private=False) is None
 
 
+@pytest.mark.sinifsiz_depo_degeri
 def test_resolve_sinifsiz_anahtar_none_sinifsiz_eski_adres_aynen(r2):
     assert storage.resolve_url("avatars/x.webp") is None
     eski = "https://depo.adanaozelders.com.tr/avatars/avatars/x.webp"
@@ -306,6 +308,7 @@ async def test_silme_semasiz_anahtari_kabul_eder(s3_kayit):
     ]
 
 
+@pytest.mark.sinifsiz_depo_degeri
 def test_publicasset_ve_privateasset_serilestirmede_cozer(r2):
     from pydantic import BaseModel
 
@@ -379,9 +382,240 @@ def test_depolama_alanlari_publicasset_ya_da_privateasset():
     assert tipsiz == []
 
 
+@pytest.mark.sinifsiz_depo_degeri
 def test_og_gorseli_anahtari_cdn_adresine_private_i_varsayilana_cevirir(r2):
     """OG/Twitter görseli yanıt şeması dışında üretilir; kırılırsa hata vermez."""
     from services.social_meta import DEFAULT_IMAGE, _abs
 
     assert _abs("profiles/a.webp") == f"{CDN}/profiles/a.webp"
     assert _abs("private/x.pdf").endswith(DEFAULT_IMAGE)
+
+
+# ── R2 adım 3: yalnız bilinen host'lar, tek imza kaynağı, girdi doğrulama ────
+
+YABANCI = [
+    "https://kotu.site/adanaozelders-private/private/x.pdf",
+    "https://kotu.site/adanaozelders-public/profiles/a.webp",
+    "https://kotu.site/private/x.pdf",
+    "https://kotu.site/profiles/a.webp",
+    "https://cdn.adanaozelders.com.tr.kotu.site/profiles/a.webp",
+    "https://kotu.site/?u=https://cdn.adanaozelders.com.tr/profiles/a.webp",
+    f"https://kotu.site/yol{R2_API}/adanaozelders-private/private/x.pdf",
+    "ftp://hesap123.r2.cloudflarestorage.com/adanaozelders-private/private/x.pdf",
+]
+
+
+@pytest.mark.parametrize("url", YABANCI)
+def test_yabanci_host_anahtar_sayilmaz(r2, url):
+    """Yolu private/ ya da public önekle eşleşse bile harici adres bizim değil."""
+    assert storage.key_from_url(url) is None
+    assert not storage.is_private_url(url)
+
+
+@pytest.mark.sinifsiz_depo_degeri
+@pytest.mark.parametrize("url", YABANCI)
+def test_yabanci_adres_imzalanmaz(r2, url):
+    """Yabancı adres asla imzalanmaz; yolunda `private/` varsa hiç geçirilmez."""
+    out = storage.resolve_url(url)
+    if "/private/" in urlparse(url).path:
+        assert out is None
+    else:
+        assert out == url
+
+
+@pytest.mark.parametrize("url", YABANCI)
+async def test_yabanci_adres_silme_yolunda_nesnemiz_sanilmaz(s3_kayit, url):
+    await storage.delete_file(url)
+    await storage.delete_avatar(url)
+    assert s3_kayit == []
+
+
+def test_bilinen_hostta_yalniz_kendi_bucketlarimiz(r2):
+    assert storage.key_from_url(f"{R2_API}/baska-bucket/private/x.pdf") is None
+    assert storage.key_from_url(f"{CDN}/profiles/a.webp?v=1") == "profiles/a.webp"
+
+
+def test_ayni_anahtara_ayni_imza_farkli_anahtara_farkli(r2):
+    """Kararlılık: canlı takip 15 sn'de bir yenilenir; imza her turda değişirse
+    tarayıcı önbelleği tutmaz ve kurye fotoğrafı titrer."""
+    a = storage.resolve_url("private/couriers/a.webp")
+    assert a == storage.resolve_url("private/couriers/a.webp")
+    assert a != storage.resolve_url("private/couriers/b.webp")
+
+
+def test_eski_imza_katmani_ve_presign_kaldirildi():
+    """Private adres üretiminin tek kaynağı `resolve_url` (typed alanlar)."""
+    assert not (BACKEND / "core" / "private_urls.py").exists()
+    assert not hasattr(storage, "presign")
+    assert not hasattr(storage, "presign_many")
+    assert "private_urls" not in (BACKEND / "main.py").read_text(encoding="utf-8")
+
+
+@pytest.mark.sinifsiz_depo_degeri
+@pytest.mark.parametrize(
+    ("deger", "tur"),
+    [("avatars/x.webp", "bare_key"), ("private/x.pdf", "private_in_public"),
+     (f"{R2_API}/adanaozelders-public/avatars/x.webp", "legacy_url")],
+)
+def test_sinifsiz_deger_sayilir_ve_loglanir(r2, caplog, deger, tur):
+    once = storage.unclassified_hits[tur]
+    storage._unclassified_logged.clear()
+    with caplog.at_level("ERROR", logger="core.storage"):
+        storage.resolve_url(deger, allow_private=False)
+    assert storage.unclassified_hits[tur] == once + 1
+    assert any("sınıfsız depolama değeri" in r.getMessage() for r in caplog.records)
+
+
+# ── Girdi: PublicAssetInput ─────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("girdi", "beklenen"),
+    [
+        (f"{CDN}/profiles/a.webp", "profiles/a.webp"),
+        (f"{R2_API}/adanaozelders-public/library-photos/b.webp", "library-photos/b.webp"),
+        ("store-hero/h.webp", "store-hero/h.webp"),
+        ("https://baska.site/kapak.jpg", "https://baska.site/kapak.jpg"),
+        ("/logo.png", "/logo.png"),
+        ("  ", None),
+        (None, None),
+    ],
+)
+def test_public_girdi_normallesir(r2, girdi, beklenen):
+    assert storage.normalize_public_input(girdi) == beklenen
+
+
+@pytest.mark.parametrize(
+    "girdi",
+    ["private/answer-keys/k.pdf", f"{R2_API}/adanaozelders-private/private/k.pdf",
+     "avatars/x.webp", "kapak.jpg"],
+)
+def test_public_girdi_private_ve_sinifsizi_reddeder(r2, girdi):
+    with pytest.raises(ValueError):
+        storage.normalize_public_input(girdi)
+
+
+def _asset_girdi_mi(annotation) -> bool:
+    from typing import get_args
+
+    for meta in getattr(annotation, "__metadata__", ()):
+        if getattr(meta, "func", None) is storage.normalize_public_input:
+            return True
+    return any(_asset_girdi_mi(a) for a in get_args(annotation))
+
+
+def test_girdi_semalari_private_i_reddeder_kendi_adresimizi_anahtara_cevirir(r2):
+    from pydantic import ValidationError
+
+    from schemas.blog import BlogPostWrite
+    from schemas.library import LibraryUpdate
+    from schemas.store import ProductCategoryCreate
+
+    with pytest.raises(ValidationError):
+        LibraryUpdate(cover_url="private/x.webp")
+    with pytest.raises(ValidationError):
+        ProductCategoryCreate(name="K", icon_url=f"{R2_API}/adanaozelders-private/private/i.webp")
+    with pytest.raises(ValidationError):
+        BlogPostWrite(title="B", cover_image_url="private/b.webp")
+    assert LibraryUpdate(logo_url=f"{CDN}/library-photos/l.webp").logo_url == "library-photos/l.webp"
+
+
+def test_girdi_semalarindaki_depo_alanlari_publicassetinput():
+    import schemas.library
+    import schemas.store
+
+    for sinif, alan in _TIPSIZ_IZINLI:
+        mod = schemas.library if sinif.startswith("Library") else schemas.store
+        assert _asset_girdi_mi(getattr(mod, sinif).model_fields[alan].annotation), (sinif, alan)
+
+
+# ── Ders materyali: bağlantı imzalanmaz ─────────────────────────────────────
+
+
+def test_materyal_baglantisi_kendi_depomuzu_gosteremez(r2):
+    from pydantic import ValidationError
+
+    from schemas.booking import BookingResourceCreate
+
+    for url in (f"{R2_API}/adanaozelders-private/private/lesson-resources/r.pdf",
+                f"{CDN}/profiles/a.webp"):
+        with pytest.raises(ValidationError):
+            BookingResourceCreate(title="x", url=url)
+    assert BookingResourceCreate(title="x", url="https://drive.example/d").url
+
+
+def test_materyal_yalniz_dosya_turunde_imzalanir(r2):
+    import datetime
+
+    from schemas.booking import BookingResourceOut
+
+    ortak = dict(id=1, booking_id=1, uploader_role="TUTOR", uploader_id=1, title="t",
+                 created_at=datetime.datetime(2026, 9, 27))
+    dosya = BookingResourceOut(kind="file", url="private/lesson-resources/r.pdf", **ortak)
+    assert "X-Amz-Signature=" in dosya.model_dump(mode="json")["url"]
+    eski_link = BookingResourceOut(
+        kind="link", url=f"{R2_API}/adanaozelders-private/private/lesson-resources/r.pdf", **ortak
+    )
+    assert eski_link.model_dump(mode="json")["url"] is None
+    dis = BookingResourceOut(kind="link", url="https://drive.example/d", **ortak)
+    assert dis.model_dump(mode="json")["url"] == "https://drive.example/d"
+
+
+# ── Eski depo host'u (R2 geçişi sonrası): açıkça tanınır, dış adres sayılmaz ──
+
+ESKI = "https://depo.adanaozelders.com.tr/avatars"
+
+
+@pytest.fixture
+def r2_eski(r2, monkeypatch):
+    monkeypatch.setattr(settings, "S3_LEGACY_BASE_URLS", ESKI)
+
+
+def test_eski_private_adres_yeni_private_bucketta_imzalanir(r2_eski):
+    out = storage.resolve_url(f"{ESKI}/private/answer-keys/k.pdf")
+    parsed = urlparse(out)
+    assert parsed.netloc == urlparse(R2_API).netloc
+    assert parsed.path == "/adanaozelders-private/private/answer-keys/k.pdf"
+    assert "depo." not in out
+
+
+@pytest.mark.sinifsiz_depo_degeri
+def test_eski_private_adres_public_alanda_cikmaz(r2_eski):
+    assert storage.resolve_url(f"{ESKI}/private/x.pdf", allow_private=False) is None
+
+
+def test_eski_public_adres_cdn_ye_tasinir(r2_eski):
+    assert storage.resolve_url(f"{ESKI}/library-photos/b.webp") == f"{CDN}/library-photos/b.webp"
+
+
+@pytest.mark.sinifsiz_depo_degeri
+def test_eski_sinifsiz_adres_yanittan_cikarilir(r2_eski):
+    assert storage.resolve_url(f"{ESKI}/avatars/x.webp") is None
+
+
+def test_eski_adres_girdide_anahtara_cevrilir_ya_da_reddedilir(r2_eski):
+    assert storage.normalize_public_input(f"{ESKI}/profiles/a.webp") == "profiles/a.webp"
+    for kotu in (f"{ESKI}/private/x.pdf", f"{ESKI}/avatars/x.webp"):
+        with pytest.raises(ValueError):
+            storage.normalize_public_input(kotu)
+
+
+async def test_eski_adres_silmede_yeni_buckettaki_nesneyi_hedefler(s3_kayit, monkeypatch):
+    monkeypatch.setattr(settings, "S3_LEGACY_BASE_URLS", ESKI)
+    await storage.delete_file(f"{ESKI}/private/lesson-resources/r.pdf")
+    await storage.delete_file(f"{ESKI}/avatars/eski.webp")  # sınıfsız: dokunulmaz
+    assert [(k["Bucket"], k["Key"]) for _, k in s3_kayit] == [
+        ("adanaozelders-private", "private/lesson-resources/r.pdf"),
+    ]
+
+
+def test_eski_hostun_baska_yolu_eski_kok_sayilmaz(r2_eski):
+    assert storage.key_from_url("https://depo.adanaozelders.com.tr/baska/profiles/a.webp") is None
+
+
+@pytest.mark.sinifsiz_depo_degeri
+def test_eski_host_tanimsizsa_bile_private_yollu_adres_gecirilmez(r2):
+    """Ayar unutulsa da eski private adres dış adres gibi dönmez."""
+    assert storage.resolve_url(f"{ESKI}/private/answer-keys/k.pdf") is None
+    with pytest.raises(ValueError):
+        storage.normalize_public_input(f"{ESKI}/private/answer-keys/k.pdf")

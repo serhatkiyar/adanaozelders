@@ -5,6 +5,8 @@ import datetime
 
 from pydantic import BaseModel, Field
 
+from core.storage_types import PublicAsset, PublicAssetInput
+
 
 class BlogPostWrite(BaseModel):
     """Admin oluşturma/güncelleme gövdesi.
@@ -17,7 +19,7 @@ class BlogPostWrite(BaseModel):
     slug: str | None = Field(default=None, max_length=140)
     excerpt: str = Field(default="", max_length=500)
     body_html: str = Field(default="", max_length=200_000)
-    cover_image_url: str | None = Field(default=None, max_length=1000)
+    cover_image_url: PublicAssetInput | None = Field(default=None, max_length=1000)
     seo_title: str = Field(default="", max_length=70)
     seo_description: str = Field(default="", max_length=200)
     tags: list[str] = Field(default_factory=list, max_length=10)
@@ -29,7 +31,7 @@ class BlogPostAdminOut(BaseModel):
     title: str
     excerpt: str
     body_html: str
-    cover_image_url: str | None
+    cover_image_url: PublicAsset | None
     status: str
     published_at: datetime.datetime | None
     seo_title: str
@@ -46,7 +48,7 @@ class BlogPostSummaryOut(BaseModel):
     slug: str
     title: str
     excerpt: str
-    cover_image_url: str | None
+    cover_image_url: PublicAsset | None
     published_at: datetime.datetime
     tags: list[str]
 
@@ -58,7 +60,7 @@ class BlogPostPublicOut(BaseModel):
     title: str
     excerpt: str
     body_html: str
-    cover_image_url: str | None
+    cover_image_url: PublicAsset | None
     published_at: datetime.datetime
     updated_at: datetime.datetime | None
     seo_title: str

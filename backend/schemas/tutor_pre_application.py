@@ -116,8 +116,8 @@ class TutorPreApplicationOut(BaseModel):
 
 
 class PreApplicationDocumentOut(BaseModel):
-    """Ek belge. `url` private/ anahtarıdır; JSON yanıtında `PresignPrivateUrls`
-    katmanı kısa ömürlü imzalı adrese çevirir."""
+    """Ek belge. `url` private/ anahtarıdır; `PrivateAsset` yanıtta kısa ömürlü
+    imzalı adrese çevirir."""
 
     url: PrivateAsset
     name: str
@@ -149,7 +149,7 @@ class AdminTutorPreApplicationOut(BaseModel):
     kvkk_accepted_at: datetime.datetime
     created_at: datetime.datetime
     # İlan dosyası (formun isteğe bağlı bölümleri). `photo_url` de `private/`
-    # anahtarıdır — `PresignPrivateUrls` katmanı yanıtta imzalar.
+    # anahtarıdır — `PrivateAsset` yanıtta imzalar.
     photo_url: PrivateAsset | None = None
     headline: str | None = None
     bio: str | None = None

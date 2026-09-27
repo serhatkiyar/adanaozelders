@@ -74,7 +74,7 @@ async def test_private_nesne_anonim_okunamaz(private_object):
 
 
 async def test_private_nesne_imzali_adresle_okunur(private_object):
-    signed = storage.presign(storage.object_url(private_object))
+    signed = storage.resolve_url(private_object)
     async with httpx.AsyncClient() as c:
         r = await c.get(signed)
     assert r.status_code == 200

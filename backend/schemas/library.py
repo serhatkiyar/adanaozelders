@@ -4,7 +4,7 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from core.storage_types import PublicAsset
+from core.storage_types import PublicAsset, PublicAssetInput
 from core.urls import ensure_http_url
 
 # ── Çalışma saatleri ────────────────────────────────────────────────────────────
@@ -105,8 +105,8 @@ class LibraryCreate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     email: str | None = Field(default=None, max_length=255)
     website: str | None = Field(default=None, max_length=300)
-    cover_url: str | None = Field(default=None, max_length=500)
-    logo_url: str | None = Field(default=None, max_length=500)
+    cover_url: PublicAssetInput | None = Field(default=None, max_length=500)
+    logo_url: PublicAssetInput | None = Field(default=None, max_length=500)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
     location_lng: float | None = Field(default=None, ge=-180, le=180)
     # Yapısal adres (elle girilir; location_text bunlardan derlenir).
@@ -121,11 +121,18 @@ class LibraryCreate(BaseModel):
     amenities: list[str] = Field(default_factory=list)
     hours: list[LibraryHoursIn] = Field(default_factory=list)
 
-    @field_validator("website", "cover_url", "logo_url")
+    @field_validator("website")
     @classmethod
     def _check_urls(cls, v: str | None) -> str | None:
         # Bu alanlar public kütüphane sayfasında href olarak render ediliyor.
         return ensure_http_url(v, field="Bağlantı")
+
+    @field_validator("cover_url", "logo_url", mode="before")
+    @classmethod
+    def _check_image_urls(cls, v):
+        # Şema kontrolü depolama normalleştirmesinden ÖNCE: kendi CDN adresimiz
+        # ardından anahtara çevrilir (PublicAssetInput) ve DB'ye anahtar yazılır.
+        return ensure_http_url(v, field="Bağlantı") if isinstance(v, str) else v
 
     @field_validator("status")
     @classmethod
@@ -151,8 +158,8 @@ class LibraryUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     email: str | None = Field(default=None, max_length=255)
     website: str | None = Field(default=None, max_length=300)
-    cover_url: str | None = Field(default=None, max_length=500)
-    logo_url: str | None = Field(default=None, max_length=500)
+    cover_url: PublicAssetInput | None = Field(default=None, max_length=500)
+    logo_url: PublicAssetInput | None = Field(default=None, max_length=500)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
     location_lng: float | None = Field(default=None, ge=-180, le=180)
     city: str | None = Field(default=None, max_length=100)
@@ -166,12 +173,19 @@ class LibraryUpdate(BaseModel):
     amenities: list[str] | None = None
     hours: list[LibraryHoursIn] | None = None
 
-    @field_validator("website", "cover_url", "logo_url")
+    @field_validator("website")
     @classmethod
     def _check_urls(cls, v: str | None) -> str | None:
         # Operatör kendi kütüphanesinde bu alanları yazabiliyor; public sayfada
         # href olarak render edildikleri için şema whitelist'i zorunlu.
         return ensure_http_url(v, field="Bağlantı")
+
+    @field_validator("cover_url", "logo_url", mode="before")
+    @classmethod
+    def _check_image_urls(cls, v):
+        # Şema kontrolü depolama normalleştirmesinden ÖNCE: kendi CDN adresimiz
+        # ardından anahtara çevrilir (PublicAssetInput) ve DB'ye anahtar yazılır.
+        return ensure_http_url(v, field="Bağlantı") if isinstance(v, str) else v
 
     @field_validator("status")
     @classmethod

@@ -9,8 +9,8 @@ değil** yalnız `results_published_at` doluluğuna göre ekler:
 
 Aynı yardımcı üç yüzeyi de besler: `GET /exam-sessions` (**anonim, public**),
 `GET /exam-sessions/manage` (operatör) ve `GET /exam-registrations/mine`
-(öğrenci). `core/private_urls.py` yanıt gövdesindeki `private/` adreslerini
-imzaladığı için sızıntı teorik değil, **indirilebilir bir URL'dir**.
+(öğrenci). Yanıt şeması (`PrivateAsset`) `private/` anahtarını imzaladığı
+için sızıntı teorik değil, **indirilebilir bir URL'dir**.
 
 Karşılaştırma noktası: `library_exam_catalog_service._to_out(include_answer_key)`
 aynı sorunu doğru çözmüş (router `isinstance(user, Admin)` ile karar veriyor).
@@ -22,7 +22,7 @@ aynı sorunu doğru çözmüş (router `isinstance(user, Admin)` ile karar veriy
 2. Operatör, öğrenci ve anonim kullanıcı hiçbir koşulda anahtar URL'si veya
    dosya anahtarı görmez — sonuçların yayınlanmış olması yetki değildir.
 3. `results_published` bilgisi herkese açık kalır (öğrenci sonucunu görebilsin).
-4. Karar tek kaynakta verilir; `private_urls` katmanı yetki otoritesi değildir.
+4. Karar tek kaynakta verilir; `PrivateAsset` serileştiricisi yetki otoritesi değildir.
 """
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ ANAHTAR = "private/answer-keys/ip3-cevap-anahtari.pdf"
 def _anahtar_izi(govde: str) -> bool:
     """Yanıtın herhangi bir yerinde cevap anahtarına götüren iz var mı?
 
-    İmzalı URL, ham anahtar adı ve dosya adı ayrı ayrı aranır: `private_urls`
-    katmanı adresi imzalayıp query string eklediği için düz eşitlik yetmez.
+    İmzalı URL, ham anahtar adı ve dosya adı ayrı ayrı aranır: yanıt şeması
+    adresi imzalayıp query string eklediği için düz eşitlik yetmez.
     """
     d = govde.lower()
     return "answer-key" in d or "cevap-anahtari" in d

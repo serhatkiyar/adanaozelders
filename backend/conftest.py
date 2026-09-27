@@ -80,3 +80,29 @@ if _ISCI and os.environ.get("ADANA_XDIST_AYRIK_ISCI") != _ISCI:
             _kok = _redis.rstrip("/")
         os.environ["REDIS_URL"] = f"{_kok}/{_ISCI_REDIS_DBLERI[_sira]}"
     os.environ["ADANA_XDIST_AYRIK_ISCI"] = _ISCI
+
+
+# ── Sınıfsız depolama değeri nöbetçisi (R2 adım 3) ───────────────────────────
+#
+# `storage.resolve_url` sınıflandıramadığı değeri kullanıcıya göstermez ama
+# yutmaz da: `storage.unclassified_hits` sayacını artırır ve ERROR loglar.
+# Üretimde bu bir log satırıdır; testte GÖRÜNÜR bir hataya dönüşür. Bilerek
+# sınıfsız değer üreten test `@pytest.mark.sinifsiz_depo_degeri` ile işaretlenir.
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _sinifsiz_depo_degeri_nobetcisi(request):
+    from core import storage
+
+    once = dict(storage.unclassified_hits)
+    yield
+    if request.node.get_closest_marker("sinifsiz_depo_degeri"):
+        return
+    fark = {
+        k: v - once.get(k, 0)
+        for k, v in storage.unclassified_hits.items()
+        if v != once.get(k, 0)
+    }
+    if fark:
+        pytest.fail(f"sınıfsız depolama değeri yanıta çözüldü: {fark}", pytrace=False)

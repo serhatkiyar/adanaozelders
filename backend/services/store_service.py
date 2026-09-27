@@ -1897,7 +1897,8 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
                     stock=0 if kind == "PHYSICAL" else None,
                     category_id=category_id,
                     status=status_v,
-                    cover_url=_g("cover_url"),
+                    # Şema dışı girdi: aynı kural (private → satır hatası).
+                    cover_url=storage.normalize_public_input(_g("cover_url")),
                     created_by_admin_id=admin.id,
                     author=_g("author"),
                     publisher=_g("publisher"),
