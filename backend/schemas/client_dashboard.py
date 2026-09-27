@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from core.storage_types import PublicAsset
 from schemas.booking import BookingOut
 
 # Sıra `client_dashboard_service.NEXT_ACTION_PRIORITY` ile aynıdır.
@@ -30,7 +31,7 @@ class ClientTutorOut(BaseModel):
 
     tutor_id: int
     full_name: str | None = None
-    avatar_url: str | None = None
+    avatar_url: PublicAsset | None = None
     hourly_rate: decimal.Decimal | None = None
     last_lesson_at: datetime.datetime | None = None
     next_lesson_at: datetime.datetime | None = None

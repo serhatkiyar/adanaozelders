@@ -10,6 +10,8 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from core.storage_types import PublicAsset
+
 
 class AttributeValueWrite(BaseModel):
     label: str = Field(min_length=1, max_length=100)
@@ -57,7 +59,7 @@ class ProductAttributeAssignmentWrite(BaseModel):
 class MediaAssetOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    image_url: str
+    image_url: PublicAsset
     alt_text: str
     mime_type: str
     width: int

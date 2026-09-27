@@ -34,6 +34,7 @@ import httpx
 from fastapi import Response
 from fastapi.responses import RedirectResponse
 
+from core import storage
 from core.config import settings
 from core.database import AsyncSessionLocal
 from schemas.seo import DersSayfasiOut, IlanSayfasiOut, YonlendirmeOut
@@ -256,7 +257,7 @@ async def yanit(yol: str, sorgu: str = "") -> Response:
         head = head_etiketleri(
             baslik=sonuc.baslik, aciklama=sonuc.aciklama, yol=sonuc.yol,
             json_ld=sonuc.json_ld, tur="profile",
-            gorsel=tutor.avatar_url if tutor is not None else None,
+            gorsel=storage.resolve_url(tutor.avatar_url, allow_private=False) if tutor is not None else None,
         )
         return Response(
             enjekte(sablon, head, ilan_govdesi(sonuc, tutor)), media_type=_HTML, headers=_TAZE

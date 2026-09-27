@@ -33,7 +33,7 @@ from urllib.parse import urlencode
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core import seo_adres
+from core import seo_adres, storage
 from core.config import settings
 from core.search_text import normalize_tr, normalized
 from models.seo_slug import SeoSlug
@@ -620,8 +620,9 @@ async def ilan_sayfasi(db: AsyncSession, satir: SeoSlug) -> IlanSayfasiOut | Non
         "url": mutlak(yol),
         "jobTitle": "Özel Ders Öğretmeni",
     }
-    if t.avatar_url:
-        kisi["image"] = t.avatar_url
+    gorsel = storage.resolve_url(t.avatar_url, allow_private=False)
+    if gorsel:
+        kisi["image"] = gorsel
     if t.headline:
         kisi["description"] = t.headline
     if t.subjects:

@@ -4,6 +4,7 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.storage_types import PublicAsset
 from models.qa import QAStatus
 
 
@@ -46,9 +47,9 @@ class QAThreadOut(BaseModel):
     messages: list[QAMessageOut] = []
     # Görüntüleme için; list_threads/get_thread doldurur.
     tutor_name: str | None = None
-    tutor_avatar_url: str | None = None
+    tutor_avatar_url: PublicAsset | None = None
     client_name: str | None = None
-    client_avatar_url: str | None = None
+    client_avatar_url: PublicAsset | None = None
 
 
 class LessonQuestionGroup(BaseModel):
@@ -57,7 +58,7 @@ class LessonQuestionGroup(BaseModel):
     booking_id: int
     tutor_id: int
     tutor_name: str | None = None
-    tutor_avatar_url: str | None = None
+    tutor_avatar_url: PublicAsset | None = None
     tutor_headline: str | None = None
     start_at: datetime.datetime
     end_at: datetime.datetime

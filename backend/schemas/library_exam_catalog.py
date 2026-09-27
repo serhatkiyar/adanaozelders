@@ -4,6 +4,7 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.storage_types import PrivateAsset
 
 # ── Admin küratör CRUD ───────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ class CatalogOut(BaseModel):
     is_nationwide: bool = False
     # Cevap anahtarı bağlantısı YALNIZ admin küratör yüzeyinde doldurulur;
     # operatöre giden listede None gelir (bkz. _to_out(include_answer_key)).
-    answer_key_url: str | None = None
+    answer_key_url: PrivateAsset | None = None
     # Anahtar yüklenmiş mi — URL vermeden gösterilebilen güvenli bilgi.
     has_answer_key: bool = False
     # answer_key_data (JSON oto-değerlendirme) Faz B; çıktıda yalnız "var mı" bilgisi.

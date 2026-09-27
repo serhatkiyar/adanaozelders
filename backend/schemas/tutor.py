@@ -15,6 +15,7 @@ from pydantic import (
 )
 
 from core.slug import tutor_slug
+from core.storage_types import PublicAsset
 from models.tutor import Gender, TutorStatus
 from schemas.education import PublicEducationOut
 from schemas.user import UserOut
@@ -180,7 +181,7 @@ class TutorSearchOut(BaseModel):
 
     id: int
     display_name: str
-    avatar_url: str | None = None
+    avatar_url: PublicAsset | None = None
     headline: str | None = None
     bio: str | None = None
     # "Ders Hakkında" — yalnız profil (detay) yanıtında anlamlı; listede gösterilmez.

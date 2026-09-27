@@ -23,6 +23,7 @@ from html import escape
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import storage
 from core.config import settings
 from models.blog import BlogPost
 from models.library import Library, LibraryStatus
@@ -47,6 +48,8 @@ _TRAILING_ID = re.compile(r"(?:^|-)(\d+)$")
 
 def _abs(url: str | None) -> str:
     base = settings.FRONTEND_BASE_URL.rstrip("/")
+    # DB'de depolama anahtarı durabilir; private/sınıfsız değer varsayılana düşer.
+    url = storage.resolve_url(url, allow_private=False)
     if not url:
         return base + DEFAULT_IMAGE
     if url.startswith("http://") or url.startswith("https://"):

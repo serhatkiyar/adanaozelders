@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.storage_types import PrivateAsset
+
 _YEAR_MIN = 1950
 _YEAR_MAX = 2100
 
@@ -75,7 +77,7 @@ class EducationOut(BaseModel):
     start_year: int | None = None
     end_year: int | None = None
     # Yalnız eğitmen eğitimlerinde dolu (diploma/belge). Client'ta her zaman None.
-    document_url: str | None = None
+    document_url: PrivateAsset | None = None
     document_name: str | None = None
     # Diploma doğrulama (rozet için yeterli kadarı public)
     document_type: DocumentType | None = None

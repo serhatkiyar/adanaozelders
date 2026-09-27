@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from core.storage_types import PublicAsset
 from models.demand import DemandStatus
 
 
@@ -61,7 +62,7 @@ class DemandResponseOut(BaseModel):
 
     tutor_id: int
     tutor_name: str
-    tutor_avatar_url: str | None = None
+    tutor_avatar_url: PublicAsset | None = None
     headline: str | None = None
     responded_at: datetime.datetime
 

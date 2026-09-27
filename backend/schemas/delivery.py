@@ -6,6 +6,7 @@ import re
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.storage_types import PrivateAsset
 
 # ── Filo (İP-19) ─────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ class CourierOut(BaseModel):
     id: int
     name: str
     phone: str | None = None
-    photo_url: str | None = None
+    photo_url: PrivateAsset | None = None
     is_active: bool
 
 
@@ -174,7 +175,7 @@ class DeliveryStopOut(BaseModel):
     delivered_at: datetime.datetime | None = None
     proof: str | None = None
     # Teslim kanıtı fotoğrafı (kapıya/komşuya bırakma; opsiyonel ek kanıt).
-    photo_url: str | None = None
+    photo_url: PrivateAsset | None = None
     courier_note: str | None = None
     # ── Dispatch board istisna sinyalleri (Faz 2) ──
     # Söz verilen teslim günü (geçmişse "söz riski" → operatör dikkat etmeli).
@@ -361,7 +362,7 @@ class OrderTrackingOut(BaseModel):
     address_masked: str | None = None
     promised_delivery_date: datetime.date | None = None
     courier_name: str | None = None
-    courier_photo_url: str | None = None
+    courier_photo_url: PrivateAsset | None = None
     courier_plate: str | None = None
     # Self-servis (token'lı sayfadan da): mevcut talimat + erteleme hakkı.
     delivery_pref: str | None = None
@@ -372,7 +373,7 @@ class OrderTrackingOut(BaseModel):
     # Teslim kanıtı (yalnız DELIVERED'da): saat + kanıt türü (OTP/ADMIN/PHOTO).
     delivered_at: datetime.datetime | None = None
     proof: str | None = None
-    proof_photo_url: str | None = None
+    proof_photo_url: PrivateAsset | None = None
     # Teslim sonrası değerlendirme (Faz 7): verilebilir mi + verilmiş mi.
     can_feedback: bool = False
     feedback_given: bool = False

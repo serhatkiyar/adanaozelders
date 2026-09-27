@@ -235,3 +235,143 @@ def test_bucket_adi_yalniz_storage_katmaninda_secilir():
                 if isinstance(dugum, ast.Attribute) and dugum.attr == "AWS_BUCKET_NAME":
                     ihlaller.append(f"{dosya.relative_to(BACKEND)}:{dugum.lineno} AWS_BUCKET_NAME")
     assert ihlaller == []
+
+
+# ── Anahtar → adres çözümleme (R2 adım 2) ───────────────────────────────────
+
+
+def test_key_from_url_semasiz_anahtari_oldugu_gibi_doner(r2):
+    assert storage.key_from_url("profiles/a.webp") == "profiles/a.webp"
+    assert storage.key_from_url("private/x/y.pdf") == "private/x/y.pdf"
+    assert storage.key_from_url("/logo.png") is None
+    assert storage.key_from_url("data:image/png;base64,AAAA") is None
+
+
+def test_resolve_public_anahtar_cdn_adresine(r2):
+    assert storage.resolve_url("profiles/a.webp") == f"{CDN}/profiles/a.webp"
+
+
+def test_resolve_private_anahtar_s3_api_de_imzalanir(r2):
+    signed = storage.resolve_url("private/answer-keys/k.pdf")
+    assert urlparse(signed).netloc == urlparse(R2_API).netloc
+    assert "X-Amz-Signature=" in signed
+
+
+def test_resolve_public_alanda_private_anahtar_cikmaz(r2):
+    assert storage.resolve_url("private/answer-keys/k.pdf", allow_private=False) is None
+    eski = f"{R2_API}/adanaozelders-private/private/answer-keys/k.pdf"
+    assert storage.resolve_url(eski, allow_private=False) is None
+
+
+def test_resolve_sinifsiz_anahtar_none_sinifsiz_eski_adres_aynen(r2):
+    assert storage.resolve_url("avatars/x.webp") is None
+    eski = "https://depo.adanaozelders.com.tr/avatars/avatars/x.webp"
+    assert storage.resolve_url(eski) == eski
+
+
+def test_resolve_kendi_bucket_eski_public_adresini_guncel_koke_tasir(r2):
+    eski = f"{R2_API}/adanaozelders-public/library-photos/b.webp"
+    assert storage.resolve_url(eski) == f"{CDN}/library-photos/b.webp"
+
+
+@pytest.mark.parametrize(
+    "deger",
+    [
+        None,
+        "",
+        "profiles/a.webp",
+        "private/lesson-resources/r.pdf",
+        f"{CDN}/store-hero/h.webp",
+        f"{R2_API}/adanaozelders-private/private/x.pdf",
+        "https://baska.site/foto.jpg",
+        "/logo.png",
+    ],
+)
+def test_resolve_idempotent(r2, deger):
+    """Şemalar dökümden yeniden kurulabiliyor ve step-1 katmanı hâlâ üstte
+    çalışıyor: çözülmüş adresi yeniden çözmek aynı sonucu vermeli."""
+    bir = storage.resolve_url(deger)
+    assert storage.resolve_url(bir) == bir
+
+
+async def test_silme_semasiz_anahtari_kabul_eder(s3_kayit):
+    """Hesap silme `orphan_files` listesi anahtar taşıyabilir."""
+    await storage.delete_file("profiles/a.webp")
+    await storage.delete_file("private/education-docs/d.pdf")
+    assert [(k["Bucket"], k["Key"]) for _, k in s3_kayit] == [
+        ("adanaozelders-public", "profiles/a.webp"),
+        ("adanaozelders-private", "private/education-docs/d.pdf"),
+    ]
+
+
+def test_publicasset_ve_privateasset_serilestirmede_cozer(r2):
+    from pydantic import BaseModel
+
+    from core.storage_types import PrivateAsset, PublicAsset
+
+    class Ornek(BaseModel):
+        foto: PublicAsset | None = None
+        gizli_foto: PublicAsset | None = None
+        belge: PrivateAsset | None = None
+        bos: PrivateAsset | None = None
+
+    out = Ornek(
+        foto="profiles/a.webp", gizli_foto="private/x.webp", belge="private/d.pdf"
+    ).model_dump(mode="json")
+    assert out["foto"] == f"{CDN}/profiles/a.webp"
+    assert out["gizli_foto"] is None
+    assert urlparse(out["belge"]).netloc == urlparse(R2_API).netloc
+    assert out["bos"] is None
+
+
+# ── Nöbetçi: depolama alanı taşıyan yanıt şeması tipsiz kalmaz ──────────────
+
+# Depolama nesnesi taşıyabilen alan adları.
+_DEPO_ALANI = (
+    "avatar_url", "cover_url", "logo_url", "photo_url", "answer_key_url",
+    "result_document_url", "document_url", "download_url",
+)
+# (sınıf, alan) → neden tipsiz: girdi şeması ya da depolama dışı adres.
+_TIPSIZ_IZINLI = {
+    ("LibraryCreate", "cover_url"), ("LibraryCreate", "logo_url"),
+    ("LibraryUpdate", "cover_url"), ("LibraryUpdate", "logo_url"),
+    ("ProductCreate", "cover_url"), ("ProductUpdate", "cover_url"),
+    ("SellerProductCreate", "cover_url"),
+}
+
+
+def _asset_mi(annotation) -> bool:
+    from typing import get_args
+
+    from core import storage_types
+
+    hedef = {storage_types._public, storage_types._private}
+    for meta in getattr(annotation, "__metadata__", ()):
+        if getattr(meta, "func", None) in hedef:
+            return True
+    return any(_asset_mi(a) for a in get_args(annotation))
+
+
+def test_depolama_alanlari_publicasset_ya_da_privateasset():
+    import importlib
+    import pkgutil
+
+    import schemas
+    from pydantic import BaseModel
+
+    tipsiz = []
+    for mod in pkgutil.iter_modules(schemas.__path__):
+        m = importlib.import_module(f"schemas.{mod.name}")
+        for ad, sinif in vars(m).items():
+            if not (isinstance(sinif, type) and issubclass(sinif, BaseModel)):
+                continue
+            if sinif.__module__ != m.__name__:
+                continue
+            for alan, bilgi in sinif.model_fields.items():
+                if not alan.endswith(_DEPO_ALANI) or (ad, alan) in _TIPSIZ_IZINLI:
+                    continue
+                if not _asset_mi(bilgi.annotation) and not any(
+                    getattr(x, "func", None) for x in bilgi.metadata
+                ):
+                    tipsiz.append(f"{m.__name__}.{ad}.{alan}")
+    assert tipsiz == []

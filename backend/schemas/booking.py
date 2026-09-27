@@ -7,11 +7,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
-from core.config import settings
 from core import canli_ders, ders_onay_hatirlatma
+from core.config import settings
+from core.storage_types import PrivateAsset, PublicAsset
 from models.booking import BookingStatus
 from schemas.payment import PaymentOut
 from schemas.tutor import TeachingMode
+
 
 class BookingResourceCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
@@ -35,7 +37,7 @@ class BookingResourceOut(BaseModel):
     uploader_id: int
     title: str
     kind: str = "link"  # "link" | "file"
-    url: str
+    url: PrivateAsset
     file_name: str | None = None
     content_type: str | None = None
     size_bytes: int | None = None
@@ -188,9 +190,9 @@ class BookingOut(BaseModel):
     created_at: datetime.datetime
     # Görüntüleme için; list_bookings/get_booking doldurur, aksiyon yanıtlarında da set edilir.
     tutor_name: str | None = None
-    tutor_avatar_url: str | None = None
+    tutor_avatar_url: PublicAsset | None = None
     client_name: str | None = None
-    client_avatar_url: str | None = None
+    client_avatar_url: PublicAsset | None = None
     # Bu rezervasyon için aktif bir değerlendirme var mı? list_bookings/get_booking doldurur.
     reviewed: bool = False
     # Öğrenci bu dersi ŞİMDİ değerlendirebilir mi? Kural `review_service`

@@ -5,6 +5,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.storage_types import PublicAsset
 
 Puan = Annotated[int, Field(ge=1, le=5)]
 YORUM_MAKS = 2000
@@ -77,7 +78,7 @@ class ReviewOut(BaseModel):
     # "Düzenlendi" etiketi yalnız bundan beslenir (updated_at değil).
     edited_at: datetime.datetime | None = None
     client_name: str | None = None
-    client_avatar_url: str | None = None
+    client_avatar_url: PublicAsset | None = None
 
 
 class RatingDistributionOut(BaseModel):

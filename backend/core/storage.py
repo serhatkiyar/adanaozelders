@@ -200,15 +200,23 @@ def object_url(key: str) -> str:
     return public_url(key)
 
 
+def _is_bare_key(value: str) -> bool:
+    """Şema (``https:``, ``data:``) ve kök ``/`` taşımayan değer bir nesne anahtarıdır."""
+    return not value.startswith("/") and ":" not in value.split("/", 1)[0]
+
+
 def key_from_url(url: str | None) -> str | None:
     """URL'den obje anahtarını çıkarır; tanınmayan adreste ``None``.
 
     Tanınan biçimler: ``{S3_PUBLIC_BASE_URL}/{key}`` (CDN) ve
     ``.../{bucket}/{key}`` (public ya da private bucket; hem dahili hem
-    tarayıcı adresiyle yazılmış eski kayıtlar).
+    tarayıcı adresiyle yazılmış eski kayıtlar). Şemasız değer (``profiles/a.webp``)
+    zaten anahtardır ve olduğu gibi döner — yeni kayıtlar DB'de bu biçimde durur.
     """
     if not url:
         return None
+    if _is_bare_key(url):
+        return url
     base = settings.S3_PUBLIC_BASE_URL.rstrip("/")
     if base and url.startswith(base + "/"):
         return url[len(base) + 1 :].split("?", 1)[0] or None
@@ -272,38 +280,71 @@ _presign_cache: dict[tuple[str, int], tuple[str, float]] = {}
 _PRESIGN_CACHE_MAX = 4096
 
 
-def presign_many(urls: Sequence[str | None], *, ttl: int | None = None) -> list[str | None]:
-    """:func:`presign`'in toplu hâli (liste yanıtları için)."""
+def _sign(key: str, ttl: int | None = None) -> str | None:
+    """Private anahtarın imzalı adresi (önbellekli); üretilemezse ``None``."""
     seconds = ttl or settings.S3_PRESIGN_TTL_SECONDS
     now = time.monotonic()
+    cache_key = (key, seconds)
+    hit = _presign_cache.get(cache_key)
+    # Ömrünün yarısını geçmiş imzayı yenile: dönen adres her zaman en az
+    # TTL/2 kadar geçerli kalsın (istemci sayfayı hemen açmayabilir).
+    if hit is not None and (now - hit[1]) < seconds / 2:
+        return hit[0]
+    try:
+        signed = _presign_client().generate_presigned_url(
+            "get_object",
+            Params={"Bucket": private_bucket(), "Key": key},
+            ExpiresIn=seconds,
+        )
+    except Exception:
+        logger.warning("presigned URL üretilemedi", exc_info=True)
+        return None
+    if len(_presign_cache) >= _PRESIGN_CACHE_MAX:
+        _presign_cache.clear()  # basit tavan: sınırsız büyümesin
+    _presign_cache[cache_key] = (signed, now)
+    return signed
+
+
+def presign_many(urls: Sequence[str | None], *, ttl: int | None = None) -> list[str | None]:
+    """:func:`presign`'in toplu hâli (liste yanıtları için)."""
     out: list[str | None] = list(urls)
     for i, u in enumerate(out):
         key = key_from_url(u)
         if not is_private_key(key):
             continue
-        cache_key = (key, seconds)  # type: ignore[assignment]
-        hit = _presign_cache.get(cache_key)
-        # Ömrünün yarısını geçmiş imzayı yenile: dönen adres her zaman en az
-        # TTL/2 kadar geçerli kalsın (istemci sayfayı hemen açmayabilir).
-        if hit is not None and (now - hit[1]) < seconds / 2:
-            out[i] = hit[0]
-            continue
-        try:
-            signed = _presign_client().generate_presigned_url(
-                "get_object",
-                Params={"Bucket": private_bucket(), "Key": key},
-                ExpiresIn=seconds,
-            )
-        except Exception:
-            # İmzalanamayan adres ham hâliyle döner: anonim erişime kapalı
-            # olduğu için sızıntı olmaz, yüzeyde kırık bağlantı görünür.
-            logger.warning("presigned URL üretilemedi", exc_info=True)
-            continue
-        if len(_presign_cache) >= _PRESIGN_CACHE_MAX:
-            _presign_cache.clear()  # basit tavan: sınırsız büyümesin
-        _presign_cache[cache_key] = (signed, now)
-        out[i] = signed
+        # İmzalanamayan adres ham hâliyle kalır: anonim erişime kapalı
+        # olduğu için sızıntı olmaz, yüzeyde kırık bağlantı görünür.
+        out[i] = _sign(key, ttl) or u  # type: ignore[arg-type]
     return out
+
+
+def resolve_url(value: str | None, *, allow_private: bool = True) -> str | None:
+    """DB değerini (anahtar ya da eski tam adres) istemciye verilecek adrese çevirir.
+
+    * private anahtar → S3 API üzerinden kısa ömürlü imzalı adres
+      (``allow_private=False`` ise ``None``: public yüzeyden private dosya çıkmaz);
+    * whitelist'li public anahtar → :func:`public_url` (CDN varsa CDN). Kendi
+      bucket'ımıza ait eski tam adresler de böylece güncel köke taşınır;
+    * sınıfsız şemasız anahtar → ``None`` (tahminle adres üretilmez);
+    * dış adres, kök-göreli yol ve sınıfsız eski adres → olduğu gibi.
+
+    İdempotenttir: çıktısını yeniden vermek aynı sonucu üretir.
+    """
+    if not value:
+        return None
+    key = key_from_url(value)
+    bare = _is_bare_key(value)
+    if is_private_key(key):
+        if not allow_private:
+            logger.warning("public alanda private anahtar yanıttan çıkarıldı")
+            return None
+        return _sign(key) or (None if bare else value)  # type: ignore[arg-type]
+    if key and key.startswith(PUBLIC_PREFIXES):
+        return public_url(key)
+    if bare:
+        logger.warning("sınıfsız depolama anahtarı yanıttan çıkarıldı: %s", value)
+        return None
+    return value
 
 
 # Ders materyali olarak kabul edilen uzantılar (bucket'a keyfi yürütülebilir dosya

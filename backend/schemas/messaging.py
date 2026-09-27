@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import datetime
-
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from core.storage_types import PublicAsset
 from models.messaging import BlockReason
 
 
@@ -65,7 +65,7 @@ class ConversationOut(BaseModel):
     # Servis katmanında doldurulan türetilmiş alanlar (kolon değil).
     counterparty_id: int | None = None
     counterparty_name: str | None = None
-    counterparty_avatar_url: str | None = None
+    counterparty_avatar_url: PublicAsset | None = None
     # Karşı tarafın türü: CLIENT | TUTOR | LIBRARY (frontend doğru hedeflesin).
     counterparty_role: str | None = None
     # Karşı taraf eğitmense kök ilan adresi (Modül 6); yoksa None.
@@ -91,7 +91,7 @@ class MessageSearchHit(BaseModel):
     conversation_id: int
     counterparty_id: int | None = None
     counterparty_name: str | None = None
-    counterparty_avatar_url: str | None = None
+    counterparty_avatar_url: PublicAsset | None = None
     counterparty_role: str | None = None
     sender_role: str
     body: str

@@ -6,6 +6,8 @@ import re
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from core.storage_types import PrivateAsset
+
 #: Formdaki deneyim seçenekleri — serbest metin değil, kapalı liste.
 EXPERIENCE_CHOICES = ("universite-ogrencisi", "0-2", "3-5", "5+")
 
@@ -117,7 +119,7 @@ class PreApplicationDocumentOut(BaseModel):
     """Ek belge. `url` private/ anahtarıdır; JSON yanıtında `PresignPrivateUrls`
     katmanı kısa ömürlü imzalı adrese çevirir."""
 
-    url: str
+    url: PrivateAsset
     name: str
 
 
@@ -148,7 +150,7 @@ class AdminTutorPreApplicationOut(BaseModel):
     created_at: datetime.datetime
     # İlan dosyası (formun isteğe bağlı bölümleri). `photo_url` de `private/`
     # anahtarıdır — `PresignPrivateUrls` katmanı yanıtta imzalar.
-    photo_url: str | None = None
+    photo_url: PrivateAsset | None = None
     headline: str | None = None
     bio: str | None = None
     intro_video_url: str | None = None

@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from core.storage_types import PrivateAsset, PublicAsset
 
 # ── Kategori ───────────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ class ProductImageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    url: str
+    url: PublicAsset
     caption: str | None = None
     alt_text: str | None = None
     sort_order: int = 0
@@ -111,7 +112,7 @@ class ProductSearchOut(BaseModel):
     #: okur; katalog kartında gösterilmez ama şemanın tek kaynağı burasıdır.
     tax_rate: Decimal | None = None
     currency: str
-    cover_url: str | None = None
+    cover_url: PublicAsset | None = None
     in_stock: bool = True
     #: Kalan adet. `in_stock` yalnız 0/0-değil ayrımı yapar ve "X kitabından
     #: kaç adet var" sorusunu cevaplayamaz — yönetim listesi bunu modal
@@ -187,7 +188,7 @@ class ProductVariantMemberPublicOut(BaseModel):
     price: str
     #: Kardeşin kendi kapağı. Seçici üzerine gelindiğinde/odaklanıldığında
     #: önizleme ve `ProductGroup.hasVariant` markup'ı bunu ister.
-    cover_url: str | None = None
+    cover_url: PublicAsset | None = None
     sku: str | None = None
 
 
@@ -501,7 +502,7 @@ class VariantMemberOut(BaseModel):
     price: str
     stock: int | None = None
     status: str | None = None
-    cover_url: str | None = None
+    cover_url: PublicAsset | None = None
     sku: str | None = None
     barcode: str | None = None
 
@@ -597,7 +598,7 @@ class ProductReviewOut(BaseModel):
     comment_text: str | None = None
     created_at: datetime.datetime
     client_name: str | None = None
-    client_avatar_url: str | None = None
+    client_avatar_url: PublicAsset | None = None
 
 
 # ── Sipariş ─────────────────────────────────────────────────────────────────────────
@@ -622,13 +623,13 @@ class OrderItemOut(BaseModel):
     id: int
     product_id: int | None = None
     title: str
-    cover_url: str | None = None
+    cover_url: PublicAsset | None = None
     unit_price: str
     quantity: int
     kind: str
     seller_type: str
     # İndirme linki yalnız PAID + DIGITAL kaleme döner (serviste doldurulur).
-    download_url: str | None = None
+    download_url: PrivateAsset | None = None
 
 
 class OrderOut(BaseModel):

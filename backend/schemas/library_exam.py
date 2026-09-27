@@ -4,6 +4,7 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.storage_types import PrivateAsset
 
 # ── Oturum (deneme sınavı etkinliği) ─────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ class ExamSessionOut(BaseModel):
     catalog_name: str | None = None
     is_nationwide: bool = False
     # Etkin cevap anahtarı (session.answer_key_url or catalog.answer_key_url).
-    answer_key_url: str | None = None
+    answer_key_url: PrivateAsset | None = None
     results_published: bool = False
     # Yönetim listesinde: kaç katılımcının sonucu girilmiş (operatör ilerlemesi).
     results_entered_count: int = 0
@@ -95,7 +96,7 @@ class RegistrationOut(BaseModel):
     session: ExamSessionOut | None = None
     # ── Sınav sonucu (yalnız oturum yayınlandıysa öğrenciye döner) ──
     result_published: bool = False
-    result_document_url: str | None = None  # bireysel karne (PDF/görsel) — birincil
+    result_document_url: PrivateAsset | None = None  # bireysel karne (PDF/görsel) — birincil
     result_net: str | None = None  # opsiyonel toplam net (Decimal -> string)
     result_rank: int | None = None  # opsiyonel sıralama
 
@@ -118,7 +119,7 @@ class RosterRow(BaseModel):
     client_name: str
     status: str
     attended_at: datetime.datetime | None = None
-    result_document_url: str | None = None
+    result_document_url: PrivateAsset | None = None
     result_net: str | None = None
     result_rank: int | None = None
 

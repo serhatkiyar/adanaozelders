@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from core.storage_types import PublicAsset
 from schemas.booking import BookingOut
 
 VisibilityCode = Literal[
@@ -47,7 +48,7 @@ class TutorStudentOut(BaseModel):
 
     client_id: int
     full_name: str | None = None
-    avatar_url: str | None = None
+    avatar_url: PublicAsset | None = None
     # Başlamış kabul edilmiş/tamamlanmış son ders; iptal/red sayılmaz.
     last_lesson_at: datetime.datetime | None = None
     # Kabul edilmiş ilk gelecek ders; bekleyen teklif/talep sayılmaz.

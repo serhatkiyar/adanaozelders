@@ -4,8 +4,8 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from core.storage_types import PublicAsset
 from core.urls import ensure_http_url
-
 
 # ── Çalışma saatleri ────────────────────────────────────────────────────────────
 
@@ -57,7 +57,7 @@ class LibraryReviewOut(BaseModel):
     comment_text: str | None = None
     created_at: datetime.datetime
     client_name: str | None = None
-    client_avatar_url: str | None = None
+    client_avatar_url: PublicAsset | None = None
     # Bu kütüphanede ATTENDED (deneme/çalışma) kaydı olan öğrenci → doğrulanmış ziyaretçi.
     verified: bool = False
 
@@ -69,7 +69,7 @@ class LibraryImageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    url: str
+    url: PublicAsset
     caption: str | None = None
     sort_order: int = 0
 
@@ -203,8 +203,8 @@ class LibrarySearchOut(BaseModel):
     name: str
     slug: str
     description: str | None = None
-    cover_url: str | None = None
-    logo_url: str | None = None
+    cover_url: PublicAsset | None = None
+    logo_url: PublicAsset | None = None
     location_text: str | None = None
     location_lat: float | None = None
     location_lng: float | None = None

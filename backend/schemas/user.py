@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import datetime
-
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.storage_types import PublicAsset
 from models.tutor import Gender
 from schemas.education import EducationOut
-
 
 
 class UserOut(BaseModel):
@@ -31,7 +30,7 @@ class UserOut(BaseModel):
     phone_verified: bool = False
     role_id: int
     about: str | None = None
-    avatar_url: str | None = None
+    avatar_url: PublicAsset | None = None
     birth_date: datetime.date | None = None
     gender: Gender | None = None
     created_at: datetime.datetime
@@ -107,7 +106,7 @@ class ClientPublicOut(BaseModel):
     id: int
     full_name: str
     about: str | None = None
-    avatar_url: str | None = None
+    avatar_url: PublicAsset | None = None
     #: Tam doğum tarihi yalnız admin yanıtında (İP-3 §4.4); eğitmen `age` alır.
     birth_date: datetime.date | None = None
     age: int | None = None
@@ -124,7 +123,7 @@ class ClientSearchOut(BaseModel):
     id: int
     full_name: str
     about: str | None = None
-    avatar_url: str | None = None
+    avatar_url: PublicAsset | None = None
     birth_date: datetime.date | None = None
     gender: Gender | None = None
     last_seen_at: datetime.datetime | None = None
