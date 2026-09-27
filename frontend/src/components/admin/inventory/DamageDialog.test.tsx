@@ -2,7 +2,7 @@
  * İP-A2 · Pilot form: `DamageDialog` — gerçek DOM davranış testleri.
  *
  * Bu dosya `Form.*` katmanının göçünden ÖNCE yazıldı ve M9/M10 kırmızıydı
- * (`docs/ip-a2-rapor.md` → Görev 3). Geri kalan testler göçün MEVCUT davranışı
+ * (`docs/arsiv/ip-a/ip-a2-rapor.md` → Görev 3). Geri kalan testler göçün MEVCUT davranışı
  * bozmadığının nöbetçisidir: anlık doğrulama, etki metni, gövde içeriği.
  *
  * Tek mock `useAdminProducts`: ürün ARAMASI bu paketin konusu değil, ama

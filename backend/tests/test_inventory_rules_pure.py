@@ -27,7 +27,7 @@ RULES = "services.inventory_rules"
 
 #: (olay, saleable, damaged, reserved, on_premise, otomatik_uzlastirilabilir)
 #: İşaretler: -1 azalır · +1 artar · 0 değişmez · None belirsiz.
-#: Kaynak: docs/f29-sayim-hasarli-stok-plani.md §3.
+#: Kaynak: docs/arsiv/stok/f29-sayim-hasarli-stok-plani.md §3.
 BEKLENEN_ETKI = [
     ("INITIAL",             +1,  0,  0, +1, True),
     ("SALE",                -1,  0, +1,  0, True),

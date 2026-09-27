@@ -24,7 +24,7 @@ const ARGS = Object.fromEntries(
   }, [])
 );
 const FRONTEND = ARGS.frontend ?? "http://127.0.0.1:5173";
-const OUT = resolve(ARGS.out ?? "../docs/vitrin-p0");
+const OUT = resolve(ARGS.out ?? "../docs/arsiv/vitrin-p0");
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = Number(ARGS.port ?? 9471);
 

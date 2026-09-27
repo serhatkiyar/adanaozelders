@@ -59,7 +59,7 @@ const DOSYA_BUTCELERI = [
 /**
  * Çağrı yeri bütçelerinin TAM envanteri (dosya:satır değer).
  *
- * Her satırın ölçümü ve neden kaldırılamadığı `docs/ip-a7d5-rapor.md` ·
+ * Her satırın ölçümü ve neden kaldırılamadığı `docs/arsiv/ip-a/ip-a7d5-rapor.md` ·
  * Görev 3'te tablodadır. Kısaca (tam suite yükü altında ÖLÇÜLEN tepe bekleme):
  *
  *   • `DamageDialog:43` 2000 — ürün arama debounce'u; ölçülen tepe 303 ms.

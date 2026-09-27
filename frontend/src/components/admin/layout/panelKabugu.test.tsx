@@ -2,7 +2,7 @@
  * İP-B1 · Görev 4 — panel kabuğunun KIRMIZI MATRİSİ.
  *
  * Bu dosya kabuk kodundan ÖNCE yazıldı ve önce kırmızı gösterildi
- * (`docs/ip-b1-rapor.md` · Görev 4 · kırmızı matris tablosu). Amacı kabuğun
+ * (`docs/arsiv/ip-b/ip-b1-rapor.md` · Görev 4 · kırmızı matris tablosu). Amacı kabuğun
  * "render oluyor" olmasını değil, **davranışlarını** tutmaktır:
  *
  *   - gezinme gerçekten `<nav>` mü, etkin öğe `aria-current` taşıyor mu

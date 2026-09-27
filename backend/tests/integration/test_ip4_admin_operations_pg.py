@@ -7,7 +7,7 @@ Paketin ilk commit'i olduğu için uçlar henüz YOKTUR: ilk koşum kırmızıd�
 
 ## Neden bu testler var
 
-Denetim raporu (`docs/DENETIM-RAPORU-2026-07-31.md` §4.2) üç bulguyu ölçtü:
+Denetim raporu (`docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md` §4.2) üç bulguyu ölçtü:
 
 * **P1-4** — `escrow_reconciler.py` deneme sınırı dolan iadeyi `logger.error`
   ile bırakıyor; `grep REFUNDING backend/api/` → **sıfır**, `grep OutboxEvent

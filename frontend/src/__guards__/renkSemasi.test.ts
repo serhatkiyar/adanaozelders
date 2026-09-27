@@ -24,7 +24,7 @@
  * gerçekten uygulandığını jsdom ölçemez (stil dosyası yüklenmez, `colorScheme`
  * hesaplanmaz). Davranış kanıtı gerçek Chrome ölçümündedir:
  * `scripts/ip_a8_kontrast.mjs` beş widget'ı — `.input` sınıflı ve ÇIPLAK —
- * iki temada okur ve `docs/ip-a8/kontrast.json`a yazar. Ölçülen:
+ * iki temada okur ve `docs/arsiv/ip-a/ip-a8/kontrast.json`a yazar. Ölçülen:
  * açık temada beşi de `light`, koyu temada beşi de `dark`; düzeltme geri
  * alınınca beşi de `normal`.
  *

@@ -106,7 +106,7 @@
    * üçlüsü duruyordu: TANIMLIYDI ama hiçbir yere bağlı DEĞİLDİ — ne
    * Tailwind'e köprülenmişti ne de tek bir dosyada `var(--admin-…)` olarak
    * okunuyordu (arama: sıfır sonuç). Yarım kalmış bir girişimdi ve
-   * `docs/medusa-arayuz-karsilastirma.md` §2.2 onu isimle işaretlemişti.
+   * `docs/arsiv/medusa/medusa-arayuz-karsilastirma.md` §2.2 onu isimle işaretlemişti.
    *
    * İP-B1 onu SİLMEDİ, TAMAMLADI: aşağıdaki küme Medusa'nın indirection
    * desenini uygular (semantik ad → CSS değişkeni) ve `tailwind.config.js` →

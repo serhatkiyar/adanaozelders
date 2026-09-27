@@ -21,14 +21,14 @@ tersine, ölçümlerinin her birinde onun AYAKTA olduğunu ayrıca kanıtlar
 `srs_*`). İkincisi birincinin yaptığı her şeyi yapıyor ve üstüne cloze,
 yazarak cevaplama, kart tarayıcı, limit kalıtımı, undo, istatistik ve eğitmen
 ataması getiriyor. Birincisinin **hiç testi yoktu**
-(`docs/DENETIM-RAPORU-2026-07-31.md` bunu "testsiz router: `flashcards`
+(`docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md` bunu "testsiz router: `flashcards`
 (10 uç)" olarak zaten kaydetmişti).
 
 ### 1.1 Ölçülen veri — taşıma yapılmama gerekçesi
 
 **Platformun çalışan bir üretim kurulumu yoktur.** Sistem lansmana çıkmamıştır
 (proje sahibinin teyidi, 14 Ağu 2026; lansman kapıları
-`docs/pk1-deployment-checklist.md`), gerçek kullanıcı yoktur ve flashcard
+`docs/arsiv/altyapi/pk1-deployment-checklist.md`), gerçek kullanıcı yoktur ve flashcard
 verisi taşıyan tek veritabanı geliştirme kataloğu `ceyhandb`'dir. Dolayısıyla
 "bu migration üretimde kaç satır siler" sorusunun cevabı **sıfırdır** —
 ölçülecek üretim yoktur. Aşağıdaki ölçüm geliştirme kataloğuna aittir ve
@@ -327,7 +327,7 @@ için var olan dosya). `matches: false` → "system" tercihi testlerde açık te
   adı; yaşayan sistemin sözleşmesinde kalması altı ay sonra karışıklık üretir.
   Dokuz atıf güncellendi.
 - **Dokunulmayanlar (tarihsel kayıt):** `docs/teknik-borc.md` içindeki
-  `ip16-flashcard` **dal adı** ve `docs/DENETIM-RAPORU-2026-07-31.md`. Geçmiş
+  `ip16-flashcard` **dal adı** ve `docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md`. Geçmiş
   yeniden yazılmaz.
 - `backend/CLAUDE.md`: `/flashcards/*` satırı silindi. **Yerine `/srs/*` satırı
   EKLENDİ** — İP-16 merge'inde uç haritasına hiç yazılmamıştı; flashcards
@@ -382,7 +382,7 @@ Bugünkü tablo — **15 dosya**, hiçbiri çağrı değildir:
 | `tests/integration/test_ip16_migration_pg.py` | 2 | Bayat fixture'ın düzeltme yorumu (§5.2) |
 | `frontend/src/lib/routes.ts` | 1 | Nöbetçi teste yönlendiren yorum |
 | `docs/sm2-kaldirma-sozlesme.md` | 41 | Bu sözleşmenin kendisi |
-| `docs/teknik-borc.md` · `docs/DENETIM-RAPORU-2026-07-31.md` · `docs/ip16-aralikli-tekrar-sozlesme.md` · `docs/ip14-operator-panel-sozlesme.md` | 11 · 2 · 7 · 1 | Tarihsel kayıt |
+| `docs/teknik-borc.md` · `docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md` · `docs/ip16-aralikli-tekrar-sozlesme.md` · `docs/ip14-operator-panel-sozlesme.md` | 11 · 2 · 7 · 1 | Tarihsel kayıt |
 
 **Sayının kendisi bir nöbetçi değildir.** Bu tablo elle tutulur ve bayatlar;
 bayatladığında hiçbir test kırılmaz. Tek işlevi, "flashcard" arayan birine
@@ -423,7 +423,7 @@ kaldırılan sistemin kendisidir:
 
 - **Backend tarafında silinen test YOKTUR** — eski SM-2 paketinin hiç testi
   yoktu. Bu, kaldırmadan önce de bilinen bir şeydi:
-  `docs/DENETIM-RAPORU-2026-07-31.md` onu "testsiz backend router: `flashcards`
+  `docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md` onu "testsiz backend router: `flashcards`
   (10 uç)" diye kaydetmişti. Yani 273 satırlık `_apply_sm2` algoritması ve 10
   uç, tek bir nöbetçi olmadan silindi.
 - **Frontend tarafında da test dosyası silinmedi.** Eski sistemin kendi test

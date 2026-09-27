@@ -23,7 +23,7 @@ type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger";
  * açık metin taşır; bu rozet açık zemin + koyu metin taşır ve ASLA dolgulu
  * düğme olmaz. Nöbetçi: `__guards__/markaAksani.test.ts`.
  *
- * Ölçülen kontrast (gerçek Chrome · docs/ip-c4/kontrast.json):
+ * Ölçülen kontrast (gerçek Chrome · docs/arsiv/ip-c/ip-c4/kontrast.json):
  * `#78350F` metin / `#FEF3C7` zemin = **8,15**. (Ç-3'te `#7C2D12`/`#FDF1E1`
  * çifti 8,41'di; eski `amber-50`/`amber-800` 8,9 — okunabilirlik korundu.)
  */

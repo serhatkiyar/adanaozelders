@@ -13,7 +13,7 @@
  *     gerçek bir ekranda sınanıyor.
  *
  * Aşağıdaki testlerin bir kısmı YAZILDIĞI ANDA KIRMIZIDIR; hangileri olduğu
- * `docs/ip-a7d2-rapor.md` → Görev 3'te sayıyla yazılıdır. Kırmızı olmayanlar
+ * `docs/arsiv/ip-a/ip-a7d2-rapor.md` → Görev 3'te sayıyla yazılıdır. Kırmızı olmayanlar
  * mevcut davranışı sabitler: göç onları kırmamalıdır.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

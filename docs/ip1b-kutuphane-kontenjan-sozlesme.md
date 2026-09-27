@@ -1,7 +1,7 @@
 # İP-1b · Kütüphane kolu para ve kontenjan sözleşmesi
 
 **Dal:** `ip1b-kutuphane-kontenjan` · **Taban:** `e726b9b` (main)
-**Kaynak bulgular:** `docs/DENETIM-RAPORU-2026-07-31.md` → P1-20, P1-21, P1-22, P2-8, P2-40
+**Kaynak bulgular:** `docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md` → P1-20, P1-21, P1-22, P2-8, P2-40
 
 Bu belge kütüphane kolunun (deneme bileti + çalışma alanı rezervasyonu) kontenjan,
 canlılık, silme ve bilet kodu kurallarını **bağlayıcı sözleşme** olarak yazar.

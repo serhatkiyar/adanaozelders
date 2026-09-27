@@ -141,7 +141,7 @@ function operatorOturumu() {
 // idiom); dosya yazıldığı gün o gerekçe bitti ve geriye yalnız maliyeti kaldı:
 // modül değerlendirmesi TOPLAMA evresinde değil, koşum evresinde ödeniyordu.
 // Statik import maliyeti collect'e taşır — orada test/kanca bütçesi yoktur.
-// Ölçüm ve gerekçe: `docs/ip-a7d5-rapor.md` · Görev 2.
+// Ölçüm ve gerekçe: `docs/arsiv/ip-a/ip-a7d5-rapor.md` · Görev 2.
 
 async function sar() {
   const qc = new QueryClient({

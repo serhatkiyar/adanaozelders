@@ -9,6 +9,7 @@ API kökü: `/api/v1`; geliştirme portları backend `8000`, frontend `5173`.
 - İstenen değişikliği yap; yakın özellikleri kendiliğinden yeniden tasarlama.
 - Mevcut kirli worktree'yi ve kullanıcı dosyalarını koru.
 - Gerçek kodu talimat metninden üstün kabul et. Bir bilgi eskimiş görünüyorsa ilgili model, router, servis, test ve CI dosyasına bak.
+- Ürün davranışı değişmeden önce `docs/urun-kararlari.md`, teknik borca dokunmadan önce `docs/teknik-borc.md` okunur. `docs/README.md` hangi belgenin geçerli, hangisinin arşiv (`docs/arsiv/`) olduğunu listeler; arşiv belgeleri karar kaynağı değildir.
 - Mock/placeholder ürün verisi ekleme. Gereken veri gerçek API akışından gelsin.
 - Yeni soyutlama, agent, hook veya test ancak somut bir ihtiyacı çözüyor ise eklenir.
 
@@ -32,7 +33,7 @@ API kökü: `/api/v1`; geliştirme portları backend `8000`, frontend `5173`.
 
 ## Çalıştırma
 
-Yerel sürümler CI ile aynı olmalıdır: Python 3.12 ve Node 20. Tüm geliştirme ortamı `docker compose up --build` ile; uygulamalar kendi dizinlerindeki notlarla ayrı çalıştırılabilir. Backend ortam değişkenlerinin örneği `backend/.env.example` dosyasındadır.
+Yerel sürümler CI ile aynı olmalıdır: Python 3.12 ve Node 20. Varsayılan `docker compose up` yalnız destek servislerini (Redis, MinIO vb.) açar; backend ve frontend host üzerinde çalıştırılır. Tüm sistemi Docker'da açmak için `docker compose --profile tamdocker up --build`. Backend ortam değişkenlerinin örneği `backend/.env.example` dosyasındadır.
 
 ## Doğrulama politikası
 

@@ -24,7 +24,7 @@ const ARGS = Object.fromEntries(
   }, [])
 );
 const FRONTEND = ARGS.frontend ?? "http://127.0.0.1:5199";
-const OUT = resolve(ARGS.out ?? "../docs/ip-a6c");
+const OUT = resolve(ARGS.out ?? "../docs/arsiv/ip-a/ip-a6c");
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = Number(ARGS.port ?? 9281);
 

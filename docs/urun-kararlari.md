@@ -7,14 +7,14 @@ kendisinin, gerekçesinin ve nöbetçisinin nerede olduğu tek aramayla bulunsun
 
 ## Neden ayrı bir namespace
 
-`Ç-1…Ç-6` **İP-B1 raporunun açık sorularıdır** (`docs/ip-b1-rapor.md`), ürün
+`Ç-1…Ç-6` **İP-B1 raporunun açık sorularıdır** (`docs/arsiv/ip-b/ip-b1-rapor.md`), ürün
 kararı değil. 5–6 Eylül 2026 turunda o namespace yanlışlıkla ürün kararları için
 kullanıldı: `Ç-4` hem *"Ayarlar bölümü tek sayfa mı"* hem *"turuncu aksan"*
 demeye başladı, `Ç-5` hem *"Google Fonts / KVKK"* hem *"öğrenci rol adı"*.
 30 geçiş `ÜK-n`'e taşındı. **`Ç-n`'ye artık ürün kararı yazılmaz.**
 
 Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kararı
-(`docs/ip-b1-rapor.md:235`), `Ç-5` = yazı tipi self-host / KVKK
+(`docs/arsiv/ip-b/ip-b1-rapor.md:235`), `Ç-5` = yazı tipi self-host / KVKK
 (`frontend/src/index.css:7`, `__guards__/disFont.test.ts`).
 
 ---
@@ -85,7 +85,7 @@ sınıfa ikinci kez opaklık eklenirse (`shadow-marka/20/20`) Tailwind sınıfı
 **sessizce üretmez** ve `npm run build` YEŞİL geçer. Beş dosyada bu olmuştu;
 `__guards__/gecerliMarkaSinifi.test.ts` o sınıfı yakalamak için var.
 
-Ayrıntı: `docs/tasarim-dili.md` §1.2/§1.4 · kanıt: `docs/ip-c4/README.md`.
+Ayrıntı: `docs/tasarim-dili.md` §1.2/§1.4 · kanıt: `docs/arsiv/ip-c/ip-c4/README.md`.
 
 ---
 
@@ -420,7 +420,7 @@ DOĞRULANDIĞINI söyler, kimliğin ne olduğunu değil.
 - `docs/tasarim-dili.md` — görsel kuralların kendisi (ÜK-1)
 - `docs/egitmen-alici-sozlesme.md` — eğitmenin alıcı kimliği (ÜK-5, ÜK-6)
 - `docs/ilan-ekrani-bulgular.md` — ilan düzenleme ekranı keşfi
-- `docs/ip-b1-rapor.md` — `Ç-n` açık sorularının sahibi
+- `docs/arsiv/ip-b/ip-b1-rapor.md` — `Ç-n` açık sorularının sahibi
 
 ---
 

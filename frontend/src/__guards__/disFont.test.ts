@@ -21,7 +21,7 @@
  *
  * Bu bir KAYNAK SÖZLEŞMESİ testidir, yani düşük güçlüdür: "tarayıcı gerçekten
  * dış istek atmıyor" iddiasını jsdom kanıtlayamaz. Davranış kanıtı gerçek
- * Chrome turundadır (`docs/ip-b2-rapor.md` · Görev 5): ağ kaydında
+ * Chrome turundadır (`docs/arsiv/ip-b/ip-b2-rapor.md` · Görev 5): ağ kaydında
  * `document.fonts` girdileri ve dış konağa giden istek sayısı ölçülür.
  *
  * Buradaki işi, düzeltmenin **sessizce geri alınamaması**.

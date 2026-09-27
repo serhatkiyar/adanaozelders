@@ -4,7 +4,7 @@ Revision ID: f29_sayim_hasarli_stok
 Revises: tb1_order_returns_reason_default
 Create Date: 2026-07-31
 
-Ayrintili gerekce: docs/f29-sayim-hasarli-stok-plani.md
+Ayrintili gerekce: docs/arsiv/stok/f29-sayim-hasarli-stok-plani.md
 
 ## Sira kritiktir
 

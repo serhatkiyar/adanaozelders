@@ -28,14 +28,14 @@ const ARGS = Object.fromEntries(
   }, [])
 );
 const FRONTEND = ARGS.frontend ?? "http://127.0.0.1:5173";
-const OUT = resolve(ARGS.out ?? "../docs/ip-b2");
+const OUT = resolve(ARGS.out ?? "../docs/arsiv/ip-b/ip-b2");
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = Number(ARGS.port ?? 9413);
 const EPOSTA = ARGS.eposta;
 const SIFRE = ARGS.sifre;
 
 async function chromeBaslat() {
-  // Profil ÇIKTI dizinine yazılmaz: `docs/ip-b1` sonuçların yeri ve Chrome
+  // Profil ÇIKTI dizinine yazılmaz: `docs/arsiv/ip-b/ip-b1` sonuçların yeri ve Chrome
   // profili orada kalırsa hem commit'e sızar hem bir sonraki koşumda kilitli
   // kalıp turu düşürür (ölçüldü: EPERM).
   // Profil KOŞUMA ÖZEL: eski profili silmeye çalışmak, arka planda kalmış

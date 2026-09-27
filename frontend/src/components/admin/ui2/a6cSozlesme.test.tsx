@@ -582,7 +582,7 @@ function AlanEkrani({ tur }: { tur: "number" | "text" }) {
 describe("Görev 6 · görsel kusurlar", () => {
   it("6a — hata mesajı `rose-700` kullanır (açık temadaki dar marj)", () => {
     // Gerçek kontrast gerçek tarayıcıda ölçüldü (4,70 → 6,29;
-    // `docs/ip-a6c/gorsel-olcum.json`). Bu test onarımın sessizce geri
+    // `docs/arsiv/ip-a/ip-a6c/gorsel-olcum.json`). Bu test onarımın sessizce geri
     // alınmasına karşı nöbetçidir — kontrast ölçmez, KARARI sabitler.
     render(<HataliAlan />);
     const hata = screen.getByRole("alert");

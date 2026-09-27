@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
  * değil: bağımlılık dizisinden `onClose`u çıkarmak ama işleyiciyi bayat
  * closure'dan okumak da testi geçirmezdi (aşağıdaki "güncel işleyici" testi).
  *
- * Ters prova (`docs/ip-a4-rapor.md` → Görev 1): `onCloseRef` sökülüp `onClose`
+ * Ters prova (`docs/arsiv/ip-a/ip-a4-rapor.md` → Görev 1): `onCloseRef` sökülüp `onClose`
  * bağımlılığa geri konduğunda 1. test kırılır.
  */
 import { fireEvent, render, screen } from "@testing-library/react";

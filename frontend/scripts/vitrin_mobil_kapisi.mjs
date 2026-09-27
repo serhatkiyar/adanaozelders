@@ -29,7 +29,7 @@ const ARGS = Object.fromEntries(
   }, [])
 );
 const FRONTEND = ARGS.frontend ?? "http://localhost:5173";
-const OUT = resolve(ARGS.out ?? "../docs/vitrin-p0");
+const OUT = resolve(ARGS.out ?? "../docs/arsiv/vitrin-p0");
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = Number(ARGS.port ?? 9491);
 const GENISLIKLER = [360, 390, 414, 768];

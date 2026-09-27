@@ -71,8 +71,8 @@
  * Artış bir regresyon DEĞİL, gizli borcun görünür olmasıdır.
  *
  * Eşiklerin hepsi gerçek JSX mutasyonuyla sınandı
- * (`docs/ip-a2-rapor.md` → Görev 6, `docs/ip-a3a-rapor.md` → Görev 5,
- * `docs/ip-a3c-rapor.md` → Görev 9).
+ * (`docs/arsiv/ip-a/ip-a2-rapor.md` → Görev 6, `docs/arsiv/ip-a/ip-a3a-rapor.md` → Görev 5,
+ * `docs/arsiv/ip-a/ip-a3c-rapor.md` → Görev 9).
  *
  * ## İ9 · Boşluk 1: `src/panel/**` (ikas tarzı yeni panel) ölçüme eklendi
  *

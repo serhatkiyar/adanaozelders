@@ -2,7 +2,7 @@
  * İP-A3a · Kirli form bekçisi — gerçek DOM davranış testleri.
  *
  * Bu dosya İMPLEMENTASYONDAN ÖNCE yazıldı ve kırmızı hâli
- * `docs/ip-a3a/kirmizi-matris.txt`'e kaydedildi.
+ * `docs/arsiv/ip-a/ip-a3a/kirmizi-matris.txt`'e kaydedildi.
  *
  * Kapsam bilinçli olarak MODAL KAPATMA + SEKME KAPATMA'dır. Uygulama içi rota
  * gezinmesi YOK: proje klasik `<BrowserRouter>` + `<Routes>` kullanıyor ve

@@ -23,7 +23,7 @@
  * Ekran başına yazılan tek şey "dalları açan tıklamalar"dır; adlandırma
  * denetiminin kendisi `test-utils/alanAdlari.ts`'te ortaktır. Bu dosyanın
  * dal-açma kısmı ~30 satırdır. Dürüst değerlendirme raporda
- * (`docs/ip-a4-rapor.md` → Görev 4).
+ * (`docs/arsiv/ip-a/ip-a4-rapor.md` → Görev 4).
  */
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";

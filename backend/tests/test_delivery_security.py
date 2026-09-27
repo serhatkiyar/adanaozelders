@@ -1,6 +1,6 @@
 """Faz 0 güvenlik ağı — saf birim testleri.
 
-Kapsam (bkz. docs/teslimat-faz0-denetim-matrisi.md §6):
+Kapsam (bkz. docs/arsiv/teslimat/teslimat-faz0-denetim-matrisi.md §6):
 - G-2: public token'la bırakma tercihine yükseltme yasağı (DROP_PREFS sınırı)
 - G-3: OTP SMS'inde sosyal mühendislik kalkanı cümlesi
 - G-4: OTP resend throttle (deneme sayacının sonsuz tazelenmesini keser)

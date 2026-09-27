@@ -5,7 +5,7 @@ değişmedi. Amacı, düzeltme yazılmadan önce "doğru davranış nedir" sorus
 tek bir yerde sabitlemek ve her maddenin karşılığında gerçek HTTP + gerçek
 PostgreSQL testi bulunduğunu göstermek.
 
-Kaynak denetim raporu (`adana-project-audit/DENETIM-RAPORU-2026-07-31.md`)
+Kaynak denetim raporu (`docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md`)
 **kanıt sayılmadı**: her bulgu koddan ve çağrı yerlerinden bağımsız doğrulandı.
 İki iddia düzeltildi (§7).
 

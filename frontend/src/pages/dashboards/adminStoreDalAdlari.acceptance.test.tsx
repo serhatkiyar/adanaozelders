@@ -22,7 +22,7 @@
  * senaryoya bölündü (oluşturma / düzenleme+stok / varyant), her biri kendi
  * dallarını açar.
  *
- * Ölçülen maliyet paketin raporunda (`docs/ip-a6-rapor.md` → Görev 5).
+ * Ölçülen maliyet paketin raporunda (`docs/arsiv/ip-a/ip-a6-rapor.md` → Görev 5).
  *
  * ## Dosyanın kapsamı
  *

@@ -98,12 +98,12 @@ yaşar ve deploy ile değişir."*
 
 ### 0.5 Bu his zaten repoda kayıtlı
 
-`docs/teslimat-profesyonellestirme-gorev.md:70` — **cevaplanmamış** açık soru:
+`docs/arsiv/teslimat/teslimat-profesyonellestirme-gorev.md:70` — **cevaplanmamış** açık soru:
 
 > *"KULLANICIYA SOR: LADA/COROLLA çalışma saatleri, kurye vardiyaları, zorunlu
 > mola, depo tamponu ve apartman servis süresi başlangıç değerleri nedir?"*
 
-`docs/teslimat-faz0-denetim-matrisi.md:27` (P0 boşluk): *"Kapasite tek global
+`docs/arsiv/teslimat/teslimat-faz0-denetim-matrisi.md:27` (P0 boşluk): *"Kapasite tek global
 sayı; **araç/kurye/vardiya/retry-borcu kavramı** yok."*
 
 Ve `docs/delivery-screens-wireframes.md` koddan ileride: araç bazlı yük görünümü

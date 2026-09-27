@@ -30,7 +30,7 @@
  * dosyaları ayıklanır).
  *
  * Davranış yarısı: `hooks/kaydirmaKilidi.test.tsx` (gerçek DOM) ve gerçek
- * Chrome turu (`docs/ip-a9-rapor.md`).
+ * Chrome turu (`docs/arsiv/ip-a/ip-a9-rapor.md`).
  */
 import { readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";

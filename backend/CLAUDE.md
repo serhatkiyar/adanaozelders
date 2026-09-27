@@ -11,6 +11,7 @@ Router'ı ince tut; mevcut servis desenini kullan. Ancak sırf katman sayısın�
 - Auth/ödeme/PII/public-token değişikliklerinde mevcut guard ve servisleri atlama.
 - Hassas objeler `private/` anahtarında kalır; public yanıta yalnız yetkili uç ve imzalı URL üzerinden çıkar.
 - Yeni yazma veya maliyetli dış-servis ucunda mevcut rate-limit desenini kontrol et.
+- Para, iade, iptal, vergi veya KVKK davranışı değişmeden önce ilgili sözleşmeye bak: `docs/ip1a-ders-para-sozlesme.md`, `docs/ip2a-magaza-iade-sozlesme.md`, `docs/ip2b-siparis-iptal-telafi-sozlesme.md`, `docs/ip5-kdv-fatura-sozlesme.md`, `docs/ip3-yetki-kvkk-sozlesme.md`.
 
 ## Migration
 

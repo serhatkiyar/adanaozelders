@@ -1438,7 +1438,7 @@ export function sayim() {
     fazlaDosyalar: fazla,
     rawButton,
     // `labels` / `labelsWithHtmlFor` artık EŞİK DEĞİL, TEŞHİS sayısıdır
-    // (İP-A3a: oran metriği kaldırıldı — gerekçesi `docs/ip-a3a-rapor.md`).
+    // (İP-A3a: oran metriği kaldırıldı — gerekçesi `docs/arsiv/ip-a/ip-a3a-rapor.md`).
     // Sayaç bunları zaten `htmlFor`↔`id` eşleştirmesi için üretiyor.
     labels,
     labelsWithHtmlFor,

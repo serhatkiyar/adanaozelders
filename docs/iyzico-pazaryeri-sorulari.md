@@ -158,5 +158,5 @@ alanının taşınabilirliği ve payout geçmişinin sürekliliği tasarıma gir
 ## İlgili kayıtlar
 
 - Yol haritası: `C:\Users\kiyar\.claude\plans\mevcut-da-t-m-y-netimi-aray-z-n-tingly-quail.md` (§EK-1 PK-2 tasarımı, §14b dış teyit listesi)
-- PK-1 dağıtım kontrol listesi: `docs/pk1-deployment-checklist.md`
+- PK-1 dağıtım kontrol listesi: `docs/arsiv/altyapi/pk1-deployment-checklist.md`
 - Doğrulanmış PK-1 noktası: etiket `pk1-verified-8c87321` (origin'de)

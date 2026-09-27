@@ -2,7 +2,7 @@
  * İP-A3a · Nöbetçi eşiklerinin mutasyon provası.
  *
  * İP-A2 sürücüsünün (`ip_a2_mutasyon.mjs`) devamıdır: `<label htmlFor>` oranı
- * eşiği İP-A3a'da KALDIRILDI (gerekçe: `docs/ip-a3a-rapor.md` → Görev 1),
+ * eşiği İP-A3a'da KALDIRILDI (gerekçe: `docs/arsiv/ip-a/ip-a3a-rapor.md` → Görev 1),
  * yerine "erişilebilir adı olmayan form kontrolü" geldi. Bu sürücü güncel
  * eşik kümesini sınar; A2 sürücüsü kayıt olarak durur ama artık koşmaz.
  *

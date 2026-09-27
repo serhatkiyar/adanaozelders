@@ -49,7 +49,7 @@ class Effect:
     auto_reconcilable: bool
 
 
-#: Olay adı → etki. Kaynak: docs/f29-sayim-hasarli-stok-plani.md §3.
+#: Olay adı → etki. Kaynak: docs/arsiv/stok/f29-sayim-hasarli-stok-plani.md §3.
 #:
 #: Adlar `StockMovementType` değerleriyle **aynı yazılır** (ör. `SALE`), çünkü
 #: uzlaştırma defter satırlarını bu adla arar. Defter satırı olmayan olaylar

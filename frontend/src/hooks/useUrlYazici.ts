@@ -60,7 +60,7 @@ export function useUrlYazici<T>({
    * ── Aynı olaydaki İKİNCİ yazım (İP-A6c · BULGU-4) ──
    *
    * `setParams`ın fonksiyonel biçimi bu router sürümünde YETMEZ ve bu ölçüldü
-   * (`docs/ip-a6c/g2-yalniz-fonksiyonel.txt`): react-router 7.18.1 geri
+   * (`docs/arsiv/ip-a/ip-a6c/g2-yalniz-fonksiyonel.txt`): react-router 7.18.1 geri
    * çağrıya canlı bir ref değil, RENDER SIRASINDA kapatılmış `searchParams`ı
    * geçirir. Aynı olay işleyicisinde iki `ayarla` çağrısı arasında render
    * olmadığı için ikinci çağrı da birincinin yazdığını GÖREMEZ.

@@ -146,7 +146,7 @@ function kuryeOturumu() {
 // dosyaları HENÜZ YOKKEN kırmızı matris kurabilmek içindi (red-first idiom).
 // Dosyalar yazıldığı gün o gerekçe bitti, geriye maliyeti kaldı: modül
 // değerlendirmesi ilk testin bütçesinden ödeniyordu. Statik import maliyeti
-// TOPLAMA evresine taşır. Ölçüm: `docs/ip-a7d5-rapor.md` · Görev 2.
+// TOPLAMA evresine taşır. Ölçüm: `docs/arsiv/ip-a/ip-a7d5-rapor.md` · Görev 2.
 const EKRANLAR: Record<string, ComponentType> = {
   DeliveryRunHandover,
   DeliveryDriver,

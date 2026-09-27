@@ -1,7 +1,7 @@
 # İP-4 — Admin operasyon yüzeyi sözleşmesi
 
 **Dal:** `ip4-admin-operasyon` · **Taban:** `e726b9b` (main)
-**Kaynak:** `docs/DENETIM-RAPORU-2026-07-31.md` §4.2 (P1-1, P1-4, P1-5, P1-6),
+**Kaynak:** `docs/arsiv/denetim/DENETIM-RAPORU-2026-07-31.md` §4.2 (P1-1, P1-4, P1-5, P1-6),
 §5 (eksik admin akışları), §9 İP-4 · `docs/teknik-borc.md` TB-14 #1
 
 Bu paket önceki üçünden farklıdır: ağırlığı frontend'dedir ve admin ekranları

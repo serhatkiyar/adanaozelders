@@ -19,7 +19,7 @@ Node sürümü CI ile aynı olmalıdır: Node 20.
 - Küçük talepte geniş UI refactor'ı yapma.
 ### Görsel kalite
 
-- Anlamlı bir görsel değişiklikten önce `../docs/DESIGN.md` dosyasını oku.
+- Anlamlı bir görsel değişiklikten önce `../docs/DESIGN.md` dosyasını oku. Yeni yönetim paneli (`/yonetim-yeni`, `src/panel/`) DESIGN.md kapsamı dışındadır: ölçü/yerleşim kaynağı `../docs/ikas-panel-referans.md`, modül durumu `../docs/panel-ikas-ilerleme.md`.
 - Kullanıcı açıkça yeni bir görsel yön istemedikçe mevcut ürün dilini koru; her görevde yeni bir estetik icat etme.
 - Jenerik AI/SaaS estetiğinden kaçın: gereksiz kartlar, renkli kutular, gradientler, glassmorphism, dekoratif badge/pill, anlamsız gölgeler ve sırf görsel çeşitlilik için eklenen öğeler kullanma.
 - Referans ekranları birebir kopyalama; bilgi hiyerarşisi, etkileşim ve yerleşim fikrini mevcut Adana Özel Ders tasarımına uyarla.

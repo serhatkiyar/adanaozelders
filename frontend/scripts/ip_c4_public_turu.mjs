@@ -10,11 +10,11 @@
 //      değerine bakar ve indigo ailesinin 10 tonundan birine denk gelen varsa
 //      isimle raporlar.
 //
-//   2. Ekran görüntüsü — iki genişlikte, kanıt olarak `docs/ip-c4/`.
+//   2. Ekran görüntüsü — iki genişlikte, kanıt olarak `docs/arsiv/ip-c/ip-c4/`.
 //
 // Kullanım (frontend/):
 //   npm run dev -- --port 5199
-//   node scripts/ip_c4_public_turu.mjs --frontend http://127.0.0.1:5199 --out ../docs/ip-c4
+//   node scripts/ip_c4_public_turu.mjs --frontend http://127.0.0.1:5199 --out ../docs/arsiv/ip-c/ip-c4
 //
 // GİRİŞ GEREKTİRMEZ: yalnız herkese açık rotalar gezilir, gerçek hesap ve
 // gerçek sipariş verisi kullanılmaz.
@@ -30,7 +30,7 @@ const ARGS = Object.fromEntries(
   }, [])
 );
 const FRONTEND = ARGS.frontend ?? "http://127.0.0.1:5199";
-const OUT = resolve(ARGS.out ?? "../docs/ip-c4");
+const OUT = resolve(ARGS.out ?? "../docs/arsiv/ip-c/ip-c4");
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = Number(ARGS.port ?? 9284);
 const GENISLIKLER = (ARGS.genislikler ?? "1280,380").split(",").map(Number);

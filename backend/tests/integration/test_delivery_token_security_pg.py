@@ -1,6 +1,6 @@
 """Public takip token'ı güvenlik sınırları — GERÇEK Postgres (bkz. conftest).
 
-Faz 0 bulguları G-1/G-2'nin regresyon kilidi (docs/teslimat-faz0-denetim-matrisi.md §6):
+Faz 0 bulguları G-1/G-2'nin regresyon kilidi (docs/arsiv/teslimat/teslimat-faz0-denetim-matrisi.md §6):
 1) G-1 — PoD fotoğrafı public token projeksiyonunda ASLA dönmez; yalnız
    oturumlu (client_id doğrulamalı) yol döndürür. Token = SMS linki, sızabilir.
 2) G-2 — public token'la bırakma tercihine (KAPIYA/KOMSUYA) yükseltme 403;

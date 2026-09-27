@@ -212,7 +212,7 @@ function operatorOturumu() {
 // 0,7 sn). Dosyadaki eski not "hepsini `beforeAll`da yüklemek 10 sn'lik KANCA
 // bütçesini aşıyor" diyordu; doğru cevap kancaya taşımak değil, TOPLAMA
 // (collect) evresine taşımaktı — orada hiçbir bütçe yoktur.
-// Ölçüm ve gerekçe: `docs/ip-a7d5-rapor.md` · Görev 2.
+// Ölçüm ve gerekçe: `docs/arsiv/ip-a/ip-a7d5-rapor.md` · Görev 2.
 const EKRANLAR: Record<string, ComponentType> = {
   "./OperatorHome.tsx": OperatorHome,
   "./OperatorLibrary.tsx": OperatorLibrary,

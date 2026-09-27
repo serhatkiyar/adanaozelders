@@ -2,7 +2,7 @@
  * İP-A2 · `Form.*` sözleşmesi — gerçek DOM davranış testleri.
  *
  * Bu dosya implementasyondan ÖNCE yazıldı ve kırmızı olduğu gösterildi
- * (`docs/ip-a2-rapor.md` → Görev 3). Her test, katmanın bir SÖZLEŞME maddesini
+ * (`docs/arsiv/ip-a/ip-a2-rapor.md` → Görev 3). Her test, katmanın bir SÖZLEŞME maddesini
  * kullanıcının gördüğü sonuçtan doğrular: etiket bağı, `aria-invalid`,
  * `aria-describedby`, `role="alert"`, tek slot ve `id` çakışmazlığı.
  *
@@ -165,7 +165,7 @@ describe("İP-A2 · Form sözleşmesi", () => {
     // belirleyen MEKANİZMAYI doğrular: slot her iki durumda da AYNI DOM
     // düğümüdür (mount/unmount yok), sınıf listesi birebir aynıdır ve içinde
     // her an en fazla bir mesaj vardır. Gerçek piksel ölçümü tarayıcıda
-    // yapıldı — `docs/ip-a2-rapor.md` → Görev 4 "slot piksel ölçümü".
+    // yapıldı — `docs/arsiv/ip-a/ip-a2-rapor.md` → Görev 4 "slot piksel ölçümü".
     const { container } = render(<TekAlanliForm />);
     const slotOnce = container.querySelector("[data-form-slot]")!;
     expect(slotOnce).toBeTruthy();

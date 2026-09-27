@@ -1,5 +1,12 @@
 # Panel Tasarım Dili
 
+> **Tarihsel belge (28 Eyl 2026 notu).** Yalnız ESKİ `/yonetim/*` paneli için
+> yazıldı. Buradaki marka rengi (`#E37200`), ikon kuralı (`@medusajs/icons`),
+> `html.dark` ve `rounded-xl` kararları artık kodla uyuşmaz: güncel kaynak
+> public site ve panolar için `docs/DESIGN.md` (marka `#FF9900`, tek açık tema,
+> Fluent ikonları), yeni `/yonetim-yeni` paneli için `docs/ikas-panel-referans.md`.
+> Belge, ona atıf yapan eski test/yorumlar için yerinde tutuluyor.
+
 **Durum:** İP-B1'de yazıldı · **Kapsam:** `/yonetim/*` yönetim paneli kabuğu ve
 ekranları · **Sözleşme:** B2..Bn paketlerinin her ekranı bu belgeye bakarak
 yazılır.
@@ -14,8 +21,8 @@ Renk kararının kendisi ve ölçülen kontrast bedeli **ÜK-1**'de:
 
 Kaynak: Medusa Admin'in tasarım dili (`docs.medusajs.com/user-guide` +
 `@medusajs/ui@4.2.1` paketinin kendi kaynağı). Karşılaştırma belgeleri:
-`docs/medusa-arayuz-karsilastirma.md`, `docs/medusa-karsilastirma-raporu.md`,
-`docs/medusa-karsilastirma-tur2.md`.
+`docs/arsiv/medusa/medusa-arayuz-karsilastirma.md`, `docs/arsiv/medusa/medusa-karsilastirma-raporu.md`,
+`docs/arsiv/medusa/medusa-karsilastirma-tur2.md`.
 
 ---
 
