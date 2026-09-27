@@ -2,7 +2,7 @@
 # Sunucuda: /etc/adana-yedek/pg-offsite.conf (root, 644 olabilir; sır yok).
 # R2 yazma kimliği ayrı dosyada: /root/r2-yedek.env (600).
 
-# İki alıcının TAM parmak izi (40 hane, büyük harf, boşluksuz). Kısa ID kabul edilmez.
+# İki alıcının TAM parmak izi (40 ya da 64 hane, büyük harf, boşluksuz). Kısa ID kabul edilmez.
 # Private key'ler VPS'te BULUNMAZ; /etc/adana-yedek/gnupg yalnız public key içerir.
 PG_ALICI_1=BURAYA40HANELIPARMAKIZI0000000000000000
 PG_ALICI_2=BURAYA40HANELIPARMAKIZI0000000000000000

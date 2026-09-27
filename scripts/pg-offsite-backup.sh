@@ -66,10 +66,11 @@ PG_MIN_YAS_SN="${PG_MIN_YAS_SN:-180}"
 PG_STABIL_BEKLE="${PG_STABIL_BEKLE:-15}"
 BACKUP_BUCKET="${R2_YEDEK_BACKUP_BUCKET:-adanaozelders-backups}"
 
-FPR_RE='^[0-9A-F]{40}$'
+# OpenPGP parmak izi: v4 anahtarda 40, v5/v6 anahtarda 64 onaltılık hane.
+FPR_RE='^([0-9A-F]{40}|[0-9A-F]{64})$'
 A1="${PG_ALICI_1:-}"; A2="${PG_ALICI_2:-}"
 if [[ ! "$A1" =~ $FPR_RE || ! "$A2" =~ $FPR_RE ]]; then
-	hata "PG_ALICI_1/PG_ALICI_2 tam 40 haneli (büyük harf) parmak izi olmalı"
+	hata "PG_ALICI_1/PG_ALICI_2 tam 40 veya 64 haneli (büyük harf onaltılık) parmak izi olmalı"
 	exit 2
 fi
 [[ "$A1" != "$A2" ]] || { hata "iki alıcı aynı parmak izi — iki ayrı anahtar gerekli"; exit 2; }

@@ -219,13 +219,62 @@ def test_iki_tam_parmak_izi_kullanilir_kisa_id_reddedilir(ortam, anahtarlar):
     kisa = anahtarlar["a1"][-16:]
     _parmak_izi_satiri(ortam, f"PG_ALICI_1={kisa}")
     r = _calistir(ortam)
-    assert r.returncode == 2 and "40 haneli" in r.stderr
+    assert r.returncode == 2 and "40 veya 64 haneli" in r.stderr
     _parmak_izi_satiri(ortam, f"PG_ALICI_1={anahtarlar['a1'].lower()}")
     assert _calistir(ortam).returncode == 2
     _parmak_izi_satiri(ortam, f"PG_ALICI_1={anahtarlar['a2']}")
     r = _calistir(ortam)
     assert r.returncode == 2 and "aynı" in r.stderr
     assert _yuklemeler(ortam) == []
+
+
+# ── Parmak izi biçimi: 40 (v4) ya da 64 (v5/v6) büyük harf onaltılık ─────────
+
+_FPR_64 = "0123456789ABCDEF" * 4  # biçimce geçerli, keyring'de yok
+
+
+@pytest.mark.parametrize(
+    "deger",
+    [
+        "A" * 39, "A" * 41, "A" * 63, "A" * 65,          # geçersiz uzunluklar
+        "a" * 40, _FPR_64.lower(),                        # küçük harf
+        "G" + "A" * 39, "A" * 63 + "Z",                   # onaltılık olmayan
+        "A" * 20 + " " + "A" * 19, "",                    # boşluklu / boş
+    ],
+    ids=["39", "41", "63", "65", "kucuk-40", "kucuk-64", "hex-degil-40", "hex-degil-64", "bosluk", "bos"],
+)
+def test_gecersiz_parmak_izi_bicimi_reddedilir(ortam, deger):
+    # Tırnaklı: değer (boşluk dahil) tek parça olarak betiğe ulaşsın.
+    _parmak_izi_satiri(ortam, f'PG_ALICI_1="{deger}"')
+    r = _calistir(ortam)
+    assert r.returncode == 2 and "40 veya 64 haneli" in r.stderr
+    assert _cagrilar(ortam) == []
+
+
+def test_gecerli_40_haneli_parmak_izi_kabul_edilir(ortam, anahtarlar):
+    assert len(anahtarlar["a1"]) == 40
+    r = _calistir(ortam)
+    assert r.returncode == 0, r.stderr
+
+
+def test_gecerli_64_haneli_parmak_izi_bicim_kontrolunden_gecer(ortam):
+    """64 haneli (v5/v6) parmak izi biçim olarak kabul edilir; test anahtarı
+    keyring'de olmadığı için sonraki adımda 'keyring'de yok' ile durur."""
+    _parmak_izi_satiri(ortam, f"PG_ALICI_1={_FPR_64}")
+    r = _calistir(ortam)
+    assert "40 veya 64 haneli" not in r.stderr
+    assert r.returncode == 2 and "keyring'de yok" in r.stderr
+    assert _yuklemeler(ortam) == []
+
+
+@pytest.mark.parametrize("uzunluk", [40, 64])
+def test_ayni_iki_parmak_izi_her_uzunlukta_reddedilir(ortam, anahtarlar, uzunluk):
+    fpr = anahtarlar["a1"] if uzunluk == 40 else _FPR_64
+    metin = re.sub(r"^PG_ALICI_\d=.*$\n?", "", ortam["konf"].read_text(), flags=re.M)
+    ortam["konf"].write_text(f"PG_ALICI_1={fpr}\nPG_ALICI_2={fpr}\n{metin}", encoding="utf-8")
+    r = _calistir(ortam)
+    assert r.returncode == 2 and "aynı" in r.stderr
+    assert _cagrilar(ortam) == []
 
 
 def test_keyringde_olmayan_alici_reddedilir(ortam, anahtarlar):
