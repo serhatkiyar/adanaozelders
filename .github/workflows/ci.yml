@@ -229,6 +229,17 @@ jobs:
           python -m alembic upgrade head
           pytest tests/verify -q
 
+      # Depolama erişim sınırı İKİ BUCKET modunda (üretim biçimi): public ve
+      # private ayrı bucket'larda; private bucket'a hiç policy yazılmaz.
+      # Yukarıdaki adım tek bucket (önek whitelist'li policy) modunu sınar.
+      - name: Depolama iki-bucket doğrulaması
+        env:
+          POSTGRES_DB: adana_verify
+          REDIS_URL: redis://localhost:6379/14
+          S3_PUBLIC_BUCKET: ci-test-public
+          S3_PRIVATE_BUCKET: ci-test-private
+        run: pytest tests/verify/test_verify_storage_access.py -q
+
       # Kapsama eşiği — GERİLEME nöbetçisi, kalite hedefi DEĞİL.
       #
       # KAPSAMI DAR: yalnız `services` + `core`, yalnız BİRİM/KABUL testleriyle.

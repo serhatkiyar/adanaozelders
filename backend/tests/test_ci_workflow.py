@@ -248,3 +248,12 @@ def test_altyapi_eksikse_test_atlanmiyor(backend_isi) -> None:
         "CI_REQUIRE_SERVICES=1 yok — servis konteyneri düşerse ilgili testler "
         "sessizce SKIP olur ve iş akışı yeşil görünür"
     )
+
+
+def test_depolama_iki_bucket_modunda_da_dogrulaniyor(backend_isi) -> None:
+    """Üretim biçimi (ayrı public/private bucket) CI'da gerçek MinIO'ya sorulur."""
+    adim = _adim(backend_isi, "iki-bucket")
+    ortam = adim.get("env") or {}
+    assert ortam.get("S3_PUBLIC_BUCKET") and ortam.get("S3_PRIVATE_BUCKET")
+    assert ortam["S3_PUBLIC_BUCKET"] != ortam["S3_PRIVATE_BUCKET"]
+    assert "tests/verify/test_verify_storage_access.py" in adim["run"]

@@ -104,7 +104,13 @@ services:
   # değil, hâlihazırda çalışan imajın çekilebilir bir adresle sabitlenmesidir.
   # Veri volume'ü, komut, port, environment ve healthcheck sözleşmesi AYNEN kalır
   # (`mc` imajda mevcut: /usr/bin/mc).
+  #
+  # 27 Eyl 2026 (R2 geçişi): dosyalar Cloudflare R2'de. MinIO YALNIZ geçiş
+  # (eski nesneleri R2'ye kopyalama) ve geri dönüş için `eski-depo` profilinde
+  # durur; varsayılan `up` onu AÇMAZ ve backend ona bağlı DEĞİLDİR. Veri volume'ü
+  # (`miniodata`) korunur — kopyalama doğrulanmadan silinmez.
   minio:
+    profiles: ["eski-depo"]
     image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -178,11 +184,16 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
-      AWS_ENDPOINT_URL: http://minio:9000
-      # Tarayıcının depoya eriştiği adres (Caddy'deki `depo.<alan-adı>` bloğu).
-      # Dosya adresleri ve imzaları bununla üretilir; eksikse üretilen adresler
-      # konteyner-içi `minio:9000`'ı gösterir ve hiçbir dosya açılmaz.
-      S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:?S3_PUBLIC_ENDPOINT_URL gerekli (ör. https://depo.example.com)}
+      # Nesne deposu: Cloudflare R2 (27 Eyl 2026). Değerler `.env.prod`'dan gelir;
+      # eksikse compose AÇILMAZ. Eskiden burada `http://minio:9000` sabitlenmişti
+      # ve .env'deki adresi sessizce eziyordu — o geçersiz kılma kaldırıldı.
+      # Sırlar (AWS_ACCESS_KEY_ID/SECRET) yalnız `env_file` ile gelir.
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:?AWS_ENDPOINT_URL gerekli (R2 S3 API adresi)}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:?S3_PUBLIC_BUCKET gerekli}
+      S3_PRIVATE_BUCKET: ${S3_PRIVATE_BUCKET:?S3_PRIVATE_BUCKET gerekli}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:?S3_PUBLIC_BASE_URL gerekli (ör. https://cdn.alan.com)}
+      # R2 bucket'ları ve policy'si konsoldan yönetilir; açılışta dokunulmaz.
+      S3_MANAGE_BUCKETS: "False"
       # Rota: servis adıyla (konteynerde `localhost` backend'in kendisidir —
       # guard yerel adresi zaten reddeder). `auto` VROOM düşerse çalışmayı
       # sürdürür; bozulma /health + ERROR log ile görünür kalır.
@@ -202,8 +213,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      minio:
         condition: service_healthy
       # osrm/vroom BİLEREK burada YOK. `depends_on` zinciri geçişlidir: vroom
       # osrm'in sağlıklı olmasını bekler, backend de vroom'un başlamasını

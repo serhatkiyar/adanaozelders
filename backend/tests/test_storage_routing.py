@@ -619,3 +619,55 @@ def test_eski_host_tanimsizsa_bile_private_yollu_adres_gecirilmez(r2):
     assert storage.resolve_url(f"{ESKI}/private/answer-keys/k.pdf") is None
     with pytest.raises(ValueError):
         storage.normalize_public_input(f"{ESKI}/private/answer-keys/k.pdf")
+
+
+# ── Private bucket hiçbir public adres üretmez (R2 adım 4) ──────────────────
+
+_MODLAR = {
+    # Üretim: R2 + CDN.
+    "r2": {"S3_PUBLIC_BUCKET": "adanaozelders-public", "S3_PRIVATE_BUCKET": "adanaozelders-private",
+           "S3_PUBLIC_BASE_URL": CDN, "AWS_ENDPOINT_URL": R2_API},
+    # Yerel/CI iki bucket: CDN yok, MinIO adresi.
+    "minio_iki": {"S3_PUBLIC_BUCKET": "yerel-public", "S3_PRIVATE_BUCKET": "yerel-private",
+                  "S3_PUBLIC_BASE_URL": "", "AWS_ENDPOINT_URL": "http://localhost:9000"},
+}
+_PRIVATE_ANAHTARLAR = [
+    "private/answer-keys/k.pdf", "private/education-docs/d.pdf",
+    "private/digital-assets/e.pdf", "private/delivery-proof/p.webp",
+    "private/couriers/c.webp", "private/tutor-pre-applications/t.webp",
+]
+
+
+@pytest.fixture(params=sorted(_MODLAR))
+def depo_modu(request, monkeypatch):
+    for k, v in _MODLAR[request.param].items():
+        monkeypatch.setattr(settings, k, v)
+    monkeypatch.setattr(settings, "S3_PUBLIC_ENDPOINT_URL", "")
+    storage._presign_client.cache_clear()
+    storage._presign_cache.clear()
+    yield _MODLAR[request.param]
+    storage._presign_client.cache_clear()
+    storage._presign_cache.clear()
+
+
+@pytest.mark.parametrize("key", _PRIVATE_ANAHTARLAR)
+def test_private_anahtar_public_adres_uretmez(depo_modu, key):
+    with pytest.raises(ValueError):
+        storage.public_url(key)
+    ham = storage.object_url(key)
+    assert f"/{depo_modu['S3_PRIVATE_BUCKET']}/" in ham
+    assert f"/{depo_modu['S3_PUBLIC_BUCKET']}/" not in ham
+    if depo_modu["S3_PUBLIC_BASE_URL"]:
+        assert not ham.startswith(depo_modu["S3_PUBLIC_BASE_URL"])
+    imzali = storage.resolve_url(key)
+    assert "X-Amz-Signature=" in imzali, "private dosya imzasız adresle çıkmaz"
+    assert f"/{depo_modu['S3_PRIVATE_BUCKET']}/" in imzali
+    if depo_modu["S3_PUBLIC_BASE_URL"]:
+        assert not imzali.startswith(depo_modu["S3_PUBLIC_BASE_URL"])
+
+
+@pytest.mark.parametrize("prefix", storage.PUBLIC_PREFIXES)
+def test_public_adres_private_bucketi_gostermez(depo_modu, prefix):
+    url = storage.resolve_url(f"{prefix}x.webp")
+    assert depo_modu["S3_PRIVATE_BUCKET"] not in url
+    assert "X-Amz-Signature" not in url

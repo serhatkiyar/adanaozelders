@@ -167,42 +167,13 @@
 	}
 }
 
-# ── Dosya deposu (MinIO) ────────────────────────────────────────────────────────
+# ── Dosya deposu ────────────────────────────────────────────────────────────────
 #
-# Yüklenen dosyalar (profil ve kütüphane görselleri + imzalı adresle sunulan
-# hassas belgeler) buradan okunur. MinIO'nun kendisi hiçbir portu host'a
-# yayınlamaz; dışarıya YALNIZ bu proxy üzerinden görünür.
-#
-# Neden ALT ALAN, neden `/depo/*` gibi bir yol değil: imzalı (presigned) adresin
-# imzası hem host'u hem yolu kapsar. Bir yol önekini strip ederek proxy'lersek
-# MinIO'ya ulaşan yol imzalanandan farklı olur ve HER imzalı adres reddedilir.
-# Alt alan adında yol aynen korunur; Caddy Host başlığını da olduğu gibi
-# ilettiği için imza doğrulaması tutar.
-#
-# Gerekenler: `depo` için A kaydı (aynı IP) ve üretim .env'inde
-# S3_PUBLIC_ENDPOINT_URL=https://depo.<alan-adı> — adresler bununla üretilir.
-depo.{$DOMAIN} {
-	encode zstd gzip
-
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options "nosniff"
-		# Depodan gelen bir dosya asla sayfa gibi gömülmesin (yüklenen HTML/SVG
-		# ile aynı-köken saldırısı denenmesin).
-		X-Frame-Options "DENY"
-		Content-Security-Policy "default-src 'none'; sandbox"
-		-Server
-	}
-
-	reverse_proxy minio:9000
-
-	log {
-		output file /var/log/caddy/storage.log {
-			roll_size 20mb
-			roll_keep 5
-		}
-	}
-}
+# 27 Eyl 2026: dosyalar Cloudflare R2'de; `depo.<alan>` MinIO proxy'si kaldırıldı.
+# Public görseller `cdn.<alan>` (R2 custom domain, Cloudflare'de) üzerinden,
+# private dosyalar yalnız R2 S3 API'sinin imzalı adresiyle açılır — ikisi de bu
+# sunucudan geçmez. Güvenlik başlıkları (nosniff, X-Frame-Options, CSP sandbox)
+# Cloudflare'de cdn için Transform Rule ile verilir.
 
 # ── Canlı ders signaling (LiveKit) ──────────────────────────────────────────
 #

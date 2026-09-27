@@ -28,7 +28,14 @@ _SAFE: dict[str, object] = {
     "SEED_DEMO_DATA": False,
     "AWS_ACCESS_KEY_ID": "gercek-anahtar",
     "AWS_SECRET_ACCESS_KEY": "gercek-gizli",
-    "S3_PUBLIC_ENDPOINT_URL": "https://depo.adanaozelders.com.tr",
+    # R2: S3 API adresi, iki ayrı bucket, public kök CDN (sır değil).
+    "AWS_ENDPOINT_URL": "https://hesap123.r2.cloudflarestorage.com",
+    "AWS_REGION_NAME": "auto",
+    "S3_PUBLIC_BUCKET": "adanaozelders-public",
+    "S3_PRIVATE_BUCKET": "adanaozelders-private",
+    "S3_PUBLIC_BASE_URL": "https://cdn.adanaozelders.com.tr",
+    "S3_MANAGE_BUCKETS": False,
+    "S3_LEGACY_BASE_URLS": "https://depo.adanaozelders.com.tr/avatars",
     "BACKEND_CORS_ORIGINS": ["https://adanaozelders.com.tr"],
     "TRUSTED_PROXY_IPS": ["127.0.0.1"],
     "FRONTEND_BASE_URL": "https://adanaozelders.com.tr",
@@ -80,7 +87,19 @@ def test_gelistirme_ortaminda_guard_calismaz() -> None:
         # Dahili konteyner adı kalırsa hiçbir dosya tarayıcıda açılmaz ve hata
         # sessizdir (API 200 döner) — guard bunu açılışta yakalamalı.
         ({"S3_PUBLIC_ENDPOINT_URL": "http://minio:9000"}, "S3_PUBLIC_ENDPOINT_URL"),
-        ({"S3_PUBLIC_ENDPOINT_URL": ""}, "S3_PUBLIC_ENDPOINT_URL"),
+        ({"AWS_ENDPOINT_URL": "http://minio:9000"}, "AWS_ENDPOINT_URL"),
+        # İki bucket: ikisi de dolu ve FARKLI olmalı (fail-fast).
+        ({"S3_PRIVATE_BUCKET": "adanaozelders-public"}, "aynı olamaz"),
+        ({"S3_PRIVATE_BUCKET": " ADANAOZELDERS-PUBLIC "}, "aynı olamaz"),
+        ({"S3_PRIVATE_BUCKET": ""}, "zorunlu"),
+        ({"S3_PUBLIC_BUCKET": ""}, "zorunlu"),
+        # Public kök: https CDN, S3 API host'u değil (private CDN'den açılamaz).
+        ({"S3_PUBLIC_BASE_URL": ""}, "S3_PUBLIC_BASE_URL"),
+        ({"S3_PUBLIC_BASE_URL": "http://cdn.adanaozelders.com.tr"}, "S3_PUBLIC_BASE_URL"),
+        ({"S3_PUBLIC_BASE_URL": "https://hesap123.r2.cloudflarestorage.com"}, "S3 API host"),
+        ({"S3_MANAGE_BUCKETS": True}, "S3_MANAGE_BUCKETS"),
+        ({"S3_LEGACY_BASE_URLS": "http://depo.adanaozelders.com.tr/avatars"}, "S3_LEGACY_BASE_URLS"),
+        ({"S3_LEGACY_BASE_URLS": "https://cdn.adanaozelders.com.tr/x"}, "S3_LEGACY_BASE_URLS"),
         ({"BACKEND_CORS_ORIGINS": ["http://localhost:5173"]}, "CORS"),
         ({"TRUSTED_PROXY_IPS": []}, "TRUSTED_PROXY_IPS"),
         ({"FRONTEND_BASE_URL": "http://adanaozelders.com.tr"}, "https"),
@@ -110,3 +129,16 @@ def test_birden_cok_sorun_tek_hatada_toplanir() -> None:
     assert "PAYMENT_PROVIDER" in mesaj
     assert "SMS_PROVIDER" in mesaj
     assert "SEED_DEMO_DATA" in mesaj
+
+
+def test_depo_hata_mesajlari_deger_yazdirmaz() -> None:
+    """Guard mesajı loglara düşer: bucket/host değerleri ve anahtarlar yazılmaz."""
+    with pytest.raises(ValueError) as exc:
+        _settings(
+            S3_PRIVATE_BUCKET="adanaozelders-public",
+            S3_PUBLIC_BASE_URL="https://hesap123.r2.cloudflarestorage.com",
+        )
+    mesaj = str(exc.value)
+    assert "hesap123" not in mesaj
+    assert "gercek-gizli" not in mesaj
+    assert "adanaozelders-public" not in mesaj

@@ -624,6 +624,52 @@ class Settings(BaseSettings):
             )
         return self
 
+    def _storage_production_problems(self) -> list[str]:
+        """Üretim nesne deposu (R2) sözleşmesi — değer (sır) yazdırmaz.
+
+        * S3 API adresi https (R2: ``https://<hesap>.r2.cloudflarestorage.com``);
+        * public ve private bucket ikisi de dolu ve FARKLI: aynı olursa private
+          dosyalar custom domain bağlı (tamamı herkese açık) bucket'a düşer;
+        * public kök (CDN) https ve host'u S3 API host'larından farklı: private
+          adresler ve imzalar yalnız S3 API'de üretilir, CDN'den açılamaz;
+        * bucket yönetimi kapalı (R2 bucket'ları konsoldan; policy yazılamaz);
+        * eski kökler https ve CDN/S3 API host'larıyla çakışmıyor.
+        """
+        from urllib.parse import urlsplit
+
+        out: list[str] = []
+        if not self.AWS_ENDPOINT_URL.startswith("https://"):
+            out.append("AWS_ENDPOINT_URL https:// olmalı (R2 S3 API adresi)")
+        pub = self.S3_PUBLIC_BUCKET.strip().lower()
+        priv = self.S3_PRIVATE_BUCKET.strip().lower()
+        if not pub or not priv:
+            out.append("S3_PUBLIC_BUCKET ve S3_PRIVATE_BUCKET üretimde zorunlu")
+        elif pub == priv:
+            out.append(
+                "S3_PUBLIC_BUCKET ile S3_PRIVATE_BUCKET aynı olamaz "
+                "(private dosyalar herkese açık bucket'a düşerdi)"
+            )
+        api_hosts = {
+            urlsplit(u).netloc.lower()
+            for u in (self.AWS_ENDPOINT_URL, self.S3_PUBLIC_ENDPOINT_URL)
+            if u
+        }
+        base = self.S3_PUBLIC_BASE_URL.strip()
+        base_host = urlsplit(base).netloc.lower() if base else ""
+        if not base.startswith("https://") or not base_host:
+            out.append("S3_PUBLIC_BASE_URL https:// ile başlayan CDN adresi olmalı")
+        elif base_host in api_hosts:
+            out.append("S3_PUBLIC_BASE_URL host'u S3 API host'uyla aynı olamaz")
+        if self.S3_MANAGE_BUCKETS:
+            out.append("S3_MANAGE_BUCKETS=False olmalı (R2 bucket'ları konsoldan yönetilir)")
+        for raw in filter(None, (x.strip() for x in self.S3_LEGACY_BASE_URLS.split(","))):
+            parts = urlsplit(raw)
+            if parts.scheme != "https" or not parts.netloc:
+                out.append("S3_LEGACY_BASE_URLS girdileri https:// adres olmalı")
+            elif parts.netloc.lower() in api_hosts | {base_host}:
+                out.append("S3_LEGACY_BASE_URLS host'u CDN ya da S3 API host'u olamaz")
+        return out
+
     @model_validator(mode="after")
     def _guard_production(self) -> "Settings":
         """ENVIRONMENT=production iken tehlikeli geliştirme varsayılanlarını reddet.
@@ -691,6 +737,7 @@ class Settings(BaseSettings):
                 "S3_PUBLIC_ENDPOINT_URL https:// olmalı (tarayıcının depoya "
                 f"eriştiği adres; şu an: {storage_endpoint!r})"
             )
+        problems.extend(self._storage_production_problems())
         local_origins = [
             o for o in self.BACKEND_CORS_ORIGINS if "localhost" in o or "127.0.0.1" in o
         ]
