@@ -98,7 +98,9 @@ from services import (
     subject_service,
     tutor_promotion_service,
     tutor_service,
+    tutor_video_service,
 )
+from schemas.tutor_video import AdminTutorVideoOut, TutorVideoReviewIn
 
 
 class ContentHideIn(BaseModel):
@@ -601,6 +603,49 @@ async def verify_education(
         target_id=education_id,
     )
     return edu
+
+
+# ── Eğitmen tanıtım videosu onayı (ön-moderasyon) ──
+
+
+def _admin_video_out(video, tutor) -> AdminTutorVideoOut:
+    base = tutor_video_service.to_own_out(video).model_dump()
+    return AdminTutorVideoOut(**base, tutor_id=video.tutor_id, tutor_name=tutor.full_name)
+
+
+@router.get(
+    "/tutor-videos/pending",
+    response_model=list[AdminTutorVideoOut],
+    dependencies=[Depends(require_admin_permission("tutors.view"))],
+)
+async def list_pending_tutor_videos(db: AsyncSession = Depends(get_db)):
+    """Onay bekleyen (PENDING_REVIEW) yüklenmiş tanıtım videoları — eğitmen adıyla."""
+    rows = await tutor_video_service.admin_list_pending(db)
+    return [_admin_video_out(v, t) for v, t in rows]
+
+
+@router.post("/tutor-videos/{video_id}/review", response_model=AdminTutorVideoOut)
+async def review_tutor_video(
+    video_id: int,
+    payload: TutorVideoReviewIn,
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Onayla → video profilde yayına girer (eski video/bağlantı düşer);
+    reddet → REJECTED (yayındaki video da sonradan kaldırılabilir)."""
+    video = await tutor_video_service.admin_review(
+        db, video_id, admin, action=payload.action, note=payload.note
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action=f"tutor_video.{payload.action}",
+        target_type="tutor_intro_video",
+        target_id=video_id,
+        reason=payload.note,
+    )
+    tutor = await _get_tutor_or_404(db, video.tutor_id)
+    return _admin_video_out(video, tutor)
 
 
 @router.post("/tutors/{tutor_id}/suspend", response_model=TutorOut)

@@ -18,7 +18,12 @@ from models.tutor import (
 )
 from schemas.tutor import TutorProfileUpdate
 from core.search_text import normalize_tr
-from services import notification_service, seo_slug_service, subject_service
+from services import (
+    notification_service,
+    seo_slug_service,
+    subject_service,
+    tutor_video_service,
+)
 
 _MAX_SUBJECTS = 40
 _MAX_AVAILABILITY = 60
@@ -229,6 +234,11 @@ async def update_profile(
         if field in _MASKED_PROFILE_FIELDS and isinstance(value, str):
             value = mask_contact_info(value)
         setattr(tutor, field, value)
+    # Tek kaynak kuralı: YouTube/Vimeo bağlantısı kaydedilirken siteye yüklenmiş
+    # AKTİF video düşer (REPLACED; nesneleri worker temizler). Bağlantıyı boşaltmak
+    # (None) aktif upload'a dokunmaz. İstemci bu durumda onay diyaloğu gösterir.
+    if payload.get("intro_video_url"):
+        await tutor_video_service.replace_active_for_link(db, tutor.id)
     if subjects is not None:
         await _replace_subjects(db, tutor, subjects)
     # Seviyeler branşlardan SONRA yazılır: doğrulama "bu ders bildirilmiş mi"

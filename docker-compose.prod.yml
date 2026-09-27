@@ -221,6 +221,48 @@ services:
       # Rota ikincil bir yetenektir: çökerse teslimat planlaması bozulur,
       # `auto` modu tahmine düşer, site çalışmaya devam eder.
 
+  # ── Eğitmen tanıtım videosu işçisi (FFmpeg) ──
+  # Backend ile AYNI kod, `worker` imaj hedefi (ffmpeg/ffprobe içerir; API
+  # imajı şişmez). Kuyruk DB tablosudur (`FOR UPDATE SKIP LOCKED`), Redis/Celery
+  # yok. Ayrı konteyner: 2 dakikalık kaynağı 720p'ye çevirmek CPU'yu dakikalarca
+  # doyurur; API ile aynı süreçte koşsa istek gecikmesi ve health check aşımı
+  # olurdu. Kaynak sınırı burada: `cpus`/`mem_limit`. Çökmesi siteyi etkilemez;
+  # yarıda kalan iş stale geri alma ile kuyruğa döner (bkz. workers/video_worker).
+  video-worker:
+    build:
+      context: ./backend
+      target: worker
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      ENVIRONMENT: production
+      AUTO_CREATE_DB: "False"
+      SEED_DEMO_DATA: "False"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:?AWS_ENDPOINT_URL gerekli (R2 S3 API adresi)}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:?S3_PUBLIC_BUCKET gerekli}
+      S3_PRIVATE_BUCKET: ${S3_PRIVATE_BUCKET:?S3_PRIVATE_BUCKET gerekli}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:?S3_PUBLIC_BASE_URL gerekli (ör. https://cdn.alan.com)}
+      S3_MANAGE_BUCKETS: "False"
+      CENTRIFUGO_ENABLED: "True"
+      CENTRIFUGO_API_URL: http://centrifugo:8000/api
+      # Tek video işler; havuz küçük.
+      DB_POOL_SIZE: "2"
+      DB_MAX_OVERFLOW: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # ≤300 MB kaynak + çıktı geçici olarak tmpfs'te; disk yazma yok.
+    tmpfs:
+      - /tmp:size=1g
+    mem_limit: 1g
+    cpus: "1.0"
+
   frontend:
     build:
       context: ./frontend

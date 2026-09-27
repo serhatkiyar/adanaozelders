@@ -129,8 +129,9 @@ def test_public_adres_imzalanmaz(r2):
 
 
 class _SahteS3:
-    def __init__(self, kayit):
+    def __init__(self, kayit, *, head_size=None):
         self.kayit = kayit
+        self._head_size = head_size
 
     async def __aenter__(self):
         return self
@@ -143,6 +144,17 @@ class _SahteS3:
 
     async def delete_object(self, **kw):
         self.kayit.append(("delete", kw))
+
+    async def head_object(self, **kw):
+        self.kayit.append(("head", kw))
+        if self._head_size is None:
+            from botocore.exceptions import ClientError
+
+            raise ClientError({"Error": {"Code": "404", "Message": "Not Found"}}, "HeadObject")
+        return {"ContentLength": self._head_size}
+
+    async def upload_file(self, path, bucket, key, ExtraArgs=None):
+        self.kayit.append(("upload_file", {"Bucket": bucket, "Key": key, "ExtraArgs": ExtraArgs or {}}))
 
 
 @pytest.fixture
@@ -710,3 +722,77 @@ async def test_check_buckets_iki_bucketi_da_sorar(r2, monkeypatch):
 
 def test_eski_gorunurluk_gecis_betigi_kaldirildi():
     assert not (BACKEND / "scripts" / "migrate_storage_visibility.py").exists()
+
+
+# ── Eğitmen tanıtım videosu: anahtar sınıfları, imzalı PUT, HEAD, public yükleme ──
+
+
+def test_video_anahtarlari_dogru_sinifta(r2):
+    kaynak = storage.tutor_video_source_key(42)
+    assert kaynak.startswith("private/tutor-videos/42/") and kaynak.endswith(".bin")
+    assert storage.bucket_for_key(kaynak) == "adanaozelders-private"
+    mp4, poster = storage.tutor_video_output_keys()
+    assert mp4.startswith("tutor-videos/") and mp4.endswith(".mp4")
+    assert poster == mp4[:-4] + ".jpg"
+    assert storage.bucket_for_key(mp4) == "adanaozelders-public"
+    assert storage.public_url(mp4) == f"{CDN}/{mp4}"
+    # İşlenmiş çıktı CDN'den döner (ham kaynağın public'ten çözülmemesi:
+    # `test_video_kaynagi_public_alandan_cozulmez_sayac_artar`).
+    assert storage.resolve_url(mp4, allow_private=False) == f"{CDN}/{mp4}"
+
+
+def test_imzali_put_tek_anahtar_tek_metod_content_type_imzali(r2):
+    key = storage.tutor_video_source_key(5)
+    url = storage.presign_put(key, content_type="video/mp4", ttl_seconds=900)
+    parsed = urlparse(url)
+    assert parsed.netloc == urlparse(R2_API).netloc and "cdn." not in url
+    assert parsed.path == f"/adanaozelders-private/{key}"
+    q = parsed.query
+    assert "X-Amz-Signature=" in q and "X-Amz-Expires=900" in q
+    # Content-Type imzalı başlıktadır: tarayıcı birebir aynı değeri göndermeli.
+    assert "content-type" in q.lower().split("x-amz-signedheaders=")[1].split("&")[0]
+
+
+def test_imzali_put_public_oneke_verilmez_sinifsizda_patlar(r2):
+    with pytest.raises(ValueError):
+        storage.presign_put("avatars/x.bin", content_type="video/mp4", ttl_seconds=60)
+
+
+@pytest.mark.sinifsiz_depo_degeri
+def test_video_kaynagi_public_alandan_cozulmez_sayac_artar(r2):
+    """`PublicAsset` private anahtarı None'a çevirir ve sayaç artar (fail-closed)."""
+    assert storage.resolve_url("private/tutor-videos/1/a.bin", allow_private=False) is None
+
+
+async def test_head_size_yoksa_none_varsa_boyut(r2, monkeypatch):
+    kayit: list = []
+    monkeypatch.setattr(storage, "_s3_client", lambda **kw: _SahteS3(kayit, head_size=None))
+    assert await storage.head_size("private/tutor-videos/1/a.bin") is None
+    monkeypatch.setattr(storage, "_s3_client", lambda **kw: _SahteS3(kayit, head_size=12345))
+    assert await storage.head_size("private/tutor-videos/1/a.bin") == 12345
+    assert all(k["Bucket"] == "adanaozelders-private" for _, k in kayit)
+
+
+async def test_delete_key_dogru_bucket_sinifsiz_dokunulmaz(r2, monkeypatch):
+    kayit: list = []
+    monkeypatch.setattr(storage, "_s3_client", lambda **kw: _SahteS3(kayit))
+    assert await storage.delete_key("tutor-videos/a.mp4") is True
+    assert await storage.delete_key("private/tutor-videos/1/a.bin") is True
+    assert await storage.delete_key("avatars/eski.webp") is False
+    assert await storage.delete_key(None) is False
+    assert [k["Bucket"] for _, k in kayit] == ["adanaozelders-public", "adanaozelders-private"]
+
+
+async def test_public_dosya_yuklemesi_content_type_ve_cache_control(r2, monkeypatch, tmp_path):
+    kayit: list = []
+    monkeypatch.setattr(storage, "_s3_client", lambda **kw: _SahteS3(kayit))
+    f = tmp_path / "out.mp4"
+    f.write_bytes(b"x")
+    await storage.upload_public_file(
+        "tutor-videos/a.mp4", str(f), content_type="video/mp4", cache_control="public, max-age=1, immutable"
+    )
+    op, kw = kayit[0]
+    assert op == "upload_file" and kw["Bucket"] == "adanaozelders-public"
+    assert kw["ExtraArgs"] == {"ContentType": "video/mp4", "CacheControl": "public, max-age=1, immutable"}
+    with pytest.raises(ValueError):
+        await storage.upload_public_file("private/x.mp4", str(f), content_type="video/mp4", cache_control="")

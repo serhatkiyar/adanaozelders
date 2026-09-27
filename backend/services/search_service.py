@@ -31,7 +31,12 @@ from services import subject_service
 from models.tutor_promotion import TutorPromotion
 from schemas.education import PublicEducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
-from services import education_service, seo_slug_service, tutor_promotion_service
+from services import (
+    education_service,
+    seo_slug_service,
+    tutor_promotion_service,
+    tutor_video_service,
+)
 from services.ranking import bayesian_average, bayesian_score_expr, compute_global_mean
 
 
@@ -55,6 +60,7 @@ def _to_search_out(
     completed_lessons: int = 0,
     avg_response_seconds: int | None = None,
     include_lesson_info: bool = False,
+    intro_video=None,
 ) -> TutorSearchOut:
     return TutorSearchOut(
         id=tutor.id,
@@ -66,6 +72,8 @@ def _to_search_out(
         lesson_info=tutor.lesson_info if include_lesson_info else None,
         # Tanıtım videosu yalnız detayda; ücretsiz ilk ders rozeti listede de gerekli.
         intro_video_url=tutor.intro_video_url if include_lesson_info else None,
+        # Siteye yüklenen video (yalnız ACTIVE; `get_tutor_public` sorgular).
+        intro_video=intro_video if include_lesson_info else None,
         first_lesson_free=tutor.first_lesson_free,
         hourly_rate=tutor.hourly_rate,
         teaching_mode=tutor.teaching_mode,
@@ -698,6 +706,11 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
         )
     ).scalar_one()
     avg_response_seconds = await tutor_avg_response_seconds(db, tutor.id)
+    # Yüklenen tanıtım videosu: yalnız ACTIVE satır public'e çıkar; işlenen ya
+    # da onay bekleyen yeni video görünmez, eski aktif video gösterilmeye devam eder.
+    intro_video = tutor_video_service.to_public_out(
+        await tutor_video_service.get_active(db, tutor.id)
+    )
     out = _to_search_out(
         tutor,
         prior_mean,
@@ -708,6 +721,7 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
         completed_lessons=completed_lessons,
         avg_response_seconds=avg_response_seconds,
         include_lesson_info=True,
+        intro_video=intro_video,
     )
     out.url_slug = await seo_slug_service.ilan_slugu(db, tutor.id)
     return out

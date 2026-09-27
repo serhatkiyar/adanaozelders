@@ -134,6 +134,14 @@ async def anonymize_account(db: AsyncSession, user) -> list[str]:
             edu.document_name = None
             edu.verification_code = None
             edu.verification_tckn = None
+        # Yüklenen tanıtım videoları: yüz/ses taşıyan kişisel veridir. Satırlar
+        # kalır (REPLACED), nesneler commit sonrası best-effort silinir.
+        from services import tutor_video_service
+
+        orphan_files.extend(
+            await tutor_video_service.anonymize_for_account_deletion(db, uid)
+        )
+        user.intro_video_url = None
 
     # ── Bağlı PII ──
     if role_id == ROLE_IDS[RoleType.CLIENT]:

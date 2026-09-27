@@ -190,6 +190,42 @@ services:
     ports:
       - "8000:8000"
 
+  # ── Eğitmen tanıtım videosu işçisi (FFmpeg) ──
+  # Aynı backend kodu, `worker` imaj hedefi (ffmpeg/ffprobe içerir). Kuyruk DB
+  # tablosudur (tutor_intro_videos); Redis/Celery yok. Ağır dönüştürme API
+  # sürecinden ayrı koşar ki istek gecikmesi ve health check etkilenmesin.
+  video-worker:
+    profiles: ["tamdocker"]
+    build:
+      context: ./backend
+      target: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-ceyhandb}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-to-a-long-random-secret}
+      REDIS_URL: redis://redis:6379/0
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+      AWS_ENDPOINT_URL: http://minio:9000
+      S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:-http://localhost:9000}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-avatars}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-}
+      S3_PRIVATE_BUCKET: ${S3_PRIVATE_BUCKET:-}
+      # Küçük havuz: worker aynı anda tek video işler.
+      DB_POOL_SIZE: "2"
+      DB_MAX_OVERFLOW: "0"
+    # Kaynak (≤300 MB) + çıktı geçici olarak burada durur; tek eşzamanlılık.
+    tmpfs:
+      - /tmp:size=1g
+
   # ── Ziyaretçi analitiği (opsiyonel profil) ──
   # Çerezsiz ölçüm: çerez kullanan bir analitik, KVKK/ePrivacy gereği açık rıza
   # ister ve siteye çerez onay bandı eklemek zorunda kalırdık.

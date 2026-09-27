@@ -180,6 +180,7 @@ from models.tutor import (
     TutorSubject,
     TutorSubjectLevel,
 )
+from models.tutor_intro_video import TutorIntroVideo, TutorIntroVideoStatus
 from models.tutor_time_off import TutorTimeOff
 from models.tutor_extra_availability import TutorExtraAvailability
 from models.lesson_series import LessonSeries, LessonSeriesStatus
@@ -381,6 +382,8 @@ __all__ = [
     "TutorAvailability",
     "TutorClientBlock",
     "TutorEducation",
+    "TutorIntroVideo",
+    "TutorIntroVideoStatus",
     "TutorPreApplication",
     "PreApplicationStatus",
     "TutorPromotion",

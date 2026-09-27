@@ -1,6 +1,11 @@
 # Python sürümü CI ve geliştirme ortamıyla AYNI olmalı: farklı sürüm,
 # testlerin doğruladığı davranışın üretimde geçerli olmadığı anlamına gelir.
-FROM python:3.12-slim
+#
+# İki hedef (multi-stage):
+#   * varsayılan (son stage) → API (uvicorn). FFmpeg YOK, imaj küçük kalır.
+#   * `worker`               → aynı kod + ffmpeg/ffprobe; `video-worker`
+#                              konteyneri `build: target: worker` ile kullanır.
+FROM python:3.12-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -22,6 +27,21 @@ COPY . .
 # Root olarak çalışmayın: konteyner kaçışında zararı sınırlar.
 RUN useradd --create-home --uid 10001 app \
     && chown -R app:app /app
+
+# ── Video işçisi: FFmpeg statik ikilileri (ffmpeg + ffprobe) ──
+# Debian `apt install ffmpeg` slim imaja ~250 MB kütüphane ekler; statik derleme
+# ~80 MB'tır ve digest ile sabitlenir (deterministik, tedarik zinciri izlenebilir).
+# Sürüm yükseltmek: mwader/static-ffmpeg etiket + digest'i birlikte güncelle.
+FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg-bin
+
+FROM base AS worker
+COPY --from=ffmpeg-bin /ffmpeg /ffprobe /usr/local/bin/
+USER app
+# Kuyruk DB tablosudur; port açılmaz. Geçici dosyalar /tmp (compose'ta tmpfs).
+CMD ["python", "-m", "workers.video_worker"]
+
+# ── API (varsayılan hedef) ──
+FROM base AS api
 USER app
 
 EXPOSE 8000

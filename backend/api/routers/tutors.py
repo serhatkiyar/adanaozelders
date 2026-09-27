@@ -21,6 +21,12 @@ from schemas.tutor import (
     TutorSearchOut,
     TutorSort,
 )
+from schemas.tutor_video import (
+    TutorIntroVideoOut,
+    TutorIntroVideoStateOut,
+    UploadInitIn,
+    UploadInitOut,
+)
 from schemas.tutor_promotion import (
     PromotionPackageOut,
     TutorPromotionOut,
@@ -50,9 +56,18 @@ from services import (
     tutor_dashboard_service,
     tutor_promotion_service,
     tutor_service,
+    tutor_video_service,
 )
 
 router = APIRouter(prefix="/tutors", tags=["tutors"])
+
+# Video yükleme başlatma: depoya yazma hakkı veren imzalı adres üretir → kullanıcı
+# bazlı saatlik bütçe (kısmi unique zaten tek yolda videoya izin verir).
+_video_upload_limit = user_rate_limit(
+    key="tutor_video_upload",
+    limit=settings.RATE_LIMIT_VIDEO_UPLOAD,
+    window_seconds=3600,
+)
 
 # Satın alma bir ödeme başlatır: mağaza/ders ödemeleriyle aynı bütçeye tabidir.
 _promotion_limit = user_rate_limit(
@@ -469,13 +484,22 @@ async def read_my_analytics_series(
     return {"period": period, "points": points}
 
 
+async def _with_intro_video(db: AsyncSession, tutor: Tutor) -> Tutor:
+    """`TutorOut.intro_video` — eğitmenin kendi profilinde yayındaki yüklenmiş video."""
+    tutor.intro_video = tutor_video_service.to_public_out(
+        await tutor_video_service.get_active(db, tutor.id)
+    )
+    return tutor
+
+
 @router.get("/me", response_model=TutorOut)
 async def read_my_profile(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
     await tutor_service.attach_subjects(db, tutor)
-    return await tutor_service.attach_availability(db, tutor)
+    await tutor_service.attach_availability(db, tutor)
+    return await _with_intro_video(db, tutor)
 
 
 @router.patch("/me", response_model=TutorOut)
@@ -484,7 +508,64 @@ async def update_my_profile(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
-    return await tutor_service.update_profile(db, tutor, payload)
+    await tutor_service.update_profile(db, tutor, payload)
+    return await _with_intro_video(db, tutor)
+
+
+# ── Tanıtım videosu: doğrudan yükleme (tarayıcı → imzalı PUT → depo → worker) ──
+#
+# Bütün uçlar `/me` altındadır: satırlar oturumdaki eğitmenin `tutor_id`si ile
+# aranır, anahtarlar sunucuda üretilir, istemci hiçbir istekte anahtar göndermez.
+
+
+@router.get("/me/intro-video", response_model=TutorIntroVideoStateOut)
+async def read_my_intro_video(
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await tutor_video_service.get_state(db, tutor)
+
+
+@router.post(
+    "/me/intro-video/uploads",
+    response_model=UploadInitOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_video_upload_limit)],
+)
+async def start_intro_video_upload(
+    payload: UploadInitIn,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await tutor_video_service.init_upload(db, tutor, payload)
+
+
+@router.post("/me/intro-video/uploads/{video_id}/complete", response_model=TutorIntroVideoOut)
+async def complete_intro_video_upload(
+    video_id: int,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await tutor_video_service.complete_upload(db, tutor, video_id)
+
+
+@router.delete("/me/intro-video/uploads/{video_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_intro_video_upload(
+    video_id: int,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    await tutor_video_service.cancel_upload(db, tutor, video_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/me/intro-video", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_my_intro_video(
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    await tutor_video_service.remove_active(db, tutor)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/me/submit", response_model=TutorOut)

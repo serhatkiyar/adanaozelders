@@ -18,6 +18,7 @@ from core.slug import tutor_slug
 from core.storage_types import PublicAsset
 from models.tutor import Gender, TutorStatus
 from schemas.education import PublicEducationOut
+from schemas.tutor_video import IntroVideoOut
 from schemas.user import UserOut
 
 
@@ -135,6 +136,8 @@ class TutorOut(UserOut):
     bio: str | None = None
     lesson_info: str | None = None
     intro_video_url: str | None = None
+    # Siteye yüklenen (ACTIVE) tanıtım videosu; `intro_video_url` ile aynı anda dolu olmaz.
+    intro_video: IntroVideoOut | None = None
     first_lesson_free: bool = True
     hourly_rate: Decimal | None = None
     teaching_mode: TeachingMode | None = None
@@ -188,6 +191,8 @@ class TutorSearchOut(BaseModel):
     lesson_info: str | None = None
     # Tanıtım videosu — yalnız profil (detay) yanıtında doldurulur.
     intro_video_url: str | None = None
+    # Siteye yüklenen (ACTIVE) video — yalnız detayda; bağlantı ile aynı anda dolu olmaz.
+    intro_video: IntroVideoOut | None = None
     # İlk ders ücretsiz mi? Kart/profilde rozet ve ücretsiz talep akışı için.
     first_lesson_free: bool = True
     hourly_rate: Decimal | None = None

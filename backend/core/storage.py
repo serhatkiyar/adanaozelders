@@ -41,13 +41,18 @@ _STORE_HERO_PROCESS_LIMIT = asyncio.Semaphore(2)
 # Yerel MinIO'da iki bucket aynı olabilir (S3_PUBLIC/PRIVATE_BUCKET boş); o
 # zaman ayrımı önek whitelist'li bucket policy yapar (:func:`public_read_policy`).
 PROFILE_PREFIX = "profiles"
+# İşlenmiş eğitmen tanıtım videosu (720p MP4) ve posteri — CDN'den servis edilir.
+# Ham yükleme ise `private/tutor-videos/` altındadır ve asla public'e çıkmaz.
+TUTOR_VIDEO_PREFIX = "tutor-videos"
 PUBLIC_PREFIXES: tuple[str, ...] = (
     f"{PROFILE_PREFIX}/",
     "library-photos/",
     "store-hero/",
     "store-showcase/",
+    f"{TUTOR_VIDEO_PREFIX}/",
 )
 PRIVATE_PREFIX = "private/"
+TUTOR_VIDEO_SOURCE_PREFIX = f"{PRIVATE_PREFIX}{TUTOR_VIDEO_PREFIX}"
 
 
 def public_bucket() -> str:
@@ -810,3 +815,110 @@ async def upload_file(
 async def delete_file(url: str) -> None:
     """Genel obje silme (ders materyali). delete_avatar ile aynı bucket seçimi."""
     await delete_avatar(url)
+
+
+# ── Eğitmen tanıtım videosu: imzalı PUT, HEAD, dosya indirme/yükleme ─────────
+#
+# Tarayıcı ham videoyu doğrudan private bucket'a PUT eder (backend'e uğramaz);
+# worker indirir, FFmpeg ile işler ve çıktıyı public `tutor-videos/` önekine
+# yazar. Anahtarlar YALNIZ burada üretilir; istemci hiçbir uçta anahtar
+# göndermez (rastgele anahtara yazma imkânsız).
+
+
+def tutor_video_source_key(tutor_id: int) -> str:
+    """Ham yükleme anahtarı: ``private/tutor-videos/{tutor_id}/{uuid}.bin``.
+
+    Uzantı `.bin`: dosyanın türüne güvenilmediğini kodda görünür kılar; içerik
+    hiçbir zaman `video/*` olarak servis edilmez, yalnız worker okur.
+    """
+    return _make_key(f"{TUTOR_VIDEO_SOURCE_PREFIX}/{int(tutor_id)}", ".bin")
+
+
+def tutor_video_output_keys() -> tuple[str, str]:
+    """(mp4, poster) çifti — deneme başına yeni uuid; aynı kökü paylaşırlar."""
+    stem = uuid.uuid4().hex
+    mp4 = f"{TUTOR_VIDEO_PREFIX}/{stem}.mp4"
+    poster = f"{TUTOR_VIDEO_PREFIX}/{stem}.jpg"
+    bucket_for_key(mp4)  # public whitelist'te olduğunu garanti et
+    return mp4, poster
+
+
+def presign_put(key: str, *, content_type: str, ttl_seconds: int) -> str:
+    """Tek anahtara, tek metoda (PUT) bağlı imzalı yükleme adresi.
+
+    ``ContentType`` imzalı header'a girer: tarayıcı birebir aynı değeri
+    göndermek zorundadır (aksi 403). ``Content-Length`` imzalı PUT ile
+    zorlanamaz; boyut sınırını çağıran taraf HEAD ile uygular.
+
+    :func:`_presign_client` tarayıcının gördüğü S3 API adresiyle imzalar
+    (compose'ta ``S3_PUBLIC_ENDPOINT_URL``); private anahtar için ``_sign``
+    gibi ama GET önbelleğine dokunmaz.
+    """
+    bucket = bucket_for_key(key)
+    return _presign_client().generate_presigned_url(
+        "put_object",
+        Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
+        ExpiresIn=ttl_seconds,
+        HttpMethod="PUT",
+    )
+
+
+def _is_missing_error(exc: Exception) -> bool:
+    code = str(getattr(exc, "response", {}).get("Error", {}).get("Code", ""))
+    status_code = getattr(exc, "response", {}).get("ResponseMetadata", {}).get("HTTPStatusCode")
+    return code in ("404", "NoSuchKey", "NotFound") or status_code == 404
+
+
+async def head_size(key: str) -> int | None:
+    """Nesnenin gerçek boyutu (bayt); yoksa ``None``. Diğer hatalar yükselir."""
+    try:
+        async with _s3_client() as s3:
+            resp = await s3.head_object(Bucket=bucket_for_key(key), Key=key)
+    except Exception as exc:  # noqa: BLE001 — yalnız 404 yutulur
+        if _is_missing_error(exc):
+            return None
+        raise
+    return int(resp["ContentLength"])
+
+
+async def delete_key(key: str | None) -> bool:
+    """Anahtarla doğrudan silme (best-effort). Sınıfsız anahtar dokunulmaz."""
+    if not key:
+        return False
+    try:
+        bucket = bucket_for_key(key)
+    except ValueError:
+        logger.warning("sınıfsız anahtar silinmedi: %s", key)
+        return False
+    try:
+        async with _s3_client() as s3:
+            await s3.delete_object(Bucket=bucket, Key=key)
+        return True
+    except Exception:
+        logger.warning("nesne silinemedi: %s", key, exc_info=True)
+        return False
+
+
+async def download_to_path(key: str, path: str) -> None:
+    """Nesneyi diske akıtarak indirir (belleğe almaz)."""
+    async with _s3_client() as s3:
+        await s3.download_file(bucket_for_key(key), key, path)
+
+
+async def upload_public_file(
+    key: str, path: str, *, content_type: str, cache_control: str
+) -> None:
+    """Diskteki dosyayı public whitelist'li anahtara yükler (multipart, akış).
+
+    ``upload_file`` (private, bellekten) yerine: büyük MP4 belleğe alınmaz ve
+    ``CacheControl`` set edilir (anahtar uuid'li ve değişmez → immutable güvenli).
+    """
+    if not key.startswith(PUBLIC_PREFIXES):
+        raise ValueError(f"public anahtar bekleniyordu: {key!r}")
+    async with _s3_client() as s3:
+        await s3.upload_file(
+            path,
+            bucket_for_key(key),
+            key,
+            ExtraArgs={"ContentType": content_type, "CacheControl": cache_control},
+        )

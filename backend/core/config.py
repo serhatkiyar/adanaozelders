@@ -241,6 +241,35 @@ class Settings(BaseSettings):
     # Ders materyali (dosya eki) yükleme limiti.
     MAX_RESOURCE_SIZE_BYTES: int = 10 * 1024 * 1024
 
+    # ── Eğitmen tanıtım videosu — doğrudan yükleme (bkz. models/tutor_intro_video) ──
+    # Acil kapatma şalteri: False iken yeni yükleme başlatılamaz (mevcut
+    # videolar oynamaya devam eder, worker kuyruğu bitirir).
+    TUTOR_VIDEO_UPLOADS_ENABLED: bool = True
+    # Ham dosya üst sınırı. İmzalı PUT boyutu ZORLAYAMAZ; sınır `complete`
+    # adımında ve worker'da HEAD ile uygulanır, aşan nesne hemen silinir.
+    TUTOR_VIDEO_MAX_BYTES: int = 300 * 1024 * 1024
+    # UI "en fazla 2 dakika" der; 10 sn tolerans (telefon kayıtları taşar).
+    TUTOR_VIDEO_MAX_SECONDS: int = 130
+    # İmzalı PUT adresinin ömrü. Yavaş yüklemede imza istek BAŞINDA kontrol
+    # edilir; süre dolduktan sonra biten yükleme yine geçerlidir.
+    TUTOR_VIDEO_UPLOAD_TTL_SECONDS: int = 900
+    # Ön-moderasyon: True ise işlenen video admin onayına kadar PENDING_REVIEW'da
+    # bekler (kullanıcı kararı, 28 Eyl 2026); False ise doğrudan yayına girer.
+    TUTOR_VIDEO_REQUIRE_REVIEW: bool = True
+    # Eğitmen başına saatlik yükleme başlatma sınırı (kullanıcı bazlı).
+    RATE_LIMIT_VIDEO_UPLOAD: int = 5
+    # Worker: kuyruk yoklama aralığı, ffprobe/ffmpeg zaman aşımı, stale geri alma.
+    TUTOR_VIDEO_WORKER_POLL_SECONDS: int = 5
+    TUTOR_VIDEO_PROBE_TIMEOUT_SECONDS: int = 30
+    TUTOR_VIDEO_FFMPEG_TIMEOUT_SECONDS: int = 600
+    # PROCESSING'de bundan uzun kalan satır geri alınır (ffmpeg tavanının 2 katı).
+    TUTOR_VIDEO_STALE_MINUTES: int = 20
+    TUTOR_VIDEO_MAX_ATTEMPTS: int = 2
+    # Yükleme başlatılıp hiç tamamlanmayan kayıt bu süre sonra EXPIRED olur.
+    TUTOR_VIDEO_PENDING_UPLOAD_TTL_HOURS: int = 24
+    # Worker'ın geçici dizini (compose'ta tmpfs).
+    TUTOR_VIDEO_WORK_DIR: str = "/tmp"
+
     # E-posta linklerinin (doğrulama/şifre sıfırlama) işaret edeceği frontend kökü.
     FRONTEND_BASE_URL: str = "http://localhost:5173"
     # SEO ön-çizimi (Modül 6): derlenmiş `index.html` şablonunun İÇ adresi.
