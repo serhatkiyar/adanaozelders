@@ -326,6 +326,36 @@ async def test_r11_ikinci_talep_kalan_iade_edilebilir_adedi_asamamali(fab, provi
         )
 
 
+async def test_r11b_ayni_kalem_tekrarlanarak_kalan_adet_asilamaz(fab, provider):
+    """R-11b · Güvenlik denetimi bulgusu (İP2A-11 kaçağı): kümülatif tavan her
+    SATIRI ayrı ayrı `kalan` ile karşılaştırıyor, aynı kalemin satırlarının
+    TOPLAMINI karşılaştırmıyordu. Aynı `order_item_id` iki kez gönderilince her
+    satır tavanı geçiyor, toplam ise kalan hakkı aşıyordu. CAYMA otomatik
+    onaylandığı için fazla tutar anında iade ediliyordu: müşteri iade etmediği
+    kalemin (B) parasını, kaydı yalnız A'yı gösteren bir talepte alıyordu.
+    """
+    a = await fab.urun(stock=10, price="100.00")
+    b = await fab.urun(stock=10, price="300.00")
+    sip = await fab.siparis(items=[(a, 2), (b, 1)])
+    a_kalem = sip.item_ids[0]
+    await _talep(
+        sip.order_id,
+        tip="CAYMA",
+        items=[OrderReturnItemIn(order_item_id=a_kalem, quantity=1)],
+    )
+
+    with pytest.raises(HTTPException) as hata:
+        await _talep(
+            sip.order_id,
+            tip="CAYMA",
+            items=[
+                OrderReturnItemIn(order_item_id=a_kalem, quantity=1),
+                OrderReturnItemIn(order_item_id=a_kalem, quantity=1),
+            ],
+        )
+    assert hata.value.status_code == 400
+
+
 # ── İP-2a üretim uygulaması: kuruş sözleşmesi nöbetçileri ────────────────────
 
 

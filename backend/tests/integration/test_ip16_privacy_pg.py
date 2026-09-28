@@ -515,3 +515,58 @@ async def test_d12_izin_katalogdan(ip16, ip16_http, ip16_saat):
         "/api/v1/srs/admin/platform-decks", headers=sadece_view, json={"name": "Y"}
     )
     assert yaz.status_code == 403
+
+
+# ── D-12b: genel not/kart uçları platform izin duvarını ATLAYAMAZ ───────────
+
+async def test_d12b_izinsiz_admin_genel_uclardan_platform_notu_yazamaz(
+    ip16, ip16_http, ip16_saat
+):
+    """Güvenlik denetimi bulgusu: `_note_deck_or_404` platform destesinde
+    yalnız `role_id == ADMIN`'e bakıyordu. `srs_platform.manage` izni olmayan
+    herhangi bir admin (ör. finans/destek rolü) platform destesi id'sini
+    herkese açık listeden alıp genel `/srs/decks/{id}/notes`, `/srs/notes/{id}`
+    ve `/srs/cards/bulk` uçlarıyla bütün öğrencilere giden içeriği
+    değiştirebiliyordu. `/srs/admin/platform-decks*` uçlarındaki izin kapısı
+    böylece atlanıyordu."""
+    ip16_saat(T0)
+    _yetkili, y_hdr = await ip16.admin(izinler=SRS_IZINLER)
+    r = await ip16_http.post(
+        "/api/v1/srs/admin/platform-decks", headers=y_hdr, json={"name": "Resmi"}
+    )
+    assert r.status_code == 201, r.text[:200]
+    deck_id = r.json()["id"]
+    n = await ip16_http.post(
+        f"/api/v1/srs/admin/platform-decks/{deck_id}/notes",
+        headers=y_hdr,
+        json={"note_type": "BASIC", "front": "asıl", "back": "cevap", "tags": []},
+    )
+    assert n.status_code == 201, n.text[:200]
+    note_id = n.json()["id"]
+    kart_id = (await kartlar(ip16_http, y_hdr, deck_id))["items"][0]["id"]
+
+    _izinsiz, i_hdr = await ip16.admin(izinler=["users.view"])
+    ekle = await ip16_http.post(
+        f"/api/v1/srs/decks/{deck_id}/notes",
+        headers=i_hdr,
+        json={"note_type": "BASIC", "front": "sahte", "back": "x", "tags": []},
+    )
+    assert ekle.status_code == 404, f"izinsiz admin not ekledi: {ekle.status_code}"
+    duzenle = await ip16_http.patch(
+        f"/api/v1/srs/notes/{note_id}", headers=i_hdr, json={"front": "bozuk"}
+    )
+    assert duzenle.status_code == 404, f"izinsiz admin düzenledi: {duzenle.status_code}"
+    toplu = await ip16_http.post(
+        "/api/v1/srs/cards/bulk",
+        headers=i_hdr,
+        json={"ids": [kart_id], "action": "add_tag", "tag": "sahte"},
+    )
+    assert toplu.status_code == 404, f"izinsiz admin toplu etiketledi: {toplu.status_code}"
+    sil = await ip16_http.delete(f"/api/v1/srs/notes/{note_id}", headers=i_hdr)
+    assert sil.status_code == 404, f"izinsiz admin sildi: {sil.status_code}"
+
+    # İzinli admin genel uçtan da yazabilmeye devam eder (meşru yol kırılmaz).
+    ok = await ip16_http.patch(
+        f"/api/v1/srs/notes/{note_id}", headers=y_hdr, json={"front": "güncel"}
+    )
+    assert ok.status_code == 200, ok.text[:200]

@@ -118,7 +118,8 @@ async def request_otp(
 async def verify_otp(db: AsyncSession, user, code: str) -> None:
     """Girilen kodu en güncel aktif OTP'ye karşı doğrular; başarıda numarayı onaylar.
 
-    Hatalı/dolmuş/limit aşımı → 400. Deneme sayacı her hatalı denemede artar.
+    Hatalı/dolmuş/limit aşımı → 400. Her deneme, kod karşılaştırılmadan önce
+    sayaca kalıcı olarak yazılır (en fazla ``PHONE_OTP_MAX_ATTEMPTS``).
     """
     if not _supports_phone(user):
         raise HTTPException(
@@ -143,16 +144,36 @@ async def verify_otp(db: AsyncSession, user, code: str) -> None:
             status.HTTP_400_BAD_REQUEST,
             "Kodun süresi doldu ya da yok. Yeni kod iste.",
         )
-    if otp.attempts >= settings.PHONE_OTP_MAX_ATTEMPTS:
-        otp.used_at = now
-        await db.flush()
+    # Deneme hakkı kod karşılaştırmasından ÖNCE, atomik olarak ayrılır ve
+    # COMMIT edilir. Eskiden sayaç `flush()` sonrası 400 ile artırılıyordu;
+    # istisna `get_db`'de rollback tetiklediği için artış kayboluyor ve 6 haneli
+    # kod sınırsız denenebiliyordu. Koşullu UPDATE satırı kilitlediğinden
+    # eşzamanlı istekler de sınırı aşamaz.
+    ayrilan = (
+        await db.execute(
+            update(PhoneOtp)
+            .where(
+                PhoneOtp.id == otp.id,
+                PhoneOtp.used_at.is_(None),
+                PhoneOtp.attempts < settings.PHONE_OTP_MAX_ATTEMPTS,
+            )
+            .values(attempts=PhoneOtp.attempts + 1)
+            .returning(PhoneOtp.id)
+        )
+    ).scalar_one_or_none()
+    if ayrilan is None:
+        await db.execute(
+            update(PhoneOtp)
+            .where(PhoneOtp.id == otp.id, PhoneOtp.used_at.is_(None))
+            .values(used_at=now)
+        )
+        await db.commit()
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "Çok fazla hatalı deneme. Yeni kod iste.",
         )
-    if _hash(code.strip()) != otp.code_hash:
-        otp.attempts += 1
-        await db.flush()
+    await db.commit()
+    if not secrets.compare_digest(_hash(code.strip()), otp.code_hash):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kod hatalı.")
 
     otp.used_at = now
