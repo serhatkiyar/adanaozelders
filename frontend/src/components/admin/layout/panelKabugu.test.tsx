@@ -21,14 +21,32 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AdminLayout from "./AdminLayout";
 import { KABUK_DEPO_ANAHTARI, usePanelKabugu } from "./panelKabuguDurumu";
+import { gezinmeKaydiniSifirla, useGezinmeKorumasi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { apiClient } from "@/api/axios";
+import { useModalPanel } from "@/hooks/useModalA11y";
 import { useAuthStore } from "@/store/authStore";
 import { TAM_ADMIN_IZINLERI } from "@/test-utils/adminIzinleri";
 import type { AxiosRequestConfig } from "axios";
+
+/** Kaydedilmemiş verisi olan bir form gibi davranır. */
+function KirliForm() {
+  useGezinmeKorumasi(true);
+  return <p>kirli form içeriği</p>;
+}
+
+/** İçerik alanında açık duran bir pencere (düzenleme penceresi yerine). */
+function AcikPencere() {
+  const panelRef = useModalPanel({ onClose: () => {} });
+  return (
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Düzenleme">
+      <button type="button">Kapat</button>
+    </div>
+  );
+}
 
 function kabuk(yol = "/yonetim/magaza/urunler") {
   const qc = new QueryClient({
@@ -44,6 +62,9 @@ function kabuk(yol = "/yonetim/magaza/urunler") {
             <Route path="magaza/urunler" element={<p>ürün içeriği</p>} />
             <Route path="envanter" element={<p>envanter içeriği</p>} />
             <Route path="ayarlar" element={<p>ayar içeriği</p>} />
+            <Route path="kirli" element={<KirliForm />} />
+            <Route path="magaza/kirli" element={<KirliForm />} />
+            <Route path="pencere" element={<AcikPencere />} />
             <Route path="*" element={<Outlet />} />
           </Route>
         </Routes>
@@ -78,6 +99,8 @@ beforeEach(() => {
   usePanelKabugu.setState({ katli: false });
   window.localStorage.removeItem(KABUK_DEPO_ANAHTARI);
   document.documentElement.classList.remove("dark");
+  gezinmeKaydiniSifirla();
+  document.body.style.overflow = "";
 });
 
 describe("İP-B1 · kabuk · gezinme", () => {
@@ -226,6 +249,60 @@ describe("İP-B1 · kabuk · komut penceresi", () => {
     fireEvent.keyDown(girdi, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: /komut penceresi/i })).toBeNull();
   });
+
+  it("sayaçlı kaydırma kilidine katılır: kapanınca gövdenin kendi değeri döner", () => {
+    document.body.style.overflow = "auto";
+    render(kabuk());
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.keyDown(screen.getByRole("combobox", { name: /ara/i }), { key: "Escape" });
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  it("Tab odağı pencerenin dışına kaçırmaz (odak tuzağı)", () => {
+    render(kabuk());
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const girdi = screen.getByRole("combobox", { name: /ara/i });
+    expect(document.activeElement).toBe(girdi);
+    const olay = fireEvent.keyDown(girdi, { key: "Tab" });
+    // `fireEvent` false dönerse varsayılan davranış (odağın kaçması) engellenmiştir.
+    expect(olay).toBe(false);
+    expect(document.activeElement).toBe(girdi);
+  });
+
+  it("ok tuşuyla seçilen satır görünür alana kaydırılır", () => {
+    const kaydir = vi.fn();
+    Element.prototype.scrollIntoView = kaydir;
+    try {
+      render(kabuk());
+      fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+      const girdi = screen.getByRole("combobox", { name: /ara/i });
+      kaydir.mockClear();
+      fireEvent.keyDown(girdi, { key: "ArrowDown" });
+      const secili = screen.getAllByRole("option").find((o) => o.getAttribute("aria-selected") === "true");
+      expect(kaydir).toHaveBeenCalledWith({ block: "nearest" });
+      expect(kaydir.mock.contexts.at(-1)).toBe(secili);
+    } finally {
+      delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
+  });
+
+  it("açık bir pencere varken Ctrl+K komut penceresini AÇMAZ", () => {
+    render(kabuk("/yonetim/pencere"));
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    expect(screen.queryByRole("dialog", { name: /komut penceresi/i })).toBeNull();
+  });
+
+  it("kirli formda komut öğesi gezinmeden önce onay sorar", () => {
+    render(kabuk("/yonetim/kirli"));
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+    const girdi = screen.getByRole("combobox", { name: /ara/i });
+    fireEvent.change(girdi, { target: { value: "kullanıc" } });
+    fireEvent.keyDown(girdi, { key: "Enter" });
+    expect(screen.getByText("kirli form içeriği")).toBeTruthy();
+    expect(screen.queryByText("kullanıcı içeriği")).toBeNull();
+    expect(screen.getByRole("dialog", { name: /kaydedilmemiş/i })).toBeTruthy();
+  });
 });
 
 describe("İP-B1 · kabuk · klavye kısayolları", () => {
@@ -246,6 +323,36 @@ describe("İP-B1 · kabuk · klavye kısayolları", () => {
     // Hâlâ ürün ekranındayız; "g" ve "k" arama metnine yazılabilirdi ama
     // gezinmeyi TETİKLEMEMELİ.
     expect(screen.queryByText("kullanıcı içeriği")).toBeNull();
+  });
+
+  it("açık bir pencere varken dizi gezindirmez", () => {
+    render(kabuk("/yonetim/pencere"));
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "k" });
+    expect(screen.queryByText("kullanıcı içeriği")).toBeNull();
+  });
+
+  it("kirli formda dizi gezinmeden önce onay sorar", () => {
+    render(kabuk("/yonetim/kirli"));
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "k" });
+    expect(screen.getByText("kirli form içeriği")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /kaydedilmemiş/i })).toBeTruthy();
+  });
+
+  it("kirli formda marka bağlantısı onay sorar", () => {
+    render(kabuk("/yonetim/kirli"));
+    fireEvent.click(screen.getByTestId("panel-rail").querySelector('a[aria-label="Yönetim paneli ana sayfası"]')!);
+    expect(screen.getByText("kirli form içeriği")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /kaydedilmemiş/i })).toBeTruthy();
+  });
+
+  it("kirli formda sayfa yolundaki 'Yönetim' bağlantısı onay sorar", () => {
+    render(kabuk("/yonetim/magaza/kirli"));
+    const yol = screen.getByRole("navigation", { name: /sayfa yolu/i });
+    fireEvent.click(within(yol).getByRole("link", { name: /yönetim/i }));
+    expect(screen.getByText("kirli form içeriği")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: /kaydedilmemiş/i })).toBeTruthy();
   });
 });
 

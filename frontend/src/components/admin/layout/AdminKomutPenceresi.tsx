@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { useGezinmeOnayi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { KomutPenceresi, type KomutGrubu } from "@/components/admin/ui2/komutPenceresi";
+import { acikModalVarMi } from "@/hooks/useModalA11y";
 import { ADMIN_NAV_GROUPS, ADMIN_NAV_ITEMS } from "./adminNavigation";
 import { useAuthStore } from "@/store/authStore";
 
@@ -25,6 +27,14 @@ import { useAuthStore } from "@/store/authStore";
  *
  * Dizinin ömrü 2 saniyedir: `G`ye basıp vazgeçen kullanıcı, dakikalar sonra
  * bastığı bir `K` ile beklenmedik biçimde başka alana gitmemelidir.
+ *
+ * ## Açık pencere ve kirli form
+ *
+ * İki kısayol da açık bir pencerenin (modal yığını boş değilken) üstünde
+ * çalışmaz: düzenleme penceresinde × düğmesi odaktayken `G K` ya da Ctrl+K
+ * ile gezinmek formu uyarısız söküyordu. Gezinmenin kendisi (kısayol ve komut
+ * öğesi) kenar çubuğu gibi gezinme bekçisinden geçer: kirli form varsa onay
+ * sorulur.
  */
 
 const DIZI_OMRU_MS = 2000;
@@ -49,6 +59,7 @@ export interface AdminKomutPenceresiProps {
 
 export function AdminKomutPenceresi({ acik, onAc, onKapat }: AdminKomutPenceresiProps) {
   const navigate = useNavigate();
+  const { dene, pencere } = useGezinmeOnayi();
   const [sorgu, setSorgu] = useState("");
   const [etkin, setEtkin] = useState(0);
   const permissions = useAuthStore((s) => s.user?.admin_permissions);
@@ -68,6 +79,7 @@ export function AdminKomutPenceresi({ acik, onAc, onKapat }: AdminKomutPenceresi
     const isle = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        if (acikModalVarMi()) return;
         onAc();
       }
     };
@@ -85,8 +97,9 @@ export function AdminKomutPenceresi({ acik, onAc, onKapat }: AdminKomutPenceresi
     };
     const isle = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      // Odak bir metin alanındaysa dizi HİÇ başlamaz ve devam etmez.
-      if (metinAlanindaMi(e.target)) {
+      // Odak bir metin alanındaysa ya da bir pencere açıksa dizi HİÇ başlamaz
+      // ve devam etmez.
+      if (metinAlanindaMi(e.target) || acikModalVarMi()) {
         bitir();
         return;
       }
@@ -102,7 +115,7 @@ export function AdminKomutPenceresi({ acik, onAc, onKapat }: AdminKomutPenceresi
       const hedef = ogeler.find((i) => i.kisayol === harf);
       if (hedef) {
         e.preventDefault();
-        navigate(hedef.to);
+        dene(() => navigate(hedef.to));
       }
     };
     window.addEventListener("keydown", isle);
@@ -110,7 +123,7 @@ export function AdminKomutPenceresi({ acik, onAc, onKapat }: AdminKomutPenceresi
       window.removeEventListener("keydown", isle);
       bitir();
     };
-  }, [ogeler, navigate]);
+  }, [ogeler, navigate, dene]);
 
   // Pencere her açılışta temiz başlar; kapalıyken sorgu tutulmaz.
   useEffect(() => {
@@ -132,27 +145,30 @@ export function AdminKomutPenceresi({ acik, onAc, onKapat }: AdminKomutPenceresi
           anahtar: i.to,
           etiket: i.label,
           kisayol: i.kisayol ? `G ${i.kisayol}` : undefined,
-          calistir: () => navigate(i.to),
+          calistir: () => dene(() => navigate(i.to)),
         })),
     })).filter((g) => g.ogeler.length > 0);
-  }, [ogeler, sorgu, navigate]);
+  }, [ogeler, sorgu, navigate, dene]);
 
   return (
-    <KomutPenceresi
-      acik={acik}
-      onKapat={onKapat}
-      baslik="Komut penceresi"
-      aramaEtiketi="Panelde ara"
-      yerTutucu="Alan ara veya komut yaz…"
-      sorgu={sorgu}
-      onSorgu={(v) => {
-        setSorgu(v);
-        setEtkin(0);
-      }}
-      gruplar={gruplar}
-      bosMetin="Eşleşen alan yok."
-      etkin={etkin}
-      onEtkin={setEtkin}
-    />
+    <>
+      <KomutPenceresi
+        acik={acik}
+        onKapat={onKapat}
+        baslik="Komut penceresi"
+        aramaEtiketi="Panelde ara"
+        yerTutucu="Alan ara veya komut yaz…"
+        sorgu={sorgu}
+        onSorgu={(v) => {
+          setSorgu(v);
+          setEtkin(0);
+        }}
+        gruplar={gruplar}
+        bosMetin="Eşleşen alan yok."
+        etkin={etkin}
+        onEtkin={setEtkin}
+      />
+      {pencere}
+    </>
   );
 }

@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/admin/ui";
+import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { ROUTES } from "@/lib/routes";
 import { getAdminNavItem } from "./adminNavigation";
@@ -49,9 +50,9 @@ export function AdminPageHeader({ onMenuAc }: AdminPageHeaderProps) {
         <div className="min-w-0 flex-1">
           {!kokte && (
             <nav aria-label="Sayfa yolu" className="mb-0.5 hidden items-center gap-2 text-xs text-panel-fg-subtle sm:flex">
-              <Link className="transition hover:text-panel-fg" to={ROUTES.admin}>
+              <GezinmeBaglantisi className="transition hover:text-panel-fg" to={ROUTES.admin} end>
                 Yönetim
-              </Link>
+              </GezinmeBaglantisi>
               <span aria-hidden="true">/</span>
               <span className="truncate text-panel-fg-muted">{current.shortLabel ?? current.label}</span>
             </nav>

@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+import { useModalA11y } from "@/hooks/useModalA11y";
+
 /**
  * ── Komut penceresi — ORTAK MEKANİZMA (İP-B1 · Görev 4) ──
  *
@@ -27,6 +29,12 @@ import { createPortal } from "react-dom";
  * var: nöbetçi eşiği "ham `<button>` artamaz" (uiBaseline). Sonuç başına bir
  * ham düğme yazan bir palet, uzun listede eşiği tek başına yerdi. Listbox
  * deseni HEM daha doğru ARIA HEM sıfır düğme.
+ *
+ * Kilit, odak tuzağı, ESC ve odağın geri verilmesi `useModalA11y`den gelir:
+ * pencere böylece sayaçlı kaydırma kilidine ve modal yığınına katılır. Eskiden
+ * `body.style.overflow`u kendisi saklayıp geri yazıyordu; bir `Dialog`un
+ * üstünde açılınca tek ESC ikisini birden kapatıyor ve kapanış sırası yüzünden
+ * gövde `hidden` kalıyordu. Tab da odağı arkadaki sayfaya kaçırıyordu.
  *
  * Pencere `createPortal` ile `document.body`ye taşınır: panel kabuğunun üst
  * şeridi `backdrop-blur` taşıyor ve blur'lu bir ata, içindeki `position:fixed`
@@ -82,22 +90,21 @@ export function KomutPenceresi({
 }: KomutPenceresiProps) {
   const kimlik = useId();
   const girdiRef = useRef<HTMLInputElement>(null);
-  const oncekiOdak = useRef<Element | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const duz = useMemo(() => gruplar.flatMap((g) => g.ogeler), [gruplar]);
+  const ogeKimligi = (anahtar: string) => `${kimlik}-${anahtar}`;
+  const etkinKimlik = duz[etkin] ? ogeKimligi(duz[etkin].anahtar) : undefined;
 
+  useModalA11y({ open: acik, onClose: onKapat, panelRef, initialFocusRef: girdiRef });
+
+  // Odak girdide kaldığı için (`aria-activedescendant`) tarayıcı ok tuşuyla
+  // seçilen satırı kendiliğinden görünür kılmaz; uzun listede vurgu alt
+  // kenardan çıkıp kayboluyordu. jsdom `scrollIntoView` taşımaz, çağrı korumalı.
   useEffect(() => {
-    if (!acik) return;
-    oncekiOdak.current = document.activeElement;
-    const t = window.setTimeout(() => girdiRef.current?.focus(), 0);
-    const oncekiTasma = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.clearTimeout(t);
-      document.body.style.overflow = oncekiTasma;
-      (oncekiOdak.current as HTMLElement | null)?.focus?.();
-    };
-  }, [acik]);
+    if (!acik || !etkinKimlik) return;
+    document.getElementById(etkinKimlik)?.scrollIntoView?.({ block: "nearest" });
+  }, [acik, etkinKimlik]);
 
   if (!acik) return null;
 
@@ -118,13 +125,10 @@ export function KomutPenceresi({
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (duz[etkin]) calistir(duz[etkin]);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      onKapat();
     }
+    // ESC ve Tab `useModalA11y`de: yalnız yığının en üstündeki pencere işler.
   };
 
-  const ogeKimligi = (anahtar: string) => `${kimlik}-${anahtar}`;
   let dizin = -1;
 
   return createPortal(
@@ -134,6 +138,7 @@ export function KomutPenceresi({
           etiketsiz bir tıklama alanı taşıyordu. */}
       <div aria-hidden="true" className="absolute inset-0" onClick={onKapat} />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={baslik}
@@ -151,7 +156,7 @@ export function KomutPenceresi({
             aria-expanded="true"
             aria-controls={`${kimlik}-liste`}
             aria-autocomplete="list"
-            aria-activedescendant={duz[etkin] ? ogeKimligi(duz[etkin].anahtar) : undefined}
+            aria-activedescendant={etkinKimlik}
             value={sorgu}
             onChange={(e) => onSorgu(e.target.value)}
             placeholder={yerTutucu}

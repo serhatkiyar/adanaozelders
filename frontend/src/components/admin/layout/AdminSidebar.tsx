@@ -1,5 +1,4 @@
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/admin/ui";
 import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { useOpenReportCount } from "@/hooks/useReports";
@@ -135,8 +134,13 @@ export function AdminSidebar({
       {/* ── ÜST: marka · arama · katlama ── */}
       <div data-testid="rail-ust" className="flex flex-col gap-2 border-b border-panel-border p-3">
         <div className={`flex items-center gap-2 ${katli ? "justify-center" : ""}`}>
-          <Link
+          {/* Marka bağlantısı da bir gezinme öğesidir: kirli formda onay sorar. */}
+          <GezinmeBaglantisi
             to={ROUTES.admin}
+            end
+            // NavLink etkin olunca varsayılan "page" yazar; "bulunulan sayfa"
+            // yalnız gezinme listesindeki "Genel bakış" öğesidir.
+            aria-current="false"
             onClick={onNavigate}
             aria-label="Yönetim paneli ana sayfası"
             className="flex min-w-0 items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus"
@@ -150,7 +154,7 @@ export function AdminSidebar({
             {!katli && (
               <span className="min-w-0 truncate text-sm font-semibold text-panel-fg">Yönetim</span>
             )}
-          </Link>
+          </GezinmeBaglantisi>
           {!katli && onKatlamaDegistir && (
             <Button
               variant="ghost"
