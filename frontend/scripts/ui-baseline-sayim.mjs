@@ -613,7 +613,7 @@ export function ulasilanModuller(tohumlar) {
     const dosya = kuyruk.pop();
     for (const metin of ithalMetinleri(readFileSync(join(ROOT, dosya), "utf8"), dosya)) {
       const hedef = ithalYolunuCoz(dosya, metin);
-      if (!hedef || gorulen.has(hedef)) continue;
+      if (!hedef || gorulen.has(hedef) || hedef.replace(/\\\\/g, "/") === "src/lib/panelOnYukleme.ts") continue;
       gorulen.add(hedef);
       if (hedef.endsWith(".tsx")) ulasilan.add(hedef);
       kuyruk.push(hedef);
