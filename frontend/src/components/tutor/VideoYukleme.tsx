@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { Icon } from "@/components/AppIcon";
 import { IlerlemeCubugu } from "@/components/IlerlemeCubugu";
 import { KameraKaydi } from "@/components/tutor/KameraKaydi";
+import { TanitimVideosu } from "@/components/egitmen/TanitimVideosu";
 import {
   useCancelIntroVideo,
   useIntroVideoUpload,
@@ -54,52 +55,54 @@ export function MevcutVideoKarti({ tutor, acik }: { tutor: TutorOut; acik: boole
       <p className={KUCUK_ACIKLAMA}>Profilinde henüz tanıtım videosu yok.</p>
     );
   }
+  // Yayındaki video burada da OYNATILIR (Preply'daki gibi): eğitmen profilinde
+  // ne göründüğünü sayfadan ayrılmadan izler. Public profildeki bileşenin
+  // aynısı — yüklenen video sessiz otomatik başlar, bağlantı iframe'le oynar.
+  const oynatici = aktif?.mp4_url
+    ? {
+        kind: "upload" as const,
+        mp4_url: aktif.mp4_url,
+        poster_url: aktif.poster_url,
+        width: aktif.width,
+        height: aktif.height,
+        duration_seconds: aktif.duration_seconds,
+      }
+    : null;
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-lg border border-slate-200 p-4">
-      {aktif?.poster_url ? (
-        <img
-          src={aktif.poster_url}
-          alt=""
-          className="h-16 w-28 shrink-0 rounded-md bg-black object-cover"
-        />
-      ) : (
-        <span
-          aria-hidden
-          className="flex h-16 w-28 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500"
-        >
-          <Icon name="video" className="h-6 w-6" />
-        </span>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className={ETIKET}>
-          Şu an yayında
-          <span className="ml-2 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-            {aktif ? "Yüklenen video" : "Bağlantı"}
-          </span>
-        </p>
-        <p className={`mt-1 truncate ${KUCUK_ACIKLAMA}`}>
-          {aktif
-            ? [sureBiciminde(aktif.duration_seconds), aktif.width && aktif.height ? `${aktif.width}×${aktif.height}` : null]
-                .filter(Boolean)
-                .join(" · ") || "İşlenmiş MP4"
-            : link}
-        </p>
+    <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className={ETIKET}>
+            Şu an yayında
+            <span className="ml-2 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+              {aktif ? "Yüklenen video" : "Bağlantı"}
+            </span>
+          </p>
+          <p className={`mt-1 truncate ${KUCUK_ACIKLAMA}`}>
+            {aktif
+              ? [sureBiciminde(aktif.duration_seconds), aktif.width && aktif.height ? `${aktif.width}×${aktif.height}` : null]
+                  .filter(Boolean)
+                  .join(" · ") || "İşlenmiş MP4"
+              : link}
+          </p>
+        </div>
+        {aktif && (
+          <button
+            type="button"
+            className={DUGME_SATIR_TEHLIKE}
+            disabled={!acik || kaldir.isPending}
+            onClick={() =>
+              kaldir.mutate(undefined, {
+                onSuccess: () => toast.success("Video profilinden kaldırıldı."),
+                onError: (e) => toast.error(getErrorMessage(e, "Kaldırılamadı.")),
+              })
+            }
+          >
+            {kaldir.isPending ? "Kaldırılıyor…" : "Kaldır"}
+          </button>
+        )}
       </div>
-      {aktif && (
-        <button
-          type="button"
-          className={DUGME_SATIR_TEHLIKE}
-          disabled={!acik || kaldir.isPending}
-          onClick={() =>
-            kaldir.mutate(undefined, {
-              onSuccess: () => toast.success("Video profilinden kaldırıldı."),
-              onError: (e) => toast.error(getErrorMessage(e, "Kaldırılamadı.")),
-            })
-          }
-        >
-          {kaldir.isPending ? "Kaldırılıyor…" : "Kaldır"}
-        </button>
-      )}
+      <TanitimVideosu video={oynatici} linkUrl={aktif ? null : link} ad={tutor.first_name} />
     </div>
   );
 }
@@ -136,9 +139,7 @@ function DurumKarti({
       className={`rounded-lg border p-4 ${TON_SINIFI[a.ton]}`}
     >
       <div className="flex flex-wrap items-start gap-3">
-        {kayit.status === "PENDING_REVIEW" && kayit.poster_url ? (
-          <img src={kayit.poster_url} alt="" className="h-16 w-28 shrink-0 rounded-md bg-black object-cover" />
-        ) : null}
+
         <div className="min-w-0 flex-1">
           <p className="text-base font-semibold leading-6">{a.etiket}</p>
           <p className="mt-1 text-sm leading-5">
@@ -154,6 +155,21 @@ function DurumKarti({
           ) : null}
         </div>
       </div>
+      {kayit.status === "PENDING_REVIEW" && kayit.mp4_url ? (
+        // Onay bekleyen yeni video: eğitmen işlenmiş halini izleyebilir (otomatik başlamaz).
+        <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg bg-black">
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- eğitmenin kendi kaydı. */}
+          <video
+            className="h-full w-full"
+            src={kayit.mp4_url}
+            poster={kayit.poster_url ?? undefined}
+            controls
+            playsInline
+            preload="metadata"
+            aria-label="Onay bekleyen yeni videon"
+          />
+        </div>
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {basarisiz && (
           <button type="button" className={DUGME_SATIR_BIRINCIL} onClick={onYeniden} disabled={!acik}>
