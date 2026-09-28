@@ -58,6 +58,7 @@ interface Istek {
   method: string;
   url: string;
   body: Record<string, unknown> | null;
+  params?: Record<string, unknown>;
 }
 type Yanit = { status?: number; data: unknown };
 
@@ -87,6 +88,7 @@ beforeEach(() => {
       method: (config.method ?? "get").toLowerCase(),
       url: String(config.url),
       body: config.data && typeof config.data === "string" ? JSON.parse(config.data) : null,
+      params: config.params as Record<string, unknown> | undefined,
     };
     istekler.push(istek);
     const rota = rotalar.find((r) => r.esles(istek));
@@ -211,6 +213,46 @@ describe("H-1 · liste ve sekmeler", () => {
     sar();
     fireEvent.click(await screen.findByRole("button", { name: "Ödeme geçmişi" }, YUK));
     expect(await screen.findByText("HVL-1", undefined, YUK)).toBeTruthy();
+  });
+});
+
+/* ══════════════ 1b · Geçmiş sayfalıdır (100'de sessiz kesilme yok) ══════════════ */
+
+describe("H-1b · ödeme geçmişi sayfalıdır", () => {
+  const gecmisIstekleri = () =>
+    istekler.filter((i) => i.method === "get" && i.url.split("?")[0] === "/payouts");
+
+  it("sayfa boyutundan fazla kayıt varsa sonraki sayfaya geçilir; boş 2. sayfa 'kayıt yok' demez", async () => {
+    // 51 kayıt = 50'lik sayfa + 1 yoklama satırı → "daha eski kayıt var".
+    const kayitlar = Array.from({ length: 51 }, (_, i) => ({
+      ...KAYIT,
+      id: 1000 - i,
+      reference: `HVL-${1000 - i}`,
+    }));
+    sunucu("/payouts/pending", { data: [] }, "get");
+    sunucu(/^\/payouts$/, { data: kayitlar }, "get");
+    sar(`${ROUTES.adminPayouts}?sekme=gecmis`);
+
+    expect(await screen.findByText("HVL-1000", undefined, YUK)).toBeTruthy();
+    expect(screen.getByText("HVL-951")).toBeTruthy();
+    // Yoklama satırı ekrana basılmaz.
+    expect(screen.queryByText("HVL-950")).toBeNull();
+    expect(gecmisIstekleri().at(-1)?.params).toEqual({ limit: 51, offset: 0 });
+    expect(screen.getByText(/daha eski kayıtlar var/)).toBeTruthy();
+
+    sunucu(/^\/payouts$/, { data: [] }, "get");
+    fireEvent.click(screen.getByRole("button", { name: "Sonraki" }));
+    expect(await screen.findByText("Bu sayfada kayıt kalmadı", undefined, YUK)).toBeTruthy();
+    expect(gecmisIstekleri().at(-1)?.params).toEqual({ limit: 51, offset: 50 });
+    expect(screen.queryByText(/Henüz ödeme kaydı yok/)).toBeNull();
+  });
+
+  it("tek sayfaya sığan geçmişte sayfa düğmesi çıkmaz", async () => {
+    sunucu("/payouts/pending", { data: [] }, "get");
+    sunucu(/^\/payouts$/, { data: [KAYIT] }, "get");
+    sar(`${ROUTES.adminPayouts}?sekme=gecmis`);
+    expect(await screen.findByText("HVL-1", undefined, YUK)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Sonraki" })).toBeNull();
   });
 });
 

@@ -63,9 +63,12 @@ export async function fetchPendingPayouts(
   return data;
 }
 
-export async function fetchPayoutHistory(limit = 100): Promise<PayoutRecord[]> {
+export async function fetchPayoutHistory(
+  limit = 100,
+  offset = 0
+): Promise<PayoutRecord[]> {
   const { data } = await apiClient.get<PayoutRecord[]>("/payouts", {
-    params: { limit },
+    params: { limit, offset },
   });
   return data;
 }

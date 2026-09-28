@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button, ErrorState } from "@/components/admin/ui";
+import {
+  BosSayfa,
+  SAYFA_ISTEK_LIMITI,
+  SayfaGecisi,
+  sayfaDilimi,
+  sayfaOfseti,
+} from "@/components/admin/SayfaGecisi";
 import {
   DuzenlemePenceresi,
   useDuzenlemeYuzeyi,
@@ -184,7 +192,15 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
 }
 
 function HistoryList() {
-  const { data, isLoading, isError, error, refetch } = usePayoutHistory();
+  // Geçmiş eskiden en yeni 100 kayıtta sessizce kesiliyordu: eski havaleler
+  // hiç görünmüyor, "ödendi mi" buradan doğrulanamıyordu. Artık sayfalı.
+  const [sayfa, setSayfa] = useState(1);
+  const { data, isLoading, isError, error, refetch } = usePayoutHistory(
+    SAYFA_ISTEK_LIMITI,
+    true,
+    sayfaOfseti(sayfa)
+  );
+  const { satirlar, dahaFazlaVar } = sayfaDilimi(data);
 
   if (isLoading) return <p className="text-sm text-slate-500">Yükleniyor…</p>;
   // P1-6: hata "Henüz ödeme kaydı yok." diye gösterilemez — bu bir PARA
@@ -198,7 +214,11 @@ function HistoryList() {
       />
     );
   }
-  if (!data || data.length === 0) {
+  // 2. sayfa boşsa "Henüz ödeme kaydı yok" DENMEZ: önceki sayfalarda kayıt var.
+  if (satirlar.length === 0 && sayfa > 1) {
+    return <BosSayfa onOnceki={() => setSayfa(sayfa - 1)} />;
+  }
+  if (satirlar.length === 0) {
     return (
       <div className="rounded-xl border border-slate-200 p-8 text-center ">
         <p className="text-sm text-slate-500 ">
@@ -209,39 +229,42 @@ function HistoryList() {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 ">
-            <th className="py-2 pr-4 font-medium">Tarih</th>
-            <th className="py-2 pr-4 font-medium">Alıcı</th>
-            <th className="py-2 pr-4 text-right font-medium">Tutar</th>
-            <th className="py-2 pr-4 font-medium">Referans</th>
-            <th className="py-2 font-medium">IBAN (o anki)</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-200 ">
-          {data.map((r) => (
-            <tr key={r.id}>
-              <td className="py-3 pr-4 text-slate-600 ">
-                {formatDate(r.paid_at)}
-              </td>
-              <td className="py-3 pr-4 text-slate-600 ">
-                {r.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"} #{r.payee_id}
-              </td>
-              <td className="py-3 pr-4 text-right font-medium text-slate-900 ">
-                {formatTL(r.amount)}
-              </td>
-              <td className="py-3 pr-4 text-slate-500 ">
-                {r.reference ?? "-"}
-              </td>
-              <td className="py-3 font-mono text-xs text-slate-400 ">
-                {r.iban_snapshot ?? "-"}
-              </td>
+    <div className="space-y-3">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 ">
+              <th className="py-2 pr-4 font-medium">Tarih</th>
+              <th className="py-2 pr-4 font-medium">Alıcı</th>
+              <th className="py-2 pr-4 text-right font-medium">Tutar</th>
+              <th className="py-2 pr-4 font-medium">Referans</th>
+              <th className="py-2 font-medium">IBAN (o anki)</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-200 ">
+            {satirlar.map((r) => (
+              <tr key={r.id}>
+                <td className="py-3 pr-4 text-slate-600 ">
+                  {formatDate(r.paid_at)}
+                </td>
+                <td className="py-3 pr-4 text-slate-600 ">
+                  {r.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"} #{r.payee_id}
+                </td>
+                <td className="py-3 pr-4 text-right font-medium text-slate-900 ">
+                  {formatTL(r.amount)}
+                </td>
+                <td className="py-3 pr-4 text-slate-500 ">
+                  {r.reference ?? "-"}
+                </td>
+                <td className="py-3 font-mono text-xs text-slate-400 ">
+                  {r.iban_snapshot ?? "-"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <SayfaGecisi sayfa={sayfa} dahaFazlaVar={dahaFazlaVar} onSayfaDegis={setSayfa} />
     </div>
   );
 }

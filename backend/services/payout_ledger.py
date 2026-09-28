@@ -315,7 +315,9 @@ async def history(
         (
             await db.execute(
                 select(PayoutRecord)
-                .order_by(PayoutRecord.paid_at.desc())
+                # İkincil anahtar `id`: sayfalı okumada aynı `paid_at`
+                # değerli kayıtlar sayfalar arasında tekrarlanmasın/kaybolmasın.
+                .order_by(PayoutRecord.paid_at.desc(), PayoutRecord.id.desc())
                 .limit(limit)
                 .offset(offset)
             )

@@ -148,6 +148,8 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/components/admin/StockMovementsPanel.tsx <Button> sonSayfa": "sinir",
   "src/components/admin/data-table/DataTable.tsx <Button> page <= 1": "sinir",
   "src/components/admin/data-table/DataTable.tsx <Button> page >= totalPages": "sinir",
+  "src/components/admin/SayfaGecisi.tsx <Button> sayfa <= 1": "sinir",
+  "src/components/admin/SayfaGecisi.tsx <Button> !dahaFazlaVar": "sinir",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> isFirst": "sinir",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> isLast": "sinir",
   "src/pages/admin/delivery/DeliveryRunsPage.tsx <Button> isLastPage": "sinir",

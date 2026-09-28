@@ -14,6 +14,13 @@
 import { useState } from "react";
 
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
+import {
+  BosSayfa,
+  SAYFA_ISTEK_LIMITI,
+  SayfaGecisi,
+  sayfaDilimi,
+  sayfaOfseti,
+} from "@/components/admin/SayfaGecisi";
 import { Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
 import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
 import { useAdminReturns, useResolveReturn } from "@/hooks/useStore";
@@ -34,8 +41,16 @@ export function ReturnsPanel() {
   // düzenleme yüzeyinde tutulur.
   const kararYuzeyi = useDuzenlemeYuzeyi<{ id: number; action: "approve" | "reject" }>();
   const [onlyPending, setOnlyPending] = useState(true);
-  const { data: returns, isLoading, isError, error, refetch } =
-    useAdminReturns(onlyPending ? "PENDING" : undefined);
+  const [sayfa, setSayfa] = useState(1);
+  // Eskiden ucun varsayılanı (ilk 100) ile çağrılıyor, "Tümü" görünümünde eski
+  // iadeler sessizce kayboluyordu. Artık sayfalı.
+  const { data, isLoading, isError, error, refetch } = useAdminReturns(
+    onlyPending ? "PENDING" : undefined,
+    true,
+    SAYFA_ISTEK_LIMITI,
+    sayfaOfseti(sayfa)
+  );
+  const { satirlar: returns, dahaFazlaVar } = sayfaDilimi(data);
   const resolve = useResolveReturn();
 
   function approve(id: number) {
@@ -83,13 +98,18 @@ export function ReturnsPanel() {
         <input
           type="checkbox"
           checked={onlyPending}
-          onChange={(e) => setOnlyPending(e.target.checked)}
+          onChange={(e) => {
+            setOnlyPending(e.target.checked);
+            setSayfa(1);
+          }}
           className="h-4 w-4 rounded border-slate-300 text-panel-accent-text focus:ring-panel-focus accent-marka"
         />
         Yalnız bekleyenler
       </label>
 
-      {returns && returns.length > 0 ? (
+      {returns.length === 0 && sayfa > 1 ? (
+        <BosSayfa onOnceki={() => setSayfa(sayfa - 1)} />
+      ) : returns.length > 0 ? (
         returns.map((r) => {
           const badge = RETURN_STATUS_LABELS[r.status] ?? { label: r.status, cls: "bg-slate-100 text-slate-500" };
           return (
@@ -146,6 +166,7 @@ export function ReturnsPanel() {
           {onlyPending ? "Bekleyen iade talebi yok." : "İade talebi yok."}
         </p>
       )}
+      <SayfaGecisi sayfa={sayfa} dahaFazlaVar={dahaFazlaVar} onSayfaDegis={setSayfa} />
       <ConfirmDialog
         open={kararYuzeyi.kayit?.action === "approve"}
         title="İade talebini onayla"

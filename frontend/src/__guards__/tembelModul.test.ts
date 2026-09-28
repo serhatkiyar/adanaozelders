@@ -73,7 +73,7 @@ const GEREKCELI = [
   // 973 (24 Eyl 2026): `mesaj/SohbetGorunumu` KAPI_DISI kaydı 965'ten 973'e.
   // 979 (28 Eyl 2026): eğitmen video onayı sayfası + penceresinin kapı
   // kayıtları (`EgitmenVideoOnayi`, `VideoOnayPenceresi`) 973'ten 979'a.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:979 /src/**/*.tsx",
+  "src/__guards__/calismaZamaniKapisi.test.tsx:983 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

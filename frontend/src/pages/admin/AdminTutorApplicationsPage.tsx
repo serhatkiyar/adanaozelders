@@ -2,6 +2,13 @@ import { Fragment, useState } from "react";
 
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
 import {
+  BosSayfa,
+  SAYFA_ISTEK_LIMITI,
+  SayfaGecisi,
+  sayfaDilimi,
+  sayfaOfseti,
+} from "@/components/admin/SayfaGecisi";
+import {
   Badge,
   Button,
   EmptyState,
@@ -145,9 +152,15 @@ export default function AdminTutorApplicationsPage() {
   // Operasyonel varsayılan: ekran "aranacaklar" listesi olarak açılır.
   const [filtre, setFiltre] = useState<string | undefined>("NEW");
   const [acikId, setAcikId] = useState<number | null>(null);
+  const [sayfa, setSayfa] = useState(1);
 
-  const { data, isLoading, isError, refetch } =
-    useAdminTutorPreApplications(filtre);
+  const { data, isLoading, isError, refetch } = useAdminTutorPreApplications(
+    filtre,
+    true,
+    SAYFA_ISTEK_LIMITI,
+    sayfaOfseti(sayfa)
+  );
+  const { satirlar, dahaFazlaVar } = sayfaDilimi(data);
   const guncelle = useUpdateTutorPreApplicationStatus();
 
   if (!canView) return <AccessDenied area="Öğretmen ön başvuruları" />;
@@ -169,7 +182,11 @@ export default function AdminTutorApplicationsPage() {
         {FILTRELER.map((f) => (
           <PlainButton
             key={f.label}
-            onClick={() => setFiltre(f.value)}
+            onClick={() => {
+              // Filtre değişince 1. sayfaya dön (bkz. AdminPromotionsPage).
+              setFiltre(f.value);
+              setSayfa(1);
+            }}
             aria-pressed={filtre === f.value}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus ${
               filtre === f.value
@@ -189,7 +206,9 @@ export default function AdminTutorApplicationsPage() {
           description="Ön başvurular alınamadı."
           onRetry={() => void refetch()}
         />
-      ) : !data || data.length === 0 ? (
+      ) : satirlar.length === 0 && sayfa > 1 ? (
+        <BosSayfa onOnceki={() => setSayfa(sayfa - 1)} />
+      ) : satirlar.length === 0 ? (
         <EmptyState
           title="Kayıt yok"
           description="Bu filtreye uyan bir ön başvuru bulunmuyor."
@@ -208,7 +227,7 @@ export default function AdminTutorApplicationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {data.map((b: AdminTutorPreApplication) => (
+              {satirlar.map((b: AdminTutorPreApplication) => (
                 <Fragment key={b.id}>
                 <tr className="align-top">
                   <td className="py-3 pr-4">
@@ -346,6 +365,8 @@ export default function AdminTutorApplicationsPage() {
           </table>
         </div>
       )}
+
+      <SayfaGecisi sayfa={sayfa} dahaFazlaVar={dahaFazlaVar} onSayfaDegis={setSayfa} />
     </div>
   );
 }
