@@ -40,6 +40,51 @@ function bas(onSec = vi.fn()) {
   return { ...sonuc, tetikleyici: screen.getByRole("button", { name: "Kayıt işlemleri" }) };
 }
 
+describe("İP-B2 · menü — taşma kabında kırpılmaz", () => {
+  // Tablo kabı `overflow-hidden`/`overflow-x-auto`: `absolute` katman son
+  // satırlarda kırpılıyor, alttaki öğeler ("Sil") görünmüyordu.
+  it("katman sabit konumlanır ve altta yer yoksa tetikleyicinin üstüne açılır", () => {
+    const { tetikleyici } = bas();
+    vi.spyOn(tetikleyici, "getBoundingClientRect").mockReturnValue({
+      top: window.innerHeight - 40, bottom: window.innerHeight - 8, left: 100, right: 140,
+      width: 40, height: 32, x: 100, y: window.innerHeight - 40, toJSON: () => ({}),
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(120);
+    fireEvent.click(tetikleyici);
+    const menu = screen.getByRole("menu");
+    expect(menu.className).toContain("fixed");
+    expect(menu.style.bottom).toBe("44px");
+    expect(menu.style.top).toBe("");
+    expect(menu.style.visibility).toBe("");
+    vi.restoreAllMocks();
+  });
+
+  it("iki yöne de sığmayan uzun içerik geniş tarafa açılır ve o boşlukla sınırlanıp içeride kayar", () => {
+    // "Filtre ekle" → Yayınevi: ~30 seçenek; alttaki öğeler ekran dışında kalmamalı.
+    const { tetikleyici } = bas();
+    vi.spyOn(tetikleyici, "getBoundingClientRect").mockReturnValue({
+      top: 200, bottom: 232, left: 100, right: 140,
+      width: 40, height: 32, x: 100, y: 200, toJSON: () => ({}),
+    });
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(2000);
+    fireEvent.click(tetikleyici);
+    const menu = screen.getByRole("menu");
+    // Alt boşluk (768 - 232 - 12 = 524) üsttekinden (200 - 12 = 188) büyük.
+    expect(menu.style.top).toBe("236px");
+    expect(menu.style.maxHeight).toBe("524px");
+    expect(menu.className).toContain("overflow-y-auto");
+    vi.restoreAllMocks();
+  });
+
+  it("sayfa kaydırılınca menü kapanır (sabit katman tetikleyiciden kopmasın)", () => {
+    const { tetikleyici } = bas();
+    fireEvent.click(tetikleyici);
+    expect(screen.getByRole("menu")).toBeTruthy();
+    fireEvent.scroll(window);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
+
 describe("İP-B2 · menü — açılma ve kapanma", () => {
   it("kapalıyken içerik DOM'DA YOK", () => {
     bas();

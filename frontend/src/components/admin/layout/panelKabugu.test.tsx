@@ -122,6 +122,19 @@ describe("İP-B1 · kabuk · gezinme", () => {
   });
 });
 
+describe("İP-B1 · kabuk · kaydırma", () => {
+  it("sayfa değişince içerik alanı (<main>) en üste döner", () => {
+    // Kayan öğe pencere değil <main>; kabuk rota değişince yeniden kurulmaz.
+    render(kabuk());
+    const main = document.getElementById("admin-main-content") as HTMLElement;
+    main.scrollTop = 600;
+    fireEvent.keyDown(window, { key: "g" });
+    fireEvent.keyDown(window, { key: "k" });
+    expect(screen.getByText("kullanıcı içeriği")).toBeTruthy();
+    expect(main.scrollTop).toBe(0);
+  });
+});
+
 describe("İP-B1 · kabuk · katlama", () => {
   it("katlama düğmesinin erişilebilir adı vardır ve durumu bildirir", () => {
     render(kabuk());
