@@ -5,6 +5,9 @@ Yerleşim ve bileşenler ``core.mail.components`` içindedir; burada yalnız
 metin ve hangi bileşenin kullanılacağı durur. Figma referansı her şablonun
 docstring'inde yazar (dosya: BRIX "120+ Email templates", sayfa
 ``🎨 Email Templates``).
+
+Bütün şablonlar aynı sırayı izler: logo → başlık → gövde → (kart) → düğme →
+not. Düzen standardı ``components`` modülünün başında yazar.
 """
 from __future__ import annotations
 
@@ -16,8 +19,8 @@ _BRAND = c.BRAND
 
 
 def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
-    """Figma: Email Verification 01 (18216:2888) — ortalı logo, başlık, kod kutusu
-    yerine düğme (akış bağlantı tabanlı), altta geçerlilik notu."""
+    """Figma: Email Verification 01 (18216:2888) — kod kutusu yerine düğme
+    (akış bağlantı tabanlı), altta geçerlilik notu."""
     ttl = settings.EMAIL_VERIFY_TOKEN_TTL_HOURS
     subject = f"{_BRAND} · E-posta adresini doğrula"
     text = (
@@ -32,26 +35,16 @@ def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
         preheader=f"Hesabını etkinleştirmek için tek adım kaldı. Bağlantı {ttl} saat geçerli.",
         blocks=[
             c.logo(),
-            c.heading("E-posta adresini doğrula", align="center"),
+            c.heading("E-posta adresini doğrula"),
             c.paragraph(
-                c.fmt(
-                    "Merhaba {name}, kaydın için teşekkürler! {brand} hesabını "
-                    "etkinleştirmek için aşağıdaki düğmeye tıkla.",
-                    name=c.strong(name),
-                    brand=_BRAND,
-                ),
-                align="center",
-                space=32,
+                f"Merhaba {name}, kaydın için teşekkürler! {_BRAND} hesabını "
+                "etkinleştirmek için aşağıdaki düğmeye tıkla."
             ),
             c.button("E-postamı doğrula", verify_url),
             c.note(
                 f"Bağlantı {ttl} saat geçerlidir. Bu kaydı sen yapmadıysan bu e-postayı "
-                "yok sayabilirsin.",
-                align="center",
-                space=24,
+                "yok sayabilirsin."
             ),
-            c.divider(),
-            c.fallback_link(verify_url, align="center"),
         ],
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
@@ -63,8 +56,8 @@ def account_delete_email(*, to: str, name: str, confirm_url: str) -> EmailMessag
     Metin bilerek uyarıcı: silme geri alınamaz ve mali kayıtlar mevzuat gereği
     kalır. Talebi yapmayan biri için de açık bir "hiçbir şey olmadı" cümlesi var.
 
-    Figma: Security Alert 01 (18641:5987) — uyarı karosu + başlık, bilgi kartı,
-    koyu birincil düğme.
+    Figma: Password Reset 02 (18202:2021) düzeni + Security Alert 01 (18641:5987)
+    bilgi kartı.
     """
     ttl = settings.PASSWORD_RESET_TOKEN_TTL_HOURS
     subject = f"{_BRAND} · Hesap silme onayı"
@@ -80,15 +73,11 @@ def account_delete_email(*, to: str, name: str, confirm_url: str) -> EmailMessag
         title=subject,
         preheader="Hesabını silme talebini aldık. Onaylamadan hiçbir şey silinmez.",
         blocks=[
-            c.logo(align="left", aside=c.now_tr()),
-            c.alert_header(
-                "⚠️",
-                "Hesabını silmek istediğini onayla",
-                c.fmt(
-                    "Merhaba {name}, hesabını silme talebini aldık. Bu işlem "
-                    "<strong>GERİ ALINAMAZ</strong>; onaylamak için aşağıdaki düğmeye tıkla.",
-                    name=c.strong(name),
-                ),
+            c.logo(aside=c.now_tr()),
+            c.heading("Hesabını silmek istediğini onayla"),
+            c.paragraph(
+                f"Merhaba {name}, hesabını silme talebini aldık. Bu işlem GERİ ALINAMAZ; "
+                "onaylamak için aşağıdaki düğmeye tıkla."
             ),
             c.info_card(
                 [
@@ -99,11 +88,8 @@ def account_delete_email(*, to: str, name: str, confirm_url: str) -> EmailMessag
             c.button("Hesabımı sil", confirm_url),
             c.note(
                 "Bu talebi sen yapmadıysan hesabına hiçbir şey olmaz; bu e-postayı yok "
-                "sayabilirsin.",
-                space=24,
+                "sayabilirsin."
             ),
-            c.divider(),
-            c.fallback_link(confirm_url),
         ],
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
@@ -127,24 +113,17 @@ def password_reset_email(*, to: str, name: str, reset_url: str) -> EmailMessage:
         title=subject,
         preheader=f"Şifreni sıfırlama bağlantın hazır. {ttl} saat geçerli.",
         blocks=[
-            c.logo(align="left", aside=c.now_tr()),
+            c.logo(aside=c.now_tr()),
             c.heading("Şifreni sıfırla"),
             c.paragraph(
-                c.fmt(
-                    "Merhaba {name}, hesabının şifresini sıfırlamak için bir talep aldık.",
-                    name=c.strong(name),
-                ),
-                space=16,
+                f"Merhaba {name}, hesabının şifresini sıfırlamak için bir talep aldık. "
+                "Bu talebi sen yaptıysan aşağıdan devam et."
             ),
-            c.paragraph("Bu talebi sen yaptıysan aşağıdan devam et:", space=24),
             c.button("Şifremi sıfırla", reset_url),
             c.note(
                 f"Bağlantı {ttl} saat geçerlidir. Bu talebi sen yapmadıysan şifren değişmez; "
-                "bu e-postayı yok sayabilirsin.",
-                space=24,
+                "bu e-postayı yok sayabilirsin."
             ),
-            c.divider(),
-            c.fallback_link(reset_url),
         ],
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
@@ -191,10 +170,9 @@ _ORDER_STEP_INDEX = {"PAID": 0, "SHIPPED": 1, "DELIVERED": 2}
 def order_status_email(
     *, to: str, name: str, order_id: int, status: str, total: str, currency: str, orders_url: str
 ) -> EmailMessage:
-    """Figma: Order Confirmation 01 (18149:1826) — ortalı logo, tutar vurgulu
-    cümle, öne çıkan kart; + Multi-step Progress 01 (18658:5123) adım çubuğu.
-    İade durumu: Refund Processed 01 (18703:2357) — açık gri üst bölge, büyük
-    tutar, durum listesi."""
+    """Figma: Order Confirmation 01 (18149:1826) sipariş kartı + Multi-step
+    Progress 01 (18658:5123) adım çubuğu. İade durumu: Refund Processed 01
+    (18703:2357) durum listesi."""
     subject_base, heading, intro_tail, preheader = _ORDER_COPY.get(status, _ORDER_FALLBACK)
     subject = f"{_BRAND} · {subject_base} (#{order_id})"
     money = f"{total} {currency}"
@@ -205,83 +183,45 @@ def order_status_email(
         f"Siparişlerini görüntüle: {orders_url}"
         + c.text_footer()
     )
-    intro = c.fmt(
-        "Merhaba {name}, {order} numaralı {tail}",
-        name=c.strong(name),
-        order=c.strong(f"#{order_id}"),
-        tail=intro_tail,
-    )
-
-    if status == "REFUNDED":
-        html = c.render(
-            title=subject,
-            preheader=preheader,
-            hero=[
-                c.logo(),
-                c.heading(heading, align="center"),
-                c.paragraph(intro, align="center", space=24),
-                c.amount(money),
-            ],
-            blocks=[
-                c.timeline(
-                    [
-                        (
-                            "İade işlendi",
-                            f"#{order_id} numaralı siparişin için {money} iade edildi.",
-                            True,
-                        ),
-                        (
-                            "Hesabına yansıması",
-                            "Tutarın hesabında görünme süresi bankana göre değişebilir.",
-                            False,
-                        ),
-                    ]
-                ),
-                c.button("Siparişlerimi gör", orders_url),
-                c.note(
-                    c.fmt(
-                        "Bir sorun mu var? {link}",
-                        link=c.link("Bize ulaş", c.site_url("/iletisim")),
-                    ),
-                    align="center",
-                    space=0,
-                ),
-            ],
-        )
-        return EmailMessage(to=to, subject=subject, html=html, text=text)
-
     blocks = [
         c.logo(),
-        c.heading(heading, align="center"),
-        c.paragraph(intro, align="center", space=28),
+        c.heading(heading),
+        c.paragraph(f"Merhaba {name}, #{order_id} numaralı {intro_tail}"),
     ]
     step = _ORDER_STEP_INDEX.get(status)
     if step is not None:
         blocks.append(c.progress_steps(_ORDER_STEPS, step))
+    if status == "REFUNDED":
+        blocks.append(
+            c.timeline(
+                [
+                    ("İade işlendi", f"#{order_id} numaralı siparişin için {money} iade edildi.", True),
+                    (
+                        "Hesabına yansıması",
+                        "Tutarın hesabında görünme süresi bankana göre değişebilir.",
+                        False,
+                    ),
+                ]
+            )
+        )
+    else:
+        blocks.append(c.info_card([("Sipariş no", f"#{order_id}"), ("Tutar", money)]))
     blocks += [
-        c.highlight_card(f"Sipariş #{order_id}", f"Tutar: {money}"),
         c.button("Siparişlerimi gör", orders_url),
         c.note(
             c.fmt(
-                "Sorun mu var? {link}",
+                "Bir sorun mu var? {link}",
                 link=c.link("Bize ulaş", c.site_url("/iletisim")),
-            ),
-            align="center",
-            space=0,
+            )
         ),
     ]
-    html = c.render(
-        title=subject,
-        preheader=preheader,
-        blocks=blocks,
-    )
+    html = c.render(title=subject, preheader=preheader, blocks=blocks)
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 
 
 def back_in_stock_email(*, to: str, product_title: str, product_url: str) -> EmailMessage:
-    """Figma: New Notification 01 (18580:3087) — ortalı logo, başlık, ayırıcı,
-    içerik kartı, tam genişlik birincil düğme. Avatar yerine ürün kartı
-    (ürün görseli bu akışta taşınmıyor)."""
+    """Figma: New Notification 01 (18580:3087) — başlık, içerik kartı, tam
+    genişlik düğme. Avatar yerine ürün kartı (ürün görseli bu akışta taşınmıyor)."""
     subject = f"{_BRAND} · '{product_title}' yeniden stokta"
     text = (
         f"Merhaba,\n\n"
@@ -295,13 +235,11 @@ def back_in_stock_email(*, to: str, product_title: str, product_url: str) -> Ema
         preheader=f"{product_title} yeniden stokta. Stoklar tükenmeden sipariş verebilirsin.",
         blocks=[
             c.logo(),
-            c.heading("Yeniden stokta!", align="center"),
+            c.heading("Yeniden stokta!"),
             c.paragraph(
-                "Beklediğin ürün tekrar satışta. Stoklar tükenmeden sipariş verebilirsin.",
-                align="center",
+                "Beklediğin ürün tekrar satışta. Stoklar tükenmeden sipariş verebilirsin."
             ),
-            c.divider(),
-            c.highlight_card(product_title, "Stok bildirimi"),
+            c.info_card([("Ürün", product_title)]),
             c.button("Ürüne git", product_url, space=0),
         ],
     )
@@ -323,8 +261,7 @@ def contact_message_email(
     kırılmasın) — kullanıcının adresi gövdede ve Reply-To semantiğiyle metinde
     verilir.
 
-    İç e-posta: ortak layout + bilgi kartı (Security Alert 01 ``Inner Card``)
-    ve mesaj kartı; pazarlama görseli yok.
+    İç e-posta: ortak düzen + bilgi kartı ve mesaj kartı.
     """
     who = f"{from_name} <{from_email}>"
     if user_ref:
@@ -345,17 +282,16 @@ def contact_message_email(
         title=f"[İletişim] {subject}",
         preheader=f"{from_name}: {message[:90]}",
         blocks=[
-            c.logo(align="left"),
+            c.logo(),
             c.tag("İletişim formu"),
-            c.heading(subject, space=24),
+            c.heading(subject),
             c.info_card(rows),
             c.message_card("Mesaj", message),
             c.note(
                 c.fmt(
                     "Yanıtlamak için doğrudan {mail} adresine yazın.",
                     mail=c.link(from_email, f"mailto:{from_email}"),
-                ),
-                space=0,
+                )
             ),
         ],
     )
@@ -380,7 +316,7 @@ def tutor_lead_email(
     Dönüş kanalı telefondur; teyit maili bu yüzden yoktur. Belgelerin kendisi
     maile EKLENMEZ (private/ altında dururlar) — panel linkinden açılır.
 
-    İç e-posta: ortak layout + bilgi kartı + not kartı.
+    İç e-posta: ortak düzen + bilgi kartı + not kartı.
     """
     lines = [
         "Yeni eğitmen ön başvurusu",
@@ -415,16 +351,14 @@ def tutor_lead_email(
     body = "\n".join(lines)
 
     blocks = [
-        c.logo(align="left"),
+        c.logo(),
         c.tag("Eğitmen ön başvurusu"),
-        c.heading(name, space=24),
+        c.heading(name),
         c.info_card(rows),
     ]
     if note:
         blocks.append(c.message_card("Not", note))
-    blocks.append(
-        c.note("Kayıt, yönetim panelindeki Eğitmen Başvuruları listesinde.", space=0)
-    )
+    blocks.append(c.note("Kayıt, yönetim panelindeki Eğitmen Başvuruları listesinde."))
     html = c.render(
         title=f"[Ön Başvuru] {name}",
         preheader=f"{name} · {subjects}",
@@ -436,8 +370,8 @@ def tutor_lead_email(
 def contact_ack_email(*, to: str, name: str, subject: str) -> EmailMessage:
     """Gönderene 'mesajını aldık' teyidi (kullanıcı boşluğa yazmasın).
 
-    Figma: New Notification 01 (18580:3087) — ortalı logo, başlık, ayırıcı,
-    içerik kartı; düğme yok (yapılacak bir eylem yok).
+    Figma: New Notification 01 (18580:3087) — başlık, içerik kartı; düğme yok
+    (yapılacak bir eylem yok).
     """
     body = (
         f"Merhaba {name},\n\n"
@@ -451,16 +385,11 @@ def contact_ack_email(*, to: str, name: str, subject: str) -> EmailMessage:
         preheader=f"\"{subject}\" konulu mesajını aldık. En kısa sürede dönüş yapacağız.",
         blocks=[
             c.logo(),
-            c.heading("Mesajını aldık", align="center"),
+            c.heading("Mesajını aldık"),
             c.paragraph(
-                c.fmt(
-                    "Merhaba {name}, bize yazdığın için teşekkürler. En kısa sürede "
-                    "dönüş yapacağız.",
-                    name=c.strong(name),
-                ),
-                align="center",
+                f"Merhaba {name}, bize yazdığın için teşekkürler. En kısa sürede "
+                "dönüş yapacağız."
             ),
-            c.divider(),
             c.info_card([("Konu", subject)], space=0),
         ],
     )
@@ -474,7 +403,7 @@ def payout_changed_email(*, to: str, name: str, iban_masked: str) -> EmailMessag
     IBAN'ına çevirmektir. Uygulama içi bildirim burada yetmez (saldırgan onu görür
     ve okundu işaretler); asıl koruma, sahibinin e-posta kutusuna düşen bu mesajdır.
 
-    Figma: Security Alert 01 (18641:5987) — uyarı karosu, bilgi kartı, iki düğme
+    Figma: Security Alert 01 (18641:5987) — bilgi kartı ve iki düğme
     ("şifremi sıfırla" / "bize ulaş"). Düğmeler oturum gerektirmeyen sayfalara
     gider: hesap ele geçirilmişse sahibi giriş yapamıyor olabilir.
     """
@@ -493,20 +422,14 @@ def payout_changed_email(*, to: str, name: str, iban_masked: str) -> EmailMessag
         title=subject,
         preheader="Hesabındaki ödeme bilgisi (IBAN) güncellendi. Sen yapmadıysan hemen bize ulaş.",
         blocks=[
-            c.logo(align="left"),
-            c.alert_header(
-                "⚠️",
-                "Ödeme hesabın güncellendi",
-                c.fmt(
-                    "Merhaba {name}, hesabındaki ödeme bilgisi (IBAN) değiştirildi.",
-                    name=c.strong(name),
-                ),
+            c.logo(aside=c.now_tr()),
+            c.heading("Ödeme hesabın güncellendi"),
+            c.paragraph(
+                f"Merhaba {name}, hesabındaki ödeme bilgisi (IBAN) değiştirildi. "
+                "Bu işlemi sen yapmadıysan hesabın başkasının eline geçmiş olabilir: "
+                "hemen şifreni değiştir ve bizimle iletişime geç."
             ),
             c.info_card([("Yeni IBAN", iban_masked), ("Tarih", c.now_tr())]),
-            c.paragraph(
-                "Bu işlemi sen yapmadıysan hesabın başkasının eline geçmiş olabilir: "
-                "hemen şifreni değiştir ve bizimle iletişime geç.",
-            ),
             c.button_pair(
                 ("Şifremi sıfırla", c.site_url("/sifremi-unuttum")),
                 ("Bize ulaş", c.site_url("/iletisim")),

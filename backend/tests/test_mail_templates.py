@@ -139,3 +139,35 @@ def test_logo_yalniz_https_kokten_yuklenir(monkeypatch) -> None:
     # Footer'daki sosyal hesap ikonları da aynı HTTPS kökten PNG olarak gelir.
     for key in ("instagram", "tiktok", "youtube", "facebook", "x"):
         assert f'src="https://adanaozelders.com.tr/eposta/{key}.png"' in html
+
+
+def _tum_htmller() -> list[str]:
+    htmller = [getattr(templates, n)(**kw).html for n, kw in CASES.items()]
+    for status in ("PAID", "SHIPPED", "DELIVERED", "REFUNDED"):
+        htmller.append(
+            templates.order_status_email(
+                to="a@b.co", name="A", order_id=1, status=status,
+                total="1", currency="TL", orders_url="https://x.test/s",
+            ).html
+        )
+    htmller.append(templates.account_delete_email(to="a@b.co", name="A", confirm_url="https://x/y").html)
+    htmller.append(templates.tutor_lead_email(to="a@b.co", name="A", phone="1", subjects="M", note="n").html)
+    return htmller
+
+
+def test_tum_sablonlar_tek_yazi_olcegini_kullanir(monkeypatch) -> None:
+    """Standart: başlık 30, gövde 18, ikincil 16, etiket 14 (components._TYPE).
+    Mobil daraltma (<style>) ve logo metin yedeği dışında başka boyut yok;
+    gövde metninde kalın vurgu ve "düğme çalışmazsa…" ham bağlantı kutusu yok."""
+    import re
+
+    from core.config import settings
+
+    # Üretim gibi HTTPS kök: yerel metin-logo yedeği (24px) devre dışı.
+    monkeypatch.setattr(settings, "FRONTEND_BASE_URL", "https://adanaozelders.com.tr")
+    for html in _tum_htmller():
+        govde = html.split("<body", 1)[1]
+        boyutlar = set(re.findall(r"font-size:(\d+)px", govde))
+        assert boyutlar <= {"30", "18", "16", "14", "1"}, boyutlar  # 1 = gizli preheader
+        assert "<strong" not in govde and "<b>" not in govde
+        assert "çalışmazsa" not in govde
