@@ -15,7 +15,7 @@ describe("dersOlayi", () => {
   it("bekleyen ücretsiz talep ONAYLI gibi boyanmaz ve durumu metinle söyler", () => {
     // Regresyon: `takvim-deneme` her tamamlanmamış ücretsiz derse veriliyordu.
     const olay = dersOlayi(ders(BookingStatus.PENDING, { is_free_lesson: true }), "Üye");
-    expect(olay).toEqual({ sinif: "takvim-bekliyor", baslik: "Onay bekliyor · Ayşe" });
+    expect(olay).toEqual({ sinif: "takvim-bekliyor", baslik: "Ayşe · onay bekliyor" });
   });
 
   it("kabul edilmiş ücretsiz ders kendi rengini taşır", () => {

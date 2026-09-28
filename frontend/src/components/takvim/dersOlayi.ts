@@ -16,7 +16,7 @@ type DersOlayiGirdisi = Pick<BookingOut, "status" | "is_free_lesson" | "series_i
  * - Ücretsiz ilk ders rengi (`takvim-deneme`) yalnız KABUL EDİLMİŞ derse
  *   verilir. Eskiden bekleyen ücretsiz talep de aynı renkteydi ve onaylı bir
  *   dersten ayırt edilemiyordu — öğretmen yanıt bekleyen isteği kaçırıyordu.
- * - Bekleyen ders başlığında durum METİNLE yazılır; durum yalnız renkle
+ * - Bekleyen ders başlığında durum METİNLE, adın ARKASINDA yazılır; durum yalnız renkle
  *   taşınıyordu (WCAG 1.4.1).
  */
 export function dersOlayi(
@@ -29,5 +29,6 @@ export function dersOlayi(
   // Kabul edilmiş haftalık seri dersi ayrı renkte (Preply: haftalık ders pembe).
   else if (b.series_id && b.status === BookingStatus.ACCEPTED) sinif = "takvim-haftalik";
   const ad = b.client_name || adsizAd;
-  return { sinif, baslik: b.status === BookingStatus.PENDING ? `Onay bekliyor · ${ad}` : ad };
+  // Ad ÖNCE: kısa olayda kutu kırpıyor; önek adı gizliyordu.
+  return { sinif, baslik: b.status === BookingStatus.PENDING ? `${ad} · onay bekliyor` : ad };
 }

@@ -18,6 +18,8 @@
 - Küçük LibraryCard'da "Şu an açık" etiketi avatar/baş harfle çakışabiliyor.
 - Profilim (390px): `?bolum=video` gibi sağdaki bir bölümle açılınca etkin sekme yatay şeritte kesik kalıyor; etkin sekme yüklemede görünür kaydırılmıyor (`TutorSettings.tsx` bölüm menüsü).
 - Mesajlar: gönder düğmesi 36px (`Messages.tsx`, `h-9 w-9`).
+- Ortak `PhoneEditor` (ders talebi penceresi ve Mesajlar'daki telefon kapısı): siyah birincil düğme penceredeki turuncu birincil düğmeyle çelişiyor; girdi 14px (iOS yakınlaştırır, mobil kural 16px); "kod gönderildi / kod hatalı" geri bildirimi yalnız toast (pencerenin `aria-modal` alanı dışında).
+- Öğretmen takvimi (masaüstü haftalık görünüm): 1 saatlik bekleyen derste "Ad · onay bekliyor" etiketinin durum kısmı kutuda kırpılıyor (ad görünür; durum renk ve lejantla da belli).
 - `/egitmenler`: kart başlıkları `h3`, sayfada `h2` yok (axe heading-order).
 - İlan sihirbazı: ders/ders şekli grup hatalarında odak `div`e gidemiyor, hata metni alana bağlı değil (`IlanSihirbazi.tsx` `alanaOdaklan`, `AdimProps`).
 - Profilim ücret/başlık/müsaitlik doğrulama hataları yalnız toast; müsaitlik satırı etiketleri her satırda aynı ("Gün/Başlangıç/Bitiş").

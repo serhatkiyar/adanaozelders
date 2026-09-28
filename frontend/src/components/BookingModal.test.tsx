@@ -3,7 +3,8 @@
  *
  * - "Adresi Kaydet/Güncelle" talebi GÖNDERMEZ (iç içe form, submit kabarcığı).
  * - Telefonu doğrulanmamış öğrenci son adımda doğrulama yolunu görür; talep
- *   düğmesi o zamana dek kapalıdır (eskiden sonda yalnız "yetkin yok" toast'ı).
+ *   düğmesine basınca doğrulama açılır, istek gitmez (eskiden sonda yalnız
+ *   "yetkin yok" toast'ı).
  * - Sunucu hatası pencerenin içinde `role="alert"` ile kalır.
  * - Başlık düğmelerinin adı var; adım değişince odak yeni adım başlığına geçer.
  */
@@ -156,10 +157,11 @@ describe("BookingModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /^\d\d:\d\d$/ }));
     devam();
 
+    // Düğme doğrulamayla `disabled` olmaz (DESIGN.md [E]); basınca kapı açılır.
     const gonder = screen.getByRole("button", { name: "Ders Talep Et" });
-    expect(gonder).toBeDisabled();
+    expect(gonder).toBeEnabled();
     expect(screen.getByText("Talebi göndermeden önce telefonunu doğrula")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Telefonu doğrula" }));
+    fireEvent.click(gonder);
     expect(screen.getByLabelText("Cep telefonu")).toBeInTheDocument();
     expect(talepGonder).not.toHaveBeenCalled();
   });

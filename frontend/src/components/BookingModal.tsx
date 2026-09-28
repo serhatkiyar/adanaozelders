@@ -140,6 +140,8 @@ export function BookingModal({
   const telefonGerekli =
     kullanici?.role_id === ROLE_IDS.CLIENT && kullanici.phone_verified === false;
   const [telefonAcik, setTelefonAcik] = useState(false);
+  const telefonBlokRef = useRef<HTMLDivElement>(null);
+  const gonderRef = useRef<HTMLButtonElement>(null);
 
   // Adım değişince odaklı düğme DOM'dan sökülür ve odak <body>'ye düşer;
   // yeni adımın başlığına taşınır ki ekran okuyucu nerede olduğunu söylesin.
@@ -251,6 +253,15 @@ export function BookingModal({
     e.preventDefault();
     if (createBooking.isPending) return;
     setHata(null);
+    // Düğme doğrulamayla `disabled` OLMAZ (DESIGN.md [E], tasarim-dili §7) —
+    // Mesajlar'daki kapıyla aynı: basınca doğrulama açılır ve görünür kılınır.
+    if (telefonGerekli) {
+      setTelefonAcik(true);
+      requestAnimationFrame(() =>
+        telefonBlokRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      );
+      return;
+    }
     if (!selectedSlot) {
       setHata("Lütfen tarih ve saat seçin.");
       return;
@@ -836,21 +847,30 @@ export function BookingModal({
               </Field>
 
               {telefonGerekli && (
-                <div id="ders-talebi-telefon" className={`${KART} space-y-3`}>
-                  <p className={ETIKET}>Talebi göndermeden önce telefonunu doğrula</p>
-                  <p className={ACIKLAMA}>
+                // Düz metin, kart DEĞİL: pencere içinde kart-içinde-kart olurdu
+                // (DESIGN.md); Mesajlar'daki kapıyla aynı düz görünüm.
+                <div id="ders-talebi-telefon" ref={telefonBlokRef} className="space-y-3">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Talebi göndermeden önce telefonunu doğrula
+                  </p>
+                  <p className="text-sm text-slate-600">
                     Ders saatin değişirse sana ulaşabilmemiz için gerekli. Seçimlerin
                     kaybolmaz; doğrulayınca buradan gönderebilirsin.
                   </p>
                   {telefonAcik ? (
                     <PhoneEditor
                       initialPhone={kullanici?.phone ?? ""}
-                      onDone={() => setTelefonAcik(false)}
+                      onDone={() => {
+                        setTelefonAcik(false);
+                        // Doğrulama/iptal sonrası odak <body>'ye düşmesin; artık
+                        // kullanılabilen gönder düğmesine geçsin.
+                        requestAnimationFrame(() => gonderRef.current?.focus());
+                      }}
                     />
                   ) : (
                     <button
                       type="button"
-                      className={DUGME_SATIR_BIRINCIL}
+                      className="min-h-[44px] rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
                       onClick={() => setTelefonAcik(true)}
                     >
                       Telefonu doğrula
@@ -869,10 +889,10 @@ export function BookingModal({
                   </p>
                 )}
                 <button
+                  ref={gonderRef}
                   type="submit"
                   disabled={
                     createBooking.isPending ||
-                    telefonGerekli ||
                     (mode === TeachingMode.IN_PERSON && !bookingLocation.trim() && !locationLat)
                   }
                   aria-describedby={telefonGerekli ? "ders-talebi-telefon" : undefined}
