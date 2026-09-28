@@ -130,8 +130,12 @@ def test_logo_yalniz_https_kokten_yuklenir(monkeypatch) -> None:
     monkeypatch.setattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
     html = templates.contact_ack_email(to="a@b.co", name="A", subject="S").html
     assert "<img" not in html
+    assert "instagram.com/adanaozeldersofficial" in html  # ikon yerine metin bağlantı
 
     monkeypatch.setattr(settings, "FRONTEND_BASE_URL", "https://adanaozelders.com.tr/")
     html = templates.contact_ack_email(to="a@b.co", name="A", subject="S").html
-    assert 'src="https://adanaozelders.com.tr/logo.png"' in html
+    assert 'src="https://adanaozelders.com.tr/eposta/logo.png"' in html
     assert 'alt="Adana Özel Ders"' in html
+    # Footer'daki sosyal hesap ikonları da aynı HTTPS kökten PNG olarak gelir.
+    for key in ("instagram", "tiktok", "youtube", "facebook", "x"):
+        assert f'src="https://adanaozelders.com.tr/eposta/{key}.png"' in html

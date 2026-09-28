@@ -35,20 +35,17 @@ from core.config import settings
 BRAND = "Adana Özel Ders"
 
 # ── Renk token'ları ──
-# Nötrler Figma'nın `Neutral Colors` ölçeğinden; birincil mavi (#2388FF) ve
-# açık mavi kart zemini marka turuncusuna / sıcak zemine çevrildi
-# (frontend/src/index.css `--marka*`, `--dikkat*`).
+# Figma'nın `Neutral Colors` ölçeği. Birincil mavi (#2388FF) logo laciverti
+# ailesindeki koyu düğmeye (Password Reset 02 / Refund Processed 01'deki
+# ``#19213D`` düğme) çevrildi; e-postalar beyaz zemin + lacivert vurguyla kalır,
+# turuncu dolgu kullanılmaz.
 PAGE_BG = "#EEF2F9"  # Figma kanvasındaki açık zemin
 CARD_BG = "#FFFFFF"
 INK = "#19213D"  # Figma neutral-800 — başlık ve vurgulu değer
-BODY = "#646B84"  # Figma neutral-600'ün (#6D758F) bir tık koyusu: sıcak zeminde de ≥ 4,5
+BODY = "#646B84"  # Figma neutral-600'ün (#6D758F) bir tık koyusu: açık gri kartta da ≥ 4,5
 SUBTLE_BG = "#F8FAFF"  # Figma neutral-200
 LINE = "#E1E4ED"  # Figma neutral-400
-MARKA = "#FF9900"  # dolgu — METİN OLARAK KULLANILMAZ (beyazda < 3)
-MARKA_FG = "#2B1000"  # dolgu üstündeki yazı
-MARKA_METIN = "#96430A"  # açık zeminde marka yazısı (beyazda 6,77)
-MARKA_SOFT = "#FFF4E9"
-MARKA_LINE = "#FDD9B5"
+PENDING = "#A8AEC3"  # Figma neutral-500 — bekleyen adım / pasif nokta
 DIKKAT_SOFT = "#FFFBEC"  # Figma Security Alert 01 uyarı karosu
 DIKKAT_LINE = "#FFEFB8"
 
@@ -86,8 +83,8 @@ def strong(value: object) -> Html:
 
 def link(label: object, url: str) -> Html:
     return Html(
-        f'<a href="{esc(url)}" style="color:{MARKA_METIN};font-weight:600;'
-        f'text-decoration:none;">{esc(label)}</a>'
+        f'<a href="{esc(url)}" style="color:{INK};font-weight:600;'
+        f'text-decoration:underline;">{esc(label)}</a>'
     )
 
 
@@ -97,6 +94,21 @@ def site_url(path: str = "") -> str:
 
 def now_tr() -> str:
     return datetime.datetime.now(_TR_TZ).strftime("%d.%m.%Y %H:%M")
+
+
+# Sitenin sosyal hesapları — kaynak: frontend/src/components/SiteFooter.tsx
+# (SOSYAL_HESAPLAR). Oradaki liste değişirse burası da güncellenir.
+SOCIAL_LINKS: tuple[tuple[str, str, str], ...] = (
+    ("Instagram", "https://www.instagram.com/adanaozeldersofficial/", "instagram"),
+    ("TikTok", "https://www.tiktok.com/@adanaozeldersofficial", "tiktok"),
+    ("YouTube", "https://www.youtube.com/@adanaozeldersofficial", "youtube"),
+    ("Facebook", "https://www.facebook.com/adanaozeldersofficial", "facebook"),
+    ("X", "https://x.com/adanaozelderstr", "x"),
+)
+# E-posta görselleri: frontend/public/eposta/ (logo = Logolar/yatay-renkli.svg'nin
+# 3x PNG'si, ikonlar = site footer ikonlarının 3x PNG'si). SVG kullanılmaz:
+# Gmail ve Outlook SVG görsel göstermez.
+_ASSET_DIR = "/eposta"
 
 
 def _https_base() -> str | None:
@@ -164,15 +176,17 @@ def _table(inner: str, *, width: str = "100%", extra: str = "") -> str:
 def logo(*, align: str = "center", aside: object | None = None) -> Html:
     """Şirket logotipi — Figma ``Company Logotype`` ("Replace Here") yuvası, 32px yükseklik.
 
+    Görsel: güncel yatay renkli logo (``frontend/public/eposta/logo.png``, 687×96).
+
     ``aside`` verilirse sağda ikincil metin durur (Password Reset 02'nin
     tarih şeridi / Multi-step Progress 01'in alan adı).
     """
     base = _https_base()
     if base:
         mark = (
-            f'<img src="{esc(base)}/logo.png" width="203" height="32" alt="{BRAND}" '
+            f'<img src="{esc(base)}{_ASSET_DIR}/logo.png" width="229" height="32" alt="{BRAND}" '
             f'style="display:block;border:0;outline:none;text-decoration:none;'
-            f'width:203px;height:auto;max-width:203px;">'
+            f'width:229px;height:auto;max-width:229px;">'
         )
     else:
         mark = (
@@ -187,8 +201,9 @@ def logo(*, align: str = "center", aside: object | None = None) -> Html:
         return _row(mark, space=52, align=align)
     return _row(
         _table(
-            f'<tr><td align="left" valign="middle">{mark}</td>'
-            f'<td align="right" valign="middle" style="{_text_style(size=16, line=24, color=BODY)}">'
+            f'<tr><td class="ao-stack" align="left" valign="middle">{mark}</td>'
+            f'<td class="ao-stack ao-aside" align="right" valign="middle" '
+            f'style="{_text_style(size=16, line=24, color=BODY)}">'
             f"{esc(aside)}</td></tr>"
         ),
         space=52,
@@ -199,9 +214,9 @@ def tag(text: object, *, align: str = "left") -> Html:
     """Küçük etiket — Multi-step Progress 01 ``Tag`` ("Step 3 of 4")."""
     return _row(
         _table(
-            f'<tr><td style="background:{MARKA_SOFT};border:1px solid {MARKA_LINE};'
+            f'<tr><td style="background:{SUBTLE_BG};border:1px solid {LINE};'
             f'border-radius:10px;padding:6px 10px;'
-            f'{_text_style(size=15, line=22, color=MARKA_METIN, weight=600)}">{esc(text)}</td></tr>',
+            f'{_text_style(size=15, line=22, color=INK, weight=600)}">{esc(text)}</td></tr>',
             width="auto",
             extra=f' align="{align}"' + (' style="margin:0 auto;"' if align == "center" else ""),
         ),
@@ -246,9 +261,8 @@ def divider(*, space: int = 32) -> Html:
 
 
 _BUTTON_VARIANTS = {
-    # (zemin, yazı, kenarlık) — Figma ``Buttons`` bileşeninin üç türü
-    "primary": (MARKA, MARKA_FG, MARKA),
-    "dark": (INK, "#FFFFFF", INK),
+    # (zemin, yazı, kenarlık) — Figma ``Buttons`` bileşeninin koyu ve açık türü
+    "primary": (INK, "#FFFFFF", INK),
     "secondary": (SUBTLE_BG, INK, LINE),
 }
 _BUTTON_H = 62  # Figma düğme yüksekliği
@@ -285,7 +299,8 @@ def _button_cell(label: object, url: str, *, variant: str, vml_width: int = _INN
 
 
 def button(label: object, url: str, *, variant: str = "primary", space: int = 32) -> Html:
-    """Tam genişlik düğme — Figma ``Buttons`` (18199:1780): 62px, yarıçap 16, 600."""
+    """Tam genişlik düğme — Figma ``Buttons`` (18199:1780): 62px, yarıçap 16, 600;
+    koyu tür (Password Reset 02 "Secure reset")."""
     return _row(
         _table(f"<tr><td>{_button_cell(label, url, variant=variant)}</td></tr>"),
         space=space,
@@ -294,7 +309,7 @@ def button(label: object, url: str, *, variant: str = "primary", space: int = 32
 
 def button_pair(
     primary: tuple[object, str], secondary: tuple[object, str], *, space: int = 32,
-    primary_variant: str = "dark",
+    primary_variant: str = "primary",
 ) -> Html:
     """Yan yana iki düğme — Security Alert 01 ``Button Set`` (16px aralık). Mobilde alt alta."""
     half = (_INNER - 16) // 2
@@ -318,9 +333,9 @@ def fallback_link(url: str, *, align: str = "left") -> Html:
     return paragraph(
         fmt(
             "Düğme çalışmazsa bu bağlantıyı tarayıcına yapıştır:<br>"
-            '<a href="{url}" style="color:{c};word-break:break-all;text-decoration:none;">{url}</a>',
+            '<a href="{url}" style="color:{c};word-break:break-all;text-decoration:underline;">{url}</a>',
             url=url,
-            c=MARKA_METIN,
+            c=INK,
         ),
         size=14,
         space=0,
@@ -340,16 +355,13 @@ def _card(
     )
 
 
-def highlight_card(
-    title: object, subtitle: object | None = None, *, tone: str = "brand", space: int = 32
-) -> Html:
+def highlight_card(title: object, subtitle: object | None = None, *, space: int = 32) -> Html:
     """Öne çıkan kart — Order Confirmation 01 ``Inner Card`` (36px dolgu, yarıçap 16).
 
-    ``tone="brand"`` sıcak marka zemini (Figma'daki yeşil başarı kartının
-    karşılığı; durum rengi rozete kilitli olduğu için yeşil kullanılmadı),
-    ``tone="neutral"`` gri kart.
+    Figma'daki yeşil başarı kartı yerine nötr kart: durum rengi rozete kilitli
+    (docs/tasarim-dili.md §1.3) ve e-postalar beyaz/lacivert kalır.
     """
-    bg, border = (MARKA_SOFT, MARKA_LINE) if tone == "brand" else (SUBTLE_BG, LINE)
+    bg, border = SUBTLE_BG, LINE
     rows = f'<tr><td style="{_text_style(size=20, line=27, color=INK, weight=600)}">{esc(title)}</td></tr>'
     if subtitle is not None:
         rows += (
@@ -432,26 +444,25 @@ def progress_steps(labels: Sequence[str], current: int, *, space: int = 36) -> H
     """Adım çubuğu — Multi-step Progress 01 ``Steps`` (10px çubuk, 8px aralık, 14px etiket).
 
     ``current`` 0 tabanlı etkin adımdır; öncekiler tamamlanmış sayılır.
-    Tamamlanan/etkin çubuk marka dolgusu, bekleyen gri. Etiket rengi metin
-    kontrastını korumak için dolgu değil ``MARKA_METIN``/lacivert.
+    Tamamlanan/etkin çubuk lacivert, bekleyen gri.
     """
     cells: list[str] = []
     n = len(labels)
     for i, label in enumerate(labels):
         done = i <= current
-        bar = MARKA if done else LINE
+        bar = INK if done else LINE
         if i == current:
             color = INK
         elif done:
-            color = MARKA_METIN
+            color = BODY
         else:
-            color = "#8A91A8"
+            color = PENDING
         pad_l = 0 if i == 0 else 4
         pad_r = 0 if i == n - 1 else 4
         cells.append(
             f'<td width="{100 // n}%" valign="top" style="padding:0 {pad_r}px 0 {pad_l}px;">'
             f'<div style="height:10px;line-height:10px;font-size:0;background:{bar};border-radius:8px;">&nbsp;</div>'
-            f'<p style="{_text_style(size=14, line=18, color=color, weight=600)}padding-top:14px;'
+            f'<p style="{_text_style(size=14, line=18, color=color, weight=600 if i == current else 500)}padding-top:14px;'
             f'text-align:center;">{esc(label)}</p></td>'
         )
     return _row(_table(f"<tr>{''.join(cells)}</tr>"), space=space)
@@ -460,7 +471,7 @@ def progress_steps(labels: Sequence[str], current: int, *, space: int = 36) -> H
 def amount(text: object, *, align: str = "center", space: int = 0) -> Html:
     """Büyük tutar — Refund Processed 01 ``Display/10/Bold`` (60/66). Mobilde 42."""
     return _row(
-        f'<p class="ao-amount" style="{_text_style(size=60, line=66, color=MARKA_METIN, weight=600)}'
+        f'<p class="ao-amount" style="{_text_style(size=60, line=66, color=INK, weight=600)}'
         f'letter-spacing:-0.01em;">{esc(text)}</p>',
         space=space,
         align=align,
@@ -470,12 +481,12 @@ def amount(text: object, *, align: str = "center", space: int = 0) -> Html:
 def timeline(items: Iterable[tuple[object, object, bool]], *, space: int = 36) -> Html:
     """Durum listesi — Refund Processed 01 ``Column Items`` (nokta + başlık + açıklama, 42px ritim).
 
-    ``items``: (başlık, açıklama, etkin_mi). Etkin madde marka noktası taşır.
+    ``items``: (başlık, açıklama, etkin_mi). Etkin madde lacivert nokta taşır.
     """
     rows: list[str] = []
     items = list(items)
     for i, (title, body, active) in enumerate(items):
-        dot = MARKA if active else "#A8AEC3"
+        dot = INK if active else PENDING
         pad = "0" if i == len(items) - 1 else "0 0 32px 0"
         rows.append(
             f'<tr><td style="padding:{pad};">'
@@ -512,9 +523,36 @@ a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important
   .ao-alert-icon{display:block!important;width:100%!important;padding-bottom:16px!important;}
   .ao-stack{display:block!important;width:100%!important;padding:0!important;}
   .ao-stack-last{padding-top:12px!important;}
+  .ao-aside{padding-top:10px!important;text-align:left!important;}
   .ao-kv{display:block!important;width:100%!important;text-align:left!important;padding-right:0!important;}
 }
 """.strip()
+
+
+def social_icons() -> str:
+    """Sosyal hesap ikonları — Figma ``Social Icons`` (20px, 16px aralık).
+
+    HTTPS kök yoksa (yerel geliştirme) görsel yerine metin bağlantı yazılır.
+    """
+    base = _https_base()
+    cells: list[str] = []
+    for i, (name, url, key) in enumerate(SOCIAL_LINKS):
+        pad = "0" if i == 0 else "0 0 0 16px"
+        if base:
+            inner = (
+                f'<img src="{esc(base)}{_ASSET_DIR}/{key}.png" width="20" height="20" alt="{name}" '
+                'style="display:block;border:0;outline:none;width:20px;height:20px;">'
+            )
+        else:
+            inner = name
+        cells.append(
+            f'<td style="padding:{pad};{_text_style(size=14, line=20, color=INK)}">'
+            f'<a href="{esc(url)}" target="_blank" rel="noopener" '
+            f'style="color:{INK};text-decoration:none;">{inner}</a></td>'
+        )
+    return _table(
+        f"<tr>{''.join(cells)}</tr>", width="auto", extra=' align="center" style="margin:0 auto;"'
+    )
 
 
 def render(
@@ -522,47 +560,34 @@ def render(
     title: str,
     preheader: str,
     blocks: Sequence[str],
-    footer_reason: str,
     hero: Sequence[str] | None = None,
-    accent_bar: bool = False,
 ) -> str:
     """Tam e-posta belgesi.
 
     - ``preheader``: gelen kutusu önizlemesinde konu satırının yanında görünen
       metin; gövdede gizlidir. Arkasındaki dolgu, istemcinin önizlemeye gövde
       metnini eklemesini engeller.
-    - ``hero``: kartın üstünde sıcak zeminli bölge (Refund Processed 01
-      ``Top Card``). Verilirse logo oraya girer.
-    - ``accent_bar``: kartın tepesinde marka şeridi (Order Confirmation 01'in
-      32px üst kenarlığı; e-postada 12px).
-    - ``footer_reason``: "Bu e-postayı … aldın." cümlesi — alıcının mesajı
-      neden aldığını bilmesi spam şikâyetini azaltır.
+    - ``hero``: kartın üstünde açık gri bölge (Refund Processed 01 ``Top Card``).
+      Verilirse logo oraya girer.
 
-    Footer, Figma'daki gibi kartın içinde ve ortalıdır (© satırı; adres satırı
-    yerine gönderim sebebi + site bağlantısı).
+    Footer, Refund Processed 01 ``Bot Bar`` gibi kartın içinde ve ortalıdır:
+    © satırı + sosyal hesap ikonları.
     """
     year = datetime.datetime.now(_TR_TZ).year
-    site = site_url()
-    site_host = site.split("://", 1)[-1].split("/", 1)[0]
     footer = (
         f'<tr><td align="center" style="padding-top:14px;text-align:center;">'
         f'<p style="{_text_style(size=16, line=24, color=BODY)}">© {year} {BRAND} '
         f'<span style="color:{LINE};">|</span> Tüm hakları saklıdır</p>'
-        f'<p style="{_text_style(size=13, line=20, color=BODY)}padding-top:10px;">{esc(footer_reason)} '
-        f'<a href="{esc(site)}" style="color:{BODY};text-decoration:underline;">{esc(site_host)}</a></p>'
         "</td></tr>"
+        f'<tr><td align="center" style="padding-top:28px;">{social_icons()}</td></tr>'
     )
     card_rows = ""
-    if accent_bar:
-        card_rows += (
-            f'<tr><td style="background:{MARKA};height:12px;line-height:12px;font-size:0;">&nbsp;</td></tr>'
-        )
     if hero:
         card_rows += (
-            f'<tr><td class="ao-hero" style="background:{MARKA_SOFT};border-bottom:1px solid {MARKA_LINE};'
+            f'<tr><td class="ao-hero" style="background:{SUBTLE_BG};border-bottom:1px solid {LINE};'
             f'padding:{_PAD}px {_PAD}px 42px {_PAD}px;">{_table("".join(hero))}</td></tr>'
         )
-    top_pad = 42 if hero else (_PAD + 12 if accent_bar else _PAD)
+    top_pad = 42 if hero else _PAD
     card_rows += (
         f'<tr><td class="ao-pad" style="padding:{top_pad}px {_PAD}px {_PAD}px {_PAD}px;">'
         f'{_table("".join(blocks) + _row("", space=32) + footer)}</td></tr>'
@@ -606,6 +631,6 @@ def render(
     )
 
 
-def text_footer(reason: str) -> str:
+def text_footer() -> str:
     """Düz metin gövdenin ortak kapanışı (HTML footer'ın karşılığı)."""
-    return f"\n\n--\n{BRAND} · {site_url()}\n{reason}"
+    return f"\n\n--\n{BRAND} · {site_url()}"
