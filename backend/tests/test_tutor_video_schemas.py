@@ -45,7 +45,20 @@ def test_video_content_type_kabul(ct):
     assert UploadInitIn(filename="a.mov", size_bytes=10, content_type=ct).content_type.startswith("video/")
 
 
-@pytest.mark.parametrize("ct", ["image/png", "application/octet-stream", "video/", "text/html", "video/mp4; charset=x"])
+@pytest.mark.parametrize(
+    "ct, baz",
+    [
+        ("video/webm;codecs=vp9,opus", "video/webm"),
+        ("video/mp4;codecs=avc1,mp4a", "video/mp4"),
+        ("video/mp4; charset=x", "video/mp4"),
+    ],
+)
+def test_tarayici_kaydi_parametreli_tip_baz_tipe_kirpilir(ct, baz):
+    """MediaRecorder tipi codec parametresiyle gelir; imzalı PUT'a baz tip yazılır."""
+    assert UploadInitIn(filename="kamera-kaydi.webm", size_bytes=10, content_type=ct).content_type == baz
+
+
+@pytest.mark.parametrize("ct", ["image/png", "application/octet-stream", "video/", "text/html", "image/png;x=video/mp4"])
 def test_video_disi_content_type_ret(ct):
     with pytest.raises(ValidationError):
         UploadInitIn(filename="a.mp4", size_bytes=10, content_type=ct)

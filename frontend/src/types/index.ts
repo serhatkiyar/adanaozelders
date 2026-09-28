@@ -678,6 +678,8 @@ export interface TutorIntroVideoState {
   uploads_enabled: boolean;
   max_bytes: number;
   max_seconds: number;
+  /** Alt süre sınırı (sn); worker daha kısa videoyu reddeder. */
+  min_seconds: number;
   require_review: boolean;
 }
 

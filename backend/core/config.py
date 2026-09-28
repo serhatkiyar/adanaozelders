@@ -250,6 +250,10 @@ class Settings(BaseSettings):
     TUTOR_VIDEO_MAX_BYTES: int = 300 * 1024 * 1024
     # UI "en fazla 2 dakika" der; 10 sn tolerans (telefon kayıtları taşar).
     TUTOR_VIDEO_MAX_SECONDS: int = 130
+    # Alt sınırlar (Preply ile aynı kural seti): 30 sn'den kısa ve kısa kenarı
+    # 360 pikselden düşük video reddedilir; dikey video da reddedilir (worker).
+    TUTOR_VIDEO_MIN_SECONDS: int = 30
+    TUTOR_VIDEO_MIN_HEIGHT: int = 360
     # İmzalı PUT adresinin ömrü. Yavaş yüklemede imza istek BAŞINDA kontrol
     # edilir; süre dolduktan sonra biten yükleme yine geçerlidir.
     TUTOR_VIDEO_UPLOAD_TTL_SECONDS: int = 900

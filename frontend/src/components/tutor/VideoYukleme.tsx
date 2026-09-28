@@ -1,6 +1,7 @@
-import { useId, useRef } from "react";
+import { useId, useRef, useState } from "react";
 import { Icon } from "@/components/AppIcon";
 import { IlerlemeCubugu } from "@/components/IlerlemeCubugu";
+import { KameraKaydi } from "@/components/tutor/KameraKaydi";
 import {
   useCancelIntroVideo,
   useIntroVideoUpload,
@@ -180,12 +181,16 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
   const durum = useMyIntroVideo();
   const maxBytes = durum.data?.max_bytes ?? 300 * 1024 * 1024;
   const maxSeconds = durum.data?.max_seconds ?? 130;
+  const minSeconds = durum.data?.min_seconds ?? 30;
   const requireReview = durum.data?.require_review ?? true;
   const { asama, yukle, iptal, sifirla } = useIntroVideoUpload({
     maxBytes,
     maxSeconds,
+    minSeconds,
     tutorId: tutor.id,
   });
+  // Kamerayla kayıt modu; kayıt `File` olarak aynı yükleme hattına girer.
+  const [kayitModu, setKayitModu] = useState(false);
   const iptalKaydi = useCancelIntroVideo(tutor.id);
 
   const pending = durum.data?.pending ?? null;
@@ -196,7 +201,12 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
 
   const dosyaSec = () => {
     sifirla();
+    setKayitModu(false);
     dosyaRef.current?.click();
+  };
+  const kayitAc = () => {
+    sifirla();
+    setKayitModu(true);
   };
   const kaydiIptalEt = (id: number) =>
     iptalKaydi.mutate(id, {
@@ -275,20 +285,44 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
         />
       )}
 
-      {!yuklemeSuruyor && !pending && asama.tur !== "hata" && (
+      {kayitModu && secilebilir && (
+        <KameraKaydi
+          minSeconds={minSeconds}
+          maxSeconds={Math.min(maxSeconds, 120)}
+          onKullan={(file) => {
+            setKayitModu(false);
+            void yukle(file);
+          }}
+          onVazgec={() => setKayitModu(false)}
+        />
+      )}
+
+      {!kayitModu && !yuklemeSuruyor && !pending && asama.tur !== "hata" && (
         <div>
-          <button
-            type="button"
-            className={DUGME_SATIR_BIRINCIL}
-            onClick={dosyaSec}
-            disabled={!secilebilir}
-            aria-describedby={`${uid}-kural`}
-          >
-            <Icon name="arrowUpload" className="h-5 w-5" aria-hidden />
-            {eskiVideoVar ? "Yeni video seç" : "Video dosyası seç"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={DUGME_SATIR_BIRINCIL}
+              onClick={kayitAc}
+              disabled={!secilebilir}
+              aria-describedby={`${uid}-kural`}
+            >
+              <Icon name="video" className="h-5 w-5" aria-hidden />
+              Kamerayla kaydet
+            </button>
+            <button
+              type="button"
+              className={DUGME_SATIR_IKINCIL}
+              onClick={dosyaSec}
+              disabled={!secilebilir}
+              aria-describedby={`${uid}-kural`}
+            >
+              <Icon name="arrowUpload" className="h-5 w-5" aria-hidden />
+              {eskiVideoVar ? "Yeni video dosyası seç" : "Video dosyası seç"}
+            </button>
+          </div>
           <p id={`${uid}-kural`} className={`mt-2 ${KUCUK_ACIKLAMA}`}>
-            MP4, MOV veya WebM · en fazla {Math.floor(maxSeconds / 60)} dakika · {mbBiciminde(maxBytes)}.
+            Yatay çekilmiş, {minSeconds} saniye ile {Math.floor(maxSeconds / 60)} dakika arası, en az 360p · MP4, MOV veya WebM · en fazla {mbBiciminde(maxBytes)}.
             {requireReview ? " Yüklenen video kısa bir kontrolden sonra yayına girer." : ""}
             {eskiVideoVar ? " Yeni video hazır olana kadar şu anki videon yayında kalır." : ""}
           </p>

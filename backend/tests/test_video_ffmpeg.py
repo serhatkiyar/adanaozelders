@@ -75,6 +75,76 @@ def test_sure_siniri_tam_sinirda_kabul():
     assert ffmpeg.parse_probe(_probe(format={"duration": "130"}), max_seconds=130).duration == 130
 
 
+def _kural(raw, **kw):
+    return ffmpeg.parse_probe(
+        raw,
+        max_seconds=130,
+        min_seconds=30,
+        min_short_side=360,
+        require_landscape=True,
+        **kw,
+    )
+
+
+def test_yatay_720p_40sn_kurallardan_gecer():
+    info = _kural(_probe(format={"duration": "40"}, streams=[{"codec_type": "video", "width": 1280, "height": 720}]))
+    assert (info.width, info.height) == (1280, 720)
+
+
+@pytest.mark.parametrize(
+    "stream, code",
+    [
+        # Gerçek dikey dosya.
+        ({"codec_type": "video", "width": 1080, "height": 1920}, "VERTICAL"),
+        # Telefon yatay piksel yazıp "90 derece çevir" demiş → izleyici dikey görür.
+        ({"codec_type": "video", "width": 1920, "height": 1080, "side_data_list": [{"rotation": -90}]}, "VERTICAL"),
+        ({"codec_type": "video", "width": 1920, "height": 1080, "tags": {"rotate": "90"}}, "VERTICAL"),
+        # Kısa kenarı 360'ın altında.
+        ({"codec_type": "video", "width": 320, "height": 240}, "LOW_RESOLUTION"),
+    ],
+)
+def test_dikey_ve_dusuk_cozunurluk_reddedilir(stream, code):
+    with pytest.raises(ffmpeg.VideoRejected) as exc:
+        _kural(_probe(format={"duration": "40"}, streams=[stream]))
+    assert exc.value.code == code
+
+
+def test_180_derece_donuk_yatay_video_yatay_sayilir():
+    info = _kural(
+        _probe(
+            format={"duration": "40"},
+            streams=[{"codec_type": "video", "width": 1280, "height": 720, "side_data_list": [{"rotation": 180}]}],
+        )
+    )
+    assert (info.width, info.height) == (1280, 720)
+
+
+def test_kare_video_kabul():
+    _kural(_probe(format={"duration": "40"}, streams=[{"codec_type": "video", "width": 720, "height": 720}]))
+
+
+def test_30_saniyeden_kisa_reddedilir():
+    with pytest.raises(ffmpeg.VideoRejected) as exc:
+        _kural(_probe(format={"duration": "29.4"}, streams=[{"codec_type": "video", "width": 1280, "height": 720}]))
+    assert exc.value.code == "TOO_SHORT"
+
+
+def test_suresiz_tarayici_kaydi_on_kontrolden_gecer_karar_ciktida():
+    """MediaRecorder webm'i container'a süre yazmaz: kaynakta geçer (süre 0),
+    karar dönüştürülmüş çıktının süresiyle `check_duration`da verilir."""
+    raw = _probe(format={"format_name": "matroska,webm"}, streams=[{"codec_type": "video", "width": 1280, "height": 720}])
+    assert _kural(raw, allow_missing_duration=True).duration == 0
+    with pytest.raises(ffmpeg.VideoRejected):
+        _kural(raw)  # izin yoksa eski davranış: süre okunamadı
+    ffmpeg.check_duration(45, min_seconds=30, max_seconds=130)
+    with pytest.raises(ffmpeg.VideoRejected) as uzun:
+        ffmpeg.check_duration(131, min_seconds=30, max_seconds=130)
+    assert uzun.value.code == "TOO_LONG"
+    with pytest.raises(ffmpeg.VideoRejected) as kisa:
+        ffmpeg.check_duration(12, min_seconds=30, max_seconds=130)
+    assert kisa.value.code == "TOO_SHORT"
+
+
 # ── Komut argümanları ────────────────────────────────────────────────────────
 
 

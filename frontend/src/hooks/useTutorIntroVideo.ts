@@ -10,7 +10,12 @@ import {
   uploadToPresignedUrl,
 } from "@/api/tutorVideo";
 import { getErrorMessage } from "@/lib/errors";
-import { ISLENIYOR_DURUMLAR, dosyaOnKontrol, videoSuresiniOku } from "@/lib/tanitimVideo";
+import {
+  ISLENIYOR_DURUMLAR,
+  dosyaOnKontrol,
+  videoBilgisiKontrol,
+  videoBilgisiniOku,
+} from "@/lib/tanitimVideo";
 import type { TutorIntroVideo, TutorIntroVideoState } from "@/types";
 
 export const INTRO_VIDEO_KEY = ["tutors", "me", "intro-video"] as const;
@@ -57,7 +62,12 @@ export type YuklemeAsamasi =
  * hazırlanıyor → yükleniyor (%) → tamamlanıyor → bitti | hata. İptal, süren
  * PUT'u keser ve sunucudaki kaydı siler.
  */
-export function useIntroVideoUpload(opts: { maxBytes: number; maxSeconds: number; tutorId?: number }) {
+export function useIntroVideoUpload(opts: {
+  maxBytes: number;
+  maxSeconds: number;
+  minSeconds: number;
+  tutorId?: number;
+}) {
   const [asama, setAsama] = useState<YuklemeAsamasi>({ tur: "bos" });
   const abortRef = useRef<AbortController | null>(null);
   const videoIdRef = useRef<number | null>(null);
@@ -73,14 +83,14 @@ export function useIntroVideoUpload(opts: { maxBytes: number; maxSeconds: number
         return;
       }
       setAsama({ tur: "hazirlaniyor" });
-      // Süre erken uyarısı: sunucu yine ölçer; burada kullanıcıyı 300 MB
-      // yüklemeden ÖNCE durdurmak için. Okunamazsa geçilir (engel değil).
-      const sure = await videoSuresiniOku(file);
-      if (sure != null && sure > opts.maxSeconds) {
-        setAsama({
-          tur: "hata",
-          mesaj: `Video ${Math.round(sure)} saniye; en fazla ${Math.floor(opts.maxSeconds / 60)} dakika olabilir. Kısaltıp yeniden dene.`,
-        });
+      // Erken uyarı (süre, dikey): sunucu aynı kuralları yine uygular; burada
+      // kullanıcıyı 300 MB yüklemeden ÖNCE durdurmak için. Okunamazsa geçilir.
+      const erken = videoBilgisiKontrol(await videoBilgisiniOku(file), {
+        minSeconds: opts.minSeconds,
+        maxSeconds: opts.maxSeconds,
+      });
+      if (erken) {
+        setAsama({ tur: "hata", mesaj: erken });
         return;
       }
       const abort = new AbortController();
@@ -124,7 +134,7 @@ export function useIntroVideoUpload(opts: { maxBytes: number; maxSeconds: number
         videoIdRef.current = null;
       }
     },
-    [opts.maxBytes, opts.maxSeconds, opts.tutorId, yenile]
+    [opts.maxBytes, opts.maxSeconds, opts.minSeconds, opts.tutorId, yenile]
   );
 
   const iptal = useCallback(async () => {

@@ -66,14 +66,62 @@ def probe_args(path: str) -> list[str]:
     ]
 
 
+def _rotation(stream: dict[str, Any]) -> int:
+    """Görüntü dönüşü (derece, 0/90/180/270). Telefonlar görüntüyü yatay
+    kaydedip "90 derece çevir" bilgisini ayrı yazar: yeni ffprobe'da
+    `side_data_list[].rotation`, eskisinde `tags.rotate`."""
+    raw: Any = None
+    for sd in stream.get("side_data_list") or []:
+        if isinstance(sd, dict) and "rotation" in sd:
+            raw = sd.get("rotation")
+            break
+    if raw is None:
+        raw = (stream.get("tags") or {}).get("rotate")
+    try:
+        return int(round(float(raw))) % 360 if raw is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
 def _display_size(stream: dict[str, Any]) -> tuple[int, int]:
-    """Kaynağın DÖNÜŞ ÖNCESİ boyutu (yalnız üst sınır kontrolü için). Çıktı
-    boyutları çıktı dosyası probe edilerek alınır — autorotate sonrası değer."""
-    return int(stream.get("width") or 0), int(stream.get("height") or 0)
+    """İzleyicinin GÖRDÜĞÜ boyut: 90/270 derece dönüşte genişlik ve yükseklik
+    yer değiştirir. Yatay/dikey kararı bu değere göre verilir."""
+    width, height = int(stream.get("width") or 0), int(stream.get("height") or 0)
+    if _rotation(stream) in (90, 270):
+        return height, width
+    return width, height
 
 
-def parse_probe(raw: str | dict[str, Any], *, max_seconds: int) -> ProbeInfo:
-    """ffprobe JSON'unu doğrular; kabul edilmezse `VideoRejected`."""
+def check_duration(duration: float, *, min_seconds: int, max_seconds: int) -> None:
+    """Süre sınırları — kaynak probe'unda ve (kaynak süresi okunamadıysa)
+    dönüştürülmüş çıktının probe'unda aynı kural."""
+    if duration > max_seconds:
+        raise VideoRejected(
+            "TOO_LONG",
+            f"Video {max_seconds // 60} dakikadan uzun ({int(duration)} sn); kısaltıp yeniden dene",
+        )
+    if min_seconds and duration < min_seconds:
+        raise VideoRejected(
+            "TOO_SHORT",
+            f"Video çok kısa ({int(duration)} sn); en az {min_seconds} saniye olmalı",
+        )
+
+
+def parse_probe(
+    raw: str | dict[str, Any],
+    *,
+    max_seconds: int,
+    min_seconds: int = 0,
+    min_short_side: int = 0,
+    require_landscape: bool = False,
+    allow_missing_duration: bool = False,
+) -> ProbeInfo:
+    """ffprobe JSON'unu doğrular; kabul edilmezse `VideoRejected`.
+
+    ``allow_missing_duration``: tarayıcı kaydı (MediaRecorder webm) çoğu zaman
+    container'a süre yazmaz. O zaman süre 0 döner ve karar dönüştürülmüş
+    çıktının probe'unda (`check_duration`) verilir.
+    """
     try:
         data = json.loads(raw) if isinstance(raw, str) else raw
     except json.JSONDecodeError as exc:
@@ -99,17 +147,25 @@ def parse_probe(raw: str | dict[str, Any], *, max_seconds: int) -> ProbeInfo:
         raise VideoRejected("NOT_VIDEO", "Görüntü boyutu okunamadı")
     if width > MAX_SOURCE_DIMENSION or height > MAX_SOURCE_DIMENSION:
         raise VideoRejected("TOO_LARGE", "Çözünürlük çok yüksek; 4K veya daha küçük bir kayıt yükle")
+    if require_landscape and height > width:
+        raise VideoRejected(
+            "VERTICAL", "Video dikey çekilmiş; telefonu yatay tutarak yeniden çek"
+        )
+    if min_short_side and min(width, height) < min_short_side:
+        raise VideoRejected(
+            "LOW_RESOLUTION",
+            f"Görüntü çözünürlüğü çok düşük ({width}×{height}); en az {min_short_side}p bir kayıt yükle",
+        )
     try:
         duration = float(fmt.get("duration") or video.get("duration") or 0)
     except (TypeError, ValueError):
         duration = 0.0
     if duration <= 0:
-        raise VideoRejected("NOT_VIDEO", "Video süresi okunamadı")
-    if duration > max_seconds:
-        raise VideoRejected(
-            "TOO_LONG",
-            f"Video {max_seconds // 60} dakikadan uzun ({int(duration)} sn); kısaltıp yeniden dene",
-        )
+        if not allow_missing_duration:
+            raise VideoRejected("NOT_VIDEO", "Video süresi okunamadı")
+        duration = 0.0
+    else:
+        check_duration(duration, min_seconds=min_seconds, max_seconds=max_seconds)
     has_audio = any(s.get("codec_type") == "audio" for s in streams)
     return ProbeInfo(
         duration=duration,

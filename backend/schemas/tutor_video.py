@@ -60,6 +60,7 @@ class TutorIntroVideoStateOut(BaseModel):
     uploads_enabled: bool
     max_bytes: int
     max_seconds: int
+    min_seconds: int
     require_review: bool
 
 
@@ -71,7 +72,9 @@ class UploadInitIn(BaseModel):
     @field_validator("content_type")
     @classmethod
     def _video_only(cls, v: str) -> str:
-        v = v.strip().lower()
+        # Tarayıcı kaydı tipi parametreyle gelir (`video/webm;codecs=vp9,opus`);
+        # imzalı PUT'a ve depoya yalnız baz tip yazılır.
+        v = v.split(";", 1)[0].strip().lower()
         if not _CONTENT_TYPE_RE.match(v):
             raise ValueError("Yalnızca video dosyası yüklenebilir")
         return v

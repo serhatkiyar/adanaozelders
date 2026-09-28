@@ -1,8 +1,29 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { dosyaOnKontrol, durumAnlatimi, mbBiciminde, sureBiciminde } from "./tanitimVideo";
+import {
+  dosyaOnKontrol,
+  durumAnlatimi,
+  mbBiciminde,
+  sureBiciminde,
+  videoBilgisiKontrol,
+} from "./tanitimVideo";
 
 const MB = 1024 * 1024;
+
+describe("videoBilgisiKontrol (yüklemeden önce erken uyarı)", () => {
+  const sinir = { minSeconds: 30, maxSeconds: 130 };
+  it("yatay ve sınırlar içinde geçer; bilgi yoksa karar sunucuda", () => {
+    expect(videoBilgisiKontrol({ sure: 45, genislik: 1280, yukseklik: 720 }, sinir)).toBeNull();
+    expect(videoBilgisiKontrol(null, sinir)).toBeNull();
+    // Tarayıcı kaydı webm'inde süre okunamaz: yalnız yön kontrol edilir.
+    expect(videoBilgisiKontrol({ sure: null, genislik: 1280, yukseklik: 720 }, sinir)).toBeNull();
+  });
+  it("dikey, kısa ve uzun ayrı mesajlarla durdurulur", () => {
+    expect(videoBilgisiKontrol({ sure: 45, genislik: 720, yukseklik: 1280 }, sinir)).toMatch(/dikey/);
+    expect(videoBilgisiKontrol({ sure: 12, genislik: 1280, yukseklik: 720 }, sinir)).toMatch(/en az 30 saniye/);
+    expect(videoBilgisiKontrol({ sure: 200, genislik: 1280, yukseklik: 720 }, sinir)).toMatch(/en fazla 2 dakika/);
+  });
+});
 
 describe("dosyaOnKontrol", () => {
   it("video türü ve sınır içi boyut geçer", () => {

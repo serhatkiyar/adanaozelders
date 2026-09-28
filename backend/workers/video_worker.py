@@ -104,10 +104,20 @@ async def _process(video, state: _State) -> Outcome:
         )
         if probe.returncode != 0:
             return Outcome(False, code="NOT_VIDEO", message="Dosya bir video olarak okunamadı")
-        ffmpeg.parse_probe(probe.stdout, max_seconds=settings.TUTOR_VIDEO_MAX_SECONDS)
+        kaynak = ffmpeg.parse_probe(
+            probe.stdout,
+            max_seconds=settings.TUTOR_VIDEO_MAX_SECONDS,
+            min_seconds=settings.TUTOR_VIDEO_MIN_SECONDS,
+            min_short_side=settings.TUTOR_VIDEO_MIN_HEIGHT,
+            require_landscape=True,
+            allow_missing_duration=True,
+        )
+        # Kaynak süresi bilinmiyorsa (tarayıcı kaydı) 1 sn fazlası kesilir:
+        # çıktı sınırı aşarsa kaynak uzundur → TOO_LONG (sessizce kırpılmaz).
+        kesim = settings.TUTOR_VIDEO_MAX_SECONDS + (0 if kaynak.duration > 0 else 1)
 
         enc = await ffmpeg.run(
-            ffmpeg.transcode_args(src, out, max_seconds=settings.TUTOR_VIDEO_MAX_SECONDS),
+            ffmpeg.transcode_args(src, out, max_seconds=kesim),
             timeout=settings.TUTOR_VIDEO_FFMPEG_TIMEOUT_SECONDS,
             on_start=state.track,
         )
@@ -123,6 +133,11 @@ async def _process(video, state: _State) -> Outcome:
         if verify.returncode != 0:
             return Outcome(False, code="FFMPEG_FAILED", message="Dönüştürülen video doğrulanamadı")
         width, height, duration = _probe_dimensions(verify.stdout)
+        ffmpeg.check_duration(
+            duration,
+            min_seconds=settings.TUTOR_VIDEO_MIN_SECONDS,
+            max_seconds=settings.TUTOR_VIDEO_MAX_SECONDS,
+        )
 
         pst = await ffmpeg.run(
             ffmpeg.poster_args(out, poster, duration=duration),

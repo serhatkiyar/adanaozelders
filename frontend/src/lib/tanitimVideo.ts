@@ -47,8 +47,16 @@ export function dosyaOnKontrol(
   return null;
 }
 
-/** Tarayıcıda videonun süresini okur (metadata). Okunamazsa null — engel değildir. */
-export function videoSuresiniOku(file: File): Promise<number | null> {
+export type VideoBilgisi = {
+  /** Saniye; okunamazsa (ör. tarayıcı kaydı webm) null. */
+  sure: number | null;
+  genislik: number;
+  yukseklik: number;
+};
+
+/** Tarayıcıda videonun metadata'sını okur (süre + görüntülenen boyut).
+ *  Okunamazsa null — engel değildir, karar sunucuda verilir. */
+export function videoBilgisiniOku(file: File): Promise<VideoBilgisi | null> {
   return new Promise((resolve) => {
     if (typeof document === "undefined" || typeof URL.createObjectURL !== "function") {
       resolve(null);
@@ -57,14 +65,40 @@ export function videoSuresiniOku(file: File): Promise<number | null> {
     const url = URL.createObjectURL(file);
     const v = document.createElement("video");
     v.preload = "metadata";
-    const bitir = (deger: number | null) => {
+    const bitir = (deger: VideoBilgisi | null) => {
       URL.revokeObjectURL(url);
       resolve(deger);
     };
-    v.onloadedmetadata = () => bitir(Number.isFinite(v.duration) ? v.duration : null);
+    v.onloadedmetadata = () =>
+      bitir({
+        sure: Number.isFinite(v.duration) && v.duration > 0 ? v.duration : null,
+        genislik: v.videoWidth,
+        yukseklik: v.videoHeight,
+      });
     v.onerror = () => bitir(null);
     v.src = url;
   });
+}
+
+/**
+ * Yüklemeden ÖNCE erken uyarı (sunucu aynı kuralları yine uygular):
+ * süre sınırları ve dikey görüntü. Bilgi okunamadıysa null döner.
+ */
+export function videoBilgisiKontrol(
+  bilgi: VideoBilgisi | null,
+  sinir: { minSeconds: number; maxSeconds: number }
+): string | null {
+  if (!bilgi) return null;
+  if (bilgi.genislik > 0 && bilgi.yukseklik > bilgi.genislik) {
+    return "Video dikey çekilmiş; telefonu yatay tutarak yeniden çek.";
+  }
+  if (bilgi.sure != null && bilgi.sure > sinir.maxSeconds) {
+    return `Video ${Math.round(bilgi.sure)} saniye; en fazla ${Math.floor(sinir.maxSeconds / 60)} dakika olabilir. Kısaltıp yeniden dene.`;
+  }
+  if (bilgi.sure != null && bilgi.sure < sinir.minSeconds) {
+    return `Video ${Math.round(bilgi.sure)} saniye; en az ${sinir.minSeconds} saniye olmalı.`;
+  }
+  return null;
 }
 
 export type DurumAnlatimi = {

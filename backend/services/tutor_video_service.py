@@ -146,6 +146,7 @@ async def get_state(db: AsyncSession, tutor: Tutor) -> TutorIntroVideoStateOut:
         uploads_enabled=settings.TUTOR_VIDEO_UPLOADS_ENABLED,
         max_bytes=settings.TUTOR_VIDEO_MAX_BYTES,
         max_seconds=settings.TUTOR_VIDEO_MAX_SECONDS,
+        min_seconds=settings.TUTOR_VIDEO_MIN_SECONDS,
         require_review=settings.TUTOR_VIDEO_REQUIRE_REVIEW,
     )
 
