@@ -12,15 +12,17 @@ const yuklenen = {
 };
 
 describe("TanitimVideosu", () => {
-  it("yüklenen video: yerel oynatıcı, kontroller, otomatik oynatma YOK, hafif ön yükleme", () => {
+  it("yüklenen video: yerel oynatıcı, kontroller, YouTube gibi SESSİZ otomatik oynatma", () => {
     render(<TanitimVideosu video={yuklenen} linkUrl={null} ad="Ayşe" />);
     const v = screen.getByLabelText("Ayşe tanıtım videosu") as HTMLVideoElement;
     expect(v.tagName).toBe("VIDEO");
     expect(v).toHaveAttribute("controls");
     expect(v).toHaveAttribute("playsinline");
-    expect(v).toHaveAttribute("preload", "metadata");
     expect(v).toHaveAttribute("poster", yuklenen.poster_url);
-    expect(v).not.toHaveAttribute("autoplay");
+    // Sessiz autoplay: `autoplay` özniteliği + `muted` özelliği (ref ile de
+    // yazılır; muted olmadan tarayıcılar otomatik oynatmayı reddeder).
+    expect(v).toHaveAttribute("autoplay");
+    expect(v.muted).toBe(true);
     expect(v.querySelector("source")).toHaveAttribute("src", yuklenen.mp4_url);
     expect(screen.queryByTitle("Ayşe tanıtım videosu")).toBeNull(); // iframe yok
   });

@@ -7,9 +7,14 @@ import type { IntroVideoPublic } from "@/types";
  * * Siteye yüklenen video (`intro_video`): yerel HTML5 `<video controls>`.
  *   Oynat/duraklat, ses, zaman çizgisi, tam ekran ve klavye (Boşluk, ←/→,
  *   ↑/↓, F, M) tarayıcının kendi erişilebilir kontrolleriyle gelir; ağır bir
- *   oynatıcı kütüphanesi gerekmez. `preload="metadata"` + faststart MP4:
- *   sayfa açılınca yalnız ilk baytlar iner, oynatma/atlama Range ile sürer.
- *   Otomatik oynatma YOK; `playsInline` telefonda tam ekrana sıçramayı önler.
+ *   oynatıcı kütüphanesi gerekmez. Faststart MP4 + Range: oynatma ve atlama
+ *   dosyanın tamamı inmeden başlar.
+ *   YouTube embed'iyle AYNI davranış (kullanıcı kararı, 28 Eyl 2026): sayfa
+ *   açılınca SESSİZ otomatik oynar (`autoplay` + `muted`; tarayıcılar sesli
+ *   autoplay'i zaten engeller, `muted` olmadan hiç başlamaz), `playsInline`
+ *   telefonda tam ekrana sıçramayı önler; kullanıcı sesi kontrollerden açar.
+ *   `muted` React'te DOM özniteliği olarak yazılmadığından ref ile de
+ *   `el.muted = true` verilir — aksi hâlde bazı tarayıcılar autoplay'i reddeder.
  * * YouTube/Vimeo bağlantısı (`intro_video_url`): mevcut iframe davranışı
  *   (sessiz otomatik oynatma) AYNEN korunur — bkz. `lib/video.ts`.
  *
@@ -40,10 +45,15 @@ export function TanitimVideosu({
       <div className={kabuk} style={{ aspectRatio: oran, maxHeight: "min(80vh, 40rem)" }}>
         {/* eslint-disable-next-line jsx-a11y/media-has-caption -- eğitmenin kendi tanıtım kaydı; altyazı dosyası üretilmiyor (V1). */}
         <video
+          ref={(el) => {
+            if (el) el.muted = true;
+          }}
           className="h-full w-full"
           controls
+          autoPlay
+          muted
           playsInline
-          preload="metadata"
+          preload="auto"
           poster={video.poster_url ?? undefined}
           aria-label={baslik}
           controlsList="nodownload"
