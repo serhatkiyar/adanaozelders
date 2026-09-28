@@ -29,6 +29,7 @@ import {
 } from "@/types";
 import { formatDateTime } from "@/lib/datetime";
 import { formatRate } from "@/lib/money";
+import { rolEtiketi } from "@/lib/roles";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
@@ -540,6 +541,9 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
   // Kullanıcı adı dalı 5 Eyl 2026'da kaldırıldı; geriye yalnız ad değişikliği
   // talebi kaldı (`kind === "NAME"`).
   const target = `${req.new_first_name ?? ""} ${req.new_last_name ?? ""}`.trim();
+  // Hesaptaki GÜNCEL ad (eski ad saklanmaz): onaylanmış talepte yeni adın ta
+  // kendisidir, bu yüzden "eski → yeni" diye değil kimlik olarak gösterilir.
+  const mevcutAd = `${req.current_first_name ?? ""} ${req.current_last_name ?? ""}`.trim();
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 ">
@@ -547,9 +551,12 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 ">
-              {req.kind === "NAME" ? "Ad-Soyad" : "Kullanıcı adı"} · rol{" "}
-              {req.role_id} · #{req.user_id}
+              {req.kind === "NAME" ? "Ad-Soyad" : "Kullanıcı adı"} ·{" "}
+              {rolEtiketi(req.role_id) || `rol ${req.role_id}`} · #{req.user_id}
             </span>
+            {mevcutAd && (
+              <span className="text-sm font-semibold text-slate-900 ">{mevcutAd}</span>
+            )}
             <span className="text-sm font-semibold text-slate-900 ">
               → {target}
             </span>

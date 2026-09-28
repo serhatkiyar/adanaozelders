@@ -148,6 +148,9 @@ export interface NameChangeRequest {
   review_note?: string | null;
   reviewed_at?: string | null;
   created_at: string;
+  /** Yalnız admin kuyruğunda: hesabın GÜNCEL adı (eski ad saklanmaz). */
+  current_first_name?: string | null;
+  current_last_name?: string | null;
 }
 
 export interface PasswordChange {

@@ -248,7 +248,7 @@ function HistoryList() {
                   {formatDate(r.paid_at)}
                 </td>
                 <td className="py-3 pr-4 text-slate-600 ">
-                  {r.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"} #{r.payee_id}
+                  {r.payee_name ?? `${r.payee_type === "TUTOR" ? "Öğretmen" : "Kütüphane"} #${r.payee_id}`}
                 </td>
                 <td className="py-3 pr-4 text-right font-medium text-slate-900 ">
                   {formatTL(r.amount)}

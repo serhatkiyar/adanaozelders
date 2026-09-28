@@ -90,8 +90,10 @@ export default function AdminDashboardPage() {
     { alan: "tutors", label: "Öğretmen başvuruları", value: data.pending_tutors, to: ROUTES.adminTutors, tone: "warning", description: "Onay veya ret kararı bekliyor." },
     { alan: "tutors", label: "Diploma doğrulamaları", value: data.pending_diplomas, to: ROUTES.adminDiplomas, tone: "warning", description: "Belge teyidi bekleyen eğitim kayıtları." },
     { alan: "reports", label: "Açık şikâyetler", value: data.open_reports, to: ROUTES.adminReports, tone: "danger", description: "Moderasyon kararı bekleyen bildirimler." },
-    { alan: "bookings", label: "İhtilaflı rezervasyonlar", value: data.disputed_bookings, to: ROUTES.adminBookings, tone: "danger", description: `${data.active_bookings} aktif rezervasyon içinde.` },
-    { alan: "demands", label: "Açık öğrenci talepleri", value: data.open_demands, to: ROUTES.adminDemands, tone: "info", description: "Öğretmenlerden yanıt bekleyen ders ilanları." },
+    // Sayaç `is_disputed` / `status == OPEN` sayar; listeler varsayılan olarak
+    // tüm kayıtları açar. Aynı kümeyi göstermek için hedef aynı filtreyi taşır.
+    { alan: "bookings", label: "İhtilaflı rezervasyonlar", value: data.disputed_bookings, to: `${ROUTES.adminBookings}?disputed=true`, tone: "danger", description: `${data.active_bookings} aktif rezervasyon içinde.` },
+    { alan: "demands", label: "Açık öğrenci talepleri", value: data.open_demands, to: `${ROUTES.adminDemands}?status=OPEN`, tone: "info", description: "Öğretmenlerden yanıt bekleyen ders ilanları." },
     // Kart, işin YAPILDIĞI ekrana gider: ödenmiş sipariş hazırlanmak üzere
     // paketleme kuyruğuna düşer; sipariş listesi bir kayıt görünümüdür, kuyruk değil.
     { alan: "packing", label: "Hazırlanacak siparişler", value: data.paid_orders, to: ROUTES.adminPacking, tone: "info", description: `${data.pending_returns} açık iade talebi bulunuyor.` },

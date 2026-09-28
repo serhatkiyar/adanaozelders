@@ -44,3 +44,16 @@ def test_dashboard_schema_exposes_only_decision_support_metrics():
     fields = set(AdminDashboardOut.model_fields)
     assert {"new_clients", "open_reports", "low_stock_products", "period_audit_logs"} <= fields
     assert "support_ticket_count" not in fields
+
+
+def test_admin_name_change_and_payout_history_carry_person_name():
+    # Güncel ad YALNIZ admin şemasında; kullanıcının kendi uçları paylaşılan
+    # `NameChangeRequestOut`u kullanır ve bu alanları taşımaz.
+    from api.routers.payouts import PayoutRecordOut
+    from schemas.user import AdminNameChangeRequestOut, NameChangeRequestOut
+
+    assert {"current_first_name", "current_last_name"} <= set(
+        AdminNameChangeRequestOut.model_fields
+    )
+    assert "current_first_name" not in NameChangeRequestOut.model_fields
+    assert "payee_name" in PayoutRecordOut.model_fields

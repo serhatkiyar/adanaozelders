@@ -74,6 +74,17 @@ class NameChangeRequestOut(BaseModel):
     created_at: datetime.datetime
 
 
+class AdminNameChangeRequestOut(NameChangeRequestOut):
+    """Admin kuyruğu: talep sahibinin hesaptaki GÜNCEL adı da taşınır.
+
+    Eski ad saklanmaz; onaylanmış talepte güncel ad zaten yeni addır.
+    Yalnız admin ucunda (`users.view`) döner.
+    """
+
+    current_first_name: str | None = None
+    current_last_name: str | None = None
+
+
 class PasswordChange(BaseModel):
     current_password: str = Field(min_length=1)
     new_password: str = Field(min_length=8, max_length=128)

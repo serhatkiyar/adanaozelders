@@ -37,6 +37,8 @@ export interface PayoutRecord {
   id: number;
   payee_type: "TUTOR" | "LIBRARY";
   payee_id: number;
+  /** Geçmiş listesinde alıcının adı; yeni kayıt yanıtında boş olabilir. */
+  payee_name?: string | null;
   amount: string;
   currency: string;
   iban_snapshot?: string | null;

@@ -325,6 +325,32 @@ async def history(
     )
 
 
+async def payee_names(
+    db: AsyncSession, records: list[PayoutRecord]
+) -> dict[tuple[str, int], str]:
+    """Geçmiş satırlarının alıcı adları; ``list_balances`` ile aynı ad/yedek kuralı."""
+    tutor_ids = {r.payee_id for r in records if r.payee_type == PayeeType.TUTOR.value}
+    lib_ids = {r.payee_id for r in records if r.payee_type == PayeeType.LIBRARY.value}
+    out: dict[tuple[str, int], str] = {}
+    if tutor_ids:
+        rows = await db.execute(
+            select(Tutor.id, Tutor.first_name, Tutor.last_name).where(
+                Tutor.id.in_(tutor_ids)
+            )
+        )
+        for tid, first, last in rows.all():
+            out[(PayeeType.TUTOR.value, tid)] = (
+                f"{first or ''} {last or ''}".strip() or f"Öğretmen #{tid}"
+            )
+    if lib_ids:
+        rows = await db.execute(
+            select(Library.id, Library.name).where(Library.id.in_(lib_ids))
+        )
+        for lid, name in rows.all():
+            out[(PayeeType.LIBRARY.value, lid)] = name or f"Kütüphane #{lid}"
+    return out
+
+
 # ── Öğretmen cüzdanı: bakiye + para çekme talebi ─────────────────────────────
 
 

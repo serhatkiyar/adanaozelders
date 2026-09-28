@@ -843,4 +843,19 @@ describe("F-5/F-6 · dashboard kartları doğru filtreli hedefe gider", () => {
     const kart = (await screen.findByText(/hazırlanacak sipariş/i)).closest("a");
     expect(kart?.getAttribute("href")).toContain("paketleme");
   });
+
+  // Sayaçlar `is_disputed` ve `status == OPEN` sayar; listeler varsayılan
+  // olarak tüm kayıtları açar. Kart aynı filtreyle açılmazsa sayı ile liste ayrışır.
+  it("'İhtilaflı rezervasyonlar' ve 'Açık öğrenci talepleri' kartları filtreli listeye açılır", async () => {
+    izinVer("dashboard.view", "bookings.view", "demands.view");
+    sunucu("/admin/stats", { data: istatistik({ disputed_bookings: 3, open_demands: 12 }) }, "get");
+    sunucu("/admin/revenue", { data: {} }, "get");
+
+    sar(ROUTES.admin, <AdminDashboardPage />);
+
+    const ihtilaf = (await screen.findByText("İhtilaflı rezervasyonlar")).closest("a");
+    expect(ihtilaf?.getAttribute("href")).toContain("disputed=true");
+    const talep = screen.getByText("Açık öğrenci talepleri").closest("a");
+    expect(talep?.getAttribute("href")).toContain("status=OPEN");
+  });
 });

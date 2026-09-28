@@ -214,6 +214,19 @@ describe("H-1 · liste ve sekmeler", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Ödeme geçmişi" }, YUK));
     expect(await screen.findByText("HVL-1", undefined, YUK)).toBeTruthy();
   });
+
+  it("geçmiş satırı alıcıyı ADIYLA gösterir; ad yoksa kimliğe düşer", async () => {
+    sunucu("/payouts/pending", { data: [] }, "get");
+    sunucu(
+      /^\/payouts$/,
+      { data: [{ ...KAYIT, payee_name: "Deniz Öğretmen" }, { ...KAYIT, id: 4, payee_id: 6, reference: "HVL-2" }] },
+      "get",
+    );
+    sar(`${ROUTES.adminPayouts}?sekme=gecmis`);
+    expect(await screen.findByText("Deniz Öğretmen", undefined, YUK)).toBeTruthy();
+    expect(screen.queryByText("Öğretmen #5")).toBeNull();
+    expect(screen.getByText("Öğretmen #6")).toBeTruthy();
+  });
 });
 
 /* ══════════════ 1b · Geçmiş sayfalıdır (100'de sessiz kesilme yok) ══════════════ */

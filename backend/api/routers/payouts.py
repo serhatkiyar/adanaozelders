@@ -54,6 +54,8 @@ class PayoutRecordOut(BaseModel):
     id: int
     payee_type: str
     payee_id: int
+    #: Geçmiş listesinde alıcının adı (öğretmen ad-soyad / kütüphane adı).
+    payee_name: str | None = None
     amount: str
     currency: str
     iban_snapshot: str | None = None
@@ -103,11 +105,13 @@ async def list_history(
 ):
     """Yapılmış ödemelerin geçmişi."""
     rows = await payout_ledger.history(db, limit=limit, offset=offset)
+    adlar = await payout_ledger.payee_names(db, rows)
     return [
         PayoutRecordOut(
             id=r.id,
             payee_type=r.payee_type,
             payee_id=r.payee_id,
+            payee_name=adlar.get((r.payee_type, r.payee_id)),
             amount=str(r.amount),
             currency=r.currency,
             iban_snapshot=r.iban_snapshot,

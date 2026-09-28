@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
 import {
   BosSayfa,
@@ -17,6 +15,7 @@ import {
   ReasonDialog,
 } from "@/components/admin/ui";
 import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import { useAdminPromotions, useCancelPromotion } from "@/hooks/useAdmin";
 import { formatTRY, parseMoney } from "@/lib/money";
 import type { AdminPromotion } from "@/api/admin";
@@ -61,10 +60,20 @@ const FILTRELER: { value: string | undefined; label: string }[] = [
   { value: "PENDING", label: "Ödeme bekliyor" },
 ];
 
+/** Adresten gelen süzgeç için BEYAZ LİSTE. */
+const GECERLI_DURUMLAR = new Set(
+  FILTRELER.map((f) => f.value).filter((v): v is string => v !== undefined)
+);
+
 export default function AdminPromotionsPage() {
   const { canView, canManage } = useAdminAreaAccess("promotions");
-  const [filtre, setFiltre] = useState<string | undefined>(undefined);
-  const [sayfa, setSayfa] = useState(1);
+  // Süzgeç ve sayfa ADRESTE yaşar (yenileme/geri tuşu/paylaşılan bağlantı);
+  // adresten gelen değer beyaz listeden geçer, uydurma değer API'ye gitmez.
+  const url = useUrlDurumu({ durum: "", sayfa: 1 }, { sayfaAnahtari: "sayfa" });
+  const hamDurum = String(url.degerler.durum);
+  const filtre = GECERLI_DURUMLAR.has(hamDurum) ? hamDurum : undefined;
+  const sayfa = Math.max(1, Math.floor(Number(url.degerler.sayfa)) || 1);
+  const setSayfa = (s: number) => url.ayarla({ sayfa: s });
   // Pencere durumu ekranda DEĞİL: iptal edilecek kayıt yüzeyin hedefidir
   // (İP-A4 sözleşmesi — kapatma yollarının hepsi tek noktadan bekçiye bağlı).
   const yuzey = useDuzenlemeYuzeyi<AdminPromotion, void>();
@@ -100,10 +109,10 @@ export default function AdminPromotionsPage() {
             key={f.label}
             type="button"
             onClick={() => {
-              // Filtre değişince 1. sayfaya dön: 3. sayfadayken filtre
-              // değiştirmek boş liste gösterir, "kayıt yok" sanılırdı.
-              setFiltre(f.value);
-              setSayfa(1);
+              // Filtre değişince 1. sayfaya dön (`useUrlDurumu` sayfa kuralı):
+              // 3. sayfadayken filtre değiştirmek boş liste gösterir, "kayıt
+              // yok" sanılırdı.
+              url.ayarla({ durum: f.value ?? "" });
             }}
             aria-pressed={filtre === f.value}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${

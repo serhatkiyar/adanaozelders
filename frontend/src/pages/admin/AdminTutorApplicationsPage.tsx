@@ -16,6 +16,7 @@ import {
   PageSkeleton,
 } from "@/components/admin/ui";
 import { PlainButton } from "@/components/ui/PlainButton";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import {
   useAdminTutorPreApplications,
   useUpdateTutorPreApplicationStatus,
@@ -147,12 +148,23 @@ const FILTRELER: { value: string | undefined; label: string }[] = [
   { value: "REJECTED", label: "Olumsuz" },
 ];
 
+/** Adresten gelen süzgeç için BEYAZ LİSTE ("Tümü" = `TUMU`, ayrı ele alınır). */
+const GECERLI_DURUMLAR = new Set(
+  FILTRELER.map((f) => f.value).filter((v): v is string => v !== undefined)
+);
+
 export default function AdminTutorApplicationsPage() {
   const { canView, canManage } = useAdminAreaAccess("tutors");
   // Operasyonel varsayılan: ekran "aranacaklar" listesi olarak açılır.
-  const [filtre, setFiltre] = useState<string | undefined>("NEW");
+  // Süzgeç ve sayfa ADRESTE yaşar (yenileme/geri tuşu/paylaşılan bağlantı).
+  // "Tümü" varsayılan olmadığından `TUMU` işaretiyle yazılır; adresten gelen
+  // değer beyaz listeden geçer, uydurma değer API'ye gitmez.
+  const url = useUrlDurumu({ durum: "NEW", sayfa: 1 }, { sayfaAnahtari: "sayfa" });
+  const hamDurum = String(url.degerler.durum);
+  const filtre = GECERLI_DURUMLAR.has(hamDurum) ? hamDurum : hamDurum === "TUMU" ? undefined : "NEW";
+  const sayfa = Math.max(1, Math.floor(Number(url.degerler.sayfa)) || 1);
+  const setSayfa = (s: number) => url.ayarla({ sayfa: s });
   const [acikId, setAcikId] = useState<number | null>(null);
-  const [sayfa, setSayfa] = useState(1);
 
   const { data, isLoading, isError, refetch } = useAdminTutorPreApplications(
     filtre,
@@ -183,9 +195,8 @@ export default function AdminTutorApplicationsPage() {
           <PlainButton
             key={f.label}
             onClick={() => {
-              // Filtre değişince 1. sayfaya dön (bkz. AdminPromotionsPage).
-              setFiltre(f.value);
-              setSayfa(1);
+              // Filtre değişince sayfa `useUrlDurumu` tarafından 1'e döner.
+              url.ayarla({ durum: f.value ?? "TUMU" });
             }}
             aria-pressed={filtre === f.value}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus ${

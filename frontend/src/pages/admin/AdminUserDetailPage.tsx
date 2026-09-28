@@ -14,9 +14,18 @@ import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import type { AdminUserRolePath } from "@/types";
 import { rolEtiketi } from "@/lib/roles";
-import { ROLE_IDS } from "@/types";
+import { ROLE_IDS, TutorStatus } from "@/types";
 
 const VALID_ROLES = new Set<AdminUserRolePath>(["admin", "tutor", "client"]);
+
+/** İlan durumu etiketleri — `AdminHome` ilan listesindekiyle aynı. */
+const TUTOR_STATUS_LABEL: Record<string, string> = {
+  [TutorStatus.DRAFT]: "Taslak",
+  [TutorStatus.PENDING_APPROVAL]: "Onay Bekliyor",
+  [TutorStatus.APPROVED]: "Yayında",
+  [TutorStatus.REJECTED]: "Reddedildi",
+  [TutorStatus.SUSPENDED]: "Pasif",
+};
 
 export default function AdminUserDetailPage() {
   const { role: rawRole, id: rawId } = useParams();
@@ -67,7 +76,7 @@ export default function AdminUserDetailPage() {
           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Kayıt</dt><dd className="mt-1 text-sm text-slate-700 ">{formatDateTime(user.created_at)}</dd></div>
           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Son güncelleme</dt><dd className="mt-1 text-sm text-slate-700 ">{formatDateTime(user.updated_at)}</dd></div>
           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">Son görülme</dt><dd className="mt-1 text-sm text-slate-700 ">{user.last_seen_at ? formatDateTime(user.last_seen_at) : "Henüz yok"}</dd></div>
-          {user.tutor_status && <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">İlan durumu</dt><dd className="mt-1 text-sm font-semibold text-slate-800 ">{user.tutor_status}</dd></div>}
+          {user.tutor_status && <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">İlan durumu</dt><dd className="mt-1 text-sm font-semibold text-slate-800 ">{TUTOR_STATUS_LABEL[user.tutor_status] ?? user.tutor_status}</dd></div>}
         </dl>
       </section>
 

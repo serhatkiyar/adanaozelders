@@ -521,4 +521,27 @@ describe("İP-A7d3 · ad değişikliği kuyruğunun süzgeci ADRESTE yaşar", ()
       expect(g!.url).not.toContain("drop_table");
     });
   });
+
+  it("talep kartı kişiyi ADIYLA ve rol etiketiyle gösterir (yalnız kimlik değil)", async () => {
+    izinVer(USERS_VIEW, USERS_MANAGE);
+    sunucu(
+      "/admin/name-change-requests",
+      {
+        data: [
+          {
+            id: 1, user_id: 12, role_id: 2, kind: "NAME",
+            new_first_name: "Yeni", new_last_name: "Ad", reason: "evlilik",
+            status: "PENDING", created_at: "2026-09-01T10:00:00Z",
+            current_first_name: "Mevcut", current_last_name: "Egitmen",
+          },
+        ],
+      },
+      "get",
+    );
+    adDegisiklikleriSar("/yonetim/ad-degisiklikleri");
+
+    expect(await screen.findByText("Mevcut Egitmen")).toBeTruthy();
+    expect(screen.getByText(/Ad-Soyad · Öğretmen · #12/)).toBeTruthy();
+    expect(screen.queryByText(/rol 2/)).toBeNull();
+  });
 });
