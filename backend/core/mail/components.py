@@ -276,17 +276,168 @@ def callout(content: object, *, tone: str = "note", space: int = 24) -> Html:
     return _row(_box(inner, bg=bg, icon=icon), space=space)
 
 
-def quote(name: object, body: object, *, space: int = 24) -> Html:
+def quote(
+    name: object,
+    body: object,
+    *,
+    avatar_url: str | None = None,
+    with_avatar: bool = False,
+    space: int = 24,
+) -> Html:
     """Alıntı kartı — Preply "Emre / Hocam merhaba" mesaj önizlemesi.
 
-    Kullanıcı metni kaçışlanır; satır sonları ``white-space:pre-wrap`` ile korunur.
+    ``with_avatar`` açıksa solda kişinin fotoğrafı (yoksa baş harfleri) durur
+    (Preply "New message from …" kartı). Kullanıcı metni kaçışlanır; satır
+    sonları ``white-space:pre-wrap`` ile korunur.
     """
-    inner = (
+    text = (
         f'<p style="{_text("body", weight=700)}">{esc(name)}</p>'
         f'<p class="ao-p" style="{_text("body")}padding-top:6px;white-space:pre-wrap;'
         f'word-break:break-word;">{esc(body)}</p>'
     )
-    return _row(_box(inner, bg=QUOTE_BG, icon=None, border=LINE), space=space)
+    if with_avatar:
+        text = _table(
+            f'<tr><td width="68" valign="top" style="width:68px;">{avatar(name, avatar_url, size=52)}</td>'
+            f'<td valign="top">{text}</td></tr>'
+        )
+    return _row(_box(text, bg=QUOTE_BG, icon=None, border=LINE), space=space)
+
+
+# ── Özel ders bileşenleri ──
+
+_AYLAR = (
+    "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+    "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+)
+_GUNLER = ("Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar")
+
+
+def tarih_tr(dt: datetime.datetime) -> str:
+    """``23 Eylül Çarşamba, 14:30`` — Türkiye saatiyle (ders saatleri UTC saklanır)."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    t = dt.astimezone(_TR_TZ)
+    return f"{t.day} {_AYLAR[t.month - 1]} {_GUNLER[t.weekday()]}, {t:%H:%M}"
+
+
+def sure_tr(start: datetime.datetime, end: datetime.datetime) -> str:
+    """``60 dk`` / ``1,5 saat`` yerine öğrencinin okuduğu biçim: ``1 saat 30 dk``."""
+    dakika = max(0, int((end - start).total_seconds() // 60))
+    saat, kalan = divmod(dakika, 60)
+    if saat and kalan:
+        return f"{saat} saat {kalan} dk"
+    if saat:
+        return f"{saat} saat"
+    return f"{kalan} dk"
+
+
+def tl(tutar: object) -> str:
+    """Türkçe para biçimi: ``450`` → ``450 TL``, ``1250.5`` → ``1.250,50 TL``.
+
+    Sayıya çevrilemeyen değer (ör. zaten biçimlenmiş ``"1.250,00"``) olduğu gibi
+    kullanılır.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        d = Decimal(str(tutar))
+    except InvalidOperation:
+        return f"{tutar} TL"
+    tam, kesir = f"{d:,.2f}".split(".")
+    tam = tam.replace(",", ".")
+    return f"{tam} TL" if kesir == "00" else f"{tam},{kesir} TL"
+
+
+def strike(text: object) -> Html:
+    """Üstü çizili değer — iptal edilen / taşınan dersin eski saati (Preply p13)."""
+    return Html(f'<span style="text-decoration:line-through;color:{MUTED};">{esc(text)}</span>')
+
+
+def badge(text: object, *, tone: str = "danger") -> Html:
+    """Küçük durum etiketi — Preply "Ders iptal edildi" kırmızı rozeti."""
+    bg, fg = {"danger": ("#B42318", "#FFFFFF"), "info": (NAVY, "#FFFFFF")}[tone]
+    size, _ = _TYPE["caption"]
+    return Html(
+        f'<span style="display:inline-block;background:{bg};color:{fg};font-size:{size}px;'
+        f'line-height:20px;font-weight:700;padding:1px 8px;border-radius:4px;'
+        f'white-space:nowrap;">{esc(text)}</span>'
+    )
+
+
+def stars(rating: int) -> Html:
+    """Puan yıldızları (1–5). Metin karakteri: görsel engellense de görünür."""
+    r = max(0, min(5, int(rating)))
+    return Html(
+        f'<span style="color:#E8A317;letter-spacing:2px;">{"★" * r}</span>'
+        f'<span style="color:{LINE};letter-spacing:2px;">{"★" * (5 - r)}</span>'
+    )
+
+
+def avatar(name: object, url: str | None, *, size: int = 52) -> str:
+    """Kişi fotoğrafı; HTTPS değilse ya da yoksa baş harfleri (lacivert daire)."""
+    if url and url.lower().startswith("https://"):
+        return (
+            f'<img src="{esc(url)}" width="{size}" height="{size}" alt="{esc(name)}" '
+            f'style="display:block;border:0;outline:none;width:{size}px;height:{size}px;'
+            f'border-radius:8px;object-fit:cover;">'
+        )
+    harfler = "".join(p[0] for p in str(name).split()[:2]).upper() or "?"
+    size_px, _ = _TYPE["body"]
+    return _table(
+        f'<tr><td width="{size}" height="{size}" align="center" valign="middle" '
+        f'style="width:{size}px;height:{size}px;background:{NAVY};border-radius:8px;'
+        f"color:#FFFFFF;font-family:{FONT};font-size:{size_px}px;font-weight:700;"
+        f'line-height:{size}px;text-align:center;">{esc(harfler)}</td></tr>',
+        width="auto",
+    )
+
+
+def person_card(
+    name: object, photo_url: str | None, chips: Sequence[object], *, space: int = 24
+) -> Html:
+    """Öğretmen kartı — Preply "Start your subscription" kartı (fotoğraf + ad + etiketler)."""
+    # ``_text`` ``margin:0`` taşır; etiket aralığı ondan SONRA yazılmalı.
+    chip_html = " ".join(
+        f'<span style="{_text("small", color=NAVY, weight=500)}display:inline-block;'
+        f'border:1px solid {NAVY};border-radius:6px;padding:2px 10px;margin:8px 4px 0 0;'
+        f'white-space:nowrap;">{esc(ch)}</span>'
+        for ch in chips
+    )
+    inner = _table(
+        f'<tr><td width="92" valign="middle" style="width:92px;">{avatar(name, photo_url, size=76)}</td>'
+        f'<td valign="middle"><p style="{_text("title", weight=700)}">{esc(name)}</p>'
+        f"{chip_html}</td></tr>"
+    )
+    return _row(_box(inner, bg=CARD_BG, icon=None, border=LINE), space=space)
+
+
+def steps(items: Sequence[tuple[object, object]], *, space: int = 0) -> Html:
+    """Numaralı adımlar — Preply "Yolculuğunda seni destekliyoruz" kartı.
+
+    ``items``: (başlık, açıklama). Numara lacivert daire içinde.
+    """
+    rows: list[str] = []
+    size, _ = _TYPE["small"]
+    for i, (title, body) in enumerate(items, start=1):
+        gap = 0 if i == len(items) else 20
+        rows.append(
+            f'<tr><td style="padding:0 0 {gap}px 0;">'
+            + _table(
+                '<tr><td width="44" valign="top" style="width:44px;">'
+                + _table(
+                    f'<tr><td width="30" height="30" align="center" valign="middle" '
+                    f'style="width:30px;height:30px;background:{NAVY};border-radius:15px;'
+                    f"color:#FFFFFF;font-family:{FONT};font-size:{size}px;font-weight:700;"
+                    f'line-height:30px;text-align:center;">{i}</td></tr>',
+                    width="auto",
+                )
+                + "</td>"
+                f'<td valign="top"><p style="{_text("body", weight=700)}">{esc(title)}</p>'
+                f'<p style="{_text("small", color=MUTED)}padding-top:2px;">{esc(body)}</p></td></tr>'
+            )
+            + "</td></tr>"
+        )
+    return _row(_table("".join(rows)), space=space)
 
 
 _BUTTON_VARIANTS = {
@@ -395,20 +546,41 @@ a[x-apple-data-detectors]{color:inherit!important;text-decoration:none!important
 """.strip()
 
 
-def render(*, title: str, preheader: str, blocks: Sequence[str]) -> str:
+def _card_row(blocks: Sequence[str], *, top: int = 0) -> str:
+    return (
+        f'<tr><td style="padding-top:{top}px;">'
+        + _table(
+            f'<tr><td class="ao-card" style="background:{CARD_BG};border-radius:8px;'
+            f'padding:36px {_PAD_X}px;">{_table("".join(blocks))}</td></tr>'
+        )
+        + "</td></tr>"
+    )
+
+
+def render(
+    *,
+    title: str,
+    preheader: str,
+    blocks: Sequence[str],
+    more_cards: Sequence[Sequence[str]] = (),
+) -> str:
     """Tam e-posta belgesi.
 
     ``preheader``: gelen kutusu önizlemesinde konu satırının yanında görünen
     metin; gövdede gizlidir. Arkasındaki dolgu, istemcinin önizlemeye gövde
     metnini eklemesini engeller.
+
+    ``more_cards``: ana kartın altında ayrı beyaz kartlar (Preply hoş geldin
+    mailindeki "Yolculuğunda seni destekliyoruz" kartı gibi).
     """
     year = datetime.datetime.now(_TR_TZ).year
     body = _table(
         # Logo — kartın üstünde, zeminde.
         f'<tr><td align="center" style="padding:0 0 28px 0;">{_logo()}</td></tr>'
-        # Kart
-        f'<tr><td class="ao-card" style="background:{CARD_BG};border-radius:8px;'
-        f'padding:36px {_PAD_X}px;">{_table("".join(blocks))}</td></tr>'
+        # Kartlar
+        + _card_row(blocks)
+        + "".join(_card_row(card, top=16) for card in more_cards)
+        +
         # Footer — zeminde
         f'<tr><td align="center" style="padding:32px 0 12px 0;">{_social_icons()}</td></tr>'
         f'<tr><td align="center" style="{_text("caption", color=MUTED)}text-align:center;">'

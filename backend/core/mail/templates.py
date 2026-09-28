@@ -17,15 +17,63 @@ from core.mail.base import EmailMessage
 _BRAND = c.BRAND
 
 
-def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
+_HOSGELDIN_ADIMLARI: dict[str, tuple[str, list[tuple[str, str]]]] = {
+    # Öğrenci (CLIENT). ÜK-3: ders talebi arayüzde kapalı; ilk temas mesajla kurulur.
+    "CLIENT": (
+        "Seni neler bekliyor",
+        [
+            ("E-posta adresini doğrula", "Hesabını etkinleştirmek için yukarıdaki düğmeye tıkla."),
+            (
+                "Öğretmenini bul",
+                "Adana'daki öğretmenlerin profillerine, ücretlerine ve yorumlarına göz at.",
+            ),
+            ("İlk dersini ayarla", "Öğretmenine mesaj gönder, ilk dersinizi birlikte planlayın."),
+        ],
+    ),
+    "TUTOR": (
+        "Öğrencilerle buluşmana üç adım kaldı",
+        [
+            ("E-posta adresini doğrula", "Hesabını etkinleştirmek için yukarıdaki düğmeye tıkla."),
+            (
+                "İlanını tamamla",
+                "Fotoğrafını, verdiğin dersleri, ücretini ve kendini anlatan kısa bir yazı ekle.",
+            ),
+            (
+                "Onaya gönder",
+                "Ekibimiz ilanını inceler; onaylandığında öğrenciler seni bulabilir.",
+            ),
+        ],
+    ),
+}
+
+
+def verification_email(
+    *, to: str, name: str, verify_url: str, role: str | None = None
+) -> EmailMessage:
+    """Hoş geldin + e-posta doğrulama.
+
+    ``role`` ("CLIENT" | "TUTOR") verilirse altına role göre "ilk adımlar" kartı
+    eklenir (Preply "Yeni işine hoş geldin" + "Yolculuğunda seni destekliyoruz").
+    Verilmezse yalnız doğrulama kartı gider (diğer roller, mevcut çağrılar).
+    """
     ttl = settings.EMAIL_VERIFY_TOKEN_TTL_HOURS
     subject = f"{_BRAND} · E-posta adresini doğrula"
+    adimlar = _HOSGELDIN_ADIMLARI.get(role or "")
     text = (
         f"Merhaba {name},\n\n"
         f"{_BRAND} hesabını etkinleştirmek için e-posta adresini doğrula:\n"
         f"{verify_url}\n\n"
         f"Bu bağlantı {ttl} saat geçerlidir. Bu kaydı sen yapmadıysan bu e-postayı yok sayabilirsin."
+        + (
+            "\n\n" + adimlar[0] + ":\n"
+            + "\n".join(f"{i}. {b} — {a}" for i, (b, a) in enumerate(adimlar[1], start=1))
+            if adimlar
+            else ""
+        )
         + c.text_footer()
+    )
+    more_cards = (
+        [[c.heading(adimlar[0], space=24), c.steps(adimlar[1])]] if adimlar else []
     )
     html = c.render(
         title=subject,
@@ -42,6 +90,7 @@ def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
                 "yok sayabilirsin."
             ),
         ],
+        more_cards=more_cards,
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 

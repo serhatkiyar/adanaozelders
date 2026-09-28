@@ -29,6 +29,12 @@ REZERVASYONLAR = "/dersler"
 
 # ── Şeride girmeyen, düz kalan yollar ──
 DERS_TALEPLERI = "/ders-talepleri"
+# Canlı ders odası: `/canli-ders/:id` — önek, id çağıran tarafta eklenir.
+CANLI_DERS = "/canli-ders"
+TAKVIM = "/takvim"
+EGITMENLER = "/egitmenler"
+ILETISIM = "/iletisim"
+SIFREMI_UNUTTUM = "/sifremi-unuttum"
 SIPARISLERIM = "/siparislerim"
 # Ödeme bilgileri (IBAN + kimlik) Ayarlar'ın bir sekmesidir.
 AYARLAR = "/ayarlar"
