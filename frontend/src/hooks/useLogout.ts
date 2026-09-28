@@ -12,11 +12,15 @@ export function useLogout(redirectTo: string = ROUTES.login) {
   const cikisBasladi = useAuthStore((s) => s.cikisBasladi);
 
   return () => {
+    const eskiToken = useAuthStore.getState().token;
     // Önce sunucuya logout isteği gider (token interceptor ile eklenir), istek
     // settle olunca yerel token temizlenir — böylece Authorization başlığı kaybolmaz.
     void logoutRequest()
       .catch(() => {})
       .finally(() => {
+        // Bu arada başka bir hesapla giriş yapıldıysa yeni oturumu silme.
+        const simdiki = useAuthStore.getState().token;
+        if (simdiki !== null && simdiki !== eskiToken) return;
         logout();
         queryClient.clear();
         // Mağaza favorileri hesapla senkron — sonraki kullanıcıya sızmasın.

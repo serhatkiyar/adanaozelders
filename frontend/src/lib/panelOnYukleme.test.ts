@@ -3,6 +3,7 @@ import {
   birKezYukle,
   panelSayfaYukleyicileri as Y,
   sekmeYukleyicileri,
+  topluOnYuklemeUygun,
 } from "@/lib/panelOnYukleme";
 import { TUTOR_PANO_SEKMELERI, UYE_PANO_SEKMELERI } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
@@ -37,7 +38,7 @@ describe("sekmeYukleyicileri", () => {
     }
   });
 
-  it("tanınmayan adres ve rolsüz kullanıcı için ön yükleme yok", () => {
+  it("tanınmayan adres ve rolsüz kullanıcıda rol dağıtıcı adres için yükleyici yok", () => {
     expect(sekmeYukleyicileri("/bilinmeyen", EGITMEN)).toEqual([]);
     expect(sekmeYukleyicileri(ROUTES.bookings, undefined)).toEqual([]);
   });
@@ -58,5 +59,18 @@ describe("birKezYukle", () => {
     await Promise.resolve();
     birKezYukle(y);
     expect(y).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("topluOnYuklemeUygun", () => {
+  it("veri tasarrufunda ve 2G'de toplu ön yükleme yapmaz", () => {
+    expect(topluOnYuklemeUygun({ saveData: true, effectiveType: "4g" })).toBe(false);
+    expect(topluOnYuklemeUygun({ effectiveType: "2g" })).toBe(false);
+    expect(topluOnYuklemeUygun({ effectiveType: "slow-2g" })).toBe(false);
+  });
+
+  it("normal bağlantıda ve bağlantı bilgisi yokken yapar", () => {
+    expect(topluOnYuklemeUygun({ effectiveType: "4g" })).toBe(true);
+    expect(topluOnYuklemeUygun(undefined)).toBe(true);
   });
 });

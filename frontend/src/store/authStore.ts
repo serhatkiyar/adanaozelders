@@ -65,7 +65,8 @@ export const useAuthStore = create<AuthState>()(
       cikisBasladi: () => set({ cikisYapiliyor: true }),
       setRemember: (remember) =>
         localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0"),
-      setToken: (token) => set({ token, isAuthenticated: true }),
+      setToken: (token) =>
+        set({ token, isAuthenticated: true, cikisYapiliyor: false }),
       setUser: (user) => set({ user }),
       logout: () =>
         set({

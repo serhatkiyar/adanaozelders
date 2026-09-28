@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
 import { ROUTES } from "@/lib/routes";
-import { sekmeyiOnYukle } from "@/lib/panelOnYukleme";
+import { sekmeyiOnYukle, topluOnYuklemeUygun } from "@/lib/panelOnYukleme";
 import { useAuthStore } from "@/store/authStore";
 import type { NavItem } from "@/lib/nav";
 
@@ -31,6 +31,7 @@ export function PanelSekmeleri({ items }: { items: NavItem[] }) {
   // inene kadar eski ekranda donmasın (bkz. `lib/panelOnYukleme.ts`).
   // Safari `requestIdleCallback` tanımaz; `setTimeout` yedeği.
   useEffect(() => {
+    if (!rolId || !topluOnYuklemeUygun()) return;
     const yukle = () => {
       for (const item of items) if (!item.yakinda) sekmeyiOnYukle(item.to, rolId);
     };

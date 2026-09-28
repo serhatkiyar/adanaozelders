@@ -70,6 +70,22 @@ export function sekmeYukleyicileri(
   }
 }
 
+type Baglanti = { saveData?: boolean; effectiveType?: string };
+
+/**
+ * Boşta TOPLU ön yükleme yapılabilir mi. Veri tasarrufu açıksa ya da bağlantı
+ * 2G düzeyindeyse yapılmaz (ilk panel ziyaretinde ~300 KB gzip indirir);
+ * imleç/odak/dokunuşla tek sekmenin ön yüklemesi yine çalışır.
+ */
+export function topluOnYuklemeUygun(
+  baglanti: Baglanti | undefined = (navigator as Navigator & { connection?: Baglanti })
+    .connection
+): boolean {
+  if (!baglanti) return true;
+  if (baglanti.saveData) return false;
+  return baglanti.effectiveType !== "2g" && baglanti.effectiveType !== "slow-2g";
+}
+
 const baslatilan = new Set<SayfaYukleyici>();
 
 /**

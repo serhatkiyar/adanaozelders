@@ -9,6 +9,11 @@ import type {
 
 export type RegisterRole = "tutor" | "client";
 
+// Yoldaki çıkış isteği. Giriş bunu bekler: çıkış yanıtı yeni girişten SONRA
+// gelirse sunucunun çerez silme başlığı yeni oturumun refresh çerezini de
+// siler (yavaş ağda çıkıp hemen başka hesapla girerken ölçüldü, 28 Eyl 2026).
+let bekleyenCikis: Promise<unknown> | null = null;
+
 export async function login(
   username: string,
   password: string,
@@ -22,6 +27,7 @@ export async function login(
   // yazan taraf sunucudur.
   body.append("remember", remember ? "true" : "false");
 
+  if (bekleyenCikis) await bekleyenCikis.catch(() => {});
   const { data } = await apiClient.post<Token>("/auth/login", body, {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
   });
@@ -43,7 +49,13 @@ export async function logout(): Promise<void> {
   // Sunucu tarafında access token'ı (denylist) ve refresh token'ı iptal eder,
   // ayrıca çerezi siler. Refresh token gövdede GÖNDERİLMEZ — sunucu onu
   // `httpOnly` çerezden okur. Hata olsa da akış bozulmamalı.
-  await apiClient.post("/auth/logout");
+  const istek = apiClient.post("/auth/logout");
+  bekleyenCikis = istek;
+  try {
+    await istek;
+  } finally {
+    if (bekleyenCikis === istek) bekleyenCikis = null;
+  }
 }
 
 export async function fetchMe(): Promise<UserOut> {
