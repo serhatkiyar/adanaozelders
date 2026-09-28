@@ -303,7 +303,9 @@ const ADETLER: Record<string, number> = {
   "src/panel/pages/urunler/TedarikciListesi.tsx <Button> bekleyenDakika !== null": 2,
   "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": 2,
   "src/pages/DeliveryDriver.tsx <button> busy": 2,
-  "src/pages/admin/AdminBookingsPage.tsx <Button> pending": 3,
+  // 3 → 5 (28 Eyl 2026): eski panele de ihtilaf kararı düğmeleri ("Öğrenciye
+  // iade et", "Öğretmene öde") eklendi; aynı "islem" kilidi.
+  "src/pages/admin/AdminBookingsPage.tsx <Button> pending": 5,
   // 2 → 4 (17 Eyl 2026): ihtilaf kararı düğmeleri "Öğrenciye iade et" ve
   // "Eğitmene öde" eklendi; işlem sürerken kilitlenen aynı "islem" deseni.
   "src/panel/pages/rezervasyonlar/RezervasyonListesi.tsx <Button> mesgul": 4,
