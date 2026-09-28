@@ -197,6 +197,7 @@ REZERVE_ADLAR: frozenset[str] = frozenset(
         "private",
         "depo",
         # ── public/ kök dosya ve klasörleri ──
+        "eposta",  # e-posta şablonlarının logo/ikon PNG'leri
         "fonts",
         "icons",
         "images",

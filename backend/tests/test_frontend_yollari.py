@@ -50,11 +50,16 @@ _ESLESME = {
     "REZERVASYON_DETAY": "libraryReservation",
     "REZERVASYONLAR": "reservations",
     "ADMIN_HAKEDISLER": "adminPayouts",
+    "CANLI_DERS": "canliDers",
+    "TAKVIM": "calendar",
+    "EGITMENLER": "tutors",
+    "ILETISIM": "contact",
+    "SIFREMI_UNUTTUM": "forgotPassword",
 }
 
 # Parametreli istemci yolları (`/ders-talepleri/:id`); sunucu bunların ÖNEKİNİ
 # tutar ve id'yi kendisi ekler.
-_ONEK_OLANLAR = {"DERS_TALEPLERI", "REZERVASYON_DETAY"}
+_ONEK_OLANLAR = {"DERS_TALEPLERI", "REZERVASYON_DETAY", "CANLI_DERS"}
 
 
 def _istemci_yollari() -> dict[str, str]:

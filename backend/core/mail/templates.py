@@ -1,76 +1,96 @@
+"""İşlemsel e-posta kataloğu.
+
+Her fonksiyon tek bir ``EmailMessage`` (konu + düz metin + HTML) üretir.
+Yerleşim ve bileşenler ``core.mail.components`` içindedir; burada yalnız
+metin ve hangi bileşenin kullanılacağı durur.
+
+Bütün şablonlar aynı sırayı izler (Preply düzeni): ortalı başlık →
+selamlama → gövde → bilgi satırları / durum kutusu → düğme → küçük not.
+Logo ve footer ``render`` tarafından eklenir.
+"""
 from __future__ import annotations
 
 from core.config import settings
+from core.mail import components as c
 from core.mail.base import EmailMessage
 
-_BRAND = "Adana Özel Ders"
+_BRAND = c.BRAND
 
 
-def _layout(*, heading: str, intro: str, button_label: str, button_url: str, outro: str) -> str:
-    """Inline-stilli basit, markalı HTML şablonu (e-posta istemcileri inline ister)."""
-    return f"""\
-<!DOCTYPE html>
-<html lang="tr">
-<body style="margin:0;background:#f1f5f9;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-        <tr><td style="background:#4f46e5;padding:20px 32px;">
-          <span style="color:#ffffff;font-size:18px;font-weight:700;">{_BRAND}</span>
-        </td></tr>
-        <tr><td style="padding:32px;">
-          <h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">{heading}</h1>
-          <p style="margin:0 0 24px;font-size:14px;line-height:22px;color:#475569;">{intro}</p>
-          <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:10px;background:#4f46e5;">
-            <a href="{button_url}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;">{button_label}</a>
-          </td></tr></table>
-          <p style="margin:24px 0 0;font-size:12px;line-height:20px;color:#94a3b8;">{outro}</p>
-          <p style="margin:16px 0 0;font-size:12px;line-height:20px;color:#94a3b8;word-break:break-all;">
-            Buton çalışmazsa bu bağlantıyı tarayıcına yapıştır:<br>{button_url}
-          </p>
-        </td></tr>
-        <tr><td style="padding:16px 32px;border-top:1px solid #f1f5f9;">
-          <span style="font-size:11px;color:#cbd5e1;">© {_BRAND}</span>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>"""
+_HOSGELDIN_ADIMLARI: dict[str, tuple[str, list[tuple[str, str]]]] = {
+    # Öğrenci (CLIENT). ÜK-3: ders talebi arayüzde kapalı; ilk temas mesajla kurulur.
+    "CLIENT": (
+        "Seni neler bekliyor",
+        [
+            ("E-posta adresini doğrula", "Hesabını etkinleştirmek için yukarıdaki düğmeye tıkla."),
+            (
+                "Öğretmenini bul",
+                "Adana'daki öğretmenlerin profillerine, ücretlerine ve yorumlarına göz at.",
+            ),
+            ("İlk dersini ayarla", "Öğretmenine mesaj gönder, ilk dersinizi birlikte planlayın."),
+        ],
+    ),
+    "TUTOR": (
+        "Öğrencilerle buluşmana üç adım kaldı",
+        [
+            ("E-posta adresini doğrula", "Hesabını etkinleştirmek için yukarıdaki düğmeye tıkla."),
+            (
+                "İlanını tamamla",
+                "Fotoğrafını, verdiğin dersleri, ücretini ve kendini anlatan kısa bir yazı ekle.",
+            ),
+            (
+                "Onaya gönder",
+                "Ekibimiz ilanını inceler; onaylandığında öğrenciler seni bulabilir.",
+            ),
+        ],
+    ),
+}
 
 
-def _plain_html(text: str) -> str:
-    """Düz metin gövdeyi asgari HTML'e sarar.
+def verification_email(
+    *, to: str, name: str, verify_url: str, role: str | None = None
+) -> EmailMessage:
+    """Hoş geldin + e-posta doğrulama.
 
-    `EmailMessage` çoklu-parçadır: hem `text` hem `html` ister. Butonlu markalı
-    şablona ihtiyaç duymayan bildirimler (iletişim formu, güvenlik uyarısı)
-    buradan geçer — alanı boş bırakmak yerine okunabilir bir karşılık üretir.
+    ``role`` ("CLIENT" | "TUTOR") verilirse altına role göre "ilk adımlar" kartı
+    eklenir (Preply "Yeni işine hoş geldin" + "Yolculuğunda seni destekliyoruz").
+    Verilmezse yalnız doğrulama kartı gider (diğer roller, mevcut çağrılar).
     """
-    escaped = (
-        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    )
-    return (
-        '<div style="font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
-        'font-size:14px;line-height:22px;color:#0f172a;white-space:pre-wrap;">'
-        f"{escaped}</div>"
-    )
-
-
-def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
     ttl = settings.EMAIL_VERIFY_TOKEN_TTL_HOURS
     subject = f"{_BRAND} · E-posta adresini doğrula"
+    adimlar = _HOSGELDIN_ADIMLARI.get(role or "")
     text = (
         f"Merhaba {name},\n\n"
         f"{_BRAND} hesabını etkinleştirmek için e-posta adresini doğrula:\n"
         f"{verify_url}\n\n"
         f"Bu bağlantı {ttl} saat geçerlidir. Bu kaydı sen yapmadıysan bu e-postayı yok sayabilirsin."
+        + (
+            "\n\n" + adimlar[0] + ":\n"
+            + "\n".join(f"{i}. {b} — {a}" for i, (b, a) in enumerate(adimlar[1], start=1))
+            if adimlar
+            else ""
+        )
+        + c.text_footer()
     )
-    html = _layout(
-        heading="E-posta adresini doğrula",
-        intro=f"Merhaba <b>{name}</b>, {_BRAND} hesabını etkinleştirmek için aşağıdaki butona tıkla.",
-        button_label="E-postamı doğrula",
-        button_url=verify_url,
-        outro=f"Bağlantı {ttl} saat geçerlidir. Bu kaydı sen yapmadıysan bu e-postayı yok sayabilirsin.",
+    more_cards = (
+        [[c.heading(adimlar[0], space=24), c.steps(adimlar[1])]] if adimlar else []
+    )
+    html = c.render(
+        title=subject,
+        preheader=f"Hesabını etkinleştirmek için tek adım kaldı. Bağlantı {ttl} saat geçerli.",
+        blocks=[
+            c.heading(f"Aramıza hoş geldin, {name}!"),
+            c.paragraph(
+                f"{_BRAND} hesabını etkinleştirmek için e-posta adresini doğrula.",
+                space=24,
+            ),
+            c.button("E-posta adresimi doğrula", verify_url),
+            c.fine_print(
+                f"Bağlantı {ttl} saat geçerlidir. Bu kaydı sen yapmadıysan bu e-postayı "
+                "yok sayabilirsin."
+            ),
+        ],
+        more_cards=more_cards,
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 
@@ -89,19 +109,25 @@ def account_delete_email(*, to: str, name: str, confirm_url: str) -> EmailMessag
         f"{confirm_url}\n\n"
         f"Bu işlem GERİ ALINAMAZ. Bağlantı {ttl} saat geçerlidir. "
         f"Bu talebi sen yapmadıysan hesabına hiçbir şey olmaz; bu e-postayı yok sayabilirsin."
+        + c.text_footer()
     )
-    html = _layout(
-        heading="Hesabını silmek istediğini onayla",
-        intro=(
-            f"Merhaba <b>{name}</b>, hesabını silme talebini aldık. "
-            f"Onaylamak için aşağıdaki butona tıkla."
-        ),
-        button_label="Hesabımı sil",
-        button_url=confirm_url,
-        outro=(
-            f"Bu işlem GERİ ALINAMAZ. Bağlantı {ttl} saat geçerlidir. "
-            f"Bu talebi sen yapmadıysan hesabına hiçbir şey olmaz."
-        ),
+    html = c.render(
+        title=subject,
+        preheader="Hesabını silme talebini aldık. Onaylamadan hiçbir şey silinmez.",
+        blocks=[
+            c.heading("Hesabını silmek istediğini onayla"),
+            c.paragraph(f"Merhaba {name},", space=12),
+            c.paragraph("Hesabını silme talebini aldık. Onaylamak için aşağıdaki düğmeye tıkla."),
+            c.callout(
+                "Bu işlem GERİ ALINAMAZ. Hesabın silindikten sonra geri getirilemez.",
+                tone="warning",
+            ),
+            c.button("Hesabımı sil", confirm_url),
+            c.fine_print(
+                f"Bağlantı {ttl} saat geçerlidir. Bu talebi sen yapmadıysan hesabına hiçbir "
+                "şey olmaz; bu e-postayı yok sayabilirsin."
+            ),
+        ],
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 
@@ -115,34 +141,75 @@ def password_reset_email(*, to: str, name: str, reset_url: str) -> EmailMessage:
         f"{reset_url}\n\n"
         f"Bu bağlantı {ttl} saat geçerlidir. Bu talebi sen yapmadıysan şifren değişmez; "
         f"bu e-postayı yok sayabilirsin."
+        + c.text_footer()
     )
-    html = _layout(
-        heading="Şifreni sıfırla",
-        intro=f"Merhaba <b>{name}</b>, hesabının şifresini sıfırlamak için aşağıdaki butona tıkla.",
-        button_label="Şifremi sıfırla",
-        button_url=reset_url,
-        outro=(
-            f"Bağlantı {ttl} saat geçerlidir. Bu talebi sen yapmadıysan şifren değişmez; "
-            f"bu e-postayı yok sayabilirsin."
-        ),
+    html = c.render(
+        title=subject,
+        preheader=f"Şifreni sıfırlama bağlantın hazır. {ttl} saat geçerli.",
+        blocks=[
+            c.heading("Şifreni sıfırla"),
+            c.paragraph(f"Merhaba {name},", space=12),
+            c.paragraph(
+                "Hesabının şifresini sıfırlamak için bir talep aldık. Bu talebi sen "
+                "yaptıysan aşağıdaki düğmeyle yeni şifreni belirleyebilirsin.",
+                space=24,
+            ),
+            c.button("Şifremi sıfırla", reset_url),
+            c.fine_print(
+                f"Bağlantı {ttl} saat geçerlidir. Bu talebi sen yapmadıysan şifren değişmez; "
+                "bu e-postayı yok sayabilirsin."
+            ),
+        ],
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 
 
-# Mağaza sipariş durumu e-postaları. (başlık-eki, heading, intro-kuyruğu)
-_ORDER_COPY: dict[str, tuple[str, str, str]] = {
-    "PAID": ("Siparişin alındı", "Siparişin alındı", "ödemen onaylandı, siparişin hazırlanıyor."),
-    "SHIPPED": ("Siparişin kargoya verildi", "Siparişin yolda", "siparişin kargoya verildi."),
-    "DELIVERED": ("Siparişin teslim edildi", "Siparişin teslim edildi", "siparişin teslim edildi. Afiyet olsun!"),
-    "REFUNDED": ("Ödemen iade edildi", "İaden tamamlandı", "siparişin için ödemen iade edildi."),
+# Mağaza sipariş durumu e-postaları.
+# (konu eki, başlık, gövde kuyruğu, preheader, durum kutusu)
+_ORDER_COPY: dict[str, tuple[str, str, str, str, str]] = {
+    "PAID": (
+        "Siparişin alındı",
+        "Siparişin alındı",
+        "ödemen onaylandı, siparişin hazırlanıyor.",
+        "Ödemen onaylandı, siparişini hazırlamaya başladık.",
+        "Ödemen onaylandı. Siparişini hazırlamaya başladık.",
+    ),
+    "SHIPPED": (
+        "Siparişin kargoya verildi",
+        "Siparişin yolda",
+        "siparişin kargoya verildi.",
+        "Siparişin kargoya verildi, yakında kapında.",
+        "Siparişin kargoya verildi. Yakında kapında!",
+    ),
+    "DELIVERED": (
+        "Siparişin teslim edildi",
+        "Siparişin teslim edildi",
+        "siparişin teslim edildi. Afiyet olsun!",
+        "Siparişin teslim edildi. İyi çalışmalar!",
+        "Siparişin teslim edildi. İyi çalışmalar!",
+    ),
+    "REFUNDED": (
+        "Ödemen iade edildi",
+        "İaden tamamlandı",
+        "siparişin için ödemen iade edildi.",
+        "Siparişin için ödemen iade edildi.",
+        "",
+    ),
 }
+_ORDER_FALLBACK = (
+    "Sipariş güncellemesi",
+    "Sipariş güncellemesi",
+    "siparişinde bir güncelleme var.",
+    "Siparişinde bir güncelleme var.",
+    "",
+)
 
 
 def order_status_email(
     *, to: str, name: str, order_id: int, status: str, total: str, currency: str, orders_url: str
 ) -> EmailMessage:
-    subject_base, heading, intro_tail = _ORDER_COPY.get(
-        status, ("Sipariş güncellemesi", "Sipariş güncellemesi", "siparişinde bir güncelleme var.")
+    subject_base, heading, intro_tail, preheader, success = _ORDER_COPY.get(
+        status, _ORDER_FALLBACK
     )
     subject = f"{_BRAND} · {subject_base} (#{order_id})"
     money = f"{total} {currency}"
@@ -150,15 +217,34 @@ def order_status_email(
         f"Merhaba {name},\n\n"
         f"#{order_id} numaralı {intro_tail}\n"
         f"Tutar: {money}\n\n"
-        f"Siparişlerini görüntüle: {orders_url}\n"
+        f"Siparişlerini görüntüle: {orders_url}"
+        + c.text_footer()
     )
-    html = _layout(
-        heading=heading,
-        intro=f"Merhaba <b>{name}</b>, <b>#{order_id}</b> numaralı {intro_tail} Tutar: <b>{money}</b>.",
-        button_label="Siparişlerimi gör",
-        button_url=orders_url,
-        outro="Bu e-postayı mağazadaki siparişinle ilgili aldın.",
-    )
+    blocks = [c.heading(heading), c.paragraph(f"Merhaba {name},", space=12)]
+    if status == "REFUNDED":
+        blocks += [
+            c.paragraph(
+                f"#{order_id} numaralı siparişin için {money} tutarındaki ödemen iade edildi."
+            ),
+            c.info_rows([("siparis", "Sipariş no", f"#{order_id}"), ("tutar", "İade tutarı", money)]),
+            c.callout("Tutarın hesabında görünme süresi bankana göre değişebilir.", tone="note"),
+        ]
+    else:
+        # Durum kutusu varsa gövde cümlesinin yerini alır (aynı bilgi iki kez yazılmaz).
+        if success:
+            blocks.append(c.callout(success, tone="success"))
+        else:
+            blocks.append(c.paragraph(f"#{order_id} numaralı {intro_tail}"))
+        blocks.append(
+            c.info_rows([("siparis", "Sipariş no", f"#{order_id}"), ("tutar", "Tutar", money)])
+        )
+    blocks += [
+        c.button("Siparişlerimi gör", orders_url),
+        c.fine_print(
+            c.fmt("Bir sorun mu var? {link}", link=c.link("Bize ulaş", c.site_url("/iletisim")))
+        ),
+    ]
+    html = c.render(title=subject, preheader=preheader, blocks=blocks)
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 
 
@@ -169,13 +255,18 @@ def back_in_stock_email(*, to: str, product_title: str, product_url: str) -> Ema
         f"İlgilendiğin '{product_title}' yeniden stokta!\n"
         f"{product_url}\n\n"
         f"Stoklar tükenmeden sipariş verebilirsin."
+        + c.text_footer()
     )
-    html = _layout(
-        heading="Yeniden stokta!",
-        intro=f"İlgilendiğin <b>{product_title}</b> yeniden stokta. Stoklar tükenmeden sipariş verebilirsin.",
-        button_label="Ürüne git",
-        button_url=product_url,
-        outro="Bu e-postayı bu ürün için stok bildirimi istediğin için aldın.",
+    html = c.render(
+        title=subject,
+        preheader=f"{product_title} yeniden stokta. Stoklar tükenmeden sipariş verebilirsin.",
+        blocks=[
+            c.heading("Beklediğin ürün yeniden stokta!"),
+            c.paragraph("Stok bildirimi istediğin ürün tekrar satışta."),
+            c.info_rows([("urun", "Ürün", product_title)]),
+            c.button("Ürüne git", product_url),
+            c.fine_print("Stoklar tükenmeden sipariş verebilirsin."),
+        ],
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
 
@@ -207,12 +298,25 @@ def contact_message_email(
         f"{'-' * 40}\n"
         f"Yanıtlamak için doğrudan {from_email} adresine yazın."
     )
-    return EmailMessage(
-        to=to,
-        subject=f"[İletişim] {subject}",
-        text=body,
-        html=_plain_html(body),
+    rows: list[tuple[str | None, object, object]] = [
+        ("eposta", "E-posta", from_email),
+        ("mesaj", "Konu", subject),
+    ]
+    if user_ref:
+        rows.append(("kisi", "Hesap", user_ref))
+    html = c.render(
+        title=f"[İletişim] {subject}",
+        preheader=f"{from_name}: {message[:90]}",
+        blocks=[
+            c.tag("İletişim formu"),
+            c.heading(f"{from_name} bir mesaj gönderdi"),
+            c.quote(from_name, message),
+            c.info_rows(rows),
+            c.button("Yanıtla", f"mailto:{from_email}"),
+            c.fine_print(f"Yanıtlamak için doğrudan {from_email} adresine yazın."),
+        ],
     )
+    return EmailMessage(to=to, subject=f"[İletişim] {subject}", text=body, html=html)
 
 
 def tutor_lead_email(
@@ -240,26 +344,48 @@ def tutor_lead_email(
         f"Telefon: {phone}",
         f"Dersler: {subjects}",
     ]
+    rows: list[tuple[str | None, object, object]] = [
+        ("telefon", "Telefon", phone),
+        ("kitap", "Dersler", subjects),
+    ]
     if email:
         lines.append(f"E-posta: {email}")
+        rows.append(("eposta", "E-posta", email))
     if district:
         lines.append(f"İlçe: {district}")
+        rows.append(("konum", "İlçe", district))
     if experience:
         lines.append(f"Deneyim: {experience}")
+        rows.append(("deneyim", "Deneyim", experience))
     if document_count:
         lines.append(f"Belge: {document_count} dosya (panelden görüntülenir)")
+        rows.append(("belge", "Belge", f"{document_count} dosya"))
     if has_photo:
         lines.append("Profil fotoğrafı: var (panelden görüntülenir)")
+        rows.append(("foto", "Profil fotoğrafı", "var"))
     if note:
         lines.append(f"\nNot:\n{note}")
     lines += ["", "-" * 40, "Kayıt, yönetim panelindeki Eğitmen Başvuruları listesinde."]
     body = "\n".join(lines)
-    return EmailMessage(
-        to=to,
-        subject=f"[Ön Başvuru] {name}",
-        text=body,
-        html=_plain_html(body),
+
+    blocks = [
+        c.tag("Eğitmen ön başvurusu"),
+        c.heading(f"{name} eğitmen olmak istiyor"),
+        c.info_rows(rows),
+    ]
+    if note:
+        blocks.append(c.quote(name, note))
+    blocks.append(
+        c.fine_print(
+            "Belge ve fotoğraflar yönetim panelindeki Eğitmen Başvuruları listesinde görüntülenir."
+        )
     )
+    html = c.render(
+        title=f"[Ön Başvuru] {name}",
+        preheader=f"{name} · {subjects}",
+        blocks=blocks,
+    )
+    return EmailMessage(to=to, subject=f"[Ön Başvuru] {name}", text=body, html=html)
 
 
 def contact_ack_email(*, to: str, name: str, subject: str) -> EmailMessage:
@@ -270,9 +396,18 @@ def contact_ack_email(*, to: str, name: str, subject: str) -> EmailMessage:
         f"Bu otomatik bir bilgilendirmedir; yanıtlaman gerekmiyor.\n\n"
         f"Adana Özel Ders"
     )
-    return EmailMessage(
-        to=to, subject="Mesajını aldık", text=body, html=_plain_html(body)
+    mail_subject = f"{_BRAND} · Mesajını aldık"
+    html = c.render(
+        title=mail_subject,
+        preheader=f"\"{subject}\" konulu mesajını aldık. En kısa sürede dönüş yapacağız.",
+        blocks=[
+            c.heading("Mesajını aldık"),
+            c.paragraph(f"Merhaba {name},", space=12),
+            c.paragraph("Bize yazdığın için teşekkürler. En kısa sürede dönüş yapacağız."),
+            c.info_rows([("mesaj", "Konu", subject)], space=0),
+        ],
     )
+    return EmailMessage(to=to, subject=mail_subject, text=body, html=html)
 
 
 def payout_changed_email(*, to: str, name: str, iban_masked: str) -> EmailMessage:
@@ -281,6 +416,9 @@ def payout_changed_email(*, to: str, name: str, iban_masked: str) -> EmailMessag
     Ele geçirilmiş bir hesapta saldırganın ilk yapacağı şey para hedefini kendi
     IBAN'ına çevirmektir. Uygulama içi bildirim burada yetmez (saldırgan onu görür
     ve okundu işaretler); asıl koruma, sahibinin e-posta kutusuna düşen bu mesajdır.
+
+    Düğmeler oturum gerektirmeyen sayfalara gider: hesap ele geçirilmişse sahibi
+    giriş yapamıyor olabilir.
     """
     subject = f"{_BRAND} · Ödeme hesabın güncellendi"
     body = (
@@ -288,7 +426,26 @@ def payout_changed_email(*, to: str, name: str, iban_masked: str) -> EmailMessag
         "Hesabındaki ödeme bilgisi (IBAN) güncellendi.\n"
         f"Yeni IBAN: {iban_masked}\n\n"
         "Bu işlemi sen yapmadıysan hesabın başkasının eline geçmiş olabilir: "
-        "hemen şifreni değiştir ve bizimle iletişime geç.\n\n"
+        "hemen şifreni değiştir ve bizimle iletişime geç.\n"
+        f"Şifreni sıfırla: {c.site_url('/sifremi-unuttum')}\n"
+        f"Bize ulaş: {c.site_url('/iletisim')}\n\n"
         f"{_BRAND}"
     )
-    return EmailMessage(to=to, subject=subject, text=body, html=_plain_html(body))
+    html = c.render(
+        title=subject,
+        preheader="Hesabındaki ödeme bilgisi (IBAN) güncellendi. Sen yapmadıysan hemen bize ulaş.",
+        blocks=[
+            c.heading("Ödeme hesabın güncellendi"),
+            c.paragraph(f"Merhaba {name},", space=12),
+            c.paragraph("Hesabındaki ödeme bilgisi (IBAN) değiştirildi."),
+            c.info_rows([("kart", "Yeni IBAN", iban_masked), ("saat", "Tarih", c.now_tr())]),
+            c.callout(
+                "Bu işlemi sen yapmadıysan hesabın başkasının eline geçmiş olabilir: hemen "
+                "şifreni değiştir ve bizimle iletişime geç.",
+                tone="warning",
+            ),
+            c.button("Şifremi sıfırla", c.site_url("/sifremi-unuttum"), space=12),
+            c.button("Bize ulaş", c.site_url("/iletisim"), variant="secondary", space=0),
+        ],
+    )
+    return EmailMessage(to=to, subject=subject, text=body, html=html)
