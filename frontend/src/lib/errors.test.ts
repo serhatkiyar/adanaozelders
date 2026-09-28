@@ -14,7 +14,7 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 
-import { getErrorDetail, getErrorMessage } from "@/lib/errors";
+import { getErrorDetail, getErrorMessage, isPhoneVerificationError } from "@/lib/errors";
 
 /** Gerçek bir AxiosError üretir — `instanceof` kontrolü bu yüzden şart. */
 function axiosHata(status: number, data: unknown): AxiosError {
@@ -153,5 +153,24 @@ describe("getErrorDetail — yönetim yüzeyi", () => {
   it("obje detail'de getErrorMessage'a düşer ve message'ı alır", () => {
     const hata = axiosHata(503, { detail: { message: "Kol kapalı" } });
     expect(getErrorDetail(hata, "yedek")).toBe("Kol kapalı");
+  });
+});
+
+describe("telefon doğrulama kapısı (403)", () => {
+  const kapi = () =>
+    axiosHata(403, { detail: "Bu işlemi yapmadan önce telefon numaranı doğrulaman gerekiyor." });
+
+  it("genel 'yetkin yok' metnine düşmez; ne yapılacağını söyler", () => {
+    // Regresyon: yeni öğrenci rezervasyon sihirbazını bitirip yalnız
+    // "Bu işlem için yetkin yok." görüyordu; sebep telefon doğrulamasıydı.
+    expect(getErrorMessage(kapi(), "x")).toBe(
+      "Bu işlemi yapmadan önce telefon numaranı doğrulaman gerekiyor."
+    );
+  });
+
+  it("isPhoneVerificationError yalnız telefon kapısını tanır", () => {
+    expect(isPhoneVerificationError(kapi())).toBe(true);
+    expect(isPhoneVerificationError(axiosHata(403, { detail: "Not your booking" }))).toBe(false);
+    expect(isPhoneVerificationError(new Error("x"))).toBe(false);
   });
 });

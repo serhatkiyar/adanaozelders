@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -101,14 +101,19 @@ def degerlendirme_engeli(
 async def egitmen_degerlendirildi_mi(
     db: AsyncSession, *, client_id: int, tutor_id: int
 ) -> bool:
-    """Öğrencinin bu eğitmene aktif (silinmemiş) bir yorumu var mı?"""
+    """Öğrencinin bu eğitmene aktif (silinmemiş) bir yorumu var mı?
+
+    Moderasyonla gizlenmiş yorum silinmiş olsa da hakkı tüketir: aksi hâlde
+    öğrenci gizlenen yorumunu silip aynı dersle yeniden yazarak moderasyon
+    kararını (gizleme + puan toplamından düşme) geri alabilirdi.
+    """
     return (
         await db.scalar(
             select(Review.id)
             .where(
                 Review.client_id == client_id,
                 Review.tutor_id == tutor_id,
-                Review.deleted_at.is_(None),
+                or_(Review.deleted_at.is_(None), Review.hidden_at.is_not(None)),
             )
             .limit(1)
         )

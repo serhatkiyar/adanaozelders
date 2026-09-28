@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime
+
 from core import frontend_yollari
 
 from fastapi import HTTPException, status
@@ -326,24 +328,47 @@ async def reject(db: AsyncSession, tutor: Tutor) -> Tutor:
     return tutor
 
 
-async def suspend(db: AsyncSession, tutor: Tutor) -> Tutor:
-    # Eğitmenin self-servis "Pasife al" aksiyonu; yalnızca yayındaki ilan pasife alınabilir.
+async def suspend(db: AsyncSession, tutor: Tutor, *, by_admin: bool = False) -> Tutor:
+    """İlanı yayından kaldırır (APPROVED → SUSPENDED).
+
+    Eğitmenin self-servis "Pasife al"ı ile admin'in yayından kaldırması aynı
+    durumu yazar; ``by_admin`` kararı ``suspended_by_admin_at`` ile işaretler
+    ve eğitmen o ilanı kendisi yeniden yayına alamaz. Eğitmen ilanı zaten
+    kendisi pasife almışsa admin kararı yine işaretlenir — aksi hâlde "önce
+    pasife al, sonra aktifleştir" admin kararını boşa çıkarırdı.
+    """
+    if by_admin and tutor.status == TutorStatus.SUSPENDED:
+        tutor.suspended_by_admin_at = datetime.datetime.now(datetime.timezone.utc)
+        await db.flush()
+        return tutor
     if tutor.status != TutorStatus.APPROVED:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Only an approved listing can be suspended"
         )
     _transition(tutor, TutorStatus.SUSPENDED)
+    if by_admin:
+        tutor.suspended_by_admin_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()
     return tutor
 
 
-async def activate(db: AsyncSession, tutor: Tutor) -> Tutor:
-    # Eğitmenin self-servis "Aktifleştir" aksiyonu; yalnızca pasif ilan yeniden yayına alınabilir.
+async def activate(db: AsyncSession, tutor: Tutor, *, by_admin: bool = False) -> Tutor:
+    """Pasif ilanı yeniden yayına alır (SUSPENDED → APPROVED).
+
+    Admin'in yayından kaldırdığı ilanı yalnız admin geri açar (``by_admin``).
+    """
     if tutor.status != TutorStatus.SUSPENDED:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Only a suspended listing can be reactivated"
         )
+    if not by_admin and tutor.suspended_by_admin_at is not None:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "İlanın yönetici tarafından yayından kaldırıldı; yeniden yayına "
+            "alınması için destek ekibiyle iletişime geç.",
+        )
     _transition(tutor, TutorStatus.APPROVED)
+    tutor.suspended_by_admin_at = None
     await db.flush()
     await _yayina_alindi(db, tutor)
     return tutor

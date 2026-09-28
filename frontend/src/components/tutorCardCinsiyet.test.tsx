@@ -31,6 +31,7 @@
  * ŞEY basmadığında da yeşil kalırdı. Doluluk düğümü (konum ve ad gerçekten
  * görünüyor) o kaçışı kapatır.
  */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -94,5 +95,25 @@ describe("TutorCard · cinsiyet listede yazılmaz", () => {
       expect(screen.getByText("Uzaktan")).toBeTruthy();
       unmount();
     }
+  });
+});
+
+describe("TutorCard · favori düğmesi bağlantının DIŞINDA", () => {
+  it("<a> içinde <button> yok; iki kontrol ayrı ayrı adlandırılmış", () => {
+    // Regresyon: BookmarkButton kart <Link>'inin içindeydi (geçersiz iç içe
+    // etkileşimli öğe; ekran okuyucu düğmeyi ayrı kontrol olarak duyurmuyordu).
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    qc.setQueryData(["bookmarks"], []);
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter>
+          <TutorCard tutor={egitmen(null)} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const baglanti = screen.getByRole("link");
+    const favori = screen.getByRole("button", { name: /Favorilere ekle/ });
+    expect(baglanti.contains(favori)).toBe(false);
+    expect(baglanti.querySelector("button")).toBeNull();
   });
 });

@@ -79,6 +79,12 @@ class Tutor(
         nullable=False,
         server_default=text("'DRAFT'"),
     )
+    #: Admin "yayından kaldır" kararının anı. Doluyken eğitmen ilanı kendi
+    #: "Aktifleştir" ucuyla yayına alamaz; yalnız admin geri açar. Eğitmenin
+    #: self-servis "Pasife al"ı bu alanı YAZMAZ (ikisi de SUSPENDED yazar).
+    suspended_by_admin_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     headline: Mapped[str | None] = mapped_column(String(255), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)

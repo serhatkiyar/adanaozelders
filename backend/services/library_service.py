@@ -507,7 +507,9 @@ async def create_review(
             select(LibraryReview).where(
                 LibraryReview.library_id == library_id,
                 LibraryReview.client_id == client.id,
-                LibraryReview.deleted_at.is_(None),
+                # Moderasyonla gizlenen yorum silinse de hakkı tüketir: sil +
+                # yeniden yaz gizleme kararını geri almasın.
+                or_(LibraryReview.deleted_at.is_(None), LibraryReview.hidden_at.is_not(None)),
             )
         )
     ).scalars().first()
@@ -662,8 +664,6 @@ async def update_library(
         "phone",
         "email",
         "website",
-        "cover_url",
-        "logo_url",
         "location_lat",
         "location_lng",
         "city",
@@ -676,6 +676,11 @@ async def update_library(
     ]
     if allow_identity:
         editable.append("status")
+        # Görsel adresleri yalnız admin elle yazar; operatör logo/kapağı yükleme
+        # uçlarından yönetir. `set_logo`/`set_cover` ESKİ değeri depodan sildiği
+        # için operatör alana başka bir kütüphanenin (ya da profilin) public
+        # anahtarını yazıp ardından görsel yükleyerek o nesneyi sildirebilirdi.
+        editable += ["cover_url", "logo_url"]
     for field in editable:
         if field in data:
             setattr(lib, field, data[field])

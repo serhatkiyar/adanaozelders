@@ -118,8 +118,7 @@ async def request_otp(
 async def verify_otp(db: AsyncSession, user, code: str) -> None:
     """Girilen kodu en güncel aktif OTP'ye karşı doğrular; başarıda numarayı onaylar.
 
-    Hatalı/dolmuş/limit aşımı → 400. Her deneme, kod karşılaştırılmadan önce
-    sayaca kalıcı olarak yazılır (en fazla ``PHONE_OTP_MAX_ATTEMPTS``).
+    Hatalı/dolmuş/limit aşımı → 400. Deneme sayacı her hatalı denemede artar.
     """
     if not _supports_phone(user):
         raise HTTPException(
@@ -136,6 +135,9 @@ async def verify_otp(db: AsyncSession, user, code: str) -> None:
             )
             .order_by(PhoneOtp.id.desc())
             .limit(1)
+            # Satır kilidi: eşzamanlı tahminler sayacı aynı değerden okuyup
+            # tek artışa indiremesin (paralel istekle limit aşılıyordu).
+            .with_for_update()
         )
     ).scalar_one_or_none()
 
@@ -144,36 +146,20 @@ async def verify_otp(db: AsyncSession, user, code: str) -> None:
             status.HTTP_400_BAD_REQUEST,
             "Kodun süresi doldu ya da yok. Yeni kod iste.",
         )
-    # Deneme hakkı kod karşılaştırmasından ÖNCE, atomik olarak ayrılır ve
-    # COMMIT edilir. Eskiden sayaç `flush()` sonrası 400 ile artırılıyordu;
-    # istisna `get_db`'de rollback tetiklediği için artış kayboluyor ve 6 haneli
-    # kod sınırsız denenebiliyordu. Koşullu UPDATE satırı kilitlediğinden
-    # eşzamanlı istekler de sınırı aşamaz.
-    ayrilan = (
-        await db.execute(
-            update(PhoneOtp)
-            .where(
-                PhoneOtp.id == otp.id,
-                PhoneOtp.used_at.is_(None),
-                PhoneOtp.attempts < settings.PHONE_OTP_MAX_ATTEMPTS,
-            )
-            .values(attempts=PhoneOtp.attempts + 1)
-            .returning(PhoneOtp.id)
-        )
-    ).scalar_one_or_none()
-    if ayrilan is None:
-        await db.execute(
-            update(PhoneOtp)
-            .where(PhoneOtp.id == otp.id, PhoneOtp.used_at.is_(None))
-            .values(used_at=now)
-        )
+    # Deneme sayacı ve kilit, hata fırlatılmadan ÖNCE commit edilir: `get_db`
+    # istisnada rollback yapar; yalnız flush edilseydi sayaç hiç kalıcı olmaz,
+    # deneme limiti etkisiz kalır ve 6 haneli kod sınırsız denenebilirdi
+    # (teslimat OTP'si `delivery_service.verify_delivery` ile aynı desen).
+    if otp.attempts >= settings.PHONE_OTP_MAX_ATTEMPTS:
+        otp.used_at = now
         await db.commit()
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "Çok fazla hatalı deneme. Yeni kod iste.",
         )
-    await db.commit()
     if not secrets.compare_digest(_hash(code.strip()), otp.code_hash):
+        otp.attempts += 1
+        await db.commit()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kod hatalı.")
 
     otp.used_at = now

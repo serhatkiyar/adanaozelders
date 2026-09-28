@@ -37,6 +37,10 @@ export function DersKarti({
   const reject = useBookingAction("reject");
   const complete = useBookingAction("complete");
   const [showCancel, setShowCancel] = useState(false);
+  // Reddetme geri alınamaz ve "Kabul et"in hemen yanında duruyor: telefonda
+  // yanlış dokunuş öğrencinin talebini kaybettiriyordu. İki adımlı onay
+  // `LessonDetail`deki `redOnayi` deseniyle aynı.
+  const [redOnayi, setRedOnayi] = useState(false);
   const busy = accept.isPending || reject.isPending || complete.isPending;
 
   const clientName = booking.client_name ?? `Öğrenci #${booking.client_id}`;
@@ -54,6 +58,9 @@ export function DersKarti({
     booking.status === BookingStatus.PENDING && !booking.offered_by_tutor;
   const isAccepted = booking.status === BookingStatus.ACCEPTED;
   const yuzYuze = booking.mode === "IN_PERSON";
+  // Sunucu başlamamış dersi tamamlatmaz (409, `_assert_completable`); düğme
+  // o zamana dek gösterilmez — yoksa her dokunuş yalnız bir hata toast'ıydı.
+  const basladi = Date.parse(booking.start_at) <= Date.now();
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -82,7 +89,26 @@ export function DersKarti({
         >
           Detay
         </Link>
-        {isPending ? (
+        {isPending && redOnayi ? (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => run(reject, "Ders talebi reddedildi.")}
+              className={DUGME_SATIR_TEHLIKE}
+            >
+              {reject.isPending ? "Reddediliyor…" : "Evet, reddet"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setRedOnayi(false)}
+              className={DUGME_SATIR_IKINCIL}
+            >
+              Vazgeç
+            </button>
+          </>
+        ) : isPending ? (
           <>
             <button
               type="button"
@@ -90,15 +116,15 @@ export function DersKarti({
               onClick={() => run(accept, "Ders talebi kabul edildi.")}
               className={DUGME_SATIR_BIRINCIL}
             >
-              {accept.isPending ? "…" : "Kabul et"}
+              {accept.isPending ? "Kabul ediliyor…" : "Kabul et"}
             </button>
             <button
               type="button"
               disabled={busy}
-              onClick={() => run(reject, "Ders talebi reddedildi.")}
+              onClick={() => setRedOnayi(true)}
               className={DUGME_SATIR_TEHLIKE}
             >
-              {reject.isPending ? "…" : "Reddet"}
+              Reddet
             </button>
           </>
         ) : isAccepted ? (
@@ -112,14 +138,16 @@ export function DersKarti({
                 Derse katıl
               </button>
             )}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
-              className={DUGME_SATIR_IKINCIL}
-            >
-              {complete.isPending ? "…" : "Tamamla"}
-            </button>
+            {basladi && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}
+                className={DUGME_SATIR_IKINCIL}
+              >
+                {complete.isPending ? "Kaydediliyor…" : "Tamamla"}
+              </button>
+            )}
             <button
               type="button"
               disabled={busy}

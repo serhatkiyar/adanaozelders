@@ -20,7 +20,7 @@ import { MobilAramaAkisi } from "@/components/kesif/MobilAramaAkisi";
 import { type DersSekli } from "@/components/AramaSecicileri";
 import { useAramaDurumu } from "@/hooks/useAramaDurumu";
 import { EGITMEN_ARAMA, dersSorgusu, egitmenIstegi, kutuphaneAramaAdresi } from "@/lib/aramaUrl";
-import { filtreliMi } from "@/lib/urlSemasi";
+import { bosDeger, filtreliMi } from "@/lib/urlSemasi";
 import { EgitmenFiltreModali } from "@/components/EgitmenFiltreModali";
 import { useKonumStore } from "@/store/konumStore";
 import { useYakinimdaKonum } from "@/hooks/useYakinimdaKonum";
@@ -130,7 +130,7 @@ export default function PublicMarketplace() {
     [degerler, debouncedQ, limit, konumum]
   );
 
-  const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
+  const { data, isLoading, isFetching, isError, error, refetch } = useTutorSearch(params);
 
   // ── Öne çıkarma bloğu ──
   // Arama ile AYNI filtreler; `sort`/`exam` GEÇMEZ (blokta sıralama satın
@@ -497,6 +497,9 @@ export default function PublicMarketplace() {
       />
 
       <div className="mx-auto max-w-[1050px] space-y-4 pt-4">
+        {/* Sayfanın tek h1'i; görsel başlık arama hapıdır. Ekran okuyucu
+            kullanıcısı başlıkla gezinince sonuçların ne olduğunu duysun. */}
+        <h1 className="sr-only">{seoTitle}</h1>
         {/*
           * KAYIT BANDI SÖKÜLDÜ (kullanıcı kararı, 9 Eyl 2026 · ÜK-10).
           *
@@ -522,18 +525,44 @@ export default function PublicMarketplace() {
               ))}
             </div>
           ) : isError ? (
-            <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 ">
-              <span>⚠</span>
-              {getErrorMessage(error, "Öğretmenler yüklenemedi.")}
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 "
+            >
+              <span aria-hidden="true">⚠</span>
+              <span className="flex-1">{getErrorMessage(error, "Öğretmenler yüklenemedi.")}</span>
+              {/* Hata bir çıkmaz sokak olmasın: sayfa yenilemeden yeniden dene. */}
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="min-h-[44px] rounded-xl bg-white px-4 text-sm font-semibold text-red-700 ring-1 ring-red-200 transition hover:bg-red-100"
+              >
+                Tekrar dene
+              </button>
             </div>
           ) : organicTutors.length === 0 && featuredIds.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">
+              <div aria-hidden="true" className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl ">
                 🔍
               </div>
               <p className="mt-4 text-sm font-medium text-slate-700 ">
                 Kriterlere uyan öğretmen bulunamadı
               </p>
+              {/* Boş sonuç çıkmaz sokak olmasın: filtreler tek dokunuşla sıfırlanır. */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Oturumlu listenin `clearAll`ı ile aynı sıfırlama.
+                    setQ("");
+                    useKonumStore.getState().unut();
+                    ayarla(bosDeger(EGITMEN_ARAMA));
+                  }}
+                  className="mt-4 min-h-[44px] rounded-xl bg-white px-5 text-sm font-semibold text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-50"
+                >
+                  Tüm filtreleri temizle
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -542,7 +571,7 @@ export default function PublicMarketplace() {
                 enabled={featuredOnFirstPage}
                 onIds={setFeaturedIds}
               />
-              <div className="mb-3 flex items-center gap-2 text-xs text-slate-400 ">
+              <div className="mb-3 flex items-center gap-2 text-xs text-slate-500 ">
                 <span>{organicTutors.length} öğretmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">

@@ -49,14 +49,11 @@ from models.srs import (
     SrsReviewLog,
     SrsTag,
 )
-from services import admin_access_service
 from services.spaced_repetition import dayboundary, engine, params, queuerules
 
 ROLE_ADMIN = 1
 ROLE_TUTOR = 2
 ROLE_CLIENT = 3
-#: Platform destesi içeriğini yazma izni (router'daki `_platform_guard` ile aynı kod).
-PLATFORM_MANAGE_PERMISSION = "srs_platform.manage"
 
 # Anki varsayılanı: başka iş kalmadıysa vadesine <= 20 dk kalmış öğrenme kartı
 # erken gösterilir (sözleşme §4.1). Sayaçlar da bu pencereyle uyumludur.
@@ -599,20 +596,27 @@ async def _note_deck_or_404(
     """Not yazma yetkisi: deste sahibi VEYA (admin ∧ platform destesi ∧
     ``srs_platform.manage``).
 
-    İzin burada da denetlenir: genel not/kart uçları yalnız
-    ``get_current_active_user`` ile kablolu, router'daki ``_platform_guard``
-    onları kapsamaz. Denetim olmadan her admin (ör. finans/destek rolü)
-    bütün öğrencilere giden platform içeriğini değiştirebiliyordu.
+    Platform destesi her öğrencinin gördüğü içeriktir; yazımı `/srs/admin/*`
+    uçlarındaki görev izniyle aynı izne bağlıdır. Yalnız ADMIN rolüne bakmak,
+    bu izni taşımayan (ör. ticaret/operasyon) adminlere kullanıcı uçlarından
+    (`/srs/decks/{id}/notes`, `/srs/notes/{id}`, `/srs/cards/bulk`) platform
+    içeriğini değiştirme yolu açıyordu.
     """
     deck = await _get_live_deck(db, deck_id)
     if deck is None:
         raise _404("Deste bulunamadı")
+    if deck.visibility == "PLATFORM":
+        # Sahiplik burada yetmez: platform destesinin sahibi onu açan admindir
+        # ve izni sonradan geri alınmış olabilir.
+        if user.role_id == ROLE_ADMIN:
+            from services import admin_access_service
+
+            _rol, izinler = await admin_access_service.get_admin_access(db, user.id)
+            if "srs_platform.manage" in izinler:
+                return deck
+        raise _404("Deste bulunamadı")
     if _is_owner(deck, user):
         return deck
-    if user.role_id == ROLE_ADMIN and deck.visibility == "PLATFORM":
-        _rol, izinler = await admin_access_service.get_admin_access(db, user.id)
-        if PLATFORM_MANAGE_PERMISSION in izinler:
-            return deck
     raise _404("Deste bulunamadı")
 
 

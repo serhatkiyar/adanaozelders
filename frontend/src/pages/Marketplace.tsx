@@ -219,7 +219,7 @@ export default function Marketplace() {
     [degerler, debouncedQ, limit, konumum]
   );
 
-  const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
+  const { data, isLoading, isFetching, isError, error, refetch } = useTutorSearch(params);
 
   // ── Öne çıkarma bloğu ──
   // Arama ile AYNI sert filtreler; `sort`/`exam` GEÇMEZ (blokta sıralama
@@ -599,9 +599,20 @@ export default function Marketplace() {
               ))}
             </div>
           ) : isError ? (
-            <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 ">
-              <span>⚠</span>
-              {getErrorMessage(error, "Öğretmenler yüklenemedi.")}
+            <div
+              role="alert"
+              className="flex flex-wrap items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 "
+            >
+              <span aria-hidden="true">⚠</span>
+              <span className="flex-1">{getErrorMessage(error, "Öğretmenler yüklenemedi.")}</span>
+              {/* Hata bir çıkmaz sokak olmasın: sayfa yenilemeden yeniden dene. */}
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="min-h-[44px] rounded-xl bg-white px-4 text-sm font-semibold text-red-700 ring-1 ring-red-200 transition hover:bg-red-100"
+              >
+                Tekrar dene
+              </button>
             </div>
           ) : !data || data.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center ">
@@ -626,7 +637,7 @@ export default function Marketplace() {
           ) : (
             <>
               <FeaturedTutorBlock params={featuredParams} onIds={setFeaturedIds} />
-              <div className="mb-3 flex items-center gap-2 text-xs text-slate-400 ">
+              <div className="mb-3 flex items-center gap-2 text-xs text-slate-500 ">
                 <span>{organicTutors.length} öğretmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">
