@@ -11,6 +11,7 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { KesifKabugu } from "@/components/kesif/KesifKabugu";
 import { ALISVERIS_ROLLERI } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
+import { panelSayfaYukleyicileri } from "@/lib/panelOnYukleme";
 import { ROUTES, PATHS } from "@/lib/routes";
 import { kokAdresBiciminde } from "@/lib/kokAdres";
 import {
@@ -267,8 +268,8 @@ const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 // Zimmet (paketi araca alma) saha ekranından AYRI bir rotadır: aynı sayfada
 // sekme olsaydı, kurye kapıda yanlış moda düşebilirdi (sözleşme §3.4).
 const DeliveryRunHandover = lazy(() => import("@/pages/DeliveryRunHandover"));
-const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
-const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
+const TutorDashboard = lazy(panelSayfaYukleyicileri.TutorDashboard);
+const TutorSettings = lazy(panelSayfaYukleyicileri.TutorSettings);
 const IlanSihirbazi = lazy(
   () => import("@/pages/tutorOnboarding/IlanSihirbazi"),
 );
@@ -283,18 +284,18 @@ const Favorites = lazy(() => import("@/pages/Favorites"));
 const FavorilerGirisDaveti = lazy(() => import("@/pages/FavorilerGirisDaveti"));
 const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
-const Reservations = lazy(() => import("@/pages/Reservations"));
-const OgrenciPano = lazy(() => import("@/pages/OgrenciPano"));
+const Reservations = lazy(panelSayfaYukleyicileri.Reservations);
+const OgrenciPano = lazy(panelSayfaYukleyicileri.OgrenciPano);
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
 // Canlı ders (Zoom): kabuksuz tam ekran. Toolkit bu parçada DEĞİL, sayfanın
 // kendi tembel parçasında (`components/canli/CanliOda`).
 const CanliDers = lazy(() => import("@/pages/CanliDers"));
 const LibraryReservationDetail = lazy(() => import("@/pages/LibraryReservationDetail"));
-const Messages = lazy(() => import("@/pages/Messages"));
+const Messages = lazy(panelSayfaYukleyicileri.Messages);
 // FullCalendar yalnız bu chunk'a girer (Modül 7).
-const TutorCalendar = lazy(() => import("@/pages/TutorCalendar"));
-const TutorAnalytics = lazy(() => import("@/pages/TutorAnalytics"));
-const TutorStudents = lazy(() => import("@/pages/TutorStudents"));
+const TutorCalendar = lazy(panelSayfaYukleyicileri.TutorCalendar);
+const TutorAnalytics = lazy(panelSayfaYukleyicileri.TutorAnalytics);
+const TutorStudents = lazy(panelSayfaYukleyicileri.TutorStudents);
 const Learn = lazy(() => import("@/pages/Learn"));
 const DeepWork = lazy(() => import("@/pages/DeepWork"));
 const Grapher = lazy(() => import("@/pages/Grapher"));
@@ -308,7 +309,7 @@ const SrsStats = lazy(() => import("@/pages/srs/SrsStats"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const MessageCenter = lazy(() => import("@/pages/MessageCenter"));
-const Settings = lazy(() => import("@/pages/Settings"));
+const Settings = lazy(panelSayfaYukleyicileri.Settings);
 const Balance = lazy(() => import("@/pages/Balance"));
 const Demands = lazy(() => import("@/pages/Demands"));
 const Notifications = lazy(() => import("@/pages/Notifications"));
