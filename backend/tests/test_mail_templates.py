@@ -104,8 +104,9 @@ def test_siparis_durumlari_ayri_gorunum_uretir(status: str) -> None:
     assert "#42" in message.subject
     assert "149.90 TRY" in message.html and "149.90 TRY" in message.text
     assert "https://x.test/siparislerim" in message.html
-    # İlerleme çubuğu yalnız teslimat hattındaki durumlarda çıkar.
-    assert ("Kargoda" in message.html) is (status in {"PAID", "SHIPPED", "DELIVERED"})
+    # Her durum kendi başlığını taşır (bilinmeyen durum genel başlığa düşer).
+    baslik = templates._ORDER_COPY.get(status, templates._ORDER_FALLBACK)[1]
+    assert baslik in message.html
 
 
 def test_her_html_preheader_ve_istemci_uyumlu_iskelet_tasir() -> None:
@@ -156,7 +157,7 @@ def _tum_htmller() -> list[str]:
 
 
 def test_tum_sablonlar_tek_yazi_olcegini_kullanir(monkeypatch) -> None:
-    """Standart: başlık 30, gövde 18, ikincil 16, etiket 14 (components._TYPE).
+    """Standart: başlık 26, gövde 18, ikincil 16, küçük 14 (components._TYPE).
     Mobil daraltma (<style>) ve logo metin yedeği dışında başka boyut yok;
     gövde metninde kalın vurgu ve "düğme çalışmazsa…" ham bağlantı kutusu yok."""
     import re
@@ -168,6 +169,6 @@ def test_tum_sablonlar_tek_yazi_olcegini_kullanir(monkeypatch) -> None:
     for html in _tum_htmller():
         govde = html.split("<body", 1)[1]
         boyutlar = set(re.findall(r"font-size:(\d+)px", govde))
-        assert boyutlar <= {"30", "18", "16", "14", "1"}, boyutlar  # 1 = gizli preheader
+        assert boyutlar <= {"26", "18", "16", "14", "1"}, boyutlar  # 1 = gizli preheader
         assert "<strong" not in govde and "<b>" not in govde
         assert "çalışmazsa" not in govde
