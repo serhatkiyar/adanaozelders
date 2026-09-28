@@ -80,17 +80,27 @@ export function videoBilgisiniOku(file: File): Promise<VideoBilgisi | null> {
   });
 }
 
+/** Görüntü dikey mi (yükseklik genişlikten büyük)? Boyut bilinmiyorsa (0) hayır. */
+export function dikeyMi(genislik: number, yukseklik: number): boolean {
+  return genislik > 0 && yukseklik > genislik;
+}
+
 /**
  * Yüklemeden ÖNCE erken uyarı (sunucu aynı kuralları yine uygular):
- * süre sınırları ve dikey görüntü. Bilgi okunamadıysa null döner.
+ * süre sınırları, dikey görüntü ve düşük çözünürlük (kısa kenar). Bilgi ya da
+ * boyut okunamadıysa o kural geçilir; karar sunucuda verilir.
  */
 export function videoBilgisiKontrol(
   bilgi: VideoBilgisi | null,
-  sinir: { minSeconds: number; maxSeconds: number }
+  sinir: { minSeconds: number; maxSeconds: number; minShortSide?: number }
 ): string | null {
   if (!bilgi) return null;
-  if (bilgi.genislik > 0 && bilgi.yukseklik > bilgi.genislik) {
+  if (dikeyMi(bilgi.genislik, bilgi.yukseklik)) {
     return "Video dikey çekilmiş; telefonu yatay tutarak yeniden çek.";
+  }
+  const kisaKenar = Math.min(bilgi.genislik, bilgi.yukseklik);
+  if (sinir.minShortSide && kisaKenar > 0 && kisaKenar < sinir.minShortSide) {
+    return `Video çözünürlüğü çok düşük (${bilgi.genislik}×${bilgi.yukseklik}); en az ${sinir.minShortSide}p bir kayıt seç.`;
   }
   if (bilgi.sure != null && bilgi.sure > sinir.maxSeconds) {
     return `Video ${Math.round(bilgi.sure)} saniye; en fazla ${Math.floor(sinir.maxSeconds / 60)} dakika olabilir. Kısaltıp yeniden dene.`;
@@ -107,14 +117,48 @@ export type DurumAnlatimi = {
   ton: "notr" | "bilgi" | "basari" | "uyari" | "hata";
 };
 
-/** Eğitmen paneli: yolda/başarısız kaydın kullanıcıya anlatımı. */
+/**
+ * Eğitmen paneli: yolda/başarısız kaydın kullanıcıya anlatımı.
+ *
+ * `yuklemeSuruyor: false` açıkça verilirse ve kayıt hâlâ PENDING_UPLOAD ise
+ * bu sekmede süren bir yükleme yoktur: kayıt bayattır (sekme kapandı ya da
+ * bağlantı koptu). Verilmezse eski anlatım korunur.
+ */
 export function durumAnlatimi(
   status: TutorIntroVideoStatus,
-  opts: { requireReview: boolean; eskiVideoVar: boolean }
+  opts: {
+    requireReview: boolean;
+    eskiVideoVar: boolean;
+    yuklemeSuruyor?: boolean;
+    /** Kayıt YouTube/Vimeo bağlantısı mı (`kind: "LINK"`)? */
+    baglanti?: boolean;
+  }
 ): DurumAnlatimi {
   const eski = opts.eskiVideoVar ? " Şu anki videon bu sırada yayında kalır." : "";
+  if (opts.baglanti && status === "PENDING_REVIEW") {
+    return {
+      etiket: "Bağlantı onay bekliyor",
+      aciklama: `Ekibimiz kontrol edince bu video profilinde yayına girecek.${eski}`,
+      ton: "uyari",
+    };
+  }
+  if (opts.baglanti && status === "REJECTED") {
+    return {
+      etiket: "Bağlantı onaylanmadı",
+      aciklama: "Video kurallara uymadığı için yayına alınmadı. Başka bir bağlantı ya da video ekleyebilirsin.",
+      ton: "hata",
+    };
+  }
   switch (status) {
     case "PENDING_UPLOAD":
+      if (opts.yuklemeSuruyor === false) {
+        return {
+          etiket: "Yükleme yarım kaldı",
+          aciklama:
+            "Yükleme tamamlanmadı. Sekme kapandıysa ya da bağlantı koptuysa yüklemeyi iptal edip videoyu yeniden yükle.",
+          ton: "uyari",
+        };
+      }
       return { etiket: "Yükleniyor", aciklama: "Dosya depoya aktarılıyor.", ton: "bilgi" };
     case "UPLOADED":
     case "PROCESSING":

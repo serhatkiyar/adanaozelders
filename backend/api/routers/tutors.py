@@ -69,6 +69,15 @@ _video_upload_limit = user_rate_limit(
     window_seconds=3600,
 )
 
+# Video yükleme tamamlama: her çağrı depodaki nesneyi yoklar → kullanıcı bazlı
+# dakikalık bütçe. İptal ucu yalnız siler, sınır almaz.
+_VIDEO_COMPLETE_LIMIT_PER_MIN = 20
+_video_complete_limit = user_rate_limit(
+    key="tutor_video_complete",
+    limit=_VIDEO_COMPLETE_LIMIT_PER_MIN,
+    window_seconds=60,
+)
+
 # Satın alma bir ödeme başlatır: mağaza/ders ödemeleriyle aynı bütçeye tabidir.
 _promotion_limit = user_rate_limit(
     key="promotion_buy",
@@ -540,7 +549,11 @@ async def start_intro_video_upload(
     return await tutor_video_service.init_upload(db, tutor, payload)
 
 
-@router.post("/me/intro-video/uploads/{video_id}/complete", response_model=TutorIntroVideoOut)
+@router.post(
+    "/me/intro-video/uploads/{video_id}/complete",
+    response_model=TutorIntroVideoOut,
+    dependencies=[Depends(_video_complete_limit)],
+)
 async def complete_intro_video_upload(
     video_id: int,
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
@@ -592,12 +605,20 @@ async def activate_my_listing(
     return await tutor_service.activate(db, tutor)
 
 
+_PG_INT_MAX = 2_147_483_647
+
+
 def _tutor_id_coz(tutor_id: str) -> int:
     """Sayısal id ("42") ya da SEO slug'ı ("ahmet-yilmaz-42") → id."""
     match = re.search(r"(\d+)$", tutor_id)
-    if not match:
+    # Postgres INTEGER sınırını aşan ya da 0 olan id sorguya gitmez: taşan
+    # değer asyncpg'de 500'e dönüşüyordu. Böyle bir eğitmen zaten yoktur.
+    if not match or len(match.group(1)) > 10:
         raise HTTPException(status_code=404, detail="Öğretmen bulunamadı.")
-    return int(match.group(1))
+    tutor_pk = int(match.group(1))
+    if not 0 < tutor_pk <= _PG_INT_MAX:
+        raise HTTPException(status_code=404, detail="Öğretmen bulunamadı.")
+    return tutor_pk
 
 
 @router.get(

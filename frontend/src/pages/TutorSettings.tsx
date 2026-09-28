@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useId, useState } from "react";
+import { FormEvent, ReactNode, useId, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -22,9 +22,11 @@ import {
   useUpdateTutorProfile,
 } from "@/hooks/useTutorProfile";
 import { getErrorMessage } from "@/lib/errors";
+import { videoEmbedUrl } from "@/lib/video";
 import { parseMoney } from "@/lib/money";
 import { DersSecici } from "@/components/tutor/DersSecici";
-import { VideoAlani } from "@/components/tutor/VideoYukleme";
+import { VideoAlani, type VideoMesgulDurumu } from "@/components/tutor/VideoYukleme";
+import { useMyIntroVideo } from "@/hooks/useTutorIntroVideo";
 import {
   VideoGereksinimleriKarti,
   VideoGereksinimleriKutusu,
@@ -48,6 +50,7 @@ import {
   DUGME_BIRINCIL,
   DUGME_SATIR_BIRINCIL,
   DUGME_SATIR_IKINCIL,
+  DUGME_SATIR_TEHLIKE,
   ETIKET,
   KART,
   KUCUK_ACIKLAMA,
@@ -145,10 +148,32 @@ export default function TutorSettings() {
   const aktif: ProfilimBolumu = (PROFILIM_BOLUMLERI as readonly string[]).includes(istenen)
     ? (istenen as ProfilimBolumu)
     : "hakkinda";
-  const bolumAc = (bolum: ProfilimBolumu) => {
+  const bolumeGec = (bolum: ProfilimBolumu) => {
     const yeni = new URLSearchParams(aramaParam);
     yeni.set("bolum", bolum);
     setAramaParam(yeni);
+  };
+  // Video bölümünde kamera kaydı açıkken ya da yükleme sürerken bölüm
+  // değiştirmek işi yarıda bırakır: önce sorulur. Ref: bildirim çizim tetiklemez.
+  const videoMesgulRef = useRef<VideoMesgulDurumu | null>(null);
+  const [bekleyenBolum, setBekleyenBolum] = useState<{
+    bolum: ProfilimBolumu;
+    yuklemeSuruyor: boolean;
+  } | null>(null);
+  const bolumAc = (bolum: ProfilimBolumu) => {
+    const mesgul = videoMesgulRef.current;
+    if (bolum !== aktif && mesgul) {
+      setBekleyenBolum({ bolum, yuklemeSuruyor: mesgul.yuklemeSuruyor });
+      return;
+    }
+    bolumeGec(bolum);
+  };
+  const bolumdenAyril = () => {
+    if (!bekleyenBolum) return;
+    if (bekleyenBolum.yuklemeSuruyor) videoMesgulRef.current?.iptal();
+    videoMesgulRef.current = null;
+    bolumeGec(bekleyenBolum.bolum);
+    setBekleyenBolum(null);
   };
 
   return (
@@ -204,7 +229,14 @@ export default function TutorSettings() {
                 {aktif === "hakkinda" && <HakkindaBolumu tutor={data} />}
                 {aktif === "fotograf" && <FotografBolumu tutor={data} />}
                 {aktif === "aciklama" && <AciklamaBolumu tutor={data} />}
-                {aktif === "video" && <VideoBolumu tutor={data} />}
+                {aktif === "video" && (
+                  <VideoBolumu
+                    tutor={data}
+                    onMesgulDegis={(m) => {
+                      videoMesgulRef.current = m;
+                    }}
+                  />
+                )}
                 {aktif === "dersler" && <DerslerBolumu tutor={data} />}
                 {aktif === "ucret" && <UcretBolumu tutor={data} />}
                 {aktif === "musaitlik" && <MusaitlikBolumu tutor={data} />}
@@ -271,6 +303,26 @@ export default function TutorSettings() {
           </>
         )}
       </div>
+
+      <Modal
+        open={bekleyenBolum != null}
+        onClose={() => setBekleyenBolum(null)}
+        title="Bölümden ayrılınsın mı?"
+        description={
+          bekleyenBolum?.yuklemeSuruyor
+            ? "Video yüklemesi sürüyor; ayrılırsan yükleme iptal edilir."
+            : "Kamera kaydı açık; ayrılırsan kaydedilmemiş görüntü silinir."
+        }
+      >
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
+          <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => setBekleyenBolum(null)}>
+            Vazgeç
+          </button>
+          <button type="button" className={DUGME_SATIR_TEHLIKE} onClick={bolumdenAyril}>
+            Ayrıl
+          </button>
+        </div>
+      </Modal>
     </DashboardShell>
   );
 }
@@ -425,9 +477,9 @@ const duzenlenebilir = (t: TutorOut) => t.status !== TutorStatus.PENDING_APPROVA
 
 function useBolumKaydet() {
   const update = useUpdateTutorProfile();
-  const kaydet = (payload: TutorProfileUpdate) =>
+  const kaydet = (payload: TutorProfileUpdate, basariMesaji = "Kaydedildi.") =>
     update.mutate(payload, {
-      onSuccess: () => toast.success("Kaydedildi."),
+      onSuccess: () => toast.success(basariMesaji),
       onError: (err) => toast.error(getErrorMessage(err, "Kaydedilemedi.")),
     });
   return { kaydet, kaydediliyor: update.isPending };
@@ -712,26 +764,71 @@ function AciklamaBolumu({ tutor }: { tutor: TutorOut }) {
 
 /* ─── Video ──────────────────────────────────────────── */
 
-function VideoBolumu({ tutor }: { tutor: TutorOut }) {
+function VideoBolumu({
+  tutor,
+  onMesgulDegis,
+}: {
+  tutor: TutorOut;
+  onMesgulDegis: (m: VideoMesgulDurumu | null) => void;
+}) {
   const uid = useId();
-  const { kaydet, kaydediliyor } = useBolumKaydet();
+  const update = useUpdateTutorProfile();
+  // `VideoAlani` ile aynı sorgu (önbellek paylaşılır; ek istek yok).
+  const videoDurumu = useMyIntroVideo();
+  const kaydediliyor = update.isPending;
   const acik = duzenlenebilir(tutor);
   const [url, setUrl] = useState(tutor.intro_video_url ?? "");
+  // Hata alanın altında gösterilir (toast değil): kullanıcı neyi düzelteceğini
+  // girdinin yanında görür, ekran okuyucu `role="alert"` ile duyurur.
+  const [hata, setHata] = useState<string | null>(null);
+  const girdiRef = useRef<HTMLInputElement>(null);
   // Preply düzeni: YouTube/Vimeo ayrı sekme değil, "Bağlantı yerleştir"
   // satırı. Yalnız bağlantı videosu olan öğretmende form açık gelir.
   const [baglantiAcik, setBaglantiAcik] = useState(Boolean(tutor.intro_video_url && !tutor.intro_video));
-  const [degistirOnayi, setDegistirOnayi] = useState(false);
+  // "Şu anki videon yayında kalır" yalnız yayında bir şey varken doğrudur.
+  const yayindaVideoVar = Boolean(tutor.intro_video || tutor.intro_video_url);
 
-  const linkKaydet = () => kaydet({ intro_video_url: url.trim() || null });
+  const hataGoster = (mesaj: string) => {
+    setHata(mesaj);
+    girdiRef.current?.focus();
+  };
+
+  // Yeni bağlantı yüklenen video gibi ekip onayından geçer; yayındaki video
+  // (yüklenmiş ya da bağlantı) onaylanana kadar yerinde kalır. Onay diyaloğu
+  // gereksiz: kaydetmek artık hiçbir şeyi hemen kaldırmaz (boşaltmak hariç).
   const gonder = (e: FormEvent) => {
     e.preventDefault();
-    // Tek kaynak kuralı: bağlantı kaydedilince yüklenmiş aktif video kalkar —
-    // sunucu bunu sessizce yapar, o yüzden burada açıkça sorulur.
-    if (url.trim() && tutor.intro_video) {
-      setDegistirOnayi(true);
+    const yeni = url.trim();
+    // Kabul edilen biçimler sunucudakiyle aynı (`lib/video.ts` başlığı):
+    // bariz yanlış bağlantı sunucuya gitmeden alanın altında söylenir.
+    if (yeni && videoEmbedUrl(yeni) === null) {
+      hataGoster("Yalnızca YouTube veya Vimeo bağlantısı desteklenir.");
       return;
     }
-    linkKaydet();
+    setHata(null);
+    // Boş kayıt yalnız YAYINDAKİ bağlantıyı kaldırır (sunucu `submit_link`);
+    // onay bekleyen bağlantıya dokunmaz. Kaldırılacak bir şey yokken
+    // "kaldırıldı" demek, bekleyenin geri çekildiği yanılgısını doğurur.
+    if (!yeni && !tutor.intro_video_url) {
+      toast.info(
+        videoDurumu.data?.pending?.kind === "LINK" && videoDurumu.data.pending.status === "PENDING_REVIEW"
+          ? "Onay bekleyen bağlantın yerinde duruyor. Geri çekmek için “Onaydan geri çek”i kullan."
+          : "Yayında kaldırılacak bir bağlantın yok."
+      );
+      return;
+    }
+    const basariMesaji = !yeni
+      ? "Bağlantı kaldırıldı."
+      : yeni === tutor.intro_video_url
+        ? "Kaydedildi."
+        : "Bağlantı onaya gönderildi. Onaylanınca profilinde yayına girer.";
+    update.mutate(
+      { intro_video_url: yeni || null },
+      {
+        onSuccess: () => toast.success(basariMesaji),
+        onError: (err) => hataGoster(getErrorMessage(err, "Kaydedilemedi.")),
+      }
+    );
   };
 
   const baglantiSlot = (
@@ -749,20 +846,38 @@ function VideoBolumu({ tutor }: { tutor: TutorOut }) {
         </button>
       </p>
       {baglantiAcik && (
-        <form id={`${uid}-baglanti`} onSubmit={gonder} className="mt-4 space-y-4">
+        <form id={`${uid}-baglanti`} onSubmit={gonder} noValidate className="mt-4 space-y-4">
           <div>
             <label htmlFor={`${uid}-video`} className={labelCls}>Video bağlantısı</label>
             <input
+              ref={girdiRef}
               id={`${uid}-video`}
               type="url"
               disabled={!acik}
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className={inputCls}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                if (hata) setHata(null);
+              }}
+              aria-invalid={hata ? true : undefined}
+              aria-describedby={hata ? `${uid}-video-hata ${uid}-video-ipucu` : `${uid}-video-ipucu`}
+              className={`${inputCls} ${hata ? "border-rose-500 focus:border-rose-500" : ""}`}
               placeholder="https://www.youtube.com/watch?v=…"
             />
-            <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
-              Boş bırakıp kaydedersen bağlantı kaldırılır.
+            {hata && (
+              <p id={`${uid}-video-hata`} role="alert" className="mt-2 text-sm leading-5 text-rose-600">
+                {hata}
+              </p>
+            )}
+            <p id={`${uid}-video-ipucu`} className={`mt-2 ${KUCUK_ACIKLAMA}`}>
+              {yayindaVideoVar ? (
+                <>
+                  Yeni bağlantı kısa bir kontrolden sonra yayına girer; o zamana kadar şu anki videon yayında kalır.
+                  {tutor.intro_video_url && " Boş bırakıp kaydedersen yayındaki bağlantı kaldırılır."}
+                </>
+              ) : (
+                "Bağlantın kısa bir kontrolden sonra profilinde yayına girer."
+              )}
             </p>
           </div>
           <KaydetDugmesi tutor={tutor} kaydediliyor={kaydediliyor} />
@@ -790,31 +905,12 @@ function VideoBolumu({ tutor }: { tutor: TutorOut }) {
           // masaüstünde sağ sütundaki kutu (bkz. sayfa `aside`).
           ortaSlot={<VideoGereksinimleriKarti className="lg:hidden" />}
           baglantiSlot={baglantiSlot}
+          // Bağlantı formu açıkken tek birincil eylem formun "Kaydet"idir.
+          anaEylemIkincil={baglantiAcik}
+          onMesgulDegis={onMesgulDegis}
         />
       </div>
 
-      <Modal
-        open={degistirOnayi}
-        onClose={() => setDegistirOnayi(false)}
-        title="Yüklediğin video kaldırılacak"
-        description="Bağlantı kaydedilince profilinde yüklediğin video yerine bu bağlantı oynatılır. Devam edilsin mi?"
-      >
-        <div className="mt-6 flex flex-wrap justify-end gap-3">
-          <button type="button" className={DUGME_SATIR_IKINCIL} onClick={() => setDegistirOnayi(false)}>
-            Vazgeç
-          </button>
-          <button
-            type="button"
-            className={DUGME_SATIR_BIRINCIL}
-            onClick={() => {
-              setDegistirOnayi(false);
-              linkKaydet();
-            }}
-          >
-            Bağlantıyı kaydet
-          </button>
-        </div>
-      </Modal>
     </BolumKabugu>
   );
 }

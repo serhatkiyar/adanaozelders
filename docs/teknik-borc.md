@@ -373,6 +373,17 @@ yalnız ölçümü ve öneriyi kaydeder.
          çıktısını da bozuyor (`70 74 75 75 76 76`).
 -->
 
+## TB-?V · Tanıtım videosu silinince CDN önbelleği anında temizlenmiyor
+
+| | |
+|---|---|
+| **Bulundu** | Eğitmen videosu sertleştirme turu (28 Eyl 2026) |
+| **Nerede** | `backend/workers/video_worker.py::_CACHE_CONTROL`; silme yolları `tutor_video_service` (red, kaldırma, bağlantıyla değiştirme, hesap silme) |
+| **Sorun** | Silme yalnız R2 nesnesini kaldırır; Cloudflare purge çağrısı yok. Yeni çıktılar `public, max-age=3600, s-maxage=86400` taşır, yani kaldırılan video edge'de en fazla ~1 gün, tarayıcıda ~1 saat daha sunulabilir. Bu değişiklikten ÖNCE yüklenen nesneler 1 yıllık `immutable` başlık taşıyor |
+| **Neden ertelendi** | Purge entegrasyonu (API token, bölge kimliği, hata yönetimi) ayrı bir iş; kısa önbellek süresi riski günlerle sınırlıyor |
+| **Geçici yol** | Moderasyon ya da KVKK silmesinde acil durumda ilgili URL Cloudflare panelinden elle purge edilir |
+| **Sonraki adım** | Silme yollarından sonra (temizlik turu, hesap silme) URL bazlı purge çağrısı |
+
 ## TB-81 · Satır aksiyonları İKİ KEZ monte ediliyor (tablo + mobil kart)
 
 | | |

@@ -134,8 +134,9 @@ async def anonymize_account(db: AsyncSession, user) -> list[str]:
             edu.document_name = None
             edu.verification_code = None
             edu.verification_tckn = None
-        # Yüklenen tanıtım videoları: yüz/ses taşıyan kişisel veridir. Satırlar
-        # kalır (REPLACED), nesneler commit sonrası best-effort silinir.
+        # Tanıtım videoları: yüz/ses taşıyan kişisel veridir. Yükleme satırları
+        # kalır (REPLACED), nesneler commit sonrası best-effort silinir;
+        # bağlantı (LINK) satırları silinir.
         from services import tutor_video_service
 
         orphan_files.extend(

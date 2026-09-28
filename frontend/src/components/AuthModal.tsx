@@ -15,6 +15,7 @@ import {
   GoogleGirisDugmesi,
 } from "@/components/GoogleGirisDugmesi";
 import { googleHataMetni } from "@/lib/googleHata";
+import { girisBaglami, niyetiGozle, niyetiTemizle } from "@/lib/bekleyenNiyet";
 
 export function AuthModal() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -37,10 +38,18 @@ export function AuthModal() {
     setSearchParams(searchParams, { replace: true });
   };
 
+  // Kullanıcı girişten VAZGEÇTİ (Escape, dış tıklama, X): bekleyen niyet
+  // silinir; yoksa sekmede kalır ve sonraki bir girişte beklenmedik bir
+  // pencere açar. Başarılı giriş `close` kullanır, niyet orada korunur.
+  const vazgec = () => {
+    niyetiTemizle();
+    close();
+  };
+
   // Close on escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) close();
+      if (e.key === "Escape" && isOpen) vazgec();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -54,7 +63,7 @@ export function AuthModal() {
     return (
       <Modal
         open
-        onClose={close}
+        onClose={vazgec}
         ariaLabel="Kayıt kapalı"
         hideCloseButton
         panelClassName="w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200 "
@@ -82,7 +91,7 @@ export function AuthModal() {
   return (
     <Modal
       open
-      onClose={close}
+      onClose={vazgec}
       ariaLabel={modal === "login" ? "Giriş yap" : "Kayıt ol"}
       hideCloseButton
       mobilAltSeridiKoru
@@ -98,8 +107,8 @@ export function AuthModal() {
     >
         <button
           type="button"
-          onClick={close}
-          className="absolute right-4 top-4 z-10 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus "
+          onClick={vazgec}
+          className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus "
         >
           <span className="sr-only">Kapat</span>
           <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -148,10 +157,14 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
   };
 
   const [searchParams, setSearchParams] = useSearchParams();
+  // Kapıyı açan eylem (ör. Program'dan seçilen saat) — GÖZLENİR, tüketilmez:
+  // giriş sonrası sayfa niyeti kendisi uygular (ÜK-10).
+  const [baglam] = useState(() => girisBaglami(niyetiGozle()));
 
   return (
     <>
       <h2 className="text-2xl font-bold text-slate-900 ">Giriş Yap</h2>
+      {baglam && <p className="mt-2 text-sm text-slate-500">{baglam}</p>}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <Field label="E-posta" required>

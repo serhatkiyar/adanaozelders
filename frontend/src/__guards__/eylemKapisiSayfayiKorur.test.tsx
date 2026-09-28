@@ -29,7 +29,7 @@
  * ölçülen yalnız istemci kapısının nereye götürdüğü.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,11 +37,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
+import { apiClient } from "@/api/axios";
+import { AuthModal } from "@/components/AuthModal";
 import LibraryDetail from "@/pages/LibraryDetail";
 import PublicTutorProfile from "@/pages/PublicTutorProfile";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { guvenliDonusYolu } from "@/lib/guvenliDonus";
-import { niyetiGozle, niyetiTemizle } from "@/lib/bekleyenNiyet";
+import { niyetiGozle, niyetiSakla, niyetiTemizle } from "@/lib/bekleyenNiyet";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 
@@ -206,6 +208,70 @@ describe("ders talebi · niyet saklanır", () => {
     expect(i).toBeGreaterThan(0);
     const oncesi = kaynak.slice(0, i);
     expect(oncesi.slice(oncesi.lastIndexOf("<"))).not.toContain("Link");
+  });
+});
+
+/* ─── Giriş penceresi: vazgeçiş niyeti siler, başarı korur ───────────── */
+
+describe("giriş penceresi · bekleyen niyet", () => {
+  /*
+   * Vazgeçen kullanıcının niyeti sekmede kalırsa, sonraki (belki saatler
+   * sonraki) bir girişte hiç istemediği bir ders penceresi açılır. Başarılı
+   * girişte ise niyet sayfaya kadar yaşamalı; onu sayfa uygular
+   * (`TutorProfile.dersTalebiRolKapisi.test.tsx`).
+   */
+  const eskiAdapter = apiClient.defaults.adapter;
+  afterEach(() => {
+    apiClient.defaults.adapter = eskiAdapter;
+  });
+
+  function pencereyiAc() {
+    sonAdres = "";
+    niyetiSakla({ tip: "dersTalebi", egitmenId: 42 });
+    render(
+      <QueryClientProvider client={qc()}>
+        <MemoryRouter initialEntries={["/egitmenler/ali-42?modal=login"]}>
+          <AdresGozcusu />
+          <AuthModal />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+  }
+
+  it("Escape ile kapatınca niyet silinir", () => {
+    pencereyiAc();
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(sonAdres).not.toContain("modal=login");
+    expect(niyetiGozle()).toBeNull();
+  });
+
+  it("X ile kapatınca niyet silinir", () => {
+    pencereyiAc();
+    fireEvent.click(screen.getAllByRole("button", { name: "Kapat" })[0]);
+    expect(sonAdres).not.toContain("modal=login");
+    expect(niyetiGozle()).toBeNull();
+  });
+
+  it("başarılı girişte niyet KORUNUR (sayfa uygulayacak)", async () => {
+    apiClient.defaults.adapter = async (config) => {
+      const url = String(config.url);
+      const data = url.includes("/auth/login")
+        ? { access_token: "t", token_type: "bearer" }
+        : url.includes("/auth/me")
+          ? { id: 7, role_id: 3, display_name: "Test", email: "t@example.com" }
+          : { open: true };
+      return { data, status: 200, statusText: "OK", headers: {}, config } as never;
+    };
+    pencereyiAc();
+    fireEvent.change(screen.getByPlaceholderText("ornek@eposta.com"), {
+      target: { value: "t@example.com" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("••••••••"), {
+      target: { value: "parola123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Giriş Yap" }));
+    await waitFor(() => expect(sonAdres).not.toContain("modal=login"));
+    expect(niyetiGozle()).toEqual({ tip: "dersTalebi", egitmenId: 42 });
   });
 });
 

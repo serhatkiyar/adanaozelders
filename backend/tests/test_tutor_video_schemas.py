@@ -5,6 +5,8 @@
 * Public yanıta yalnız ACTIVE video girer; işlenen/onay bekleyen video
   görünmez (eski aktif video yayında kalır — atomik değişim kuralı).
 * Kendi görünümünde işlenmiş dosya adresi yalnız PENDING_REVIEW/ACTIVE'de döner.
+* Bağlantı satırı (kind=LINK) `intro_video` public alanına hiç girmez; yayındaki
+  bağlantı public'e `tutors.intro_video_url` kopyasıyla çıkar.
 """
 from __future__ import annotations
 
@@ -24,6 +26,8 @@ def _video(**over):
         id=7,
         tutor_id=3,
         status="ACTIVE",
+        kind="UPLOAD",
+        link_url=None,
         source_key="private/tutor-videos/3/abc.bin",
         output_key="tutor-videos/abc.mp4",
         poster_key="tutor-videos/abc.jpg",
@@ -37,7 +41,9 @@ def _video(**over):
         updated_at=datetime.datetime(2026, 9, 28, tzinfo=datetime.timezone.utc),
     )
     base.update(over)
-    return types.SimpleNamespace(**base)
+    ns = types.SimpleNamespace(**base)
+    ns.is_link = ns.kind == "LINK"
+    return ns
 
 
 @pytest.mark.parametrize("ct", ["video/mp4", "VIDEO/QuickTime", "video/x-matroska", "video/webm"])
@@ -108,3 +114,33 @@ def test_kaynak_anahtari_public_yanita_asla_girmez(cdn):
     out = svc.to_public_out(_video(output_key="private/tutor-videos/3/abc.bin"))
     assert out is not None
     assert out.model_dump()["mp4_url"] is None
+
+
+def test_baglanti_satiri_public_video_olarak_yayinlanmaz(cdn):
+    link = _video(
+        kind="LINK",
+        link_url="https://youtu.be/dQw4w9WgXcQ",
+        source_key=None,
+        output_key=None,
+        poster_key=None,
+    )
+    assert svc.to_public_out(link) is None
+    # Güvenlik ağı: ACTIVE bağlantı satırında çıktı anahtarı olsa bile public'e girmez.
+    assert svc.to_public_out(_video(kind="LINK", link_url="https://vimeo.com/1")) is None
+    own = svc.to_own_out(link)
+    assert own.kind == "LINK" and own.link_url == "https://youtu.be/dQw4w9WgXcQ"
+    assert own.mp4_url is None
+
+async def test_durum_istemciye_cozunurluk_alt_sinirini_verir(monkeypatch):
+    """İstemci ön kontrolü worker'ın kısa kenar sınırıyla aynı sayıyı kullanır."""
+
+    async def _yok(*_a, **_k):
+        return None
+
+    for ad in ("get_active", "get_in_flight", "_last_failed"):
+        monkeypatch.setattr(svc, ad, _yok)
+    monkeypatch.setattr(settings, "TUTOR_VIDEO_MIN_HEIGHT", 480)
+    tutor = types.SimpleNamespace(id=3, intro_video_url=None)
+    durum = await svc.get_state(None, tutor)
+    assert durum.min_short_side == 480
+    assert durum.min_seconds == settings.TUTOR_VIDEO_MIN_SECONDS

@@ -1,4 +1,5 @@
-// Video Onayı ekranının inceleme penceresi: bir yüklenmiş tanıtım videosunun KARAR yüzeyi.
+// Video Onayı ekranının inceleme penceresi: bir tanıtım videosunun (yüklenmiş dosya ya da
+// YouTube/Vimeo bağlantısı) KARAR yüzeyi.
 //
 // Gövde yalnız açıkken mount edilir (pencere kabuğu deseni: `DiplomaDogrulamaPenceresi`). Video yerel
 // HTML5 `<video controls preload="metadata">` ile oynatılır; otomatik oynatma yok.
@@ -8,6 +9,7 @@ import { VarlikDugmesi } from "@/panel/components/varlikKilidi";
 import { kirliOnayi } from "@/panel/components/pencereAlanlari";
 import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { sureBiciminde } from "@/lib/tanitimVideo";
+import { videoEmbedUrl } from "@/lib/video";
 import type { AdminTutorIntroVideo } from "@/types";
 
 /** Backend `note` alanı: isteğe bağlı, en fazla 500 karakter (TutorVideoReviewIn). */
@@ -61,6 +63,8 @@ export function VideoOnayPenceresi({
   }, [acik, kayit?.id]);
 
   const mesgul = () => Boolean(mesgulIslem || onayAcik || kilitliMi?.());
+  const baglanti = kayit?.kind === "LINK";
+  const embed = baglanti ? videoEmbedUrl(kayit?.link_url, { otomatik: false }) : null;
   const kapatIstegi = () => {
     if (mesgul()) return;
     if (not) return void kirliOnayi(modal, () => kapat?.());
@@ -119,9 +123,11 @@ export function VideoOnayPenceresi({
               {kayit.tutor_name ?? `Öğretmen #${kayit.tutor_id}`}
             </Typography.Text>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              {[sureBiciminde(kayit.duration_seconds), kayit.width && kayit.height ? `${kayit.width}×${kayit.height}` : null]
-                .filter(Boolean)
-                .join(" · ") || "İşlenmiş MP4"}
+              {baglanti
+                ? "YouTube/Vimeo bağlantısı"
+                : [sureBiciminde(kayit.duration_seconds), kayit.width && kayit.height ? `${kayit.width}×${kayit.height}` : null]
+                    .filter(Boolean)
+                    .join(" · ") || "İşlenmiş MP4"}
             </Typography.Text>
           </div>
           {!canManage ? (
@@ -130,7 +136,26 @@ export function VideoOnayPenceresi({
             </Typography.Text>
           ) : null}
 
-          {kayit.mp4_url ? (
+          {baglanti ? (
+            embed ? (
+              <Flex vertical gap={4}>
+                <div style={{ background: "#000", borderRadius: 8, overflow: "hidden", aspectRatio: "16 / 9" }}>
+                  <iframe
+                    src={embed}
+                    title={`${kayit.tutor_name ?? "Öğretmen"} tanıtım videosu bağlantısı`}
+                    style={{ width: "100%", height: "100%", border: 0, display: "block" }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+                <Typography.Text type="secondary" style={{ fontSize: 12, ...SAR }}>
+                  {kayit.link_url}
+                </Typography.Text>
+              </Flex>
+            ) : (
+              <Alert type="warning" showIcon message="Bu bağlantı oynatıcıya çevrilemedi." />
+            )
+          ) : kayit.mp4_url ? (
             <div style={{ background: "#000", borderRadius: 8, overflow: "hidden" }}>
               {/* eslint-disable-next-line jsx-a11y/media-has-caption -- inceleme; altyazı üretilmiyor. */}
               <video

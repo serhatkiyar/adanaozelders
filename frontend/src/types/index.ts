@@ -631,7 +631,8 @@ export interface TutorProfileUpdate {
   availability?: Availability[] | null;
 }
 
-/* ── Tanıtım videosu: doğrudan yükleme (bağlantı `intro_video_url`da kalır) ── */
+/* ── Tanıtım videosu: doğrudan yükleme ve bağlantı (ikisi de ön onaydan geçer;
+ *    YAYINDAKİ bağlantının kopyası `intro_video_url`dadır) ── */
 
 /** Public profil yanıtındaki işlenmiş video (yalnız ACTIVE; `intro_video_url` ile aynı anda dolu olmaz). */
 export interface IntroVideoPublic {
@@ -658,6 +659,9 @@ export type TutorIntroVideoStatus =
 export interface TutorIntroVideo {
   id: number;
   status: TutorIntroVideoStatus;
+  /** UPLOAD: yüklenen dosya · LINK: YouTube/Vimeo bağlantısı (`link_url`). */
+  kind: "UPLOAD" | "LINK";
+  link_url?: string | null;
   mp4_url?: string | null;
   poster_url?: string | null;
   width?: number | null;
@@ -673,13 +677,17 @@ export interface TutorIntroVideo {
 /** `GET /tutors/me/intro-video` */
 export interface TutorIntroVideoState {
   active: TutorIntroVideo | null;
+  /** Onay bekleyen/başarısız kayıt; bağlantı da olabilir (`kind: "LINK"`). */
   pending: TutorIntroVideo | null;
+  /** YAYINDAKİ bağlantı. */
   link_url: string | null;
   uploads_enabled: boolean;
   max_bytes: number;
   max_seconds: number;
   /** Alt süre sınırı (sn); worker daha kısa videoyu reddeder. */
   min_seconds: number;
+  /** Görüntünün kısa kenarı alt sınırı (px); worker daha düşüğünü reddeder. */
+  min_short_side: number;
   require_review: boolean;
 }
 

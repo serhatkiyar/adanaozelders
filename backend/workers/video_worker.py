@@ -37,7 +37,9 @@ from workers import ffmpeg
 logger = logging.getLogger("adana.video_worker")
 
 _CLEANUP_INTERVAL_SECONDS = 60
-_CACHE_CONTROL = "public, max-age=31536000, immutable"
+# `immutable` yok: kaldırılan/reddedilen video CDN'de uzun süre kalmasın
+# (anlık purge yok; bkz. docs/teknik-borc.md).
+_CACHE_CONTROL = "public, max-age=3600, s-maxage=86400"
 
 
 @dataclass
@@ -194,6 +196,16 @@ async def process_one(state: _State) -> bool:
         await storage.delete_key(output_key)
         await storage.delete_key(poster_key)
         raise
+    except Exception:
+        # Beklenmeyen hata (depo, disk…): kayıt 20 dk PROCESSING'de kalmasın.
+        # Hak varsa kuyruğa döner (deneme sayılır), yoksa FAILED/INTERNAL.
+        logger.exception("video %s işlenirken beklenmeyen hata", video_id)
+        async with AsyncSessionLocal() as db:
+            await tutor_video_service.fail_or_retry(db, video_id, lock_token)
+            await _commit_and_flush(db)
+        await storage.delete_key(output_key)
+        await storage.delete_key(poster_key)
+        return True
     finally:
         state.current = None
 
@@ -235,22 +247,38 @@ async def cleanup_tick() -> None:
     async with AsyncSessionLocal() as db:
         orphans = await tutor_video_service.requeue_stale(db)
         expired = await tutor_video_service.expire_pending_uploads(db)
-        await db.commit()
+        await _commit_and_flush(db)
     for out_key, poster_key in orphans:
         await storage.delete_key(out_key)
         await storage.delete_key(poster_key)
     if orphans or expired:
         logger.info("temizlik: %s stale geri alındı, %s yükleme süresi doldu", len(orphans), expired)
 
+    done = failed = 0
     async with AsyncSessionLocal() as db:
         rows = await tutor_video_service.list_for_cleanup(db)
         for v in rows:
+            ok = True
             for key in tutor_video_service.object_keys(v):
-                await storage.delete_key(key)
-            v.objects_deleted_at = tutor_video_service._now()
+                try:
+                    storage.bucket_for_key(key)
+                except ValueError:
+                    # Sınıfsız anahtar hiçbir zaman silinemez; beklemek boşuna.
+                    logger.warning("video %s: sınıfsız anahtar atlandı: %s", v.id, key)
+                    continue
+                if not await storage.delete_key(key):
+                    ok = False
+            if ok:
+                v.objects_deleted_at = tutor_video_service._now()
+                done += 1
+            else:
+                # Damga yok → sonraki turda yeniden denenir; `updated_at`
+                # ilerletilir ki satır kuyruğun önünü tıkamasın.
+                v.updated_at = tutor_video_service._now()
+                failed += 1
         await db.commit()
     if rows:
-        logger.info("temizlik: %s kaydın nesneleri silindi", len(rows))
+        logger.info("temizlik: %s kaydın nesneleri silindi, %s kayıt yeniden denenecek", done, failed)
 
 
 def _check_binaries() -> None:

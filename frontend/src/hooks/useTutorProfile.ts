@@ -21,8 +21,15 @@ export function useUpdateTutorProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: TutorProfileUpdate) => updateMyTutorProfile(payload),
-    onSuccess: (tutor) => {
+    // Her çağıran (Profilim bölümleri, ilan sihirbazı) hatayı kendisi gösterir;
+    // global bildirim ikinci bir aynı toast basıyordu.
+    meta: { silentError: true },
+    onSuccess: (tutor, payload) => {
       queryClient.setQueryData(["tutors", "me"], tutor);
+      // Bağlantı onaya düşer ya da kaldırılır: video durum kartı tazelensin.
+      if ("intro_video_url" in payload) {
+        queryClient.invalidateQueries({ queryKey: ["tutors", "me", "intro-video"] });
+      }
       // İlan güncellenince arama/detay önbelleği bayat kalmasın.
       queryClient.invalidateQueries({ queryKey: ["tutors", "search"] });
       queryClient.invalidateQueries({ queryKey: ["tutors", "detail", tutor.id] });

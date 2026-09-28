@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import datetime
 import decimal
-import re
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from core.storage_types import PrivateAsset
+from schemas.tutor import validate_intro_video_url
 
 #: Formdaki deneyim seçenekleri — serbest metin değil, kapalı liste.
 EXPERIENCE_CHOICES = ("universite-ogrencisi", "0-2", "3-5", "5+")
@@ -40,25 +40,8 @@ class TutorPreApplicationProfileIn(BaseModel):
     @field_validator("intro_video_url")
     @classmethod
     def _check_intro_video(cls, value: str | None) -> str | None:
-        """`schemas.tutor` ile AYNI kural: https + YouTube/Vimeo.
-
-        Kopya olmasının sebebi, oradaki doğrulayıcının bir eğitmen profili
-        şemasına bağlı olması; iki yüzeyin kuralı ayrışırsa lead'den gelen
-        adres profile taşınamaz hâle gelir. Kural değişirse İKİSİ birden
-        değişmeli.
-        """
-        if value is None:
-            return None
-        url = value.strip()
-        if not url:
-            return None
-        if not re.match(r"^https://", url, re.IGNORECASE):
-            raise ValueError("Video bağlantısı https:// ile başlamalıdır")
-        allowed = ("youtube.com", "www.youtube.com", "youtu.be", "vimeo.com")
-        host = re.sub(r"^https://", "", url, flags=re.IGNORECASE).split("/")[0].lower()
-        if host not in allowed:
-            raise ValueError("Yalnızca YouTube veya Vimeo bağlantısı desteklenir")
-        return url
+        """Kural `schemas.tutor.validate_intro_video_url` ile ortaktır."""
+        return validate_intro_video_url(value)
 
     @field_validator("headline", "bio", "availability_note", "education_note")
     @classmethod

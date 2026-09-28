@@ -226,6 +226,11 @@ async def update_profile(
     subject_levels = data.subject_levels if "subject_levels" in payload else None
     payload.pop("subject_levels", None)
     availability = payload.pop("availability", None)
+    # Tanıtım videosu bağlantısı doğrudan yazılmaz: admin ön onayından geçer
+    # (`tutor_video_service.submit_link`). `tutors.intro_video_url` yalnız
+    # yayındaki bağlantının kopyasıdır.
+    link_verildi = "intro_video_url" in payload
+    link_url = payload.pop("intro_video_url", None)
     for field, value in payload.items():
         # Public profil metinleri maskeden geçer. Bu, anti-disintermediation'ın
         # EN BÜYÜK açığıydı: mesajlaşma maskeliyken biyografiye telefon yazan
@@ -234,11 +239,10 @@ async def update_profile(
         if field in _MASKED_PROFILE_FIELDS and isinstance(value, str):
             value = mask_contact_info(value)
         setattr(tutor, field, value)
-    # Tek kaynak kuralı: YouTube/Vimeo bağlantısı kaydedilirken siteye yüklenmiş
-    # AKTİF video düşer (REPLACED; nesneleri worker temizler). Bağlantıyı boşaltmak
-    # (None) aktif upload'a dokunmaz. İstemci bu durumda onay diyaloğu gösterir.
-    if payload.get("intro_video_url"):
-        await tutor_video_service.replace_active_for_link(db, tutor.id)
+    # Yeni bağlantı onay bekler; yayındaki video/bağlantı onaya kadar kalır.
+    # Boş değer yayındaki bağlantıyı hemen kaldırır (yüklenmiş videoya dokunmaz).
+    if link_verildi:
+        await tutor_video_service.submit_link(db, tutor, link_url)
     if subjects is not None:
         await _replace_subjects(db, tutor, subjects)
     # Seviyeler branşlardan SONRA yazılır: doğrulama "bu ders bildirilmiş mi"

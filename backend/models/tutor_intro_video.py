@@ -1,9 +1,17 @@
-"""Eğitmenin siteye YÜKLEDİĞİ tanıtım videosu (YouTube/Vimeo bağlantısı değil).
+"""Eğitmen tanıtım videosu: siteye YÜKLENEN video ya da YouTube/Vimeo BAĞLANTISI.
 
-Bağlantı hâlâ `tutors.intro_video_url`da durur; bu tablo doğrudan yüklenen
-videonun yaşam döngüsünü taşır. Tek kaynak kuralı: eğitmenin ya ACTIVE bir
-upload'ı vardır ya da `intro_video_url` doludur — ikisi birden değil
-(`services/tutor_video_service.activate` ve `tutor_service.update_profile`).
+İki tür aynı yaşam döngüsünü (PENDING_REVIEW → ACTIVE | REJECTED, REPLACED)
+ve aynı admin onay kuyruğunu paylaşır (`kind`):
+
+* ``UPLOAD`` — doğrudan yükleme; kaynak/çıktı anahtarları bu satırdadır.
+* ``LINK`` — bağlantı (`link_url`); worker'a hiç girmez, doğrudan
+  PENDING_REVIEW (ön-moderasyon kapalıysa ACTIVE) olarak açılır.
+
+Yayındaki bağlantının public okuma kopyası `tutors.intro_video_url`dır
+(arama, SEO, profil yanıtları onu okur). Bu sütunu YALNIZ
+`services/tutor_video_service` yazar: aktivasyon, kaldırma ve admin reddi.
+Tek kaynak kuralı: eğitmen başına tek ACTIVE satır (kısmi unique indeks) —
+yayında ya yüklenmiş video ya bağlantı vardır, ikisi birden değil.
 
 Durumlar ``String(16)`` olarak saklanır (PG enum tipi DEĞİL): liste uzun ve
 değişebilir, ``ALTER TYPE`` migration'ından kaçınılır — `TutorEducation
@@ -18,7 +26,17 @@ from __future__ import annotations
 import datetime
 import enum
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, Numeric, String, text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -35,6 +53,11 @@ class TutorIntroVideoStatus(str, enum.Enum):
     FAILED = "FAILED"  # doğrulama/işleme hatası
     REPLACED = "REPLACED"  # yeni video/bağlantı ile değiştirildi ya da eğitmen kaldırdı
     EXPIRED = "EXPIRED"  # yükleme hiç tamamlanmadı
+
+
+class TutorIntroVideoKind(str, enum.Enum):
+    UPLOAD = "UPLOAD"  # siteye yüklenen dosya (worker işler)
+    LINK = "LINK"  # YouTube/Vimeo bağlantısı (işleme yok, yalnız onay)
 
 
 #: Eğitmen başına aynı anda en fazla bir tane olabilen "yolda" kayıtlar.
@@ -71,16 +94,21 @@ class TutorIntroVideo(Base, TimestampMixin):
         String(16), nullable=False, server_default="PENDING_UPLOAD"
     )
 
+    kind: Mapped[str] = mapped_column(String(8), nullable=False, server_default="UPLOAD")
+    # LINK: doğrulanmış YouTube/Vimeo adresi (`schemas.tutor.validate_intro_video_url`).
+    link_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     # Ham yükleme — `private/tutor-videos/{tutor_id}/{uuid}.bin`. Sunucu üretir;
     # istemci hiçbir uçta anahtar göndermez. Uzantı `.bin`: türüne güvenilmez.
-    source_key: Mapped[str] = mapped_column(String(255), nullable=False)
-    declared_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    # Yükleme alanları LINK satırında boştur (CHECK kısıtı UPLOAD'da zorunlu tutar).
+    source_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    declared_size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     declared_content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # İmzalı PUT adresinin son geçerlilik anı. `complete` bunu REDDETMEZ (imza
     # istek başında kontrol edilir, yavaş yükleme sonradan biter); yalnız
     # yetim PENDING_UPLOAD temizliğinin referansıdır.
-    upload_expires_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
+    upload_expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # İşlenmiş çıktı — public `tutor-videos/{uuid}.mp4` + `.jpg`. Deneme başına
@@ -135,8 +163,19 @@ class TutorIntroVideo(Base, TimestampMixin):
         ),
         # Worker seçimi (UPLOADED, en eski önce) ve temizlik taramaları.
         Index("ix_tutor_intro_videos_status_created", "status", "created_at"),
+        # Tür başına zorunlu yük: UPLOAD'da kaynak anahtarı/boyut/süre, LINK'te adres.
+        CheckConstraint(
+            "(kind = 'UPLOAD' AND source_key IS NOT NULL AND declared_size_bytes IS NOT NULL"
+            " AND upload_expires_at IS NOT NULL)"
+            " OR (kind = 'LINK' AND link_url IS NOT NULL)",
+            name="ck_tutor_intro_videos_kind_payload",
+        ),
     )
 
     @property
     def is_in_flight(self) -> bool:
         return self.status in IN_FLIGHT_STATUSES
+
+    @property
+    def is_link(self) -> bool:
+        return self.kind == TutorIntroVideoKind.LINK.value

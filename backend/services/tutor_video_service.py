@@ -1,8 +1,17 @@
-"""Eğitmen tanıtım videosu — doğrudan yükleme yaşam döngüsü.
+"""Eğitmen tanıtım videosu — doğrudan yükleme ve bağlantı yaşam döngüsü.
 
-Akış: `init_upload` (imzalı PUT) → tarayıcı PUT → `complete_upload` (HEAD ile
-boyut) → worker (`claim_next` → FFmpeg → `finalize_*`) → `admin_review`
+Yükleme: `init_upload` (imzalı PUT) → tarayıcı PUT → `complete_upload` (HEAD
+ile boyut) → worker (`claim_next` → FFmpeg → `finalize_*`) → `admin_review`
 (ön-moderasyon açıksa) → `activate`.
+
+Bağlantı (YouTube/Vimeo): `submit_link` (PATCH /tutors/me) → PENDING_REVIEW →
+`admin_review` → `activate`. İşleme adımı yoktur; aynı kuyruk ve aynı kurallar.
+`tutors.intro_video_url` yayındaki bağlantının public kopyasıdır ve YALNIZ bu
+modülde yazılır (`activate`, kaldırma, admin reddi; hesap silme ayrıca boşaltır).
+
+Tek bekleyen kuralı: eğitmen başına tek "yolda" satır. Onay bekleyen bir
+BAĞLANTI her zaman yenisiyle (bağlantı ya da yükleme) değiştirilebilir — emek
+kaybı yoktur. Yolda bir YÜKLEME ise 409 döner: önce iptal edilmeli.
 
 Atomik değişim kuralı: eski ACTIVE video ve `intro_video_url`, yalnız
 `activate` içinde ve aynı transaction'da değişir. Başarısız işleme, red ve
@@ -17,7 +26,7 @@ import logging
 import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +39,7 @@ from models.tutor_intro_video import (
     CLEANUP_STATUSES,
     IN_FLIGHT_STATUSES,
     TutorIntroVideo,
+    TutorIntroVideoKind,
     TutorIntroVideoStatus,
 )
 from schemas.tutor_video import (
@@ -44,8 +54,12 @@ from services import notification_service
 logger = logging.getLogger("adana.tutor_video")
 
 S = TutorIntroVideoStatus
+K = TutorIntroVideoKind
 #: Bildirim bağlantısı — Profilim → Video bölümü.
 _VIDEO_LINK = f"{frontend_yollari.ILANIM}?bolum=video"
+#: `tutor_intro_videos.id` INTEGER; aralık dışı path kimliği asyncpg'de
+#: DataError (500) olurdu — sorguya gitmeden 404.
+_PG_INT_MAX = 2_147_483_647
 
 
 def _now() -> datetime.datetime:
@@ -63,6 +77,8 @@ def to_own_out(v: TutorIntroVideo) -> TutorIntroVideoOut:
     return TutorIntroVideoOut(
         id=v.id,
         status=v.status,
+        kind=v.kind,
+        link_url=v.link_url,
         mp4_url=v.output_key if v.status in (S.PENDING_REVIEW.value, S.ACTIVE.value) else None,
         poster_url=v.poster_key if v.status in (S.PENDING_REVIEW.value, S.ACTIVE.value) else None,
         width=v.width,
@@ -77,8 +93,14 @@ def to_own_out(v: TutorIntroVideo) -> TutorIntroVideoOut:
 
 
 def to_public_out(v: TutorIntroVideo | None) -> IntroVideoOut | None:
-    """Yalnız ACTIVE ve çıktısı olan video public yanıta girer."""
-    if v is None or v.status != S.ACTIVE.value or not v.output_key:
+    """Yalnız ACTIVE ve çıktısı olan YÜKLENMİŞ video public yanıta girer
+    (yayındaki bağlantı public'e `tutors.intro_video_url` üzerinden çıkar)."""
+    if (
+        v is None
+        or v.kind != K.UPLOAD.value
+        or v.status != S.ACTIVE.value
+        or not v.output_key
+    ):
         return None
     return IntroVideoOut(
         mp4_url=v.output_key,
@@ -140,25 +162,32 @@ async def get_state(db: AsyncSession, tutor: Tutor) -> TutorIntroVideoStateOut:
     if pending is None:
         pending = await _last_failed(db, tutor.id)
     return TutorIntroVideoStateOut(
-        active=to_own_out(active) if active else None,
+        # `active` yalnız yüklenmiş videodur; yayındaki bağlantı `link_url`de.
+        active=to_own_out(active) if active and not active.is_link else None,
         pending=to_own_out(pending) if pending else None,
         link_url=tutor.intro_video_url,
         uploads_enabled=settings.TUTOR_VIDEO_UPLOADS_ENABLED,
         max_bytes=settings.TUTOR_VIDEO_MAX_BYTES,
         max_seconds=settings.TUTOR_VIDEO_MAX_SECONDS,
         min_seconds=settings.TUTOR_VIDEO_MIN_SECONDS,
+        min_short_side=settings.TUTOR_VIDEO_MIN_HEIGHT,
         require_review=settings.TUTOR_VIDEO_REQUIRE_REVIEW,
     )
 
 
-async def _own_or_404(db: AsyncSession, tutor: Tutor, video_id: int) -> TutorIntroVideo:
-    v = (
-        await db.execute(
-            select(TutorIntroVideo).where(
-                TutorIntroVideo.id == video_id, TutorIntroVideo.tutor_id == tutor.id
-            )
-        )
-    ).scalar_one_or_none()
+async def _own_or_404(
+    db: AsyncSession, tutor: Tutor, video_id: int, *, lock: bool = False
+) -> TutorIntroVideo:
+    """Sahiplik kontrollü okuma. ``lock=True``: satır kilidi (FOR UPDATE) ve
+    oturumdaki eski kopyanın tazelenmesi — durum geçişleri yarışmasın."""
+    if not 0 < video_id <= _PG_INT_MAX:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Video kaydı bulunamadı")
+    stmt = select(TutorIntroVideo).where(
+        TutorIntroVideo.id == video_id, TutorIntroVideo.tutor_id == tutor.id
+    )
+    if lock:
+        stmt = stmt.with_for_update().execution_options(populate_existing=True)
+    v = (await db.execute(stmt)).scalar_one_or_none()
     if v is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video kaydı bulunamadı")
     return v
@@ -182,11 +211,7 @@ async def init_upload(db: AsyncSession, tutor: Tutor, payload: UploadInitIn) -> 
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"Video en fazla {_mb(settings.TUTOR_VIDEO_MAX_BYTES)} MB olabilir",
         )
-    if await get_in_flight(db, tutor.id) is not None:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Zaten işlemde olan bir videon var; önce onu iptal et ya da bitmesini bekle",
-        )
+    await _clear_pending_link_or_409(db, tutor)
     ttl = settings.TUTOR_VIDEO_UPLOAD_TTL_SECONDS
     expires_at = _now() + datetime.timedelta(seconds=ttl)
     video = TutorIntroVideo(
@@ -222,21 +247,30 @@ async def complete_upload(db: AsyncSession, tutor: Tutor, video_id: int) -> Tuto
     Boyut aşımı 4xx DEĞİL, FAILED durumu döner: hata yükseltilse transaction
     geri alınır, satır PENDING_UPLOAD'da takılır ve eğitmen temizlik turuna
     kadar yeni video başlatamaz.
+
+    HEAD (ağ çağrısı) kilitsiz yapılır; ardından satır kilitlenip durum yeniden
+    doğrulanır: arada iptal edildiyse 409 ve kaynağa dokunulmaz.
     """
     v = await _own_or_404(db, tutor, video_id)
     if v.status != S.PENDING_UPLOAD.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu yükleme zaten tamamlanmış")
-    size = await storage.head_size(v.source_key)
+    source_key = v.source_key
+    size = await storage.head_size(source_key)
+    v = await _own_or_404(db, tutor, video_id, lock=True)
+    if v.status != S.PENDING_UPLOAD.value:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu yükleme artık tamamlanamaz")
     if size is None:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Yüklenen dosya bulunamadı; yüklemeyi yeniden dene"
         )
     if size > settings.TUTOR_VIDEO_MAX_BYTES:
-        await storage.delete_key(v.source_key)
+        # Kaynak hemen silinir ama damga basılmaz: imzalı PUT adresi hâlâ
+        # geçerli olabilir; damgayı süre dolunca temizlik turu basar.
+        if not await storage.delete_key(source_key):
+            logger.warning("video %s: boyut aşımı kaynağı silinemedi, temizliğe kaldı", v.id)
         v.status = S.FAILED.value
         v.error_code = "TOO_LARGE"
         v.error_message = f"Dosya {_mb(settings.TUTOR_VIDEO_MAX_BYTES)} MB sınırını aşıyor"
-        v.objects_deleted_at = _now()  # kaynak zaten silindi, çıktı yok
         await db.flush()
         return to_own_out(v)
     v.declared_size_bytes = size
@@ -249,7 +283,7 @@ async def cancel_upload(db: AsyncSession, tutor: Tutor, video_id: int) -> None:
     """Yolda ya da başarısız kaydı kaldırır. PROCESSING de iptal edilebilir:
     worker'ın final UPDATE'i `status='PROCESSING'` koşuluyla yazıldığından
     kaybeden deneme kendi çıktısını siler."""
-    v = await _own_or_404(db, tutor, video_id)
+    v = await _own_or_404(db, tutor, video_id, lock=True)
     if v.status not in IN_FLIGHT_STATUSES + (S.FAILED.value, S.REJECTED.value):
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu kayıt iptal edilemez")
     v.status = S.REPLACED.value
@@ -258,26 +292,97 @@ async def cancel_upload(db: AsyncSession, tutor: Tutor, video_id: int) -> None:
 
 
 async def remove_active(db: AsyncSession, tutor: Tutor) -> None:
+    """Yayındaki videoyu (yüklenmiş ya da bağlantı) kaldırır."""
     active = await get_active(db, tutor.id)
-    if active is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Yayında yüklenmiş video yok")
+    if active is not None:
+        active = await _own_or_404(db, tutor, active.id, lock=True)
+    if active is None or active.status != S.ACTIVE.value:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Yayında video yok")
     active.status = S.REPLACED.value
+    if active.is_link:
+        tutor.intro_video_url = None
     await db.flush()
 
 
-async def replace_active_for_link(db: AsyncSession, tutor_id: int) -> bool:
-    """Eğitmen YouTube/Vimeo bağlantısı kaydederken aktif upload'ı düşürür
-    (tek kaynak kuralı; `tutor_service.update_profile` çağırır)."""
-    active = await get_active(db, tutor_id)
-    if active is None:
-        return False
-    active.status = S.REPLACED.value
-    return True
+async def _clear_pending_link_or_409(db: AsyncSession, tutor: Tutor) -> None:
+    """Tek bekleyen kuralı: onay bekleyen BAĞLANTI yenisine yer açar
+    (REPLACED); yolda bir YÜKLEME varsa 409 (emek kaybolmasın, önce iptal).
+
+    Satır kilitlenip durum yeniden okunur: admin aynı anda onayladıysa kilitten
+    sonra ACTIVE görülür ve dokunulmaz (yeni kayıt onu kendi onayında değiştirir).
+    """
+    pending = await get_in_flight(db, tutor.id)
+    if pending is None:
+        return
+    pending = await _own_or_404(db, tutor, pending.id, lock=True)
+    if pending.status not in IN_FLIGHT_STATUSES:
+        return
+    if not pending.is_link:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Zaten işlemde olan bir videon var; önce onu iptal et ya da bitmesini bekle",
+        )
+    pending.status = S.REPLACED.value
+    await db.flush()  # kısmi unique (tek yolda) için yenisinden ÖNCE
+
+
+async def submit_link(db: AsyncSession, tutor: Tutor, url: str | None) -> None:
+    """`PATCH /tutors/me` `intro_video_url` alanı (`tutor_service.update_profile`).
+
+    * Boş değer: yayındaki BAĞLANTIYI hemen kaldırır (kaldırmak onay istemez).
+      Onay bekleyen bağlantıya ve yüklenmiş videoya dokunmaz; bekleyeni geri
+      çekmek iptal ucuyla yapılır.
+    * Yayındaki ya da onay bekleyen bağlantının aynısı: işlem yok (sihirbaz
+      alanı her kayıtta yeniden gönderir).
+    * Yeni bağlantı: PENDING_REVIEW satırı açılır; yayındaki video/bağlantı
+      onaya kadar yerinde kalır (atomik değişim). Ön-moderasyon kapalıysa
+      hemen yayına girer.
+
+    Bağlantı `TUTOR_VIDEO_UPLOADS_ENABLED` ayarına bağlı DEĞİLDİR: yükleme
+    kapalıyken eğitmenin elindeki tek yol budur.
+    """
+    if not url:
+        active = await get_active(db, tutor.id)
+        if active is not None and active.is_link:
+            active = await _own_or_404(db, tutor, active.id, lock=True)
+            # Kilitten sonra ACTIVE değilse admin aynı anda başka bir kaydı
+            # onaylamıştır; public kopya ONUN — `tutor` nesnesi istek başında
+            # kilitsiz yüklendiği için bayat, NULL yazmak onu ezerdi.
+            if active.status == S.ACTIVE.value:
+                active.status = S.REPLACED.value
+                tutor.intro_video_url = None
+        else:
+            tutor.intro_video_url = None
+        await db.flush()
+        return
+    if url == tutor.intro_video_url:
+        return
+    pending = await get_in_flight(db, tutor.id)
+    if pending is not None and pending.is_link and pending.link_url == url:
+        return
+    await _clear_pending_link_or_409(db, tutor)
+    row = TutorIntroVideo(
+        tutor_id=tutor.id,
+        status=S.PENDING_REVIEW.value,
+        kind=K.LINK.value,
+        link_url=url,
+    )
+    db.add(row)
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Kısmi unique (tek yolda kayıt): eşzamanlı ikinci başlatma.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Zaten işlemde olan bir videon var"
+        ) from None
+    if not settings.TUTOR_VIDEO_REQUIRE_REVIEW:
+        await activate(db, row)
 
 
 async def activate(db: AsyncSession, video: TutorIntroVideo) -> None:
-    """Yeni videoyu yayına alır — TEK transaction: önceki ACTIVE → REPLACED,
-    bu → ACTIVE, `intro_video_url` → NULL. Nesne silme burada YAPILMAZ."""
+    """Yeni videoyu/bağlantıyı yayına alır — TEK transaction: önceki ACTIVE →
+    REPLACED, bu → ACTIVE, `intro_video_url` → bağlantı (LINK) ya da NULL
+    (UPLOAD). Nesne silme burada YAPILMAZ."""
     prev = await get_active(db, video.tutor_id)
     if prev is not None and prev.id != video.id:
         prev.status = S.REPLACED.value
@@ -285,7 +390,7 @@ async def activate(db: AsyncSession, video: TutorIntroVideo) -> None:
     video.status = S.ACTIVE.value
     tutor = await db.get(Tutor, video.tutor_id)
     if tutor is not None:
-        tutor.intro_video_url = None
+        tutor.intro_video_url = video.link_url if video.is_link else None
     await db.flush()
 
 
@@ -311,10 +416,21 @@ async def admin_review(
     note: str | None = None,
 ) -> TutorIntroVideo:
     """Onayla → aktifleşir; reddet → REJECTED (ACTIVE olan da sonradan
-    kaldırılabilir). Eğitmene bildirim gider; audit çağıran router'da."""
-    v = await db.get(TutorIntroVideo, video_id)
+    kaldırılabilir; yayındaki bağlantı reddedilirse public kopyası da silinir).
+    Eğitmene bildirim gider; audit çağıran router'da."""
+    if not 0 < video_id <= _PG_INT_MAX:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Video kaydı bulunamadı")
+    v = (
+        await db.execute(
+            select(TutorIntroVideo)
+            .where(TutorIntroVideo.id == video_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none()
     if v is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Video kaydı bulunamadı")
+    ne = "Tanıtım videosu bağlantın" if v.is_link else "Tanıtım videon"
     if action == "approve":
         if v.status != S.PENDING_REVIEW.value:
             raise HTTPException(status.HTTP_409_CONFLICT, "Yalnız onay bekleyen video onaylanır")
@@ -322,15 +438,19 @@ async def admin_review(
         v.reviewed_by = admin.id
         v.reviewed_at = _now()
         v.review_note = None
-        message = "Tanıtım videon onaylandı ve profilinde yayında."
+        message = f"{ne} onaylandı ve profilinde yayında."
     elif action == "reject":
         if v.status not in (S.PENDING_REVIEW.value, S.ACTIVE.value):
             raise HTTPException(status.HTTP_409_CONFLICT, "Bu video reddedilemez")
+        if v.status == S.ACTIVE.value and v.is_link:
+            tutor = await db.get(Tutor, v.tutor_id)
+            if tutor is not None:
+                tutor.intro_video_url = None
         v.status = S.REJECTED.value
         v.reviewed_by = admin.id
         v.reviewed_at = _now()
         v.review_note = note
-        message = "Tanıtım videon onaylanmadı" + (f": {note}" if note else ".")
+        message = f"{ne} onaylanmadı" + (f": {note}" if note else ".")
     else:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Geçersiz işlem")
     await db.flush()
@@ -426,12 +546,8 @@ async def finalize_success(
     return v.status
 
 
-async def finalize_failure(
-    db: AsyncSession, video_id: int, lock_token: str, *, code: str, message: str
-) -> bool:
-    v = await _locked_processing(db, video_id, lock_token)
-    if v is None:
-        return False
+async def _mark_failed(db: AsyncSession, v: TutorIntroVideo, *, code: str, message: str) -> None:
+    """FAILED'e çeker ve eğitmene bildirir (tek metin kaynağı)."""
     v.status = S.FAILED.value
     v.error_code = code
     v.error_message = message[:500]
@@ -445,7 +561,38 @@ async def finalize_failure(
         message=f"Tanıtım videon işlenemedi: {message}",
         link=_VIDEO_LINK,
     )
+
+
+async def finalize_failure(
+    db: AsyncSession, video_id: int, lock_token: str, *, code: str, message: str
+) -> bool:
+    v = await _locked_processing(db, video_id, lock_token)
+    if v is None:
+        return False
+    await _mark_failed(db, v, code=code, message=message)
     return True
+
+
+async def fail_or_retry(db: AsyncSession, video_id: int, lock_token: str) -> str | None:
+    """Worker'da beklenmeyen hata: deneme hakkı varsa kuyruğa geri koyar
+    (deneme SAYILIR), yoksa FAILED/INTERNAL + bildirim. Kilit kaybedildiyse
+    None; aksi halde yeni durum."""
+    v = await _locked_processing(db, video_id, lock_token)
+    if v is None:
+        return None
+    if (v.attempts or 0) < settings.TUTOR_VIDEO_MAX_ATTEMPTS:
+        v.status = S.UPLOADED.value
+        v.lock_token = None
+        v.processing_started_at = None
+        await db.flush()
+    else:
+        await _mark_failed(
+            db,
+            v,
+            code="INTERNAL",
+            message="Video işlenirken beklenmeyen bir sorun oldu; yeniden yükle",
+        )
+    return v.status
 
 
 async def requeue(db: AsyncSession, video_id: int, lock_token: str) -> bool:
@@ -487,10 +634,10 @@ async def requeue_stale(db: AsyncSession) -> list[tuple[str | None, str | None]]
         if (v.attempts or 0) < settings.TUTOR_VIDEO_MAX_ATTEMPTS:
             v.status = S.UPLOADED.value
         else:
-            v.status = S.FAILED.value
-            v.error_code = "TIMEOUT"
-            v.error_message = "İşleme zaman aşımına uğradı; videoyu kısaltıp yeniden dene"
             v.output_key = v.poster_key = None
+            await _mark_failed(
+                db, v, code="TIMEOUT", message="İşleme tamamlanamadı; yeniden yükle"
+            )
     await db.flush()
     return orphans
 
@@ -516,14 +663,23 @@ async def expire_pending_uploads(db: AsyncSession) -> int:
 
 
 async def list_for_cleanup(db: AsyncSession, *, limit: int = 20) -> list[TutorIntroVideo]:
-    """Terminal durumda olup nesneleri henüz silinmemiş kayıtlar."""
+    """Terminal durumda olup nesneleri henüz silinmemiş kayıtlar.
+
+    İmzalı PUT adresinin süresi dolmamış kayıt beklenir: erken silinip
+    damgalanırsa aynı adrese yapılan yeni PUT kalıcı sahipsiz nesne bırakır."""
     return (
         (
             await db.execute(
                 select(TutorIntroVideo)
                 .where(
+                    # Bağlantı satırının silinecek nesnesi yoktur.
+                    TutorIntroVideo.kind == K.UPLOAD.value,
                     TutorIntroVideo.status.in_(CLEANUP_STATUSES),
                     TutorIntroVideo.objects_deleted_at.is_(None),
+                    or_(
+                        TutorIntroVideo.upload_expires_at.is_(None),
+                        TutorIntroVideo.upload_expires_at < _now(),
+                    ),
                 )
                 .order_by(TutorIntroVideo.updated_at)
                 .limit(limit)
@@ -539,8 +695,12 @@ def object_keys(v: TutorIntroVideo) -> list[str]:
 
 
 async def anonymize_for_account_deletion(db: AsyncSession, tutor_id: int) -> list[str]:
-    """Hesap silme: bütün kayıtları REPLACED'a çeker, nesne anahtarlarını döner
-    (çağıran commit SONRASI best-effort siler; satırlar CASCADE ile gider)."""
+    """Hesap silme: yüklenen kayıtları REPLACED'a çeker ve nesne anahtarlarını
+    döner (çağıran commit SONRASI best-effort siler). Eğitmen satırı silinmez,
+    anonimleşir (CASCADE çalışmaz); bu yüzden kişisel veri burada temizlenir:
+    bağlantı (LINK) satırları silinir — `link_url` kişinin kendi YouTube/Vimeo
+    videosudur ve CHECK kısıtı onu boşaltmaya izin vermez — ve inceleme notu
+    boşaltılır."""
     rows = (
         (
             await db.execute(
@@ -552,8 +712,13 @@ async def anonymize_for_account_deletion(db: AsyncSession, tutor_id: int) -> lis
     )
     keys: list[str] = []
     for v in rows:
+        if v.is_link:
+            await db.delete(v)
+            continue
         if v.objects_deleted_at is None:
             keys.extend(object_keys(v))
         v.status = S.REPLACED.value
         v.lock_token = None
+        v.review_note = None
+    await db.flush()
     return keys

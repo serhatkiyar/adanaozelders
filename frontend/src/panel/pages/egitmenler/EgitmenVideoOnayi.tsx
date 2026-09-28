@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { App, Button, Flex, Tag, Typography, theme } from "antd";
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
+import { Icon } from "@/components/AppIcon";
 import { BosDurumu, HataDurumu, YukleniyorDurumu } from "@/panel/components/Durum";
 import { useVarlikKilidi } from "@/panel/components/varlikKilidi";
 import { onayAc } from "@/panel/components/onayPenceresi";
@@ -107,9 +108,12 @@ export function EgitmenVideoOnayi() {
 
   const satir = (kayit: AdminTutorIntroVideo, i: number, dizi: AdminTutorIntroVideo[]) => {
     const ad = kayit.tutor_name ?? `Öğretmen #${kayit.tutor_id}`;
-    const ozet = [sureBiciminde(kayit.duration_seconds), kayit.width && kayit.height ? `${kayit.width}×${kayit.height}` : null]
-      .filter(Boolean)
-      .join(" · ");
+    const ozet =
+      kayit.kind === "LINK"
+        ? "YouTube/Vimeo bağlantısı"
+        : [sureBiciminde(kayit.duration_seconds), kayit.width && kayit.height ? `${kayit.width}×${kayit.height}` : null]
+            .filter(Boolean)
+            .join(" · ");
     return (
       <div
         key={kayit.id}
@@ -125,7 +129,13 @@ export function EgitmenVideoOnayi() {
                 style={{ width: 96, height: 54, objectFit: "cover", borderRadius: 4, background: "#000", flexShrink: 0 }}
               />
             ) : (
-              <div style={{ width: 96, height: 54, borderRadius: 4, background: token.colorFillSecondary, flexShrink: 0 }} />
+              // Bağlantı satırında poster yok: boş gri kutu yerine tür ikonu.
+              <div
+                aria-hidden
+                style={{ width: 96, height: 54, borderRadius: 4, background: token.colorFillSecondary, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: token.colorTextSecondary }}
+              >
+                <Icon name="video" className="h-6 w-6" />
+              </div>
             )}
             <div style={{ minWidth: 0 }}>
               {kullaniciGorebilir ? (

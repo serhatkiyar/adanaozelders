@@ -199,6 +199,8 @@ PROMOTION_SPEC = EscrowSpec(
 # kullanmasına ve iki alakasız işlemin sessizce birbirini beklemesine yol açardı.
 EXAM_SESSION_CAPACITY_LOCK_CLASS = 6
 LIBRARY_CAPACITY_LOCK_CLASS = 7
+#: Öğrencinin toplam bekleyen ders talebi kotası (`booking_service.create_booking`).
+BOOKING_CLIENT_QUOTA_LOCK_CLASS = 9
 
 
 # ── Atomik claim ─────────────────────────────────────────────────────────────────

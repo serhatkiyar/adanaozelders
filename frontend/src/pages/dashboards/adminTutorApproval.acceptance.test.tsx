@@ -209,6 +209,24 @@ describe("A-1 · onay kuyruğu /yonetim/egitmenler altında render ediliyor", ()
     await screen.findByText("Yayinda Ogretmen");
     expect(screen.queryByRole("heading", { name: /onay bekleyen/i })).toBeNull();
   });
+
+  it("onay bekleyen video/bağlantısı olan başvuruda gösterge video onay ekranına bağlanır", async () => {
+    izinVer(TUTORS_VIEW, TUTORS_MANAGE);
+    tutorSunucusu([YAYINDA, BEKLEYEN]);
+    sunucu(
+      "/admin/tutor-videos/pending",
+      { data: [{ id: 7, tutor_id: 41, kind: "LINK", status: "PENDING_REVIEW", link_url: "https://youtu.be/x" }] },
+      "get"
+    );
+
+    sar();
+
+    const gosterge = await screen.findByRole("link", { name: "Video onayı bekliyor" });
+    expect(gosterge).toHaveAttribute("href", "/yonetim-yeni/egitmenler/videolar");
+    const kuyruk = screen.getByRole("heading", { name: /onay bekleyen/i }).closest("section") as HTMLElement;
+    expect(within(kuyruk).getByRole("link", { name: "Video onayı bekliyor" })).toBe(gosterge);
+    expect(screen.getAllByRole("link", { name: "Video onayı bekliyor" })).toHaveLength(1);
+  });
 });
 
 /* ═════════════════════ A-2 · Satır aksiyonları ═════════════════════ */

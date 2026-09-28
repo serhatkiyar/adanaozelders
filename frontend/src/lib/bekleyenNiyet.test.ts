@@ -20,6 +20,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  girisBaglami,
   niyetiAl,
   niyetiGozle,
   niyetiSakla,
@@ -79,6 +80,11 @@ describe("bekleyen niyet · güvenilmez girdi", () => {
     ["favori: hedef yanlış", '{"tip":"favori","hedef":"uzay","id":5}'],
     ["favori: id metin", '{"tip":"favori","hedef":"egitmen","id":"5"}'],
     ["dersTalebi: alan eksik", '{"tip":"dersTalebi"}'],
+    // Program takviminden gelen saat: süre sunucu listesinde, tarih/ISO geçerli olmalı.
+    ["dersTalebi: saat süresi listede yok", '{"tip":"dersTalebi","egitmenId":1,"saat":{"date":"2026-10-01","start_at":"2026-10-01T07:00:00Z","duration":45}}'],
+    ["dersTalebi: saat tarihi biçimsiz", '{"tip":"dersTalebi","egitmenId":1,"saat":{"date":"1 Eki","start_at":"2026-10-01T07:00:00Z","duration":60}}'],
+    ["dersTalebi: saat başlangıcı ISO değil", '{"tip":"dersTalebi","egitmenId":1,"saat":{"date":"2026-10-01","start_at":"yarın","duration":60}}'],
+    ["dersTalebi: saat nesne değil", '{"tip":"dersTalebi","egitmenId":1,"saat":"07:00"}'],
   ];
 
   it.each(BOZUK)("%s → null", (_ad, ham) => {
@@ -110,6 +116,11 @@ describe("bekleyen niyet · DOLULUK", () => {
       { tip: "favori", hedef: "egitmen", id: 1 },
       { tip: "favori", hedef: "kutuphane", id: 2 },
       { tip: "dersTalebi", egitmenId: 3 },
+      {
+        tip: "dersTalebi",
+        egitmenId: 3,
+        saat: { date: "2026-10-01", start_at: "2026-09-30T22:30:00Z", duration: 60 },
+      },
       { tip: "kutuphaneRezervasyonu", kutuphaneId: 4 },
       { tip: "odeme" },
     ];
@@ -117,5 +128,23 @@ describe("bekleyen niyet · DOLULUK", () => {
       niyetiSakla(n);
       expect(niyetiGozle(), `${n.tip} round-trip yapmıyor`).toEqual(n);
     }
+  });
+});
+
+describe("giriş penceresi bağlamı", () => {
+  it("saatli ders talebinde gün, tarih ve İstanbul saati yazılır", () => {
+    expect(
+      girisBaglami({
+        tip: "dersTalebi",
+        egitmenId: 4,
+        saat: { date: "2026-09-29", start_at: "2026-09-29T07:00:00Z", duration: 60 },
+      })
+    ).toBe("Salı 29 Eylül 10:00 dersini talep etmek için giriş yap.");
+  });
+
+  it("saatsiz ders talebi genel cümle, diğer niyetler metin vermez", () => {
+    expect(girisBaglami({ tip: "dersTalebi", egitmenId: 4 })).toBe("Ders talep etmek için giriş yap.");
+    expect(girisBaglami({ tip: "favori", hedef: "egitmen", id: 4 })).toBeNull();
+    expect(girisBaglami(null)).toBeNull();
   });
 });

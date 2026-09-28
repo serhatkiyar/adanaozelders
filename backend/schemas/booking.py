@@ -111,13 +111,17 @@ def _validate_lesson_window(start_at: datetime.datetime, end_at: datetime.dateti
         raise ValueError("Ders süresi 30, 60, 90 ya da 120 dakika olmalı.")
 
 
+#: Postgres INTEGER üst sınırı: taşan id sorguda 500 yerine şemada 422 alır.
+_PG_INT_MAX = 2_147_483_647
+
+
 class BookingCreate(BaseModel):
-    tutor_id: int
+    tutor_id: int = Field(gt=0, le=_PG_INT_MAX)
     start_at: datetime.datetime
     end_at: datetime.datetime
     # NOT: Fiyat istemciden ALINMAZ; sunucuda eğitmen ücreti × süre ile hesaplanır
     # (bkz. booking_service._compute_price). Manipülasyonu önlemek için şemada yok.
-    notes: str | None = None
+    notes: str | None = Field(default=None, max_length=1000)  # arayüzdeki sınırla aynı
     mode: TeachingMode | None = None  # ONLINE | IN_PERSON (BOTH seçilemez)
     location: str | None = Field(default=None, max_length=300)
     location_lat: float | None = None
@@ -141,7 +145,7 @@ class BookingOffer(BaseModel):
     öğrenci ilanda gördüğünden fazlasını ödemez.
     """
 
-    client_id: int
+    client_id: int = Field(gt=0, le=_PG_INT_MAX)
     start_at: datetime.datetime
     end_at: datetime.datetime
     mode: TeachingMode | None = None

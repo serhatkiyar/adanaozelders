@@ -4,6 +4,7 @@ import datetime
 import enum
 import re
 from decimal import Decimal
+from urllib.parse import parse_qs, urlsplit
 
 from pydantic import (
     BaseModel,
@@ -20,6 +21,69 @@ from models.tutor import Gender, TutorStatus
 from schemas.education import PublicEducationOut
 from schemas.tutor_video import IntroVideoOut
 from schemas.user import UserOut
+
+
+# --- Tanıtım videosu bağlantısı -------------------------------------------
+# Profil (`TutorUpdate`) ve ön başvuru (`schemas.tutor_pre_application`) AYNI
+# kuralı kullanır; lead'den gelen adres profile taşınabilmeli. Yalnızca
+# gömülü oynatıcıda oynayabilen https YouTube/Vimeo biçimleri kabul edilir
+# (rastgele iframe XSS/phishing riskini önler). Frontend karşılığı:
+# `frontend/src/lib/video.ts` — biçim listesi değişirse ikisi birlikte değişir.
+_YT_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_VIMEO_HASH = re.compile(r"^[A-Za-z0-9]{1,64}$")
+_YOUTUBE_HOSTS = ("youtube.com", "www.youtube.com", "m.youtube.com")
+_VIMEO_HOSTS = ("vimeo.com", "www.vimeo.com")
+_UNPLAYABLE = (
+    "Bu bağlantı profilde oynatılamıyor; normal bir YouTube/Vimeo video "
+    "bağlantısı yapıştır"
+)
+_SHORTS = "Dikey (Shorts) video kabul edilmiyor; yatay bir video bağlantısı yapıştır"
+
+
+def validate_intro_video_url(value: str | None) -> str | None:
+    """Tanıtım videosu bağlantısını doğrular; boş değer None olur.
+
+    Kabul: youtu.be/<id>; (www.|m.)youtube.com/watch?v=<id>;
+    (www.|m.)youtube.com/embed/<id>; (www.)vimeo.com/<sayı>[/<hash>].
+    Shorts, canlı yayın, kanal ve id'siz bağlantılar reddedilir.
+    """
+    if value is None:
+        return None
+    url = value.strip()
+    if not url:
+        return None
+    if not re.match(r"^https://", url, re.IGNORECASE):
+        raise ValueError("Video bağlantısı https:// ile başlamalıdır")
+    try:
+        parsed = urlsplit(url)
+    except ValueError as exc:
+        raise ValueError(_UNPLAYABLE) from exc
+    host = (parsed.hostname or "").lower()
+    parts = [p for p in parsed.path.split("/") if p]
+
+    if host == "youtu.be":
+        if len(parts) == 1 and _YT_ID.match(parts[0]):
+            return url
+        raise ValueError(_UNPLAYABLE)
+    if host in _YOUTUBE_HOSTS:
+        if parts and parts[0].lower() == "shorts":
+            raise ValueError(_SHORTS)
+        if parts == ["watch"]:
+            video_id = parse_qs(parsed.query).get("v", [""])[0]
+            if _YT_ID.match(video_id):
+                return url
+        elif len(parts) == 2 and parts[0] == "embed" and _YT_ID.match(parts[1]):
+            return url
+        raise ValueError(_UNPLAYABLE)
+    if host in _VIMEO_HOSTS:
+        if (
+            1 <= len(parts) <= 2
+            and parts[0].isdigit()
+            and (len(parts) == 1 or _VIMEO_HASH.match(parts[1]))
+        ):
+            return url
+        raise ValueError(_UNPLAYABLE)
+    raise ValueError("Yalnızca YouTube veya Vimeo bağlantısı desteklenir")
 
 
 class SubjectLevelIn(BaseModel):
@@ -92,7 +156,9 @@ class TutorProfileUpdate(BaseModel):
     # bilinçli olarak simetriktir. Kolon zaten var, migration gerekmez.
     # İSTEĞE BAĞLI kalır: yasal metin "cinsiyet (isteğe bağlı)" diyor.
     gender: Gender | None = None
-    # Tanıtım videosu (YouTube/Vimeo). Boş string → temizle (None'a çevrilir).
+    # Tanıtım videosu (YouTube/Vimeo). Yeni bağlantı admin onayına düşer, onaya
+    # kadar yayındaki video kalır (`tutor_video_service.submit_link`).
+    # Boş string/None → yayındaki bağlantıyı hemen kaldır.
     intro_video_url: str | None = Field(default=None, max_length=500)
     # İlk ders ücretsiz mi (opt-in/opt-out).
     first_lesson_free: bool | None = None
@@ -100,20 +166,8 @@ class TutorProfileUpdate(BaseModel):
     @field_validator("intro_video_url")
     @classmethod
     def _check_intro_video(cls, v: str | None) -> str | None:
-        # Boş bırakılırsa videoyu temizle. Yalnızca https + YouTube/Vimeo kabul
-        # edilir (gömülü oynatıcı; rastgele iframe XSS/phishing riskini önler).
-        if v is None:
-            return None
-        v = v.strip()
-        if not v:
-            return None
-        if not re.match(r"^https://", v, re.IGNORECASE):
-            raise ValueError("Video bağlantısı https:// ile başlamalıdır")
-        allowed = ("youtube.com", "www.youtube.com", "youtu.be", "vimeo.com")
-        host = re.sub(r"^https://", "", v, flags=re.IGNORECASE).split("/")[0].lower()
-        if host not in allowed:
-            raise ValueError("Yalnızca YouTube veya Vimeo bağlantısı desteklenir")
-        return v
+        return validate_intro_video_url(v)
+
     # Yüzyüze ders için baz konum (serbest adres + harita koordinatı).
     location_text: str | None = Field(default=None, max_length=300)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
@@ -135,6 +189,7 @@ class TutorOut(UserOut):
     headline: str | None = None
     bio: str | None = None
     lesson_info: str | None = None
+    # YAYINDAKİ (onaylı) bağlantı; onay bekleyen bağlantı `GET /tutors/me/intro-video`da.
     intro_video_url: str | None = None
     # Siteye yüklenen (ACTIVE) tanıtım videosu; `intro_video_url` ile aynı anda dolu olmaz.
     intro_video: IntroVideoOut | None = None

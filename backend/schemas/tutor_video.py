@@ -1,4 +1,4 @@
-"""Eğitmen tanıtım videosu (doğrudan yükleme) şemaları.
+"""Eğitmen tanıtım videosu (doğrudan yükleme ve bağlantı) şemaları.
 
 * ``IntroVideoOut`` — PUBLIC profil yanıtındaki işlenmiş video (yalnız ACTIVE).
 * ``TutorIntroVideoOut`` — eğitmenin kendi görünümü (durum, hata, red notu).
@@ -38,6 +38,9 @@ class TutorIntroVideoOut(BaseModel):
 
     id: int
     status: str
+    #: UPLOAD (yüklenen dosya) | LINK (YouTube/Vimeo bağlantısı, `link_url`).
+    kind: Literal["UPLOAD", "LINK"] = "UPLOAD"
+    link_url: str | None = None
     mp4_url: PublicAsset | None = None
     poster_url: PublicAsset | None = None
     width: int | None = None
@@ -55,12 +58,16 @@ class TutorIntroVideoStateOut(BaseModel):
 
     active: TutorIntroVideoOut | None = None
     pending: TutorIntroVideoOut | None = None
-    #: YouTube/Vimeo bağlantısı (tek kaynak kuralı: `active` ile aynı anda dolu olmaz).
+    #: YAYINDAKİ YouTube/Vimeo bağlantısı (tek kaynak kuralı: `active` ile aynı
+    #: anda dolu olmaz). Onay bekleyen bağlantı `pending` (kind=LINK) içindedir.
     link_url: str | None = None
     uploads_enabled: bool
     max_bytes: int
     max_seconds: int
     min_seconds: int
+    #: Görüntünün kısa kenarı alt sınırı (px; `TUTOR_VIDEO_MIN_HEIGHT`). Worker
+    #: daha düşüğünü reddeder; istemci yüklemeden önce aynı kuralla uyarır.
+    min_short_side: int
     require_review: bool
 
 

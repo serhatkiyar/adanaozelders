@@ -103,6 +103,13 @@ interface BookingModalProps {
   initialDate?: string;
   /** Öğrenci bu eğitmenden ücretsiz ilk ders alabilir mi (sunmuyor/kullanılmışsa false). */
   canRequestFreeLesson?: boolean;
+  /**
+   * Profildeki Program takviminden seçilen saat. `date` sunucunun İstanbul
+   * günüdür (UTC ISO'dan türetilmez: 03:00 öncesi başlangıç önceki UTC gününe
+   * düşer). Slot, taze veride `start_at` ile yeniden eşlenir; `end_at` hep
+   * sunucudan gelir. Artık boş değilse normal seçime düşülür.
+   */
+  initialSlot?: { date: string; start_at: string; duration: number };
 }
 
 export function BookingModal({
@@ -110,19 +117,24 @@ export function BookingModal({
   onClose,
   initialDate,
   canRequestFreeLesson = false,
+  initialSlot,
 }: BookingModalProps) {
+  const baslangicGunu = initialSlot?.date ?? initialDate;
   const [step, setStep] = useState(1);
   // Günler İstanbul tarihiyle; hafta 0 = bugünden, 1 = 7 gün sonrasından (en fazla 14 gün).
   const bugun = istanbulNow().dateStr;
   const [hafta, setHafta] = useState(() => {
-    const fark = initialDate ? gunFarki(initialDate, bugun) : 0;
+    const fark = baslangicGunu ? gunFarki(baslangicGunu, bugun) : 0;
     return fark >= 7 && fark < 14 ? 1 : 0;
   });
   // Önseçili tarih, sunucunun döndüğü günlerde varsa kullanılır (aşağıdaki effect).
-  const [selectedDate, setSelectedDate] = useState(initialDate ?? "");
+  const [selectedDate, setSelectedDate] = useState(baslangicGunu ?? "");
   const [selectedSlot, setSelectedSlot] = useState<SlotOut | null>(null);
   const [slotDoldu, setSlotDoldu] = useState(false);
-  const [duration, setDuration] = useState(60);
+  const [duration, setDuration] = useState(initialSlot?.duration ?? 60);
+  // Profilden gelen saat bir kez eşlenir; sonra kullanıcı serbestçe değiştirir.
+  const [onSecimBekliyor, setOnSecimBekliyor] = useState(!!initialSlot);
+  const [onSecimKayip, setOnSecimKayip] = useState(false);
   const [basari, setBasari] = useState<BookingOut | null>(null);
   const [notes, setNotes] = useState("");
   const [freeLesson, setFreeLesson] = useState(false);
@@ -174,6 +186,31 @@ export function BookingModal({
     Date.parse(`${gunEkle(bugun, 7 * (hafta + 1))}T00:00:00+03:00`) < Date.parse(slotVerisi.window_end);
   const haftadaBosVar = (gunler ?? []).some((g) => g.has_available);
   const seciliGun = gunler?.find((g) => g.date === selectedDate);
+
+  // Bayat önbellekle eşlenmez: arka planda tazeleniyorsa taze yanıt beklenir.
+  useEffect(() => {
+    if (!onSecimBekliyor || !initialSlot || !gunler || slotlar.isFetching) return;
+    const eslesen = gunler
+      .find((g) => g.date === initialSlot.date)
+      ?.slots.find((sl) => sl.start_at === initialSlot.start_at && sl.status === "available");
+    if (eslesen) setSelectedSlot(eslesen);
+    else setOnSecimKayip(true);
+    setOnSecimBekliyor(false);
+  }, [onSecimBekliyor, initialSlot, gunler, slotlar.isFetching]);
+
+  // Seçili saat tazelenen veride artık boş değilse seçim düşer ("Devam Et" dolu saatle geçmesin).
+  useEffect(() => {
+    if (!selectedSlot || !gunler) return;
+    const hala = gunler.some((g) =>
+      g.slots.some((sl) => sl.start_at === selectedSlot.start_at && sl.status === "available"),
+    );
+    if (hala) return;
+    setSelectedSlot(null);
+    const onSecimden =
+      !!initialSlot && initialSlot.start_at === selectedSlot.start_at && initialSlot.duration === duration;
+    if (onSecimden) setOnSecimKayip(true);
+    else setSlotDoldu(true);
+  }, [gunler, selectedSlot, initialSlot, duration]);
 
   // Varsayılan gün: listede yoksa ilk boş slotu olan gün, o da yoksa ilk gün.
   useEffect(() => {
@@ -404,6 +441,14 @@ export function BookingModal({
                 <h3 className="text-lg font-semibold text-slate-900 mb-5">
                   Ders Modu
                 </h3>
+                {/* Profildeki Program'dan gelindiyse seçim kaybolmuş gibi görünmesin. */}
+                {initialSlot && selectedSlot && (
+                  <p className={`-mt-3 ${KUCUK_ACIKLAMA}`}>
+                    Seçtiğin saat: {formatIstanbulDay(selectedSlot.start_at)},{" "}
+                    {formatIstanbulTime(selectedSlot.start_at)} ·{" "}
+                    {DURATIONS.find((d) => d.value === duration)?.label}
+                  </p>
+                )}
               </div>
 
               {canChooseMode ? (
@@ -552,6 +597,11 @@ export function BookingModal({
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                       Saat
                     </p>
+                    {onSecimKayip && !selectedSlot && (
+                      <p role="status" className={`mb-3 ${KUCUK_ACIKLAMA}`}>
+                        Profilde seçtiğin saat artık boş değil. Başka bir saat seç.
+                      </p>
+                    )}
                     {slotDoldu && (
                       <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                         Bu saat az önce doldu. Başka bir saat seç.

@@ -911,7 +911,10 @@ async def upload_public_file(
     """Diskteki dosyayı public whitelist'li anahtara yükler (multipart, akış).
 
     ``upload_file`` (private, bellekten) yerine: büyük MP4 belleğe alınmaz ve
-    ``CacheControl`` set edilir (anahtar uuid'li ve değişmez → immutable güvenli).
+    ``CacheControl`` set edilir. Değer çağırandan gelir; video worker
+    ``public, max-age=3600, s-maxage=86400`` verir — ``immutable`` YOK: anahtar
+    uuid'li olsa da kaldırılan/reddedilen video CDN'de uzun süre kalmasın
+    (anlık purge yok; bkz. docs/teknik-borc.md TB-?V).
     """
     if not key.startswith(PUBLIC_PREFIXES):
         raise ValueError(f"public anahtar bekleniyordu: {key!r}")

@@ -90,6 +90,13 @@ describe("getErrorMessage — mevcut davranışlar bozulmadı", () => {
     expect(getErrorMessage(hata, "yedek")).toBe("field required");
   });
 
+  it("Pydantic doğrulayıcısının 'Value error, ' öneki kullanıcıya gösterilmez", () => {
+    const hata = axiosHata(422, {
+      detail: [{ msg: "Value error, Yalnızca YouTube veya Vimeo bağlantısı desteklenir", loc: ["body", "intro_video_url"] }],
+    });
+    expect(getErrorMessage(hata, "yedek")).toBe("Yalnızca YouTube veya Vimeo bağlantısı desteklenir");
+  });
+
   it.each([
     [429, "Çok fazla istek"],
     [409, "Bir çakışma oluştu"],

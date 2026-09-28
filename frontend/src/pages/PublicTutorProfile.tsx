@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 import { useReviewsByTutor, useTutorRatingDistribution } from "@/hooks/useReviews";
 import { useTutorDetail } from "@/hooks/useTutorSearch";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
-import { WEEKDAYS_SHORT, weeklySchedule } from "@/lib/availability";
+import { ProgramTakvimi } from "@/components/egitmen/ProgramTakvimi";
 import { formatRateSymbol, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
 import { BookmarkButton } from "@/components/BookmarkButton";
@@ -353,13 +353,12 @@ export default function PublicTutorProfile({
                 zaten dar, video sütunu tam doldurur. Otomatik+sessiz oynar
                 (bkz. `videoEmbedUrl`). */}
             {videoVar && (
-              <section>
-                <TanitimVideosu
-                  video={tutor.intro_video}
-                  linkUrl={tutor.intro_video_url}
-                  ad={tutor.display_name}
-                />
-              </section>
+              <TanitimVideosu
+                bolum
+                video={tutor.intro_video}
+                linkUrl={tutor.intro_video_url}
+                ad={tutor.display_name}
+              />
             )}
 
             {/* Verdiği Dersler — ilan başlığının üstünde */}
@@ -421,37 +420,18 @@ export default function PublicTutorProfile({
               </section>
             )}
 
-            {/* Müsait Saatler — Wyzant tarzı haftalık çizelge (7 günün tamamı) */}
-            {tutor.availability && tutor.availability.length > 0 && (
-              <section className="border-t border-slate-200 pt-6 ">
-                <h2 className="mb-3 text-xl font-bold text-slate-900 ">
-                  Müsait Saatler
-                </h2>
-                <div className="max-w-md overflow-hidden rounded-xl ring-1 ring-slate-100 ">
-                  {weeklySchedule(tutor.availability).map(({ weekday, ranges }, i) => (
-                    <div
-                      key={weekday}
-                      className={`flex items-baseline gap-4 px-4 py-2.5 text-sm ${
-                        i % 2 ? "bg-slate-50/60 " : ""
-                      }`}
-                    >
-                      <span className="w-10 shrink-0 font-semibold text-slate-700 ">
-                        {WEEKDAYS_SHORT[weekday]}
-                      </span>
-                      <span
-                        className={
-                          ranges
-                            ? "text-slate-600 "
-                            : "text-slate-400 "
-                        }
-                      >
-                        {ranges ?? "Müsait değil"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+            {/* Program — Preply profilindeki haftalık saat ızgarası (28 Eyl
+                2026). Eski statik "Müsait Saatler" çizelgesinin yerine: boş
+                saatler sunucudan, tıklanan saat niyetle saklanır ve girişten
+                sonra pencere o saatle ÖNDOLU açılır (gönderilmez, ÜK-10).
+                Görünürlüğü bileşenin kendi `has_availability` kontrolü
+                belirler; yalnız ek aralığı olan eğitmende de bölüm çizilir. */}
+            <ProgramTakvimi
+              tutorId={tutor.id}
+              onSaatSec={(saat) =>
+                girisGerekli({ tip: "dersTalebi", egitmenId: tutor.id, saat })
+              }
+            />
 
             {/* Ders puanı (alt kriter kutucukları) + değerlendirmeler — Preply
                 öğretmen profili düzeni. Dağılım çubukları "tümünü göster"

@@ -619,7 +619,7 @@ def _admin_video_out(video, tutor) -> AdminTutorVideoOut:
     dependencies=[Depends(require_admin_permission("tutors.view"))],
 )
 async def list_pending_tutor_videos(db: AsyncSession = Depends(get_db)):
-    """Onay bekleyen (PENDING_REVIEW) yüklenmiş tanıtım videoları — eğitmen adıyla."""
+    """Onay bekleyen (PENDING_REVIEW) tanıtım videoları ve bağlantıları — eğitmen adıyla."""
     rows = await tutor_video_service.admin_list_pending(db)
     return [_admin_video_out(v, t) for v, t in rows]
 

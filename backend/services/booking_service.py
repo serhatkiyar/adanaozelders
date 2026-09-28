@@ -5,7 +5,7 @@ import secrets
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import HTTPException, status
-from sqlalchemy import exists, func, select, update
+from sqlalchemy import exists, func, select, text, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,7 @@ from models.booking_private_note import BookingPrivateNote
 from models.lesson_series import LessonSeries, LessonSeriesStatus
 from schemas.booking import BookingCreate, BookingResourceCreate, BookingCommentCreate, BookingLocationUpdate, BookingPrivateNoteCreate
 from services import (
+    escrow,
     messaging_service,
     notification_service,
     payment_gates,
@@ -323,15 +324,7 @@ async def _assert_within_availability(
     ).scalars().all()
     extras = await _ek_araliklar(db, tutor_id, start_at, end_at)
     if not availability and not extras:
-        gelecekte_ek_var = await db.scalar(
-            select(
-                exists().where(
-                    TutorExtraAvailability.tutor_id == tutor_id,
-                    TutorExtraAvailability.end_at > _utcnow(),
-                )
-            )
-        )
-        if not gelecekte_ek_var:
+        if not await _gelecekte_ek_var(db, tutor_id, _utcnow()):
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY, ERR_NO_AVAILABILITY
             )
@@ -340,6 +333,26 @@ async def _assert_within_availability(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Selected time is outside the tutor's availability",
         )
+
+
+async def _gelecekte_ek_var(
+    db: AsyncSession, tutor_id: int, now: datetime.datetime
+) -> bool:
+    """Eğitmenin henüz bitmemiş en az bir ek aralığı var mı?
+
+    Şablonsuz, yalnız ek aralıkla çalışan eğitmen "hiç müsaitlik tanımlamamış"
+    sayılmasın diye (talep kapısı ve slot ızgarasının `has_availability`'si).
+    """
+    return bool(
+        await db.scalar(
+            select(
+                exists().where(
+                    TutorExtraAvailability.tutor_id == tutor_id,
+                    TutorExtraAvailability.end_at > now,
+                )
+            )
+        )
+    )
 
 
 async def _ek_araliklar(
@@ -682,7 +695,11 @@ async def list_slots(
             duration_min=duration_min,
             now=now,
         ),
-        "has_availability": bool(windows) or bool(extras),
+        # Görünen haftada ek aralık yoksa ileriki haftalara bakılır: yalnız ek
+        # aralıkla çalışan eğitmen "müsaitlik tanımlamamış" görünmesin.
+        "has_availability": bool(windows)
+        or bool(extras)
+        or await _gelecekte_ek_var(db, tutor.id, now),
         "window_end": booking_window_end(now),
         "policy": {
             "min_notice_hours": settings.BOOKING_MIN_NOTICE_HOURS,
@@ -696,6 +713,44 @@ async def list_slots(
     }
 
 
+async def _assert_pending_quota(
+    db: AsyncSession, *, client_id: int, tutor_id: int
+) -> None:
+    """Öğrencinin yanıt bekleyen ders talebi sınırı (eğitmen başına ve toplam).
+
+    Yalnız öğrencinin açtığı, başlamamış PENDING talepler sayılır; eğitmen
+    teklifleri (seri dahil) ve saati geçmiş talepler sayılmaz. Eğitmen ve
+    öğrenci kilidi altında çağrılır; eşzamanlı talepler sırayla sayılır.
+    """
+    satirlar = (
+        await db.execute(
+            select(
+                func.count().filter(Booking.tutor_id == tutor_id),
+                func.count(),
+            ).where(
+                Booking.client_id == client_id,
+                Booking.status == BookingStatus.PENDING,
+                Booking.deleted_at.is_(None),
+                Booking.start_at > _utcnow(),
+                Booking.offered_by_tutor.is_(False),
+            )
+        )
+    ).one()
+    bu_egitmene, toplam = int(satirlar[0]), int(satirlar[1])
+    if bu_egitmene >= settings.BOOKING_MAX_PENDING_PER_TUTOR:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Bu öğretmene yanıt bekleyen en fazla {settings.BOOKING_MAX_PENDING_PER_TUTOR} "
+            "ders talebin olabilir. Öğretmenin yanıtını bekle.",
+        )
+    if toplam >= settings.BOOKING_MAX_PENDING_TOTAL:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Aynı anda en fazla {settings.BOOKING_MAX_PENDING_TOTAL} yanıt bekleyen "
+            "ders talebin olabilir. Öğretmenlerin yanıtını bekle.",
+        )
+
+
 async def create_booking(
     db: AsyncSession, client: Client, data: BookingCreate
 ) -> Booking:
@@ -707,6 +762,14 @@ async def create_booking(
     _assert_booking_rules(data.start_at, _utcnow())
 
     await _lock_tutor(db, tutor.id)
+    # Toplam kota eğitmenler arası: farklı eğitmenlere eşzamanlı talepler de
+    # öğrenci başına sırayla sayılsın. Kilit sırası: eğitmen → öğrenci (bu
+    # sınıfı yalnız burası alır, ters sıra yok).
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(:c, :i)"),
+        {"c": escrow.BOOKING_CLIENT_QUOTA_LOCK_CLASS, "i": int(client.id)},
+    )
+    await _assert_pending_quota(db, client_id=client.id, tutor_id=tutor.id)
     # İzin önce: izinli günde öğrenci "pencere dışı" yerine asıl nedeni görür.
     await _assert_not_on_time_off(db, tutor.id, data.start_at, data.end_at)
     await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)

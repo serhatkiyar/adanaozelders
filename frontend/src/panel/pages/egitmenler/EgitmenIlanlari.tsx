@@ -10,7 +10,7 @@ import { BosDurumu, HataDurumu, YukleniyorDurumu } from "@/panel/components/Duru
 import { VarlikDugmesi, useVarlikKilidi } from "@/panel/components/varlikKilidi";
 import { sunucuHatasiniDagit } from "@/panel/components/pencereAlanlari";
 import { RedPenceresi } from "@/panel/pages/egitmenler/EgitmenIlanPencereleri";
-import { useActivateTutor, useAdminTutors, useApproveTutor, useDeleteTutor, useRejectTutor, useSuspendTutor } from "@/hooks/useAdmin";
+import { useActivateTutor, useAdminTutors, useApproveTutor, useDeleteTutor, usePendingTutorVideos, useRejectTutor, useSuspendTutor } from "@/hooks/useAdmin";
 import { getErrorDetail } from "@/lib/errors";
 import { formatRate } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
@@ -57,6 +57,12 @@ export function EgitmenIlanlari() {
   const { canView: kullaniciGorebilir } = useAdminAreaAccess("users");
 
   const sorgu = useAdminTutors(canView);
+  // Onay bekleyen tanıtım videosu/bağlantısı (ÜK-11): satırda gösterge + Video Onayı ekranına bağlantı. Aynı `tutors.view` izni.
+  const videolar = usePendingTutorVideos(canView);
+  const videoBekleyenler = useMemo(
+    () => new Set((Array.isArray(videolar.data) ? videolar.data : []).map((v) => v.tutor_id)),
+    [videolar.data],
+  );
   const onayla = useApproveTutor();
   const reddet = useRejectTutor();
   const pasifeAl = useSuspendTutor();
@@ -167,6 +173,9 @@ export function EgitmenIlanlari() {
                 <Typography.Text style={{ fontWeight: 500, ...SAR }}>{t.full_name}</Typography.Text>
               )}
               <Tag color={DURUM_RENGI[t.status]} style={{ marginInlineEnd: 0 }}>{DURUM_ETIKETI[t.status] ?? t.status}</Tag>
+              {videoBekleyenler.has(t.id) ? (
+                <Link to={ROUTES.adminNewTutorVideos} style={{ fontSize: 12 }}>Video onayı bekliyor</Link>
+              ) : null}
             </Flex>
             {t.headline ? <Typography.Text type="secondary" style={{ fontSize: 12, display: "block", ...SAR }}>{t.headline}</Typography.Text> : null}
             <Typography.Text type="secondary" style={{ fontSize: 12, display: "block", ...SAYI }}>{formatRate(t.hourly_rate)}</Typography.Text>

@@ -33,6 +33,7 @@ Hâlâ geçerli `Ç-n` atıfları (dokunulmadı): `Ç-4` = ayarlar bölümü kar
 | **ÜK-8** | Sosyal giriş: Google EVET, Facebook HAYIR | uygulandı | `test_google_oidc_dogrulama.py`, `test_google_oauth_pg.py`, `test_parolasiz_hesap.py` |
 | **ÜK-9** | Soyad public yüzeylerde görünmez | uygulandı | `test_soyad_public_yuzeyde_yok.py` |
 | **ÜK-10** | Kapı gezinmede değil **eylemde** | uygulandı | `__guards__/kapiSorguyuKorur.test.tsx`, `korumaliEylemGezinmez.test.ts`, `eylemKapisiSayfayiKorur.test.tsx`, `anonimYuzeyGercek.test.tsx` |
+| **ÜK-11** | Tanıtım videosu BAĞLANTISI da yüklenen video gibi admin ön onayından geçer | uygulandı | `tests/integration/test_tutor_video_pg.py` (bağlantı testleri), `VideoYukleme.test.tsx` |
 
 ---
 
@@ -473,3 +474,27 @@ Kullanıcının kendi sözleri:
 Mesajlaşmanın `hasActiveBooking` koşulu değişmedi. Bandı sökmek yanlış vaadi
 ortadan kaldırıyor; mesajlaşmayı rezervasyonsuz üyeye açmak ayrı bir ürün
 kararıdır.
+
+---
+
+## ÜK-11 — Tanıtım videosu bağlantısı da önce admin onayından geçer
+
+**Karar (28 Eyl 2026, kullanıcı: "Önce admin onayı"):** YouTube/Vimeo bağlantısı
+kaydedilince anında yayına girmez; yüklenen video ile aynı kuyruğa
+(`/yonetim` → Video onayı) düşer.
+
+- Atomik değişim: onaya kadar yayındaki video/bağlantı yerinde kalır; onay
+  eskisini düşürür (yüklenmiş video REPLACED → temizlik), red gerekçesiyle
+  eğitmenin Profilim → Video kartında görünür.
+- Tek bekleyen: onay bekleyen bağlantıyı yeni bağlantı ya da yükleme değiştirir;
+  yolda bir YÜKLEME varken bağlantı 409 döner (önce iptal).
+- Yayındaki bağlantıyı boşaltmak onay istemez, hemen kalkar.
+- Görünürlük: bekleyen bağlantı varken yükleme/kamera kaydı başlatmak önce
+  "Onay bekleyen bağlantın geri çekilecek" onayı ister; ilan sihirbazı bekleyen
+  bağlantıyı alana yazmadan "Onay bekliyor" notuyla gösterir (alanı boşaltmak
+  bekleyeni değil yayındakini kaldırırdı); admin ilan listeleri (`/yonetim`
+  eğitmenler, `/yonetim-yeni` Eğitmen İlanları) bekleyen video/bağlantısı olan
+  eğitmende "Video onayı bekliyor" → Video Onayı bağlantısı gösterir.
+- Model: `tutor_intro_videos.kind = LINK` + `link_url`; `tutors.intro_video_url`
+  yalnız yayındaki bağlantının public kopyasıdır ve yalnız
+  `services/tutor_video_service.py` yazar (hesap silme ayrıca boşaltır).

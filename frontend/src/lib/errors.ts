@@ -105,7 +105,9 @@ export function getErrorMessage(
     if (typeof detail === "string") return detail;
     if (Array.isArray(detail) && detail.length > 0) {
       const first = detail[0];
-      if (first?.msg) return String(first.msg);
+      // Pydantic `field_validator` içinden atılan ValueError, mesajın başına
+      // "Value error, " ekler; kullanıcıya yalnız bizim yazdığımız cümle gider.
+      if (first?.msg) return String(first.msg).replace(/^Value error,\s*/i, "");
     }
 
     // Yapılandırılmış (obje) detail. Bazı uçlar makinece okunabilir bir gövde

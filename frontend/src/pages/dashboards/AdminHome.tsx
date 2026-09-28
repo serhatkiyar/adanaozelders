@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
@@ -12,6 +13,7 @@ import {
   useRejectTutor,
   useSuspendTutor,
   usePendingEducations,
+  usePendingTutorVideos,
   useVerifyEducation,
 } from "@/hooks/useAdmin";
 import {
@@ -29,6 +31,7 @@ import {
 } from "@/types";
 import { formatDateTime } from "@/lib/datetime";
 import { formatRate } from "@/lib/money";
+import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
@@ -65,7 +68,22 @@ const GECERLI_TALEP_DURUMLARI = new Set<string>([
 
 /* ─── listing management ─────────────────────────────── */
 
-function ListingRow({ tutor }: { tutor: TutorOut }) {
+/**
+ * Tanıtım videosu / bağlantısı onay bekliyor (ÜK-11). Başvuruyu inceleyen admin
+ * bunu ilan satırında görür; karar video onay ekranında verilir (tek kuyruk).
+ */
+function VideoOnayiGostergesi() {
+  return (
+    <Link
+      to={ROUTES.adminNewTutorVideos}
+      className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 underline-offset-2 hover:underline"
+    >
+      Video onayı bekliyor
+    </Link>
+  );
+}
+
+function ListingRow({ tutor, videoBekliyor = false }: { tutor: TutorOut; videoBekliyor?: boolean }) {
   const { canManage } = useAdminAreaAccess("tutors");
   // İP-A7d3: pencere durumu ekranda yaşamaz (İP-A4 sözleşmesi).
   const silmeYuzeyi = useDuzenlemeYuzeyi<never, void>();
@@ -108,6 +126,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
             >
               {meta.label}
             </span>
+            {videoBekliyor && <VideoOnayiGostergesi />}
           </div>
           {tutor.headline && (
             <p className="mt-0.5 truncate text-xs text-slate-500 ">
@@ -245,6 +264,12 @@ const STATUS_ORDER: Record<TutorStatus, number> = {
 
 function ListingManagement() {
   const { data, isLoading, isError, error } = useAdminTutors();
+  const { canView } = useAdminAreaAccess("tutors");
+  // Onay bekleyen video/bağlantısı olan eğitmenler (aynı `tutors.view` izni).
+  const videolar = usePendingTutorVideos(canView);
+  const videoBekleyenler = new Set(
+    (Array.isArray(videolar.data) ? videolar.data : []).map((v) => v.tutor_id)
+  );
 
   if (isLoading) {
     return (
@@ -296,7 +321,7 @@ function ListingManagement() {
             gerekçesi denetim izine yazılır.
           </p>
           {pending.map((t) => (
-            <ListingRow key={t.id} tutor={t} />
+            <ListingRow key={t.id} tutor={t} videoBekliyor={videoBekleyenler.has(t.id)} />
           ))}
         </section>
       )}
@@ -311,7 +336,7 @@ function ListingManagement() {
             açabilir veya silebilirsin.
           </p>
           {digerleri.map((t) => (
-            <ListingRow key={t.id} tutor={t} />
+            <ListingRow key={t.id} tutor={t} videoBekliyor={videoBekleyenler.has(t.id)} />
           ))}
         </div>
       )}

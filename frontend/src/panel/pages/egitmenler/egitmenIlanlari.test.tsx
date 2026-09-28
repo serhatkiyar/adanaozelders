@@ -8,7 +8,7 @@ import { gerekceHatasi } from "@/panel/pages/egitmenler/EgitmenIlanPencereleri";
 import { MESGUL_NEDENI } from "@/panel/components/varlikKilidi";
 import { PANEL_MENU, izinBeyaniniKarsilarMi, rotaIzniBul, seciliMenuDurumu } from "@/panel/layout/menu";
 import { PATHS, ROUTES } from "@/lib/routes";
-import { useActivateTutor, useAdminTutors, useApproveTutor, useDeleteTutor, useRejectTutor, useSuspendTutor } from "@/hooks/useAdmin";
+import { useActivateTutor, useAdminTutors, useApproveTutor, useDeleteTutor, usePendingTutorVideos, useRejectTutor, useSuspendTutor } from "@/hooks/useAdmin";
 import { ERISIM_REDDEDILDI_BASLIK } from "@/components/admin/AccessState";
 import { useAuthStore } from "@/store/authStore";
 import { TutorStatus } from "@/types";
@@ -19,6 +19,7 @@ vi.mock("@/hooks/useAdmin", () => ({
   useAdminTutors: vi.fn(),
   useApproveTutor: vi.fn(),
   useDeleteTutor: vi.fn(),
+  usePendingTutorVideos: vi.fn(),
   useRejectTutor: vi.fn(),
   useSuspendTutor: vi.fn(),
 }));
@@ -80,6 +81,7 @@ beforeEach(() => {
   vi.mocked(useSuspendTutor).mockReturnValue({ mutateAsync: m.pasif, isPending: false } as never);
   vi.mocked(useActivateTutor).mockReturnValue({ mutateAsync: m.etkin, isPending: false } as never);
   vi.mocked(useDeleteTutor).mockReturnValue({ mutateAsync: m.sil, isPending: false } as never);
+  vi.mocked(usePendingTutorVideos).mockReset().mockReturnValue(sonuc([]));
   izin("tutors.view", "tutors.manage", "users.view");
 });
 
@@ -102,6 +104,15 @@ describe("EgitmenIlanlari", () => {
     kur();
     expect(screen.getByText(ERISIM_REDDEDILDI_BASLIK)).toBeInTheDocument();
     expect(son(useAdminTutors)).toEqual([false]);
+    expect(son(usePendingTutorVideos)).toEqual([false]);
+  });
+
+  it("onay bekleyen video/bağlantısı olan eğitmende gösterge Video Onayı ekranına bağlanır", () => {
+    vi.mocked(usePendingTutorVideos).mockReturnValue(sonuc([{ id: 3, tutor_id: 14, kind: "LINK", status: "PENDING_REVIEW" }]));
+    kur();
+    expect(son(usePendingTutorVideos)).toEqual([true]);
+    expect(satir(14).getByRole("link", { name: "Video onayı bekliyor" })).toHaveAttribute("href", ROUTES.adminNewTutorVideos);
+    expect(satir(15).queryByText("Video onayı bekliyor")).toBeNull();
   });
 
   it("view-only: liste görünür, salt okunur açıklaması var, yazma yüzeyleri DOM'da yok; boş ve hata durumunda da açıklama görünür", () => {

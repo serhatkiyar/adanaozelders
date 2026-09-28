@@ -42,6 +42,7 @@ import { useMobil } from "@/hooks/useMedyaSorgusu";
 import { useGeriDonus } from "@/hooks/useGeriDonus";
 import { EgitmenMobilUst } from "@/components/egitmen/EgitmenMobilUst";
 import { DersTalepSeridi } from "@/components/egitmen/DersTalepSeridi";
+import { ProgramTakvimi, type ProgramSaati } from "@/components/egitmen/ProgramTakvimi";
 
 // Removed constants
 
@@ -81,6 +82,12 @@ export default function TutorProfile({
   const { data: myBookings } = useBookings({ limit: 100 });
 
   const [showBookingModal, setShowBookingModal] = useState(false);
+  // Program takviminden (ya da girişten önce saklanan niyetten) gelen saat.
+  const [onSeciliSaat, setOnSeciliSaat] = useState<ProgramSaati | null>(null);
+  const dersPenceresiniAc = (saat: ProgramSaati | null = null) => {
+    setOnSeciliSaat(saat);
+    setShowBookingModal(true);
+  };
 
   /* Anonim kabukla AYNI karar — bkz. `PublicTutorProfile`. Rotanın iki kabuğu
      ayrışmasın diye mobil düzen ortak bileşende. */
@@ -92,6 +99,11 @@ export default function TutorProfile({
   // sohbetin sınırları ve korumaları sunucuda uygulanır.
   const mesajGonderebilir =
     !isOwnerTutor && currentUser?.role_id === ROLE_IDS.CLIENT;
+  // Ders talebi yalnız üye (CLIENT) hesabıyla yapılır. Anonim ziyaretçi yine
+  // basabilir: giriş penceresi açılır (ÜK-10). Eğitmen, admin, kurye ve
+  // operatörde saatler salt okunur, talep düğmeleri çizilmez.
+  const dersTalebiYapabilir =
+    !isOwnerTutor && (!currentUser || currentUser.role_id === ROLE_IDS.CLIENT);
   /*
    * Anonimken "Ders Talep Et"e basan ziyaretçi giriş yapınca pencere
    * KENDİLİĞİNDEN açılır (ÜK-10). `TutorProfilePage` token'a göre bu bileşenle
@@ -100,12 +112,17 @@ export default function TutorProfile({
    *
    * `esler` şart: kullanıcı 42 numaralı eğitmende kapıyı açıp başka sekmeden
    * 99'a geçtiyse, 99'un sayfası niyeti ne uygular ne de YER.
+   *
+   * Rol bilinmeden (`currentUser` yüklenirken) niyete dokunulmaz. Rol üye
+   * değilse (ör. anonimken saate basıp eğitmen hesabıyla giriş) niyet
+   * uygulanmadan silinir: pencere açılmaz, niyet de sonraki girişe kalmaz.
    */
   useBekleyenNiyet({
     tip: "dersTalebi",
-    hazir: !!tutor && !isOwnerTutor,
+    hazir: !!tutor && !!currentUser,
+    at: !dersTalebiYapabilir,
     esler: (n) => n.egitmenId === tutorId,
-    uygula: () => setShowBookingModal(true),
+    uygula: (n) => dersPenceresiniAc(n.saat ?? null),
   });
 
   const [showReport, setShowReport] = useState(false);
@@ -140,7 +157,7 @@ export default function TutorProfile({
       b.status !== BookingStatus.REJECTED
   );
   const canRequestFreeLesson =
-    tutor.first_lesson_free !== false && !isOwnerTutor && !hadLessonWithTutor;
+    tutor.first_lesson_free !== false && dersTalebiYapabilir && !hadLessonWithTutor;
   const videoVar = tanitimVideosuVar(tutor.intro_video, tutor.intro_video_url);
   const modeLabel = tutor.teaching_mode === TeachingMode.ONLINE
     ? "Uzaktan" 
@@ -307,9 +324,9 @@ export default function TutorProfile({
                 tutor={tutor}
                 ucret={rate !== null ? formatRateSymbol(tutor.hourly_rate) : null}
               />
-              {!isOwnerTutor && (
+              {dersTalebiYapabilir && (
                 <button
-                  onClick={() => setShowBookingModal(true)}
+                  onClick={() => dersPenceresiniAc()}
                   className="mx-auto mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-marka px-10 text-center text-base font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
                   {/* Mobil şeritle (DersTalepSeridi) AYNI ikon: aynı eylem. Düğme tam
@@ -318,6 +335,11 @@ export default function TutorProfile({
                   <Icon name="commentLightning" className="h-5 w-5" />
                   Ders Talep Et
                 </button>
+              )}
+              {!isOwnerTutor && !dersTalebiYapabilir && (
+                <p className="mt-4 text-center text-sm text-slate-500">
+                  Ders talebi üye hesabıyla yapılır.
+                </p>
               )}
               {tutor.first_lesson_free !== false && (
                 <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
@@ -363,13 +385,12 @@ export default function TutorProfile({
                 zaten dar, video sütunu tam doldurur. Otomatik+sessiz oynar
                 (bkz. `videoEmbedUrl`). */}
             {videoVar && (
-              <section>
-                <TanitimVideosu
-                  video={tutor.intro_video}
-                  linkUrl={tutor.intro_video_url}
-                  ad={tutor.display_name}
-                />
-              </section>
+              <TanitimVideosu
+                bolum
+                video={tutor.intro_video}
+                linkUrl={tutor.intro_video_url}
+                ad={tutor.display_name}
+              />
             )}
 
             {/* Verdiği Dersler — ilan başlığının üstünde */}
@@ -431,6 +452,16 @@ export default function TutorProfile({
               </section>
             )}
 
+            {/* Program — anonim kabukla AYNI bileşen (rotanın iki kabuğu
+                ayrışmasın). Öğretmen kendi profilinde saatleri salt okur. */}
+            {/* Görünürlüğü bileşenin kendi `has_availability` kontrolü
+                belirler; yalnız ek aralığı olan eğitmende de bölüm çizilir. */}
+            <ProgramTakvimi
+              tutorId={tutor.id}
+              onSaatSec={dersTalebiYapabilir ? (saat) => dersPenceresiniAc(saat) : undefined}
+              kendiProfili={isOwnerTutor}
+            />
+
             {/* Ders puanı (alt kriter kutucukları) + değerlendirmeler — Preply
                 öğretmen profili düzeni. Dağılım çubukları "tümünü göster"
                 penceresinde (ReviewListModal). */}
@@ -459,15 +490,19 @@ export default function TutorProfile({
       {/* Telefonda sayfanın TEK eylemi. Öğretmen KENDİ profiline bakıyorsa
           şerit hiç basılmaz — karttaki düğmenin `!isOwnerTutor` kapısı burada
           da geçerli. */}
-      {mobil && !isOwnerTutor && (
-        <DersTalepSeridi onTalep={() => setShowBookingModal(true)} />
+      {mobil && dersTalebiYapabilir && (
+        <DersTalepSeridi onTalep={() => dersPenceresiniAc()} />
       )}
 
       {showBookingModal && tutor && (
         <BookingModal
           tutor={tutor as TutorSearchOut}
-          onClose={() => setShowBookingModal(false)}
+          onClose={() => {
+            setShowBookingModal(false);
+            setOnSeciliSaat(null);
+          }}
           canRequestFreeLesson={canRequestFreeLesson}
+          initialSlot={onSeciliSaat ?? undefined}
         />
       )}
 

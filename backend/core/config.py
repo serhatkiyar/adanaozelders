@@ -612,6 +612,10 @@ class Settings(BaseSettings):
     BOOKING_MIN_NOTICE_HOURS: int = 24
     BOOKING_WINDOW_DAYS: int = 14
     BOOKING_SLOT_STEP_MINUTES: int = 30
+    # Öğrencinin aynı anda yanıt bekleyen (PENDING, başlamamış) ders talebi
+    # sınırı: eğitmen başına ve toplam. Eğitmen teklifleri sayılmaz.
+    BOOKING_MAX_PENDING_PER_TUTOR: int = 3
+    BOOKING_MAX_PENDING_TOTAL: int = 10
 
     # Görev son tarihi bu kadar dakika kala (ve geçmiş ama hatırlatılmamış görevler için)
     # bir kez hatırlatma bildirimi gönderilir.

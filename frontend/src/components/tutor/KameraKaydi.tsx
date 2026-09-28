@@ -8,7 +8,7 @@ import {
   kayitDosyaAdi,
   kayitMimeSec,
 } from "@/lib/kameraKaydi";
-import { sureBiciminde } from "@/lib/tanitimVideo";
+import { dikeyMi, sureBiciminde } from "@/lib/tanitimVideo";
 import {
   DUGME_SATIR_BIRINCIL,
   DUGME_SATIR_IKINCIL,
@@ -48,6 +48,10 @@ export function KameraKaydi({
   const [kayitUrl, setKayitUrl] = useState<string | null>(null);
   const [kameralar, setKameralar] = useState<MediaDeviceInfo[]>([]);
   const [kameraId, setKameraId] = useState<string>("");
+  // Canlı görüntü dikey mi (telefon dik tutuluyor)? Sunucu dikey videoyu
+  // reddeder; kayıttan ÖNCE uyarılır. `kayitDikey` bitmiş kaydın yönüdür.
+  const [dikey, setDikey] = useState(false);
+  const [kayitDikey, setKayitDikey] = useState(false);
 
   const onizlemeRef = useRef<HTMLVideoElement | null>(null);
   const akisRef = useRef<MediaStream | null>(null);
@@ -58,6 +62,19 @@ export function KameraKaydi({
   const zamanlayiciRef = useRef<number | null>(null);
   const baslangicRef = useRef(0);
   const acDugmesiRef = useRef<HTMLButtonElement>(null);
+
+  // Önizleme boyutu: metadata gelince ve telefon döndürülünce (resize) okunur.
+  useEffect(() => {
+    const v = onizlemeRef.current;
+    if (!v) return;
+    const oku = () => setDikey(dikeyMi(v.videoWidth, v.videoHeight));
+    v.addEventListener("loadedmetadata", oku);
+    v.addEventListener("resize", oku);
+    return () => {
+      v.removeEventListener("loadedmetadata", oku);
+      v.removeEventListener("resize", oku);
+    };
+  }, []);
 
   // Kayıt görünümü açılınca odak ilk eyleme taşınır (klavye/ekran okuyucu).
   useEffect(() => {
@@ -147,6 +164,8 @@ export function KameraKaydi({
     k.onstop = () => {
       const blob = new Blob(parcalarRef.current, { type: bazTip(mimeRef.current) });
       blobRef.current = blob;
+      const v = onizlemeRef.current;
+      setKayitDikey(v ? dikeyMi(v.videoWidth, v.videoHeight) : false);
       setKayitUrl(URL.createObjectURL(blob));
       setAsama("bitti");
     };
@@ -179,6 +198,7 @@ export function KameraKaydi({
   const tekrarKaydet = () => {
     kayitUrlBirak();
     blobRef.current = null;
+    setKayitDikey(false);
     setGecen(0);
     setAsama(akisRef.current ? "onizleme" : "hazir");
     if (!akisRef.current) void kamerayiAc(kameraId);
@@ -186,7 +206,7 @@ export function KameraKaydi({
 
   const kullan = () => {
     const blob = blobRef.current;
-    if (!blob) return;
+    if (!blob || kayitDikey) return;
     const tip = bazTip(mimeRef.current);
     akisiKapat();
     onKullan(new File([blob], kayitDosyaAdi(mimeRef.current), { type: tip }));
@@ -218,6 +238,10 @@ export function KameraKaydi({
 
   const canli = asama === "onizleme" || asama === "geriSayim" || asama === "kayit" || asama === "aciliyor";
   const bitirebilir = gecen >= minSeconds;
+  const dikeyUyari =
+    (asama === "onizleme" && dikey) || (asama === "bitti" && kayitDikey)
+      ? "Telefonu yatay çevir; dikey video kabul edilmiyor."
+      : null;
 
   return (
     <div className="space-y-4">
@@ -225,7 +249,7 @@ export function KameraKaydi({
         {/* Canlı önizleme: kendi sesini duymasın diye sessiz; ayna görüntü. */}
         <video
           ref={onizlemeRef}
-          className={`h-full w-full object-cover ${canli ? "" : "hidden"}`}
+          className={`h-full w-full object-contain ${canli ? "" : "hidden"}`}
           style={{ transform: "scaleX(-1)" }}
           autoPlay
           muted
@@ -240,6 +264,10 @@ export function KameraKaydi({
             controls
             playsInline
             aria-label="Kaydettiğin video"
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget;
+              if (v.videoWidth > 0) setKayitDikey(dikeyMi(v.videoWidth, v.videoHeight));
+            }}
           />
         )}
         {(asama === "hazir" || asama === "hata") && (
@@ -276,6 +304,12 @@ export function KameraKaydi({
             </p>
           )}
         </div>
+      )}
+
+      {dikeyUyari && (
+        <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">
+          {dikeyUyari}
+        </p>
       )}
 
       {hata && (
@@ -326,7 +360,7 @@ export function KameraKaydi({
           </button>
         )}
         {asama === "onizleme" && (
-          <button type="button" className={DUGME_SATIR_BIRINCIL} onClick={geriSayimBaslat}>
+          <button type="button" className={DUGME_SATIR_BIRINCIL} onClick={geriSayimBaslat} disabled={dikey}>
             Kaydı başlat
           </button>
         )}
@@ -343,7 +377,7 @@ export function KameraKaydi({
         )}
         {asama === "bitti" && (
           <>
-            <button type="button" className={DUGME_SATIR_BIRINCIL} onClick={kullan}>
+            <button type="button" className={DUGME_SATIR_BIRINCIL} onClick={kullan} disabled={kayitDikey}>
               Bu kaydı kullan
             </button>
             <button type="button" className={DUGME_SATIR_IKINCIL} onClick={tekrarKaydet}>

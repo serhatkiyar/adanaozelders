@@ -58,7 +58,9 @@ export const queryClient = new QueryClient({
     onError: (error, _variables, _context, mutation) => {
       // Mutasyonların çoğu kendi `onError`'unda toast gösterir; çifte bildirim
       // olmaması için yalnız hiç ele alınmayanlar buraya düşer.
-      if (mutation.options.onError) return;
+      // `mutate(x, { onError })` çağrı-düzeyi yakalayıcıları burada görünmez;
+      // hatayı her çağıranda kendisi gösteren hook `meta.silentError` verir.
+      if (mutation.options.onError || mutation.meta?.silentError) return;
       if (!shouldNotify(error)) return;
       notifyOnce(error, "İşlem tamamlanamadı.");
       reportError(error);

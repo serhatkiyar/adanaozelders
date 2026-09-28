@@ -1,3 +1,6 @@
+import { WEEKDAYS_LONG, weekdayOfDateStr } from "@/lib/availability";
+import { formatIstanbulTime } from "@/lib/datetime";
+
 /**
  * Anonim ziyaretçinin BEKLEYEN NİYETİ — kapı eylemde, gezinmede değil (ÜK-10).
  *
@@ -30,11 +33,36 @@
 
 export type BekleyenNiyet =
   | { tip: "favori"; hedef: "egitmen" | "kutuphane"; id: number }
-  | { tip: "dersTalebi"; egitmenId: number }
+  | {
+      tip: "dersTalebi";
+      egitmenId: number;
+      /**
+       * Profildeki Program takviminden seçilen saat (isteğe bağlı). Giriş
+       * sonrası pencere bu saatle ÖNDOLU açılır; talep kendiliğinden
+       * GÖNDERİLMEZ (ÜK-10 kural 3).
+       */
+      saat?: { date: string; start_at: string; duration: number };
+    }
   | { tip: "kutuphaneRezervasyonu"; kutuphaneId: number }
   | { tip: "odeme" };
 
 const ANAHTAR = "bekleyen_niyet";
+
+/** Sunucunun kabul ettiği süreler (`LESSON_DURATIONS_MIN`); başkası storage kurcalamasıdır. */
+const DERS_SURELERI = [30, 60, 90, 120];
+
+function saatGecerli(v: unknown): boolean {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.date === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(o.date) &&
+    typeof o.start_at === "string" &&
+    !Number.isNaN(Date.parse(o.start_at)) &&
+    typeof o.duration === "number" &&
+    DERS_SURELERI.includes(o.duration)
+  );
+}
 
 /**
  * `tip` → gövde doğrulayıcısı.
@@ -49,7 +77,7 @@ const DOGRULAYICI: {
 } = {
   favori: (d) =>
     (d.hedef === "egitmen" || d.hedef === "kutuphane") && typeof d.id === "number",
-  dersTalebi: (d) => typeof d.egitmenId === "number",
+  dersTalebi: (d) => typeof d.egitmenId === "number" && (d.saat === undefined || saatGecerli(d.saat)),
   kutuphaneRezervasyonu: (d) => typeof d.kutuphaneId === "number",
   odeme: () => true,
 };
@@ -120,4 +148,21 @@ export function niyetiAl<T extends BekleyenNiyet["tip"]>(
 
   niyetiTemizle();
   return niyet as Extract<BekleyenNiyet, { tip: T }>;
+}
+
+const ayAdi = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", timeZone: "UTC" });
+
+/**
+ * Giriş penceresinin alt başlığı: kapıyı açan eylemi hatırlatır ("Salı
+ * 29 Eylül 10:00 dersini talep etmek için giriş yap."). Yalnız ders talebinde
+ * metin verir; diğer niyetlerde genel "Giriş Yap" yeterli. Tarih sunucunun
+ * İstanbul günü, saat İstanbul saatiyle (Program takvimiyle aynı).
+ */
+export function girisBaglami(niyet: BekleyenNiyet | null): string | null {
+  if (niyet?.tip !== "dersTalebi") return null;
+  if (!niyet.saat) return "Ders talep etmek için giriş yap.";
+  const { date, start_at } = niyet.saat;
+  const gun = WEEKDAYS_LONG[weekdayOfDateStr(date)];
+  const tarih = ayAdi.format(new Date(`${date}T12:00:00Z`));
+  return `${gun} ${tarih} ${formatIstanbulTime(start_at)} dersini talep etmek için giriş yap.`;
 }
