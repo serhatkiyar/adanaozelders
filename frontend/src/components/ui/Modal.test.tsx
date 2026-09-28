@@ -95,4 +95,26 @@ describe("Modal", () => {
     );
     expect(screen.getByRole("dialog").className).toContain("relative");
   });
+
+  it("içerik değişip odak <body>'ye düşünce Tab pencereye geri döner", () => {
+    // Regresyon: sihirbaz adımı değişince odaklı "Devam" düğmesi sökülüyor,
+    // odak <body>'ye düşüyordu; tuzak yalnız ilk/son öğede çalıştığı için
+    // sıradaki Tab arkadaki sayfaya gidiyordu.
+    render(
+      <>
+        <button type="button">Arkadaki sayfa</button>
+        <Modal open onClose={() => {}} title="Test" hideCloseButton>
+          <button type="button">Bir</button>
+          <button type="button">İki</button>
+        </Modal>
+      </>
+    );
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Bir" }));
+    (document.activeElement as HTMLElement).blur();
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "İki" }));
+  });
 });

@@ -69,6 +69,11 @@ export function TutorCard({
   const gorunenAd = tutor.display_name;
 
   return (
+    // Favori düğmesi bağlantının KARDEŞİDİR, içinde değil: <a> içinde <button>
+    // geçersiz HTML'dir; ekran okuyucu kartı tek uzun bağlantı gibi okuyor,
+    // düğmeyi ayrı bir kontrol olarak duyurmuyordu. Konumu aynı: bu kap
+    // `relative`, fotoğraf kutusu kartın tepesinde başlar.
+    <div className="relative h-full w-full">
     <Link
       to={ilanYolu(tutor)}
       // Genişlik ızgaranındır: kart hücresini doldurur (`KART_IZGARASI`,
@@ -108,15 +113,6 @@ export function TutorCard({
           <span className="absolute left-4 top-4 z-10 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-slate-700 shadow-sm">
             Reklam
           </span>
-        )}
-
-        {/* Bookmark top right */}
-        {/* `md:` öncesi 8px içeri: düğmenin dokunma alanı telefonda `p-2` ile
-            büyüdü, ikon görsel olarak aynı yerde kalsın. */}
-        {showBookmark && (
-          <div className="absolute right-1 top-1 z-10 md:right-3 md:top-3">
-            <BookmarkButton tutorId={tutor.id} size="md" />
-          </div>
         )}
 
         {/* Gradient Mask at bottom */}
@@ -200,8 +196,8 @@ export function TutorCard({
           {/* İlk ders ücretsiz etiketi — yalnız öğretmen sunuyorsa */}
           {tutor.first_lesson_free !== false && (
             <span className="flex items-center whitespace-nowrap">
-              <span aria-hidden="true" className="w-4 text-center text-base leading-none text-emerald-600">·</span>
-              <span className="text-xs font-semibold text-emerald-600">
+              <span aria-hidden="true" className="w-4 text-center text-base leading-none text-emerald-700">·</span>
+              <span className="text-xs font-semibold text-emerald-700">
                 İlk ders ücretsiz
               </span>
             </span>
@@ -219,6 +215,16 @@ export function TutorCard({
         </div>
       </div>
     </Link>
+      {/* Bookmark top right */}
+      {/* `md:` öncesi 8px içeri: düğmenin dokunma alanı telefonda `p-2` ile
+          büyüdü, ikon görsel olarak aynı yerde kalsın. z-30: fotoğraf
+          kutusunun odak halkası katmanının (z-20) üstünde. */}
+      {showBookmark && (
+        <div className="absolute right-1 top-1 z-30 md:right-3 md:top-3">
+          <BookmarkButton tutorId={tutor.id} size="md" />
+        </div>
+      )}
+    </div>
   );
 }
 

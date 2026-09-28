@@ -9,6 +9,7 @@ import { BookingActionCard } from "@/components/BookingActionCard";
 import { RightContextPanel } from "@/components/RightContextPanel";
 import { ReportModal } from "@/components/ReportModal";
 import { GuvenlikBandi } from "@/components/mesaj/GuvenlikBandi";
+import { PhoneEditor } from "@/components/PhoneEditor";
 import { DisBaglantiUyarisi } from "@/components/mesaj/DisBaglantiUyarisi";
 import { EmojiSecici } from "@/components/mesaj/EmojiSecici";
 import { EngelleModal } from "@/components/mesaj/EngelleModal";
@@ -43,7 +44,7 @@ import { cevapCokKisaMi } from "@/lib/kisaCevapUyarisi";
 import { buildSnippet } from "@/lib/messageSearch";
 import { mesajParcala } from "@/lib/mesajBaglantisi";
 import { ROUTES, ilanYolu } from "@/lib/routes";
-import { getErrorMessage } from "@/lib/errors";
+import { getErrorMessage, isPhoneVerificationError } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS, ReportReason } from "@/types";
 import type {
@@ -283,6 +284,12 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
 
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedId);
   const send = useSendMessage();
+  // Mesaj gönderimi sunucuda telefon doğrulamasına bağlı (403). Eskiden kapı
+  // yalnız gönderimden sonra bir toast'la söyleniyor, doğrulama yolu
+  // gösterilmiyordu; artık yazma alanının üstünde, taslak kaybolmadan açılır.
+  const telefonGerekli =
+    (role === "CLIENT" || role === "TUTOR") && user?.phone_verified === false;
+  const [telefonAcik, setTelefonAcik] = useState(false);
   const markRead = useMarkConversationRead();
   const reaction = useToggleReaction(selectedId);
   const archive = useArchiveConversation();
@@ -434,8 +441,16 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    // Enter kısayolu düğmenin `disabled` durumunu atlar: bekleyen gönderim
+    // varken ikinci Enter aynı mesajı ikinci kez gönderiyordu (öğrencinin
+    // "yanıt gelene kadar" hakkından da düşerek).
+    if (send.isPending) return;
     const body = text.trim();
     if (!body || activeCounterpartyId == null) return;
+    if (telefonGerekli) {
+      setTelefonAcik(true);
+      return;
+    }
     if (
       egitmenIlkCevabiBekleniyor &&
       !kisaCevapUyarisiGosterildi &&
@@ -478,6 +493,7 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
           // 403/429'un gerçek sebebini (telefon doğrulama, engel, ders öncesi
           // sınırlar) sunucudan gelen Türkçe metinle göster.
           toast.error(gonderimHatasi(err));
+          if (isPhoneVerificationError(err)) setTelefonAcik(true);
           // Engel/sınır sunucuda değişmiş olabilir: yazma alanını güncel duruma getir.
           const kod = err instanceof AxiosError ? err.response?.status : undefined;
           if (ogrenciEgitmene && (kod === 403 || kod === 429)) void uygunluguTazele();
@@ -1068,6 +1084,31 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                 </YazmaKapali>
               ) : (
               <>
+              {telefonGerekli && (
+                <div
+                  id="mesaj-telefon-kapisi"
+                  className="mx-auto w-full max-w-4xl space-y-3 px-3 pt-3 sm:px-6"
+                >
+                  <p className={KUCUK_ACIKLAMA}>
+                    Mesaj göndermek için telefon numaranı doğrulaman gerekiyor. Yazdığın
+                    mesaj kaybolmaz.
+                  </p>
+                  {telefonAcik ? (
+                    <PhoneEditor
+                      initialPhone={user?.phone ?? ""}
+                      onDone={() => setTelefonAcik(false)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setTelefonAcik(true)}
+                      className="min-h-[44px] rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
+                    >
+                      Telefonu doğrula
+                    </button>
+                  )}
+                </div>
+              )}
               <form
                 onSubmit={submit}
                 className="mx-auto w-full max-w-4xl p-3 sm:px-6 sm:py-4"
@@ -1099,6 +1140,8 @@ export default function Messages({ embedded = false }: { embedded?: boolean }) {
                       }
                     }}
                     placeholder="Mesajın"
+                    aria-label="Mesajın"
+                    aria-describedby={telefonGerekli ? "mesaj-telefon-kapisi" : undefined}
                     className="max-h-40 min-h-[44px] w-full resize-none border-0 bg-transparent px-4 pt-3 text-[15px] text-slate-900 placeholder-slate-400 outline-none focus:ring-0 "
                   />
                   <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">

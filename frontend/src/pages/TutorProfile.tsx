@@ -310,7 +310,7 @@ export default function TutorProfile({
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="mx-auto mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-marka px-10 text-center text-base font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+                  className="mx-auto mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-marka px-10 text-center text-base font-bold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
                 >
                   {/* Mobil şeritle (DersTalepSeridi) AYNI ikon: aynı eylem. Düğme tam
                     genişlik değil; 48px yükseklik, 16px yazı, ortalı (kullanıcı kararı,

@@ -10,6 +10,7 @@ import { EGITMEN_ARAMA } from "@/lib/aramaUrl";
 import { bosDeger } from "@/lib/urlSemasi";
 import { useKonumStore } from "@/store/konumStore";
 import { SegmentedControl } from "@/components/SegmentedControl";
+import { Modal } from "@/components/ui/Modal";
 import { Gender } from "@/types";
 
 /**
@@ -89,17 +90,26 @@ export function EgitmenFiltreModali({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-6">
-      <div className="absolute inset-0" onClick={kapat} />
-      <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 duration-200 sm:zoom-in-95">
+    // Ortak `Modal` kabuğu: el yapımı sarmalayıcıda dialog rolü, ESC, odak
+    // taşıma/tuzak/geri dönüş yoktu; pencere DOM'da sonuç kartlarının SONUNA
+    // basıldığı için klavye kullanıcısı ona ancak bütün listeyi geçerek ulaşıyordu.
+    <Modal
+      open={acik}
+      onClose={kapat}
+      ariaLabel="Filtrele"
+      hideCloseButton
+      panelClassName="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 duration-200 sm:rounded-3xl sm:zoom-in-95"
+      icerikClassName="flex min-h-0 flex-1 flex-col"
+    >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 ">
           <h2 className="text-lg font-bold text-slate-900 ">Filtrele</h2>
           <button
+            type="button"
             onClick={kapat}
             aria-label="Kapat"
-            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
+            className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 "
           >
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -168,19 +178,20 @@ export function EgitmenFiltreModali({
 
         <div className="flex gap-3 border-t border-slate-200 bg-slate-50 p-4 sm:px-6 sm:py-5">
           <button
+            type="button"
             onClick={temizle}
             className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 "
           >
             Temizle
           </button>
           <button
+            type="button"
             onClick={kapat}
             className="flex-[2] rounded-xl bg-marka px-4 py-3 text-sm font-semibold text-marka-fg shadow-sm shadow-marka/20 transition hover:bg-marka-hover active:scale-95"
           >
             Sonuçları Göster
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

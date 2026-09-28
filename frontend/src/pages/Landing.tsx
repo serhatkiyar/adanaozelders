@@ -56,7 +56,13 @@ export default function Landing() {
         iki yüzey ayrışır. Bugün burada tek şerit görünüyor (öne çıkarma
         paketi yoksa `FeaturedTutorRow` kendini gizler), yani fark gözle
         görünmüyordu — ama kural ayrışmıştı. */}
-    <main className="space-y-8 pb-8 md:pb-24">
+    {/* <div>, <main> DEĞİL: kabuk (`PublicShell`) zaten sayfanın tek <main>'ini
+        çiziyor; iç içe ikinci main, ekran okuyucunun "ana içeriğe atla"
+        gezintisini ikiye bölüyordu. */}
+    <div className="space-y-8 pb-8 md:pb-24">
+      {/* Sayfanın tek h1'i. Görsel başlık yok (vitrin doğrudan kartlarla
+          başlıyor); başlıkla gezinen ekran okuyucu kullanıcısı için. */}
+      <h1 className="sr-only">{SITE_NAME}, Uzman Öğretmenle Öğren</h1>
       {/* ── ÖĞRETMENLER: TEK kuşak ──────────────────────────────────────────
           Burada eskiden "TYT'ye hazırlık" / "YKS Hazırlık" / "AYT'ye
           hazırlık" / "Ortaokul Matematik" / "LGS Matematik" diye SABİT
@@ -85,7 +91,7 @@ export default function Landing() {
           kapılı, ikinci kontrol ölü koddu. */}
       <FeaturedTutorRow />
       <TutorRow heading="Öğretmenler" params={{ limit: 12, offset: 0 }} />
-    </main>
+    </div>
     </>
   );
 }

@@ -211,6 +211,14 @@ export function useModalA11y({
       if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
+      // Odaklı öğe içerik değişiminde (sihirbaz adımı, onay → sonuç ekranı)
+      // DOM'dan sökülünce odak <body>'ye düşer; tarayıcının sıradaki Tab'ı
+      // o zaman arkadaki sayfaya gider. Odak panelde değilse pencereye geri al.
+      if (!panel.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();

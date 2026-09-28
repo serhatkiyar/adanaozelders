@@ -53,7 +53,7 @@ ve kullanıcı panolarını (öğrenci/öğretmen) kapsar.
 
 **[E] Public site ve panolar:** `bg-slate-50` sayfa, `bg-white` yüzeyler,
 `border-slate-200` saç-teli, `text-slate-900` gövde, `text-slate-500/600` ikincil.
-Turuncu az ve keskin; yeşil yalnız "İlk ders ücretsiz" (`text-emerald-600`) ve
+Turuncu az ve keskin; yeşil yalnız "İlk ders ücretsiz" (`text-emerald-700`; 600 beyazda 3,8:1, AA altı) ve
 "Doğrulandı" gibi olumlu durumlarda. Fotoğraflar kare ve büyük yuvarlatmalı
 (`rounded-3xl`). Gölge neredeyse yok; tek belirgin gölge Airbnb tarzı arama hapı
 (`components/HeroSearch.tsx:148`).
@@ -137,7 +137,7 @@ tamamlandı slate, haftalık rose, izin taralı slate, ek aralık emerald) ve le
 
 **[I] Çelişkiler:**
 - `components/RightContextPanel.tsx:177` onaylandı=emerald, tamamlandı=marka-line yazar; merkez haritanın tersi. Ayrıca emoji durum ikonu kullanır.
-- `bg-marka` üstünde `text-white`: `pages/PublicTutorProfile.tsx:325`, `components/egitmen/DersTalepSeridi.tsx:68`, `VitrinSeridi.tsx:327` — kural `text-marka-fg`.
+- `bg-marka` üstünde `text-white`: `VitrinSeridi.tsx:327` — kural `text-marka-fg` (profil CTA'sı ve mobil `DersTalepSeridi` 28 Eyl 2026'da kurala alındı; beyaz 2,1:1 idi).
 - Token dışı turuncu: `components/store/DeliveryPrefControls.tsx:232` `bg-orange-500 text-white`; `pages/CargoTrackingPage.tsx` `bg-orange-500`; mağaza `hover:text-[#F09A38]`, Amazon paleti `text-[#007185]` (`components/store/AnaVitrin.tsx`) — mağaza bugün kapalı (`MAGAZA_ACIK=false`).
 - Ham hex `bg-[#f4f4f4]` navbar/footer/kütüphaneler/DashboardHeader'da (token değil).
 - `components/DistrictMapModal.tsx:41-43` eski marka hex'lerini (`#C2410C`) hâlâ sabit yazıyor.
@@ -285,7 +285,7 @@ Google düğmesi `rounded-xl border border-slate-300 bg-white py-3.5` (`GoogleGi
 
 **[E] Kart genişliği ızgaranındır** (kullanıcı kararı, 24 Eyl 2026; eski `max-w-[310px] mx-auto` çelişkisini kapatır): öğretmen kartı, kütüphane kartı ve vitrin "tümünü gör" kartı kendi genişliğini TAŞIMAZ — `w-full` ile hücresini doldurur; kartın solu sayaç/başlıkla aynı çizgidedir. Liste ızgarası tek kaynaktan gelir: `components/kartIzgarasi.ts` → `KART_IZGARASI` = `grid grid-cols-1 gap-8 min-[480px]:grid-cols-2 md:grid-cols-3` (arama, oturumlu arama, öne çıkanlar, favoriler, kütüphane sonuçları ve iskeletleri). Hücre ~200–345px: telefon (<480) tek sütun tam genişlik (390px'te 358), 480–767 iki sütun (208–343), 768+ üç sütun (219–329; kütüphane kabı 1100px'te 345). Kart arası boşluk her genişlikte 32px. Ders sayfası (2/3/4 sütun) ve vitrin şeridi (`VITRIN_KART`) kendi ızgaralarını korur — kart onlarda da hücreyi doldurur. Yeni kart listesinde kartın kendisine `max-w` yazılmaz; genişlik ızgarayla ayarlanır.
 
-**[E] Öğretmen kartı** `components/TutorCard.tsx`: kare görsel `rounded-3xl bg-slate-100`, scrim, sol altta beyaz ad (`text-base font-bold drop-shadow-md`) + konum (`text-xs font-semibold text-white/90`), sağ üstte kalp (`BookmarkButton`), sol üstte "Reklam" pili (`bg-white/95 text-[11px] shadow-sm`, yasal). Altında: yıldız/"Yeni" satırı, `text-[13px]` başlık (2 satır, `min-h-[36px]`), `₺600/saat · İlk ders ücretsiz` (emerald). Kenarlık ve gölge yok; hover yalnız scrim'i koyulaştırır. Kütüphane kartı aynı çerçevenin klonu (`LibraryCard.tsx`), placeholder zemin `from-marka-soft to-marka-line`, "Şu an açık/Kapalı" pili `bg-emerald-500/95` / `bg-rose-500/95 text-white`.
+**[E] Öğretmen kartı** `components/TutorCard.tsx`: kare görsel `rounded-3xl bg-slate-100`, scrim, sol altta beyaz ad (`text-base font-bold drop-shadow-md`) + konum (`text-xs font-semibold text-white/90`), sağ üstte kalp (`BookmarkButton`), sol üstte "Reklam" pili (`bg-white/95 text-[11px] shadow-sm`, yasal). Altında: yıldız/"Yeni" satırı, `text-[13px]` başlık (2 satır, `min-h-[36px]`), `₺600/saat · İlk ders ücretsiz` (`text-emerald-700`). Kenarlık ve gölge yok; hover yalnız scrim'i koyulaştırır. Kütüphane kartı aynı çerçevenin klonu (`LibraryCard.tsx`), placeholder zemin `from-marka-soft to-marka-line`, "Şu an açık/Kapalı" pili `bg-emerald-500/95` / `bg-rose-500/95 text-white`.
 
 **[E] Pano kartı** `KART` = `rounded-lg border border-slate-200 bg-white p-6` (KesifKarti, SiradakiDersKarti, ProfileCompleteness, LessonDetail, OgrenciPano, TutorSettings sağ sütun). Liste: `divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white`. Ayarlar satırı: başlık + değer + sağda altı çizili "Düzenle/Ekle" bağlantısı.
 

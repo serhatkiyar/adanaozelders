@@ -184,3 +184,44 @@ describe("anonim yüzey · yakınımda", () => {
     useKonumStore.setState({ konum: null });
   });
 });
+
+/* ─── Erişilebilirlik ve çıkmaz sokaklar (28 Eyl 2026) ──────────────── */
+
+describe("anonim yüzey · erişilebilirlik", () => {
+  const varsayilan = { data: [], isLoading: false, error: null };
+  afterEach(() => {
+    vi.mocked(useTutorSearch).mockImplementation(() => varsayilan as never);
+  });
+
+  it("sayfanın TEK h1'i var (başlıkla gezinme)", () => {
+    ciz();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("filtre penceresi adlandırılmış bir dialog; ESC kapatır", async () => {
+    // Regresyon: el yapımı sarmalayıcıda dialog rolü, ESC ve odak tuzağı yoktu.
+    ciz();
+    fireEvent.click(screen.getByRole("button", { name: /Filtre/i }));
+    const pencere = await screen.findByRole("dialog", { name: "Filtrele" });
+    expect(pencere.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Filtrele" })).toBeNull());
+  });
+
+  it("yükleme hatası duyurulur ve yeniden denenebilir", () => {
+    const refetch = vi.fn();
+    vi.mocked(useTutorSearch).mockImplementation(
+      () => ({ data: undefined, isLoading: false, isError: true, error: new Error("x"), refetch }) as never
+    );
+    ciz();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Tekrar dene" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("filtreli boş sonuçta filtreler tek dokunuşla temizlenir", () => {
+    ciz("/egitmenler?cinsiyet=FEMALE");
+    fireEvent.click(screen.getByRole("button", { name: "Tüm filtreleri temizle" }));
+    expect(sonAdres).not.toContain("cinsiyet");
+  });
+});

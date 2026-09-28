@@ -93,6 +93,7 @@ export default function LessonDetail() {
   const [reviewed, setReviewed] = useState(false);
   const [showTutorReschedule, setShowTutorReschedule] = useState(false);
   const [redOnayi, setRedOnayi] = useState(false);
+  const [talepRedOnayi, setTalepRedOnayi] = useState(false);
   const yeniSaatiKabul = useAcceptTutorReschedule();
   const yeniSaatiReddet = useDeclineTutorReschedule();
   const hatirlat = useRemindConfirm();
@@ -395,7 +396,28 @@ export default function LessonDetail() {
 
             {/* Bekleyen dersin yanıtını KİM verir: öğrencinin isteğinde
                 öğretmen, öğretmenin teklifinde öğrenci (Modül 8). */}
-            {yanitVeren && (
+            {yanitVeren && talepRedOnayi && (
+                <>
+                  <p className={ACIKLAMA}>
+                    {isClient ? "Teklifi reddetmek" : "Ders isteğini reddetmek"} geri alınamaz.
+                  </p>
+                  <button
+                    disabled={busy}
+                    onClick={() => run(reject, isClient ? "Ders teklifini reddettin." : "Ders isteğini reddettin.")}
+                    className={TEHLIKE}
+                  >
+                    {reject.isPending ? "Reddediliyor…" : "Evet, reddet"}
+                  </button>
+                  <button
+                    disabled={busy}
+                    onClick={() => setTalepRedOnayi(false)}
+                    className={`${DUGME_IKINCIL} ${TAM}`}
+                  >
+                    Vazgeç
+                  </button>
+                </>
+            )}
+            {yanitVeren && !talepRedOnayi && (
                 <>
                   <button
                     disabled={busy}
@@ -414,9 +436,10 @@ export default function LessonDetail() {
                   >
                     {isClient ? "Teklifi kabul et" : "Kabul et"}
                   </button>
+                  {/* Reddetme geri alınamaz; önce satır içi onay istenir. */}
                   <button
                     disabled={busy}
-                    onClick={() => run(reject, isClient ? "Ders teklifini reddettin." : "Ders isteğini reddettin.")}
+                    onClick={() => setTalepRedOnayi(true)}
                     className={TEHLIKE}
                   >
                     Reddet
@@ -463,7 +486,9 @@ export default function LessonDetail() {
               </button>
             )}
 
-            {role === "TUTOR" && isAccepted && (
+            {/* Başlamamış ders sunucuda tamamlanamaz (409); düğme ancak ders
+                başlayınca çıkar, yoksa yalnız bir hata toast'ına varıyordu. */}
+            {role === "TUTOR" && isAccepted && basladi && (
               <button
                 disabled={busy}
                 onClick={() => run(complete, "Ders tamamlandı olarak işaretlendi.")}

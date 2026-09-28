@@ -1,4 +1,4 @@
-import { FormEvent, useState, useEffect } from "react";
+import { FormEvent, useState } from "react";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { EgitmenMisinSatiri } from "@/components/EgitmenMisinSatiri";
@@ -37,14 +37,9 @@ export function AuthModal() {
     setSearchParams(searchParams, { replace: true });
   };
 
-  // Close on escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) close();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, searchParams]);
+  // ESC, ortak `Modal`ın yığın farkında dinleyicisindedir. Burada ikinci bir
+  // window dinleyicisi vardı: üstte başka bir pencere açıkken tek ESC ikisini
+  // birden kapatıyordu.
 
   if (!isOpen) return null;
 
@@ -99,7 +94,7 @@ export function AuthModal() {
         <button
           type="button"
           onClick={close}
-          className="absolute right-4 top-4 z-10 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus "
+          className="absolute right-2 top-2 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marka-focus "
         >
           <span className="sr-only">Kapat</span>
           <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -205,7 +200,7 @@ function LoginForm({ onSuccess, googleHatasi }: { onSuccess: () => void; googleH
         </div>
 
         {(mutation.isError || googleHatasi) && (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
+          <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
             {mutation.isError
               ? getErrorMessage(mutation.error, "E-posta veya parola hatalı.")
               : googleHatasi}
@@ -305,7 +300,7 @@ function RegisterForm({
   return (
     <>
       {googleHatasi && (
-        <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
+        <div role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ">
           {googleHatasi}
         </div>
       )}

@@ -1,18 +1,20 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Field } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { PhoneEditor } from "@/components/PhoneEditor";
 import { isSlotConflictError, useCreateBooking } from "@/hooks/useBookings";
 import { useTutorSlots } from "@/hooks/useTutorSlots";
 import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
 import { canPromiseEscrow } from "@/lib/paymentAvailability";
 import { toast } from "@/store/toastStore";
-import { getErrorDetail, getErrorMessage } from "@/lib/errors";
+import { useAuthStore } from "@/store/authStore";
+import { getErrorDetail, getErrorMessage, isPhoneVerificationError } from "@/lib/errors";
 import { formatIstanbulDay, formatIstanbulTime, istanbulNow } from "@/lib/datetime";
 import { formatTRY } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import { googleTakvimLinki, icsIcerigi, icsIndir } from "@/lib/takvim";
-import { TeachingMode } from "@/types";
+import { ROLE_IDS, TeachingMode } from "@/types";
 import type { BookingOut, PartOfDay, SavedAddress, SlotOut, TutorSearchOut } from "@/types";
 import { DateStrip, buildDaysFromDates } from "@/components/booking/DateStrip";
 import {
@@ -85,6 +87,7 @@ function Pill({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-pressed={!!active}
       className={`rounded-xl px-3.5 py-2 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
         active
           ? "bg-marka text-marka-fg shadow-sm"
@@ -126,6 +129,24 @@ export function BookingModal({
   const [basari, setBasari] = useState<BookingOut | null>(null);
   const [notes, setNotes] = useState("");
   const [freeLesson, setFreeLesson] = useState(false);
+  // Gönderim hatası pencerenin İÇİNDE gösterilir. Yalnız toast'a bırakılınca
+  // 4,5 sn sonra kayboluyor ve `aria-modal` pencerenin dışında kalıyordu.
+  const [hata, setHata] = useState<string | null>(null);
+
+  // Telefon doğrulaması rezervasyonun sunucu kapısıdır (403). Eskiden öğrenci
+  // sihirbazı bitirip ancak sonda "yetkin yok" görüyordu; artık son adımda
+  // doğrulama pencereden çıkmadan yapılır.
+  const kullanici = useAuthStore((st) => st.user);
+  const telefonGerekli =
+    kullanici?.role_id === ROLE_IDS.CLIENT && kullanici.phone_verified === false;
+  const [telefonAcik, setTelefonAcik] = useState(false);
+  const telefonBlokRef = useRef<HTMLDivElement>(null);
+  const gonderRef = useRef<HTMLButtonElement>(null);
+
+  // Adım değişince odaklı düğme DOM'dan sökülür ve odak <body>'ye düşer;
+  // yeni adımın başlığına taşınır ki ekran okuyucu nerede olduğunu söylesin.
+  const baslikRef = useRef<HTMLHeadingElement>(null);
+  const ilkCizim = useRef(true);
   
   const canChooseMode = !tutor.teaching_mode || tutor.teaching_mode === TeachingMode.BOTH;
   const initialMode = canChooseMode ? TeachingMode.ONLINE : (tutor.teaching_mode || TeachingMode.ONLINE);
@@ -230,8 +251,19 @@ export function BookingModal({
 
   const handleBooking = (e: FormEvent) => {
     e.preventDefault();
+    if (createBooking.isPending) return;
+    setHata(null);
+    // Düğme doğrulamayla `disabled` OLMAZ (DESIGN.md [E], tasarim-dili §7) —
+    // Mesajlar'daki kapıyla aynı: basınca doğrulama açılır ve görünür kılınır.
+    if (telefonGerekli) {
+      setTelefonAcik(true);
+      requestAnimationFrame(() =>
+        telefonBlokRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      );
+      return;
+    }
     if (!selectedSlot) {
-      toast.error("Lütfen tarih ve saat seçin.");
+      setHata("Lütfen tarih ve saat seçin.");
       return;
     }
     const canChoose =
@@ -239,7 +271,7 @@ export function BookingModal({
     const lessonMode = canChoose ? mode : tutor.teaching_mode || TeachingMode.ONLINE;
 
     if (lessonMode === TeachingMode.IN_PERSON && !bookingLocation.trim()) {
-      toast.error("Lütfen dersin yapılacağı yeri girin veya haritadan seçin.");
+      setHata("Lütfen dersin yapılacağı yeri girin veya haritadan seçin.");
       return;
     }
 
@@ -267,9 +299,14 @@ export function BookingModal({
             toast.error("Bu saat az önce doldu. Başka bir saat seç.");
             return;
           }
+          if (isPhoneVerificationError(err)) {
+            // Önbellekteki kullanıcı bayatsa (başka sekmede numara değişti)
+            // kapı yine burada açılır.
+            setTelefonAcik(true);
+          }
           const durum = (err as { response?: { status?: number } })?.response?.status;
           // 409 (ör. ücretsiz ders hakkı) ve 422 kuralları sunucu metniyle gösterilir.
-          toast.error(
+          setHata(
             durum === 409 || durum === 422
               ? getErrorDetail(err, "Ders talebi oluşturulamadı.")
               : getErrorMessage(err, "Ders talebi oluşturulamadı.")
@@ -298,6 +335,25 @@ export function BookingModal({
   };
 
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
+
+  useEffect(() => {
+    // Açılışta odak Modal'ındır (ilk düğme); yalnız SONRAKİ geçişlerde taşınır.
+    if (ilkCizim.current) {
+      ilkCizim.current = false;
+      return;
+    }
+    setHata(null);
+    baslikRef.current?.focus({ preventScroll: true });
+  }, [step, basari]);
+
+  const adimBasligi =
+    step === 1
+      ? "Ders Modu"
+      : step === 2
+        ? "Tarih ve Saat"
+        : step === 3 && mode === TeachingMode.IN_PERSON
+          ? "Buluşma Yeri"
+          : "Son Detaylar";
 
   // Kayıtlı adresi buluşma yeri olarak seç: alanları + konumu doldur, listeye dön.
   const handleSelectSaved = (a: SavedAddress) => {
@@ -354,35 +410,42 @@ export function BookingModal({
         <div className="flex items-center justify-between mb-4">
           {step > 1 && !basari ? (
             <button
+              type="button"
               onClick={handleBack}
-              className="rounded-full p-2 -ml-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              aria-label="Önceki adım"
+              className="-ml-2 inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           ) : (
-            <div className="w-9" />
+            <div className="w-11" />
           )}
           <h2 className="text-xl font-bold text-slate-900 ">
             Ders Talebi
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-full p-2 -mr-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            aria-label="Kapat"
+            className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
           >
-            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
           </button>
         </div>
 
         {basari ? (
-          <BasariEkrani booking={basari} tutor={tutor} onClose={onClose} />
+          <BasariEkrani booking={basari} tutor={tutor} onClose={onClose} baslikRef={baslikRef} />
         ) : (
         <>
-        {/* Progress Bar */}
-        <div className="mb-6 flex gap-2">
+        {/* Progress Bar — görsel; adım bilgisi ekran okuyucuya metinle verilir. */}
+        <p className="sr-only">
+          Adım {step} / {totalSteps}: {adimBasligi}
+        </p>
+        <div className="mb-6 flex gap-2" aria-hidden="true">
           {Array.from({ length: totalSteps }).map((_, i) => {
             const s = i + 1;
             return (
@@ -396,12 +459,17 @@ export function BookingModal({
           })}
         </div>
 
-        <form onSubmit={handleBooking} className="mt-2 space-y-6 overflow-x-hidden">
+        {/* Dış kap bilerek <form> DEĞİL: 3. adımdaki AddressForm ve son adımdaki
+            PhoneEditor kendi <form>'larıdır. React'te submit olayı ataya
+            kabarcıklanır; dış form varken "Adresi Kaydet" rezervasyonu da
+            gönderiyordu (son adım, ücret özeti ve ücretsiz ders seçimi
+            atlanarak). Gönderim formu yalnız son adımı sarar. */}
+        <div className="mt-2 space-y-6 overflow-x-hidden">
           {/* STEP 1: DERS MODU */}
           {step === 1 && (
             <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-5">
+                <h3 ref={baslikRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 mb-5 focus:outline-none">
                   Ders Modu
                 </h3>
               </div>
@@ -411,6 +479,7 @@ export function BookingModal({
                   <button
                     type="button"
                     onClick={() => setMode(TeachingMode.ONLINE)}
+                    aria-pressed={mode === TeachingMode.ONLINE}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.ONLINE
                         ? "border-marka bg-marka-soft/50 text-marka-metin-hover "
@@ -425,6 +494,7 @@ export function BookingModal({
                   <button
                     type="button"
                     onClick={() => setMode(TeachingMode.IN_PERSON)}
+                    aria-pressed={mode === TeachingMode.IN_PERSON}
                     className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 p-5 transition-all ${
                       mode === TeachingMode.IN_PERSON
                         ? "border-marka bg-marka-soft/50 text-marka-metin-hover "
@@ -460,7 +530,7 @@ export function BookingModal({
           {step === 2 && (
             <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-5">
+                <h3 ref={baslikRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 mb-5 focus:outline-none">
                   Tarih ve Saat
                 </h3>
               </div>
@@ -632,7 +702,7 @@ export function BookingModal({
           {step === 3 && mode === TeachingMode.IN_PERSON && (
             <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-5">
+                <h3 ref={baslikRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 mb-5 focus:outline-none">
                   Buluşma Yeri
                 </h3>
               </div>
@@ -726,7 +796,7 @@ export function BookingModal({
           {step === totalSteps && (
             <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-5">
+                <h3 ref={baslikRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 mb-5 focus:outline-none">
                   Son Detaylar
                 </h3>
               </div>
@@ -776,20 +846,68 @@ export function BookingModal({
                 )}
               </Field>
 
-              <button
-                type="submit"
-                disabled={createBooking.isPending || (mode === TeachingMode.IN_PERSON && !bookingLocation.trim() && !locationLat)}
-                className="mt-6 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {createBooking.isPending
-                  ? "Gönderiliyor…"
-                  : canRequestFreeLesson && freeLesson
-                    ? "Ücretsiz Ders Talep Et"
-                    : "Ders Talep Et"}
-              </button>
+              {telefonGerekli && (
+                // Düz metin, kart DEĞİL: pencere içinde kart-içinde-kart olurdu
+                // (DESIGN.md); Mesajlar'daki kapıyla aynı düz görünüm.
+                <div id="ders-talebi-telefon" ref={telefonBlokRef} className="space-y-3">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Talebi göndermeden önce telefonunu doğrula
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    Ders saatin değişirse sana ulaşabilmemiz için gerekli. Seçimlerin
+                    kaybolmaz; doğrulayınca buradan gönderebilirsin.
+                  </p>
+                  {telefonAcik ? (
+                    <PhoneEditor
+                      initialPhone={kullanici?.phone ?? ""}
+                      onDone={() => {
+                        setTelefonAcik(false);
+                        // Doğrulama/iptal sonrası odak <body>'ye düşmesin; artık
+                        // kullanılabilen gönder düğmesine geçsin.
+                        requestAnimationFrame(() => gonderRef.current?.focus());
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="min-h-[44px] rounded-lg bg-marka px-4 py-2 text-sm font-semibold text-marka-fg transition hover:bg-marka-hover"
+                      onClick={() => setTelefonAcik(true)}
+                    >
+                      Telefonu doğrula
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <form onSubmit={handleBooking}>
+                {hata && (
+                  <p
+                    role="alert"
+                    className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                  >
+                    {hata}
+                  </p>
+                )}
+                <button
+                  ref={gonderRef}
+                  type="submit"
+                  disabled={
+                    createBooking.isPending ||
+                    (mode === TeachingMode.IN_PERSON && !bookingLocation.trim() && !locationLat)
+                  }
+                  aria-describedby={telefonGerekli ? "ders-talebi-telefon" : undefined}
+                  className="mt-6 w-full rounded-xl bg-marka px-4 py-3.5 text-center text-sm font-bold text-marka-fg transition hover:bg-marka-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {createBooking.isPending
+                    ? "Gönderiliyor…"
+                    : canRequestFreeLesson && freeLesson
+                      ? "Ücretsiz Ders Talep Et"
+                      : "Ders Talep Et"}
+                </button>
+              </form>
             </div>
           )}
-        </form>
+        </div>
         </>
         )}
     </Modal>
@@ -856,17 +974,21 @@ function BasariEkrani({
   booking,
   tutor,
   onClose,
+  baslikRef,
 }: {
   booking: BookingOut;
   tutor: TutorSearchOut;
   onClose: () => void;
+  baslikRef: React.Ref<HTMLHeadingElement>;
 }) {
   const baslik = `${tutor.display_name} ile ders`;
   const detay = `Ders talebi: ${window.location.origin}${ROUTES.lesson(booking.id)}`;
   return (
     <div className="space-y-5">
       <div>
-        <h3 className={BOLUM_BASLIGI}>Ders talebin öğretmene iletildi</h3>
+        <h3 ref={baslikRef} tabIndex={-1} className={`${BOLUM_BASLIGI} focus:outline-none`}>
+          Ders talebin öğretmene iletildi
+        </h3>
         <p className={`mt-2 ${ACIKLAMA}`}>
           {formatIstanbulDay(booking.start_at)}, {saatAraligi(booking.start_at, booking.end_at)}
         </p>
