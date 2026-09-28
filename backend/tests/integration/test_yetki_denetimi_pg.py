@@ -12,15 +12,21 @@ sınar; dependency override YOK, token'lar gerçek imzalıdır.
    destesine not yazabiliyordu.
 5. Kütüphane operatörü / eğitmen, görsel alanına başkasının public nesne
    anahtarını yazabiliyordu; sonraki görsel yüklemesi o nesneyi siliyordu.
+6. Telefon OTP'si: paralel tahminler deneme sayacını tek artışa indirip
+   limiti aşabiliyordu (kilitsiz okuma).
 """
 from __future__ import annotations
 
+import asyncio
 import datetime
+import hashlib
+from collections import Counter
 from decimal import Decimal
 
 from sqlalchemy import select, text
 
 from core import storage
+from core.config import settings
 from core.database import AsyncSessionLocal
 from models.booking import Booking, BookingStatus
 from models.library import Library
@@ -189,6 +195,9 @@ async def test_gizlenen_yorum_silinip_yeniden_yazilamaz(ip3, http):
         assert r.status_code == 409, (
             f"gizlenen yorum silinip yeniden yazıldı ({r.status_code})"
         )
+        # 409'un sebebi "zaten değerlendirdi" olmalı; ödeme kurulumu bozuksa
+        # "kartla ödenmiş değil" 409'u testi yanlış sebeple geçirirdi.
+        assert r.json()["detail"] == "Bu öğretmeni zaten değerlendirdiniz.", r.text[:200]
     finally:
         async with AsyncSessionLocal() as s:
             await s.execute(
@@ -311,3 +320,44 @@ async def test_egitmen_urun_kapak_adresini_elle_yazamaz(ip3, http):
                 {"i": product_id},
             )
             await purge_products(s, [product_id])
+
+
+# ── 6. Paralel OTP tahminleri deneme limitini aşamaz ──────────────────────────
+
+
+async def test_paralel_otp_tahminleri_limiti_asamaz(ip3, http):
+    ogrenci = await ip3.client(phone_verified=False)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "INSERT INTO phone_otps (role_id, user_id, phone, code_hash,"
+                " expires_at, attempts) VALUES (3, :u, '+905321112233', :h,"
+                " now() + interval '10 minutes', 0)"
+            ),
+            {"u": ogrenci.id, "h": hashlib.sha256(b"123456").hexdigest()},
+        )
+        await s.commit()
+    hdr = yetki_basligi(ogrenci)
+    try:
+        yanitlar = await asyncio.gather(*[
+            http.post(
+                f"{API}/auth/me/phone/verify", headers=hdr, json={"code": f"{i:06d}"}
+            )
+            for i in range(1, 21)
+        ])
+        sayim = Counter(r.json()["detail"] for r in yanitlar)
+        assert sayim["Kod hatalı."] <= settings.PHONE_OTP_MAX_ATTEMPTS, (
+            f"paralel istekler deneme limitini aştı: {dict(sayim)}"
+        )
+        # Limit dolunca kod kilitlenir; doğru kod da artık geçmez.
+        r = await http.post(
+            f"{API}/auth/me/phone/verify", headers=hdr, json={"code": "123456"}
+        )
+        assert r.status_code == 400, r.text[:200]
+    finally:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("DELETE FROM phone_otps WHERE role_id = 3 AND user_id = :u"),
+                {"u": ogrenci.id},
+            )
+            await s.commit()

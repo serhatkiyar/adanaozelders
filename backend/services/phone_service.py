@@ -135,6 +135,9 @@ async def verify_otp(db: AsyncSession, user, code: str) -> None:
             )
             .order_by(PhoneOtp.id.desc())
             .limit(1)
+            # Satır kilidi: eşzamanlı tahminler sayacı aynı değerden okuyup
+            # tek artışa indiremesin (paralel istekle limit aşılıyordu).
+            .with_for_update()
         )
     ).scalar_one_or_none()
 
