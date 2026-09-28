@@ -833,7 +833,8 @@ describe("F-5/F-6 · dashboard kartları doğru filtreli hedefe gider", () => {
   });
 
   it("'Hazırlanacak siparişler' kartı paketleme kuyruğuna gider", async () => {
-    izinVer("dashboard.view", "orders.view");
+    // Kart hedef ekranın alanına bağlı: paketleme kuyruğu `packing.view` ister.
+    izinVer("dashboard.view", "packing.view");
     sunucu("/admin/stats", { data: istatistik() }, "get");
     sunucu("/admin/revenue", { data: {} }, "get");
 

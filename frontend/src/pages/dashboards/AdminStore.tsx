@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
 import { AccessDenied } from "@/components/admin/AccessState";
 import { CategoriesPanel } from "@/components/admin/store/CategoriesPanel";
@@ -9,7 +9,7 @@ import { ReturnsPanel } from "@/components/admin/store/ReturnsPanel";
 import { StoreAttributesManager } from "@/components/admin/store/StoreAttributesManager";
 import { SupplierPanel } from "@/components/admin/store/SupplierPanel";
 import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
-import { adminAreaAccess } from "@/lib/adminAccess";
+import { adminAreaAccess, MAGAZA_ALANLARI, type MagazaAlani } from "@/lib/adminAccess";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 
@@ -24,7 +24,7 @@ const STORE_ROUTES: Record<SubTab, string> = {
   coupons: ROUTES.adminStoreCoupons,
 };
 
-const TAB_AREA: Record<SubTab, string> = {
+const TAB_AREA: Record<SubTab, MagazaAlani> = {
   products: "products",
   categories: "products",
   supplier: "suppliers",
@@ -44,7 +44,18 @@ export default function AdminStore() {
   const permissions = useAuthStore((state) => state.user?.admin_permissions);
   const sub = (Object.entries(STORE_ROUTES).find(([, route]) => pathname === route)?.[0] as SubTab | undefined) ?? "products";
 
-  if (!adminAreaAccess(permissions, ...Object.values(TAB_AREA)).canView) return <AccessDenied area="Mağaza" />;
+  // Kapı menüyle aynı kaynaktan (`MAGAZA_ALANLARI`) türer.
+  if (!adminAreaAccess(permissions, ...MAGAZA_ALANLARI).canView) return <AccessDenied area="Mağaza" />;
+
+  // `/yonetim/magaza` kökü (ve eski vitrin takma adları) sabit olarak
+  // Ürünler'e gidiyordu; ürün yetkisi olmayan sipariş/iade sorumlusu, kendi
+  // sekmeleri solda dururken ortada "Ürünler: erişim yok" görüyordu. Kök,
+  // GROUPS sırasıyla izinli İLK sekmeye yönlenir (kapı en az birini garanti eder).
+  if (pathname === ROUTES.adminStoreRoot) {
+    const ilk = GROUPS.flatMap((group) => group.items.map(([value]) => value))
+      .find((value) => adminAreaAccess(permissions, TAB_AREA[value]).canView);
+    if (ilk) return <Navigate replace to={STORE_ROUTES[ilk]} />;
+  }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">

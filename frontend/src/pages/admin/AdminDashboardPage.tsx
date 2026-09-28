@@ -1,10 +1,13 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { AccessDenied } from "@/components/admin/AccessState";
 import { Badge, ErrorState, PageSkeleton } from "@/components/admin/ui";
 import { useAdminDashboard, useAdminRevenue } from "@/hooks/useAdmin";
 import { useStoreConfig } from "@/hooks/useStore";
+import { adminAreaAccess } from "@/lib/adminAccess";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
+import { useAuthStore } from "@/store/authStore";
 import type { AdminRevenueOut } from "@/types";
 
 type Range = "day" | "week" | "month";
@@ -60,19 +63,48 @@ export default function AdminDashboardPage() {
   const [params, setParams] = useSearchParams();
   const rawRange = params.get("range");
   const range: Range = rawRange === "day" || rawRange === "month" ? rawRange : "week";
-  const query = useAdminDashboard(range);
-  const revenue = useAdminRevenue(range);
+  // Uçlar tam kod ister (`api/routers/admin.py`): özet `dashboard.view`,
+  // para bölümü `payments.view`. İzin yoksa sorgu HİÇ çalışmaz; eskiden
+  // özet 403'ü "yüklenemedi, tekrar dene" olarak görünüyordu.
+  const permissions = useAuthStore((state) => state.user?.admin_permissions);
+  const gorur = (alan: string) => adminAreaAccess(permissions, alan).canView;
+  const canView = gorur("dashboard");
+  const query = useAdminDashboard(range, canView);
+  const revenue = useAdminRevenue(range, gorur("payments"));
   // Eşik SUNUCUDAN okunur; kart metnine sabit "5" yazmak, değeri üç yerde
   // gömülü tutan eski kusuru geri getirirdi (tek kaynak: core/stock_policy).
   const storeConfig = useStoreConfig();
   const lowStockThreshold = storeConfig.data?.low_stock_threshold;
   const selected = RANGES.find((item) => item.value === range)!;
 
+  if (!canView) return <AccessDenied area="Genel Bakış" />;
   if (query.isLoading) return <PageSkeleton rows={6} />;
   if (query.isError || !query.data) {
     return <ErrorState description={getErrorMessage(query.error, "Yönetim özeti yüklenemedi.")} onRetry={() => query.refetch()} />;
   }
   const data = query.data;
+
+  // Her kart, hedef ekranın alanına bağlı (menüdeki `requiredPermission`
+  // ile aynı alan): izni olmayan yönetici kartı görmez, 403 ekranına düşmez.
+  const tumKuyruklar: (QueueCardProps & { alan: string })[] = [
+    { alan: "tutors", label: "Öğretmen başvuruları", value: data.pending_tutors, to: ROUTES.adminTutors, tone: "warning", description: "Onay veya ret kararı bekliyor." },
+    { alan: "tutors", label: "Diploma doğrulamaları", value: data.pending_diplomas, to: ROUTES.adminDiplomas, tone: "warning", description: "Belge teyidi bekleyen eğitim kayıtları." },
+    { alan: "reports", label: "Açık şikâyetler", value: data.open_reports, to: ROUTES.adminReports, tone: "danger", description: "Moderasyon kararı bekleyen bildirimler." },
+    { alan: "bookings", label: "İhtilaflı rezervasyonlar", value: data.disputed_bookings, to: ROUTES.adminBookings, tone: "danger", description: `${data.active_bookings} aktif rezervasyon içinde.` },
+    { alan: "demands", label: "Açık öğrenci talepleri", value: data.open_demands, to: ROUTES.adminDemands, tone: "info", description: "Öğretmenlerden yanıt bekleyen ders ilanları." },
+    // Kart, işin YAPILDIĞI ekrana gider: ödenmiş sipariş hazırlanmak üzere
+    // paketleme kuyruğuna düşer; sipariş listesi bir kayıt görünümüdür, kuyruk değil.
+    { alan: "packing", label: "Hazırlanacak siparişler", value: data.paid_orders, to: ROUTES.adminPacking, tone: "info", description: `${data.pending_returns} açık iade talebi bulunuyor.` },
+    // Filtreli hedef: alarm kartının sayısı ile açtığı listenin AYNI kümeyi
+    // göstermesi gerekir. `kritik` = tükenenler + azalanlar, yani sayacın
+    // (`stock <= eşik`) tam karşılığı; `azalan` stoğu 0 olanları dışarıda
+    // bırakır ve sayı ile liste ayrışırdı.
+    { alan: "products", label: "Düşük stok", value: data.low_stock_products, to: `${ROUTES.adminStoreProducts}?stok=kritik`, tone: "warning", description: `Aktif fiziksel ürünlerde stok ${lowStockThreshold ?? "eşiğin"} veya altında.` },
+    { alan: "libraries", label: "Kütüphane başvuruları", value: data.pending_libraries, to: ROUTES.adminLibraries, tone: "warning", description: "Katalog onayı bekleyen işletmeler." },
+    { alan: "delivery", label: "Aktif dağıtım turları", value: data.active_delivery_runs, to: ROUTES.adminDelivery, tone: "info", description: "Şu anda sahada olan kendi-filo turları." },
+    { alan: "audit", label: "Denetim kayıtları", value: data.period_audit_logs, to: ROUTES.adminAuditLogs, description: `Son ${selected.label} içindeki yönetim işlemleri.` },
+  ];
+  const kuyruklar = tumKuyruklar.filter((kart) => gorur(kart.alan));
 
   return (
     <div className="mx-auto max-w-7xl space-y-7 pb-12">
@@ -94,28 +126,14 @@ export default function AdminDashboardPage() {
 
       {revenue.data && <MoneySection data={revenue.data} periodLabel={selected.period} />}
 
-      <section aria-labelledby="queue-title">
-        <div className="mb-4"><h2 id="queue-title" className="text-lg font-bold text-slate-950 ">Operasyon kuyrukları</h2><p className="text-sm text-slate-500">Karar veya takip bekleyen gerçek zamanlı iş yükü.</p></div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <QueueCard label="Öğretmen başvuruları" value={data.pending_tutors} to={ROUTES.adminTutors} tone="warning" description="Onay veya ret kararı bekliyor." />
-          <QueueCard label="Diploma doğrulamaları" value={data.pending_diplomas} to={ROUTES.adminDiplomas} tone="warning" description="Belge teyidi bekleyen eğitim kayıtları." />
-          <QueueCard label="Açık şikâyetler" value={data.open_reports} to={ROUTES.adminReports} tone="danger" description="Moderasyon kararı bekleyen bildirimler." />
-          <QueueCard label="İhtilaflı rezervasyonlar" value={data.disputed_bookings} to={ROUTES.adminBookings} tone="danger" description={`${data.active_bookings} aktif rezervasyon içinde.`} />
-          <QueueCard label="Açık öğrenci talepleri" value={data.open_demands} to={ROUTES.adminDemands} tone="info" description="Öğretmenlerden yanıt bekleyen ders ilanları." />
-          {/* Kart, işin YAPILDIĞI ekrana gider: ödenmiş sipariş hazırlanmak
-              üzere paketleme kuyruğuna düşer; sipariş listesi bir kayıt
-              görünümüdür, kuyruk değil. */}
-          <QueueCard label="Hazırlanacak siparişler" value={data.paid_orders} to={ROUTES.adminPacking} tone="info" description={`${data.pending_returns} açık iade talebi bulunuyor.`} />
-          {/* Filtreli hedef: alarm kartının sayısı ile açtığı listenin AYNI
-              kümeyi göstermesi gerekir. `kritik` = tükenenler + azalanlar,
-              yani sayacın (`stock <= eşik`) tam karşılığı; `azalan` stoğu 0
-              olanları dışarıda bırakır ve sayı ile liste ayrışırdı. */}
-          <QueueCard label="Düşük stok" value={data.low_stock_products} to={`${ROUTES.adminStoreProducts}?stok=kritik`} tone="warning" description={`Aktif fiziksel ürünlerde stok ${lowStockThreshold ?? "eşiğin"} veya altında.`} />
-          <QueueCard label="Kütüphane başvuruları" value={data.pending_libraries} to={ROUTES.adminLibraries} tone="warning" description="Katalog onayı bekleyen işletmeler." />
-          <QueueCard label="Aktif dağıtım turları" value={data.active_delivery_runs} to={ROUTES.adminDelivery} tone="info" description="Şu anda sahada olan kendi-filo turları." />
-          <QueueCard label="Denetim kayıtları" value={data.period_audit_logs} to={ROUTES.adminAuditLogs} description={`Son ${selected.label} içindeki yönetim işlemleri.`} />
-        </div>
-      </section>
+      {kuyruklar.length > 0 && (
+        <section aria-labelledby="queue-title">
+          <div className="mb-4"><h2 id="queue-title" className="text-lg font-bold text-slate-950 ">Operasyon kuyrukları</h2><p className="text-sm text-slate-500">Karar veya takip bekleyen gerçek zamanlı iş yükü.</p></div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {kuyruklar.map((kart) => <QueueCard key={kart.label} {...kart} />)}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { MAGAZA_ALANLARI } from "@/lib/adminAccess";
 import { ROUTES } from "@/lib/routes";
 
 export type AdminNavGroup = "Platform" | "Eğitim" | "Ticaret" | "Operasyon" | "Güvenlik";
@@ -9,7 +10,7 @@ export interface AdminNavItem {
   group: AdminNavGroup;
   description: string;
   icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "inventory" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings" | "announcement";
-  /** Birden fazla kod verilirse HERHANGİ BİRİ yeter (ör. Mağaza: katalog VEYA içerik yetkisi). */
+  /** Birden fazla kod verilirse HERHANGİ BİRİ yeter (ör. Mağaza: sekmelerinden birinin görüntüleme yetkisi). */
   requiredPermission?: string | string[];
   end?: boolean;
   badge?: "open-reports";
@@ -150,9 +151,9 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     group: "Ticaret",
     description: "Ürün kataloğu, siparişler, iadeler ve kuponlar.",
     icon: "store",
-    // İçerik editörü (content.*) katalog yetkisi olmadan da Mağaza'ya girer;
-    // alt-sekmeler kendi alanlarını `TAB_AREA` ile ayrıca süzer.
-    requiredPermission: ["products.view", "content.view"],
+    // Sayfa kapısıyla AYNI kaynak (`MAGAZA_ALANLARI`): sekmelerden birini
+    // görebilen Mağaza'yı menüde görür; alt-sekmeler `TAB_AREA` ile süzülür.
+    requiredPermission: MAGAZA_ALANLARI.map((alan) => `${alan}.view`),
   },
   {
     label: "Envanter",
