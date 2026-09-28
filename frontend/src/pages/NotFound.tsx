@@ -5,10 +5,14 @@ import { ROUTES } from "@/lib/routes";
 // Bilinmeyen URL'ler için 404. Tam-ekran, kenardan kenara kedi görseli
 // (hafif bulanık + karartılmış); içerik üstte ortalanır. Kart/çerçeve yok,
 // shell sarmalaması yok — immersive bir hata ekranı.
-export default function NotFound() {
+//
+// `meta={false}`: ekran aynı çizilir ama head'e dokunulmaz. Kök adresi çözen
+// istek GEÇİCİ olarak düştüğünde (5xx/ağ) kullanılır — geçerli bir ilan/ders
+// sayfasına noindex basılıp dizinden düşürülmesin.
+export default function NotFound({ meta = true }: { meta?: boolean } = {}) {
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
-      <Seo title="Sayfa bulunamadı" noindex />
+      {meta && <Seo title="Sayfa bulunamadı" noindex />}
 
       {/* Kenardan kenara arka plan görseli */}
       <div

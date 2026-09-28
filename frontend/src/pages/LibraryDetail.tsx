@@ -10,6 +10,7 @@ import { StarRating } from "@/components/StarRating";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
 import { Seo } from "@/components/Seo";
+import { detayDurumu } from "@/lib/seo";
 import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
 import {
   useCreateLibraryReview,
@@ -124,8 +125,11 @@ export default function LibraryDetail() {
     if (isError || !lib) {
       return (
         <div className="mx-auto max-w-[76rem]">
-          {/* Kalkan/olmayan kütüphane: yumuşak 404 dizine girmesin. */}
-          <Seo title="Kütüphane bulunamadı" noindex />
+          {/* Kalkan/olmayan kütüphane: yumuşak 404 dizine girmesin. Geçici
+              hatada (5xx/ağ) noindex YOK — geçerli sayfa dizinden düşmesin. */}
+          {detayDurumu({ isLoading, data: lib, error }) === "not_found" && (
+            <Seo title="Kütüphane bulunamadı" noindex />
+          )}
           <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ">
             {getErrorMessage(error, "Kütüphane bulunamadı.")}
           </div>

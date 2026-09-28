@@ -6,7 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { PublicShell } from "@/components/PublicShell";
 import { Seo } from "@/components/Seo";
 import { useBlogPost } from "@/hooks/useBlog";
-import { absoluteUrl } from "@/lib/seo";
+import { absoluteUrl, detayDurumu } from "@/lib/seo";
 import { ROUTES } from "@/lib/routes";
 
 function formatDate(iso: string): string {
@@ -50,6 +50,7 @@ export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { data: post, isLoading, error } = useBlogPost(slug);
+  const durum = detayDurumu({ isLoading, data: post, error });
 
   const redirectSlug = redirectSlugOf(error);
   useEffect(() => {
@@ -99,8 +100,9 @@ export default function BlogPostPage() {
           !redirectSlug && (
             <div className="mt-12">
               {/* Yumuşak 404'ü (200 + "bulunamadı") dizinden uzak tut: meta
-                  vermezsek sayfa ana sayfanın jenerik başlığıyla indekslenir. */}
-              <Seo title="Yazı bulunamadı" noindex />
+                  vermezsek sayfa ana sayfanın jenerik başlığıyla indekslenir.
+                  Geçici hatada (5xx/ağ) noindex YOK — geçerli yazı düşmesin. */}
+              {durum === "not_found" && <Seo title="Yazı bulunamadı" noindex />}
               <h1 className="text-xl font-semibold text-slate-900 ">
                 Yazı bulunamadı
               </h1>

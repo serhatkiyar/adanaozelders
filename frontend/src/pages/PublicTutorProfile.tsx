@@ -29,7 +29,7 @@ import {
 } from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
-import { absoluteUrl } from "@/lib/seo";
+import { absoluteUrl, detayDurumu } from "@/lib/seo";
 import { ROUTES, ilanYolu, parseTutorId } from "@/lib/routes";
 import type { IlanSayfasiVerisi } from "@/api/seo";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
@@ -62,7 +62,7 @@ export default function PublicTutorProfile({
      ve iki "Ders talep et" düğmesi olurdu. Bkz. `EgitmenMobilUst`. */
   const mobil = useMobil();
   const geriDon = useGeriDonus(ROUTES.tutors);
-  const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);
+  const { data: tutor, isLoading, isError, error } = useTutorDetail(tutorId);
   useCanonicalTutorSlug(tutor);
   // "Son görüntülenen ilanlar" için bu eğitmeni kaydet.
   useEffect(() => {
@@ -77,7 +77,11 @@ export default function PublicTutorProfile({
   if (isError || !tutor) {
     return (
       <PublicShell>
-        <Seo title="Öğretmen bulunamadı" noindex />
+        {/* noindex YALNIZ kayıt gerçekten yoksa; geçici hatada (5xx/ağ)
+            yayındaki ilan dizinden düşmesin. */}
+        {detayDurumu({ isLoading, data: tutor, error }) === "not_found" && (
+          <Seo title="Öğretmen bulunamadı" noindex />
+        )}
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}

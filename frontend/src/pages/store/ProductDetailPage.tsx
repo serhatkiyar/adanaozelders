@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ROUTES } from "@/lib/routes";
 import { magazaAramaAdresi } from "@/lib/aramaUrl";
 import { Seo } from "@/components/Seo";
+import { detayDurumu } from "@/lib/seo";
 import { JsonLd } from "@/components/JsonLd";
 import { StarRating } from "@/components/StarRating";
 import { RatingHistogram } from "@/components/store/RatingHistogram";
@@ -76,7 +77,7 @@ const categoryChipHref = (categoryId: number) =>
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { data: product, isLoading, isError } = useProduct(slug);
+  const { data: product, isLoading, isError, error } = useProduct(slug);
   const { data: storeConfig } = useStoreConfig();
   const lowStockThreshold = storeConfig?.low_stock_threshold;
   const { data: reviews } = useProductReviews(product?.id);
@@ -175,8 +176,11 @@ export default function ProductDetailPage() {
   if (isError || !product) {
     return (
       <StoreLayout title="Ürün">
-        {/* Kalkan/olmayan ürün: yumuşak 404 dizine girmesin. */}
-        <Seo title="Ürün bulunamadı" noindex />
+        {/* Kalkan/olmayan ürün: yumuşak 404 dizine girmesin. Geçici hatada
+            (5xx/ağ) noindex YOK — geçerli ürün dizinden düşmesin. */}
+        {detayDurumu({ isLoading, data: product, error }) === "not_found" && (
+          <Seo title="Ürün bulunamadı" noindex />
+        )}
         <div className="mx-auto max-w-3xl py-20 text-center">
           <p className="text-slate-600 ">Ürün bulunamadı.</p>
           <Link to={ROUTES.store} className="mt-4 inline-block text-sm font-medium underline">
