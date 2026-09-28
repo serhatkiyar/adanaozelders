@@ -81,14 +81,14 @@ export default function AdminStore() {
         </div>
       </aside>
 
-      <main className="min-w-0">
+      <section aria-label="Mağaza içeriği" className="min-w-0">
         {sub === "products" ? <ProductsPanel />
           : sub === "categories" ? <div className="space-y-10"><CategoriesPanel /><StoreAttributesManager /></div>
           : sub === "supplier" ? <SupplierPanel />
           : sub === "orders" ? <OrdersPanel />
           : sub === "returns" ? <ReturnsPanel />
           : <CouponsPanel />}
-      </main>
+      </section>
     </div>
   );
 }

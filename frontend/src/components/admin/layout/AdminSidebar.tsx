@@ -117,7 +117,7 @@ export function AdminSidebar({
   const ayarlar = ADMIN_NAV_ITEMS.find((i) => i.to === ROUTES.adminSettings);
 
   const ogeSinifi = (aktif: boolean) =>
-    `group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus focus-visible:ring-offset-2 focus-visible:ring-offset-panel-surface ${
+    `group relative flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus focus-visible:ring-offset-2 focus-visible:ring-offset-panel-surface ${
       katli ? "justify-center px-0" : ""
     } ${
       aktif
@@ -259,8 +259,14 @@ export function AdminSidebar({
                               {!katli && <span className="min-w-0 flex-1 truncate">{etiket}</span>}
                               {item.badge === "open-reports" && openReports > 0 && (
                                 <span
-                                  className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold ${
-                                    katli ? "absolute" : ""
+                                  className={`inline-flex items-center justify-center rounded-full text-[10px] font-semibold ${
+                                    // Katlıyken ikonun sağ üst köşesinde küçük
+                                    // gösterge (zil rozetiyle aynı dil); konum
+                                    // bağlantının `relative`ine göre, ikonun
+                                    // ortası `left-1/2`.
+                                    katli
+                                      ? "absolute left-1/2 top-1 ml-0.5 h-4 min-w-4 px-1 leading-none ring-2 ring-panel-surface"
+                                      : "h-5 min-w-5 px-1.5"
                                   } bg-rose-100 text-rose-700 `}
                                 >
                                   {openReports > 99 ? "99+" : openReports}

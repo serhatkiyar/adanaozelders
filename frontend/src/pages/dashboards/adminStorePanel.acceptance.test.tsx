@@ -697,14 +697,14 @@ describe("E-1/E-2/E-3 · 'kayıt yok' ile 'sonuç yok' farklı", () => {
     // yanlış iki metni kıyaslıyordu (testin kendi kusuruydu).
     const bos = magaza();
     const bosMetin = (
-      await within(screen.getByRole("main")).findByRole("heading", { level: 2 })
+      await within(screen.getByRole("region", { name: "Mağaza içeriği" })).findByRole("heading", { level: 2 })
     ).textContent;
     bos.unmount();
 
     urunSunucusu([], 0);
     magaza("?stok=tukendi");
     const filtreliMetin = (
-      await within(screen.getByRole("main")).findByRole("heading", { level: 2 })
+      await within(screen.getByRole("region", { name: "Mağaza içeriği" })).findByRole("heading", { level: 2 })
     ).textContent;
 
     expect(

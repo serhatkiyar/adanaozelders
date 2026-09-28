@@ -215,7 +215,7 @@ export default function AdminBookingsPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
-        <div className="grid gap-3 md:grid-cols-[minmax(15rem,1fr)_11rem_11rem_auto]">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(15rem,1fr)_11rem_11rem_auto]">
           <input aria-label="Rezervasyon ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Öğretmen, öğrenci veya e-posta ara" className="input" />
           <select aria-label="Rezervasyon durumu" value={degerler.status} onChange={(event) => ayarla({ status: event.target.value })} className="input">
             <option value="">Tüm durumlar</option>

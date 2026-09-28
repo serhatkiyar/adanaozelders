@@ -230,7 +230,7 @@ export default function AdminAuditLogsPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
-        <div className="grid gap-3 md:grid-cols-[minmax(13rem,1fr)_10rem_8rem_11rem_auto]">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(13rem,1fr)_10rem_8rem_11rem_auto]">
           <input aria-label="Denetim kaydı ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Aksiyon, hedef, gerekçe ara" className="input" />
           <input aria-label="Hedef türü" value={degerler.target} maxLength={30} onChange={(event) => ayarla({ target: event.target.value }, { replace: true })} placeholder="Hedef türü" className="input" />
           <input aria-label="Admin kimliği" type="number" min={1} value={degerler.actor} onChange={(event) => ayarla({ actor: event.target.value }, { replace: true })} placeholder="Aktör ID" className="input" />

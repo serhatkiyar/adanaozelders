@@ -103,7 +103,7 @@ export function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 flex max-h-[32rem] w-[25rem] origin-top-right flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-150">
+        <div className="absolute right-0 top-full z-40 mt-2 flex max-h-[min(32rem,calc(100dvh-6rem))] w-[min(25rem,calc(100vw-2rem))] origin-top-right flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-5 py-4">
             <p className="text-xl font-bold text-slate-900">Bildirimler</p>
             <div className="flex shrink-0 items-center gap-1">
