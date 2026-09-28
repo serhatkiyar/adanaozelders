@@ -35,6 +35,11 @@ TAKVIM = "/takvim"
 EGITMENLER = "/egitmenler"
 ILETISIM = "/iletisim"
 SIFREMI_UNUTTUM = "/sifremi-unuttum"
+MAGAZA = "/magaza"
+DENEMELER = "/denemeler"
+KUTUPHANELER = "/kutuphaneler"
+# Operatörün kütüphane paneli.
+KUTUPHANEM = "/kutuphanem"
 SIPARISLERIM = "/siparislerim"
 # Ödeme bilgileri (IBAN + kimlik) Ayarlar'ın bir sekmesidir.
 AYARLAR = "/ayarlar"

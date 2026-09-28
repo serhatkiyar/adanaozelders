@@ -42,6 +42,7 @@ import html as _html
 from collections.abc import Sequence
 
 from core.config import settings
+from core.mail.base import EmailMessage
 
 BRAND = "Adana Özel Ders"
 
@@ -241,6 +242,22 @@ def paragraph(content: object, *, space: int = 20) -> Html:
 def fine_print(content: object, *, space: int = 0) -> Html:
     """Düğmenin altındaki küçük gri not (geçerlilik süresi, "talebi sen yapmadıysan…")."""
     return _row(f'<p style="{_text("caption", color=MUTED)}">{esc(content)}</p>', space=space)
+
+
+def code_box(code: object, caption: object, *, space: int = 24) -> Html:
+    """Büyük giriş kodu kutusu — Figma Email Verification 01 kod kartı.
+
+    Bilet/rezervasyon kısa kodu için. QR GÖRSELİ gömülmez (Gmail data-URI ve
+    ek görselleri engeller; docs/transactional-mail-arastirmasi.md U8): QR,
+    düğmenin açtığı bilet sayfasında gösterilir.
+    """
+    inner = (
+        f'<p style="{_text("title", weight=700)}text-align:center;letter-spacing:6px;'
+        f'font-family:Menlo,Consolas,monospace;">{esc(code)}</p>'
+        f'<p style="{_text("caption", color=MUTED)}text-align:center;padding-top:8px;">'
+        f"{esc(caption)}</p>"
+    )
+    return _row(_box(inner, bg=TINT, icon=None), space=space)
 
 
 def info_rows(rows: Sequence[tuple[str | None, object, object]], *, space: int = 24) -> Html:
@@ -624,3 +641,22 @@ def render(
 def text_footer() -> str:
     """Düz metin gövdenin ortak kapanışı (HTML footer'ın karşılığı)."""
     return f"\n\n--\n{BRAND} · {site_url()}"
+
+
+def eposta(
+    to: str,
+    subject: str,
+    preheader: str,
+    text: str,
+    blocks: Sequence[str],
+    more_cards: Sequence[Sequence[str]] = (),
+) -> EmailMessage:
+    """Konu + düz metin + HTML'den tek ``EmailMessage`` (şablon modüllerinin ortak ucu)."""
+    html = render(title=subject, preheader=preheader, blocks=blocks, more_cards=more_cards)
+    return EmailMessage(to=to, subject=subject, html=html, text=text)
+
+
+def metin(*satirlar: str) -> str:
+    """Düz metin gövde: satırlar + ortak kapanış."""
+    return "\n".join(satirlar) + text_footer()
+

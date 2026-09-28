@@ -55,6 +55,10 @@ _ESLESME = {
     "EGITMENLER": "tutors",
     "ILETISIM": "contact",
     "SIFREMI_UNUTTUM": "forgotPassword",
+    "MAGAZA": "store",
+    "DENEMELER": "exams",
+    "KUTUPHANELER": "libraries",
+    "KUTUPHANEM": "operatorLibrary",
 }
 
 # Parametreli istemci yolları (`/ders-talepleri/:id`); sunucu bunların ÖNEKİNİ
