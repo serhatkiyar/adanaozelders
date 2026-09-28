@@ -193,3 +193,14 @@ describe("ana sayfa öğretmen kuşakları", () => {
     expect(gonderilenParametreler).toHaveLength(1);
   });
 });
+
+describe("ana sayfa · landmark ve başlık", () => {
+  it("kendi <main>'ini ÇİZMEZ (kabuğun main'i tektir) ve tek h1 taşır", async () => {
+    // Regresyon: sayfa kabuğun <main>'inin içine ikinci bir <main> basıyordu
+    // ve hiç h1 yoktu (axe: landmark-no-duplicate-main, page-has-heading-one).
+    sayfayiBas();
+    await waitFor(() => expect(screen.getAllByText("Ayşe")[0]).toBeTruthy());
+    expect(document.querySelector("main")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+});

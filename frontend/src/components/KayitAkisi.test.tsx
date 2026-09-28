@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
+import { register } from "@/api/auth";
+
 import { KayitAkisi } from "./KayitAkisi";
 
 /**
@@ -183,5 +185,34 @@ describe("KayitAkisi — adımlar arası geçiş", () => {
 
     expect(await screen.findByLabelText(/^Adınız/i)).toBeTruthy();
     expect(screen.queryByText(/Kaydolarak/i)).toBeNull();
+  });
+});
+
+describe("KayitAkisi — hata", () => {
+  it("409 hatası duyurulur ve düzeltilip ilerleyince sonraki adımda KALMAZ", async () => {
+    // Regresyon: hata kutusu role="alert" değildi (ekran okuyucu duymuyordu)
+    // ve e-posta düzeltilip ilerlenince ad/parola adımlarında da duruyordu.
+    vi.mocked(register).mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 409, data: { detail: "Email already registered" } },
+    });
+    const kullanici = userEvent.setup();
+    kur();
+
+    await kullanici.type(screen.getByLabelText(/E-posta/i), "ada@ornek.com");
+    await kullanici.click(screen.getByRole("button", { name: "E-posta ile kaydol" }));
+    await kullanici.type(await screen.findByLabelText(/^Adınız/i), "Ada");
+    await kullanici.type(screen.getByLabelText(/^Soyadınız/i), "Deneme");
+    await kullanici.click(screen.getByRole("button", { name: "Devam et" }));
+    await kullanici.type(await screen.findByLabelText(/Parola/i), "GucluParola123!");
+    await kullanici.click(screen.getByRole("button", { name: "Kayıt Ol" }));
+
+    // 409 → e-posta adımına dönülür, hata duyurulur.
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByLabelText(/E-posta/i)).toBeTruthy();
+
+    await kullanici.click(screen.getByRole("button", { name: "E-posta ile kaydol" }));
+    expect(await screen.findByLabelText(/^Adınız/i)).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

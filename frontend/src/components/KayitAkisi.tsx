@@ -130,14 +130,23 @@ export function KayitAkisi({
 
   const ilerle = (e: FormEvent) => {
     e.preventDefault();
+    if (mutation.isPending) return;
     const sonraki = ADIM_SIRASI[ADIM_SIRASI.indexOf(adim) + 1];
-    if (sonraki) setAdim(sonraki);
-    else mutation.mutate();
+    // Önceki gönderimin hatası (ör. 409 "e-posta kayıtlı") adım değişince
+    // silinir; aksi hâlde düzeltilmiş e-postayla ilerleyen kullanıcı sonraki
+    // adımlarda hâlâ eski hatayı görüyordu.
+    if (sonraki) {
+      mutation.reset();
+      setAdim(sonraki);
+    } else mutation.mutate();
   };
 
   const geri = () => {
     const onceki = ADIM_SIRASI[ADIM_SIRASI.indexOf(adim) - 1];
-    if (onceki) setAdim(onceki);
+    if (onceki) {
+      mutation.reset();
+      setAdim(onceki);
+    }
   };
 
   // Kutular bilerek YÜKSEK (py-3.5). İnce alanlar yan yana gelince ekran
@@ -257,7 +266,7 @@ export function KayitAkisi({
         )}
 
         {mutation.isError && (
-          <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             {getErrorMessage(mutation.error, "Kayıt başarısız.")}
           </div>
         )}

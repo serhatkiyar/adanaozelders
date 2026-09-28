@@ -322,7 +322,7 @@ export default function PublicTutorProfile({
               <button
                 type="button"
                 onClick={() => girisGerekli({ tip: "dersTalebi", egitmenId: tutor.id })}
-                className="mx-auto mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-marka px-10 text-center text-base font-bold text-white shadow-sm transition hover:bg-marka-hover active:scale-95"
+                className="mx-auto mt-4 flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-marka px-10 text-center text-base font-bold text-marka-fg shadow-sm transition hover:bg-marka-hover active:scale-95"
               >
                 {/* Mobil şeritle (DersTalepSeridi) AYNI ikon: aynı eylem. Düğme tam
                     genişlik değil; 48px yükseklik, 16px yazı, ortalı (kullanıcı kararı,
@@ -331,7 +331,7 @@ export default function PublicTutorProfile({
                 Ders Talep Et
               </button>
               {tutor.first_lesson_free !== false && (
-                <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
+                <p className="mt-2 text-center text-sm font-semibold text-emerald-700 ">
                   İlk ders ücretsiz
                 </p>
               )}
@@ -442,7 +442,7 @@ export default function PublicTutorProfile({
                         className={
                           ranges
                             ? "text-slate-600 "
-                            : "text-slate-400 "
+                            : "text-slate-500 "
                         }
                       >
                         {ranges ?? "Müsait değil"}

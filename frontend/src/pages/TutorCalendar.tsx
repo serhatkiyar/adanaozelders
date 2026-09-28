@@ -31,15 +31,10 @@ import { TUTOR_NAV } from "@/lib/nav";
 import { ADSIZ_UYE } from "@/lib/roles";
 import { ROUTES, profilimBolumu } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
-import { BookingStatus, type TimeOff } from "@/types";
+import { dersOlayi } from "@/components/takvim/dersOlayi";
+import type { TimeOff } from "@/types";
 
 /** Durum → takvim olay sınıfı (renkler `index.css` içinde, `.fc` altında). */
-const OLAY_SINIFI: Partial<Record<BookingStatus, string>> = {
-  [BookingStatus.PENDING]: "takvim-bekliyor",
-  [BookingStatus.ACCEPTED]: "takvim-onayli",
-  [BookingStatus.COMPLETED]: "takvim-tamamlandi",
-};
-
 const LEJANT: { etiket: string; sinif: string }[] = [
   { etiket: "Onay bekliyor", sinif: "bg-amber-400" },
   { etiket: "Onaylı", sinif: "bg-marka-mid" },
@@ -301,15 +296,12 @@ export default function TutorCalendar() {
     const liste: EventInput[] = [];
     for (const b of dersler.data ?? []) {
       // İptal/reddedilen dersler takvimde yer tutmaz.
-      let sinif = OLAY_SINIFI[b.status];
-      if (!sinif) continue;
-      // Ücretsiz ilk ders kendi rengini taşır; tamamlandıysa geçmiş rengi kalır.
-      if (b.is_free_lesson && b.status !== BookingStatus.COMPLETED) sinif = "takvim-deneme";
-      // Kabul edilmiş haftalık seri dersi ayrı renkte (Preply: haftalık ders pembe).
-      else if (b.series_id && b.status === BookingStatus.ACCEPTED) sinif = "takvim-haftalik";
+      const olay = dersOlayi(b, ADSIZ_UYE);
+      if (!olay) continue;
+      const { sinif } = olay;
       liste.push({
         id: `ders-${b.id}`,
-        title: b.client_name || ADSIZ_UYE,
+        title: olay.baslik,
         start: b.start_at,
         end: b.end_at,
         classNames: [sinif],

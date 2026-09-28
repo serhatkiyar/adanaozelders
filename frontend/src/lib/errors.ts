@@ -1,5 +1,7 @@
 import { AxiosError } from "axios";
 
+const PHONE_GATE = /telefon numaranı doğrulaman gerekiyor/i;
+
 // Backend İngilizce detail metinlerini kullanıcı dostu Türkçe yönergelere çevirir.
 const DETAIL_GUIDANCE: { match: RegExp; message: string }[] = [
   {
@@ -31,13 +33,30 @@ const DETAIL_GUIDANCE: { match: RegExp; message: string }[] = [
     match: /completed bookings can be reviewed/i,
     message: "Yalnızca tamamlanmış dersleri değerlendirebilirsin.",
   },
+  {
+    // Telefon eylem kapısı (backend `phone_service.require_phone_verified`).
+    // Eşleşmezse 403 genel "yetkin yok" metnine düşüyor, kullanıcı neyi
+    // düzelteceğini hiç öğrenemiyordu (rezervasyon ve mesaj gönderimi).
+    match: PHONE_GATE,
+    message: "Bu işlemi yapmadan önce telefon numaranı doğrulaman gerekiyor.",
+  },
 ];
 
-function translateDetail(detail: string): string {
+/** Hata, telefon doğrulaması eksik olduğu için mi reddedildi? */
+export function isPhoneVerificationError(error: unknown): boolean {
+  const res = (error as { response?: { status?: number; data?: { detail?: unknown } } })
+    ?.response;
+  return (
+    res?.status === 403 && typeof res.data?.detail === "string" && PHONE_GATE.test(res.data.detail)
+  );
+}
+
+/** Bilinen bir desene uyan detail'in yönergesi; uymuyorsa `null`. */
+function translateDetail(detail: string): string | null {
   for (const { match, message } of DETAIL_GUIDANCE) {
     if (match.test(detail)) return message;
   }
-  return detail;
+  return null;
 }
 
 /**
@@ -74,8 +93,11 @@ export function getErrorMessage(
 
     // Try detail-text translation first (covers most 409/429 cases with context)
     if (typeof detail === "string") {
+      // Eşleşme `null` ile anlaşılır, metin farkıyla değil: yönergesi sunucu
+      // metniyle AYNI olan desen (telefon kapısı) aksi hâlde eşleşmemiş sayılıp
+      // aşağıdaki genel 403 cümlesine düşüyordu.
       const translated = translateDetail(detail);
-      if (translated !== detail) return translated; // matched a pattern
+      if (translated !== null) return translated;
     }
 
     // HTTP status-level fallbacks for unrecognised responses
