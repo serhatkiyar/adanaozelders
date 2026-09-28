@@ -203,6 +203,20 @@ export function MapPicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Aynı nokta için adres bir kez çözülür: açılıştaki çözümleme ile haritanın
+  // ilk `flyTo`sundan gelen `moveend` aynı konumu iki kez soruyordu.
+  const cozumRef = useRef<{ anahtar: string; istek: Promise<string | null> } | null>(null);
+  const adresCoz = useCallback((lat: number, lng: number): Promise<string | null> => {
+    const anahtar = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    if (cozumRef.current?.anahtar === anahtar) return cozumRef.current.istek;
+    const istek = geocodeReverse(lat, lng);
+    cozumRef.current = { anahtar, istek };
+    istek.catch(() => {
+      if (cozumRef.current?.istek === istek) cozumRef.current = null;
+    });
+    return istek;
+  }, []);
+
   /* Set position + reverse-geocode */
   const setPosition = useCallback(
     async (pos: L.LatLng) => {
@@ -210,7 +224,7 @@ export function MapPicker({
       if (autoOpenSv) setShowStreetView(true);
       onLocationSelect?.(pos.lat, pos.lng);
 
-      const label = await geocodeReverse(pos.lat, pos.lng);
+      const label = await adresCoz(pos.lat, pos.lng);
       if (label) {
         setResolvedAddress(label);
         onLocationSelect?.(pos.lat, pos.lng, label);
@@ -218,13 +232,13 @@ export function MapPicker({
         setResolvedAddress(null);
       }
     },
-    [onLocationSelect]
+    [onLocationSelect, adresCoz]
   );
 
   /* Initial reverse geocode */
   useEffect(() => {
     if (position && !resolvedAddress) {
-      geocodeReverse(position.lat, position.lng).then((label) => {
+      adresCoz(position.lat, position.lng).then((label) => {
         if (label) {
           setResolvedAddress(label);
           onLocationSelect?.(position.lat, position.lng, label);
