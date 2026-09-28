@@ -2954,13 +2954,16 @@ async def _build_return(
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, "İade adedi en az 1 olmalı."
             )
-        if sel.quantity > kalan:
+        # Tavan kalem başına TOPLAMA uygulanır: aynı `order_item_id` birden çok
+        # satırda gelirse her satır tek başına tavanı geçip toplam aşabiliyordu.
+        toplam = secim_by_item.get(item.id, 0) + sel.quantity
+        if toplam > kalan:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
                 f"'{item.title}' için en fazla {kalan} adet iade edilebilir "
                 f"(satılan {item.quantity}, önceki taleplerde {onceki.get(item.id, 0)}).",
             )
-        secim_by_item[item.id] = secim_by_item.get(item.id, 0) + sel.quantity
+        secim_by_item[item.id] = toplam
 
     # ── Kupon payları: sipariş genelinde bir kez, kuruşu kuruşuna ──
     sirali = sorted(order.items, key=lambda it: it.id)
