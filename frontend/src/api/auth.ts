@@ -39,11 +39,17 @@ export async function register(
   return data;
 }
 
-export async function logout(): Promise<void> {
+export async function logout(accessToken?: string | null): Promise<void> {
   // Sunucu tarafında access token'ı (denylist) ve refresh token'ı iptal eder,
   // ayrıca çerezi siler. Refresh token gövdede GÖNDERİLMEZ — sunucu onu
   // `httpOnly` çerezden okur. Hata olsa da akış bozulmamalı.
-  await apiClient.post("/auth/logout");
+  // `accessToken` verilirse başlık açıkça yazılır: `useLogout` yerel oturumu
+  // istek yoldayken temizler ve interceptor store'dan artık token okuyamaz.
+  await apiClient.post(
+    "/auth/logout",
+    null,
+    accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : undefined
+  );
 }
 
 export async function fetchMe(): Promise<UserOut> {

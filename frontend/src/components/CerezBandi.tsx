@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { PlainButton } from "@/components/ui/PlainButton";
-import { reklamEtiketleriniBaslat } from "@/lib/analytics";
+import { reklamEtiketleriniBaslat, trackPageview } from "@/lib/analytics";
 import {
   cerezBandiAcilinca,
   cerezTercihi,
@@ -22,7 +22,8 @@ import { ROUTES } from "@/lib/routes";
  * düzenleyicilerin ceza yazdığı kalıptır, bilerek yapılmadı.
  *
  * Masaüstünde alt ortada tek satır (en fazla 560px); telefonda alt sekme
- * çubuğunun üstünde (`--alt-serit`), metin üstte, düğmeler altta.
+ * çubuğunun (`--alt-serit`) ya da sayfanın sabit CTA şeridinin (`--sabit-serit`,
+ * örn. eğitmen profilindeki "Ders talep et") üstünde; metin üstte, düğmeler altta.
  */
 export function CerezBandi() {
   const [acik, setAcik] = useState(() => cerezTercihi() === null);
@@ -41,7 +42,11 @@ export function CerezBandi() {
 
   const sec = (t: CerezTercihi) => {
     cerezTercihiKaydet(t);
-    if (t === "kabul") reklamEtiketleriniBaslat();
+    if (t === "kabul") {
+      reklamEtiketleriniBaslat();
+      // Onay sayfa açıkken verildi: bulunulan sayfa da sayılsın.
+      trackPageview(window.location.pathname);
+    }
     setAcik(false);
     setGorunur(false);
   };
@@ -53,7 +58,7 @@ export function CerezBandi() {
       className={`fixed inset-x-3 z-[60] mx-auto max-w-[560px] rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.12)] transition-all duration-200 ease-out motion-reduce:transition-opacity sm:flex sm:items-center sm:gap-4 ${
         gorunur ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0 motion-reduce:translate-y-0"
       }`}
-      style={{ bottom: "calc(var(--alt-serit, 0px) + 12px)" }}
+      style={{ bottom: "calc(var(--alt-serit, 0px) + var(--sabit-serit, 0px) + 12px)" }}
     >
       <p className="text-sm leading-5 text-slate-800 sm:flex-1">
         Deneyimini iyileştirmek için{" "}

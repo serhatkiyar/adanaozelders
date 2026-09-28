@@ -576,8 +576,10 @@ export const LEGACY_STATIC: [string, string][] = [
 function AnalyticsTracker() {
   const location = useLocation();
   useEffect(() => {
-    trackPageview(location.pathname + location.search);
-  }, [location.pathname, location.search]);
+    // Yalnız yol değişimi yeni sayfa sayılır; filtre/sıralama gibi sorgu
+    // değişiklikleri aynı sayfayı yeniden saydırmasın (sorgu zaten gönderilmez).
+    trackPageview(location.pathname);
+  }, [location.pathname]);
   return null;
 }
 

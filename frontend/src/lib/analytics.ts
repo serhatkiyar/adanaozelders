@@ -120,8 +120,9 @@ export function reklamEtiketleriniBaslat(): void {
   if (gaId) initGoogleAnalytics(gaId);
   if (pixelId) initMetaPixel(pixelId);
   if (clarityId) initClarity(clarityId);
-  // Onay sayfa açıldıktan sonra verildiyse bulunulan sayfa da sayılsın.
-  trackPageview(window.location.pathname);
+  // Sayfa görüntülemesi burada GÖNDERİLMEZ: açılışta `AnalyticsTracker` ilk
+  // sayfayı zaten bildirir (burada da göndermek her açılışı çift sayıyordu).
+  // Onay sayfa açıkken verilirse bulunulan sayfayı `CerezBandi` bildirir.
 }
 
 /** Analitik script'ini bir kez yükler. Ayar yoksa hiçbir şey yapmaz.

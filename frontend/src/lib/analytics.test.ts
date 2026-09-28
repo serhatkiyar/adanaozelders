@@ -137,4 +137,14 @@ describe("Google Analytics 4 ve Meta Pixel", () => {
     expect(JSON.stringify(w.dataLayer.map((a) => Array.from(a)))).not.toContain("gizli");
     expect(w.fbq.queue).toContainEqual(["track", "PageView"]);
   });
+
+  it("açılışta onay kayıtlıysa sayfa görüntülemesini kendisi göndermez (AnalyticsTracker gönderir; çift sayım olmasın)", () => {
+    vi.stubEnv("VITE_GA_ID", "G-TEST123");
+    vi.stubEnv("VITE_META_PIXEL_ID", "1234567890");
+    localStorage.setItem("cerez-tercihi-v1", "kabul");
+    initAnalytics();
+    const w = window as unknown as { dataLayer: IArguments[]; fbq: { queue: unknown[][] } };
+    expect(w.dataLayer.map((a) => Array.from(a)).filter((a) => a[1] === "page_view")).toHaveLength(0);
+    expect(w.fbq.queue).not.toContainEqual(["track", "PageView"]);
+  });
 });
