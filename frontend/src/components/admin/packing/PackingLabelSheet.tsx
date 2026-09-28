@@ -24,9 +24,10 @@
 // Etiketi getirilemeyen paket kâğıttan sessizce düşmez; ekranda hangi paketin
 // basılamadığı yazılır. F26'nın dersi tam olarak budur: eksik çıktı, kimsenin
 // fark etmediği hatadır.
-import { useEffect } from "react";
+import { useRef } from "react";
 import { createPortal } from "react-dom";
 
+import { useModalA11y } from "@/hooks/useModalA11y";
 import { usePackageLabels } from "@/hooks/usePacking";
 import { getErrorMessage } from "@/lib/errors";
 
@@ -58,13 +59,12 @@ export function PackingLabelSheet({
   packageIds: readonly number[];
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const kapat = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", kapat);
-    return () => window.removeEventListener("keydown", kapat);
-  }, [onClose]);
+  // ESC + odak tuzağı + odak dönüşü ortak pencere kancasından gelir (yığın:
+  // üstte başka pencere varsa ESC onu kapatır). Kaydırma kilidi kapalı:
+  // katman opak ve kendi içinde kayar; `body` taşmasına dokunulmaz ki baskı
+  // akışı değişmesin.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: true, onClose, panelRef, lockScroll: false });
 
   const sorgular = usePackageLabels(packageIds);
 
@@ -102,7 +102,13 @@ export function PackingLabelSheet({
   const sayfaSayisi = Math.max(1, Math.ceil(basilacaklar.length / LABELS_PER_PAGE));
 
   return createPortal(
-    <div className="package-label-sheet fixed inset-0 z-[100] overflow-auto bg-slate-100 p-0 text-slate-900">
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Paket etiketleri"
+      className="package-label-sheet fixed inset-0 z-[100] overflow-auto bg-slate-100 p-0 text-slate-900"
+    >
       <style>{LABEL_PRINT_CSS + SHEET_PRINT_CSS}</style>
 
       <div className="package-label-noprint sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3">

@@ -13,7 +13,7 @@
 // 2) QR EZİLİYORDU. `QRCodeSVG` bir flex öğesi; varsayılan `flex-shrink: 1`
 //    ile uzun metin kardeşi onu yatay olarak sıkıştırıyordu (ölçüm: 96px → 36px,
 //    yükseklik 96 kalıyor) — kare bozulunca karekod okunamaz.
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { LabelSheet } from "./LabelSheet";
@@ -94,5 +94,31 @@ describe("LabelSheet baskı sözleşmesi", () => {
     render(<LabelSheet run={run([stop({ items: [] })])} onClose={() => {}} />);
     const text = document.querySelector(".delivery-label-paper")?.textContent ?? "";
     expect(text).toContain("Kalem bilgisi yok");
+  });
+});
+
+// Tam ekran katman bir penceredir (denetim bulgusu): ESC ile kapanmıyor, rolü
+// yoktu ve Tab odağı görünmeyen arka plana kaçıyordu.
+describe("LabelSheet pencere erişilebilirliği", () => {
+  it("role=dialog + aria-modal taşır ve açılışta odak katmanın içine gelir", () => {
+    render(<LabelSheet run={run([stop()])} onClose={() => {}} />);
+    const pencere = screen.getByRole("dialog", { name: "Tur #909 etiketleri" });
+    expect(pencere.getAttribute("aria-modal")).toBe("true");
+    expect(pencere.contains(document.activeElement)).toBe(true);
+  });
+
+  it("ESC kapatır", () => {
+    let kapandi = 0;
+    render(<LabelSheet run={run([stop()])} onClose={() => (kapandi += 1)} />);
+    fireEvent.keyDown(document.activeElement ?? document, { key: "Escape" });
+    expect(kapandi).toBe(1);
+  });
+
+  it("Tab son düğmeden arka plana kaçmaz, ilk düğmeye döner", () => {
+    render(<LabelSheet run={run([stop()])} onClose={() => {}} />);
+    const kapat = screen.getByRole("button", { name: "Kapat" });
+    kapat.focus();
+    fireEvent.keyDown(kapat, { key: "Tab" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Yazdır" }));
   });
 });

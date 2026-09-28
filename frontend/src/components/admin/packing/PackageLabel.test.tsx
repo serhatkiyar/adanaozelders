@@ -366,8 +366,18 @@ describe("PackageLabel baskı sözleşmesi", () => {
     const PackageLabel = await bilesen();
     let kapandi = 0;
     render(<PackageLabel package={paket()} onClose={() => (kapandi += 1)} />);
-    fireEvent.keyDown(window, { key: "Escape" });
+    // Olay odaklı öğeden (katmanın içindeki ilk düğme) kabarır — gerçek
+    // tarayıcıdaki yol. Ortak pencere kancası `document`ı dinler.
+    fireEvent.keyDown(document.activeElement ?? document, { key: "Escape" });
     expect(kapandi).toBe(1);
+  });
+
+  it("katman role=dialog + aria-modal taşır ve odağı içine alır", async () => {
+    const PackageLabel = await bilesen();
+    render(<PackageLabel package={paket()} onClose={() => {}} />);
+    const pencere = document.querySelector('[role="dialog"]');
+    expect(pencere?.getAttribute("aria-modal")).toBe("true");
+    expect(pencere?.contains(document.activeElement)).toBe(true);
   });
 });
 
