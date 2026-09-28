@@ -53,7 +53,7 @@ def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
                 space=24,
             ),
             c.divider(),
-            c.fallback_link(verify_url),
+            c.fallback_link(verify_url, align="center"),
         ],
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
