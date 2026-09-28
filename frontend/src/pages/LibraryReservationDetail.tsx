@@ -110,7 +110,7 @@ export default function LibraryReservationDetail() {
 
   return (
     <DashboardShell title="Rezervasyon" navItems={UYE_NAV}>
-      <Seo title="Rezervasyon, Adana Özel Ders" noindex />
+      <Seo title="Rezervasyon" noindex />
       <div className="mx-auto max-w-2xl space-y-6">
         <nav className="flex items-center gap-1.5 text-sm text-slate-500">
           <Link to={ROUTES.reservations} className="hover:text-slate-800">

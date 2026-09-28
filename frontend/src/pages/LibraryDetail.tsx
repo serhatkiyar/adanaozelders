@@ -124,6 +124,8 @@ export default function LibraryDetail() {
     if (isError || !lib) {
       return (
         <div className="mx-auto max-w-[76rem]">
+          {/* Kalkan/olmayan kütüphane: yumuşak 404 dizine girmesin. */}
+          <Seo title="Kütüphane bulunamadı" noindex />
           <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ">
             {getErrorMessage(error, "Kütüphane bulunamadı.")}
           </div>
@@ -147,6 +149,9 @@ export default function LibraryDetail() {
         <div className="mx-auto max-w-[76rem] space-y-5">
           <Seo
             title={lib.name}
+            // Sayfa salt id ile de açılır (`/kutuphaneler/12`); kanonik adres
+            // her zaman slug'lı olandır — sitemap ve kartlar onu verir.
+            canonicalPath={lib.slug ? ROUTES.library(lib.slug) : undefined}
             description={
               lib.description ??
               `${lib.name}, çalışma kütüphanesi. Konum, çalışma saatleri ve değerlendirmeler.`

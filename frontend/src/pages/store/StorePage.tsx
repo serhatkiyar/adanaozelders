@@ -228,7 +228,7 @@ export default function StorePage() {
   return (
     <StoreLayout title="Mağaza">
       <Seo
-        title="Mağaza, Adana Özel Ders"
+        title="Mağaza"
         description="Kitaplar, deneme setleri, kırtasiye ve öğretmenlerin dijital ders notları. Tek hesapla alışveriş."
       />
 

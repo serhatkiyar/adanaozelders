@@ -41,6 +41,7 @@ STATIC_PATHS: tuple[tuple[str, str, str], ...] = (
     ("/blog", "daily", "0.7"),
     ("/sss", "monthly", "0.5"),
     ("/iletisim", "yearly", "0.4"),
+    ("/hakkimizda", "yearly", "0.4"),
     ("/kvkk", "yearly", "0.3"),
     ("/gizlilik-politikasi", "yearly", "0.3"),
     ("/kullanim-kosullari", "yearly", "0.3"),

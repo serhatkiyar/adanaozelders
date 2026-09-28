@@ -88,6 +88,12 @@ _MOD_ETIKETI = {
 _SONDAKI_ID = re.compile(r"(?:^|-)(\d+)$")
 
 
+def egitmen_id(slug: str) -> int | None:
+    """Eski eğitmen adresinin id'si: `dilan-4` → 4, `4` → 4, `dilan` → None."""
+    m = _SONDAKI_ID.search(slug)
+    return int(m.group(1)) if m else None
+
+
 def bulunma(yer: str) -> str:
     return _BULUNMA.get(yer, f"{yer}'da")
 
@@ -599,20 +605,14 @@ async def _ana_ders(db: AsyncSession, t) -> tuple[str | None, str | None]:
     return adaylar[0][0], adaylar[0][1]
 
 
-async def ilan_sayfasi(db: AsyncSession, satir: SeoSlug) -> IlanSayfasiOut | None:
-    tutor = await db.get(Tutor, satir.tutor_id)
-    if tutor is None or not seo_slug_service.yayinda_mi(tutor):
-        return None
-    t = await search_service.get_tutor_public(db, tutor.id)
-    ders, ders_sayfa_yolu = await _ana_ders(db, t)
-    yol = f"/{satir.slug}"
-    baslik = ilan_basligi(t.headline, t.display_name, ders)
+def kisi_ld(t, ders: str | None, yol: str, gorsel: str | None) -> dict:
+    """İlanın `Person` yapısal verisi (saf; pytest'li).
 
-    kirintilar = [SeoBaglanti(ad="Ana sayfa", yol="/")]
-    if ders and ders_sayfa_yolu:
-        kirintilar.append(SeoBaglanti(ad=f"{ders} Özel Ders", yol=ders_sayfa_yolu))
-    kirintilar.append(SeoBaglanti(ad=(t.headline or t.display_name), yol=yol))
-
+    `aggregateRating` schema.org'da `Person`in özelliği DEĞİLDİR (alanı:
+    Organization, Product, Service, Offer …); doğrulayıcı onu tanımaz ve puan
+    hiçbir yere bağlanmaz. Puan, öğretmenin verdiği hizmete aittir:
+    `makesOffer → Offer → itemOffered (Service) → aggregateRating`.
+    """
     kisi: dict = {
         "@context": "https://schema.org",
         "@type": "Person",
@@ -620,7 +620,6 @@ async def ilan_sayfasi(db: AsyncSession, satir: SeoSlug) -> IlanSayfasiOut | Non
         "url": mutlak(yol),
         "jobTitle": "Özel Ders Öğretmeni",
     }
-    gorsel = storage.resolve_url(t.avatar_url, allow_private=False)
     if gorsel:
         kisi["image"] = gorsel
     if t.headline:
@@ -635,26 +634,45 @@ async def ilan_sayfasi(db: AsyncSession, satir: SeoSlug) -> IlanSayfasiOut | Non
             "addressRegion": "Adana",
             "addressCountry": "TR",
         }
+    hizmet: dict = {
+        "@type": "Service",
+        "name": f"{ders} özel ders" if ders else "Özel ders",
+        "areaServed": ilce or "Adana",
+    }
     # AggregateRating YALNIZ gerçek yorum varsa (Google boş puanı cezalandırır).
     if t.rating_count and t.rating_average:
-        kisi["aggregateRating"] = {
+        hizmet["aggregateRating"] = {
             "@type": "AggregateRating",
             "ratingValue": round(t.rating_average, 2),
             "reviewCount": t.rating_count,
             "bestRating": 5,
             "worstRating": 1,
         }
+    teklif: dict = {"@type": "Offer", "itemOffered": hizmet}
     if t.hourly_rate is not None:
-        kisi["makesOffer"] = {
-            "@type": "Offer",
-            "priceCurrency": "TRY",
-            "price": float(t.hourly_rate),
-            "itemOffered": {
-                "@type": "Service",
-                "name": f"{ders} özel ders" if ders else "Özel ders",
-                "areaServed": ilce or "Adana",
-            },
-        }
+        teklif["priceCurrency"] = "TRY"
+        teklif["price"] = float(t.hourly_rate)
+    if "price" in teklif or "aggregateRating" in hizmet:
+        kisi["makesOffer"] = teklif
+    return kisi
+
+
+async def ilan_sayfasi(db: AsyncSession, satir: SeoSlug) -> IlanSayfasiOut | None:
+    tutor = await db.get(Tutor, satir.tutor_id)
+    if tutor is None or not seo_slug_service.yayinda_mi(tutor):
+        return None
+    t = await search_service.get_tutor_public(db, tutor.id)
+    ders, ders_sayfa_yolu = await _ana_ders(db, t)
+    yol = f"/{satir.slug}"
+    baslik = ilan_basligi(t.headline, t.display_name, ders)
+
+    kirintilar = [SeoBaglanti(ad="Ana sayfa", yol="/")]
+    if ders and ders_sayfa_yolu:
+        kirintilar.append(SeoBaglanti(ad=f"{ders} Özel Ders", yol=ders_sayfa_yolu))
+    kirintilar.append(SeoBaglanti(ad=(t.headline or t.display_name), yol=yol))
+
+    gorsel = storage.resolve_url(t.avatar_url, allow_private=False)
+    kisi = kisi_ld(t, ders, yol, gorsel)
 
     return IlanSayfasiOut(
         yol=yol,
@@ -706,10 +724,10 @@ async def sayfa(
 
     # Eski eğitmen adresi (`/egitmenler/dilan-4`) → yeni ilan adresine 301.
     if parca[0] == "egitmenler":
-        m = _SONDAKI_ID.search(parca[1])
-        if not m:
+        tutor_id = egitmen_id(parca[1])
+        if tutor_id is None:
             return None
-        tutor = await db.get(Tutor, int(m.group(1)))
+        tutor = await db.get(Tutor, tutor_id)
         if tutor is None or not seo_slug_service.yayinda_mi(tutor):
             return None
         slug = await seo_slug_service.ilan_slugu(db, tutor.id)

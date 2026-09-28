@@ -62,7 +62,8 @@ export default function FavoritesPage() {
 
   return (
     <StoreLayout title="Listelerim">
-      <Seo title="Listelerim, Adana Özel Ders" description="Beğendiğin ürünler ve listelerin." />
+      {/* Kişisel liste (tarayıcıda saklanır): arama sonucunda yeri yok. */}
+      <Seo title="Listelerim" description="Beğendiğin ürünler ve listelerin." noindex />
 
       <div className={`${CONTAINER} py-8`}>
         <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">

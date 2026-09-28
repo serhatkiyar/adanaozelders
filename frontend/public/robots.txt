@@ -77,6 +77,28 @@ Disallow: /siparislerim$
 Disallow: /siparislerim/
 Disallow: /dijital-urunlerim$
 Disallow: /dijital-urunlerim/
+Disallow: /bildirimler$
+Disallow: /bildirimler/
+Disallow: /mesaj-merkezi$
+Disallow: /mesaj-merkezi/
+Disallow: /adreslerim$
+Disallow: /adreslerim/
+Disallow: /ilanini-olustur$
+Disallow: /ilanini-olustur/
+Disallow: /ilanimi-one-cikar$
+Disallow: /ilanimi-one-cikar/
+Disallow: /canli-ders$
+Disallow: /canli-ders/
+Disallow: /kutuphanem$
+Disallow: /kutuphanem/
+Disallow: /oturumlar$
+Disallow: /oturumlar/
+Disallow: /dagitim$
+Disallow: /dagitim/
+Disallow: /yonetim$
+Disallow: /yonetim/
+Disallow: /yonetim-yeni$
+Disallow: /yonetim-yeni/
 Disallow: /magaza/sepet
 Disallow: /magaza/odeme
 
@@ -96,6 +118,10 @@ Disallow: /sifre-yenile$
 Disallow: /sifre-yenile/
 Disallow: /e-posta-dogrula$
 Disallow: /e-posta-dogrula/
+Disallow: /google-donus$
+Disallow: /google-donus/
+Disallow: /hesap-silme-onayi$
+Disallow: /hesap-silme-onayi/
 
 # ── Sitemap ──
 # Dinamik üretilir (backend): onaylı eğitmenler, ACTIVE kütüphaneler ve

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -24,8 +25,10 @@ from services.seo_sayfa_service import (
     ders_aciklamasi,
     ders_basligi,
     ders_sss,
+    egitmen_id,
     ilan_basligi,
     istatistik,
+    kisi_ld,
     tl,
 )
 
@@ -206,3 +209,55 @@ def test_sablona_head_ve_govde_enjekte_edilir() -> None:
     assert 'src="/assets/index-abc.js"' in html
     # react-helmet-async açılışta bu etiketleri kendi etiketleriyle değiştirir.
     assert 'data-rh="true"' in html
+
+
+# ── İlan yapısal verisi ───────────────────────────────────────────────────
+
+
+def _ilan(**kw) -> SimpleNamespace:
+    t = dict(
+        display_name="Dilan",
+        headline="LGS Matematik",
+        subjects=["Matematik"],
+        district="seyhan",
+        hourly_rate=600,
+        rating_count=0,
+        rating_average=None,
+    )
+    t.update(kw)
+    return SimpleNamespace(**t)
+
+
+def test_puan_person_uzerinde_degil_hizmette() -> None:
+    """schema.org'da `aggregateRating` Person'ın özelliği değildir; doğrulayıcı
+    onu tanımaz. Puan öğretmenin sunduğu hizmete (Service) bağlanır."""
+    ld = kisi_ld(_ilan(rating_count=4, rating_average=4.75), "Matematik", "/x-y", None)
+    assert ld["@type"] == "Person" and "aggregateRating" not in ld
+    hizmet = ld["makesOffer"]["itemOffered"]
+    assert hizmet["@type"] == "Service" and hizmet["name"] == "Matematik özel ders"
+    assert hizmet["aggregateRating"]["reviewCount"] == 4
+    assert hizmet["aggregateRating"]["ratingValue"] == 4.75
+    assert ld["makesOffer"]["price"] == 600.0 and ld["makesOffer"]["priceCurrency"] == "TRY"
+    assert ld["address"]["addressLocality"] == "Seyhan"
+
+
+def test_yorumsuz_ilanda_puan_uydurulmaz() -> None:
+    ld = kisi_ld(_ilan(), "Matematik", "/x-y", None)
+    assert "aggregateRating" not in ld["makesOffer"]["itemOffered"]
+
+
+def test_ucret_ve_puan_yoksa_teklif_dugumu_yok() -> None:
+    ld = kisi_ld(_ilan(hourly_rate=None), None, "/x-y", None)
+    assert "makesOffer" not in ld
+
+
+def test_ucretsiz_ama_puanli_ilanda_fiyat_uydurulmaz() -> None:
+    ld = kisi_ld(_ilan(hourly_rate=None, rating_count=2, rating_average=5.0), None, "/x-y", None)
+    assert "price" not in ld["makesOffer"]
+    assert ld["makesOffer"]["itemOffered"]["aggregateRating"]["reviewCount"] == 2
+
+
+def test_eski_egitmen_adresinden_id() -> None:
+    assert egitmen_id("dilan-4") == 4
+    assert egitmen_id("4") == 4
+    assert egitmen_id("dilan") is None

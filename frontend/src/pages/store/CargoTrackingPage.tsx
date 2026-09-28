@@ -290,7 +290,7 @@ export default function CargoTrackingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Seo title="Kargo Takip, Adana Özel Ders" noindex />
+      <Seo title="Kargo Takip" noindex />
 
       <div className="border-b border-slate-200 bg-white px-4 pb-5 pt-6 sm:px-6">
         <Link to={ROUTES.home} className="inline-flex items-center">

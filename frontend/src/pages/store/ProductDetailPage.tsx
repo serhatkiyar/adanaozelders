@@ -175,6 +175,8 @@ export default function ProductDetailPage() {
   if (isError || !product) {
     return (
       <StoreLayout title="Ürün">
+        {/* Kalkan/olmayan ürün: yumuşak 404 dizine girmesin. */}
+        <Seo title="Ürün bulunamadı" noindex />
         <div className="mx-auto max-w-3xl py-20 text-center">
           <p className="text-slate-600 ">Ürün bulunamadı.</p>
           <Link to={ROUTES.store} className="mt-4 inline-block text-sm font-medium underline">

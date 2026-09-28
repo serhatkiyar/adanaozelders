@@ -117,29 +117,35 @@ export default function PublicTutorProfile({
     ...(tutor.avatar_url ? { image: tutor.avatar_url } : {}),
     ...(tutor.headline ? { description: tutor.headline } : {}),
     ...(tutor.subjects?.length ? { knowsAbout: tutor.subjects } : {}),
-    ...(hasRatings && tutor.rating_average
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: Number(tutor.rating_average.toFixed(2)),
-            reviewCount: tutor.rating_count,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }
-      : {}),
-    ...(rate !== null
+    // Puan HİZMETE bağlanır: schema.org'da `aggregateRating` Person'ın
+    // özelliği değildir (sunucu ön-çizimi `seo_sayfa_service.kisi_ld` ile aynı).
+    ...(rate !== null || (hasRatings && tutor.rating_average)
       ? {
           makesOffer: {
             "@type": "Offer",
-            priceCurrency: "TRY",
-            price: rate,
-            availability: "https://schema.org/InStock",
+            ...(rate !== null
+              ? {
+                  priceCurrency: "TRY",
+                  price: rate,
+                  availability: "https://schema.org/InStock",
+                }
+              : {}),
             itemOffered: {
               "@type": "Service",
               name: "Özel ders",
               ...(tutor.subjects?.length
                 ? { serviceType: tutor.subjects.join(", ") }
+                : {}),
+              ...(hasRatings && tutor.rating_average
+                ? {
+                    aggregateRating: {
+                      "@type": "AggregateRating",
+                      ratingValue: Number(tutor.rating_average.toFixed(2)),
+                      reviewCount: tutor.rating_count,
+                      bestRating: 5,
+                      worstRating: 1,
+                    },
+                  }
                 : {}),
             },
           },
