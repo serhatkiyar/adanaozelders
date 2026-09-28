@@ -29,7 +29,7 @@ import {
 } from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
-import { absoluteUrl } from "@/lib/seo";
+import { absoluteUrl, detayDurumu } from "@/lib/seo";
 import { ROUTES, ilanYolu, parseTutorId } from "@/lib/routes";
 import type { IlanSayfasiVerisi } from "@/api/seo";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
@@ -62,7 +62,7 @@ export default function PublicTutorProfile({
      ve iki "Ders talep et" düğmesi olurdu. Bkz. `EgitmenMobilUst`. */
   const mobil = useMobil();
   const geriDon = useGeriDonus(ROUTES.tutors);
-  const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);
+  const { data: tutor, isLoading, isError, error } = useTutorDetail(tutorId);
   useCanonicalTutorSlug(tutor);
   // "Son görüntülenen ilanlar" için bu eğitmeni kaydet.
   useEffect(() => {
@@ -77,7 +77,11 @@ export default function PublicTutorProfile({
   if (isError || !tutor) {
     return (
       <PublicShell>
-        <Seo title="Öğretmen bulunamadı" noindex />
+        {/* noindex YALNIZ kayıt gerçekten yoksa; geçici hatada (5xx/ağ)
+            yayındaki ilan dizinden düşmesin. */}
+        {detayDurumu({ isLoading, data: tutor, error }) === "not_found" && (
+          <Seo title="Öğretmen bulunamadı" noindex />
+        )}
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
@@ -117,29 +121,35 @@ export default function PublicTutorProfile({
     ...(tutor.avatar_url ? { image: tutor.avatar_url } : {}),
     ...(tutor.headline ? { description: tutor.headline } : {}),
     ...(tutor.subjects?.length ? { knowsAbout: tutor.subjects } : {}),
-    ...(hasRatings && tutor.rating_average
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: Number(tutor.rating_average.toFixed(2)),
-            reviewCount: tutor.rating_count,
-            bestRating: 5,
-            worstRating: 1,
-          },
-        }
-      : {}),
-    ...(rate !== null
+    // Puan HİZMETE bağlanır: schema.org'da `aggregateRating` Person'ın
+    // özelliği değildir (sunucu ön-çizimi `seo_sayfa_service.kisi_ld` ile aynı).
+    ...(rate !== null || (hasRatings && tutor.rating_average)
       ? {
           makesOffer: {
             "@type": "Offer",
-            priceCurrency: "TRY",
-            price: rate,
-            availability: "https://schema.org/InStock",
+            ...(rate !== null
+              ? {
+                  priceCurrency: "TRY",
+                  price: rate,
+                  availability: "https://schema.org/InStock",
+                }
+              : {}),
             itemOffered: {
               "@type": "Service",
               name: "Özel ders",
               ...(tutor.subjects?.length
                 ? { serviceType: tutor.subjects.join(", ") }
+                : {}),
+              ...(hasRatings && tutor.rating_average
+                ? {
+                    aggregateRating: {
+                      "@type": "AggregateRating",
+                      ratingValue: Number(tutor.rating_average.toFixed(2)),
+                      reviewCount: tutor.rating_count,
+                      bestRating: 5,
+                      worstRating: 1,
+                    },
+                  }
                 : {}),
             },
           },

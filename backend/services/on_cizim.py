@@ -37,6 +37,7 @@ from fastapi.responses import RedirectResponse
 from core import storage
 from core.config import settings
 from core.database import AsyncSessionLocal
+from models.tutor import Tutor
 from schemas.seo import DersSayfasiOut, IlanSayfasiOut, YonlendirmeOut
 from services import search_service, seo_sayfa_service, seo_slug_service
 from services.seo_sayfa_service import SITE_ADI, mutlak, tl
@@ -237,7 +238,9 @@ async def yanit(yol: str, sorgu: str = "") -> Response:
         if isinstance(sonuc, IlanSayfasiOut):
             tutor = await search_service.get_tutor_public(db, sonuc.tutor_id)
         kapali = sonuc is None and (
-            seo_sayfa_service.seo_sekilli_mi(yol) or await _kayitli_tek_parca(db, yol)
+            seo_sayfa_service.seo_sekilli_mi(yol)
+            or await _kayitli_tek_parca(db, yol)
+            or await _kapali_egitmen_adresi(db, yol)
         )
         # Sayfa değişmediği sürece ön-çizim her açılışta yeniden hesaplanır;
         # yazma yok, commit gerekmez.
@@ -263,7 +266,8 @@ async def yanit(yol: str, sorgu: str = "") -> Response:
             enjekte(sablon, head, ilan_govdesi(sonuc, tutor)), media_type=_HTML, headers=_TAZE
         )
     if kapali:
-        # Kapalı ders sayfası ya da yayında olmayan ilan: gerçek 404 + noindex.
+        # Kapalı ders sayfası, yayında olmayan ilan ya da yayında bir eğitmene
+        # çıkmayan eski `/egitmenler/<ad-id>` adresi: gerçek 404 + noindex.
         # Gövde SPA'nın kendisi; React "sayfa bulunamadı" ekranını çizer.
         head = head_etiketleri(
             baslik=f"Sayfa bulunamadı | {SITE_ADI}",
@@ -274,6 +278,25 @@ async def yanit(yol: str, sorgu: str = "") -> Response:
         return Response(enjekte(sablon, head), status_code=404, media_type=_HTML, headers=_TAZE)
     # SEO kaydı olmayan yol (`/sifremi-unuttum` gibi SPA rotaları): şablon AYNEN.
     return Response(sablon, media_type=_HTML, headers=_TAZE)
+
+
+async def _kapali_egitmen_adresi(db, yol: str) -> bool:
+    """Eski `/egitmenler/<ad-id>` adresi yayında bir eğitmene çıkmıyor mu?
+
+    Çıkmıyorsa (id yok, eğitmen yok ya da yayından kalkmış) sayfa gerçek
+    404'tür. Önceden şablon 200 ile dönüyor, React "öğretmen bulunamadı"
+    çiziyordu: arama motoru için yumuşak 404 (soft-404) — indekslenmiş eski
+    profiller dizinden düşmüyordu. Yayındaki ama ilan adresi henüz verilmemiş
+    eğitmen burada False döner; sayfası şablonla (200) açılmaya devam eder.
+    """
+    parca = [p for p in yol.split("?")[0].split("/") if p]
+    if len(parca) != 2 or parca[0] != "egitmenler":
+        return False
+    tutor_id = seo_sayfa_service.egitmen_id(parca[1])
+    if tutor_id is None:
+        return True
+    tutor = await db.get(Tutor, tutor_id)
+    return tutor is None or not seo_slug_service.yayinda_mi(tutor)
 
 
 async def _kayitli_tek_parca(db, yol: str) -> bool:

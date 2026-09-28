@@ -8,7 +8,8 @@
   3. Eski `/egitmenler/<isim-id>` adresi yeni ilan adresine KALICI (301)
      yönlenir; API aynı kararı `yonlendir` olarak döner.
   4. İlçe sayfası yalnız o ilçede öğretmen varsa açılır.
-  5. Yayından kalkan ilanın adresi 404 olur (adres kaydı durur, başkasına geçmez).
+  5. Yayından kalkan ilanın adresi 404 olur (adres kaydı durur, başkasına geçmez);
+     eski `/egitmenler/<isim-id>` adresi de gerçek 404 alır (soft-404 yok).
 
 Her koşu kendi benzersiz derslerini ve eğitmenini üretir; teardown hepsini
 fiziksel siler (seo_slugs satırları FK CASCADE ile düşer).
@@ -176,6 +177,14 @@ async def test_yayindan_kalkan_ilan_404_olur(kurulum, http):
     assert (await http.get("/api/v1/seo/sayfa", params={"yol": yol})).status_code == 404
     r = await http.get("/__sayfa", params={"path": yol})
     assert r.status_code == 404 and "noindex" in r.text
+    # Eski eğitmen adresi de yumuşak 404 (200 + "bulunamadı") DEĞİL, gerçek
+    # 404 alır: indekslenmiş eski profil dizinden düşsün.
+    eski = f"/egitmenler/{kurulum['ilk_ad'].lower()}-{kurulum['tutor_id']}"
+    r = await http.get("/__sayfa", params={"path": eski}, follow_redirects=False)
+    assert r.status_code == 404 and "noindex" in r.text
+    for yok in ("/egitmenler/yok-999999999", "/egitmenler/idsiz-adres"):
+        r = await http.get("/__sayfa", params={"path": yok}, follow_redirects=False)
+        assert r.status_code == 404, yok
     # Kayıtsız tek parçalı yol (SPA rotası) şablonu AYNEN alır.
     r = await http.get("/__sayfa", params={"path": "/sifremi-unuttum"})
     assert r.status_code == 200 and r.text == _SABLON

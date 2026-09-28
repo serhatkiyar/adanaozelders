@@ -38,7 +38,10 @@ def test_url_yollari_frontend_rotalariyla_ayni() -> None:
 def test_statik_sayfalar_kapsanmis() -> None:
     paths = [p for p, _f, _pr in STATIC_PATHS]
     # Ana giriş noktaları ve destek/yasal sayfalar indekslenebilir olmalı.
-    for expected in ("/", "/egitmenler", "/kutuphaneler", "/magaza", "/blog", "/sss", "/iletisim"):
+    for expected in (
+        "/", "/egitmenler", "/kutuphaneler", "/magaza", "/blog", "/sss", "/iletisim",
+        "/hakkimizda",
+    ):
         assert expected in paths
     # Oturum-içi yollar sitemap'e GİRMEMELİ (robots.txt zaten Disallow eder).
     for forbidden in ("/hesabim", "/mesajlar", "/siparislerim", "/giris"):
