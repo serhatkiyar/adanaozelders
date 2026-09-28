@@ -18,12 +18,16 @@
  * `useDuzenlemeYuzeyi`de yaşıyor (`ProductsPanel`), bu bileşende `useState`
  * yok.
  */
+import { isAxiosError } from "axios";
+
 import { StockLedgerPanel } from "@/components/admin/StockLedgerPanel";
+import { ErrorState } from "@/components/admin/ui";
 import {
   DuzenlemePenceresi,
   type DuzenlemeYuzeyiDurumu,
 } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { useAdminProduct } from "@/hooks/useStore";
+import { getErrorMessage } from "@/lib/errors";
 
 import { ProductForm } from "./ProductForm";
 import { ProductMediaManager } from "./ProductMediaManager";
@@ -38,13 +42,32 @@ export function EditProductModal({
   onSaved: () => void;
 }) {
   // Yüzey kapalıyken sorgu da uyumalı: `useAdminProduct(null)` isteği atmaz.
-  const { data, isLoading } = useAdminProduct(yuzey.kayit ?? undefined);
+  const { data, isLoading, isError, error, refetch } = useAdminProduct(
+    yuzey.kayit ?? undefined,
+  );
 
   if (!yuzey.acik) return null;
 
   return (
     <DuzenlemePenceresi yuzey={yuzey} baslik="Ürünü düzenle">
-      {isLoading || !data ? (
+      {isError && !data ? (
+        // Hata dalı olmadan `!data` koşulu pencereyi sonsuza dek "Yükleniyor…"
+        // durumunda bırakıyordu. `!data`: arka plan tazelemesi düşerse eldeki
+        // veri kalır, açık form (kaydedilmemiş düzenleme) sökülmez. Kapatma
+        // × / ESC ile pencerenin kendisinde.
+        isAxiosError(error) && error.response?.status === 404 ? (
+          <ErrorState
+            title="Ürün bulunamadı"
+            description="Bu ürün silinmiş ya da taşınmış olabilir."
+          />
+        ) : (
+          <ErrorState
+            title="Ürün yüklenemedi"
+            description={getErrorMessage(error, "Ürün bilgileri alınamadı.")}
+            onRetry={() => void refetch()}
+          />
+        )
+      ) : isLoading || !data ? (
         <p className="py-8 text-center text-sm text-slate-400">Yükleniyor…</p>
       ) : (
         <>

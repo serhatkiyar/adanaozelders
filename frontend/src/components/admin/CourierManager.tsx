@@ -14,7 +14,7 @@ import {
   type SifreFormDegerleri,
 } from "@/components/admin/kuryeSemalari";
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
-import { Button, ConfirmDialog } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState } from "@/components/admin/ui";
 import {
   useDuzenlemeYuzeyi,
   useYuzeyKirliFormBekcisi,
@@ -32,6 +32,7 @@ import {
   useUpdateCourier,
   useUploadCourierPhoto,
 } from "@/hooks/useDelivery";
+import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type { Courier } from "@/types";
 
@@ -610,7 +611,8 @@ function CourierRow({ c }: { c: Courier }) {
 
 export function CourierManager() {
   const { canManage } = useAdminAreaAccess("delivery");
-  const { data: couriers = [], isLoading } = useCouriers();
+  const { data, isLoading, isError, error, refetch } = useCouriers();
+  const couriers = data ?? [];
   const [adding, setAdding] = useState(false);
 
   return (
@@ -635,6 +637,14 @@ export function CourierManager() {
             {[0, 1].map((i) => (
               <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100 " />
             ))}
+          </div>
+        ) : isError && !data ? (
+          // Hata "henüz kurye yok" gibi görünmemeli: yönetici mükerrer kurye ekler.
+          <div className="py-4">
+            <ErrorState
+              description={getErrorMessage(error, "Kuryeler yüklenemedi.")}
+              onRetry={() => void refetch()}
+            />
           </div>
         ) : couriers.length === 0 && !adding ? (
           <p className="py-6 text-center text-sm text-slate-400 ">

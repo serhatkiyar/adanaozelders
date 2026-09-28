@@ -27,9 +27,26 @@ export const useToastStore = create<ToastState>((set, get) => ({
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }));
 
+/**
+ * Ekranların gösterdiği (başarı dışı) bildirim sayacı. Global mutation hata
+ * yakalayıcısı (`lib/queryClient.ts`) bunu okuyarak ekran hatayı zaten
+ * bildirdiyse ikinci bir toast basmaz. Global yakalayıcı kendi bildirimini
+ * `push` ile doğrudan verdiği için sayaca girmez.
+ */
+let ekranBildirimSayisi = 0;
+
+export function ekranBildirimSayaci(): number {
+  return ekranBildirimSayisi;
+}
+
+function ekranBildirimi(type: Exclude<ToastType, "success">, m: string) {
+  ekranBildirimSayisi += 1;
+  useToastStore.getState().push(type, m);
+}
+
 export const toast = {
   success: (m: string) => useToastStore.getState().push("success", m),
-  error: (m: string) => useToastStore.getState().push("error", m),
-  warning: (m: string) => useToastStore.getState().push("warning", m),
-  info: (m: string) => useToastStore.getState().push("info", m),
+  error: (m: string) => ekranBildirimi("error", m),
+  warning: (m: string) => ekranBildirimi("warning", m),
+  info: (m: string) => ekranBildirimi("info", m),
 };

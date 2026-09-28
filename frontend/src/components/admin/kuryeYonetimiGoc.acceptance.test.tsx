@@ -163,6 +163,18 @@ describe("KY-1 · liste ve yetki", () => {
     expect(await screen.findByText(/Henüz kurye yok/)).toBeTruthy();
   });
 
+  it("liste yüklenemezse boş durum değil hata + 'Yeniden dene' çıkar", async () => {
+    izinVer("delivery.view", "delivery.manage");
+    sunucu("/delivery/couriers", { status: 500, data: { detail: "boom" } }, "get");
+    sar();
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.queryByText(/Henüz kurye yok/)).toBeNull();
+
+    sunucu("/delivery/couriers", { data: [KURYE()] }, "get");
+    fireEvent.click(screen.getByRole("button", { name: "Yeniden dene" }));
+    expect(await screen.findByText("Deniz Kurye")).toBeTruthy();
+  });
+
   it("yönetim yetkisi YOKSA düzenleme yüzeyi açılmaz", async () => {
     izinVer("delivery.view");
     sunucu("/delivery/couriers", { data: [KURYE()] }, "get");

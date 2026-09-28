@@ -209,6 +209,18 @@ describe("A-1 · onay kuyruğu /yonetim/egitmenler altında render ediliyor", ()
     await screen.findByText("Yayinda Ogretmen");
     expect(screen.queryByRole("heading", { name: /onay bekleyen/i })).toBeNull();
   });
+
+  it("liste yüklenemezse 'Yeniden dene' ile tekrar istenir", async () => {
+    izinVer(TUTORS_VIEW, TUTORS_MANAGE);
+    sunucu("/admin/tutors", { status: 500, data: { detail: "x" } }, "get");
+
+    sar();
+
+    const yenidenDene = await screen.findByRole("button", { name: "Yeniden dene" });
+    tutorSunucusu([YAYINDA]);
+    fireEvent.click(yenidenDene);
+    expect(await screen.findByText("Yayinda Ogretmen")).toBeTruthy();
+  });
 });
 
 /* ═════════════════════ A-2 · Satır aksiyonları ═════════════════════ */

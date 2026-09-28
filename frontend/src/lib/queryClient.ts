@@ -3,7 +3,7 @@ import { isAxiosError } from "axios";
 
 import { getErrorMessage } from "@/lib/errors";
 import { reportError } from "@/lib/monitoring";
-import { toast } from "@/store/toastStore";
+import { ekranBildirimSayaci, useToastStore } from "@/store/toastStore";
 
 /**
  * Sorgu hataları SESSİZ KALMAMALI.
@@ -40,8 +40,27 @@ function notifyOnce(error: unknown, fallback: string) {
   if (message === lastMessage && now - lastAt < 4000) return;
   lastMessage = message;
   lastAt = now;
-  toast.error(message);
+  // `toast.error` değil: ekran bildirim sayacına girmemeli (aşağıya bakın).
+  useToastStore.getState().push("error", message);
 }
+
+/**
+ * Mutation hatasında ekranın kendi bildirimi var mı?
+ *
+ * Ekranlar `onError`'u çoğunlukla `mutate(vars, { onError })` ile verir.
+ * TanStack v5 bu seçenekleri MutationObserver'ın özel alanında tutar;
+ * `mutation.options`'a yazılmaz. Global yakalayıcı onları göremediği için
+ * her hatada ekranın toast'ına ek olarak bir toast daha basıyordu.
+ *
+ * Çözüm: hata anında ekran bildirim sayacının anlık değeri saklanır. Mutation
+ * "error" durumuna geçtiğinde (gözlemcilerin `onError`'u bu anda çalışır) bir
+ * sonraki makro görevde sayaca bakılır: arada ekran bir bildirim verdiyse
+ * global toast gösterilmez. `mutateAsync` + `try/catch` ile toast gösteren
+ * ekranlar da mikro görevlerde çalıştığı için aynı pencereye düşer. Ekran
+ * hatayı yalnız satır içinde gösteriyorsa (toast yoksa) global bildirim kalır.
+ */
+const bekleyenMutasyonHatalari = new WeakMap<object, number>();
+
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -56,12 +75,12 @@ export const queryClient = new QueryClient({
   }),
   mutationCache: new MutationCache({
     onError: (error, _variables, _context, mutation) => {
-      // Mutasyonların çoğu kendi `onError`'unda toast gösterir; çifte bildirim
-      // olmaması için yalnız hiç ele alınmayanlar buraya düşer.
+      // Kanca düzeyinde `onError` tanımlıysa hata orada ele alınır.
       if (mutation.options.onError) return;
       if (!shouldNotify(error)) return;
-      notifyOnce(error, "İşlem tamamlanamadı.");
       reportError(error);
+      // Toast kararı mutation "error" durumuna geçince verilir (aşağıda).
+      bekleyenMutasyonHatalari.set(mutation, ekranBildirimSayaci());
     },
   }),
   defaultOptions: {
@@ -71,4 +90,17 @@ export const queryClient = new QueryClient({
       staleTime: 30_000,
     },
   },
+});
+
+queryClient.getMutationCache().subscribe((event) => {
+  if (event.type !== "updated" || event.action.type !== "error") return;
+  const mutation = event.mutation;
+  const oncekiSayi = bekleyenMutasyonHatalari.get(mutation);
+  if (oncekiSayi === undefined) return;
+  bekleyenMutasyonHatalari.delete(mutation);
+  const error = event.action.error;
+  setTimeout(() => {
+    if (ekranBildirimSayaci() !== oncekiSayi) return;
+    notifyOnce(error, "İşlem tamamlanamadı.");
+  }, 0);
 });

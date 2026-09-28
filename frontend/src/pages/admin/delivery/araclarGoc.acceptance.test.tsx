@@ -183,6 +183,21 @@ describe("AR-1 · liste ve yetki", () => {
     expect(screen.getByText(/Tanımlı başlangıç noktası yok/)).toBeTruthy();
   });
 
+  it("listeler yüklenemezse boş durum değil hata + 'Yeniden dene' çıkar", async () => {
+    izinVer("delivery.view", "delivery.manage");
+    sunucu("/delivery/vehicles", { status: 500, data: { detail: "boom" } }, "get");
+    sunucu("/delivery/pickup-points", { status: 500, data: { detail: "boom" } }, "get");
+    sar();
+    expect(await screen.findByText("Araçlar yüklenemedi.")).toBeTruthy();
+    expect(await screen.findByText("Başlangıç noktaları yüklenemedi.")).toBeTruthy();
+    expect(screen.queryByText(/Filoda araç yok/)).toBeNull();
+    expect(screen.queryByText(/Tanımlı başlangıç noktası yok/)).toBeNull();
+
+    sunucu("/delivery/vehicles", { data: [ARAC()] }, "get");
+    fireEvent.click(screen.getAllByRole("button", { name: "Yeniden dene" })[0]);
+    expect(await screen.findByText("Doblo")).toBeTruthy();
+  });
+
   it("silme ONAY penceresi açmadan istek göndermez", async () => {
     await ekraniAc();
     fireEvent.click(await screen.findByRole("button", { name: "Sil" }));

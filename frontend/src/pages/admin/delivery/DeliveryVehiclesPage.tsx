@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { isAxiosError } from "axios";
 
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
-import { Button, ConfirmDialog } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState } from "@/components/admin/ui";
 import {
   useDuzenlemeYuzeyi,
   useYuzeyKirliFormBekcisi,
@@ -424,7 +424,8 @@ function AracEklemeFormu({ onBitti }: { onBitti: () => void }) {
 
 function VehicleSection() {
   const { canManage } = useAdminAreaAccess("delivery");
-  const { data: vehicles = [], isLoading } = useVehicles();
+  const { data, isLoading, isError, error, refetch } = useVehicles();
+  const vehicles = data ?? [];
   const [adding, setAdding] = useState(false);
 
   return (
@@ -450,6 +451,14 @@ function VehicleSection() {
             {[0, 1].map((i) => (
               <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100 " />
             ))}
+          </div>
+        ) : isError && !data ? (
+          // Hata "filoda araç yok" gibi görünmemeli: yönetici mükerrer araç ekler.
+          <div className="py-4">
+            <ErrorState
+              description={getErrorMessage(error, "Araçlar yüklenemedi.")}
+              onRetry={() => void refetch()}
+            />
           </div>
         ) : vehicles.length === 0 && !adding ? (
           <p className="py-6 text-center text-sm text-slate-400 ">
@@ -694,7 +703,8 @@ function NoktaEklemeFormu({ onBitti }: { onBitti: () => void }) {
 
 function BasePointSection() {
   const { canManage } = useAdminAreaAccess("delivery");
-  const { data: points = [], isLoading } = usePickupPoints();
+  const { data, isLoading, isError, error, refetch } = usePickupPoints();
+  const points = data ?? [];
   const [adding, setAdding] = useState(false);
 
   // Varsayılan başlangıç = aktif BASE kayıtlarından sırası en küçük (backend kuralı).
@@ -721,6 +731,13 @@ function BasePointSection() {
         {adding && <NoktaEklemeFormu onBitti={() => setAdding(false)} />}
         {isLoading ? (
           <div className="my-3 h-10 animate-pulse rounded-lg bg-slate-100 " />
+        ) : isError && !data ? (
+          <div className="py-4">
+            <ErrorState
+              description={getErrorMessage(error, "Başlangıç noktaları yüklenemedi.")}
+              onRetry={() => void refetch()}
+            />
+          </div>
         ) : basePoints.length === 0 && !adding ? (
           <p className="py-6 text-center text-sm text-slate-400 ">
             Tanımlı başlangıç noktası yok: rota optimizasyonu için bir nokta ekleyin.

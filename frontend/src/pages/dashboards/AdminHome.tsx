@@ -244,7 +244,7 @@ const STATUS_ORDER: Record<TutorStatus, number> = {
 };
 
 function ListingManagement() {
-  const { data, isLoading, isError, error } = useAdminTutors();
+  const { data, isLoading, isError, error, refetch } = useAdminTutors();
 
   if (isLoading) {
     return (
@@ -260,7 +260,12 @@ function ListingManagement() {
   }
 
   if (isError) {
-    return <ErrorState description={getErrorMessage(error, "İlanlar yüklenemedi.")} />;
+    return (
+      <ErrorState
+        description={getErrorMessage(error, "İlanlar yüklenemedi.")}
+        onRetry={() => void refetch()}
+      />
+    );
   }
 
   const tutors = [...(data ?? [])].sort(
