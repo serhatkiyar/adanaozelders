@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/AppIcon";
 import { IlerlemeCubugu } from "@/components/IlerlemeCubugu";
 import { KameraKaydi } from "@/components/tutor/KameraKaydi";
@@ -19,20 +19,23 @@ import {
 import { toast } from "@/store/toastStore";
 import type { TutorIntroVideo, TutorOut } from "@/types";
 import {
+  ACIKLAMA,
   DUGME_SATIR_BIRINCIL,
   DUGME_SATIR_IKINCIL,
-  DUGME_SATIR_TEHLIKE,
-  ETIKET,
   KUCUK_ACIKLAMA,
+  METIN_BAGLANTI,
 } from "@/components/pano/stil";
 
 /*
- * Profilim → Video: doğrudan yükleme yüzeyi.
+ * Profilim → Video: medya alanı (Preply düzeni, 28 Eyl 2026 karşılaştırması).
  *
- * Atomik değişim: eğitmenin yayındaki videosu (yüklenmiş ya da bağlantı) yeni
- * video işlenip onaylanana kadar yayında kalır; bu bileşen o sırada "şu an
- * yayında" kartını ve yolda kaydın durumunu ayrı ayrı gösterir. Başarısız
- * işleme eski videoya dokunmaz; eğitmen anlaşılır hata + yeniden deneme görür.
+ * Tek bir sütun genişliğinde medya yuvası: yayındaki video (yüklenen ya da
+ * bağlantı) doğrudan oynatılır; kamerayla kayıt aynı yuvada oynatıcının yerini
+ * alır. Altında durum kartları (yükleme, işleme, onay, hata), ardından ana
+ * eylem ("Kamerayla kaydet" / "Tekrar kaydet") ve dosya/bağlantı satırları.
+ *
+ * Atomik değişim: yayındaki video, yeni video işlenip onaylanana kadar yayında
+ * kalır; başarısız işleme eski videoya dokunmaz.
  */
 
 const TON_SINIFI = {
@@ -42,70 +45,6 @@ const TON_SINIFI = {
   uyari: "border-amber-200 bg-amber-50 text-amber-900",
   hata: "border-red-200 bg-red-50 text-red-900",
 } as const;
-
-/** "Şu an profilinde" kartı — yüklenmiş aktif video ya da bağlantı. */
-export function MevcutVideoKarti({ tutor, acik }: { tutor: TutorOut; acik: boolean }) {
-  const { data } = useMyIntroVideo();
-  const kaldir = useRemoveIntroVideo(tutor.id);
-  const aktif = data?.active ?? null;
-  const link = data?.link_url ?? tutor.intro_video_url ?? null;
-
-  if (!aktif && !link) {
-    return (
-      <p className={KUCUK_ACIKLAMA}>Profilinde henüz tanıtım videosu yok.</p>
-    );
-  }
-  // Yayındaki video burada da OYNATILIR (Preply'daki gibi): eğitmen profilinde
-  // ne göründüğünü sayfadan ayrılmadan izler. Public profildeki bileşenin
-  // aynısı — yüklenen video sessiz otomatik başlar, bağlantı iframe'le oynar.
-  const oynatici = aktif?.mp4_url
-    ? {
-        kind: "upload" as const,
-        mp4_url: aktif.mp4_url,
-        poster_url: aktif.poster_url,
-        width: aktif.width,
-        height: aktif.height,
-        duration_seconds: aktif.duration_seconds,
-      }
-    : null;
-  return (
-    <div className="space-y-3 rounded-lg border border-slate-200 p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className={ETIKET}>
-            Şu an yayında
-            <span className="ml-2 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-              {aktif ? "Yüklenen video" : "Bağlantı"}
-            </span>
-          </p>
-          <p className={`mt-1 truncate ${KUCUK_ACIKLAMA}`}>
-            {aktif
-              ? [sureBiciminde(aktif.duration_seconds), aktif.width && aktif.height ? `${aktif.width}×${aktif.height}` : null]
-                  .filter(Boolean)
-                  .join(" · ") || "İşlenmiş MP4"
-              : link}
-          </p>
-        </div>
-        {aktif && (
-          <button
-            type="button"
-            className={DUGME_SATIR_TEHLIKE}
-            disabled={!acik || kaldir.isPending}
-            onClick={() =>
-              kaldir.mutate(undefined, {
-                onSuccess: () => toast.success("Video profilinden kaldırıldı."),
-                onError: (e) => toast.error(getErrorMessage(e, "Kaldırılamadı.")),
-              })
-            }
-          >
-            {kaldir.isPending ? "Kaldırılıyor…" : "Kaldır"}
-          </button>
-        )}
-      </div>
-      <TanitimVideosu video={oynatici} linkUrl={aktif ? null : link} ad={tutor.first_name} />
-    </div>
-  );
-}
 
 function DurumKarti({
   kayit,
@@ -191,10 +130,23 @@ function DurumKarti({
   );
 }
 
-export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }) {
+export function VideoAlani({
+  tutor,
+  acik,
+  ortaSlot,
+  baglantiSlot,
+}: {
+  tutor: TutorOut;
+  acik: boolean;
+  /** Oynatıcı ile eylemler arasına (telefonda gereksinim kartı). */
+  ortaSlot?: ReactNode;
+  /** Boştayken dosya satırının altına (YouTube/Vimeo bağlantısı satırı + formu). */
+  baglantiSlot?: ReactNode;
+}) {
   const uid = useId();
   const dosyaRef = useRef<HTMLInputElement>(null);
   const durum = useMyIntroVideo();
+  const kaldir = useRemoveIntroVideo(tutor.id);
   const maxBytes = durum.data?.max_bytes ?? 300 * 1024 * 1024;
   const maxSeconds = durum.data?.max_seconds ?? 130;
   const minSeconds = durum.data?.min_seconds ?? 30;
@@ -205,15 +157,25 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
     minSeconds,
     tutorId: tutor.id,
   });
-  // Kamerayla kayıt modu; kayıt `File` olarak aynı yükleme hattına girer.
+  // Kamerayla kayıt modu: kayıt yuvası oynatıcının yerini alır.
   const [kayitModu, setKayitModu] = useState(false);
   const iptalKaydi = useCancelIntroVideo(tutor.id);
+  // Kayıt görünümünden dönünce odak ana eyleme geri verilir (klavye/ekran okuyucu).
+  const anaEylemRef = useRef<HTMLButtonElement>(null);
+  const oncekiKayitModu = useRef(false);
+  useEffect(() => {
+    if (oncekiKayitModu.current && !kayitModu) anaEylemRef.current?.focus();
+    oncekiKayitModu.current = kayitModu;
+  }, [kayitModu]);
 
+  const aktif = durum.data?.active ?? null;
+  const link = durum.data?.link_url ?? tutor.intro_video_url ?? null;
   const pending = durum.data?.pending ?? null;
-  const eskiVideoVar = Boolean(durum.data?.active || durum.data?.link_url);
+  const eskiVideoVar = Boolean(aktif || link);
   const yuklemeSuruyor = asama.tur === "hazirlaniyor" || asama.tur === "yukleniyor" || asama.tur === "tamamlaniyor";
   const yoldaKayit = pending && YOLDA_DURUMLAR.has(pending.status) ? pending : null;
   const secilebilir = acik && !yuklemeSuruyor && !yoldaKayit && durum.data?.uploads_enabled !== false;
+  const bosta = !kayitModu && !yuklemeSuruyor && !pending && asama.tur !== "hata";
 
   const dosyaSec = () => {
     sifirla();
@@ -229,8 +191,19 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
       onError: (e) => toast.error(getErrorMessage(e, "İptal edilemedi.")),
     });
 
+  const oynatici = aktif?.mp4_url
+    ? {
+        kind: "upload" as const,
+        mp4_url: aktif.mp4_url,
+        poster_url: aktif.poster_url,
+        width: aktif.width,
+        height: aktif.height,
+        duration_seconds: aktif.duration_seconds,
+      }
+    : null;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <input
         ref={dosyaRef}
         id={`${uid}-dosya`}
@@ -246,13 +219,63 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
         }}
       />
 
+      {/* ── Medya yuvası ── */}
+      {kayitModu && secilebilir ? (
+        <KameraKaydi
+          minSeconds={minSeconds}
+          maxSeconds={Math.min(maxSeconds, 120)}
+          onKullan={(file) => {
+            setKayitModu(false);
+            void yukle(file);
+          }}
+          onVazgec={() => setKayitModu(false)}
+        />
+      ) : eskiVideoVar ? (
+        <div>
+          <TanitimVideosu video={oynatici} linkUrl={aktif ? null : link} ad={tutor.first_name} />
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className={KUCUK_ACIKLAMA}>
+              <span className="font-semibold text-emerald-700">Profilinde yayında</span>
+              {" · "}
+              {aktif
+                ? [sureBiciminde(aktif.duration_seconds), aktif.width && aktif.height ? `${aktif.width}×${aktif.height}` : null]
+                    .filter(Boolean)
+                    .join(" · ") || "Yüklenen video"
+                : "YouTube/Vimeo bağlantısı"}
+            </p>
+            {aktif && (
+              <button
+                type="button"
+                className="text-sm font-semibold text-red-700 underline decoration-red-200 underline-offset-4 hover:decoration-red-700 disabled:opacity-60 inline-block py-3 -my-3 focus-visible:outline-none [&:focus-visible>span]:rounded-sm [&:focus-visible>span]:ring-2 [&:focus-visible>span]:ring-marka-focus [&:focus-visible>span]:ring-offset-2"
+                disabled={!acik || kaldir.isPending}
+                onClick={() =>
+                  kaldir.mutate(undefined, {
+                    onSuccess: () => toast.success("Video profilinden kaldırıldı."),
+                    onError: (e) => toast.error(getErrorMessage(e, "Kaldırılamadı.")),
+                  })
+                }
+              >
+                <span>{kaldir.isPending ? "Kaldırılıyor…" : "Videoyu kaldır"}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-2xl bg-slate-100 p-6 text-center max-sm:aspect-auto max-sm:h-32">
+          <span aria-hidden className="text-slate-400">
+            <Icon name="video" className="h-10 w-10" />
+          </span>
+          <p className={KUCUK_ACIKLAMA}>Profilinde henüz tanıtım videon yok.</p>
+        </div>
+      )}
+
       {durum.data?.uploads_enabled === false && (
         <p className={`rounded-lg border p-4 ${TON_SINIFI.uyari}`}>
           Video yükleme geçici olarak kapalı. Şimdilik YouTube bağlantısı ekleyebilirsin.
         </p>
       )}
 
-      {/* Tarayıcıdan depoya yükleme aşamaları */}
+      {/* ── Tarayıcıdan depoya yükleme aşamaları ── */}
       {asama.tur === "hazirlaniyor" && (
         <div role="status" aria-live="polite" className={`rounded-lg border p-4 ${TON_SINIFI.bilgi}`}>
           <p className="text-base font-semibold leading-6">Hazırlanıyor</p>
@@ -282,13 +305,18 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
         <div role="alert" className={`rounded-lg border p-4 ${TON_SINIFI.hata}`}>
           <p className="text-base font-semibold leading-6">Yüklenemedi</p>
           <p className="mt-1 text-sm leading-5">{asama.mesaj}</p>
-          <button type="button" className={`mt-3 ${DUGME_SATIR_BIRINCIL}`} onClick={dosyaSec} disabled={!acik}>
-            Başka video seç
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" className={DUGME_SATIR_BIRINCIL} onClick={kayitAc} disabled={!acik}>
+              Kamerayla kaydet
+            </button>
+            <button type="button" className={DUGME_SATIR_IKINCIL} onClick={dosyaSec} disabled={!acik}>
+              Başka dosya seç
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Sunucudaki yolda / başarısız kayıt (yükleme bittikten sonra) */}
+      {/* ── Sunucudaki yolda / başarısız kayıt ── */}
       {!yuklemeSuruyor && asama.tur !== "hata" && pending && (
         <DurumKarti
           kayit={pending}
@@ -296,55 +324,42 @@ export function VideoYukleme({ tutor, acik }: { tutor: TutorOut; acik: boolean }
           eskiVideoVar={eskiVideoVar}
           onIptal={() => kaydiIptalEt(pending.id)}
           iptalEdiliyor={iptalKaydi.isPending}
-          onYeniden={dosyaSec}
+          onYeniden={kayitAc}
           acik={acik}
         />
       )}
 
-      {kayitModu && secilebilir && (
-        <KameraKaydi
-          minSeconds={minSeconds}
-          maxSeconds={Math.min(maxSeconds, 120)}
-          onKullan={(file) => {
-            setKayitModu(false);
-            void yukle(file);
-          }}
-          onVazgec={() => setKayitModu(false)}
-        />
-      )}
+      {ortaSlot}
 
-      {!kayitModu && !yuklemeSuruyor && !pending && asama.tur !== "hata" && (
-        <div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={DUGME_SATIR_BIRINCIL}
-              onClick={kayitAc}
-              disabled={!secilebilir}
-              aria-describedby={`${uid}-kural`}
-            >
-              <Icon name="video" className="h-5 w-5" aria-hidden />
-              Kamerayla kaydet
-            </button>
-            <button
-              type="button"
-              className={DUGME_SATIR_IKINCIL}
-              onClick={dosyaSec}
-              disabled={!secilebilir}
-              aria-describedby={`${uid}-kural`}
-            >
-              <Icon name="arrowUpload" className="h-5 w-5" aria-hidden />
-              {eskiVideoVar ? "Yeni video dosyası seç" : "Video dosyası seç"}
-            </button>
+      {/* ── Eylemler (boştayken) ── */}
+      {bosta && (
+        <div className="space-y-4">
+          <button
+            ref={anaEylemRef}
+            type="button"
+            className={`w-full max-sm:h-11 sm:w-auto ${eskiVideoVar ? DUGME_SATIR_IKINCIL : DUGME_SATIR_BIRINCIL}`}
+            onClick={kayitAc}
+            disabled={!secilebilir}
+          >
+            <Icon name={eskiVideoVar ? "arrowRedo" : "video"} className="h-5 w-5" />
+            {eskiVideoVar ? "Tekrar kaydet" : "Kamerayla kaydet"}
+          </button>
+          <div>
+            <p className={ACIKLAMA}>
+              Hazır bir video dosyan mı var?{" "}
+              <button type="button" className={`${METIN_BAGLANTI} inline-block py-2.5 -my-2.5 focus-visible:outline-none [&:focus-visible>span]:rounded-sm [&:focus-visible>span]:ring-2 [&:focus-visible>span]:ring-marka-focus [&:focus-visible>span]:ring-offset-2`} onClick={dosyaSec} disabled={!secilebilir}>
+                <span>Dosya yükle</span>
+              </button>
+            </p>
+            <p className={`mt-1 ${KUCUK_ACIKLAMA}`}>
+              MP4, MOV veya WebM · en fazla {mbBiciminde(maxBytes)}
+              {requireReview ? " · Yayına girmeden önce kısa bir kontrolden geçer." : ""}
+            </p>
           </div>
-          <p id={`${uid}-kural`} className={`mt-2 ${KUCUK_ACIKLAMA}`}>
-            Yatay çekilmiş, {minSeconds} saniye ile {Math.floor(maxSeconds / 60)} dakika arası, en az 360p · MP4, MOV veya WebM · en fazla {mbBiciminde(maxBytes)}.
-            {requireReview ? " Yüklenen video kısa bir kontrolden sonra yayına girer." : ""}
-            {eskiVideoVar ? " Yeni video hazır olana kadar şu anki videon yayında kalır." : ""}
-          </p>
+          {baglantiSlot}
           {!acik && (
-            <p className="mt-2 text-sm leading-5 text-amber-700">
-              Profilin onay sürecinde; bu sırada video yüklenemez.
+            <p className="text-sm leading-5 text-amber-700">
+              Profilin onay sürecinde; bu sırada video değiştirilemez.
             </p>
           )}
         </div>

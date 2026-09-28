@@ -57,6 +57,12 @@ export function KameraKaydi({
   const mimeRef = useRef<string>("video/webm");
   const zamanlayiciRef = useRef<number | null>(null);
   const baslangicRef = useRef(0);
+  const acDugmesiRef = useRef<HTMLButtonElement>(null);
+
+  // Kayıt görünümü açılınca odak ilk eyleme taşınır (klavye/ekran okuyucu).
+  useEffect(() => {
+    acDugmesiRef.current?.focus();
+  }, []);
 
   const zamanlayiciDurdur = () => {
     if (zamanlayiciRef.current != null) {
@@ -214,8 +220,8 @@ export function KameraKaydi({
   const bitirebilir = gecen >= minSeconds;
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 p-4">
-      <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+    <div className="space-y-4">
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black">
         {/* Canlı önizleme: kendi sesini duymasın diye sessiz; ayna görüntü. */}
         <video
           ref={onizlemeRef}
@@ -303,9 +309,14 @@ export function KameraKaydi({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap [&>button]:max-sm:h-11 [&>button]:max-sm:w-full">
         {(asama === "hazir" || asama === "hata") && (
-          <button type="button" className={DUGME_SATIR_BIRINCIL} onClick={() => void kamerayiAc(kameraId)}>
+          <button
+            ref={acDugmesiRef}
+            type="button"
+            className={DUGME_SATIR_BIRINCIL}
+            onClick={() => void kamerayiAc(kameraId)}
+          >
             Kamerayı aç
           </button>
         )}

@@ -24,8 +24,11 @@ import {
 import { getErrorMessage } from "@/lib/errors";
 import { parseMoney } from "@/lib/money";
 import { DersSecici } from "@/components/tutor/DersSecici";
-import { MevcutVideoKarti, VideoYukleme } from "@/components/tutor/VideoYukleme";
-import { SegmentedControl } from "@/components/SegmentedControl";
+import { VideoAlani } from "@/components/tutor/VideoYukleme";
+import {
+  VideoGereksinimleriKarti,
+  VideoGereksinimleriKutusu,
+} from "@/components/tutor/VideoGereksinimleri";
 import { Modal } from "@/components/ui/Modal";
 import { useLevelScales, useSubjects } from "@/hooks/useSubjects";
 import type { Ders } from "@/api/subjects";
@@ -226,6 +229,7 @@ export default function TutorSettings() {
 
               {/* ── Sağ: profil kartı ve profile bağlı sayfalar ── */}
               <aside className="space-y-4 lg:sticky lg:top-24 lg:h-fit">
+                {aktif === "video" && <VideoGereksinimleriKutusu className="hidden lg:block" />}
                 <ProfilKarti tutor={data} />
                 <ProfileCompleteness tutor={data} showLink={false} />
 
@@ -708,34 +712,14 @@ function AciklamaBolumu({ tutor }: { tutor: TutorOut }) {
 
 /* ─── Video ──────────────────────────────────────────── */
 
-const VIDEO_YAP = [
-  "30 saniye ile 2 dakika arasında tut",
-  "Telefonu yatay tut, kamera göz hizanda olsun",
-  "Aydınlık bir yerde, sade bir arka planla çek",
-  "Kamerayı sabit bir yere koy",
-  "Yüzün baştan sona görünsün",
-  "Deneyimini ve belgelerini kısaca anlat",
-];
-const VIDEO_YAPMA = [
-  "Soyadını ya da iletişim bilgini söyleme",
-  "Logo veya bağlantı gösterme",
-  "Slayt ya da sunumla anlatma",
-  "Videoda senden başka kimse olmasın",
-];
-
-type VideoKaynagi = "link" | "yukle";
-const VIDEO_KAYNAKLARI: { value: VideoKaynagi; label: string }[] = [
-  { value: "link", label: "YouTube bağlantısı" },
-  { value: "yukle", label: "Video yükle" },
-];
-
 function VideoBolumu({ tutor }: { tutor: TutorOut }) {
   const uid = useId();
   const { kaydet, kaydediliyor } = useBolumKaydet();
   const acik = duzenlenebilir(tutor);
   const [url, setUrl] = useState(tutor.intro_video_url ?? "");
-  // Yüklenmiş video yayındaysa yükleme sekmesi açılır; aksi halde bağlantı.
-  const [kaynak, setKaynak] = useState<VideoKaynagi>(tutor.intro_video ? "yukle" : "link");
+  // Preply düzeni: YouTube/Vimeo ayrı sekme değil, "Bağlantı yerleştir"
+  // satırı. Yalnız bağlantı videosu olan öğretmende form açık gelir.
+  const [baglantiAcik, setBaglantiAcik] = useState(Boolean(tutor.intro_video_url && !tutor.intro_video));
   const [degistirOnayi, setDegistirOnayi] = useState(false);
 
   const linkKaydet = () => kaydet({ intro_video_url: url.trim() || null });
@@ -750,40 +734,63 @@ function VideoBolumu({ tutor }: { tutor: TutorOut }) {
     linkKaydet();
   };
 
-  return (
-    <BolumKabugu
-      baslik="Tanıtım videosu"
-      aciklama="Kısa bir video öğrencilerin seni tanımasını kolaylaştırır; profilinin en üstünde oynatılır. YouTube bağlantısı ekleyebilir ya da videoyu doğrudan yükleyebilirsin."
-    >
-      <div className="space-y-6">
-        <MevcutVideoKarti tutor={tutor} acik={acik} />
+  const baglantiSlot = (
+    <div>
+      <p className={ACIKLAMA}>
+        YouTube ya da Vimeo&apos;da hazır bir videon mu var?{" "}
+        <button
+          type="button"
+          className={`${METIN_BAGLANTI} inline-block py-2.5 -my-2.5 focus-visible:outline-none [&:focus-visible>span]:rounded-sm [&:focus-visible>span]:ring-2 [&:focus-visible>span]:ring-marka-focus [&:focus-visible>span]:ring-offset-2`}
+          aria-expanded={baglantiAcik}
+          aria-controls={`${uid}-baglanti`}
+          onClick={() => setBaglantiAcik((v) => !v)}
+        >
+          <span>Bağlantı yerleştir</span>
+        </button>
+      </p>
+      {baglantiAcik && (
+        <form id={`${uid}-baglanti`} onSubmit={gonder} className="mt-4 space-y-4">
+          <div>
+            <label htmlFor={`${uid}-video`} className={labelCls}>Video bağlantısı</label>
+            <input
+              id={`${uid}-video`}
+              type="url"
+              disabled={!acik}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              className={inputCls}
+              placeholder="https://www.youtube.com/watch?v=…"
+            />
+            <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
+              Boş bırakıp kaydedersen bağlantı kaldırılır.
+            </p>
+          </div>
+          <KaydetDugmesi tutor={tutor} kaydediliyor={kaydediliyor} />
+        </form>
+      )}
+    </div>
+  );
 
-        <div className="max-w-md">
-          <SegmentedControl options={VIDEO_KAYNAKLARI} value={kaynak} onChange={setKaynak} />
+  return (
+    <BolumKabugu baslik="Tanıtım videosu">
+      <div className="space-y-6">
+        <div>
+          <p className="text-lg font-semibold leading-7 text-slate-900">
+            En fazla 2 dakikalık, yatay çekilmiş bir video ekle
+          </p>
+          <p className={`mt-2 ${ACIKLAMA}`}>
+            Kendini ve dersini kısaca tanıt; video profilinin en üstünde oynatılır.
+          </p>
         </div>
 
-        {kaynak === "link" ? (
-          <form onSubmit={gonder} className="space-y-6">
-            <div>
-              <label htmlFor={`${uid}-video`} className={labelCls}>Video bağlantısı</label>
-              <input
-                id={`${uid}-video`}
-                type="url"
-                disabled={!acik}
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                className={inputCls}
-                placeholder="https://www.youtube.com/watch?v=…"
-              />
-              <p className={`mt-2 ${KUCUK_ACIKLAMA}`}>
-                YouTube bağlantısı yapıştır (Vimeo bağlantıları da çalışır). Boş bırakıp kaydedersen bağlantı kaldırılır.
-              </p>
-            </div>
-            <KaydetDugmesi tutor={tutor} kaydediliyor={kaydediliyor} />
-          </form>
-        ) : (
-          <VideoYukleme tutor={tutor} acik={acik} />
-        )}
+        <VideoAlani
+          tutor={tutor}
+          acik={acik}
+          // Telefonda gereksinimler oynatıcının altında dokunulabilir kart;
+          // masaüstünde sağ sütundaki kutu (bkz. sayfa `aside`).
+          ortaSlot={<VideoGereksinimleriKarti className="lg:hidden" />}
+          baglantiSlot={baglantiSlot}
+        />
       </div>
 
       <Modal
@@ -808,31 +815,6 @@ function VideoBolumu({ tutor }: { tutor: TutorOut }) {
           </button>
         </div>
       </Modal>
-
-      <div className="mt-10 grid gap-6 sm:grid-cols-2">
-        <div>
-          <h3 className={ETIKET}>İyi bir video için</h3>
-          <ul className="mt-3 space-y-2">
-            {VIDEO_YAP.map((m) => (
-              <li key={m} className={`flex gap-3 ${KUCUK_ACIKLAMA}`}>
-                <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                {m}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3 className={ETIKET}>Kaçın</h3>
-          <ul className="mt-3 space-y-2">
-            {VIDEO_YAPMA.map((m) => (
-              <li key={m} className={`flex gap-3 ${KUCUK_ACIKLAMA}`}>
-                <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" />
-                {m}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
     </BolumKabugu>
   );
 }
