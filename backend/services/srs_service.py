@@ -593,13 +593,29 @@ def _card_faces(note: SrsNote, template_ord: int) -> tuple[str, str]:
 async def _note_deck_or_404(
     db: AsyncSession, user: CurrentUser, deck_id: int
 ) -> SrsDeck:
-    """Not yazma yetkisi: deste sahibi VEYA (admin ∧ platform destesi)."""
+    """Not yazma yetkisi: deste sahibi VEYA (admin ∧ platform destesi ∧
+    ``srs_platform.manage``).
+
+    Platform destesi her öğrencinin gördüğü içeriktir; yazımı `/srs/admin/*`
+    uçlarındaki görev izniyle aynı izne bağlıdır. Yalnız ADMIN rolüne bakmak,
+    bu izni taşımayan (ör. ticaret/operasyon) adminlere kullanıcı uçlarından
+    (`/srs/decks/{id}/notes`, `/srs/notes/{id}`, `/srs/cards/bulk`) platform
+    içeriğini değiştirme yolu açıyordu.
+    """
     deck = await _get_live_deck(db, deck_id)
     if deck is None:
         raise _404("Deste bulunamadı")
+    if deck.visibility == "PLATFORM":
+        # Sahiplik burada yetmez: platform destesinin sahibi onu açan admindir
+        # ve izni sonradan geri alınmış olabilir.
+        if user.role_id == ROLE_ADMIN:
+            from services import admin_access_service
+
+            _rol, izinler = await admin_access_service.get_admin_access(db, user.id)
+            if "srs_platform.manage" in izinler:
+                return deck
+        raise _404("Deste bulunamadı")
     if _is_owner(deck, user):
-        return deck
-    if user.role_id == ROLE_ADMIN and deck.visibility == "PLATFORM":
         return deck
     raise _404("Deste bulunamadı")
 

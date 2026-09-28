@@ -656,7 +656,7 @@ async def suspend_tutor(
 ):
     # Yayındaki (APPROVED) bir ilanı yayından kaldırır (-> SUSPENDED).
     tutor = await _get_tutor_or_404(db, tutor_id)
-    result = await tutor_service.suspend(db, tutor)
+    result = await tutor_service.suspend(db, tutor, by_admin=True)
     await audit_service.record(
         db, actor=admin, action="tutor.suspend", target_type="tutor", target_id=tutor_id
     )
@@ -671,7 +671,7 @@ async def activate_tutor(
 ):
     # Pasif (SUSPENDED) bir ilanı yeniden yayına alır (-> APPROVED).
     tutor = await _get_tutor_or_404(db, tutor_id)
-    result = await tutor_service.activate(db, tutor)
+    result = await tutor_service.activate(db, tutor, by_admin=True)
     await audit_service.record(
         db, actor=admin, action="tutor.activate", target_type="tutor", target_id=tutor_id
     )
