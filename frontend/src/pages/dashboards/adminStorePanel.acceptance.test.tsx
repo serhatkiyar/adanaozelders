@@ -697,14 +697,14 @@ describe("E-1/E-2/E-3 · 'kayıt yok' ile 'sonuç yok' farklı", () => {
     // yanlış iki metni kıyaslıyordu (testin kendi kusuruydu).
     const bos = magaza();
     const bosMetin = (
-      await within(screen.getByRole("main")).findByRole("heading", { level: 2 })
+      await within(screen.getByRole("region", { name: "Mağaza içeriği" })).findByRole("heading", { level: 2 })
     ).textContent;
     bos.unmount();
 
     urunSunucusu([], 0);
     magaza("?stok=tukendi");
     const filtreliMetin = (
-      await within(screen.getByRole("main")).findByRole("heading", { level: 2 })
+      await within(screen.getByRole("region", { name: "Mağaza içeriği" })).findByRole("heading", { level: 2 })
     ).textContent;
 
     expect(
@@ -833,7 +833,8 @@ describe("F-5/F-6 · dashboard kartları doğru filtreli hedefe gider", () => {
   });
 
   it("'Hazırlanacak siparişler' kartı paketleme kuyruğuna gider", async () => {
-    izinVer("dashboard.view", "orders.view");
+    // Kart hedef ekranın alanına bağlı: paketleme kuyruğu `packing.view` ister.
+    izinVer("dashboard.view", "packing.view");
     sunucu("/admin/stats", { data: istatistik() }, "get");
     sunucu("/admin/revenue", { data: {} }, "get");
 
@@ -841,5 +842,20 @@ describe("F-5/F-6 · dashboard kartları doğru filtreli hedefe gider", () => {
 
     const kart = (await screen.findByText(/hazırlanacak sipariş/i)).closest("a");
     expect(kart?.getAttribute("href")).toContain("paketleme");
+  });
+
+  // Sayaçlar `is_disputed` ve `status == OPEN` sayar; listeler varsayılan
+  // olarak tüm kayıtları açar. Kart aynı filtreyle açılmazsa sayı ile liste ayrışır.
+  it("'İhtilaflı rezervasyonlar' ve 'Açık öğrenci talepleri' kartları filtreli listeye açılır", async () => {
+    izinVer("dashboard.view", "bookings.view", "demands.view");
+    sunucu("/admin/stats", { data: istatistik({ disputed_bookings: 3, open_demands: 12 }) }, "get");
+    sunucu("/admin/revenue", { data: {} }, "get");
+
+    sar(ROUTES.admin, <AdminDashboardPage />);
+
+    const ihtilaf = (await screen.findByText("İhtilaflı rezervasyonlar")).closest("a");
+    expect(ihtilaf?.getAttribute("href")).toContain("disputed=true");
+    const talep = screen.getByText("Açık öğrenci talepleri").closest("a");
+    expect(talep?.getAttribute("href")).toContain("status=OPEN");
   });
 });

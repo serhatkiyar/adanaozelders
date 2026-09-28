@@ -20,11 +20,12 @@
 // taze ve yetki denetimli alır; kâğıt teslimattan sonra da yaşadığı için
 // (kutunun üstünde çöpe/kapıya/komşuya gider) geri alınamayan tek kopyaya
 // kişisel veri basmamak veri minimizasyonunun kendisidir.
-import { useEffect, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { QRCodeSVG } from "qrcode.react";
 
 import { Button, ErrorState } from "@/components/admin/ui";
+import { useModalA11y } from "@/hooks/useModalA11y";
 import { usePackageLabel } from "@/hooks/usePacking";
 import { getErrorMessage } from "@/lib/errors";
 import { OPERATOR } from "@/lib/legalContent";
@@ -423,6 +424,18 @@ export function TermalEtiketKarti({ package: paket }: { package: PackageLabelDat
 
 /* ════════════════════════ Tek paketlik pencere ════════════════════════ */
 
+/**
+ * Tam ekran etiket katmanı bir penceredir: ESC kapatır, Tab arkadaki panele
+ * kaçmaz, kapanınca odak açan düğmeye döner (ortak kanca, pencere yığınıyla).
+ * Kaydırma kilidi BİLEREK kapalı: katman opak ve kendi içinde kayar; `body`
+ * taşmasına dokunmak baskı akışını riske atardı.
+ */
+function useEtiketPenceresi(onClose: () => void) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: true, onClose, panelRef, lockScroll: false });
+  return panelRef;
+}
+
 export function PackageLabel({
   // `package` strict mod'da (ES modülleri her zaman strict) ayrılmış bir
   // sözcüktür; prop adı sözleşme gereği `package` kalır, bağlanan ad değişir.
@@ -432,16 +445,16 @@ export function PackageLabel({
   package: PackageLabelData;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const kapat = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", kapat);
-    return () => window.removeEventListener("keydown", kapat);
-  }, [onClose]);
+  const panelRef = useEtiketPenceresi(onClose);
 
   return createPortal(
-    <div className="package-label-overlay fixed inset-0 z-[100] overflow-auto bg-slate-100 p-6 text-slate-900">
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Paket etiketi: ${paket.code}`}
+      className="package-label-overlay fixed inset-0 z-[100] overflow-auto bg-slate-100 p-6 text-slate-900"
+    >
       <style>{
         // Tek paket = tek etiket: kâğıt 100×150 mm termal (kullanıcı isteği,
         // 7 Eyl 2026). A4 sayfası ÇOKLU etiket dökümünde yaşamaya devam eder.
@@ -498,16 +511,16 @@ function EtiketKabuk({ baslik, onClose, children }: {
   onClose: () => void;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    const kapat = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", kapat);
-    return () => window.removeEventListener("keydown", kapat);
-  }, [onClose]);
+  const panelRef = useEtiketPenceresi(onClose);
 
   return createPortal(
-    <div className="package-label-overlay fixed inset-0 z-[100] overflow-auto bg-slate-100 p-6 text-slate-900">
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={baslik}
+      className="package-label-overlay fixed inset-0 z-[100] overflow-auto bg-slate-100 p-6 text-slate-900"
+    >
       <div className="mx-auto flex max-w-md items-center justify-between">
         <p className="text-sm font-semibold">{baslik}</p>
         <button

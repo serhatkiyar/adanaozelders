@@ -57,6 +57,15 @@ const FOCUSABLE =
 const MODAL_YIGINI: symbol[] = [];
 
 /**
+ * Şu an açık bir pencere var mı? Pencerenin ARKASINDAKİ sayfaya ait genel
+ * klavye kısayolları (panelin Ctrl+K ve `G` + harf dizisi) bunu sorar: açık
+ * bir pencerenin üstünde gezinmek, içindeki formu uyarısız söker.
+ */
+export function acikModalVarMi(): boolean {
+  return MODAL_YIGINI.length > 0;
+}
+
+/**
  * ── KAYDIRMA KİLİDİ SAYACI (TB-71) ──
  *
  * Yukarıdaki yığın İP-A8'de yalnız KLAVYE için kuruldu; kaydırma kilidi ona

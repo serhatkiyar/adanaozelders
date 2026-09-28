@@ -1,5 +1,4 @@
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/admin/ui";
 import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { useOpenReportCount } from "@/hooks/useReports";
@@ -118,7 +117,7 @@ export function AdminSidebar({
   const ayarlar = ADMIN_NAV_ITEMS.find((i) => i.to === ROUTES.adminSettings);
 
   const ogeSinifi = (aktif: boolean) =>
-    `group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus focus-visible:ring-offset-2 focus-visible:ring-offset-panel-surface ${
+    `group relative flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus focus-visible:ring-offset-2 focus-visible:ring-offset-panel-surface ${
       katli ? "justify-center px-0" : ""
     } ${
       aktif
@@ -135,8 +134,13 @@ export function AdminSidebar({
       {/* ── ÜST: marka · arama · katlama ── */}
       <div data-testid="rail-ust" className="flex flex-col gap-2 border-b border-panel-border p-3">
         <div className={`flex items-center gap-2 ${katli ? "justify-center" : ""}`}>
-          <Link
+          {/* Marka bağlantısı da bir gezinme öğesidir: kirli formda onay sorar. */}
+          <GezinmeBaglantisi
             to={ROUTES.admin}
+            end
+            // NavLink etkin olunca varsayılan "page" yazar; "bulunulan sayfa"
+            // yalnız gezinme listesindeki "Genel bakış" öğesidir.
+            aria-current="false"
             onClick={onNavigate}
             aria-label="Yönetim paneli ana sayfası"
             className="flex min-w-0 items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus"
@@ -150,7 +154,7 @@ export function AdminSidebar({
             {!katli && (
               <span className="min-w-0 truncate text-sm font-semibold text-panel-fg">Yönetim</span>
             )}
-          </Link>
+          </GezinmeBaglantisi>
           {!katli && onKatlamaDegistir && (
             <Button
               variant="ghost"
@@ -255,8 +259,14 @@ export function AdminSidebar({
                               {!katli && <span className="min-w-0 flex-1 truncate">{etiket}</span>}
                               {item.badge === "open-reports" && openReports > 0 && (
                                 <span
-                                  className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold ${
-                                    katli ? "absolute" : ""
+                                  className={`inline-flex items-center justify-center rounded-full text-[10px] font-semibold ${
+                                    // Katlıyken ikonun sağ üst köşesinde küçük
+                                    // gösterge (zil rozetiyle aynı dil); konum
+                                    // bağlantının `relative`ine göre, ikonun
+                                    // ortası `left-1/2`.
+                                    katli
+                                      ? "absolute left-1/2 top-1 ml-0.5 h-4 min-w-4 px-1 leading-none ring-2 ring-panel-surface"
+                                      : "h-5 min-w-5 px-1.5"
                                   } bg-rose-100 text-rose-700 `}
                                 >
                                   {openReports > 99 ? "99+" : openReports}

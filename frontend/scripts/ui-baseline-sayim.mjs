@@ -219,6 +219,7 @@ export const OLCUM_TABANI = [
   "src/components/admin/AccessState.tsx",
   "src/components/admin/CourierManager.tsx",
   "src/components/admin/ProductPicker.tsx",
+  "src/components/admin/SayfaGecisi.tsx",
   "src/components/admin/StockBadge.tsx",
   "src/components/admin/StockLedgerPanel.tsx",
   "src/components/admin/StockMovementTable.tsx",

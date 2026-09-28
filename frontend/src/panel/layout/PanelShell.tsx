@@ -227,16 +227,22 @@ export function PanelShell() {
           <Sider
             width={224}
             role="navigation"
-            style={{
-              position: "sticky",
-              top: 0,
-              height: "100vh",
-              display: "flex",
-              flexDirection: "column",
-            }}
+            style={{ position: "sticky", top: 0, height: "100vh" }}
           >
-            <div style={{ flex: 1, overflow: "auto" }}>{menu}</div>
-            {user && <PanelKullaniciKarti user={user} />}
+            {/* Sütun düzeni Sider'ın KENDİSİNE verilemez: AntD çocukları
+                `.ant-layout-sider-children` (blok, height:100%) içine sarar,
+                aside'daki flex oraya ulaşmaz. Eskiden öyleydi; menü kabı
+                kısıtlanmadığı için uzun menü 100vh'in altına taşıyor, sticky
+                Sider yüzünden alttaki öğeler hiç görünmüyor ve kaydırılamıyordu. */}
+            <div
+              data-testid="panel-sider-sutun"
+              style={{ display: "flex", flexDirection: "column", height: "100%" }}
+            >
+              <div data-testid="panel-sider-menu" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                {menu}
+              </div>
+              {user && <PanelKullaniciKarti user={user} />}
+            </div>
           </Sider>
         )}
         <Layout>
@@ -275,7 +281,7 @@ export function PanelShell() {
             },
           }}
         >
-          <nav role="navigation" style={{ flex: 1, overflow: "auto" }}>
+          <nav role="navigation" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
             {menu}
           </nav>
           {user && <PanelKullaniciKarti user={user} />}

@@ -7,8 +7,11 @@ import {
   hasItemDetail,
   totalQuantity,
 } from "@/lib/orderItems";
+import { useRef } from "react";
 import { createPortal } from "react-dom";
 import { QRCodeSVG } from "qrcode.react";
+
+import { useModalA11y } from "@/hooks/useModalA11y";
 
 import type { DeliveryRun } from "@/types";
 
@@ -20,8 +23,20 @@ const PREF_PRINT: Record<string, string> = {
 
 export function LabelSheet({ run, onClose }: { run: DeliveryRun; onClose: () => void }) {
   const stops = [...run.stops].sort((a, b) => a.sequence - b.sequence);
+  // Tam ekran katman bir penceredir: ESC kapatır, Tab arkadaki panele kaçmaz,
+  // kapanınca odak açan düğmeye döner. Kaydırma kilidi BİLEREK kapalı: katman
+  // opak ve kendi içinde kayar; `body` taşmasına dokunmak baskı akışını
+  // (tüm etiketlerin sayfalara dökülmesi) riske atardı.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: true, onClose, panelRef, lockScroll: false });
   return createPortal(
-    <div className="delivery-label-sheet fixed inset-0 z-[100] overflow-auto bg-slate-100 text-slate-900">
+    <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Tur #${run.id} etiketleri`}
+      className="delivery-label-sheet fixed inset-0 z-[100] overflow-auto bg-slate-100 text-slate-900"
+    >
       {/* index.css'teki fatura print kuralı `body * { visibility: hidden }` ile
           HER ŞEYİ gizliyor ve yalnız #order-invoice'i geri açıyor. Etiket
           sayfası portal ile body'ye basıldığı için o kuralın kapsamına giriyor;

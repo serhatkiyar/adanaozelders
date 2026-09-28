@@ -2,6 +2,7 @@
 // yetkisiz deep-link'te dostane 403, view-only rolde sakin salt-okunur şerit.
 import { useAuthStore } from "@/store/authStore";
 import { adminAreaAccess, type AdminAreaAccess } from "@/lib/adminAccess";
+import { EmptyState } from "@/components/admin/ui";
 
 /** Ekranın alan izinlerini auth store'daki admin_permissions'tan türetir. */
 export function useAdminAreaAccess(...prefixes: string[]): AdminAreaAccess {
@@ -39,5 +40,22 @@ export function ReadOnlyNotice() {
     <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 ">
       Salt okunur görünüm: rolünüz bu bölümde değişiklik yapma izni içermiyor.
     </p>
+  );
+}
+
+/**
+ * `/yonetim/...` altında eşleşmeyen yol — admin KABUĞU İÇİNDE 404.
+ *
+ * Bu rota yokken `/yonetim/xyz` gibi iki parçalı adres `/:ilce/:dersSayfasi`
+ * SEO rotasına, daha derinleri en sondaki `*`e düşüyor; yönetici kenar çubuğu
+ * olmadan public site 404'ünü görüyordu. Menü kabukta durduğu için ayrıca
+ * "geri dön" bağlantısı verilmez (Genel Bakış her yöneticiye açık değildir).
+ */
+export function AdminSayfaBulunamadi() {
+  return (
+    <EmptyState
+      title="Sayfa bulunamadı"
+      description="Bu yönetim adresi mevcut değil ya da taşınmış. Soldaki menüden devam edebilirsiniz."
+    />
   );
 }

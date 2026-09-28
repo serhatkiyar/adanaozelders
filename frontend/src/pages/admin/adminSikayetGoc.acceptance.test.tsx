@@ -169,7 +169,11 @@ describe("Ş-1 · kuyruk listesi ve yetki", () => {
     izinVer("reports.view", "reports.manage");
     liste([SIKAYET()]);
     sar();
-    expect(await screen.findAllByText("REVIEW #88")).not.toHaveLength(0);
+    // Hedef türü Türkçe etiketle görünür; ham enum kodu (REVIEW) basılmaz.
+    expect(await screen.findAllByText("Değerlendirme #88")).not.toHaveLength(0);
+    expect(screen.queryByText("REVIEW #88")).toBeNull();
+    const secenek = screen.getByRole("option", { name: "Rezervasyon yorumu" }) as HTMLOptionElement;
+    expect(secenek.value, "süzgeç değeri adres/API sözleşmesidir, ham kalır").toBe("BOOKING_COMMENT");
     expect(screen.getAllByText("Taciz / hakaret")).not.toHaveLength(0);
   });
 

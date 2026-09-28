@@ -140,7 +140,7 @@ export default function AdminDemandsPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
-        <div className="grid gap-3 sm:grid-cols-[minmax(16rem,1fr)_12rem_auto]">
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-[minmax(16rem,1fr)_12rem_auto]">
           <input
             aria-label="Ders talebi ara"
             value={search}

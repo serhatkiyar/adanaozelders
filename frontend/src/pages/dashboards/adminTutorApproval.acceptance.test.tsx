@@ -209,6 +209,18 @@ describe("A-1 · onay kuyruğu /yonetim/egitmenler altında render ediliyor", ()
     await screen.findByText("Yayinda Ogretmen");
     expect(screen.queryByRole("heading", { name: /onay bekleyen/i })).toBeNull();
   });
+
+  it("liste yüklenemezse 'Yeniden dene' ile tekrar istenir", async () => {
+    izinVer(TUTORS_VIEW, TUTORS_MANAGE);
+    sunucu("/admin/tutors", { status: 500, data: { detail: "x" } }, "get");
+
+    sar();
+
+    const yenidenDene = await screen.findByRole("button", { name: "Yeniden dene" });
+    tutorSunucusu([YAYINDA]);
+    fireEvent.click(yenidenDene);
+    expect(await screen.findByText("Yayinda Ogretmen")).toBeTruthy();
+  });
 });
 
 /* ═════════════════════ A-2 · Satır aksiyonları ═════════════════════ */
@@ -508,5 +520,28 @@ describe("İP-A7d3 · ad değişikliği kuyruğunun süzgeci ADRESTE yaşar", ()
       expect(g, "kuyruk isteği hiç gitmedi").toBeTruthy();
       expect(g!.url).not.toContain("drop_table");
     });
+  });
+
+  it("talep kartı kişiyi ADIYLA ve rol etiketiyle gösterir (yalnız kimlik değil)", async () => {
+    izinVer(USERS_VIEW, USERS_MANAGE);
+    sunucu(
+      "/admin/name-change-requests",
+      {
+        data: [
+          {
+            id: 1, user_id: 12, role_id: 2, kind: "NAME",
+            new_first_name: "Yeni", new_last_name: "Ad", reason: "evlilik",
+            status: "PENDING", created_at: "2026-09-01T10:00:00Z",
+            current_first_name: "Mevcut", current_last_name: "Egitmen",
+          },
+        ],
+      },
+      "get",
+    );
+    adDegisiklikleriSar("/yonetim/ad-degisiklikleri");
+
+    expect(await screen.findByText("Mevcut Egitmen")).toBeTruthy();
+    expect(screen.getByText(/Ad-Soyad · Öğretmen · #12/)).toBeTruthy();
+    expect(screen.queryByText(/rol 2/)).toBeNull();
   });
 });

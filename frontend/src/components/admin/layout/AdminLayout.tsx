@@ -35,6 +35,7 @@ export default function AdminLayout() {
   const [komutAcik, setKomutAcik] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
   const katli = usePanelKabugu((s) => s.katli);
   const katlamaDegistir = usePanelKabugu((s) => s.katlamaDegistir);
   const current = getAdminNavItem(pathname);
@@ -48,6 +49,10 @@ export default function AdminLayout() {
 
   useEffect(() => {
     setDrawerOpen(false);
+    // Kayan öğe pencere değil `<main>` ve kabuk rota değişince yeniden
+    // kurulmaz: sıfırlanmazsa yeni ekran önceki listenin kaydırma konumunda,
+    // başlığı ve filtreleri görünmeden açılıyordu.
+    if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [pathname]);
 
   useEffect(() => {
@@ -107,7 +112,7 @@ export default function AdminLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminPageHeader onMenuAc={() => setDrawerOpen(true)} />
-        <main id="admin-main-content" className="min-h-0 flex-1 overflow-y-auto">
+        <main ref={mainRef} id="admin-main-content" className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1200px] px-4 pb-12 pt-6 sm:px-6 lg:px-8">
             <Outlet />
           </div>

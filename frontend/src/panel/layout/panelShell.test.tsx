@@ -196,6 +196,23 @@ describe("PanelShell", () => {
     expect(sider?.style.width).toBe("224px");
   });
 
+  it("uzun menü Sider içinde kayar: sütun düzeni AntD'nin çocuk sarmalayıcısının içinde kurulur", () => {
+    setViewport(1280);
+    const { container } = render(
+      <MemoryRouter>
+        <PanelShell />
+      </MemoryRouter>,
+    );
+    // Flex aside'a verilirse `.ant-layout-sider-children`a ulaşmaz ve menü
+    // kabı kısıtlanmaz — alttaki öğeler 100vh'in altında kalır.
+    const sutun = screen.getByTestId("panel-sider-sutun");
+    expect(sutun.parentElement).toHaveClass("ant-layout-sider-children");
+    expect(sutun.style).toMatchObject({ display: "flex", flexDirection: "column", height: "100%" });
+    const menuKabi = screen.getByTestId("panel-sider-menu");
+    expect(menuKabi).toHaveStyle({ minHeight: "0px", overflowY: "auto" });
+    expect(container.querySelector(".ant-layout-sider")?.getAttribute("style")).not.toContain("display: flex");
+  });
+
   it("mobil menü düğmesi büyük dokunma hedefi boyutundadır", () => {
     setViewport(390);
     render(

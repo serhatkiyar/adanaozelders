@@ -9,7 +9,7 @@
 // üzerinden veri çeker; "N bileşen render oldu" değil, "N GERÇEK etiket ve
 // içindeki GERÇEK QR yükü" ölçülür.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
@@ -122,19 +122,30 @@ async function sayfa(): Promise<SayfaModulu["PackingLabelSheet"]> {
   return (await modul()).PackingLabelSheet;
 }
 
-async function sar(ids: number[]) {
+async function sar(ids: number[], onClose: () => void = () => {}) {
   const PackingLabelSheet = await sayfa();
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={qc}>
-      <PackingLabelSheet packageIds={ids} onClose={() => {}} />
+      <PackingLabelSheet packageIds={ids} onClose={onClose} />
     </QueryClientProvider>,
   );
 }
 
 describe("PackingLabelSheet — çoklu etiket kâğıdı", () => {
+  it("katman bir penceredir: role=dialog + aria-modal, ESC kapatır", async () => {
+    etiketler = { 11: { data: ETIKET(11) } };
+    let kapandi = 0;
+    await sar([11], () => (kapandi += 1));
+    const pencere = screen.getByRole("dialog", { name: "Paket etiketleri" });
+    expect(pencere.getAttribute("aria-modal")).toBe("true");
+    expect(pencere.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document.activeElement ?? document, { key: "Escape" });
+    expect(kapandi).toBe(1);
+  });
+
   it("N paket için N etiket basar ve her QR'a KENDİ yükü gider", async () => {
     // "Sayfa açıldı" kanıt değildir: her etiketin kendi paketine ait olduğu,
     // QRCodeSVG'ye GERÇEKTEN geçirilen `value`'larla ölçülür. Aynı yükün iki

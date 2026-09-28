@@ -18,7 +18,9 @@ function useInvalidateAll() {
     qc.invalidateQueries({ queryKey: ["stock-movements"] });
     qc.invalidateQueries({ queryKey: ["stock-verify"] });
     qc.invalidateQueries({ queryKey: ["stock-audit"] });
-    qc.invalidateQueries({ queryKey: ["admin", "products"] });
+    // Admin ürün listesi + düzenleme penceresi (`useStore.ts`'deki anahtarlar).
+    qc.invalidateQueries({ queryKey: ["store", "admin", "products"] });
+    qc.invalidateQueries({ queryKey: ["store", "admin", "product"] });
     qc.invalidateQueries({ queryKey: ["store", "products"] });
   };
 }

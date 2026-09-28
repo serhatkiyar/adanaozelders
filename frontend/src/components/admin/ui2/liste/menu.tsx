@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -76,9 +77,77 @@ export function Menu({
   tetikleyiciSinif,
 }: MenuProps) {
   const [acik, setAcik] = useState(false);
+  const [konum, setKonum] = useState<React.CSSProperties | null>(null);
   const kapsayiciRef = useRef<HTMLDivElement>(null);
   const tetikleyiciRef = useRef<HTMLButtonElement>(null);
+  const katmanRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+
+  const icerikRef = useRef<HTMLDivElement>(null);
+
+  // Katman `fixed` konumlanır: tablo kabının `overflow-hidden`/`overflow-x-auto`
+  // sarmalayıcıları `absolute` bir katmanı kırpıyordu — son satırların
+  // menüsündeki alttaki öğeler (ör. "Sil") görünmüyor, mobil kartta hiç
+  // ulaşılamıyordu. Katman DOM'da yine kapsayıcının içinde durur; dış tıklama
+  // ve klavye mantığı değişmez.
+  //
+  // Yön: altta yer varsa aşağı, yoksa üstte yer varsa yukarı; ikisine de
+  // sığmıyorsa boşluğu büyük olan yöne açılır ve yüksekliği o boşlukla
+  // sınırlanıp içeride kayar. İçerik açıkken değişebilir ("Filtre ekle": önce
+  // kısa kriter listesi, sonra uzun değer listesi; ya da yükleniyor → liste),
+  // bu yüzden içerik boyu değişince yeniden yerleşir.
+  const yerlestir = useCallback(() => {
+    const tetikleyici = tetikleyiciRef.current;
+    const katman = katmanRef.current;
+    if (!tetikleyici || !katman) return;
+    const kutu = tetikleyici.getBoundingClientRect();
+    // `scrollHeight`: yükseklik sınırı uygulanmışken de içeriğin tam boyu.
+    const gereken = katman.scrollHeight;
+    const bosluk = 4;
+    const kenar = 8;
+    const alttaYer = window.innerHeight - kutu.bottom - bosluk - kenar;
+    const usttekiYer = kutu.top - bosluk - kenar;
+    const asagi = gereken <= alttaYer || (gereken > usttekiYer && alttaYer >= usttekiYer);
+    const yatay: React.CSSProperties =
+      hizala === "sag"
+        ? { right: Math.max(bosluk, document.documentElement.clientWidth - kutu.right) }
+        : { left: Math.max(bosluk, kutu.left) };
+    const yeni: React.CSSProperties = asagi
+      ? { ...yatay, top: kutu.bottom + bosluk, maxHeight: Math.max(0, alttaYer) }
+      : { ...yatay, bottom: window.innerHeight - kutu.top + bosluk, maxHeight: Math.max(0, usttekiYer) };
+    // Aynı değerle yeniden render etme: ResizeObserver döngüsüne girmesin.
+    setKonum((eski) => (JSON.stringify(eski) === JSON.stringify(yeni) ? eski : yeni));
+  }, [hizala]);
+
+  useLayoutEffect(() => {
+    if (!acik) {
+      setKonum(null);
+      return;
+    }
+    yerlestir();
+    const icerik = icerikRef.current;
+    if (!icerik || typeof ResizeObserver === "undefined") return;
+    const gozlemci = new ResizeObserver(() => yerlestir());
+    gozlemci.observe(icerik);
+    return () => gozlemci.disconnect();
+  }, [acik, yerlestir]);
+
+  // Sabit katman kaydırmada tetikleyiciden kopar; kaydırma/yeniden boyutlanma
+  // menüyü kapatır (odak taşınmaz — kullanıcı sayfada gezinmeyi seçti).
+  useEffect(() => {
+    if (!acik) return;
+    const kapatSessiz = (olay: Event) => {
+      const hedef = olay.target;
+      if (olay.type === "scroll" && hedef instanceof Node && katmanRef.current?.contains(hedef)) return;
+      setAcik(false);
+    };
+    window.addEventListener("scroll", kapatSessiz, true);
+    window.addEventListener("resize", kapatSessiz);
+    return () => {
+      window.removeEventListener("scroll", kapatSessiz, true);
+      window.removeEventListener("resize", kapatSessiz);
+    };
+  }, [acik]);
 
   const kapat = useCallback((odakDon = true) => {
     setAcik(false);
@@ -187,14 +256,19 @@ export function Menu({
 
       {acik && (
         <div
+          ref={katmanRef}
           id={menuId}
           role="menu"
           aria-label={etiket}
-          className={`absolute top-full z-40 mt-1 ${
-            hizala === "sag" ? "right-0" : "left-0"
-          } ${genislikSinifi} overflow-hidden rounded-xl border border-panel-border bg-panel-surface py-1 shadow-lg`}
+          // İlk ölçüm karesinde görünmez: yükseklik okunmadan yön seçilemez.
+          style={konum ?? { visibility: "hidden", top: 0, left: 0 }}
+          className={`fixed z-40 ${genislikSinifi} overflow-y-auto overscroll-contain rounded-xl border border-panel-border bg-panel-surface py-1 shadow-lg`}
         >
-          {children(() => kapat())}
+          {/* Boyu gözlenen iç kap: katmanın kendisi yükseklik sınırına
+              takılınca büyümez, içerik değişimini ancak bu kap gösterir. */}
+          <div ref={icerikRef} role="none">
+            {children(() => kapat())}
+          </div>
         </div>
       )}
     </div>

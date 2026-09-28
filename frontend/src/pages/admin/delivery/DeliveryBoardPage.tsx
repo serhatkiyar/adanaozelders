@@ -6,6 +6,10 @@
 // Kapasite sözleşmesi: aracın `max_stops`'u aşılıyorsa uyarı GÖRÜNÜR ama işlem
 // ENGELLENMEZ — uyarı bilgilendirir, karar operatörün (kabul matrisi D-12).
 //
+// Sürükle-bırak fare dışında çalışmaz (klavye, çoğu dokunmatik tarayıcı): her
+// havuz kartında aynı atamayı yapan bir "Tura ata" menüsü de vardır. İkisi de
+// AYNI `assignToRun` yolundan geçer — kapasite uyarısı ve istek birebir aynı.
+//
 // Sürüklenen id `dataTransfer`'da DEĞİL component state'inde taşınır: HTML5
 // dataTransfer güvenlik modeli drop'tan önce veriyi okutmaz ve jsdom'da hiç
 // yoktur; state hem gerçek tarayıcıda hem testte aynı davranır (D-11).
@@ -24,6 +28,7 @@ import {
   PageSkeleton,
 } from "@/components/admin/ui";
 import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Menu, MenuOgesi } from "@/components/admin/ui2/liste/menu";
 import { RunStatusChip, TruckIcon, todayIso } from "@/components/admin/delivery/bits";
 import {
   useAddBoardStops,
@@ -45,12 +50,18 @@ function activeStopCount(run: BoardRun): number {
    olanağını görünür kılar; içerik iki satırda kalır (kart enflasyonu yok). */
 function PoolCard({
   order,
+  runs,
+  runLabel,
   onDragStart,
   onDragEnd,
+  onAssign,
 }: {
   order: BoardPoolOrder;
+  runs: BoardRun[];
+  runLabel: (run: BoardRun) => string;
   onDragStart: () => void;
   onDragEnd: () => void;
+  onAssign: (run: BoardRun) => void;
 }) {
   return (
     /* Sürüklenebilir havuz kartı doğası gereği etkileşimlidir; HTML5 drag
@@ -91,6 +102,33 @@ function PoolCard({
         <span className="shrink-0 text-xs tabular-nums text-slate-500 ">
           ₺{order.total}
         </span>
+      )}
+      {/* Sürüklemenin klavye/dokunmatik karşılığı — aynı atama yolu. */}
+      {runs.length > 0 && (
+        <Menu
+          etiket={`Sipariş #${order.order_id} için tur seç`}
+          tetikleyiciIcerik={
+            <>
+              Tura ata
+              <span className="sr-only">{`, Sipariş #${order.order_id}`}</span>
+            </>
+          }
+          genislikSinifi="w-64"
+        >
+          {(kapat) =>
+            runs.map((r) => (
+              <MenuOgesi
+                key={r.id}
+                onSec={() => {
+                  kapat();
+                  onAssign(r);
+                }}
+              >
+                {runLabel(r)}
+              </MenuOgesi>
+            ))
+          }
+        </Menu>
       )}
     </li>
   );
@@ -188,7 +226,7 @@ function RunLane({
 
       {stops.length === 0 ? (
         <p className="mt-3 pl-12 text-xs text-slate-400 ">
-          Durak yok: havuzdan bir sipariş sürükleyip bırakın.
+          Durak yok: havuzdan bir sipariş sürükleyip bırakın ya da “Tura ata”yı kullanın.
         </p>
       ) : (
         <ol className="mt-3 space-y-1.5 pl-12">
@@ -241,11 +279,15 @@ export default function DeliveryBoardPage() {
   );
   const dispatchable = pool.filter((o) => o.lat != null && o.lng != null).length;
 
-  const handleDrop = (run: BoardRun) => {
-    if (dragId == null) return;
-    const orderId = dragId;
-    setDragId(null);
+  const runLabel = (run: BoardRun) => {
+    const vehicle = vehicleById.get(run.vehicle_id);
+    const label = vehicle?.label ?? run.vehicle ?? `Araç ${run.vehicle_id}`;
+    const max = vehicle?.max_stops;
+    return `Tur #${run.id} · ${label} (${activeStopCount(run)}${max != null ? `/${max}` : ""} durak)`;
+  };
 
+  // Tek atama yolu: sürükle-bırak da "Tura ata" menüsü de buradan geçer.
+  const assignToRun = (orderId: number, run: BoardRun) => {
     const max = vehicleById.get(run.vehicle_id)?.max_stops;
     if (max != null && activeStopCount(run) + 1 > max) {
       setWarned((w) => (w[run.id] ? w : { ...w, [run.id]: true }));
@@ -260,6 +302,13 @@ export default function DeliveryBoardPage() {
     );
   };
 
+  const handleDrop = (run: BoardRun) => {
+    if (dragId == null) return;
+    const orderId = dragId;
+    setDragId(null);
+    assignToRun(orderId, run);
+  };
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-end gap-3">
@@ -268,8 +317,8 @@ export default function DeliveryBoardPage() {
             Gün Tahtası
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 ">
-            Havuzdaki siparişi bir turun üzerine sürükleyip bırakın ya da günü
-            tek tuşla araçlara bölüştürün.
+            Havuzdaki siparişi bir turun üzerine sürükleyip bırakın (ya da
+            “Tura ata” ile seçin) veya günü tek tuşla araçlara bölüştürün.
           </p>
         </div>
         <input
@@ -324,8 +373,11 @@ export default function DeliveryBoardPage() {
                   <PoolCard
                     key={o.order_id}
                     order={o}
+                    runs={runs}
+                    runLabel={runLabel}
                     onDragStart={() => setDragId(o.order_id)}
                     onDragEnd={() => setDragId(null)}
+                    onAssign={(r) => assignToRun(o.order_id, r)}
                   />
                 ))}
               </ul>

@@ -40,7 +40,7 @@ import { z } from "zod";
 
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { Button, ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
 import {
   DuzenlemePenceresi,
   useDuzenlemeYuzeyi,
@@ -85,7 +85,7 @@ type Karar = { kind: "approve" | "reject" | "delete"; library: LibrarySearchOut 
 
 export default function AdminLibraries() {
   const { canView, canManage } = useAdminAreaAccess("libraries");
-  const { data, isLoading, isError, error } = useAdminLibraries();
+  const { data, isLoading, isError, error, refetch } = useAdminLibraries();
 
   // Dört pencere, dört yüzey — hiçbiri `useState` değil.
   const kararYuzeyi = useDuzenlemeYuzeyi<Karar, void>();
@@ -203,9 +203,10 @@ export default function AdminLibraries() {
           ))}
         </div>
       ) : isError ? (
-        <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ">
-          {getErrorMessage(error, "Kütüphaneler yüklenemedi.")}
-        </div>
+        <ErrorState
+          description={getErrorMessage(error, "Kütüphaneler yüklenemedi.")}
+          onRetry={() => void refetch()}
+        />
       ) : !data || data.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-500 ">
           Henüz kütüphane eklenmedi.

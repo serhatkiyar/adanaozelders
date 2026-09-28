@@ -389,6 +389,7 @@ const KAPI_KAPSAMI = [
   "src/components/ui/Modal.tsx",
   "src/components/admin/AccessState.tsx",
   "src/components/admin/CourierManager.tsx",
+  "src/components/admin/SayfaGecisi.tsx",
   "src/components/admin/StockBadge.tsx",
   "src/components/admin/StockLedgerPanel.tsx",
   "src/components/admin/StockMovementTable.tsx",
@@ -716,6 +717,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/CourierManager.tsx": "kosullu",
   "src/components/admin/StockBadge.tsx": "sunum",
   "src/components/admin/StockLedgerPanel.tsx": "kosullu",
+  // Sayfa düğmeleri yalnız liste birden çok sayfaya taştığında doğar;
+  // propsuz (tek sayfa) hâlde hiçbir şey çizilmez.
+  "src/components/admin/SayfaGecisi.tsx": "kosullu",
   "src/components/admin/StockMovementTable.tsx": "sunum",
   "src/components/admin/delivery/CapacityStrip.tsx": "sunum",
   "src/components/admin/delivery/ItemLines.tsx": "sunum",

@@ -161,6 +161,26 @@ async def list_admin(
     return list((await db.execute(stmt)).scalars().all())
 
 
+async def current_names(
+    db: AsyncSession, reqs: list[NameChangeRequest]
+) -> dict[tuple[int, int], tuple[str, str]]:
+    """Talep sahiplerinin güncel adları — rol tablosu başına tek `IN` sorgusu."""
+    ids_by_role: dict[int, set[int]] = {}
+    for req in reqs:
+        ids_by_role.setdefault(req.role_id, set()).add(req.user_id)
+    out: dict[tuple[int, int], tuple[str, str]] = {}
+    for role_id, ids in ids_by_role.items():
+        model = _ROLE_MODELS.get(role_id)
+        if model is None:
+            continue
+        rows = await db.execute(
+            select(model.id, model.first_name, model.last_name).where(model.id.in_(ids))
+        )
+        for uid, first, last in rows.all():
+            out[(role_id, uid)] = (first, last)
+    return out
+
+
 async def _get_pending(db: AsyncSession, request_id: int) -> NameChangeRequest:
     req = await db.get(NameChangeRequest, request_id)
     if req is None:

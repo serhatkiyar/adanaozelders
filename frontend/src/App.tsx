@@ -234,6 +234,9 @@ const AdminReportsPage = lazy(() => import("@/pages/admin/AdminReportsPage"));
 const AdminDemandsPage = lazy(() => import("@/pages/admin/AdminDemandsPage"));
 const AdminBookingsPage = lazy(() => import("@/pages/admin/AdminBookingsPage"));
 const AdminAccessPage = lazy(() => import("@/pages/admin/AdminAccessPage"));
+const AdminSayfaBulunamadi = lazy(() =>
+  import("@/components/admin/AccessState").then((m) => ({ default: m.AdminSayfaBulunamadi }))
+);
 const AdminSettingsPage = lazy(() => import("@/pages/admin/AdminSettingsPage"));
 const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
 const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
@@ -826,10 +829,13 @@ function App() {
               <Route path="blog" element={<AdminBlogListPage />} />
               <Route path="blog/yeni" element={<AdminBlogEditorPage />} />
               <Route path="blog/:postId" element={<AdminBlogEditorPage />} />
-              <Route path="magaza" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
-              <Route path="magaza/ana-sayfa" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
-              <Route path="magaza/kampanyalar" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
-              <Route path="magaza/koleksiyonlar" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              {/* Kök, izinli ilk sekmeye `AdminStore` içinde yönlenir; eski vitrin
+                  takma adları da oraya gider (sabit Ürünler hedefi, ürün
+                  yetkisi olmayan yöneticiye 403 gösteriyordu). */}
+              <Route path="magaza" element={<AdminStore />} />
+              <Route path="magaza/ana-sayfa" element={<Navigate replace to={ROUTES.adminStoreRoot} />} />
+              <Route path="magaza/kampanyalar" element={<Navigate replace to={ROUTES.adminStoreRoot} />} />
+              <Route path="magaza/koleksiyonlar" element={<Navigate replace to={ROUTES.adminStoreRoot} />} />
               <Route path="magaza/urunler" element={<AdminStore />} />
               <Route path="magaza/kategoriler" element={<AdminStore />} />
               <Route path="magaza/siparisler" element={<AdminStore />} />
@@ -837,8 +843,8 @@ function App() {
               <Route path="magaza/kuponlar" element={<AdminStore />} />
               <Route path="magaza/stok-hareketleri" element={<Navigate replace to={ROUTES.adminInventoryMovements} />} />
               <Route path="magaza/tedarikci" element={<AdminStore />} />
-              <Route path="magaza/vitrin-sayfalari" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
-              <Route path="magaza/urun-gruplari" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              <Route path="magaza/vitrin-sayfalari" element={<Navigate replace to={ROUTES.adminStoreRoot} />} />
+              <Route path="magaza/urun-gruplari" element={<Navigate replace to={ROUTES.adminStoreRoot} />} />
               <Route path="envanter" element={<InventoryLayout />}>
                 <Route index element={<InventoryOverviewPage />} />
                 <Route path="sayimlar" element={<CountSessionsPage />} />
@@ -873,8 +879,11 @@ function App() {
               <Route path="hakedisler" element={<AdminPayoutsPage />} />
               <Route path="yetkiler" element={<AdminAccessPage />} />
               <Route path="ayarlar" element={<AdminSettingsPage />} />
-              <Route path="vitrin-gorselleri" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
-              <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              <Route path="vitrin-gorselleri" element={<Navigate replace to={ROUTES.adminStoreRoot} />} />
+              <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreRoot} />} />
+              {/* Eşleşmeyen /yonetim/... yolu kabuk içinde 404 gösterir; yoksa
+                  `/:ilce/:dersSayfasi` SEO rotasına düşüp public 404 açılıyordu. */}
+              <Route path="*" element={<AdminSayfaBulunamadi />} />
             </Route>
             <Route path={PATHS.adminNew} element={<PanelShell />}>
               <Route index element={<GostergePaneli />} />

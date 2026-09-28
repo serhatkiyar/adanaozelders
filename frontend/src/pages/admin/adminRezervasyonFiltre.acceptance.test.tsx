@@ -318,3 +318,68 @@ describe("İP-A7d1 (b) · göçün getirdiği davranış", () => {
     expect(within(mobil(container)).getByRole("button", { name: "İptal / iade" })).toBeTruthy();
   });
 });
+
+/* ══════════════ 3. İhtilaf kararı — iade / öğretmene ödeme ══════════════ */
+
+describe("ihtilaflı derste karar (iade / öğretmene öde)", () => {
+  const IHTILAFLI = { ...REZ, status: "COMPLETED", is_disputed: true };
+  const yazimlar = () => istekler.filter((i) => i.method !== "get");
+
+  it("onay verilmeden istek GİTMEZ; vazgeçince de gitmez", async () => {
+    kayitlar = [IHTILAFLI];
+    const { container } = sar();
+    await screen.findAllByText(/Ayşe Yılmaz/);
+
+    fireEvent.click(within(masaustu(container)).getByRole("button", { name: "Öğrenciye iade et" }));
+    const pencere = await screen.findByRole("dialog");
+    // Not zorunlu: boş notla onay isteği göndermez.
+    fireEvent.click(within(pencere).getByRole("button", { name: "İade et" }));
+    expect(yazimlar()).toHaveLength(0);
+
+    fireEvent.click(within(pencere).getByRole("button", { name: "Vazgeç" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(yazimlar()).toHaveLength(0);
+  });
+
+  it.each([
+    ["Öğrenciye iade et", "İade et", "refund"],
+    ["Öğretmene öde", "Öğretmene öde", "release"],
+  ])("'%s' onaylanınca doğru gövdeyle POST gider (tutar YOK)", async (dugme, onay, karar) => {
+    kayitlar = [IHTILAFLI];
+    const { container } = sar();
+    await screen.findAllByText(/Ayşe Yılmaz/);
+
+    fireEvent.click(within(masaustu(container)).getByRole("button", { name: dugme }));
+    const pencere = await screen.findByRole("dialog");
+    fireEvent.change(within(pencere).getByRole("textbox"), { target: { value: "Ders yapılmadı" } });
+    fireEvent.click(within(pencere).getByRole("button", { name: onay }));
+
+    await waitFor(() => expect(yazimlar()).toHaveLength(1));
+    expect(yazimlar()[0]).toEqual({
+      method: "post",
+      url: "/admin/bookings/7/dispute/resolve",
+      body: { decision: karar, note: "Ders yapılmadı" },
+    });
+  });
+
+  it("karar verilemeyen durumda (bekleyen) ve ihtilafsız satırda aksiyon yok", async () => {
+    kayitlar = [{ ...REZ, is_disputed: true }, { ...REZ, id: 8, status: "COMPLETED" }];
+    const { container } = sar();
+    await screen.findAllByText(/Ayşe Yılmaz/);
+    expect(within(masaustu(container)).queryByRole("button", { name: "Öğrenciye iade et" })).toBeNull();
+    expect(within(masaustu(container)).queryByRole("button", { name: "Öğretmene öde" })).toBeNull();
+  });
+
+  it("bookings.manage izni olmayan yöneticide karar aksiyonu yok", async () => {
+    kayitlar = [IHTILAFLI];
+    useAuthStore.setState({
+      token: "t",
+      isAuthenticated: true,
+      user: { id: 1, role_id: 1, admin_permissions: ["bookings.view"] } as never,
+    });
+    const { container } = sar();
+    await screen.findAllByText(/Ayşe Yılmaz/);
+    expect(within(masaustu(container)).queryByRole("button", { name: "Öğrenciye iade et" })).toBeNull();
+    expect(within(masaustu(container)).queryByRole("button", { name: "Öğretmene öde" })).toBeNull();
+  });
+});

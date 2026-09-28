@@ -1,6 +1,11 @@
-import { useState } from "react";
-
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
+import {
+  BosSayfa,
+  SAYFA_ISTEK_LIMITI,
+  SayfaGecisi,
+  sayfaDilimi,
+  sayfaOfseti,
+} from "@/components/admin/SayfaGecisi";
 import {
   Badge,
   Button,
@@ -10,6 +15,7 @@ import {
   ReasonDialog,
 } from "@/components/admin/ui";
 import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import { useAdminPromotions, useCancelPromotion } from "@/hooks/useAdmin";
 import { formatTRY, parseMoney } from "@/lib/money";
 import type { AdminPromotion } from "@/api/admin";
@@ -54,15 +60,32 @@ const FILTRELER: { value: string | undefined; label: string }[] = [
   { value: "PENDING", label: "Ödeme bekliyor" },
 ];
 
+/** Adresten gelen süzgeç için BEYAZ LİSTE. */
+const GECERLI_DURUMLAR = new Set(
+  FILTRELER.map((f) => f.value).filter((v): v is string => v !== undefined)
+);
+
 export default function AdminPromotionsPage() {
   const { canView, canManage } = useAdminAreaAccess("promotions");
-  const [filtre, setFiltre] = useState<string | undefined>(undefined);
+  // Süzgeç ve sayfa ADRESTE yaşar (yenileme/geri tuşu/paylaşılan bağlantı);
+  // adresten gelen değer beyaz listeden geçer, uydurma değer API'ye gitmez.
+  const url = useUrlDurumu({ durum: "", sayfa: 1 }, { sayfaAnahtari: "sayfa" });
+  const hamDurum = String(url.degerler.durum);
+  const filtre = GECERLI_DURUMLAR.has(hamDurum) ? hamDurum : undefined;
+  const sayfa = Math.max(1, Math.floor(Number(url.degerler.sayfa)) || 1);
+  const setSayfa = (s: number) => url.ayarla({ sayfa: s });
   // Pencere durumu ekranda DEĞİL: iptal edilecek kayıt yüzeyin hedefidir
   // (İP-A4 sözleşmesi — kapatma yollarının hepsi tek noktadan bekçiye bağlı).
   const yuzey = useDuzenlemeYuzeyi<AdminPromotion, void>();
   const iptalHedefi = yuzey.kayit;
 
-  const { data, isLoading, isError, refetch } = useAdminPromotions(filtre);
+  const { data, isLoading, isError, refetch } = useAdminPromotions(
+    filtre,
+    true,
+    SAYFA_ISTEK_LIMITI,
+    sayfaOfseti(sayfa)
+  );
+  const { satirlar, dahaFazlaVar } = sayfaDilimi(data);
   const iptal = useCancelPromotion();
 
   if (!canView) return <AccessDenied area="Öne çıkarma satışları" />;
@@ -85,7 +108,12 @@ export default function AdminPromotionsPage() {
           <button
             key={f.label}
             type="button"
-            onClick={() => setFiltre(f.value)}
+            onClick={() => {
+              // Filtre değişince 1. sayfaya dön (`useUrlDurumu` sayfa kuralı):
+              // 3. sayfadayken filtre değiştirmek boş liste gösterir, "kayıt
+              // yok" sanılırdı.
+              url.ayarla({ durum: f.value ?? "" });
+            }}
             aria-pressed={filtre === f.value}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
               filtre === f.value
@@ -105,7 +133,9 @@ export default function AdminPromotionsPage() {
           description="Öne çıkarma satışları alınamadı."
           onRetry={() => void refetch()}
         />
-      ) : !data || data.length === 0 ? (
+      ) : satirlar.length === 0 && sayfa > 1 ? (
+        <BosSayfa onOnceki={() => setSayfa(sayfa - 1)} />
+      ) : satirlar.length === 0 ? (
         <EmptyState
           title="Kayıt yok"
           description="Bu filtreye uyan bir öne çıkarma satın alması bulunmuyor."
@@ -124,7 +154,7 @@ export default function AdminPromotionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {data.map((p) => (
+              {satirlar.map((p) => (
                 <tr key={p.id}>
                   <td className="py-3 pr-4">
                     <span className="font-medium text-slate-900">
@@ -159,6 +189,8 @@ export default function AdminPromotionsPage() {
           </table>
         </div>
       )}
+
+      <SayfaGecisi sayfa={sayfa} dahaFazlaVar={dahaFazlaVar} onSayfaDegis={setSayfa} />
 
       <ReasonDialog
         open={iptalHedefi !== null}

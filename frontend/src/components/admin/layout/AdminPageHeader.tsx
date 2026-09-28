@@ -1,5 +1,6 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/admin/ui";
+import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { ROUTES } from "@/lib/routes";
 import { getAdminNavItem } from "./adminNavigation";
@@ -33,7 +34,7 @@ export function AdminPageHeader({ onMenuAc }: AdminPageHeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 border-b border-panel-border bg-panel-surface/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-[1200px] items-start gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-start gap-3 px-4 py-3 sm:flex-nowrap sm:px-6 lg:px-8">
         <Button
           variant="secondary"
           size="sm"
@@ -46,12 +47,12 @@ export function AdminPageHeader({ onMenuAc }: AdminPageHeaderProps) {
           </svg>
         </Button>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[8rem] flex-1 sm:min-w-0">
           {!kokte && (
             <nav aria-label="Sayfa yolu" className="mb-0.5 hidden items-center gap-2 text-xs text-panel-fg-subtle sm:flex">
-              <Link className="transition hover:text-panel-fg" to={ROUTES.admin}>
+              <GezinmeBaglantisi className="transition hover:text-panel-fg" to={ROUTES.admin} end>
                 Yönetim
-              </Link>
+              </GezinmeBaglantisi>
               <span aria-hidden="true">/</span>
               <span className="truncate text-panel-fg-muted">{current.shortLabel ?? current.label}</span>
             </nav>
@@ -64,7 +65,7 @@ export function AdminPageHeader({ onMenuAc }: AdminPageHeaderProps) {
           </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <div id={BASLIK_AKSIYON_ID} className="flex items-center gap-2" />
           <NotificationsBell />
         </div>

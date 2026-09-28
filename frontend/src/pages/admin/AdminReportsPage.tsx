@@ -20,7 +20,8 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { useAuthStore } from "@/store/authStore";
-import { ReportReason, ReportStatus, type ReportOut } from "@/types";
+import { rolEtiketi } from "@/lib/roles";
+import { ROLE_IDS, ReportReason, ReportStatus, type ReportOut } from "@/types";
 
 const STATUS_LABEL: Record<ReportStatus, string> = {
   OPEN: "Açık",
@@ -41,6 +42,17 @@ const REASON_LABEL: Record<ReportReason, string> = {
   OTHER: "Diğer",
 };
 const TARGETS = ["TUTOR", "CLIENT", "REVIEW", "MESSAGE", "BOOKING_COMMENT"];
+/** Hedef türü etiketleri; değerler (adres/API sözleşmesi) ham kalır. */
+const TARGET_LABEL: Record<string, string> = {
+  TUTOR: rolEtiketi(ROLE_IDS.TUTOR),
+  CLIENT: rolEtiketi(ROLE_IDS.CLIENT),
+  REVIEW: "Değerlendirme",
+  MESSAGE: "Mesaj",
+  BOOKING_COMMENT: "Rezervasyon yorumu",
+  PRODUCT_REVIEW: "Ürün değerlendirmesi",
+  LIBRARY_REVIEW: "Kütüphane değerlendirmesi",
+};
+const hedefEtiketi = (tur: string) => TARGET_LABEL[tur] ?? tur;
 
 /** Yayından kaldırılabilen hedefler (backend: services/content_moderation.py).
  *  Kullanıcı ve mesaj bu akıştan gizlenmez — onların yaptırımı askı/silme. */
@@ -85,7 +97,7 @@ export default function AdminReportsPage() {
       id: "target",
       header: "Hedef",
       enableSorting: false,
-      cell: ({ row }) => <span className="font-semibold">{row.original.target_type} #{row.original.target_id}</span>,
+      cell: ({ row }) => <span className="font-semibold">{hedefEtiketi(row.original.target_type)} #{row.original.target_id}</span>,
     },
     {
       accessorKey: "reason",
@@ -134,7 +146,7 @@ export default function AdminReportsPage() {
           <span className="mb-1 block text-xs font-semibold text-slate-500">Hedef türü</span>
           <select value={state.targetType} onChange={(event) => update({ target: event.target.value || undefined, page: 1 })} className="input">
             <option value="">Tüm hedefler</option>
-            {TARGETS.map((target) => <option key={target} value={target}>{target}</option>)}
+            {TARGETS.map((target) => <option key={target} value={target}>{hedefEtiketi(target)}</option>)}
           </select>
         </label>
       </div>
@@ -152,7 +164,7 @@ export default function AdminReportsPage() {
           renderMobileRow={(report) => (
             <div>
               <div className="flex items-start justify-between gap-3">
-                <div><p className="font-semibold">{report.target_type} #{report.target_id}</p><p className="text-xs text-rose-600">{REASON_LABEL[report.reason]}</p></div>
+                <div><p className="font-semibold">{hedefEtiketi(report.target_type)} #{report.target_id}</p><p className="text-xs text-rose-600">{REASON_LABEL[report.reason]}</p></div>
                 <Badge tone={STATUS_TONE[report.status]}>{STATUS_LABEL[report.status]}</Badge>
               </div>
               {report.description && <p className="mt-3 text-sm text-slate-600 ">{report.description}</p>}
@@ -190,7 +202,7 @@ function KararPenceresi({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<Decision, void
       baslik={karar?.status === ReportStatus.RESOLVED ? "Şikâyeti çöz" : "Şikâyeti reddet"}
       aciklama={
         karar
-          ? `${karar.report.target_type} #${karar.report.target_id} için karar kaydedilecek.`
+          ? `${hedefEtiketi(karar.report.target_type)} #${karar.report.target_id} için karar kaydedilecek.`
           : undefined
       }
     >

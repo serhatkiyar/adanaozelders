@@ -2,6 +2,13 @@ import { Fragment, useState } from "react";
 
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
 import {
+  BosSayfa,
+  SAYFA_ISTEK_LIMITI,
+  SayfaGecisi,
+  sayfaDilimi,
+  sayfaOfseti,
+} from "@/components/admin/SayfaGecisi";
+import {
   Badge,
   Button,
   EmptyState,
@@ -9,6 +16,7 @@ import {
   PageSkeleton,
 } from "@/components/admin/ui";
 import { PlainButton } from "@/components/ui/PlainButton";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import {
   useAdminTutorPreApplications,
   useUpdateTutorPreApplicationStatus,
@@ -140,14 +148,31 @@ const FILTRELER: { value: string | undefined; label: string }[] = [
   { value: "REJECTED", label: "Olumsuz" },
 ];
 
+/** Adresten gelen süzgeç için BEYAZ LİSTE ("Tümü" = `TUMU`, ayrı ele alınır). */
+const GECERLI_DURUMLAR = new Set(
+  FILTRELER.map((f) => f.value).filter((v): v is string => v !== undefined)
+);
+
 export default function AdminTutorApplicationsPage() {
   const { canView, canManage } = useAdminAreaAccess("tutors");
   // Operasyonel varsayılan: ekran "aranacaklar" listesi olarak açılır.
-  const [filtre, setFiltre] = useState<string | undefined>("NEW");
+  // Süzgeç ve sayfa ADRESTE yaşar (yenileme/geri tuşu/paylaşılan bağlantı).
+  // "Tümü" varsayılan olmadığından `TUMU` işaretiyle yazılır; adresten gelen
+  // değer beyaz listeden geçer, uydurma değer API'ye gitmez.
+  const url = useUrlDurumu({ durum: "NEW", sayfa: 1 }, { sayfaAnahtari: "sayfa" });
+  const hamDurum = String(url.degerler.durum);
+  const filtre = GECERLI_DURUMLAR.has(hamDurum) ? hamDurum : hamDurum === "TUMU" ? undefined : "NEW";
+  const sayfa = Math.max(1, Math.floor(Number(url.degerler.sayfa)) || 1);
+  const setSayfa = (s: number) => url.ayarla({ sayfa: s });
   const [acikId, setAcikId] = useState<number | null>(null);
 
-  const { data, isLoading, isError, refetch } =
-    useAdminTutorPreApplications(filtre);
+  const { data, isLoading, isError, refetch } = useAdminTutorPreApplications(
+    filtre,
+    true,
+    SAYFA_ISTEK_LIMITI,
+    sayfaOfseti(sayfa)
+  );
+  const { satirlar, dahaFazlaVar } = sayfaDilimi(data);
   const guncelle = useUpdateTutorPreApplicationStatus();
 
   if (!canView) return <AccessDenied area="Öğretmen ön başvuruları" />;
@@ -169,7 +194,10 @@ export default function AdminTutorApplicationsPage() {
         {FILTRELER.map((f) => (
           <PlainButton
             key={f.label}
-            onClick={() => setFiltre(f.value)}
+            onClick={() => {
+              // Filtre değişince sayfa `useUrlDurumu` tarafından 1'e döner.
+              url.ayarla({ durum: f.value ?? "TUMU" });
+            }}
             aria-pressed={filtre === f.value}
             className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus ${
               filtre === f.value
@@ -189,7 +217,9 @@ export default function AdminTutorApplicationsPage() {
           description="Ön başvurular alınamadı."
           onRetry={() => void refetch()}
         />
-      ) : !data || data.length === 0 ? (
+      ) : satirlar.length === 0 && sayfa > 1 ? (
+        <BosSayfa onOnceki={() => setSayfa(sayfa - 1)} />
+      ) : satirlar.length === 0 ? (
         <EmptyState
           title="Kayıt yok"
           description="Bu filtreye uyan bir ön başvuru bulunmuyor."
@@ -208,7 +238,7 @@ export default function AdminTutorApplicationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {data.map((b: AdminTutorPreApplication) => (
+              {satirlar.map((b: AdminTutorPreApplication) => (
                 <Fragment key={b.id}>
                 <tr className="align-top">
                   <td className="py-3 pr-4">
@@ -346,6 +376,8 @@ export default function AdminTutorApplicationsPage() {
           </table>
         </div>
       )}
+
+      <SayfaGecisi sayfa={sayfa} dahaFazlaVar={dahaFazlaVar} onSayfaDegis={setSayfa} />
     </div>
   );
 }

@@ -484,11 +484,19 @@ export function useAdminOrder(id: number, enabled = true) {
   });
 }
 
-/** `enabled=false` (ör. `returns.view` yokken) isteği tamamen kapatır. */
-export function useAdminReturns(statusFilter?: string, enabled = true) {
+/**
+ * `enabled=false` (ör. `returns.view` yokken) isteği tamamen kapatır.
+ * `limit`/`offset` sunucu sayfalamasıdır; verilmezse eski davranış (uç varsayılanı) aynen sürer.
+ */
+export function useAdminReturns(
+  statusFilter?: string,
+  enabled = true,
+  limit?: number,
+  offset?: number
+) {
   return useQuery({
-    queryKey: ["store", "admin", "returns", statusFilter ?? "all"],
-    queryFn: () => storeApi.listReturnsAdmin(statusFilter),
+    queryKey: ["store", "admin", "returns", statusFilter ?? "all", limit ?? null, offset ?? null],
+    queryFn: () => storeApi.listReturnsAdmin(statusFilter, limit, offset),
     enabled,
   });
 }

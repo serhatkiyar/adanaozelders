@@ -175,6 +175,20 @@ async function operatorPenceresiniAc(): Promise<HTMLElement> {
   return pencereler()[1];
 }
 
+describe("AdminLibraries · liste hatası", () => {
+  it("liste yüklenemezse hata kutusu 'Yeniden dene' sunar ve tekrar ister", async () => {
+    sunucu(/\/libraries\/admin$/, { status: 500, data: { detail: "x" } }, "get");
+    sar(<AdminLibraries />);
+    await akit();
+    expect(screen.getByRole("alert").textContent).toContain("Kütüphaneler yüklenemedi.");
+
+    sunucu(/\/libraries\/admin$/, { data: [KUTUPHANE] }, "get");
+    fireEvent.click(screen.getByRole("button", { name: "Yeniden dene" }));
+    await akit();
+    expect(screen.getByRole("button", { name: "Oturumlar & Operatörler" })).toBeTruthy();
+  });
+});
+
 describe("İP-A8 · AdminLibraries yönetim penceresi (ilk kabul testi)", () => {
   it("pencere ortak yüzeyden geliyor — etiketli, aria-modal, ESC kapatıyor", async () => {
     const p = await yonetimPenceresiniAc();

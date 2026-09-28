@@ -35,3 +35,19 @@ export function adminAreaAccess(
     canManage,
   };
 }
+
+/**
+ * Mağaza sayfasının (`/yonetim/magaza/*`) sekme alanları — **tek kaynak**.
+ *
+ * Menü öğesi (`adminNavigation.ts`) ile sayfa kapısı (`AdminStore.tsx`) bu
+ * listeden türer. Eskiden menü `products.view | content.view` istiyor, sayfa
+ * ise bu beş alana bakıyordu: yalnız içerik yetkilisi menüde Mağaza'yı görüp
+ * 403'e düşüyor, sipariş/iade/kupon/tedarikçi yetkilisi ise Mağaza'yı menüde
+ * hiç görmüyordu. Her alanın liste ucu backend'de tam `<alan>.view` ister
+ * (`api/routers/store.py`, `api/routers/supplier.py`). `content.*` burada
+ * YOK: vitrin/blog içeriği Mağaza sekmesi değildir (Blog'un kendi öğesi var).
+ *
+ * Sıra sekme sırasıdır; `/yonetim/magaza` kökü izinli ilk sekmeye yönlenir.
+ */
+export const MAGAZA_ALANLARI = ["products", "suppliers", "orders", "returns", "coupons"] as const;
+export type MagazaAlani = (typeof MAGAZA_ALANLARI)[number];

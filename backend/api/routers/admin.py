@@ -78,7 +78,7 @@ from schemas.feature_flag import (
 )
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
 from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
-from schemas.user import NameChangeRequestOut
+from schemas.user import AdminNameChangeRequestOut, NameChangeRequestOut
 from models.demand import DemandStatus
 from core.storage import delete_file
 from services import (
@@ -1116,7 +1116,7 @@ async def unhide_content(
 
 @router.get(
     "/name-change-requests",
-    response_model=list[NameChangeRequestOut],
+    response_model=list[AdminNameChangeRequestOut],
     dependencies=[Depends(require_admin_permission("users.view"))],
 )
 async def list_name_change_requests(
@@ -1124,9 +1124,20 @@ async def list_name_change_requests(
     limit: int = Query(default=100, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
-    return await name_change_service.list_admin(
+    reqs = await name_change_service.list_admin(
         db, status_filter=status_filter, limit=limit
     )
+    # Yönetici talebin kime ait olduğunu adıyla görsün (yalnız kimlik değil).
+    adlar = await name_change_service.current_names(db, reqs)
+    out: list[AdminNameChangeRequestOut] = []
+    for req in reqs:
+        first, last = adlar.get((req.role_id, req.user_id), (None, None))
+        out.append(
+            AdminNameChangeRequestOut.model_validate(req).model_copy(
+                update={"current_first_name": first, "current_last_name": last}
+            )
+        )
+    return out
 
 
 @router.post(

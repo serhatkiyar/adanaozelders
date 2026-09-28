@@ -690,10 +690,17 @@ export async function refundOrder(id: number, reason: string): Promise<OrderOut>
 /* ── İade talepleri (RMA, ADMIN) ── */
 
 export async function listReturnsAdmin(
-  statusFilter?: string
+  statusFilter?: string,
+  limit?: number,
+  offset?: number
 ): Promise<OrderReturn[]> {
+  // `limit`/`offset` verilmezse uç varsayılanı (ilk 100) geçerlidir.
+  const params: Record<string, string | number> = {};
+  if (statusFilter) params.status = statusFilter;
+  if (limit !== undefined) params.limit = limit;
+  if (offset !== undefined) params.offset = offset;
   const { data } = await apiClient.get<OrderReturn[]>("/store/admin/returns", {
-    params: statusFilter ? { status: statusFilter } : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
   });
   return data;
 }

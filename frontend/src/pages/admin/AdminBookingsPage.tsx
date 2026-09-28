@@ -1,4 +1,4 @@
-// Rezervasyon yönetimi — çoklu filtre + satır aksiyonları (iptal / ihtilaf).
+// Rezervasyon yönetimi — çoklu filtre + satır aksiyonları (iptal / ihtilaf / ihtilaf kararı).
 //
 // ## İP-A7d1 · göç dalgası 1, ekran (b)
 //
@@ -31,7 +31,12 @@ import type { AdminBookingSort } from "@/api/admin";
 import { DataTable } from "@/components/admin/data-table";
 import { Badge, Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
 import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
-import { useAdminBookingList, useAdminCancelBooking, useAdminToggleDisputeBooking } from "@/hooks/useAdmin";
+import {
+  useAdminBookingList,
+  useAdminCancelBooking,
+  useAdminResolveDisputeBooking,
+  useAdminToggleDisputeBooking,
+} from "@/hooks/useAdmin";
 import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import { BOOKING_STATUS_LABEL } from "@/lib/bookingStatus";
 import { parseAdminBookingQuery } from "@/lib/adminOperationsQuery";
@@ -62,7 +67,18 @@ const VARSAYILAN = {
   limit: 25,
 };
 
-type Decision = { kind: "cancel" | "dispute" | "clear"; booking: AdminBookingOut };
+type Decision = { kind: "cancel" | "dispute" | "clear" | "refund" | "release"; booking: AdminBookingOut };
+
+/**
+ * İhtilaf kararı (iade / öğretmene ödeme) yalnız bu durumlarda verilebilir:
+ * `booking_service.resolve_dispute` başka her durumu 409 ile reddeder. Paranın
+ * zaten öğretmene geçmiş olması istemcide bilinmez; o durumda sunucunun 409
+ * mesajı hata bildiriminde gösterilir.
+ */
+function kararVerilebilir(booking: AdminBookingOut): boolean {
+  return booking.is_disputed === true
+    && (booking.status === BookingStatus.ACCEPTED || booking.status === BookingStatus.COMPLETED);
+}
 
 function bookingStatus(value: AdminBookingOut["status"]): BookingStatus {
   return Object.values(BookingStatus).includes(value as BookingStatus)
@@ -106,7 +122,8 @@ export default function AdminBookingsPage() {
   });
   const cancel = useAdminCancelBooking();
   const dispute = useAdminToggleDisputeBooking();
-  const pending = cancel.isPending || dispute.isPending;
+  const resolve = useAdminResolveDisputeBooking();
+  const pending = cancel.isPending || dispute.isPending || resolve.isPending;
   const canManage = useAuthStore((store) => store.user?.admin_permissions?.includes("bookings.manage")) ?? false;
 
   useEffect(() => setSearch(state.q), [state.q]);
@@ -131,6 +148,12 @@ export default function AdminBookingsPage() {
         <Button size="sm" variant="secondary" disabled={pending} onClick={() => yuzey.ac({ kind: "clear", booking })}>İhtilafı kaldır</Button>
       ) : (
         <Button size="sm" variant="secondary" disabled={pending} onClick={() => yuzey.ac({ kind: "dispute", booking })}>İhtilaf işaretle</Button>
+      )}
+      {kararVerilebilir(booking) && (
+        <>
+          <Button size="sm" variant="secondary" disabled={pending} onClick={() => yuzey.ac({ kind: "refund", booking })}>Öğrenciye iade et</Button>
+          <Button size="sm" variant="secondary" disabled={pending} onClick={() => yuzey.ac({ kind: "release", booking })}>Öğretmene öde</Button>
+        </>
       )}
       {booking.status !== BookingStatus.CANCELLED && booking.status !== BookingStatus.REJECTED && (
         <Button size="sm" variant="danger" disabled={pending} onClick={() => yuzey.ac({ kind: "cancel", booking })}>İptal / iade</Button>
@@ -193,7 +216,22 @@ export default function AdminBookingsPage() {
   };
   const submitReason = (reason: string) => {
     if (!karar) return;
-    if (karar.kind === "cancel") {
+    if (karar.kind === "refund" || karar.kind === "release") {
+      // Tutar GÖNDERİLMEZ: iade/ödeme tutarını sunucu emanetten hesaplar.
+      const kind = karar.kind;
+      resolve.mutate(
+        { id: karar.booking.id, decision: kind, note: reason },
+        {
+          onSuccess: () => {
+            toast.success(kind === "refund"
+              ? "Ders iptal edildi, ücret öğrenciye iade ediliyor."
+              : "İhtilaf kapandı, ücret öğretmene aktarıldı.");
+            close();
+          },
+          onError: (error) => toast.error(getErrorMessage(error, "Karar kaydedilemedi.")),
+        }
+      );
+    } else if (karar.kind === "cancel") {
       cancel.mutate(
         { id: karar.booking.id, reason },
         {
@@ -215,7 +253,7 @@ export default function AdminBookingsPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-4 pb-12">
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ">
-        <div className="grid gap-3 md:grid-cols-[minmax(15rem,1fr)_11rem_11rem_auto]">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(15rem,1fr)_11rem_11rem_auto]">
           <input aria-label="Rezervasyon ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Öğretmen, öğrenci veya e-posta ara" className="input" />
           <select aria-label="Rezervasyon durumu" value={degerler.status} onChange={(event) => ayarla({ status: event.target.value })} className="input">
             <option value="">Tüm durumlar</option>
@@ -273,6 +311,24 @@ export default function AdminBookingsPage() {
         />
       )}
 
+      <ReasonDialog
+        open={karar?.kind === "refund" || karar?.kind === "release"}
+        title={karar?.kind === "refund" ? "Öğrenciye iade et" : "Öğretmene öde"}
+        description={
+          karar?.kind === "refund"
+            ? "Ders iptal edilir ve emanetteki ücret öğrenciye iade edilir. Bu işlem geri alınamaz."
+            : "İhtilaf kapanır, ders tamamlanmış sayılır ve ücret öğretmene aktarılır. Bu işlem geri alınamaz."
+        }
+        label="Karar notu"
+        required
+        minLength={3}
+        maxLength={500}
+        danger={karar?.kind === "refund"}
+        confirmLabel={karar?.kind === "refund" ? "İade et" : "Öğretmene öde"}
+        isPending={pending}
+        onClose={close}
+        onConfirm={submitReason}
+      />
       <ReasonDialog
         open={karar?.kind === "cancel" || karar?.kind === "dispute"}
         title={karar?.kind === "cancel" ? "Rezervasyonu iptal et" : "İhtilaf işaretle"}
