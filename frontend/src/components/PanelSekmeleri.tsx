@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
 import { ROUTES } from "@/lib/routes";
+import { sekmeyiOnYukle, topluOnYuklemeUygun } from "@/lib/panelOnYukleme";
+import { useAuthStore } from "@/store/authStore";
 import type { NavItem } from "@/lib/nav";
 
 /**
@@ -22,6 +25,23 @@ export function PanelSekmeleri({ items }: { items: NavItem[] }) {
   const { data: msgUnreadCounts } = useMessagesUnreadCount();
   const msgUnread = msgUnreadCounts?.inbox ?? 0;
   const { pathname } = useLocation();
+  const rolId = useAuthStore((s) => s.user?.role_id);
+
+  // Sekme parçalarını boşta önceden indir: ilk tıklamada gezinme, parça
+  // inene kadar eski ekranda donmasın (bkz. `lib/panelOnYukleme.ts`).
+  // Safari `requestIdleCallback` tanımaz; `setTimeout` yedeği.
+  useEffect(() => {
+    if (!rolId || !topluOnYuklemeUygun()) return;
+    const yukle = () => {
+      for (const item of items) if (!item.yakinda) sekmeyiOnYukle(item.to, rolId);
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(yukle, { timeout: 3000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(yukle, 1000);
+    return () => window.clearTimeout(id);
+  }, [items, rolId]);
 
   return (
     <div className="border-b border-slate-200 bg-white">
@@ -58,6 +78,10 @@ export function PanelSekmeleri({ items }: { items: NavItem[] }) {
                   to={item.to}
                   end={item.end}
                   aria-current={altAktif ? "page" : undefined}
+                  // Boşta ön yükleme henüz çalışmadıysa niyet anında başlat.
+                  onMouseEnter={() => sekmeyiOnYukle(item.to, rolId)}
+                  onFocus={() => sekmeyiOnYukle(item.to, rolId)}
+                  onTouchStart={() => sekmeyiOnYukle(item.to, rolId)}
                   className={({ isActive }) =>
                     `relative shrink-0 whitespace-nowrap px-4 py-4 text-base font-semibold leading-6 transition after:absolute after:inset-x-4 after:-bottom-px after:h-1 after:content-[''] ${
                       isActive || altAktif

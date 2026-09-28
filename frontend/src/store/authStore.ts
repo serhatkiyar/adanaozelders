@@ -41,6 +41,13 @@ interface AuthState {
   token: string | null;
   user: UserOut | null;
   isAuthenticated: boolean;
+  /**
+   * Çıkış başladı ama sunucu isteği henüz bitmedi. Kalıcı değildir.
+   * `PublicRoute` bu sırada kullanıcıyı eski token'la panosuna geri
+   * yollamasın diye var (bkz. `useLogout`).
+   */
+  cikisYapiliyor: boolean;
+  cikisBasladi: () => void;
   setRemember: (remember: boolean) => void;
   /** Login ve sessiz yenileme (rotasyon) sonrası access token'ı yazar. */
   setToken: (token: string) => void;
@@ -54,15 +61,19 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       isAuthenticated: false,
+      cikisYapiliyor: false,
+      cikisBasladi: () => set({ cikisYapiliyor: true }),
       setRemember: (remember) =>
         localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0"),
-      setToken: (token) => set({ token, isAuthenticated: true }),
+      setToken: (token) =>
+        set({ token, isAuthenticated: true, cikisYapiliyor: false }),
       setUser: (user) => set({ user }),
       logout: () =>
         set({
           token: null,
           user: null,
           isAuthenticated: false,
+          cikisYapiliyor: false,
         }),
     }),
     {

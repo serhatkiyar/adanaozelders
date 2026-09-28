@@ -7,9 +7,11 @@ import { FullScreenSpinner } from "@/components/Spinner";
 // Giriş yapmış kullanıcıyı login/register'dan kendi paneline yollar.
 export function PublicRoute() {
   const token = useAuthStore((s) => s.token);
+  const cikisYapiliyor = useAuthStore((s) => s.cikisYapiliyor);
   const { data: user, isLoading } = useCurrentUser();
 
-  if (!token) {
+  // Çıkış sürerken token henüz silinmedi; kullanıcı zaten çıkıyor.
+  if (!token || cikisYapiliyor) {
     return <Outlet />;
   }
 

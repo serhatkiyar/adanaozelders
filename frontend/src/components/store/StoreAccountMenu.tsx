@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { useLogout } from "@/hooks/useLogout";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useGirisAdresi } from "@/hooks/useGirisKapisi";
 import { alisverisYapabilir } from "@/lib/roles";
 
@@ -14,7 +15,9 @@ import { alisverisYapabilir } from "@/lib/roles";
  */
 export function StoreAccountMenu() {
   const token = useAuthStore((s) => s.token);
-  const user = useAuthStore((s) => s.user);
+  // Store'daki `user` kalıcı değildir (yalnız token saklanır); tam sayfa
+  // yüklemede /auth/me buradan çekilmezse oturum açıkken "Giriş Yap" görünürdü.
+  const { data: user } = useCurrentUser();
   const logout = useLogout(ROUTES.store); // çıkışta mağazada kal, /giris'e atma
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -49,6 +52,12 @@ export function StoreAccountMenu() {
   }, [open]);
 
   // Çıkışta (kimlik yok): yerinde "Giriş Yap" modal'ı.
+  // Oturum var ama kullanıcı henüz gelmedi: yanlış "Giriş Yap" göstermeden
+  // aynı genişlikte yer tut.
+  if (token && !user) {
+    return <span aria-hidden className="inline-block h-6 w-6" />;
+  }
+
   if (!token || !user) {
     return (
       <Link
