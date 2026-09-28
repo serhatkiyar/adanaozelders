@@ -135,6 +135,9 @@ async def verify_otp(db: AsyncSession, user, code: str) -> None:
             )
             .order_by(PhoneOtp.id.desc())
             .limit(1)
+            # Satır kilidi: eşzamanlı tahminler sayacı aynı değerden okuyup
+            # tek artışa indiremesin (paralel istekle limit aşılıyordu).
+            .with_for_update()
         )
     ).scalar_one_or_none()
 
@@ -143,16 +146,20 @@ async def verify_otp(db: AsyncSession, user, code: str) -> None:
             status.HTTP_400_BAD_REQUEST,
             "Kodun süresi doldu ya da yok. Yeni kod iste.",
         )
+    # Deneme sayacı ve kilit, hata fırlatılmadan ÖNCE commit edilir: `get_db`
+    # istisnada rollback yapar; yalnız flush edilseydi sayaç hiç kalıcı olmaz,
+    # deneme limiti etkisiz kalır ve 6 haneli kod sınırsız denenebilirdi
+    # (teslimat OTP'si `delivery_service.verify_delivery` ile aynı desen).
     if otp.attempts >= settings.PHONE_OTP_MAX_ATTEMPTS:
         otp.used_at = now
-        await db.flush()
+        await db.commit()
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             "Çok fazla hatalı deneme. Yeni kod iste.",
         )
     if _hash(code.strip()) != otp.code_hash:
         otp.attempts += 1
-        await db.flush()
+        await db.commit()
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Kod hatalı.")
 
     otp.used_at = now

@@ -1908,6 +1908,10 @@ async def reschedule(
     # Öğrencinin yeni saat seçmesi, öğretmenin bekleyen saat değişikliğine
     # verilmiş yanıttır: bayrak kalırsa sonraki geç iptal tam iade alırdı.
     booking.tutor_rescheduled_from = None
+    # Yeni saati öğrenci önerdi; yanıt eğitmende. Teklif bayrağı kalırsa
+    # (`_assert_yanit_verecek_taraf`) öğrenci kendi seçtiği saati kendisi
+    # kabul edebilir, eğitmen ise ne kabul ne ret verebilirdi.
+    booking.offered_by_tutor = False
     # Süre değişmiş olabilir; ücreti güncel saatlik ücretle yeniden hesapla.
     tutor = await db.get(Tutor, booking.tutor_id)
     if tutor is not None:

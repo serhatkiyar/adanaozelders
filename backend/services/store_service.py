@@ -2129,14 +2129,18 @@ async def update_product(
         "price",
         "compare_at_price",
         "category_id",
-        "cover_url",
         # Oran, satıcı kim olursa olsun düzenlenebilir: eğitmen de kendi dijital
         # ürününün faturasından sorumludur. Sınır şemada (0 ≤ oran < 1).
         "tax_rate",
     ]
     if owner_tutor_id is None:
         # Admin: ağırlık/durum + kitap künyesi + varyant üyeliği (stok HARİÇ).
+        # Kapak adresi de yalnız admin yolunda elle yazılır. Eğitmen kapağı
+        # yalnız yükleme ucundan (`set_cover`) değiştirir: `set_cover` ESKİ
+        # değeri depodan sildiği için alana başkasının public anahtarını
+        # (ör. `profiles/...`) yazıp kapak yüklemek o nesneyi sildirirdi.
         editable += [
+            "cover_url",
             "weight_grams", "brand", "status", *_BOOK_SPEC_FIELDS, *_VARYANT_ALANLARI,
         ]
     # Açıklama HTML taşıyabilir ve `dangerouslySetInnerHTML` ile basılır: ham
@@ -2429,7 +2433,9 @@ async def create_seller_product(
         tax_rate=payload.tax_rate,
         category_id=payload.category_id,
         status=ProductStatus.PENDING.value,
-        cover_url=payload.cover_url,
+        # `payload.cover_url` bilinçli olarak YAZILMAZ: kapak yalnız yükleme
+        # ucundan gelir (bkz. `update_product` — sonraki yükleme eski değeri
+        # depodan siler, istemci anahtarı başkasının nesnesi olabilir).
     )
     db.add(p)
     await db.commit()
@@ -2805,7 +2811,9 @@ async def create_review(
             select(ProductReview).where(
                 ProductReview.product_id == product_id,
                 ProductReview.client_id == client.id,
-                ProductReview.deleted_at.is_(None),
+                # Moderasyonla gizlenen yorum silinse de hakkı tüketir: sil +
+                # yeniden yaz gizleme kararını geri almasın.
+                or_(ProductReview.deleted_at.is_(None), ProductReview.hidden_at.is_not(None)),
             )
         )
     ).scalars().first()
