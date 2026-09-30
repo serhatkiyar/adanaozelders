@@ -68,3 +68,7 @@ docs/tedarikci-tur/
 # Yerel deneme klasörleri (ekran görüntüsü, geçici betik, log) — her seviyede
 # eşleşir (kök ve `frontend/` altındakiler dahil).
 .scratch/
+
+# Arşivlenmiş test dosyaları
+archive_scripts/
+backend/email_previews/
