@@ -333,7 +333,7 @@ export default function TutorProfile({
                     genişlik değil; 48px yükseklik, 16px yazı, ortalı (kullanıcı kararı,
                     23 Eyl 2026). */}
                   <Icon name="commentLightning" className="h-5 w-5" />
-                  Ders Talep Et
+                  {!hadLessonWithTutor ? "Deneme Dersi Planla" : "Ders Planla"}
                 </button>
               )}
               {!isOwnerTutor && !dersTalebiYapabilir && (
@@ -459,6 +459,7 @@ export default function TutorProfile({
             <ProgramTakvimi
               tutorId={tutor.id}
               onSaatSec={dersTalebiYapabilir ? (saat) => dersPenceresiniAc(saat) : undefined}
+              isTrial={!hadLessonWithTutor}
               kendiProfili={isOwnerTutor}
             />
 
@@ -491,7 +492,7 @@ export default function TutorProfile({
           şerit hiç basılmaz — karttaki düğmenin `!isOwnerTutor` kapısı burada
           da geçerli. */}
       {mobil && dersTalebiYapabilir && (
-        <DersTalepSeridi onTalep={() => dersPenceresiniAc()} />
+        <DersTalepSeridi onTalep={() => dersPenceresiniAc()} etiket={!hadLessonWithTutor ? "Deneme Dersi Planla" : "Ders Planla"} />
       )}
 
       {showBookingModal && tutor && (

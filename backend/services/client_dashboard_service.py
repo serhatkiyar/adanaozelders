@@ -203,20 +203,7 @@ async def build_dashboard(
     # dersi ücretsiz eğitmen sayısı. Ders geçmişi olana gerekmez.
     free_first_lesson_tutor_count = 0
     if not has_bookings:
-        free_first_lesson_tutor_count = int(
-            (
-                await db.execute(
-                    select(func.count())
-                    .select_from(Tutor)
-                    .where(
-                        Tutor.status == TutorStatus.APPROVED,
-                        Tutor.is_active.is_(True),
-                        Tutor.deleted_at.is_(None),
-                        Tutor.first_lesson_free.is_(True),
-                    )
-                )
-            ).scalar_one()
-        )
+        free_first_lesson_tutor_count = 0
 
     return {
         "next_action": next_action,

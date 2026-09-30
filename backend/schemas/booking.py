@@ -97,7 +97,7 @@ class BookingLocationUpdate(BaseModel):
     location_lng: float | None = None
 
 #: Talep edilebilir ders süreleri (dakika). Slot ucu `duration` da bu kümeyle sınırlıdır.
-LESSON_DURATIONS_MIN: tuple[int, ...] = (30, 60, 90, 120)
+LESSON_DURATIONS_MIN: tuple[int, ...] = (25, 45, 60, 90, 120)
 
 
 def _validate_lesson_window(start_at: datetime.datetime, end_at: datetime.datetime) -> None:
@@ -128,7 +128,7 @@ class BookingCreate(BaseModel):
     location_lng: float | None = None
     # Öğrenci ücretsiz ilk dersi talep ediyor mu? Uygunluk sunucuda doğrulanır
     # (eğitmen ücretsiz ilk ders sunuyor + öğrencinin bu eğitmenle önceki dersi yok).
-    free_lesson: bool = False
+    is_trial: bool = False
 
     @model_validator(mode="after")
     def _validate_window(self) -> "BookingCreate":
@@ -201,7 +201,7 @@ class BookingOut(BaseModel):
     start_at: datetime.datetime
     end_at: datetime.datetime
     price: Decimal | None = None
-    is_free_lesson: bool = False
+    is_is_trial: bool = False
     notes: str | None = None
     cancel_reason: str | None = None
     mode: str | None = None
@@ -457,7 +457,7 @@ class LessonSeriesIn(BaseModel):
 
     client_id: int
     first_start_at: datetime.datetime
-    duration_min: Literal[30, 60, 90, 120]
+    duration_min: Literal[25, 45, 60, 90, 120]
     weeks: int = Field(ge=2, le=12)
     mode: TeachingMode | None = None
     notes: str | None = Field(default=None, max_length=500)

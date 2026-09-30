@@ -432,20 +432,18 @@ def _compute_price(
     return (rate * hours).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-async def _is_eligible_for_free_lesson(
+async def _is_eligible_for_trial_lesson(
     db: AsyncSession, tutor_id: int, client_id: int
 ) -> bool:
-    """Öğrenci bu eğitmenden ücretsiz ilk ders alabilir mi?
-
-    Yalnızca daha önce bu eğitmenle (iptal/red dışı) hiç dersi yoksa uygundur.
-    PENDING dahil sayılır; böylece arka arkaya ücretsiz talep oluşturulamaz.
-    """
+    """Öğrenci bu eğitmenden deneme dersi alabilir mi?
+    Aynı öğrenci aynı eğitmenden yalnızca 1 kez deneme dersi alabilir."""
     stmt = (
         select(func.count())
         .select_from(Booking)
         .where(
             Booking.tutor_id == tutor_id,
             Booking.client_id == client_id,
+            Booking.is_trial.is_(True),
             Booking.deleted_at.is_(None),
             Booking.status.notin_(
                 [BookingStatus.REJECTED, BookingStatus.CANCELLED]
@@ -453,6 +451,33 @@ async def _is_eligible_for_free_lesson(
         )
     )
     return int((await db.scalar(stmt)) or 0) == 0
+
+async def _has_free_trial_replacement(
+    db: AsyncSession, client_id: int
+) -> bool:
+    """Öğrencinin ücretsiz telafi hakkı var mı?
+    Eğer daha önce parasıyla 49.90 TL ödeyip deneme dersi almışsa 
+    ve henüz ücretsiz telafi hakkını (price = 0.00) kullanmamışsa True döner.
+    """
+    stmt = (
+        select(Booking.price)
+        .select_from(Booking)
+        .where(
+            Booking.client_id == client_id,
+            Booking.is_trial.is_(True),
+            Booking.deleted_at.is_(None),
+            Booking.status.notin_(
+                [BookingStatus.REJECTED, BookingStatus.CANCELLED]
+            ),
+        )
+    )
+    result = await db.execute(stmt)
+    prices = result.scalars().all()
+    
+    paid_trials = sum(1 for p in prices if p and p > 0)
+    free_trials = sum(1 for p in prices if p is not None and p == 0)
+    
+    return paid_trials > 0 and free_trials == 0
 
 
 async def get_bookable_tutor(db: AsyncSession, tutor_id: int) -> Tutor:
@@ -774,22 +799,35 @@ async def create_booking(
     await _assert_not_on_time_off(db, tutor.id, data.start_at, data.end_at)
     await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)
 
-    # Ücretsiz ilk ders: eğitmen sunuyor + öğrencinin bu eğitmenle geçmiş dersi yok.
-    is_free_lesson = False
-    if data.free_lesson:
-        if not tutor.first_lesson_free:
+    is_trial = data.is_trial
+    
+    if is_trial:
+        delta = data.end_at - data.start_at
+        if delta.total_seconds() != 25 * 60:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "Bu öğretmen ücretsiz ilk ders sunmuyor",
+                "Deneme dersi tam olarak 25 dakika olmalıdır.",
             )
-        if not await _is_eligible_for_free_lesson(db, tutor.id, client.id):
+        if not await _is_eligible_for_trial_lesson(db, tutor.id, client.id):
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                "Ücretsiz ilk ders hakkın bu öğretmen için kullanılmış",
+                "Bu eğitmenle zaten bir deneme dersi aldınız.",
             )
-        is_free_lesson = True
+        
+        has_free_replacement = await _has_free_trial_replacement(db, client.id)
+        if has_free_replacement:
+            price = Decimal("0.00")
+        else:
+            price = Decimal("49.90")
+    else:
+        delta_min = int((data.end_at - data.start_at).total_seconds() / 60)
+        if delta_min not in tutor.offered_durations:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Eğitmen {delta_min} dakikalık ders sunmuyor.",
+            )
+        price = _compute_price(tutor, data.start_at, data.end_at)
 
-    # Ders biçimi: eğitmen tek mod sunuyorsa o sabittir; BOTH/None ise istemci seçer.
     requested = data.mode.value if data.mode else None
     if tutor.teaching_mode in ("ONLINE", "IN_PERSON"):
         if requested and requested != tutor.teaching_mode:
@@ -801,18 +839,13 @@ async def create_booking(
     else:
         mode = requested or "ONLINE"
 
-    price = (
-        Decimal("0.00")
-        if is_free_lesson
-        else _compute_price(tutor, data.start_at, data.end_at)
-    )
     booking = Booking(
         client_id=client.id,
         tutor_id=data.tutor_id,
         start_at=data.start_at,
         end_at=data.end_at,
         price=price,
-        is_free_lesson=is_free_lesson,
+        is_trial=is_trial,
         notes=data.notes,
         mode=mode,
         location=data.location,
@@ -843,7 +876,7 @@ async def create_booking(
             "start_at": booking.start_at.isoformat(),
             "end_at": booking.end_at.isoformat(),
             "price": str(booking.price) if booking.price else None,
-            "is_free_lesson": booking.is_free_lesson,
+            "is_trial": booking.is_trial,
             "mode": booking.mode,
             "notes": booking.notes,
             "client_name": client.display_name,
@@ -991,7 +1024,7 @@ async def _teklif_yaz(
         "start_at": booking.start_at.isoformat(),
         "end_at": booking.end_at.isoformat(),
         "price": str(booking.price) if booking.price else None,
-        "is_free_lesson": booking.is_free_lesson,
+        "is_trial": booking.is_trial,
         "mode": booking.mode,
         "notes": booking.notes,
         "offered_by_tutor": True,
@@ -1185,10 +1218,10 @@ async def list_tutor_students(
             .filter(Booking.status == BookingStatus.COMPLETED)
             .label("tamamlanan"),
             func.count(Booking.id).label("ders_sayisi"),
-            func.bool_or(Booking.is_free_lesson).filter(yasayan).label("deneme_var"),
-            func.bool_or(~Booking.is_free_lesson).filter(yasayan).label("ucretli_var"),
+            func.bool_or(Booking.is_trial).filter(yasayan).label("deneme_var"),
+            func.bool_or(~Booking.is_trial).filter(yasayan).label("ucretli_var"),
             func.min(Booking.start_at)
-            .filter(Booking.is_free_lesson, yasayan)
+            .filter(Booking.is_trial, yasayan)
             .label("deneme_tarihi"),
             func.min(Booking.start_at)
             .filter(
@@ -1307,7 +1340,7 @@ async def list_client_tutors(
             func.count(Booking.id)
             .filter(Booking.status == BookingStatus.COMPLETED)
             .label("tamamlanan"),
-            func.bool_or(Booking.is_free_lesson).filter(yasayan).label("deneme_var"),
+            func.bool_or(Booking.is_trial).filter(yasayan).label("deneme_var"),
         )
         .join(Booking, Booking.tutor_id == Tutor.id)
         .where(Booking.client_id == client.id, Booking.deleted_at.is_(None))

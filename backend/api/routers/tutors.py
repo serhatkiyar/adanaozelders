@@ -642,7 +642,7 @@ async def get_tutor_slots(
     if duration not in LESSON_DURATIONS_MIN:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
-            "Ders süresi 30, 60, 90 ya da 120 dakika olmalı.",
+            "Ders süresi geçersiz.",
         )
     tutor = await booking_service.get_bookable_tutor(db, _tutor_id_coz(tutor_id))
     now = _utcnow()

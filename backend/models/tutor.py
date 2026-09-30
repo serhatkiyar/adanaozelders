@@ -15,7 +15,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import ARRAY, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
 
@@ -89,10 +89,11 @@ class Tutor(
     lesson_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Tanıtım videosu (YouTube/Vimeo URL) — profilde gömülü oynatıcıyla gösterilir.
     intro_video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # İlk ders ücretsiz mi? Varsayılan açık; eğitmen kapatabilir. Açıkken öğrenci
-    # ilk dersini ücretsiz talep edebilir (price=0, ödeme atlanır).
-    first_lesson_free: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true")
+    # Normal dersler için eğitmenin sunduğu süreler (dk). Varsayılan: sadece 60.
+    offered_durations: Mapped[list[int]] = mapped_column(
+        ARRAY(Integer),
+        nullable=False,
+        server_default=text("ARRAY[60]::integer[]"),
     )
 
     birth_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)

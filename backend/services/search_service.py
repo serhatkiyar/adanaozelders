@@ -74,7 +74,7 @@ def _to_search_out(
         intro_video_url=tutor.intro_video_url if include_lesson_info else None,
         # Siteye yüklenen video (yalnız ACTIVE; `get_tutor_public` sorgular).
         intro_video=intro_video if include_lesson_info else None,
-        first_lesson_free=tutor.first_lesson_free,
+        offered_durations=tutor.offered_durations,
         hourly_rate=tutor.hourly_rate,
         teaching_mode=tutor.teaching_mode,
         gender=tutor.gender,

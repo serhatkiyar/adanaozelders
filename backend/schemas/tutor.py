@@ -161,7 +161,7 @@ class TutorProfileUpdate(BaseModel):
     # Boş string/None → yayındaki bağlantıyı hemen kaldır.
     intro_video_url: str | None = Field(default=None, max_length=500)
     # İlk ders ücretsiz mi (opt-in/opt-out).
-    first_lesson_free: bool | None = None
+    offered_durations: list[int] | None = None
 
     @field_validator("intro_video_url")
     @classmethod
@@ -193,7 +193,7 @@ class TutorOut(UserOut):
     intro_video_url: str | None = None
     # Siteye yüklenen (ACTIVE) tanıtım videosu; `intro_video_url` ile aynı anda dolu olmaz.
     intro_video: IntroVideoOut | None = None
-    first_lesson_free: bool = True
+    offered_durations: list[int] = Field(default_factory=lambda: [60])
     hourly_rate: Decimal | None = None
     teaching_mode: TeachingMode | None = None
     birth_date: datetime.date | None = None
@@ -249,7 +249,7 @@ class TutorSearchOut(BaseModel):
     # Siteye yüklenen (ACTIVE) video — yalnız detayda; bağlantı ile aynı anda dolu olmaz.
     intro_video: IntroVideoOut | None = None
     # İlk ders ücretsiz mi? Kart/profilde rozet ve ücretsiz talep akışı için.
-    first_lesson_free: bool = True
+    offered_durations: list[int] = Field(default_factory=lambda: [60])
     hourly_rate: Decimal | None = None
     teaching_mode: TeachingMode | None = None
     gender: Gender | None = None

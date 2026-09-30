@@ -34,12 +34,7 @@ import {
 } from "@/hooks/useAddresses";
 import type { SavedAddressCreate } from "@/types";
 
-const DURATIONS = [
-  { label: "30 dk", value: 30 },
-  { label: "1 saat", value: 60 },
-  { label: "1.5 saat", value: 90 },
-  { label: "2 saat", value: 120 },
-];
+const DURATIONS = [{ label: "45 dk", value: 45 }, { label: "1 saat", value: 60 }, { label: "1.5 saat", value: 90 }, { label: "2 saat", value: 120 }];
 
 /** Gün bölümleri saat sırasıyla; Gece yalnız slotu varsa görünür. */
 const GUN_BOLUMLERI: { key: PartOfDay; label: string }[] = [
@@ -102,7 +97,7 @@ interface BookingModalProps {
   /** Takvimden açıldıysa önseçili tarih ("YYYY-MM-DD"); listedeyse vurgulanır. */
   initialDate?: string;
   /** Öğrenci bu eğitmenden ücretsiz ilk ders alabilir mi (sunmuyor/kullanılmışsa false). */
-  canRequestFreeLesson?: boolean;
+  
   /**
    * Profildeki Program takviminden seçilen saat. `date` sunucunun İstanbul
    * günüdür (UTC ISO'dan türetilmez: 03:00 öncesi başlangıç önceki UTC gününe
@@ -116,7 +111,7 @@ export function BookingModal({
   tutor,
   onClose,
   initialDate,
-  canRequestFreeLesson = false,
+  
   initialSlot,
 }: BookingModalProps) {
   const baslangicGunu = initialSlot?.date ?? initialDate;
@@ -137,8 +132,6 @@ export function BookingModal({
   const [onSecimKayip, setOnSecimKayip] = useState(false);
   const [basari, setBasari] = useState<BookingOut | null>(null);
   const [notes, setNotes] = useState("");
-  const [freeLesson, setFreeLesson] = useState(false);
-  
   const canChooseMode = !tutor.teaching_mode || tutor.teaching_mode === TeachingMode.BOTH;
   const initialMode = canChooseMode ? TeachingMode.ONLINE : (tutor.teaching_mode || TeachingMode.ONLINE);
   const [mode, setMode] = useState<TeachingMode>(initialMode);
@@ -291,7 +284,7 @@ export function BookingModal({
         location_lat: lessonMode === TeachingMode.IN_PERSON ? locationLat : null,
         location_lng: lessonMode === TeachingMode.IN_PERSON ? locationLng : null,
         notes: notes.trim() || null,
-        free_lesson: canRequestFreeLesson && freeLesson,
+        is_trial: isTrial || false,
       },
       {
         onSuccess: (booking) => setBasari(booking),
@@ -534,7 +527,18 @@ export function BookingModal({
               ) : (
                 <>
                   {/* Süre — değişince seçili saat sıfırlanır */}
-                  <div>
+                  
+                  {isTrial ? (
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-blue-900">25 dk Deneme Dersi — 49,90 TL</span>
+                      </div>
+                      <p className="text-sm text-blue-800">
+                        Eğitmenin anlatım tarzını tanı, hedeflerini konuş ve kısa bir örnek ders yap. Sana uygun değilse başka bir eğitmenle ücretsiz tekrar deneyebilirsin.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 ">
                       Süre
                     </p>
@@ -550,6 +554,8 @@ export function BookingModal({
                       ))}
                     </div>
                   </div>
+                  )}
+
 
                   {/* Tarih */}
                   <div>
@@ -785,8 +791,8 @@ export function BookingModal({
                 <OzetKarti
                   slot={selectedSlot}
                   mode={mode}
-                  ucretsiz={canRequestFreeLesson && freeLesson}
-                  ucret={slotVerisi?.price.amount ?? null}
+                  ucretsiz={false}
+                  ucret={isTrial ? 49.9 : (slotVerisi?.price.amount ?? null)}
                   gecIptalSaati={slotVerisi?.policy.late_cancel_hours ?? 12}
                 />
               )}
@@ -910,6 +916,7 @@ function BasariEkrani({
   booking: BookingOut;
   tutor: TutorSearchOut;
   onClose: () => void;
+  isTrial?: boolean;
 }) {
   const baslik = `${tutor.display_name} ile ders`;
   const detay = `Ders talebi: ${window.location.origin}${ROUTES.lesson(booking.id)}`;

@@ -233,7 +233,7 @@ async def dizin_kur(db: AsyncSession) -> Dizin:
                 Tutor.district,
                 Tutor.hourly_rate,
                 Tutor.teaching_mode,
-                Tutor.first_lesson_free,
+                Tutor.offered_durations,
                 Tutor.rating_count,
                 Tutor.rating_sum,
             ).where(*seo_slug_service.yayinda_kosulu())
