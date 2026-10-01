@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  amazon-analyzer:
+    build: .
+    container_name: amazon-spapi-analyzer
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    # amazon-spapi-isolated is an external network we created on the server
+    # It has NO inbound ports, and it does NOT connect to adana-ozel-ders-prod_default
+    networks:
+      - amazon-spapi-isolated
+
+networks:
+  amazon-spapi-isolated:
+    external: true
