@@ -1,149 +1,150 @@
-# Ruff — CI'da koşan lint yapılandırması.
+﻿# Ruff â€” CI'da koÅŸan lint yapÄ±landÄ±rmasÄ±.
 #
-# Amaç GERÇEK HATA yakalamak, stil tartışması açmak değil. Varsayılan kural
-# seti bu kod tabanında 1400+ uyarı üretiyor ve ezici çoğunluğu kozmetik
-# (tırnaklı annotation, import sırası); onları CI'da zorlamak her PR'ı
-# alakasız gürültüyle doldururdu. Aşağıdaki dar set, kırıcı sınıfları tutar.
+# AmaÃ§ GERÃ‡EK HATA yakalamak, stil tartÄ±ÅŸmasÄ± aÃ§mak deÄŸil. VarsayÄ±lan kural
+# seti bu kod tabanÄ±nda 1400+ uyarÄ± Ã¼retiyor ve ezici Ã§oÄŸunluÄŸu kozmetik
+# (tÄ±rnaklÄ± annotation, import sÄ±rasÄ±); onlarÄ± CI'da zorlamak her PR'Ä±
+# alakasÄ±z gÃ¼rÃ¼ltÃ¼yle doldururdu. AÅŸaÄŸÄ±daki dar set, kÄ±rÄ±cÄ± sÄ±nÄ±flarÄ± tutar.
 #
-# Kural eklemek serbest — ama yeni bir kural açarken mevcut ihlalleri de
-# temizleyin; CI'nın sürekli kırmızı olması onu işe yaramaz hale getirir.
+# Kural eklemek serbest â€” ama yeni bir kural aÃ§arken mevcut ihlalleri de
+# temizleyin; CI'nÄ±n sÃ¼rekli kÄ±rmÄ±zÄ± olmasÄ± onu iÅŸe yaramaz hale getirir.
 
 line-length = 100
 target-version = "py311"
 
 exclude = [
-    "migrations/versions",  # autogenerate çıktısı — biçimi Alembic belirler
-    # AgoraIO/Tools'tan DEĞİŞTİRİLMEDEN vendorlanan token kodu (bkz.
-    # services/agora_token/__init__.py) — biçimi upstream belirler.
+    "migrations/versions",  # autogenerate Ã§Ä±ktÄ±sÄ± â€” biÃ§imi Alembic belirler
+    # AgoraIO/Tools'tan DEÄÄ°ÅTÄ°RÄ°LMEDEN vendorlanan token kodu (bkz.
+    # services/agora_token/__init__.py) â€” biÃ§imi upstream belirler.
     "services/agora_token",
+    "amazon_analyzer",
     ".venv",
     "__pycache__",
 ]
 
 [lint]
 select = [
-    "E9",   # syntax / IO hataları
-    "F",    # Pyflakes: tanımsız ad, kullanılmayan import/değişken
-    "B",    # flake8-bugbear: gerçek tuzaklar (mutable default, loop capture…)
-    "PLE",  # Pylint error sınıfı
-    "T20",  # print() üretimde loglama yerine geçmesin
+    "E9",   # syntax / IO hatalarÄ±
+    "F",    # Pyflakes: tanÄ±msÄ±z ad, kullanÄ±lmayan import/deÄŸiÅŸken
+    "B",    # flake8-bugbear: gerÃ§ek tuzaklar (mutable default, loop captureâ€¦)
+    "PLE",  # Pylint error sÄ±nÄ±fÄ±
+    "T20",  # print() Ã¼retimde loglama yerine geÃ§mesin
 ]
 
 ignore = [
-    # SQLAlchemy ilişkileri string forward-reference kullanır
-    # (`Mapped["Tutor"]`); registry runtime'da çözer, tanımsız ad DEĞİLDİR.
+    # SQLAlchemy iliÅŸkileri string forward-reference kullanÄ±r
+    # (`Mapped["Tutor"]`); registry runtime'da Ã§Ã¶zer, tanÄ±msÄ±z ad DEÄÄ°LDÄ°R.
     "F821",
-    # FastAPI'nin bel kemiği: `x = Depends(...)` varsayılan argümanda çağrıdır.
+    # FastAPI'nin bel kemiÄŸi: `x = Depends(...)` varsayÄ±lan argÃ¼manda Ã§aÄŸrÄ±dÄ±r.
     "B008",
-    # Döngü içinde tanımlanıp AYNI iterasyonda çağrılan closure'lar var
+    # DÃ¶ngÃ¼ iÃ§inde tanÄ±mlanÄ±p AYNI iterasyonda Ã§aÄŸrÄ±lan closure'lar var
     # (delivery_service._find_planned, store_service._g/_int/_dec);
-    # doğrulandı, geç bağlama sorunu yok.
+    # doÄŸrulandÄ±, geÃ§ baÄŸlama sorunu yok.
     "B023",
 ]
 
 [lint.per-file-ignores]
-# Testlerde kasıtlı kullanılmayan değişkenler ve yeniden tanımlar olur.
+# Testlerde kasÄ±tlÄ± kullanÄ±lmayan deÄŸiÅŸkenler ve yeniden tanÄ±mlar olur.
 "tests/*" = ["F841", "B011"]
-# Doğrulama runner'ı bir CLI aracıdır; komutu kullanıcıya yazdırır.
+# DoÄŸrulama runner'Ä± bir CLI aracÄ±dÄ±r; komutu kullanÄ±cÄ±ya yazdÄ±rÄ±r.
 "tests/verify/run.py" = ["T20"]
-# Ölçek provası araçları (seed + sorgu ölçümü) CLI'dır: ölçüm tablosunu ve
-# EXPLAIN planlarını konsola basar — çıktı zaten ürünün kendisidir.
+# Ã–lÃ§ek provasÄ± araÃ§larÄ± (seed + sorgu Ã¶lÃ§Ã¼mÃ¼) CLI'dÄ±r: Ã¶lÃ§Ã¼m tablosunu ve
+# EXPLAIN planlarÄ±nÄ± konsola basar â€” Ã§Ä±ktÄ± zaten Ã¼rÃ¼nÃ¼n kendisidir.
 "scripts/scale/*.py" = ["T20"]
-# Depolama taşıma aracı da CLI: taşınacak/taşınan her nesneyi rapor eder
-# (dry-run çıktısı, uygulamadan önce gözden geçirilen şeyin ta kendisidir).
-# İlçe backfill aracı da CLI: hangi eğitmene hangi ilçenin YAZILACAĞINI
-# uygulamadan önce satır satır basar. Prova çıktısı, gözden geçirilen şeyin ta
-# kendisidir — `location_text` serbest metninden ilçe çıkarımı elle
-# doğrulanmadan uygulanmamalı.
+# Depolama taÅŸÄ±ma aracÄ± da CLI: taÅŸÄ±nacak/taÅŸÄ±nan her nesneyi rapor eder
+# (dry-run Ã§Ä±ktÄ±sÄ±, uygulamadan Ã¶nce gÃ¶zden geÃ§irilen ÅŸeyin ta kendisidir).
+# Ä°lÃ§e backfill aracÄ± da CLI: hangi eÄŸitmene hangi ilÃ§enin YAZILACAÄINI
+# uygulamadan Ã¶nce satÄ±r satÄ±r basar. Prova Ã§Ä±ktÄ±sÄ±, gÃ¶zden geÃ§irilen ÅŸeyin ta
+# kendisidir â€” `location_text` serbest metninden ilÃ§e Ã§Ä±karÄ±mÄ± elle
+# doÄŸrulanmadan uygulanmamalÄ±.
 "scripts/ilce_backfill.py" = ["T201"]
-# Aşağıdaki üçü de argparse'lı CLI araçlarıdır ve konsol çıktısı ARACIN
-# KENDİSİDİR. İstisna dosya + kural bazında dar tutulur — `scripts/` dizinine
-# toplu muafiyet verilmez, yoksa yarın eklenen bir script sessizce muaf olur.
+# AÅŸaÄŸÄ±daki Ã¼Ã§Ã¼ de argparse'lÄ± CLI araÃ§larÄ±dÄ±r ve konsol Ã§Ä±ktÄ±sÄ± ARACIN
+# KENDÄ°SÄ°DÄ°R. Ä°stisna dosya + kural bazÄ±nda dar tutulur â€” `scripts/` dizinine
+# toplu muafiyet verilmez, yoksa yarÄ±n eklenen bir script sessizce muaf olur.
 #
-# Mutasyon provası sürücüsü: hangi mutasyonun uygulandığını, hangi testin
-# kırıldığını ve geri almanın doğrulandığını adım adım yazar; bu çıktı
-# CLAUDE.md §D'nin istediği kanıtın ta kendisidir.
+# Mutasyon provasÄ± sÃ¼rÃ¼cÃ¼sÃ¼: hangi mutasyonun uygulandÄ±ÄŸÄ±nÄ±, hangi testin
+# kÄ±rÄ±ldÄ±ÄŸÄ±nÄ± ve geri almanÄ±n doÄŸrulandÄ±ÄŸÄ±nÄ± adÄ±m adÄ±m yazar; bu Ã§Ä±ktÄ±
+# CLAUDE.md Â§D'nin istediÄŸi kanÄ±tÄ±n ta kendisidir.
 "scripts/mutation_drill.py" = ["T201"]
-# İP-14 mutasyon provası sürücüsü — aynı gerekçe. Katalog ayrı tutuldu
-# (İP-12 paralel çalışırken ortak dosyanın kataloğu büyütülmesin);
-# güvenlik mekanizması `mutation_drill`ten import edilir.
+# Ä°P-14 mutasyon provasÄ± sÃ¼rÃ¼cÃ¼sÃ¼ â€” aynÄ± gerekÃ§e. Katalog ayrÄ± tutuldu
+# (Ä°P-12 paralel Ã§alÄ±ÅŸÄ±rken ortak dosyanÄ±n kataloÄŸu bÃ¼yÃ¼tÃ¼lmesin);
+# gÃ¼venlik mekanizmasÄ± `mutation_drill`ten import edilir.
 "scripts/mutation_drill_ip14.py" = ["T201"]
-# İP-16 mutasyon kataloğu: aynı sürücünün güvenlik makinesini kullanır, aynı
-# gerekçeyle konuşur (seçilen test sayısı + kırılan testler + geri alma kanıtı).
+# Ä°P-16 mutasyon kataloÄŸu: aynÄ± sÃ¼rÃ¼cÃ¼nÃ¼n gÃ¼venlik makinesini kullanÄ±r, aynÄ±
+# gerekÃ§eyle konuÅŸur (seÃ§ilen test sayÄ±sÄ± + kÄ±rÄ±lan testler + geri alma kanÄ±tÄ±).
 "scripts/mutation_drill_ip16.py" = ["T201"]
-# İP-18 mutasyon kataloğu: aynı güvenlik makinesi, aynı gerekçe. Ek olarak
-# YEŞİL TABAN ÇİZGİSİ ve `ERROR` sayan kırılma taraması da konsola raporlanır —
-# "prova geçerli miydi" sorusunun cevabı o çıktıdadır.
+# Ä°P-18 mutasyon kataloÄŸu: aynÄ± gÃ¼venlik makinesi, aynÄ± gerekÃ§e. Ek olarak
+# YEÅÄ°L TABAN Ã‡Ä°ZGÄ°SÄ° ve `ERROR` sayan kÄ±rÄ±lma taramasÄ± da konsola raporlanÄ±r â€”
+# "prova geÃ§erli miydi" sorusunun cevabÄ± o Ã§Ä±ktÄ±dadÄ±r.
 "scripts/mutation_drill_ip18.py" = ["T201"]
-# Modül 6 SEO adres betiği (argparse CLI): hangi ilana hangi adresin
-# verileceğini (prova) ya da verildiğini listeler — çıktı aracın kendisi.
+# ModÃ¼l 6 SEO adres betiÄŸi (argparse CLI): hangi ilana hangi adresin
+# verileceÄŸini (prova) ya da verildiÄŸini listeler â€” Ã§Ä±ktÄ± aracÄ±n kendisi.
 "scripts/seo_adresleri.py" = ["T201"]
-# Vitrin mutasyon kataloğu: aynı güvenlik makinesi, aynı gerekçe. Ayrıca
-# kapsam ayrımını konsola yazar — beş mutasyon sürücüyle, iki veritabanı
-# garantisi (GiST exclusion + tek-HOME index) ELLE SQL ile yapılır ve bu
-# ayrım çıktıda görünmezse "7/7" cümlesi dürüst olmaz.
+# Vitrin mutasyon kataloÄŸu: aynÄ± gÃ¼venlik makinesi, aynÄ± gerekÃ§e. AyrÄ±ca
+# kapsam ayrÄ±mÄ±nÄ± konsola yazar â€” beÅŸ mutasyon sÃ¼rÃ¼cÃ¼yle, iki veritabanÄ±
+# garantisi (GiST exclusion + tek-HOME index) ELLE SQL ile yapÄ±lÄ±r ve bu
+# ayrÄ±m Ã§Ä±ktÄ±da gÃ¶rÃ¼nmezse "7/7" cÃ¼mlesi dÃ¼rÃ¼st olmaz.
 "scripts/mutation_drill_vitrin.py" = ["T201"]
-# İP-16 F-15 altın referans üreticisi: test DEĞİL, kaynak kanıtıdır. Gerçek
-# py-fsrs v5.1.3'e karşı çalıştırılıp `tests/data/ip16_fsrs_ref.json`'u basar;
-# değerlerin nereden geldiği ancak bu betik okunarak doğrulanabilir.
+# Ä°P-16 F-15 altÄ±n referans Ã¼reticisi: test DEÄÄ°L, kaynak kanÄ±tÄ±dÄ±r. GerÃ§ek
+# py-fsrs v5.1.3'e karÅŸÄ± Ã§alÄ±ÅŸtÄ±rÄ±lÄ±p `tests/data/ip16_fsrs_ref.json`'u basar;
+# deÄŸerlerin nereden geldiÄŸi ancak bu betik okunarak doÄŸrulanabilir.
 "tests/data/ip16_fsrs_ref_generator.py" = ["T201"]
-# Aynı gerekçe: DB kısıtı (DDL) mutasyon provası sürücüsü. Hangi kısıtın
-# düşürüldüğünü, testin kırıldığını ve geri yüklemenin DAVRANIŞLA doğrulandığını
-# adım adım yazar; çıktı provanın kanıtıdır.
+# AynÄ± gerekÃ§e: DB kÄ±sÄ±tÄ± (DDL) mutasyon provasÄ± sÃ¼rÃ¼cÃ¼sÃ¼. Hangi kÄ±sÄ±tÄ±n
+# dÃ¼ÅŸÃ¼rÃ¼ldÃ¼ÄŸÃ¼nÃ¼, testin kÄ±rÄ±ldÄ±ÄŸÄ±nÄ± ve geri yÃ¼klemenin DAVRANIÅLA doÄŸrulandÄ±ÄŸÄ±nÄ±
+# adÄ±m adÄ±m yazar; Ã§Ä±ktÄ± provanÄ±n kanÄ±tÄ±dÄ±r.
 "scripts/ip1b_ddl_drill.py" = ["T201"]
-# Defter yeniden hesaplama aracı: dry-run'da ne değişeceğini, --apply'da ne
-# değiştiğini satır satır bildirir; sessiz çalışması tehlikeli olurdu.
+# Defter yeniden hesaplama aracÄ±: dry-run'da ne deÄŸiÅŸeceÄŸini, --apply'da ne
+# deÄŸiÅŸtiÄŸini satÄ±r satÄ±r bildirir; sessiz Ã§alÄ±ÅŸmasÄ± tehlikeli olurdu.
 "scripts/dev_rebase_stock.py" = ["T201"]
-# kitapsec kataloğu içe aktarma aracı: aynı gerekçe. Dry-run raporu (hangi
-# satır hangi ISBN/stok/görsel notuyla yüklenecek) aracın ta kendisidir —
-# --apply'dan önce gözden geçirilen şey o çıktıdır; parti parti ilerleyen
-# uygulama da created/skipped/errors sayımını ve run_id'yi konsola yazar.
+# kitapsec kataloÄŸu iÃ§e aktarma aracÄ±: aynÄ± gerekÃ§e. Dry-run raporu (hangi
+# satÄ±r hangi ISBN/stok/gÃ¶rsel notuyla yÃ¼klenecek) aracÄ±n ta kendisidir â€”
+# --apply'dan Ã¶nce gÃ¶zden geÃ§irilen ÅŸey o Ã§Ä±ktÄ±dÄ±r; parti parti ilerleyen
+# uygulama da created/skipped/errors sayÄ±mÄ±nÄ± ve run_id'yi konsola yazar.
 "scripts/import_kitapsec_books.py" = ["T201"]
-# ucdortbes kataloğu içe aktarma aracı: aynı gerekçe. Dry-run raporu ve
-# --apply'ın parti parti created/skipped/errors sayımı aracın çıktısıdır;
-# kullanıcı ilerlemeyi konsoldan izler.
+# ucdortbes kataloÄŸu iÃ§e aktarma aracÄ±: aynÄ± gerekÃ§e. Dry-run raporu ve
+# --apply'Ä±n parti parti created/skipped/errors sayÄ±mÄ± aracÄ±n Ã§Ä±ktÄ±sÄ±dÄ±r;
+# kullanÄ±cÄ± ilerlemeyi konsoldan izler.
 "scripts/import_ucdortbes.py" = ["T201"]
-# Yıldırım B2B kataloğu içe aktarma aracı: aynı gerekçe, aynı `--uygula` kapısı.
-# Kuru koşuda kaç satır okundu, kaçı fiyatsız diye atlandı, kaçı kategorisiz
-# olduğu için DRAFT'a düştü ve kaç mevcut ürünün SOFT-DELETE edileceği yazılır.
-# Soft-delete sayısı özellikle sessiz kalmamalı: --uygula'dan önce durduran şey
-# tam olarak o satırdır.
+# YÄ±ldÄ±rÄ±m B2B kataloÄŸu iÃ§e aktarma aracÄ±: aynÄ± gerekÃ§e, aynÄ± `--uygula` kapÄ±sÄ±.
+# Kuru koÅŸuda kaÃ§ satÄ±r okundu, kaÃ§Ä± fiyatsÄ±z diye atlandÄ±, kaÃ§Ä± kategorisiz
+# olduÄŸu iÃ§in DRAFT'a dÃ¼ÅŸtÃ¼ ve kaÃ§ mevcut Ã¼rÃ¼nÃ¼n SOFT-DELETE edileceÄŸi yazÄ±lÄ±r.
+# Soft-delete sayÄ±sÄ± Ã¶zellikle sessiz kalmamalÄ±: --uygula'dan Ã¶nce durduran ÅŸey
+# tam olarak o satÄ±rdÄ±r.
 "scripts/yildirim_katalog_import.py" = ["T201"]
-# Stok defteri raporu: konsol tablosu aracın çıktısıdır (CSV opsiyoneldir).
+# Stok defteri raporu: konsol tablosu aracÄ±n Ã§Ä±ktÄ±sÄ±dÄ±r (CSV opsiyoneldir).
 "scripts/stock_ledger_report.py" = ["T201"]
-# Ders taksonomisi dışa aktarımı: aracın ÇIKTISI rapordur. Kaç ders süzüldü,
-# hangi eşanlamlı çakıştı ve atlandı, hangi yetim ders köke alındı, hangi slug
-# çakışması nasıl çözüldü — üretilen dosyayı depoya almadan önce gözden
-# geçirilen şey tam olarak bu satırlardır. Sessiz çalışması, kaynaktaki bir
-# değişikliğin fark edilmeden taksonomiye sızması demek olurdu.
+# Ders taksonomisi dÄ±ÅŸa aktarÄ±mÄ±: aracÄ±n Ã‡IKTISI rapordur. KaÃ§ ders sÃ¼zÃ¼ldÃ¼,
+# hangi eÅŸanlamlÄ± Ã§akÄ±ÅŸtÄ± ve atlandÄ±, hangi yetim ders kÃ¶ke alÄ±ndÄ±, hangi slug
+# Ã§akÄ±ÅŸmasÄ± nasÄ±l Ã§Ã¶zÃ¼ldÃ¼ â€” Ã¼retilen dosyayÄ± depoya almadan Ã¶nce gÃ¶zden
+# geÃ§irilen ÅŸey tam olarak bu satÄ±rlardÄ±r. Sessiz Ã§alÄ±ÅŸmasÄ±, kaynaktaki bir
+# deÄŸiÅŸikliÄŸin fark edilmeden taksonomiye sÄ±zmasÄ± demek olurdu.
 "scripts/dersler_disa_aktar.py" = ["T201"]
-# Ders taksonomisi yükleyicisi: aynı gerekçe. Kuru koşu raporu (kaç yeni ders,
-# hangi eşanlamlı çakıştı, hangi merdiven bağlandı) --uygula'dan ÖNCE gözden
-# geçirilen şeyin ta kendisidir.
+# Ders taksonomisi yÃ¼kleyicisi: aynÄ± gerekÃ§e. Kuru koÅŸu raporu (kaÃ§ yeni ders,
+# hangi eÅŸanlamlÄ± Ã§akÄ±ÅŸtÄ±, hangi merdiven baÄŸlandÄ±) --uygula'dan Ã–NCE gÃ¶zden
+# geÃ§irilen ÅŸeyin ta kendisidir.
 "scripts/dersler_yukle.py" = ["T201"]
-# Kategori taksonomisi yükleyicisi (kategori ağacı + ürün atamaları): aynı
-# gerekçe ve aynı `--uygula` kapısı. Kuru koşuda kaç kategori upsert edileceğini,
-# kaç ürünün barkodla / id ile eşlendiğini ve atamaların yedeğinin nereye
-# yazıldığını basar; yedek dosyasının yolu ekrana yazılmazsa geri dönüş yolu
-# kullanıcıdan gizlenmiş olurdu.
+# Kategori taksonomisi yÃ¼kleyicisi (kategori aÄŸacÄ± + Ã¼rÃ¼n atamalarÄ±): aynÄ±
+# gerekÃ§e ve aynÄ± `--uygula` kapÄ±sÄ±. Kuru koÅŸuda kaÃ§ kategori upsert edileceÄŸini,
+# kaÃ§ Ã¼rÃ¼nÃ¼n barkodla / id ile eÅŸlendiÄŸini ve atamalarÄ±n yedeÄŸinin nereye
+# yazÄ±ldÄ±ÄŸÄ±nÄ± basar; yedek dosyasÄ±nÄ±n yolu ekrana yazÄ±lmazsa geri dÃ¶nÃ¼ÅŸ yolu
+# kullanÄ±cÄ±dan gizlenmiÅŸ olurdu.
 "scripts/taxonomy_yukle.py" = ["T201"]
-# Branş eşleme aracı: hangi serbest metnin hangi derse bağlandığı ve hangisinin
-# EŞLEŞMEDİĞİ, --uygula'dan önce gözden geçirilen çıktıdır; eşleşmeyenler
-# panelin kuyruğuna düşecek kayıtlardır.
+# BranÅŸ eÅŸleme aracÄ±: hangi serbest metnin hangi derse baÄŸlandÄ±ÄŸÄ± ve hangisinin
+# EÅLEÅMEDÄ°ÄÄ°, --uygula'dan Ã¶nce gÃ¶zden geÃ§irilen Ã§Ä±ktÄ±dÄ±r; eÅŸleÅŸmeyenler
+# panelin kuyruÄŸuna dÃ¼ÅŸecek kayÄ±tlardÄ±r.
 "scripts/brans_eslestir.py" = ["T201"]
-# Tedarikçi tur tohumu: elle çalıştırılan bir CLI aracıdır ve konsol çıktısı
-# aracın kullanıcıyla konuşma biçimidir. Özellikle "REDDEDİLDİ:" satırları
-# (üretimde koşma reddi, SUPPLIER_NETWORK_DISABLED kapalıyken red) betiğin
-# NEDEN durduğunu söyleyen tek kanaldır; logging'e çevirmek onları elle
-# çalıştıran kullanıcıdan gizlerdi.
+# TedarikÃ§i tur tohumu: elle Ã§alÄ±ÅŸtÄ±rÄ±lan bir CLI aracÄ±dÄ±r ve konsol Ã§Ä±ktÄ±sÄ±
+# aracÄ±n kullanÄ±cÄ±yla konuÅŸma biÃ§imidir. Ã–zellikle "REDDEDÄ°LDÄ°:" satÄ±rlarÄ±
+# (Ã¼retimde koÅŸma reddi, SUPPLIER_NETWORK_DISABLED kapalÄ±yken red) betiÄŸin
+# NEDEN durduÄŸunu sÃ¶yleyen tek kanaldÄ±r; logging'e Ã§evirmek onlarÄ± elle
+# Ã§alÄ±ÅŸtÄ±ran kullanÄ±cÄ±dan gizlerdi.
 "scripts/tedarikci_tur_seed.py" = ["T201"]
-# F30 gerçek tarayıcı kabulünün iki ucu. İkisi de **stdout'a tek satır JSON**
-# yazar ve o çıktı bir sonraki adımın GİRDİSİDİR (tohum → tarayıcı sürücüsü →
-# baskı denetimi). Logging'e çevirmek boru hattını kırardı; dosyaya yazmak ise
-# kabulün nerede koştuğunu betiğin dışına taşırdı.
+# F30 gerÃ§ek tarayÄ±cÄ± kabulÃ¼nÃ¼n iki ucu. Ä°kisi de **stdout'a tek satÄ±r JSON**
+# yazar ve o Ã§Ä±ktÄ± bir sonraki adÄ±mÄ±n GÄ°RDÄ°SÄ°DÄ°R (tohum â†’ tarayÄ±cÄ± sÃ¼rÃ¼cÃ¼sÃ¼ â†’
+# baskÄ± denetimi). Logging'e Ã§evirmek boru hattÄ±nÄ± kÄ±rardÄ±; dosyaya yazmak ise
+# kabulÃ¼n nerede koÅŸtuÄŸunu betiÄŸin dÄ±ÅŸÄ±na taÅŸÄ±rdÄ±.
 "scripts/f30_e2e_seed.py" = ["T201"]
 "scripts/f30_baski_kabul.py" = ["T201"]
-# Seed/bakım script'leri konsola yazar.
+# Seed/bakÄ±m script'leri konsola yazar.
 "seed_*.py" = ["T20"]
 "add_*.py" = ["T20"]
 "fix_*.py" = ["T20"]
