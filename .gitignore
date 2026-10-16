@@ -90,3 +90,16 @@ desktop.ini
 backend/scripts/*_checkpoint.json
 backend/scripts/yildirim_multibarcode_enriched_*.csv
 
+
+# Tek seferlik Amazon ve katalog analiz betikleri (yerel calisma araclari)
+backend/scripts/amazon_sp_api_test.py
+backend/scripts/apply_*.py
+backend/scripts/audit_*.py
+backend/scripts/book_*.py
+backend/scripts/build_*.py
+backend/scripts/commercial_ranking.py
+backend/scripts/delta_calculator.py
+backend/scripts/enrich_yildirim_barcodes.py
+backend/scripts/exact_cohort_*.py
+backend/scripts/export_nonbook_audit.py
+backend/scripts/extract_pids.py
