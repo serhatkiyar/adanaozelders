@@ -8,3 +8,20 @@
 - **Eğitim Mağazası & Tedarikçi Entegrasyonu:** Kitap ve eğitim materyali satışı, stok defteri ve B2B katalog senkronizasyonu.
 - **Teslimat & Rota Optimizasyonu:** OSRM ve VROOM tabanlı kurye rota planlama ve canlı kargo takip sistemi.
 - **Aralıklı Tekrar Sistemi (FSRS-5):** Öğrenciler için akıllı çalışma kartları ve tekrar planlayıcı.
+
+## Teknoloji Yığını
+
+### Backend (ackend/)
+- **Dil & Çatı:** Python 3.12, FastAPI, Starlette, Uvicorn (ASGI)
+- **Veritabanı & ORM:** PostgreSQL 16, SQLAlchemy 2.0 (Async), syncpg, Alembic
+- **Önbellek & Gerçek Zamanlı:** Redis 7, Centrifugo
+- **Depolama & Medya:** MinIO / S3 (ioboto3), Pillow, FFmpeg (ideo-worker)
+- **Doğrulama & Güvenlik:** Pydantic v2, PyJWT, bcrypt, 
+h3
+
+### Frontend (rontend/)
+- **Dil & Çatı:** TypeScript 5.6, React 18, Vite 5, React Router v7
+- **Stil & UI:** Tailwind CSS 3, Ant Design v5, Medusa UI
+- **Durum Yönetimi:** TanStack React Query v5, Redux Toolkit, Zustand
+- **Form & Doğrulama:** React Hook Form, Zod
+- **Canlı Ders & Harita:** LiveKit, Agora RTC, Zoom Video SDK, Excalidraw, FullCalendar, Leaflet
