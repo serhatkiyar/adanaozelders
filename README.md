@@ -25,3 +25,32 @@ h3
 - **Durum Yönetimi:** TanStack React Query v5, Redux Toolkit, Zustand
 - **Form & Doğrulama:** React Hook Form, Zod
 - **Canlı Ders & Harita:** LiveKit, Agora RTC, Zoom Video SDK, Excalidraw, FullCalendar, Leaflet
+
+## Yerel Geliştirme ve Kurulum
+
+### 1. Altyapı Servisleri (Docker Compose)
+Geliştirme ortamında Redis, MinIO ve MailHog servislerini başlatmak için:
+```bash
+docker compose up -d redis minio minio-init mailhog
+```
+Tüm sistemi (PostgreSQL + Backend + Frontend dahil) Docker üzerinde çalıştırmak için:
+```bash
+docker compose --profile tamdocker up --build
+```
+
+### 2. Backend Kurulumu
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn main:app --reload --port 8000
+```
+
+### 3. Frontend Kurulumu
+```bash
+cd frontend
+npm install
+npm run dev
+```
