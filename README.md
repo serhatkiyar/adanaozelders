@@ -54,3 +54,23 @@ cd frontend
 npm install
 npm run dev
 ```
+
+## Katmanlı Mimari ve Testler
+
+Yeni bir özellik veya API ucu eklenirken izlenen katman sırası:
+1. **Backend:** models/ $\rightarrow$ models/__init__.py $\rightarrow$ schemas/ $\rightarrow$ services/ $\rightarrow$ pi/routers/ $\rightarrow$ pi/router.py
+2. **Frontend:** src/types/ $\rightarrow$ src/api/ $\rightarrow$ src/hooks/ $\rightarrow$ src/pages/ veya src/components/
+
+### Test ve Kalite Kontrol Komutları
+- **Backend Test & Lint:**
+  ```bash
+  cd backend
+  ruff check .
+  pytest -q
+  ```
+- **Frontend Tip Kontrolü & Birim Testleri:**
+  ```bash
+  cd frontend
+  npx tsc -b
+  npm run test
+  ```
