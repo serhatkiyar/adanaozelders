@@ -116,7 +116,7 @@ export function AdimOzet({ d, dis, gitAdim }: AdimProps) {
           etiket="Saatlik ücret"
           deger={
             d.hourlyRate
-              ? `${d.hourlyRate} ₺${d.firstLessonFree ? " · ilk ders ücretsiz" : ""}`
+              ? `${d.hourlyRate} ₺`
               : ""
           }
           adim={adimIndeksi("ucret")}

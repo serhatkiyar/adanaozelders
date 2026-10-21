@@ -198,7 +198,7 @@ export function TutorCard({
             )}
           </span>
           {/* İlk ders ücretsiz etiketi — yalnız öğretmen sunuyorsa */}
-          {tutor.first_lesson_free !== false && (
+          {false && (
             <span className="flex items-center whitespace-nowrap">
               <span aria-hidden="true" className="w-4 text-center text-base leading-none text-emerald-600">·</span>
               <span className="text-xs font-semibold text-emerald-600">

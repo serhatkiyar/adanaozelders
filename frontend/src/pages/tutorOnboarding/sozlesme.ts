@@ -26,7 +26,7 @@ export interface Durum {
   locationLat: number | null;
   locationLng: number | null;
   hourlyRate: string;
-  firstLessonFree: boolean;
+  
   introVideoUrl: string;
   /** Arama faseti. İSTEĞE BAĞLI — boş bırakılabilir. */
   gender: Gender | "";
@@ -51,7 +51,7 @@ export const BOS_DURUM: Durum = {
   locationLat: null,
   locationLng: null,
   hourlyRate: "",
-  firstLessonFree: false,
+  
   introVideoUrl: "",
   gender: "",
 };
@@ -272,7 +272,7 @@ export const ADIMLAR: Adim[] = [
     },
     yama: (d) => ({
       hourly_rate: ucretiCoz(d.hourlyRate),
-      first_lesson_free: d.firstLessonFree,
+      
     }),
     hatirlatma:
       "Yeni başlıyorsan yüksek bir ücret seçmemek işine yarar; yorum ve referans topladıkça yükseltirsin.",

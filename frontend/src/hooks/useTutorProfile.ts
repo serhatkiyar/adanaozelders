@@ -44,7 +44,7 @@ export function useUpdateTutorProfile() {
         lesson_info: tutor.lesson_info,
         hourly_rate: tutor.hourly_rate,
         teaching_mode: tutor.teaching_mode,
-        first_lesson_free: tutor.first_lesson_free,
+        
         subjects: tutor.subjects,
       });
     },

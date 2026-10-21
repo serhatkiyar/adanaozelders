@@ -96,8 +96,8 @@ interface BookingModalProps {
   onClose: () => void;
   /** Takvimden açıldıysa önseçili tarih ("YYYY-MM-DD"); listedeyse vurgulanır. */
   initialDate?: string;
-  /** Öğrenci bu eğitmenden ücretsiz ilk ders alabilir mi (sunmuyor/kullanılmışsa false). */
-  
+  /** Bu rezervasyon bir deneme dersi mi? */
+  isTrial?: boolean;
   /**
    * Profildeki Program takviminden seçilen saat. `date` sunucunun İstanbul
    * günüdür (UTC ISO'dan türetilmez: 03:00 öncesi başlangıç önceki UTC gününe
@@ -111,7 +111,7 @@ export function BookingModal({
   tutor,
   onClose,
   initialDate,
-  
+  isTrial = false,
   initialSlot,
 }: BookingModalProps) {
   const baslangicGunu = initialSlot?.date ?? initialDate;
@@ -792,29 +792,9 @@ export function BookingModal({
                   slot={selectedSlot}
                   mode={mode}
                   ucretsiz={false}
-                  ucret={isTrial ? 49.9 : (slotVerisi?.price.amount ?? null)}
+                  ucret={isTrial ? "49.90" : (slotVerisi?.price.amount ?? null)}
                   gecIptalSaati={slotVerisi?.policy.late_cancel_hours ?? 12}
                 />
-              )}
-
-              {/* Ücretsiz ilk ders */}
-              {canRequestFreeLesson && (
-                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 ">
-                  <input
-                    type="checkbox"
-                    checked={freeLesson}
-                    onChange={(e) => setFreeLesson(e.target.checked)}
-                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 accent-marka"
-                  />
-                  <span className="text-sm">
-                    <span className="font-semibold text-emerald-800 ">
-                      İlk dersim ücretsiz olsun
-                    </span>
-                    <span className="mt-0.5 block text-xs text-emerald-700/80 ">
-                      Bu öğretmenle ilk dersin ücretsiz. İşaretlersen ödeme alınmaz.
-                    </span>
-                  </span>
-                </label>
               )}
 
               {/* Ek Not */}
@@ -839,8 +819,8 @@ export function BookingModal({
               >
                 {createBooking.isPending
                   ? "Gönderiliyor…"
-                  : canRequestFreeLesson && freeLesson
-                    ? "Ücretsiz Ders Talep Et"
+                  : isTrial
+                    ? "Deneme Dersi Talep Et"
                     : "Ders Talep Et"}
               </button>
             </div>

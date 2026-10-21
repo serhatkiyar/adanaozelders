@@ -201,7 +201,7 @@ export default function PublicTutorProfile({
               tutor={tutor}
               ucret={rate !== null ? formatRateSymbol(tutor.hourly_rate) : null}
               rozet={hasVerifiedEducation(tutor.educations) ? <DocumentedBadge /> : undefined}
-              ilkDersMetni={tutor.first_lesson_free !== false ? "İlk ders ücretsiz" : null}
+              ilkDersMetni={null}
               onGeri={geriDon}
               onYorumlar={() => setShowReviews(true)}
             />
@@ -330,7 +330,7 @@ export default function PublicTutorProfile({
                 <Icon name="commentLightning" className="h-5 w-5" />
                 Ders Talep Et
               </button>
-              {tutor.first_lesson_free !== false && (
+              {false && (
                 <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
                   İlk ders ücretsiz
                 </p>

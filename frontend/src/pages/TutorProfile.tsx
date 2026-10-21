@@ -156,8 +156,6 @@ export default function TutorProfile({
       b.status !== BookingStatus.CANCELLED &&
       b.status !== BookingStatus.REJECTED
   );
-  const canRequestFreeLesson =
-    tutor.first_lesson_free !== false && dersTalebiYapabilir && !hadLessonWithTutor;
   const videoVar = tanitimVideosuVar(tutor.intro_video, tutor.intro_video_url);
   const modeLabel = tutor.teaching_mode === TeachingMode.ONLINE
     ? "Uzaktan" 
@@ -218,10 +216,10 @@ export default function TutorProfile({
               rozet={hasVerifiedEducation(tutor.educations) ? <DocumentedBadge /> : undefined}
               favoriGizli={isOwnerTutor}
               ilkDersMetni={
-                tutor.first_lesson_free !== false
-                  ? canRequestFreeLesson
-                    ? "İlk dersin ücretsiz"
-                    : "İlk ders ücretsiz"
+                !hadLessonWithTutor
+                  ? "25 Dk Deneme Dersi — 49,90 TL"
+                    
+                    
                   : null
               }
               onGeri={geriDon}
@@ -341,9 +339,9 @@ export default function TutorProfile({
                   Ders talebi üye hesabıyla yapılır.
                 </p>
               )}
-              {tutor.first_lesson_free !== false && (
+              {!hadLessonWithTutor && (
                 <p className="mt-2 text-center text-sm font-semibold text-emerald-600 ">
-                  {canRequestFreeLesson ? "İlk dersin ücretsiz" : "İlk ders ücretsiz"}
+                  25 Dk Deneme Dersi — 49,90 TL
                 </p>
               )}
             </section>
@@ -461,6 +459,7 @@ export default function TutorProfile({
               onSaatSec={dersTalebiYapabilir ? (saat) => dersPenceresiniAc(saat) : undefined}
               isTrial={!hadLessonWithTutor}
               kendiProfili={isOwnerTutor}
+              offeredDurations={tutor.offered_durations}
             />
 
             {/* Ders puanı (alt kriter kutucukları) + değerlendirmeler — Preply
@@ -502,7 +501,7 @@ export default function TutorProfile({
             setShowBookingModal(false);
             setOnSeciliSaat(null);
           }}
-          canRequestFreeLesson={canRequestFreeLesson}
+          isTrial={!hadLessonWithTutor}
           initialSlot={onSeciliSaat ?? undefined}
         />
       )}

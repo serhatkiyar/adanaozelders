@@ -291,7 +291,7 @@ describe("tanıtım videosu — ekranda gösterilen alan KAYDEDİLİR", () => {
       "locationLng",
       "locationText",
       "district",
-      "firstLessonFree", // `ucret` yamasında
+      
     ]);
     const ESLEME: Record<string, string> = {
       headline: "headline",

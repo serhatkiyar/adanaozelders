@@ -50,7 +50,7 @@ const EGITMEN = {
   districts: [],
   rating_avg: 0,
   rating_count: 0,
-  first_lesson_free: false,
+  
 };
 
 vi.mock("@/hooks/useCurrentUser", () => ({

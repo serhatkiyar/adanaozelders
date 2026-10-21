@@ -616,7 +616,7 @@ export interface TutorProfileUpdate {
   bio?: string | null;
   lesson_info?: string | null;
   intro_video_url?: string | null;
-  first_lesson_free?: boolean | null;
+  offered_durations?: number[];
   hourly_rate?: number | null;
   teaching_mode?: TeachingMode | null;
   /** Arama faseti; ilanda GORUNUR. Isteğe bağlı — boş bırakılabilir. */
@@ -716,7 +716,7 @@ export interface TutorOut extends UserOut {
   intro_video_url?: string | null;
   /** Siteye yüklenen (ACTIVE) tanıtım videosu. */
   intro_video?: IntroVideoPublic | null;
-  first_lesson_free?: boolean;
+  offered_durations?: number[];
   hourly_rate?: string | null; // Decimal -> string
   teaching_mode?: TeachingMode | null;
   birth_date?: string | null; // "YYYY-MM-DD"
@@ -746,7 +746,7 @@ export interface TutorSearchOut {
   intro_video_url?: string | null; // Tanıtım videosu — yalnız detay yanıtında dolu
   /** Siteye yüklenen video — yalnız detay yanıtında; bağlantı ile aynı anda dolu olmaz. */
   intro_video?: IntroVideoPublic | null;
-  first_lesson_free?: boolean; // İlk ders ücretsiz mi (kart/profil rozeti)
+  offered_durations?: number[]; // İlk ders ücretsiz mi (kart/profil rozeti)
   hourly_rate?: string | null; // Decimal -> string
   teaching_mode?: TeachingMode | null;
   gender?: Gender | null;
@@ -812,7 +812,8 @@ export interface BookingCreate {
   location?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
-  // Ücretsiz ilk ders talebi; uygunluk sunucuda doğrulanır.
+  // Deneme dersi talebi; uygunluk sunucuda doğrulanır.
+  is_trial?: boolean;
   free_lesson?: boolean;
 }
 
@@ -881,6 +882,7 @@ export interface BookingOut {
   start_at: string;
   end_at: string;
   price?: string | null; // Decimal -> string
+  is_trial?: boolean;
   is_free_lesson?: boolean;
   /** Dersi eğitmen teklif etti; PENDING'de yanıtı öğrenci verir (Modül 8). */
   offered_by_tutor?: boolean;

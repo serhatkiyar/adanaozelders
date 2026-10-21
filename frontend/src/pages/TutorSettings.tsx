@@ -996,7 +996,7 @@ function UcretBolumu({ tutor }: { tutor: TutorOut }) {
   const acik = duzenlenebilir(tutor);
   const mevcut = parseMoney(tutor.hourly_rate);
   const [rate, setRate] = useState(mevcut !== null ? String(mevcut) : "");
-  const [ilkDersUcretsiz, setIlkDersUcretsiz] = useState(tutor.first_lesson_free ?? true);
+  
 
   const gonder = (e: FormEvent) => {
     e.preventDefault();
@@ -1010,7 +1010,7 @@ function UcretBolumu({ tutor }: { tutor: TutorOut }) {
       }
       ucret = n;
     }
-    kaydet({ hourly_rate: ucret, first_lesson_free: ilkDersUcretsiz });
+    kaydet({ hourly_rate: ucret,  });
   };
 
   return (
@@ -1043,22 +1043,7 @@ function UcretBolumu({ tutor }: { tutor: TutorOut }) {
           </p>
         </div>
 
-        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4">
-          <input
-            type="checkbox"
-            disabled={!acik}
-            checked={ilkDersUcretsiz}
-            onChange={(e) => setIlkDersUcretsiz(e.target.checked)}
-            className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-marka"
-          />
-          <span>
-            <span className={`block ${ETIKET}`}>İlk ders ücretsiz</span>
-            <span className={`mt-1 block ${KUCUK_ACIKLAMA}`}>
-              Açıkken yeni öğrenciler seninle ilk derslerini ücretsiz alabilir ve
-              profilinde "İlk ders ücretsiz" etiketi görünür.
-            </span>
-          </span>
-        </label>
+
 
         <KaydetDugmesi tutor={tutor} kaydediliyor={kaydediliyor} />
       </form>

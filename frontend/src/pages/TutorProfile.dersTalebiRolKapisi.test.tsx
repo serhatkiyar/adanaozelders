@@ -33,7 +33,7 @@ const EGITMEN = {
   subjects: [],
   districts: [],
   rating_count: 0,
-  first_lesson_free: false,
+  
 };
 const SAAT = { date: "2026-10-05", start_at: "2026-10-05T07:00:00Z", duration: 60 };
 

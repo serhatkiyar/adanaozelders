@@ -1,4 +1,4 @@
-import { Metin, OnayKutusu } from "@/components/form/alanlar";
+import { Metin } from "@/components/form/alanlar";
 import { useTutorPriceHistogram } from "@/hooks/useTutorSearch";
 
 import { UCRET_EN_AZ, UCRET_EN_COK } from "../sozlesme";
@@ -55,20 +55,7 @@ export function AdimUcret({ d, guncelle, odakla }: AdimProps) {
         duzeltmeKapali
       />
 
-      <div className="border-t border-slate-200 pt-6">
-        <OnayKutusu
-          ad="ilkDersUcretsiz"
-          isaretli={d.firstLessonFree}
-          onChange={(v) => guncelle({ firstLessonFree: v })}
-        >
-          <span className="font-medium text-slate-800">
-            İlk dersi ücretsiz vereceğim
-          </span>
-          <br />
-          Henüz yorumu olmayan yeni bir ilanda ilk öğrenciyi bulmayı
-          kolaylaştırır. İstediğin zaman kapatabilirsin.
-        </OnayKutusu>
-      </div>
+
     </div>
   );
 }

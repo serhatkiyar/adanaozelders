@@ -24,7 +24,7 @@ function trim(t: TutorSearchOut): TutorSearchOut {
     bio: t.bio ?? null,
     hourly_rate: t.hourly_rate ?? null,
     teaching_mode: t.teaching_mode ?? null,
-    first_lesson_free: t.first_lesson_free ?? true,
+    
     rating_count: t.rating_count ?? 0,
     rating_average: t.rating_average ?? null,
     bayesian_score: t.bayesian_score ?? 0,

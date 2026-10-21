@@ -30,10 +30,7 @@ export interface ProgramSaati {
   duration: number;
 }
 
-const SURELER = [
-  { value: "30", label: "30 dk" },
-  { value: "60", label: "1 saat" },
-] as const;
+
 
 // Kare 44px ok düğmesi: taban sınıfın px-4/h-10'u ek sınıfla ezilemiyor
 // (CSS sırası), bu yüzden değerler yerinde değiştirilir.
@@ -70,20 +67,31 @@ export function programSutunlari(gunler: SlotDayOut[]) {
   }));
 }
 
+const DEFAULT_DURATIONS = [60];
+
 export function ProgramTakvimi({
   tutorId,
   onSaatSec,
   kendiProfili = false,
+  isTrial = false,
+  offeredDurations = DEFAULT_DURATIONS,
 }: {
   tutorId: number;
   /** Yoksa saatler salt okunur (öğretmen kendi profiline ya da üye olmayan hesap bakıyor). */
   onSaatSec?: (saat: ProgramSaati) => void;
   /** Salt okunur kipte açıklama metnini seçer: eğitmen kendi profiline mi bakıyor. */
   kendiProfili?: boolean;
+  isTrial?: boolean;
+  offeredDurations?: number[];
 }) {
   const bugun = istanbulNow().dateStr;
   const [hafta, setHafta] = useState(0);
-  const [sure, setSure] = useState<"30" | "60">("60");
+  
+  // Deneme dersiyse 25 dakika zorunlu, değilse eğitmenin sunduğu ilk süre (varsayılan 60).
+  const [sure, setSure] = useState<string>(
+    isTrial ? "25" : (offeredDurations.includes(60) ? "60" : String(offeredDurations[0] || 60))
+  );
+
   const [acik, setAcik] = useState(false);
   // Telefonda önce gün seçilir (BookingModal "Tarih ve Saat" deseni).
   const [mobilGun, setMobilGun] = useState("");
@@ -116,7 +124,8 @@ export function ProgramTakvimi({
   const sutunlar = veri ? programSutunlari(veri.days) : [];
   const enUzun = Math.max(0, ...sutunlar.map((s) => s.saatler.length));
   const gorunen = acik ? enUzun : Math.min(enUzun, KAPALI_SATIR);
-  const saatAdi = sure === "30" ? "30 dakikalık" : "1 saatlik";
+  
+  const saatAdi = isTrial ? "25 dakikalık deneme" : `${sure} dakikalık`;
   const mobilSutun =
     sutunlar.find((s) => s.date === mobilGun) ??
     sutunlar.find((s) => s.saatler.length > 0) ??
@@ -132,6 +141,11 @@ export function ProgramTakvimi({
     setMobilGun("");
   };
 
+  const surelerOptions = offeredDurations.map((d) => ({
+    value: String(d),
+    label: d === 60 ? "60 dk (Önerilen)" : `${d} dk`,
+  }));
+
   return (
     <section className="border-t border-slate-200 pt-6" aria-labelledby="program-baslik">
       <h2 id="program-baslik" ref={baslikRef} className="scroll-mt-24 mb-2 text-xl font-bold text-slate-900">
@@ -145,17 +159,19 @@ export function ProgramTakvimi({
             : "Boş saatler, Türkiye saatiyle. Ders talebi üye hesabıyla yapılır."}
       </p>
 
-      {/* Telefonda segmentler 44px dokunma hedefi (SegmentedControl tabanı 40px). */}
-      <div className="mt-4 max-w-xs max-sm:[&_button]:min-h-11" role="group" aria-label="Ders süresi">
-        <SegmentedControl
-          options={[...SURELER]}
-          value={sure}
-          onChange={(v) => {
-            setSure(v);
-            setAcik(false);
-          }}
-        />
-      </div>
+      {/* Deneme dersi değilse ve birden fazla süre seçeneği varsa göster */}
+      {!isTrial && offeredDurations.length > 1 && (
+        <div className="mt-4 max-w-sm max-sm:[&_button]:min-h-11" role="group" aria-label="Ders süresi">
+          <SegmentedControl
+            options={surelerOptions}
+            value={sure}
+            onChange={(v) => {
+              setSure(v);
+              setAcik(false);
+            }}
+          />
+        </div>
+      )}
 
       <div className="mt-4 flex items-center gap-3">
         <div className="flex gap-2">
