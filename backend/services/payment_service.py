@@ -53,7 +53,7 @@ async def create_for_booking(db: AsyncSession, booking: Booking) -> Payment | No
         return existing
     amount = Decimal(str(booking.price))
     tutor = await db.get(Tutor, booking.tutor_id)
-    if booking.is_free_lesson:
+    if booking.is_trial:
         rate = Decimal("1.00")
     else:
         rate = commission.rate_for(tutor) if tutor else commission.effective_commission_rate(None, None)

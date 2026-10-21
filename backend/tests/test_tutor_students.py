@@ -255,11 +255,11 @@ async def test_tamamlanacak_ders_saati_gecmis_kabul_edilmis():
 @pytest.mark.asyncio
 async def test_deneme_alanlari_iptal_ve_reddi_saymaz():
     sql = await _sql()
-    assert "bool_or(bookings.is_free_lesson) FILTER" in sql
-    assert "bool_or(NOT bookings.is_free_lesson) FILTER" in sql
+    assert "bool_or(bookings.is_trial) FILTER" in sql
+    assert "bool_or(NOT bookings.is_trial) FILTER" in sql
     # Yaşayan kayıt: iptal ve red türü belirlemez.
     f = _filtre(sql, "deneme_var")
     assert "'PENDING'" in f and "'ACCEPTED'" in f and "'COMPLETED'" in f
     for yok in ("'CANCELLED'", "'REJECTED'"):
         assert yok not in f
-    assert "min(bookings.start_at) FILTER (WHERE bookings.is_free_lesson" in sql
+    assert "min(bookings.start_at) FILTER (WHERE bookings.is_trial" in sql

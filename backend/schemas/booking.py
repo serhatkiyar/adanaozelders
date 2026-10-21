@@ -201,7 +201,7 @@ class BookingOut(BaseModel):
     start_at: datetime.datetime
     end_at: datetime.datetime
     price: Decimal | None = None
-    is_is_trial: bool = False
+    is_trial: bool = False
     notes: str | None = None
     cancel_reason: str | None = None
     mode: str | None = None

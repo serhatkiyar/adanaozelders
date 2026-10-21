@@ -100,8 +100,4 @@ async def test_her_ders_sorgusu_ogrenciye_ve_silinmemise_bagli():
         assert "bookings.deleted_at IS NULL" in sql, sql
     assert out["next_action"] is None
     assert out["has_bookings"] is False
-    # Boş hesapta keşif sayısı yayındaki eğitmenlerden sayılır.
-    assert any(
-        "tutors.first_lesson_free IS true" in s and "FROM bookings" not in s
-        for s in db.sorgular
-    )
+

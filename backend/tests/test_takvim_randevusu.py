@@ -40,7 +40,7 @@ def _ders(**alan) -> Booking:
         start_at=simdi + datetime.timedelta(days=2),
         end_at=simdi + datetime.timedelta(days=2, hours=1),
         price=Decimal("500.00"),
-        is_free_lesson=False,
+        is_trial=False,
         mode="IN_PERSON",
         offered_by_tutor=False,
     )
