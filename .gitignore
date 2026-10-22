@@ -72,3 +72,21 @@ docs/tedarikci-tur/
 # Arşivlenmiş test dosyaları
 archive_scripts/
 backend/email_previews/
+
+# Windows klasör yapılandırma dosyası
+desktop.ini
+
+# Amazon / katalog analiz betiklerinin ürettiği geçici CSV, checkpoint ve log çıktıları
+/*.csv
+/*_output.txt
+/*.log
+/amazon_analysis_checkpoint.json
+/fee_errors.json
+/nonbook_notfound_verification_evidence.jsonl
+/nonbook_verification_progress.json
+/recovered_1248_product_ids.json
+/scan_checkpoint_*.json
+/script_backup.py
+backend/scripts/*_checkpoint.json
+backend/scripts/yildirim_multibarcode_enriched_*.csv
+
