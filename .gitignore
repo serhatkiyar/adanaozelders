@@ -72,3 +72,56 @@ docs/tedarikci-tur/
 # Arşivlenmiş test dosyaları
 archive_scripts/
 backend/email_previews/
+
+# Windows klasör yapılandırma dosyası
+desktop.ini
+
+# Amazon / katalog analiz betiklerinin ürettiği geçici CSV, checkpoint ve log çıktıları
+/*.csv
+/*_output.txt
+/*.log
+/amazon_analysis_checkpoint.json
+/fee_errors.json
+/nonbook_notfound_verification_evidence.jsonl
+/nonbook_verification_progress.json
+/recovered_1248_product_ids.json
+/scan_checkpoint_*.json
+/script_backup.py
+backend/scripts/*_checkpoint.json
+backend/scripts/yildirim_multibarcode_enriched_*.csv
+
+
+# Tek seferlik Amazon ve katalog analiz betikleri (yerel calisma araclari)
+backend/scripts/amazon_sp_api_test.py
+backend/scripts/apply_*.py
+backend/scripts/audit_*.py
+backend/scripts/book_*.py
+backend/scripts/build_*.py
+backend/scripts/commercial_ranking.py
+backend/scripts/delta_calculator.py
+backend/scripts/enrich_yildirim_barcodes.py
+backend/scripts/exact_cohort_*.py
+backend/scripts/export_nonbook_audit.py
+backend/scripts/extract_pids.py
+backend/scripts/fee_error_audit.py
+backend/scripts/fetch_missing_book_costs.py
+backend/scripts/final_*.py
+backend/scripts/fix_not_found_books.py
+backend/scripts/full_scan.py
+backend/scripts/generate_diagnostic_report.py
+backend/scripts/inspect_*.py
+backend/scripts/live_b2b_test*.py
+backend/scripts/merge_and_report.py
+backend/scripts/multibarcode_pilot.py
+backend/scripts/nonbook_verification.py
+backend/scripts/print_top10.py
+backend/scripts/recalc_global_funnel*.py
+backend/scripts/recover_*.py
+backend/scripts/retry_*.py
+backend/scripts/strict_*.py
+backend/scripts/supplier_discount_audit.py
+backend/scripts/test_pricing_batch.py
+backend/scripts/test_single_fee.py
+backend/scripts/top_20_books_report.py
+backend/scripts/update_and_pipeline.py
+backend/scripts/verify_316_incomplete.py
